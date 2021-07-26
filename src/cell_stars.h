@@ -88,9 +88,6 @@ struct cell_stars {
     /*! Last (integer) time the cell's spart were drifted forward in time. */
     integertime_t ti_old_part;
 
-    /*! Maximum end of (integer) time step in this cell for star tasks. */
-    integertime_t ti_end_max;
-
     /*! Spin lock for star formation use. */
     swift_lock_type star_formation_lock;
 

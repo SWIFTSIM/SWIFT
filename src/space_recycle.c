@@ -129,6 +129,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.prep1_ghost = NULL;
     c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
+    c->hydro.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.density_ghost = NULL;
     c->stars.prep1_ghost = NULL;
@@ -149,6 +150,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
+#ifdef WITH_CSDS
+    c->csds = NULL;
+#endif
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
@@ -175,6 +179,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down_in = NULL;
     c->grav.down = NULL;
     c->grav.end_force = NULL;
+    c->grav.neutrino_weight = NULL;
     c->top = c;
     c->super = c;
     c->hydro.super = c;
@@ -189,15 +194,10 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.parts = NULL;
     c->flags = 0;
     c->hydro.ti_end_min = -1;
-    c->hydro.ti_end_max = -1;
     c->grav.ti_end_min = -1;
-    c->grav.ti_end_max = -1;
     c->sinks.ti_end_min = -1;
-    c->sinks.ti_end_max = -1;
     c->stars.ti_end_min = -1;
-    c->stars.ti_end_max = -1;
     c->black_holes.ti_end_min = -1;
-    c->black_holes.ti_end_max = -1;
     c->hydro.rt_in = NULL;
     c->hydro.rt_inject = NULL;
     c->hydro.rt_ghost1 = NULL;

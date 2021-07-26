@@ -43,16 +43,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
     struct spart *restrict si, struct part *restrict pj, float a, float H) {
 
-  struct rt_spart_data *restrict sd = &(si->rt_data);
-  struct rt_part_data *restrict pd = &(pj->rt_data);
+  si->rt_data.debug_iact_hydro_inject += 1;
+  si->rt_data.debug_radiation_emitted_tot += 1ULL;
 
-  sd->iact_hydro_inject += 1;
-  sd->calls_tot += 1;
-  sd->calls_per_step += 1;
-
-  pd->iact_stars_inject += 1;
-  pd->calls_tot += 1;
-  pd->calls_per_step += 1;
+  pj->rt_data.debug_iact_stars_inject += 1;
+  pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
 }
 
 /**
@@ -75,70 +70,45 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
-  if (pi->rt_data.injection_done != 1)
+  if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do iact transport when "
         "finalise injection count is %d",
-        pi->rt_data.injection_done);
+        pi->rt_data.debug_injection_done);
 
-  if (pi->rt_data.calls_iact_gradient == 0)
+  if (pi->rt_data.debug_calls_iact_gradient == 0)
     error(
         "Called iact transport on particle "
         "with iact gradient count 0");
 
-  if (pi->rt_data.gradients_done != 1)
+  if (pi->rt_data.debug_gradients_done != 1)
     error(
         "Trying to do iact transport when "
         "rt_finalise_gradient count is %d",
-        pi->rt_data.gradients_done);
+        pi->rt_data.debug_gradients_done);
+
+  pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
 
-    if (pj->rt_data.injection_done != 1)
+    if (pj->rt_data.debug_injection_done != 1)
       error(
           "Trying to do iact transport when "
           "finalise injection count is %d",
-          pj->rt_data.injection_done);
+          pj->rt_data.debug_injection_done);
 
-    if (pj->rt_data.calls_iact_gradient == 0)
+    if (pj->rt_data.debug_calls_iact_gradient == 0)
       error(
           "Called iact transport on particle "
           "with iact gradient count 0");
 
-    if (pj->rt_data.gradients_done != 1)
+    if (pj->rt_data.debug_gradients_done != 1)
       error(
           "Trying to do iact transport when "
           "rt_finalise_gradient count is %d",
-          pj->rt_data.gradients_done);
+          pj->rt_data.debug_gradients_done);
 
-    pi->rt_data.calls_tot += 1;
-    pi->rt_data.calls_per_step += 1;
-    pi->rt_data.calls_iact_transport += 1;
-    pj->rt_data.calls_tot += 1;
-    pj->rt_data.calls_per_step += 1;
-    pj->rt_data.calls_iact_transport += 1;
-  } else {
-
-    if (pj->rt_data.injection_done != 1)
-      message(
-          "Trying to do iact transport when finalise injection "
-          "count is %d in nonsym flux. You should look into this",
-          pj->rt_data.injection_done);
-
-    if (pj->rt_data.calls_iact_gradient == 0)
-      message(
-          "Called iact transport on particle with iact gradient "
-          "count 0 in nonsym flux. You should look into this");
-
-    if (pj->rt_data.gradients_done != 1)
-      message(
-          "Trying to do iact transport when rt_finalise_gradient "
-          "count is %d in nonsym flux. You should look into this",
-          pj->rt_data.gradients_done);
-
-    pi->rt_data.calls_tot += 1;
-    pi->rt_data.calls_per_step += 1;
-    pi->rt_data.calls_iact_transport += 1;
+    pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 }
 

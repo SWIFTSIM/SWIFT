@@ -31,6 +31,7 @@
 #include "error.h"
 #include "memuse.h"
 
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -222,6 +223,9 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
 
       /* Set the key. */
       chunk->data[offset_in_chunk].key = key;
+      chunk->data[offset_in_chunk].value.value_array2_dbl[0] = -FLT_MAX;
+      chunk->data[offset_in_chunk].value.value_array2_dbl[1] = -FLT_MAX;
+      chunk->data[offset_in_chunk].value.value_array2_dbl[2] = -FLT_MAX;
 
       /* Return a pointer to the new element. */
       return &chunk->data[offset_in_chunk];

@@ -125,8 +125,10 @@
 
 /* Import radiative transfer loop functions. */
 #define FUNCTION inject
+#define FUNCTION_TASK_LOOP TASK_LOOP_RT_INJECT
 #include "runner_doiact_rt.h"
 #undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
@@ -492,8 +494,8 @@ void *runner_main(void *data) {
         case task_type_end_grav_force:
           runner_do_end_grav_force(r, ci, 1);
           break;
-        case task_type_logger:
-          runner_do_logger(r, ci, 1);
+        case task_type_csds:
+          runner_do_csds(r, ci, 1);
           break;
         case task_type_timestep:
           runner_do_timestep(r, ci, 1);
@@ -519,6 +521,8 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_part_swallow) {
             free(t->buff);
           } else if (t->subtype == task_subtype_bpart_merger) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
           }
           break;
@@ -555,7 +559,7 @@ void *runner_main(void *data) {
                                       (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
-            runner_do_recv_part(r, ci, 0, 1);
+            /* Nothing to do here. Unpacking done in a separate task */
           } else if (t->subtype == task_subtype_gpart) {
             runner_do_recv_gpart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart_density) {
@@ -577,6 +581,14 @@ void *runner_main(void *data) {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }
           break;
+
+        case task_type_pack:
+          runner_do_pack_limiter(r, ci, &t->buff, 1);
+          task_get_unique_dependent(t)->buff = t->buff;
+          break;
+        case task_type_unpack:
+          runner_do_unpack_limiter(r, ci, t->buff, 1);
+          break;
 #endif
         case task_type_grav_down:
           runner_do_grav_down(r, t->ci, 1);
@@ -593,6 +605,9 @@ void *runner_main(void *data) {
         case task_type_star_formation:
           runner_do_star_formation(r, t->ci, 1);
           break;
+        case task_type_star_formation_sink:
+          runner_do_star_formation_sink(r, t->ci, 1);
+          break;
         case task_type_stars_resort:
           runner_do_stars_resort(r, t->ci, 1);
           break;
@@ -604,6 +619,9 @@ void *runner_main(void *data) {
           break;
         case task_type_fof_pair:
           runner_do_fof_pair(r, t->ci, t->cj, 1);
+          break;
+        case task_type_neutrino_weight:
+          runner_do_neutrino_weighting(r, ci, 1);
           break;
         case task_type_rt_ghost1:
           runner_do_rt_ghost1(r, t->ci, 1);

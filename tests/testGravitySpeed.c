@@ -52,7 +52,6 @@ void make_cell(struct cell *c, int N, const double loc[3], double width,
 
   /* Set the time bins */
   c->grav.ti_end_min = 1;
-  c->grav.ti_end_max = 1;
   c->grav.ti_beg_max = 1;
   c->grav.ti_old_part = 1;
   c->grav.ti_old_multipole = 1;

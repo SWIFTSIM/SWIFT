@@ -18,6 +18,7 @@
  ******************************************************************************/
 
 #include "../config.h"
+#include "exp10.h"
 #include "swift.h"
 
 /* Standard includes */

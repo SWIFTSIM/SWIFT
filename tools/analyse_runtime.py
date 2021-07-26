@@ -88,9 +88,13 @@ tasks = [
     "sync",
     "time integration",
     "mpi",
+    "pack",
     "fof",
     "others",
     "sink",
+    "neutrino",
+    "RT",
+    "CSDS",
     "total",
 ]
 

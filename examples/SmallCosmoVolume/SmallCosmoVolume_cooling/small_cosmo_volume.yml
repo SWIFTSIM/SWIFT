@@ -7,7 +7,7 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1             # Kelvin
 
 Cosmology:                      # WMAP9 cosmology
-  Omega_m:        0.276
+  Omega_cdm:      0.2305
   Omega_lambda:   0.724
   Omega_b:        0.0455
   h:              0.703
@@ -53,8 +53,6 @@ Statistics:
 Scheduler:
   max_top_level_cells: 8
   cell_split_size:     50
-  cell_extra_gparts:         100         # (Optional) Number of spare gparts per top-level allocated at rebuild time for on-the-fly creation.
-  cell_extra_sparts:         100       # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   
 # Parameters related to the initial conditions
 InitialConditions:

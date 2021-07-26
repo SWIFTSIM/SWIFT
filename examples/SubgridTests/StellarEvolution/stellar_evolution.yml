@@ -36,7 +36,8 @@ SPH:
 Stars:
   overwrite_birth_time: 1
   birth_time:           0.   # Give the star in the ICs a decent birth time
-  
+  luminosity_filename:   ./photometry
+
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./stellar_evolution.hdf5       # The file to read

@@ -31,55 +31,15 @@
 #include "engine.h"
 
 /* Local headers. */
+#include "csds_io.h"
 #include "distributed_io.h"
 #include "kick.h"
 #include "line_of_sight.h"
-#include "logger_io.h"
 #include "parallel_io.h"
 #include "serial_io.h"
 #include "single_io.h"
 
 #include <stdio.h>
-
-/**
- * @brief Check whether an index file has to be written during this
- * step.
- *
- * @param e The #engine.
- */
-void engine_check_for_index_dump(struct engine *e) {
-#ifdef WITH_LOGGER
-  /* Get a few variables */
-  struct logger_writer *log = e->logger;
-  const size_t dump_size = log->dump.count;
-  const size_t old_dump_size = log->index.dump_size_last_output;
-  const float mem_frac = log->index.mem_frac;
-  const size_t total_nr_parts =
-      (e->total_nr_parts + e->total_nr_gparts + e->total_nr_sparts +
-       e->total_nr_bparts + e->total_nr_DM_background_gparts);
-  const size_t index_file_size =
-      total_nr_parts * sizeof(struct logger_part_data);
-
-  size_t number_part_history = 0;
-  for (int i = 0; i < swift_type_count; i++) {
-    number_part_history +=
-        log->history_new[i].size + log->history_removed[i].size;
-  }
-  const int history_too_large = number_part_history > log->maximal_size_history;
-
-  /* Check if we should write a file */
-  if (mem_frac * (dump_size - old_dump_size) > index_file_size ||
-      history_too_large) {
-    /* Write an index file */
-    engine_dump_index(e);
-
-    /* Update the dump size for last output */
-    log->index.dump_size_last_output = dump_size;
-  }
-#else
-  error("This function should not be called without the logger.");
-#endif
-}
 
 /**
  * @brief dump restart files if it is time to do so and dumps are enabled.
@@ -218,7 +178,9 @@ void engine_dump_snapshot(struct engine *e) {
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 
   /* Run the post-dump command if required */
-  engine_run_on_dump(e);
+  if (e->nodeID == 0) {
+    engine_run_on_dump(e);
+  }
 }
 
 /**
@@ -244,41 +206,6 @@ void engine_run_on_dump(struct engine *e) {
       message("Snapshot dump command returned error code %d", result);
     }
   }
-}
-
-/**
- * @brief Writes an index file with the current state of the engine
- *
- * @param e The #engine.
- */
-void engine_dump_index(struct engine *e) {
-
-#if defined(WITH_LOGGER)
-  struct clocks_time time1, time2;
-  clocks_gettime(&time1);
-
-  if (e->verbose) {
-    if (e->policy & engine_policy_cosmology)
-      message("Writing index at a=%e",
-              exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
-    else
-      message("Writing index at t=%e",
-              e->ti_current * e->time_base + e->time_begin);
-  }
-
-  /* Dump... */
-  logger_write_index_file(e->logger, e);
-
-  /* Flag that we dumped a snapshot */
-  e->step_props |= engine_step_prop_logger_index;
-
-  clocks_gettime(&time2);
-  if (e->verbose)
-    message("writing particle indices took %.3f %s.",
-            (float)clocks_diff(&time1, &time2), clocks_getunit());
-#else
-  error("SWIFT was not compiled with the logger");
-#endif
 }
 
 /**
@@ -384,7 +311,8 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Do we want FoF group IDs in the snapshot? */
         if (with_fof && e->snapshot_invoke_fof) {
-          engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/0);
+          engine_fof(e, /*dump_results=*/1, /*dump_debug=*/0,
+                     /*seed_black_holes=*/0);
         }
 
         /* Free the foreign particles to get more breathing space.

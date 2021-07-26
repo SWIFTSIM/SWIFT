@@ -1820,6 +1820,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_star_formation:
         cost = wscale * (count_i + scount_i);
         break;
+      case task_type_star_formation_sink:
+        cost = wscale * (sink_count_i + scount_i);
+        break;
       case task_type_sink_formation:
         cost = wscale * (count_i + sink_count_i);
         break;
@@ -1831,6 +1834,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_rt_tchem:
         cost = wscale * count_i;
+        break;
+      case task_type_csds:
+        cost =
+            wscale * (count_i + gcount_i + scount_i + sink_count_i + bcount_i);
         break;
       case task_type_kick1:
         cost =
@@ -2015,7 +2022,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_kick1:
       case task_type_kick2:
       case task_type_stars_ghost:
-      case task_type_logger:
+      case task_type_csds:
       case task_type_stars_sort:
       case task_type_timestep:
         qid = t->ci->super->owner;
@@ -2072,13 +2079,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_part_prep1 ||
-                   t->subtype == task_subtype_limiter) {
+                   t->subtype == task_subtype_part_prep1) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
+
+        } else if (t->subtype == task_subtype_limiter) {
+
+          size = count = t->ci->hydro.count * sizeof(timebin_t);
+          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
+            error("Error allocating timebin recv buffer");
+          type = MPI_BYTE;
+          t->buff = buff;
+          task_get_unique_dependent(t)->buff = buff;
 
         } else if (t->subtype == task_subtype_gpart) {
 
@@ -2191,13 +2206,18 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_part_prep1 ||
-                   t->subtype == task_subtype_limiter) {
+                   t->subtype == task_subtype_part_prep1) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
+
+        } else if (t->subtype == task_subtype_limiter) {
+
+          size = count = t->ci->hydro.count * sizeof(timebin_t);
+          type = MPI_BYTE;
+          buff = t->buff;
 
         } else if (t->subtype == task_subtype_gpart) {
 

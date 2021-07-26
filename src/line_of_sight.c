@@ -33,6 +33,7 @@
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
 #include "periodic.h"
+#include "version.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -323,6 +324,7 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
     error("Error while setting checksum options for field '%s'.", props.name);
 
   /* Impose data compression */
+  char comp_buffer[32] = "None";
   if (e->snapshot_compression > 0) {
     h_err = H5Pset_shuffle(h_prop);
     if (h_err < 0)
@@ -372,6 +374,7 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   io_write_attribute_f(h_data, "h-scale exponent", 0.f);
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+  io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -483,16 +486,27 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_d(h_grp, "Scale-factor", e->cosmology->a);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
+  io_write_attribute_s(h_grp, "System", hostname());
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
+
+  /* Write out the time-base */
+  if (e->policy & engine_policy_cosmology) {
+    io_write_attribute_d(h_grp, "TimeBase_dloga", e->time_base);
+    const double delta_t = cosmology_get_timebase(e->cosmology, e->ti_current);
+    io_write_attribute_d(h_grp, "TimeBase_dt", delta_t);
+  } else {
+    io_write_attribute_d(h_grp, "TimeBase_dloga", 0);
+    io_write_attribute_d(h_grp, "TimeBase_dt", e->time_base);
+  }
 
   /* Store the time at which the snapshot was written */
   time_t tm = time(NULL);
   struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
-  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
+  io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */

@@ -178,4 +178,53 @@ INLINE static void sink_copy_properties(
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling) {}
 
+/**
+ * @brief Should the sink spawn a star particle?
+ *
+ * Nothing to do here.
+ *
+ * @param e The #engine
+ * @param sink the sink particle.
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ * @param with_cosmology if we run with cosmology.
+ * @param us The internal unit system.
+ */
+INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
+                                  const struct sink_props* sink_props,
+                                  const struct cosmology* cosmo,
+                                  const int with_cosmology,
+                                  const struct phys_const* phys_const,
+                                  const struct unit_system* restrict us) {
+  const float random_number = random_unit_interval(
+      sink->id, e->ti_current, random_number_star_formation);
+
+  return random_number < 1e-3;
+}
+
+/**
+ * @brief Copy the properties of the sink particle towards the new star.
+ * This function also needs to update the sink particle.
+ *
+ * Nothing to do here.
+ *
+ * @param e The #engine
+ * @param sink the sink particle.
+ * @param sp The star particle.
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ * @param with_cosmology if we run with cosmology.
+ * @param us The internal unit system.
+ */
+INLINE static void sink_copy_properties_to_star(
+    struct sink* sink, struct spart* sp, const struct engine* e,
+    const struct sink_props* sink_props, const struct cosmology* cosmo,
+    const int with_cosmology, const struct phys_const* phys_const,
+    const struct unit_system* restrict us) {
+
+  sp->h = sink->r_cut;
+}
+
 #endif /* SWIFT_GEAR_SINK_H */

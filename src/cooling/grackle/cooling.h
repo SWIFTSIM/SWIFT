@@ -152,6 +152,14 @@ float cooling_get_temperature(
     const struct cosmology* restrict cosmo,
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, const struct xpart* restrict xp);
+
+double cooling_get_ycompton(const struct phys_const* phys_const,
+                            const struct hydro_props* hydro_props,
+                            const struct unit_system* us,
+                            const struct cosmology* cosmo,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, const struct xpart* xp);
+
 float cooling_timestep(const struct cooling_function_data* restrict cooling,
                        const struct phys_const* restrict phys_const,
                        const struct cosmology* restrict cosmo,
@@ -178,4 +186,27 @@ void cooling_struct_dump(const struct cooling_function_data* cooling,
                          FILE* stream);
 void cooling_struct_restore(struct cooling_function_data* cooling, FILE* stream,
                             const struct cosmology* cosmo);
+
+/**
+ * @brief Compute the electron pressure of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+INLINE static double cooling_get_electron_pressure(
+    const struct phys_const* phys_const, const struct hydro_props* hydro_props,
+    const struct unit_system* us, const struct cosmology* cosmo,
+    const struct cooling_function_data* cooling, const struct part* p,
+    const struct xpart* xp) {
+  return 0;
+}
+
 #endif /* SWIFT_COOLING_GRACKLE_H */

@@ -633,9 +633,10 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset) {
  * @param c The #cell to sort.
  * @param parts The global array of #part (for re-linking).
  * @param sparts The global array of #spart (for re-linking).
+ * @param sinks The global array of #sink (for re-linking).
  */
 void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
-                               struct spart *sparts) {
+                               struct spart *sparts, struct sink *sinks) {
   struct gpart *gparts = c->grav.parts;
   const int count_real = c->grav.count;
 
@@ -663,6 +664,8 @@ void cell_reorder_extra_gparts(struct cell *c, struct part *parts,
                         sizeof(struct gpart));
       if (gparts[i].type == swift_type_gas) {
         parts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
+      } else if (gparts[i].type == swift_type_sink) {
+        sinks[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       } else if (gparts[i].type == swift_type_stars) {
         sparts[-gparts[i].id_or_neg_offset].gpart = &gparts[i];
       }

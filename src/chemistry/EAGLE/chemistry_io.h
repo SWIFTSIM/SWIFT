@@ -293,7 +293,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 #ifdef HAVE_HDF5
 
 /**
- * @brief Writes the current model of SPH to the file
+ * @brief Writes the current model of chemistry to the file
  * @param h_grp The HDF5 group in which to write
  * @param h_grp_columns The HDF5 group containing named columns
  * @param e The #engine.

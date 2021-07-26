@@ -19,6 +19,12 @@ then
     ./getEagleYieldTable.sh
 fi
 
+if [ ! -e photometry ]
+then
+    echo "Fetching EAGLE photometry tables..."
+    ../getEaglePhotometryTable.sh
+fi
+
 # Get the solutions
 if [ ! -e StellarEvolutionSolution ]
 then

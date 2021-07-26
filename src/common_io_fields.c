@@ -85,15 +85,16 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
 
     case swift_type_dark_matter:
     case swift_type_dark_matter_background:
-    case swift_type_neutrino:
       io_select_dm_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
                           &num_fields, list);
       break;
-
+    case swift_type_neutrino:
+      io_select_neutrino_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
+                                &num_fields, list);
+      break;
     case swift_type_stars:
       io_select_star_fields(NULL, with_cosmology, with_fof, with_stf,
-                            /*with_rt=*/1,
-                            /*e=*/NULL, &num_fields, list);
+                            /*with_rt=*/1, /*e=*/NULL, &num_fields, list);
       break;
 
     case swift_type_sink:
@@ -167,6 +168,14 @@ void io_prepare_output_fields(struct output_options* output_options,
     /* Default snapshot subdir name for this output selection */
     char subdir_name[FILENAME_BUFFER_SIZE] = select_output_default_subdir_name;
 
+    int subsample[swift_type_count];
+    for (int i = 0; i < swift_type_count; ++i)
+      subsample[i] = select_output_default_subsample;
+
+    float subsample_fraction[swift_type_count];
+    for (int i = 0; i < swift_type_count; ++i)
+      subsample_fraction[i] = select_output_default_subsample_fraction;
+
     /* Initialise section-specific writing counters for each particle type.
      * If default is 'write', then we start from the total to deduct any fields
      * that are switched off. If the default is 'off', we have to start from
@@ -216,6 +225,20 @@ void io_prepare_output_fields(struct output_options* output_options,
       /* Deal with a possible non-standard snapshot subdir name */
       if (strstr(param_name, ":subdir") != NULL) {
         parser_get_param_string(params, param_name, subdir_name);
+        continue;
+      }
+
+      /* Deal with a possible non-standard subsampling option */
+      if (strstr(param_name, ":subsample") != NULL) {
+        parser_get_param_int_array(params, param_name, swift_type_count,
+                                   subsample);
+        continue;
+      }
+
+      /* Deal with a possible non-standard subsampling fraction */
+      if (strstr(param_name, ":subsample_fraction") != NULL) {
+        parser_get_param_float_array(params, param_name, swift_type_count,
+                                     subsample_fraction);
         continue;
       }
 
@@ -299,6 +322,10 @@ void io_prepare_output_fields(struct output_options* output_options,
     /* Also copy the output names */
     strcpy(output_options->basenames[section_id], basename);
     strcpy(output_options->subdir_names[section_id], subdir_name);
+    memcpy(output_options->subsample[section_id], subsample,
+           swift_type_count * sizeof(int));
+    memcpy(output_options->subsample_fractions[section_id], subsample_fraction,
+           swift_type_count * sizeof(float));
 
   } /* Ends loop over sections, for different output classes */
 
@@ -313,6 +340,12 @@ void io_prepare_output_fields(struct output_options* output_options,
             select_output_default_basename);
     sprintf(output_options->subdir_names[default_id], "%s",
             select_output_default_subdir_name);
+    for (int i = 0; i < swift_type_count; ++i)
+      output_options->subsample[default_id][i] =
+          select_output_default_subsample;
+    for (int i = 0; i < swift_type_count; ++i)
+      output_options->subsample_fractions[default_id][i] =
+          select_output_default_subsample_fraction;
   }
 }
 

@@ -38,6 +38,7 @@
 #include "mpiuse.h"
 #include "part.h"
 #include "proxy.h"
+#include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars_io.h"
 #include "statistics.h"
@@ -135,19 +136,24 @@ static void engine_dumper_init(struct engine *e) {
  * @param params The parsed parameter file.
  * @param nr_nodes The number of MPI ranks.
  * @param nodeID The MPI rank of this node.
- * @param nr_threads The number of threads per MPI rank.
+ * @param nr_task_threads The number of engine threads per MPI rank.
+ * @param nr_pool_threads The number of threadpool threads per MPI rank.
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  */
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
-                   int nr_threads, int with_aff, int verbose,
-                   const char *restart_file) {
+                   int nr_task_threads, int nr_pool_threads, int with_aff,
+                   int verbose, const char *restart_file) {
+
+  struct clocks_time tic, toc;
+  if (nodeID == 0) clocks_gettime(&tic);
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;
-  e->nr_threads = nr_threads;
+  e->nr_threads = nr_task_threads;
+  e->nr_pool_threads = nr_pool_threads;
   e->nr_nodes = nr_nodes;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
@@ -167,7 +173,6 @@ void engine_config(int restart, int fof, struct engine *e,
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
-  engine_rank = nodeID;
 
   if (restart && fof) {
     error(
@@ -208,18 +213,20 @@ void engine_config(int restart, int fof, struct engine *e,
 
       if (e->nodeID == 0) {
         float mass_mult = e->neutrino_mass_conversion_factor;
+        float deg_nu_tot = e->cosmology->deg_nu_tot;
         message("Neutrino mass multiplier: %.5e eV / U_M", mass_mult);
         message("Neutrino simulation particle masses in range: [%.4f, %.4f] eV",
-                min_max_mass[0] * mass_mult, min_max_mass[1] * mass_mult);
+                min_max_mass[0] * mass_mult / deg_nu_tot,
+                min_max_mass[1] * mass_mult / deg_nu_tot);
       }
     }
   }
 
   /* Get the number of queues */
   int nr_queues =
-      parser_get_opt_param_int(params, "Scheduler:nr_queues", nr_threads);
+      parser_get_opt_param_int(params, "Scheduler:nr_queues", e->nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
-  if (nr_queues != nr_threads)
+  if (nr_queues != nr_task_threads)
     message("Number of task queues set to %d", nr_queues);
   e->s->nr_queues = nr_queues;
 
@@ -427,6 +434,9 @@ void engine_config(int restart, int fof, struct engine *e,
                                 engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, mode);
+    if (e->file_stats == NULL)
+      error("Could not open the file '%s' with mode '%s'.", energyfileName,
+            mode);
 
     if (!restart)
       stats_write_file_header(e->file_stats, e->internal_units,
@@ -438,8 +448,11 @@ void engine_config(int restart, int fof, struct engine *e,
                                 engine_default_timesteps_file_name);
 
     sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
-            nr_nodes * nr_threads);
+            nr_nodes * nr_task_threads);
     e->file_timesteps = fopen(timestepsfileName, mode);
+    if (e->file_timesteps == NULL)
+      error("Could not open the file '%s' with mode '%s'.", timestepsfileName,
+            mode);
 
     if (!restart) {
       fprintf(
@@ -459,13 +472,11 @@ void engine_config(int restart, int fof, struct engine *e,
       fprintf(
           e->file_timesteps,
           "# Step Properties: Rebuild=%d, Redistribute=%d, Repartition=%d, "
-          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d, "
-          "logger=%d\n",
+          "Statistics=%d, Snapshot=%d, Restarts=%d STF=%d, FOF=%d, mesh=%d\n",
           engine_step_prop_rebuild, engine_step_prop_redistribute,
           engine_step_prop_repartition, engine_step_prop_statistics,
           engine_step_prop_snapshot, engine_step_prop_restarts,
-          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh,
-          engine_step_prop_logger_index);
+          engine_step_prop_stf, engine_step_prop_fof, engine_step_prop_mesh);
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
@@ -479,6 +490,9 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Initialize the SFH logger if running with star formation */
     if (e->policy & engine_policy_star_formation) {
       e->sfh_logger = fopen("SFR.txt", mode);
+      if (e->sfh_logger == NULL)
+        error("Could not open the file 'SFR.txt' with mode '%s'.", mode);
+
       if (!restart) {
         star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
                                             e->physical_constants);
@@ -646,11 +660,11 @@ void engine_config(int restart, int fof, struct engine *e,
                   MPI_COMM_WORLD);
 #endif
 
-#if defined(WITH_LOGGER)
-    if ((e->policy & engine_policy_logger) && e->nodeID == 0)
+#if defined(WITH_CSDS)
+    if ((e->policy & engine_policy_csds) && e->nodeID == 0)
       message(
           "WARNING: There is currently no way of predicting the output "
-          "size, please use the logger carefully");
+          "size, please use the CSDS carefully");
 #endif
 
     /* Find the time of the first snapshot output */
@@ -735,7 +749,9 @@ void engine_config(int restart, int fof, struct engine *e,
   }
 
   /* Initialize the threadpool. */
-  threadpool_init(&e->threadpool, e->nr_threads);
+  threadpool_init(&e->threadpool, nr_pool_threads);
+  if (e->nodeID == 0)
+    message("Using %d threads in the thread-pool", nr_pool_threads);
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
@@ -801,6 +817,16 @@ void engine_config(int restart, int fof, struct engine *e,
         params, "Scheduler:cell_extra_gparts", space_extra_gparts);
     space_extra_bparts = parser_get_opt_param_int(
         params, "Scheduler:cell_extra_bparts", space_extra_bparts);
+
+    /* Do we want any spare particles for on the fly creation?
+       This condition should be the same than in space.c */
+    if (!(e->policy & engine_policy_star_formation ||
+          e->policy & engine_policy_sinks) ||
+        !swift_star_formation_model_creates_stars) {
+      space_extra_sparts = 0;
+      space_extra_gparts = 0;
+      space_extra_sinks = 0;
+    }
 
     engine_max_parts_per_ghost =
         parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
@@ -879,10 +905,10 @@ void engine_config(int restart, int fof, struct engine *e,
     }
   }
 
-#ifdef WITH_LOGGER
-  if ((e->policy & engine_policy_logger) && !restart) {
-    /* Write the particle logger header */
-    logger_write_file_header(e->logger);
+#ifdef WITH_CSDS
+  if ((e->policy & engine_policy_csds) && !restart) {
+    /* Write the particle csds header */
+    csds_write_file_header(e->csds);
   }
 #endif
 
@@ -906,4 +932,10 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Wait for the runner threads to be in place. */
   swift_barrier_wait(&e->wait_barrier);
+
+  if (e->nodeID == 0) {
+    clocks_gettime(&toc);
+    message("took %.3f %s.", clocks_diff(&tic, &toc), clocks_getunit());
+    fflush(stdout);
+  }
 }

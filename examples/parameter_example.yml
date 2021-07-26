@@ -59,21 +59,22 @@ SPH:
 
 # Parameters of the stars
 Stars:
-  resolution_eta:                      1.2348 # (Optional) Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). Defaults to the SPH value.
-  h_tolerance:                          1e-4  # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
-  max_ghost_iterations:                 30    # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
-  max_volume_change:                     1.4  # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
-  overwrite_birth_time:                  0    # (Optional) Do we want to overwrite the birth time of the stars read from the ICs? (default: 0).
-  birth_time:                           -1    # (Optional) Initial birth times of *all* the stars to be used if we are overwriting them. (-1 means the stars remain inactive feedback-wise througout the run).
-  overwrite_birth_density:               0    # (Optional) Do we want to overwrite the birth density of the stars read from the ICs? (default: 0).
-  birth_density:                        -1    # (Optional) Initial birth densities of *all* the stars to be used if we are overwriting them.
-  overwrite_birth_temperature:           0    # (Optional) Do we want to overwrite the birth temperature of the stars read from the ICs? (default: 0).
-  birth_temperature:                    -1    # (Optional) Initial birth temperatures of *all* the stars to be used if we are overwriting them.
-  timestep_age_threshold_unlimited_Myr: 1000. # (Optional) Age above which stars have no time-step restriction any more (in Mega-years). Defaults to 0.
-  timestep_age_threshold_Myr:           10.   # (Optional) Age at which stars switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
-  max_timestep_young_Myr:               0.1   # (Optional) Maximal time-step length of young stars (in Mega-years). Defaults to FLT_MAX.
-  max_timestep_old_Myr:                 1.0   # (Optional) Maximal time-step length of old stars (in Mega-years). Defaults to FLT_MAX.
-
+  resolution_eta:                      1.2348        # (Optional) Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). Defaults to the SPH value.
+  h_tolerance:                          1e-4         # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
+  max_ghost_iterations:                 30           # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
+  max_volume_change:                     1.4         # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
+  overwrite_birth_time:                  0           # (Optional) Do we want to overwrite the birth time of the stars read from the ICs? (default: 0).
+  birth_time:                           -1           # (Optional) Initial birth times of *all* the stars to be used if we are overwriting them. (-1 means the stars remain inactive feedback-wise througout the run).
+  overwrite_birth_density:               0           # (Optional) Do we want to overwrite the birth density of the stars read from the ICs? (default: 0).
+  birth_density:                        -1           # (Optional) Initial birth densities of *all* the stars to be used if we are overwriting them.
+  overwrite_birth_temperature:           0           # (Optional) Do we want to overwrite the birth temperature of the stars read from the ICs? (default: 0).
+  birth_temperature:                    -1           # (Optional) Initial birth temperatures of *all* the stars to be used if we are overwriting them.
+  timestep_age_threshold_unlimited_Myr: 1000.        # (Optional) Age above which stars have no time-step restriction any more (in Mega-years). Defaults to 0.
+  timestep_age_threshold_Myr:           10.          # (Optional) Age at which stars switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_young_Myr:               0.1          # (Optional) Maximal time-step length of young stars (in Mega-years). Defaults to FLT_MAX.
+  max_timestep_old_Myr:                 1.0          # (Optional) Maximal time-step length of old stars (in Mega-years). Defaults to FLT_MAX.
+  luminosity_filename:                  ./photometry # In the EAGLE model, directory where the photometry tables are stored.
+  
 # Parameters for the self-gravity scheme
 Gravity:
   mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh.
@@ -108,6 +109,7 @@ FOF:
   min_group_size:                  256         # The minimum no. of particles required for a group.
   linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
   seed_black_holes_enabled:        1           # Enable (1) or disable (0) seeding of black holes in FoF groups
+  dump_catalogue_when_seeding:     1           # Enable (1) or disable (0) dumping a group catalogue when runnning FOF for seeding purposes.
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units). When not set to -1, this will overwrite the linking length computed from 'linking_length_ratio'.
   group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Has to be positive.
@@ -170,8 +172,8 @@ Snapshots:
   dump_command:        ./submit_velociraptor.sh # (Optional) Command to run each time that a snapshot is dumped.
   
 
-# Parameters governing the logger snapshot system
-Logger:
+# Parameters governing the CSDS snapshot system
+CSDS:
   delta_step:           10     # Update the particle log every this many updates
   basename:             index  # Common part of the filenames
   initial_buffer_size:  1      # (Optional) Buffer size in GB
@@ -494,6 +496,7 @@ EAGLEStarFormation:
   KS_high_density_exponent:          2.0       # In the PressureLaw model, Slope of the Kennicut-Schmidt law above the high-density threshold.
   gas_fraction:                      0.25      # (Optional) In the PressureLaw model, The gas fraction used internally by the model (Defaults to 1).
   density_direct_H_p_cm3:            1e5       # (Optional) Density above which a gas particle gets automatically turned into a star in Hydrogen atoms per cm^3 (Defaults to FLT_MAX).
+  min_over_density:                  100.0     # The over-density above which star-formation is allowed.
   EOS_entropy_margin_dex:            0.3       # When using Z-based SF threshold, logarithm base 10 of the maximal entropy above the EOS at which stars can form.
   threshold_norm_H_p_cm3:            0.1       # When using Z-based SF threshold, normalisation of the metal-dependant density threshold for star formation in Hydrogen atoms per cm^3.
   threshold_Z0:                      0.002     # When using Z-based SF threshold, reference metallicity (metal mass fraction) for the metal-dependant threshold for star formation.
@@ -636,6 +639,12 @@ EAGLEAGN:
   merger_max_distance_ratio:          3.0        # Maximal distance over which two BHs can merge, in units of the softening length.
   minimum_timestep_Myr:               1.0        # Minimum time-step size for BHs in Mega-years. The time-step size is computed based on the accretion rate and this serves as a minimum. Defaults to FLT_MAX.
 
+# Parameters related to the neutrino particles ----------------------------------
+Neutrino:
+  use_delta_f:                        1          # Use the delta-f method for shot noise reduction
+  generate_ics:                       0          # Automatically generate neutrino velocities at the start of the run
+  neutrino_seed:                      1234       # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
+
 # Parameters related to the sink particles ---------------------------------------
 
 # Default sink particles
@@ -651,3 +660,8 @@ GEARSink:
 # Debugging/Development RT scheme
 DebugRT:
     all_parts_have_stars:  0          # Set to 1 to do additional tests that only work if all hydro particles have a star particle neighbour
+
+GEARRT:
+    photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N). Outer edges of zero and infinity are assumed.
+    use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_per_s parameter
+    star_emission_rates_LSol: [1., 1., 1., 1.]        # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set, in units of Solar Luminosity.

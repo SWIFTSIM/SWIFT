@@ -306,21 +306,15 @@ void space_split_recursive(struct space *s, struct cell *c,
             max(sinks_h_max_active, cp->sinks.r_cut_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-        ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
         ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-        ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-        ti_stars_end_max = max(ti_stars_end_max, cp->stars.ti_end_max);
         ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
         ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-        ti_sinks_end_max = max(ti_sinks_end_max, cp->sinks.ti_end_max);
         ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
         ti_black_holes_end_min =
             min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-        ti_black_holes_end_max =
-            max(ti_black_holes_end_max, cp->black_holes.ti_end_max);
         ti_black_holes_beg_max =
             max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
 
@@ -640,23 +634,18 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
   c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
   c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_end_max = ti_stars_end_max;
   c->stars.ti_beg_max = ti_stars_beg_max;
   c->stars.h_max = stars_h_max;
   c->stars.h_max_active = stars_h_max_active;
   c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_end_max = ti_sinks_end_max;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
   c->sinks.r_cut_max = sinks_h_max;
   c->sinks.r_cut_max_active = sinks_h_max_active;
   c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_end_max = ti_black_holes_end_max;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
   c->black_holes.h_max_active = black_holes_h_max_active;

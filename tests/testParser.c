@@ -228,5 +228,9 @@ int main(int argc, char *argv[]) {
                               "Untitled SWIFT simulation");
   assert(strcmp(run_name_1, run_name_2) == 0);
 
+  /* Read a very big number */
+  long long bignum = parser_get_param_longlong(&param_file, "LongLong:bignum");
+  assert(bignum == 1152921504606846975LL);
+
   return 0;
 }

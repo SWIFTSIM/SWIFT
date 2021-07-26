@@ -318,13 +318,13 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       break;
 
     case UNIT_CONV_ENTROPY:
-      baseUnitsExp[UNIT_MASS] = 1.f - hydro_gamma;
+      baseUnitsExp[UNIT_MASS] = 2.f - hydro_gamma;
       baseUnitsExp[UNIT_LENGTH] = 3.f * hydro_gamma - 1.f;
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
 
     case UNIT_CONV_ENTROPY_PER_UNIT_MASS:
-      baseUnitsExp[UNIT_MASS] = -hydro_gamma;
+      baseUnitsExp[UNIT_MASS] = 1.f - hydro_gamma;
       baseUnitsExp[UNIT_LENGTH] = 3.f * hydro_gamma - 1.f;
       baseUnitsExp[UNIT_TIME] = -2.f;
       break;
@@ -404,6 +404,10 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TEMPERATURE] = 1.f;
       break;
 
+    case UNIT_CONV_AREA:
+      baseUnitsExp[UNIT_LENGTH] = 2.f;
+      break;
+
     case UNIT_CONV_VOLUME:
       baseUnitsExp[UNIT_LENGTH] = 3.f;
       break;
@@ -426,6 +430,28 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
     case UNIT_CONV_DIFF_COEFF:
       baseUnitsExp[UNIT_MASS] = 1.f;
       baseUnitsExp[UNIT_LENGTH] = -1.f;
+      baseUnitsExp[UNIT_TIME] = -1.f;
+      break;
+
+    case UNIT_CONV_RADIATION_FLUX:
+    case UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE:
+    case UNIT_CONV_ENERGY_FLUX_DENSITY:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_TIME] = -3.f;
+      break;
+
+    case UNIT_CONV_INV_TIME:
+      baseUnitsExp[UNIT_TIME] = -1.f;
+      break;
+
+    case UNIT_CONV_POWER_DENSITY:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_LENGTH] = -1.f;
+      baseUnitsExp[UNIT_TIME] = -3.f;
+      break;
+
+    case UNIT_CONV_THERMAL_DIFFUSIVITY:
+      baseUnitsExp[UNIT_LENGTH] = 2.f;
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;
 

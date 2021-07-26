@@ -46,8 +46,8 @@ Gravity:
     eta:                            0.025       # Constant dimensionless multiplier for time integration.
     MAC:                            adaptive    # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
     epsilon_fmm:                    0.001       # Tolerance parameter for the adaptive multipole acceptance criterion.
-    theta_cr:                       0.7         # Opening angle for the purely gemoetric criterion.
-    max_physical_baryon_softening:  0.02        # Physical softening length (in internal units).
+    theta_cr:                       0.5         # Opening angle for the purely gemoetric criterion.
+    max_physical_baryon_softening:  0.05        # Physical softening length (in internal units).
 
 # Parameters for the task scheduling
 Scheduler:

@@ -33,7 +33,6 @@
 INLINE static void stars_read_particles(struct spart *sparts,
                                         struct io_props *list,
                                         int *num_fields) {
-
   /* Say how much we want to read */
   *num_fields = 9;
 
@@ -62,7 +61,6 @@ INLINE static void stars_read_particles(struct spart *sparts,
 
 INLINE static void convert_spart_pos(const struct engine *e,
                                      const struct spart *sp, double *ret) {
-
   const struct space *s = e->s;
   if (s->periodic) {
     ret[0] = box_wrap(sp->x[0], 0.0, s->dim[0]);
@@ -77,7 +75,6 @@ INLINE static void convert_spart_pos(const struct engine *e,
 
 INLINE static void convert_spart_vel(const struct engine *e,
                                      const struct spart *sp, float *ret) {
-
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
@@ -108,6 +105,14 @@ INLINE static void convert_spart_vel(const struct engine *e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_spart_luminosities(const struct engine *e,
+                                              const struct spart *sp,
+                                              float *ret) {
+  stars_get_luminosities(sp, e->policy & engine_policy_cosmology, e->cosmology,
+                         e->time, e->physical_constants, e->stars_properties,
+                         ret);
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -119,9 +124,8 @@ INLINE static void convert_spart_vel(const struct engine *e,
 INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list, int *num_fields,
                                          const int with_cosmology) {
-
   /* Say how much we want to write */
-  *num_fields = 12;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -187,6 +191,18 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "FeedbackNumberOfHeatingEvents", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
       sparts, number_of_heating_events,
       "Expected number of particles that were heated by each star particle.");
+
+  list[12] = io_make_output_field_convert_spart(
+      "Luminosities", FLOAT, luminosity_bands_count, UNIT_CONV_NO_UNITS, 0.f,
+      sparts, convert_spart_luminosities,
+      "Rest-frame dust-free AB-luminosities of the star particles in the GAMA "
+      "bands. These were computed using the BC03 (GALAXEV) models convolved "
+      "with different filter bands and interpolated in log-log (f(log(Z), "
+      "log(age)) = log(flux)) as used in the dust-free modelling of Trayford "
+      "et al. (2015). The luminosities are given in dimensionless units. They "
+      "have been divided by 3631 Jy already, i.e. they can be turned into "
+      "absolute AB-magnitudes (rest-frame absolute maggies) directly by "
+      "applying -2.5 log10(L) without additional corrections.");
 }
 
 /**
@@ -207,7 +223,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
                                     struct swift_params *params,
                                     const struct hydro_props *p,
                                     const struct cosmology *cosmo) {
-
   /* Kernel properties */
   sp->eta_neighbours = parser_get_opt_param_float(
       params, "Stars:resolution_eta", p->eta_neighbours);
@@ -289,6 +304,61 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->max_time_step_old = max_time_step_old_Myr * Myr / conv_fac;
   sp->age_threshold = age_threshold_Myr * Myr / conv_fac;
   sp->age_threshold_unlimited = age_threshold_unlimited_Myr * Myr / conv_fac;
+
+  /* Read luminosity table filepath  */
+  char base_dir_name[200];
+  parser_get_param_string(params, "Stars:luminosity_filename", base_dir_name);
+
+  static const char *luminosity_band_names[luminosity_bands_count] = {
+      "u", "g", "r", "i", "z", "Y", "J", "H", "K"};
+
+  /* Luminosity tables */
+  for (int i = 0; i < (int)luminosity_bands_count; ++i) {
+    const int count_Z = eagle_stars_lum_tables_N_Z;
+    const int count_ages = eagle_stars_lum_tables_N_ages;
+    const int count_L = count_Z * count_ages;
+
+    sp->lum_tables_Z[i] = (float *)malloc(count_Z * sizeof(float));
+    sp->lum_tables_ages[i] = (float *)malloc(count_ages * sizeof(float));
+    sp->lum_tables_luminosities[i] = (float *)malloc(count_L * sizeof(float));
+
+    char fname[256];
+    sprintf(fname, "%s/GAMA/%s", base_dir_name, luminosity_band_names[i]);
+    FILE *file = fopen(fname, "r");
+
+    if (file != NULL) {
+      char buffer[200];
+      int j = 0, k = 0;
+      while (fgets(buffer, sizeof(buffer), file) != NULL) {
+        double z, age, L;
+        sscanf(buffer, "%le %le %le", &z, &age, &L);
+
+        if (age == 0.) {
+          sp->lum_tables_Z[i][k++] = log10(z);
+        }
+
+        if (j < count_ages) {
+          sp->lum_tables_ages[i][j] = log10(age + FLT_MIN);
+        }
+
+        sp->lum_tables_luminosities[i][j] = log10(L);
+
+        ++j;
+      }
+    } else {
+      error("Unable to load luminosity table %s", fname);
+    }
+
+    fclose(file);
+  }
+
+  /* Luminosity conversion factor */
+  const double L_sun = 3.828e26;      /* Watt */
+  const double pc = 3.08567758149e16; /* m */
+  const double A = 4. * M_PI * (10. * pc) * (10 * pc);
+  const double to_Jansky = 1e26 * L_sun / A;
+  const double zero_point_AB = 3631; /* Jansky */
+  sp->lum_tables_factor = to_Jansky / zero_point_AB;
 }
 
 /**
@@ -297,7 +367,6 @@ INLINE static void stars_props_init(struct stars_props *sp,
  * @param sp The #stars_props.
  */
 INLINE static void stars_props_print(const struct stars_props *sp) {
-
   message("Stars kernel: %s with eta=%f (%.2f neighbours).", kernel_name,
           sp->eta_neighbours, sp->target_neighbours);
 
@@ -326,8 +395,8 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
 #if defined(HAVE_HDF5)
 INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
+                                              hid_t h_grp_columns,
                                               const struct stars_props *sp) {
-
   io_write_attribute_s(h_grpstars, "Kernel function", kernel_name);
   io_write_attribute_f(h_grpstars, "Kernel target N_ngb",
                        sp->target_neighbours);
@@ -341,8 +410,38 @@ INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
                        pow_dimension(expf(sp->log_max_h_change)));
   io_write_attribute_i(h_grpstars, "Max ghost iterations",
                        sp->max_smoothing_iterations);
+
+  static const char luminosity_band_names[luminosity_bands_count][32] = {
+      "GAMA_u", "GAMA_g", "GAMA_r", "GAMA_i", "GAMA_z",
+      "GAMA_Y", "GAMA_J", "GAMA_H", "GAMA_K"};
+
+  /* Add to the named columns */
+  hsize_t dims[1] = {luminosity_bands_count};
+  hid_t type = H5Tcopy(H5T_C_S1);
+  H5Tset_size(type, 32);
+  hid_t space = H5Screate_simple(1, dims, NULL);
+  hid_t dset = H5Dcreate(h_grp_columns, "Luminosities", type, space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, luminosity_band_names[0]);
+  H5Dclose(dset);
+
+  H5Tclose(type);
+  H5Sclose(space);
 }
 #endif
+
+/**
+ * @brief Free the memory allocated for the stellar properties.
+ *
+ * @param sp The #stars_props structure.
+ */
+INLINE static void stars_props_clean(struct stars_props *sp) {
+  for (int i = 0; i < (int)luminosity_bands_count; ++i) {
+    free(sp->lum_tables_Z[i]);
+    free(sp->lum_tables_ages[i]);
+    free(sp->lum_tables_luminosities[i]);
+  }
+}
 
 /**
  * @brief Write a #stars_props struct to the given FILE as a stream of bytes.
@@ -350,10 +449,27 @@ INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
  * @param p the struct
  * @param stream the file stream
  */
-INLINE static void stars_props_struct_dump(const struct stars_props *p,
+INLINE static void stars_props_struct_dump(struct stars_props *p,
                                            FILE *stream) {
   restart_write_blocks((void *)p, sizeof(struct stars_props), 1, stream,
                        "starsprops", "stars props");
+
+  const int count_Z = eagle_stars_lum_tables_N_Z;
+  const int count_ages = eagle_stars_lum_tables_N_ages;
+  const int count_L = count_Z * count_ages;
+
+  /* Did we allocate anything? */
+  if (p->lum_tables_Z[0]) {
+    for (int i = 0; i < (int)luminosity_bands_count; ++i) {
+      restart_write_blocks(p->lum_tables_Z[i], count_Z, sizeof(float), stream,
+                           "luminosity_Z", "stars props");
+      restart_write_blocks(p->lum_tables_ages[i], count_ages, sizeof(float),
+                           stream, "luminosity_ages", "stars props");
+      restart_write_blocks(p->lum_tables_luminosities[i], count_L,
+                           sizeof(float), stream, "luminosity_L",
+                           "stars props");
+    }
+  }
 }
 
 /**
@@ -363,10 +479,30 @@ INLINE static void stars_props_struct_dump(const struct stars_props *p,
  * @param p the struct
  * @param stream the file stream
  */
-INLINE static void stars_props_struct_restore(const struct stars_props *p,
+INLINE static void stars_props_struct_restore(struct stars_props *p,
                                               FILE *stream) {
   restart_read_blocks((void *)p, sizeof(struct stars_props), 1, stream, NULL,
                       "stars props");
+
+  /* Did we allocate anything? */
+  if (p->lum_tables_Z[0]) {
+    for (int i = 0; i < (int)luminosity_bands_count; ++i) {
+      const int count_Z = eagle_stars_lum_tables_N_Z;
+      const int count_ages = eagle_stars_lum_tables_N_ages;
+      const int count_L = count_Z * count_ages;
+
+      p->lum_tables_Z[i] = (float *)malloc(count_Z * sizeof(float));
+      p->lum_tables_ages[i] = (float *)malloc(count_ages * sizeof(float));
+      p->lum_tables_luminosities[i] = (float *)malloc(count_L * sizeof(float));
+
+      restart_read_blocks((void *)p->lum_tables_Z[i], count_Z, sizeof(float),
+                          stream, NULL, "stars props");
+      restart_read_blocks((void *)p->lum_tables_ages[i], count_ages,
+                          sizeof(float), stream, NULL, "stars props");
+      restart_read_blocks((void *)p->lum_tables_luminosities[i], count_L,
+                          sizeof(float), stream, NULL, "stars props");
+    }
+  }
 }
 
 #endif /* SWIFT_EAGLE_STAR_IO_H */

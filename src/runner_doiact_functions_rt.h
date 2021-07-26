@@ -25,7 +25,8 @@
    and runner_dosub_FUNCTION calling the pairwise interaction function
    runner_iact_FUNCTION. */
 
-#include "rt_do_cells.h"
+#include "rt.h"
+#include "rt_active.h"
 #include "runner_doiact_rt.h"
 
 /**
@@ -72,6 +73,9 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
     /* Skip inhibited particles. */
     if (spart_is_inhibited(si, e)) continue;
 
+    /* Skip inactive particles */
+    if (!rt_is_spart_active_in_loop(si, e)) continue;
+
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
@@ -89,7 +93,7 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(pj, e)) continue;
 
       /* Skip inactive particles. */
-      if (!part_is_active(pj, e)) continue;
+      if (!rt_is_part_active_in_loop(pj, e)) continue;
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -103,7 +107,7 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
       if (pj->ti_drift != e->ti_current)
         error("Particle pj not drifted to current time");
 
-      if (r2 < hig2) {
+      if (r2 < hig2 && e->rt_props->hydro_controlled_injection) {
 
         const integertime_t ti_current = e->ti_current;
         const integertime_t pti_end =
@@ -129,7 +133,9 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
       }
 #endif
 
-      if (r2 < hig2) IACT_RT(r2, dx, hi, hj, si, pj, a, H);
+      if (r2 < hig2) {
+        IACT_RT(r2, dx, hi, hj, si, pj, a, H);
+      }
     }
   }
 
@@ -181,6 +187,9 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
     /* Skip inhibited particles. */
     if (spart_is_inhibited(si, e)) continue;
 
+    /* Skip inactive particles */
+    if (!rt_is_spart_active_in_loop(si, e)) continue;
+
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
@@ -198,7 +207,7 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
       if (part_is_inhibited(pj, e)) continue;
 
       /* Skip inactive particles. */
-      if (!part_is_active(pj, e)) continue;
+      if (!rt_is_part_active_in_loop(pj, e)) continue;
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -208,7 +217,7 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef RT_DEBUG
-      if (r2 < hig2) {
+      if (r2 < hig2 && e->rt_props->hydro_controlled_injection) {
 
         const integertime_t ti_current = e->ti_current;
         const integertime_t pti_end =
@@ -234,7 +243,9 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
       }
 #endif
 
-      if (r2 < hig2) IACT_RT(r2, dx, hi, hj, si, pj, a, H);
+      if (r2 < hig2) {
+        IACT_RT(r2, dx, hi, hj, si, pj, a, H);
+      }
 
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -267,9 +278,9 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   const int do_ci_stars =
-      (ci->nodeID == e->nodeID) && rt_should_do_cell_pair(ci, cj, e);
+      (ci->nodeID == e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
   const int do_cj_stars =
-      (cj->nodeID == e->nodeID) && rt_should_do_cell_pair(cj, ci, e);
+      (cj->nodeID == e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
   if (do_ci_stars) {
 
@@ -296,7 +307,11 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
       struct spart *restrict spi = &sparts_i[sort_i[pid].i];
       const float hi = spi->h;
 
+      /* Skip inhibited particles */
       if (spart_is_inhibited(spi, e)) continue;
+
+      /* Skip inactive particles */
+      if (!rt_is_spart_active_in_loop(spi, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -323,7 +338,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         if (part_is_inhibited(pj, e)) continue;
 
         /* Skip inactive particles. */
-        if (!part_is_active(pj, e)) continue;
+        if (!rt_is_part_active_in_loop(pj, e)) continue;
 
         const float hj = pj->h;
         const float pjx = pj->x[0] - cj->loc[0];
@@ -341,7 +356,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 
-        if (r2 < hig2) {
+        if (r2 < hig2 && e->rt_props->hydro_controlled_injection) {
 
           const integertime_t ti_current = e->ti_current;
           const integertime_t pti_end =
@@ -401,7 +416,11 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
       struct spart *spj = &sparts_j[sort_j[pjd].i];
       const float hj = spj->h;
 
+      /* Skip inhibited particles */
       if (spart_is_inhibited(spj, e)) continue;
+
+      /* Skip inactive particles */
+      if (!rt_is_spart_active_in_loop(spj, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spj->x[0], spj->x[1], spj->x[2]};
@@ -428,7 +447,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         if (part_is_inhibited(pi, e)) continue;
 
         /* Skip inactive particles. */
-        if (!part_is_active(pi, e)) continue;
+        if (!rt_is_part_active_in_loop(pi, e)) continue;
 
         const float hi = pi->h;
         const float pix = pi->x[0] - (cj->loc[0] + shift[0]);
@@ -446,7 +465,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         if (spj->ti_drift != e->ti_current)
           error("Particle spj not drifted to current time");
 
-        if (r2 < hjg2) {
+        if (r2 < hjg2 && e->rt_props->hydro_controlled_injection) {
 
           const integertime_t ti_current = e->ti_current;
           const integertime_t pti_end =
@@ -475,7 +494,6 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
-
           IACT_RT(r2, dx, hj, hi, spj, pi, a, H);
         }
       } /* loop over the parts in ci. */
@@ -502,11 +520,11 @@ void DOPAIR1_RT_NAIVE(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *restrict e = r->e;
 
   const int do_stars_in_ci =
-      (cj->nodeID == r->e->nodeID) && rt_should_do_cell_pair(ci, cj, e);
+      (cj->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
   if (do_stars_in_ci) DOPAIR1_NONSYM_RT_NAIVE(r, ci, cj);
 
   const int do_stars_in_cj =
-      (ci->nodeID == r->e->nodeID) && rt_should_do_cell_pair(cj, ci, e);
+      (ci->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
   if (do_stars_in_cj) DOPAIR1_NONSYM_RT_NAIVE(r, cj, ci);
 
   if (timer) TIMER_TOC(TIMER_DOPAIR_RT);
@@ -540,7 +558,7 @@ void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(pj, e)) continue;
 
       /* Skip inactive particles. */
-      if (!part_is_active(pj, e)) continue;
+      if (!rt_is_part_active_in_loop(pj, e)) continue;
 
       rt_debugging_check_injection_part(pj, e->rt_props);
     }
@@ -558,13 +576,16 @@ void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
       /* Skip inhibited particles. */
       if (spart_is_inhibited(si, e)) continue;
 
+      /* Skip inactive particles */
+      if (!rt_is_spart_active_in_loop(si, e)) continue;
+
       rt_debugging_check_injection_spart(si, e->rt_props);
     }
   }
 #endif
 
   /* early exit? */
-  if (!rt_should_do_cell(c, r->e)) return;
+  if (!rt_should_iact_cell(c, r->e)) return;
   DOSELF1_RT(r, c, timer);
 }
 
@@ -586,9 +607,9 @@ void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
   const int do_stars_ci =
-      (cj->nodeID == r->e->nodeID) && rt_should_do_cell_pair(ci, cj, e);
+      (cj->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
   const int do_stars_cj =
-      (ci->nodeID == r->e->nodeID) && rt_should_do_cell_pair(cj, ci, e);
+      (ci->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
   /* Anything to do here? */
   if (!do_stars_ci && !do_stars_cj) return;
@@ -661,7 +682,7 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Should we even bother? */
-  if (!rt_should_do_cell(c, r->e)) {
+  if (!rt_should_iact_cell(c, r->e)) {
 
 #ifdef RT_DEBUG
     /* Before an early exit, loop over all parts and sparts in this cell
@@ -683,7 +704,7 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
         if (part_is_inhibited(pj, e)) continue;
 
         /* Skip inactive particles. */
-        if (!part_is_active(pj, e)) continue;
+        if (!rt_is_part_active_in_loop(pj, e)) continue;
 
         rt_debugging_check_injection_part(pj, e->rt_props);
       }
@@ -701,6 +722,9 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
 
         /* Skip inhibited particles. */
         if (spart_is_inhibited(si, e)) continue;
+
+        /* Skip inactive particles */
+        if (!rt_is_spart_active_in_loop(si, e)) continue;
 
         rt_debugging_check_injection_spart(si, e->rt_props);
       }
@@ -749,8 +773,8 @@ void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-  const int should_do_ci = rt_should_do_cell_pair(ci, cj, e);
-  const int should_do_cj = rt_should_do_cell_pair(cj, ci, e);
+  const int should_do_ci = rt_should_iact_cell_pair(ci, cj, e);
+  const int should_do_cj = rt_should_iact_cell_pair(cj, ci, e);
   if (!should_do_ci && !should_do_cj) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -774,9 +798,9 @@ void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
 
     /* do full checks again, space_getsid() might swap ci/cj pointers */
     const int do_ci_stars =
-        (cj->nodeID == e->nodeID) && rt_should_do_cell_pair(ci, cj, e);
+        (cj->nodeID == e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
     const int do_cj_stars =
-        (ci->nodeID == e->nodeID) && rt_should_do_cell_pair(cj, ci, e);
+        (ci->nodeID == e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
     if (do_ci_stars || do_cj_stars) DOPAIR1_BRANCH_RT(r, ci, cj, 0);
   }

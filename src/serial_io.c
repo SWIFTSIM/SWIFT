@@ -53,11 +53,13 @@
 #include "output_options.h"
 #include "part.h"
 #include "part_type.h"
+#include "rt_io.h"
 #include "sink_io.h"
 #include "star_formation_io.h"
 #include "stars_io.h"
 #include "tools.h"
 #include "units.h"
+#include "version.h"
 #include "xmf.h"
 
 /**
@@ -298,8 +300,10 @@ void prepare_array_serial(
           chunk_shape[0], chunk_shape[1], props.name);
 
   /* Are we imposing some form of lossy compression filter? */
+  char comp_buffer[32] = "None";
   if (lossy_compression != compression_write_lossless)
-    set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression, props.name);
+    set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression, props.name,
+                               comp_buffer);
 
   /* Impose data compression */
   if (e->snapshot_compression > 0) {
@@ -326,8 +330,8 @@ void prepare_array_serial(
 
   /* Write XMF description for this data set */
   if (xmfFile != NULL)
-    xmf_write_line(xmfFile, fileName, partTypeGroupName, props.name, N_total,
-                   props.dimension, props.type);
+    xmf_write_line(xmfFile, fileName, /*distributed=*/0, partTypeGroupName,
+                   props.name, N_total, props.dimension, props.type);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
@@ -343,6 +347,7 @@ void prepare_array_serial(
   io_write_attribute_f(h_data, "h-scale exponent", 0.f);
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+  io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -777,6 +782,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
         int num_fields = 0;
         struct io_props list[100];
+        bzero(list, 100 * sizeof(struct io_props));
         size_t Nparticles = 0;
 
         /* Read particle fields into the particle structure */
@@ -787,6 +793,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
               Nparticles = *Ngas;
               hydro_read_particles(*parts, list, &num_fields);
               num_fields += chemistry_read_particles(*parts, list + num_fields);
+              num_fields += rt_read_particles(*parts, list + num_fields);
             }
             break;
 
@@ -825,6 +832,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
               stars_read_particles(*sparts, list, &num_fields);
               num_fields +=
                   star_formation_read_particles(*sparts, list + num_fields);
+              num_fields += rt_read_stars(*sparts, list + num_fields);
             }
             break;
 
@@ -976,34 +984,6 @@ void write_output_serial(struct engine* e,
   // const size_t Nbaryons = Ngas + Nstars;
   // const size_t Ndm = Ntot > 0 ? Ntot - Nbaryons : 0;
 
-  size_t Ndm_background = 0;
-  if (with_DM_background) {
-    Ndm_background = io_count_dm_background_gparts(gparts, Ntot);
-  }
-  size_t Ndm_neutrino = 0;
-  if (with_neutrinos) {
-    Ndm_neutrino = io_count_dm_neutrino_gparts(gparts, Ntot);
-  }
-
-  /* Number of particles that we will write
-   * Recall that background particles are never inhibited and have no extras */
-  const size_t Ntot_written =
-      e->s->nr_gparts - e->s->nr_inhibited_gparts - e->s->nr_extra_gparts;
-  const size_t Ngas_written =
-      e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
-  const size_t Nsinks_written =
-      e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
-  const size_t Nstars_written =
-      e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
-  const size_t Nblackholes_written =
-      e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
-  const size_t Nbaryons_written =
-      Ngas_written + Nstars_written + Nblackholes_written + Nsinks_written;
-  const size_t Ndm_written =
-      Ntot_written > 0
-          ? Ntot_written - Nbaryons_written - Ndm_background - Ndm_neutrino
-          : 0;
-
   /* Determine if we are writing a reduced snapshot, and if so which
    * output selection type to use. Can just create a copy of this on
    * each rank. */
@@ -1032,6 +1012,86 @@ void write_output_serial(struct engine* e,
 
   /* Create the directory */
   if (mpi_rank == 0) safe_checkdir(snapshot_subdir_name, /*create=*/1);
+
+  /* Do we want to sub-sample any of the arrays */
+  int subsample[swift_type_count];
+  float subsample_fraction[swift_type_count];
+  for (int i = 0; i < swift_type_count; ++i) {
+    subsample[i] = 0;
+    subsample_fraction[i] = 1.f;
+  }
+
+  output_options_get_subsampling(
+      output_options, current_selection_name, e->snapshot_subsample,
+      e->snapshot_subsample_fraction, subsample, subsample_fraction);
+
+  /* Is any particle type being subsampled? */
+  int subsample_any = 0;
+  for (int i = 0; i < swift_type_count; ++i) {
+    subsample_any += subsample[i];
+    if (!subsample[i]) subsample_fraction[i] = 1.f;
+  }
+
+  /* Number of particles that we will write */
+  size_t Ngas_written, Ndm_written, Ndm_background, Ndm_neutrino,
+      Nsinks_written, Nstars_written, Nblackholes_written;
+
+  if (subsample[swift_type_gas]) {
+    Ngas_written = io_count_gas_to_write(e->s, /*subsample=*/1,
+                                         subsample_fraction[swift_type_gas],
+                                         e->snapshot_output_count);
+  } else {
+    Ngas_written =
+        e->s->nr_parts - e->s->nr_inhibited_parts - e->s->nr_extra_parts;
+  }
+
+  if (subsample[swift_type_stars]) {
+    Nstars_written = io_count_stars_to_write(
+        e->s, /*subsample=*/1, subsample_fraction[swift_type_stars],
+        e->snapshot_output_count);
+  } else {
+    Nstars_written =
+        e->s->nr_sparts - e->s->nr_inhibited_sparts - e->s->nr_extra_sparts;
+  }
+
+  if (subsample[swift_type_black_hole]) {
+    Nblackholes_written = io_count_black_holes_to_write(
+        e->s, /*subsample=*/1, subsample_fraction[swift_type_black_hole],
+        e->snapshot_output_count);
+  } else {
+    Nblackholes_written =
+        e->s->nr_bparts - e->s->nr_inhibited_bparts - e->s->nr_extra_bparts;
+  }
+
+  if (subsample[swift_type_sink]) {
+    Nsinks_written = io_count_sinks_to_write(
+        e->s, /*subsample=*/1, subsample_fraction[swift_type_sink],
+        e->snapshot_output_count);
+  } else {
+    Nsinks_written =
+        e->s->nr_sinks - e->s->nr_inhibited_sinks - e->s->nr_extra_sinks;
+  }
+
+  Ndm_written = io_count_dark_matter_to_write(
+      e->s, subsample[swift_type_dark_matter],
+      subsample_fraction[swift_type_dark_matter], e->snapshot_output_count);
+
+  if (with_DM_background) {
+    Ndm_background = io_count_background_dark_matter_to_write(
+        e->s, subsample[swift_type_dark_matter_background],
+        subsample_fraction[swift_type_dark_matter_background],
+        e->snapshot_output_count);
+  } else {
+    Ndm_background = 0;
+  }
+
+  if (with_neutrinos) {
+    Ndm_neutrino = io_count_neutrinos_to_write(
+        e->s, subsample[swift_type_neutrino],
+        subsample_fraction[swift_type_neutrino], e->snapshot_output_count);
+  } else {
+    Ndm_neutrino = 0;
+  }
 
   /* Total number of fields to write per ptype */
   int numFields[swift_type_count] = {0};
@@ -1097,6 +1157,7 @@ void write_output_serial(struct engine* e,
     io_write_attribute(h_grp, "Scale-factor", DOUBLE, &e->cosmology->a, 1);
     io_write_attribute_s(h_grp, "Code", "SWIFT");
     io_write_attribute_s(h_grp, "RunName", e->run_name);
+    io_write_attribute_s(h_grp, "System", hostname());
 
     /* Write out the particle types */
     io_write_part_type_names(h_grp);
@@ -1117,7 +1178,7 @@ void write_output_serial(struct engine* e,
     struct tm* timeinfo = localtime(&tm);
     char snapshot_date[64];
     strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
-    io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
+    io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
 
     /* GADGET-2 legacy values: Number of particles of each type */
     long long numParticlesThisFile[swift_type_count] = {0};
@@ -1151,8 +1212,16 @@ void write_output_serial(struct engine* e,
                        swift_type_count);
     io_write_attribute(h_grp, "NumFilesPerSnapshot", INT, &numFiles, 1);
     io_write_attribute_i(h_grp, "ThisFile", 0);
-    io_write_attribute_s(h_grp, "OutputType", "FullVolume");
     io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
+    io_write_attribute_i(h_grp, "Virtual", 0);
+
+    if (subsample_any) {
+      io_write_attribute_s(h_grp, "OutputType", "SubSampled");
+      io_write_attribute(h_grp, "SubSampleFractions", FLOAT, subsample_fraction,
+                         swift_type_count);
+    } else {
+      io_write_attribute_s(h_grp, "OutputType", "FullVolume");
+    }
 
     /* Close header */
     H5Gclose(h_grp);
@@ -1212,7 +1281,8 @@ void write_output_serial(struct engine* e,
   /* Write the location of the particles in the arrays */
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->cells_top,
                         e->s->nr_cells, e->s->width, mpi_rank,
-                        /*distributed=*/0, N_total, offset, numFields,
+                        /*distributed=*/0, subsample, subsample_fraction,
+                        e->snapshot_output_count, N_total, offset, numFields,
                         internal_units, snapshot_units);
 
   /* Close everything */
@@ -1241,8 +1311,8 @@ void write_output_serial(struct engine* e,
         /* Add the global information for that particle type to the XMF
          * meta-file */
         if (mpi_rank == 0)
-          xmf_write_groupheader(xmfFile, fileName, N_total[ptype],
-                                (enum part_type)ptype);
+          xmf_write_groupheader(xmfFile, fileName, /*distributed=*/0,
+                                N_total[ptype], (enum part_type)ptype);
 
         /* Open the particle group in the file */
         char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -1254,6 +1324,7 @@ void write_output_serial(struct engine* e,
 
         int num_fields = 0;
         struct io_props list[100];
+        bzero(list, 100 * sizeof(struct io_props));
         size_t Nparticles = 0;
 
         struct part* parts_written = NULL;
@@ -1294,8 +1365,10 @@ void write_output_serial(struct engine* e,
                 error("Error while allocating temporary memory for xparts");
 
               /* Collect the particles we want to write */
-              io_collect_parts_to_write(parts, xparts, parts_written,
-                                        xparts_written, Ngas, Ngas_written);
+              io_collect_parts_to_write(
+                  parts, xparts, parts_written, xparts_written,
+                  subsample[swift_type_gas], subsample_fraction[swift_type_gas],
+                  e->snapshot_output_count, Ngas, Ngas_written);
 
               /* Select the fields to write */
               io_select_hydro_fields(parts_written, xparts_written,
@@ -1341,7 +1414,9 @@ void write_output_serial(struct engine* e,
               /* Collect the non-inhibited DM particles from gpart */
               io_collect_gparts_to_write(
                   gparts, e->s->gpart_group_data, gparts_written,
-                  gpart_group_data_written, Ntot, Ndm_written, with_stf);
+                  gpart_group_data_written, subsample[swift_type_dark_matter],
+                  subsample_fraction[swift_type_dark_matter],
+                  e->snapshot_output_count, Ntot, Ndm_written, with_stf);
 
               /* Select the fields to write */
               io_select_dm_fields(gparts_written, gpart_group_data_written,
@@ -1374,7 +1449,10 @@ void write_output_serial(struct engine* e,
             /* Collect the non-inhibited DM particles from gpart */
             io_collect_gparts_background_to_write(
                 gparts, e->s->gpart_group_data, gparts_written,
-                gpart_group_data_written, Ntot, Ndm_background, with_stf);
+                gpart_group_data_written,
+                subsample[swift_type_dark_matter_background],
+                subsample_fraction[swift_type_dark_matter_background],
+                e->snapshot_output_count, Ntot, Ndm_background, with_stf);
 
             /* Select the fields to write */
             io_select_dm_fields(gparts_written, gpart_group_data_written,
@@ -1407,11 +1485,13 @@ void write_output_serial(struct engine* e,
             /* Collect the non-inhibited DM particles from gpart */
             io_collect_gparts_neutrino_to_write(
                 gparts, e->s->gpart_group_data, gparts_written,
-                gpart_group_data_written, Ntot, Ndm_neutrino, with_stf);
+                gpart_group_data_written, subsample[swift_type_neutrino],
+                subsample_fraction[swift_type_neutrino],
+                e->snapshot_output_count, Ntot, Ndm_neutrino, with_stf);
 
             /* Select the fields to write */
-            io_select_dm_fields(gparts_written, gpart_group_data_written,
-                                with_fof, with_stf, e, &num_fields, list);
+            io_select_neutrino_fields(gparts_written, gpart_group_data_written,
+                                      with_fof, with_stf, e, &num_fields, list);
 
           } break;
 
@@ -1436,8 +1516,10 @@ void write_output_serial(struct engine* e,
                 error("Error while allocating temporary memory for sinks");
 
               /* Collect the particles we want to write */
-              io_collect_sinks_to_write(sinks, sinks_written, Nsinks,
-                                        Nsinks_written);
+              io_collect_sinks_to_write(
+                  sinks, sinks_written, subsample[swift_type_sink],
+                  subsample_fraction[swift_type_sink], e->snapshot_output_count,
+                  Nsinks, Nsinks_written);
 
               /* Select the fields to write */
               io_select_sink_fields(sinks_written, with_cosmology, with_fof,
@@ -1467,8 +1549,10 @@ void write_output_serial(struct engine* e,
                 error("Error while allocating temporary memory for sparts");
 
               /* Collect the particles we want to write */
-              io_collect_sparts_to_write(sparts, sparts_written, Nstars,
-                                         Nstars_written);
+              io_collect_sparts_to_write(
+                  sparts, sparts_written, subsample[swift_type_stars],
+                  subsample_fraction[swift_type_stars],
+                  e->snapshot_output_count, Nstars, Nstars_written);
 
               /* Select the fields to write */
               io_select_star_fields(sparts_written, with_cosmology, with_fof,
@@ -1498,8 +1582,10 @@ void write_output_serial(struct engine* e,
                 error("Error while allocating temporary memory for bparts");
 
               /* Collect the particles we want to write */
-              io_collect_bparts_to_write(bparts, bparts_written, Nblackholes,
-                                         Nblackholes_written);
+              io_collect_bparts_to_write(
+                  bparts, bparts_written, subsample[swift_type_black_hole],
+                  subsample_fraction[swift_type_black_hole],
+                  e->snapshot_output_count, Nblackholes, Nblackholes_written);
 
               /* Select the fields to write */
               io_select_bh_fields(bparts_written, with_cosmology, with_fof,

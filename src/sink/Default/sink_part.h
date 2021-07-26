@@ -21,6 +21,8 @@
 
 #include "timeline.h"
 
+#define sink_need_unique_id 1
+
 /**
  * @brief Particle fields for the sink particles.
  *

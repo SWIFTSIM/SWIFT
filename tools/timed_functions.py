@@ -53,7 +53,8 @@ labels = [
     ["restart_read:", 0],
     ["engine_split:", 0],
     ["space_init", 0],
-    ["engine_init", 0],
+    ["engine_init:", 0],
+    ["engine_config:", 0],
     ["engine_repartition_trigger:", 0],
     ["VR Collecting top-level cell info", 3],
     ["VR Collecting particle info", 3],
@@ -66,4 +67,7 @@ labels = [
     ["engine_launch: \(fof\)", 2],
     ["engine_launch: \(fof comms\)", 2],
     ["do_line_of_sight:", 0],
+    ["csds_log_all_particles:", 0],
+    ["csds_ensure_size:", 0],
+    ["csds_init:", 0],
 ]

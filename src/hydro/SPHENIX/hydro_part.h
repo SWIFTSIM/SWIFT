@@ -29,8 +29,8 @@
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "csds.h"
 #include "feedback_struct.h"
-#include "logger.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
 #include "rt_struct.h"
@@ -77,9 +77,9 @@ struct xpart {
   /* Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
 
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
+#ifdef WITH_CSDS
+  /* Additional data for the particle csds */
+  struct csds_part_data csds_data;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

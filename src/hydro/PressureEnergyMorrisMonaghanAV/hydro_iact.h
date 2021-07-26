@@ -50,8 +50,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
   float dv[3], curlvr[3];
@@ -91,7 +92,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
   /* Now we need to compute the div terms */
-  const float r_inv = 1.f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
 
@@ -132,8 +133,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    const struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
   float dv[3], curlvr[3];
@@ -158,7 +160,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
-  const float r_inv = 1.f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
 
   /* Compute dv dot r */
@@ -192,15 +194,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mj = pj->mass;
@@ -320,15 +323,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    const struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
+    const float H) {
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   // const float mi = pi->mass;

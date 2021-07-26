@@ -57,9 +57,16 @@ halo (group) mass considered for seeding black holes. This is specified by
 the parameter ``black_hole_seed_halo_mass_Msun`` which is expressed in
 solar masses.
 
-Currently the only way to invoke FOF on the fly for purposes other than
-black hole seeding is to set the ``invoke_fof`` parameter in the ``Snapshots``
-section of the parameter file.
+There are two ways to invoke FOF on the fly for purposes other than black hole
+seeding:
+
+Firstly, one can switch on the ``invoke_fof`` parameter in the
+``Snapshots`` section of the parameter file. This will produce a catalogue every
+time the code writes a snapshot.
+
+The second option is to set ``dump_catalogue_when_seeding`` in the ``FOF``
+section. This will force the code to write a catalogue every time the BH seeding
+code is run. 
 
 ------------------------
 
@@ -93,6 +100,7 @@ A full FOF section of the YAML parameter file looks like:
        min_group_size:                  256         # The minimum no. of particles required for a group.
        linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
        black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
+       dump_catalogue_when_seeding:     0           # (Optional) Write a FOF catalogue when seeding black holes. Defaults to 0 if unspecified.
        absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units).
        group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size.
        group_id_offset:                 1           # (Optional) Sets the offset of group ID labelling. Defaults to 1 if unspecified.

@@ -127,11 +127,6 @@ struct spart {
   /*! Number of time-steps since the last enrichment step */
   char count_since_last_enrichment;
 
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
-#endif
-
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */
@@ -179,6 +174,25 @@ struct spart {
 #endif
 
 } SWIFT_STRUCT_ALIGN;
+
+#define eagle_stars_lum_tables_N_Z 6
+#define eagle_stars_lum_tables_N_ages 221
+
+/**
+ * @brief The luminosity bands written in snapshots
+ */
+enum luminosity_bands {
+  luminosity_GAMA_u_band,
+  luminosity_GAMA_g_band,
+  luminosity_GAMA_r_band,
+  luminosity_GAMA_i_band,
+  luminosity_GAMA_z_band,
+  luminosity_GAMA_Y_band,
+  luminosity_GAMA_J_band,
+  luminosity_GAMA_H_band,
+  luminosity_GAMA_K_band,
+  luminosity_bands_count,
+};
 
 /**
  * @brief Contains all the constants and parameters of the stars scheme
@@ -233,6 +247,18 @@ struct stars_props {
   /*! Age threshold for the transition to unlimited time-step size (internal
    * units) */
   double age_threshold_unlimited;
+
+  /*! The metallicities (metal mass frac) for the luminosity interpolations */
+  float* lum_tables_Z[luminosity_bands_count];
+
+  /*! The age (in Gyr) for the luminosity interpolations */
+  float* lum_tables_ages[luminosity_bands_count];
+
+  /*! The luminosities */
+  float* lum_tables_luminosities[luminosity_bands_count];
+
+  /*! Conversion factor to luminosities */
+  double lum_tables_factor;
 };
 
 #endif /* SWIFT_EAGLE_STAR_PART_H */

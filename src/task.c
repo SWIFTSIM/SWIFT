@@ -76,6 +76,8 @@ const char *taskID_names[task_type_count] = {
     "timestep_sync",
     "send",
     "recv",
+    "pack",
+    "unpack",
     "grav_long_range",
     "grav_mm",
     "grav_down_in",
@@ -87,7 +89,8 @@ const char *taskID_names[task_type_count] = {
     "star_formation",
     "star_formation_in",
     "star_formation_out",
-    "logger",
+    "star_formation_sink",
+    "csds",
     "stars_in",
     "stars_out",
     "stars_ghost_in",
@@ -106,6 +109,7 @@ const char *taskID_names[task_type_count] = {
     "bh_swallow_ghost3",
     "fof_self",
     "fof_pair",
+    "neutrino_weight",
     "sink_in",
     "sink_ghost",
     "sink_out",
@@ -163,12 +167,13 @@ const char *subtaskID_names[task_subtype_count] = {
 };
 
 const char *task_category_names[task_category_count] = {
-    "drift",       "sorts",   "resort",
-    "hydro",       "gravity", "feedback",
-    "black holes", "cooling", "star formation",
-    "limiter",     "sync",    "time integration",
-    "mpi",         "fof",     "others",
-    "sink"};
+    "drift",       "sorts",    "resort",
+    "hydro",       "gravity",  "feedback",
+    "black holes", "cooling",  "star formation",
+    "limiter",     "sync",     "time integration",
+    "mpi",         "pack",     "fof",
+    "others",      "neutrino", "sink",
+    "RT",          "CSDS"};
 
 #ifdef WITH_MPI
 /* MPI communicators for the subtypes. */
@@ -230,6 +235,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_star_formation:
+    case task_type_star_formation_sink:
     case task_type_sink_formation:
       return task_action_all;
 
@@ -316,7 +322,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_logger:
+    case task_type_csds:
     case task_type_fof_self:
     case task_type_fof_pair:
     case task_type_timestep:
@@ -527,7 +533,7 @@ void task_unlock(struct task *t) {
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_logger:
+    case task_type_csds:
     case task_type_timestep:
       cell_unlocktree(ci);
       cell_gunlocktree(ci);
@@ -690,6 +696,12 @@ void task_unlock(struct task *t) {
       cell_gunlocktree(ci);
       break;
 
+    case task_type_star_formation_sink:
+      cell_sink_unlocktree(ci);
+      cell_sunlocktree(ci);
+      cell_gunlocktree(ci);
+      break;
+
     case task_type_sink_formation:
       cell_unlocktree(ci);
       cell_sink_unlocktree(ci);
@@ -746,7 +758,7 @@ int task_lock(struct task *t) {
 
     case task_type_kick1:
     case task_type_kick2:
-    case task_type_logger:
+    case task_type_csds:
     case task_type_timestep:
       if (ci->hydro.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
@@ -1112,6 +1124,21 @@ int task_lock(struct task *t) {
       }
       break;
 
+    case task_type_star_formation_sink:
+      /* Lock the gas, gravity and star particles */
+      if (ci->sinks.hold || ci->stars.hold || ci->grav.phold) return 0;
+      if (cell_sink_locktree(ci) != 0) return 0;
+      if (cell_slocktree(ci) != 0) {
+        cell_sink_unlocktree(ci);
+        return 0;
+      }
+      if (cell_glocktree(ci) != 0) {
+        cell_sink_unlocktree(ci);
+        cell_sunlocktree(ci);
+        return 0;
+      }
+      break;
+
     case task_type_sink_formation:
       /* Lock the gas, gravity and star particles */
       if (ci->hydro.hold || ci->sinks.hold || ci->grav.phold) return 0;
@@ -1133,6 +1160,23 @@ int task_lock(struct task *t) {
 
   /* If we made it this far, we've got a lock. */
   return 1;
+}
+
+/**
+ * @brief Returns a pointer to the unique task unlocked by this task.
+ *
+ * The task MUST have only dependence!
+ *
+ * @param The #task.
+ */
+struct task *task_get_unique_dependent(const struct task *t) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->nr_unlock_tasks != 1)
+    error("Task is unlocking more than one dependence!");
+#endif
+
+  return t->unlock_tasks[0];
 }
 
 /**
@@ -1671,7 +1715,11 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_cooling:
       return task_category_cooling;
 
+    case task_type_csds:
+      return task_category_csds;
+
     case task_type_star_formation:
+    case task_type_star_formation_sink:
       return task_category_star_formation;
 
     case task_type_sink_formation:
@@ -1694,6 +1742,10 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_send:
     case task_type_recv:
       return task_category_mpi;
+
+    case task_type_pack:
+    case task_type_unpack:
+      return task_category_pack;
 
     case task_type_kick1:
     case task_type_kick2:
@@ -1732,6 +1784,17 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_fof_pair:
       return task_category_fof;
 
+    case task_type_rt_in:
+    case task_type_rt_ghost1:
+    case task_type_rt_ghost2:
+    case task_type_rt_transport_out:
+    case task_type_rt_tchem:
+    case task_type_rt_out:
+      return task_category_rt;
+
+    case task_type_neutrino_weight:
+      return task_category_neutrino;
+
     case task_type_self:
     case task_type_pair:
     case task_type_sub_self:
@@ -1767,6 +1830,11 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_sink_merger:
         case task_subtype_sink_accretion:
           return task_category_sink;
+
+        case task_subtype_rt_inject:
+        case task_subtype_rt_gradient:
+        case task_subtype_rt_transport:
+          return task_category_rt;
 
         default:
           return task_category_others;

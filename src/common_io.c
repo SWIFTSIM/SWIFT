@@ -42,6 +42,7 @@
 #include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "neutrino_io.h"
 #include "particle_splitting.h"
 #include "rt_io.h"
 #include "sink_io.h"
@@ -478,6 +479,16 @@ void io_write_attribute_l(hid_t grp, const char* name, long data) {
 }
 
 /**
+ * @brief Writes a long long value as an attribute
+ * @param grp The group in which to write
+ * @param name The name of the attribute
+ * @param data The value to write
+ */
+void io_write_attribute_ll(hid_t grp, const char* name, long long data) {
+  io_write_attribute(grp, name, LONGLONG, &data, 1);
+}
+
+/**
  * @brief Writes a string value as an attribute
  * @param grp The group in which to write
  * @param name The name of the attribute
@@ -532,8 +543,8 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
   chemistry_write_flavour(h_grp, h_grp_columns, e);
   tracers_write_flavour(h_grp);
   feedback_write_flavour(e->feedback_props, h_grp);
-  rt_write_flavour(h_grp, e->rt_props);
-  H5Gclose(h_grp_columns);
+  rt_write_flavour(h_grp, h_grp_columns, e, internal_units, snapshot_units,
+                   e->rt_props);
   H5Gclose(h_grp);
 
   /* Print the gravity parameters */
@@ -550,9 +561,11 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
     h_grp = H5Gcreate(h_file, "/StarsScheme", H5P_DEFAULT, H5P_DEFAULT,
                       H5P_DEFAULT);
     if (h_grp < 0) error("Error while creating stars group");
-    stars_props_print_snapshot(h_grp, e->stars_properties);
+    stars_props_print_snapshot(h_grp, h_grp_columns, e->stars_properties);
     H5Gclose(h_grp);
   }
+
+  H5Gclose(h_grp_columns);
 
   /* Print the cosmological model  */
   h_grp =
@@ -894,20 +907,6 @@ void io_prepare_dm_background_gparts(struct threadpool* tp,
                  sizeof(struct gpart), threadpool_auto_chunk_size, NULL);
 }
 
-size_t io_count_dm_background_gparts(const struct gpart* const gparts,
-                                     const size_t Ndm) {
-
-  swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
-                            SWIFT_STRUCT_ALIGNMENT);
-
-  size_t count = 0;
-  for (size_t i = 0; i < Ndm; ++i) {
-    if (gparts_array[i].type == swift_type_dark_matter_background) ++count;
-  }
-
-  return count;
-}
-
 void io_prepare_dm_neutrino_gparts_mapper(void* restrict data, int Ndm,
                                           void* dummy) {
 
@@ -942,20 +941,6 @@ void io_prepare_dm_neutrino_gparts(struct threadpool* tp,
 
   threadpool_map(tp, io_prepare_dm_neutrino_gparts_mapper, gparts, Ndm,
                  sizeof(struct gpart), threadpool_auto_chunk_size, NULL);
-}
-
-size_t io_count_dm_neutrino_gparts(const struct gpart* const gparts,
-                                   const size_t Ndm) {
-
-  swift_declare_aligned_ptr(const struct gpart, gparts_array, gparts,
-                            SWIFT_STRUCT_ALIGNMENT);
-
-  size_t count = 0;
-  for (size_t i = 0; i < Ndm; ++i) {
-    if (gparts_array[i].type == swift_type_neutrino) ++count;
-  }
-
-  return count;
 }
 
 struct duplication_data {
@@ -1208,12 +1193,17 @@ void io_duplicate_black_holes_gparts(struct threadpool* tp,
 /**
  * @brief Copy every non-inhibited #part into the parts_written array.
  *
+ * Also takes into account possible downsampling.
+ *
  * @param parts The array of #part containing all particles.
  * @param xparts The array of #xpart containing all particles.
  * @param parts_written The array of #part to fill with particles we want to
  * write.
  * @param xparts_written The array of #xpart  to fill with particles we want to
  * write.
+ * @param subsample Are we subsampling the particles?
+ * @param subsample_ratio The fraction of particles to write if subsampling.
+ * @param snap_num The snapshot ID (used to seed the RNG when sub-sampling).
  * @param Nparts The total number of #part.
  * @param Nparts_written The total number of #part to write.
  */
@@ -1221,7 +1211,8 @@ void io_collect_parts_to_write(const struct part* restrict parts,
                                const struct xpart* restrict xparts,
                                struct part* restrict parts_written,
                                struct xpart* restrict xparts_written,
-                               const size_t Nparts,
+                               const int subsample, const float subsample_ratio,
+                               const int snap_num, const size_t Nparts,
                                const size_t Nparts_written) {
 
   size_t count = 0;
@@ -1232,6 +1223,14 @@ void io_collect_parts_to_write(const struct part* restrict parts,
     /* And collect the ones that have not been removed */
     if (parts[i].time_bin != time_bin_inhibited &&
         parts[i].time_bin != time_bin_not_created) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(parts[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+
+        if (r > subsample_ratio) continue;
+      }
 
       parts_written[count] = parts[i];
       xparts_written[count] = xparts[i];
@@ -1248,14 +1247,21 @@ void io_collect_parts_to_write(const struct part* restrict parts,
 /**
  * @brief Copy every non-inhibited #spart into the sparts_written array.
  *
+ * Also takes into account possible downsampling.
+ *
  * @param sparts The array of #spart containing all particles.
  * @param sparts_written The array of #spart to fill with particles we want to
  * write.
+ * @param subsample Are we subsampling the particles?
+ * @param subsample_ratio The fraction of particles to write if subsampling.
+ * @param snap_num The snapshot ID (used to seed the RNG when sub-sampling).
  * @param Nsparts The total number of #part.
  * @param Nsparts_written The total number of #part to write.
  */
 void io_collect_sparts_to_write(const struct spart* restrict sparts,
                                 struct spart* restrict sparts_written,
+                                const int subsample,
+                                const float subsample_ratio, const int snap_num,
                                 const size_t Nsparts,
                                 const size_t Nsparts_written) {
 
@@ -1267,6 +1273,14 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
     /* And collect the ones that have not been removed */
     if (sparts[i].time_bin != time_bin_inhibited &&
         sparts[i].time_bin != time_bin_not_created) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(sparts[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+
+        if (r > subsample_ratio) continue;
+      }
 
       sparts_written[count] = sparts[i];
       count++;
@@ -1282,15 +1296,21 @@ void io_collect_sparts_to_write(const struct spart* restrict sparts,
 /**
  * @brief Copy every non-inhibited #sink into the sinks_written array.
  *
+ * Also takes into account possible downsampling.
+ *
  * @param sinks The array of #sink containing all particles.
  * @param sinks_written The array of #sink to fill with particles we want to
  * write.
+ * @param subsample Are we subsampling the particles?
+ * @param subsample_ratio The fraction of particles to write if subsampling.
+ * @param snap_num The snapshot ID (used to seed the RNG when sub-sampling).
  * @param Nsinks The total number of #sink.
  * @param Nsinks_written The total number of #sink to write.
  */
 void io_collect_sinks_to_write(const struct sink* restrict sinks,
                                struct sink* restrict sinks_written,
-                               const size_t Nsinks,
+                               const int subsample, const float subsample_ratio,
+                               const int snap_num, const size_t Nsinks,
                                const size_t Nsinks_written) {
 
   size_t count = 0;
@@ -1301,6 +1321,14 @@ void io_collect_sinks_to_write(const struct sink* restrict sinks,
     /* And collect the ones that have not been removed */
     if (sinks[i].time_bin != time_bin_inhibited &&
         sinks[i].time_bin != time_bin_not_created) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(sinks[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+
+        if (r > subsample_ratio) continue;
+      }
 
       sinks_written[count] = sinks[i];
       count++;
@@ -1316,14 +1344,21 @@ void io_collect_sinks_to_write(const struct sink* restrict sinks,
 /**
  * @brief Copy every non-inhibited #bpart into the bparts_written array.
  *
+ * Also takes into account possible downsampling.
+ *
  * @param bparts The array of #bpart containing all particles.
  * @param bparts_written The array of #bpart to fill with particles we want to
  * write.
+ * @param subsample Are we subsampling the particles?
+ * @param subsample_ratio The fraction of particles to write if subsampling.
+ * @param snap_num The snapshot ID (used to seed the RNG when sub-sampling).
  * @param Nbparts The total number of #part.
  * @param Nbparts_written The total number of #part to write.
  */
 void io_collect_bparts_to_write(const struct bpart* restrict bparts,
                                 struct bpart* restrict bparts_written,
+                                const int subsample,
+                                const float subsample_ratio, const int snap_num,
                                 const size_t Nbparts,
                                 const size_t Nbparts_written) {
 
@@ -1335,6 +1370,14 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
     /* And collect the ones that have not been removed */
     if (bparts[i].time_bin != time_bin_inhibited &&
         bparts[i].time_bin != time_bin_not_created) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r = random_unit_interval(bparts[i].id, snap_num,
+                                             random_number_snapshot_sampling);
+
+        if (r > subsample_ratio) continue;
+      }
 
       bparts_written[count] = bparts[i];
       count++;
@@ -1351,12 +1394,17 @@ void io_collect_bparts_to_write(const struct bpart* restrict bparts,
  * @brief Copy every non-inhibited regulat DM #gpart into the gparts_written
  * array.
  *
+ * Also takes into account possible downsampling.
+ *
  * @param gparts The array of #gpart containing all particles.
  * @param vr_data The array of gpart-related VELOCIraptor output.
  * @param gparts_written The array of #gpart to fill with particles we want to
  * write.
  * @param vr_data_written The array of gpart-related VELOCIraptor with particles
  * we want to write.
+ * @param subsample Are we subsampling the particles?
+ * @param subsample_ratio The fraction of particles to write if subsampling.
+ * @param snap_num The snapshot ID (used to seed the RNG when sub-sampling).
  * @param Ngparts The total number of #part.
  * @param Ngparts_written The total number of #part to write.
  * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
@@ -1366,6 +1414,7 @@ void io_collect_gparts_to_write(
     const struct velociraptor_gpart_data* restrict vr_data,
     struct gpart* restrict gparts_written,
     struct velociraptor_gpart_data* restrict vr_data_written,
+    const int subsample, const float subsample_ratio, const int snap_num,
     const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
   size_t count = 0;
@@ -1377,6 +1426,15 @@ void io_collect_gparts_to_write(
     if ((gparts[i].time_bin != time_bin_inhibited) &&
         (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r =
+            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
+                                 random_number_snapshot_sampling);
+
+        if (r > subsample_ratio) continue;
+      }
 
       if (with_stf) vr_data_written[count] = vr_data[i];
 
@@ -1395,12 +1453,17 @@ void io_collect_gparts_to_write(
  * @brief Copy every non-inhibited background DM #gpart into the gparts_written
  * array.
  *
+ * Also takes into account possible downsampling.
+ *
  * @param gparts The array of #gpart containing all particles.
  * @param vr_data The array of gpart-related VELOCIraptor output.
  * @param gparts_written The array of #gpart to fill with particles we want to
  * write.
  * @param vr_data_written The array of gpart-related VELOCIraptor with particles
  * we want to write.
+ * @param subsample Are we subsampling the particles?
+ * @param subsample_ratio The fraction of particles to write if subsampling.
+ * @param snap_num The snapshot ID (used to seed the RNG when sub-sampling).
  * @param Ngparts The total number of #part.
  * @param Ngparts_written The total number of #part to write.
  * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
@@ -1410,6 +1473,7 @@ void io_collect_gparts_background_to_write(
     const struct velociraptor_gpart_data* restrict vr_data,
     struct gpart* restrict gparts_written,
     struct velociraptor_gpart_data* restrict vr_data_written,
+    const int subsample, const float subsample_ratio, const int snap_num,
     const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
   size_t count = 0;
@@ -1421,6 +1485,15 @@ void io_collect_gparts_background_to_write(
     if ((gparts[i].time_bin != time_bin_inhibited) &&
         (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_dark_matter_background)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r =
+            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
+                                 random_number_snapshot_sampling);
+
+        if (r > subsample_ratio) continue;
+      }
 
       if (with_stf) vr_data_written[count] = vr_data[i];
 
@@ -1439,12 +1512,17 @@ void io_collect_gparts_background_to_write(
  * @brief Copy every non-inhibited neutrino DM #gpart into the gparts_written
  * array.
  *
+ * Also takes into account possible downsampling.
+ *
  * @param gparts The array of #gpart containing all particles.
  * @param vr_data The array of gpart-related VELOCIraptor output.
  * @param gparts_written The array of #gpart to fill with particles we want to
  * write.
  * @param vr_data_written The array of gpart-related VELOCIraptor with particles
  * we want to write.
+ * @param subsample Are we subsampling the particles?
+ * @param subsample_ratio The fraction of particles to write if subsampling.
+ * @param snap_num The snapshot ID (used to seed the RNG when sub-sampling).
  * @param Ngparts The total number of #part.
  * @param Ngparts_written The total number of #part to write.
  * @param with_stf Are we running with STF? i.e. do we want to collect vr data?
@@ -1454,6 +1532,7 @@ void io_collect_gparts_neutrino_to_write(
     const struct velociraptor_gpart_data* restrict vr_data,
     struct gpart* restrict gparts_written,
     struct velociraptor_gpart_data* restrict vr_data_written,
+    const int subsample, const float subsample_ratio, const int snap_num,
     const size_t Ngparts, const size_t Ngparts_written, const int with_stf) {
 
   size_t count = 0;
@@ -1465,6 +1544,15 @@ void io_collect_gparts_neutrino_to_write(
     if ((gparts[i].time_bin != time_bin_inhibited) &&
         (gparts[i].time_bin != time_bin_not_created) &&
         (gparts[i].type == swift_type_neutrino)) {
+
+      /* When subsampling, select particles at random */
+      if (subsample) {
+        const float r =
+            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
+                                 random_number_snapshot_sampling);
+
+        if (r > subsample_ratio) continue;
+      }
 
       if (with_stf) vr_data_written[count] = vr_data[i];
 
@@ -1511,7 +1599,8 @@ void io_make_snapshot_subdir(const char* dirname) {
  * @param default_basename The common part of the default snapshot names.
  * @param basename The common part of the snapshot names.
  */
-void io_get_snapshot_filename(char filename[1024], char xmf_filename[1024],
+void io_get_snapshot_filename(char filename[FILENAME_BUFFER_SIZE],
+                              char xmf_filename[FILENAME_BUFFER_SIZE],
                               const struct output_list* output_list,
                               const int snapshots_invoke_stf,
                               const int stf_count, const int snap_count,
@@ -1628,6 +1717,27 @@ void io_select_dm_fields(const struct gpart* const gparts,
     *num_fields +=
         velociraptor_write_gparts(gpart_group_data, list + *num_fields);
   }
+}
+
+/**
+ * @brief Select the fields to write to snapshots for the neutrino particles.
+ *
+ * @param gparts The #gpart's
+ * @param with_fof Are we running FoF?
+ * @param with_stf Are we running with structure finding?
+ * @param e The #engine (to access scheme properties).
+ * @param num_fields (return) The number of fields to write.
+ * @param list (return) The list of fields to write.
+ */
+void io_select_neutrino_fields(
+    const struct gpart* const gparts,
+    const struct velociraptor_gpart_data* gpart_group_data, const int with_fof,
+    const int with_stf, const struct engine* const e, int* const num_fields,
+    struct io_props* const list) {
+
+  darkmatter_write_particles(gparts, list, num_fields);
+
+  *num_fields += neutrino_write_particles(gparts, list + *num_fields);
 }
 
 /**

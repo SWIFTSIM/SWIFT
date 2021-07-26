@@ -60,6 +60,8 @@
 #include "cooling.h"
 #include "cooling_properties.h"
 #include "cosmology.h"
+#include "csds.h"
+#include "csds_io.h"
 #include "cycle.h"
 #include "debug.h"
 #include "equation_of_state.h"
@@ -70,20 +72,20 @@
 #include "gravity_cache.h"
 #include "hydro.h"
 #include "line_of_sight.h"
-#include "logger.h"
-#include "logger_io.h"
 #include "map.h"
 #include "memuse.h"
 #include "minmax.h"
 #include "mpiuse.h"
 #include "multipole_struct.h"
-#include "neutrino/neutrino.h"
+#include "neutrino.h"
+#include "neutrino_properties.h"
 #include "output_list.h"
 #include "output_options.h"
 #include "partition.h"
 #include "profiler.h"
 #include "proxy.h"
 #include "restart.h"
+#include "rt_properties.h"
 #include "runner.h"
 #include "sink_properties.h"
 #include "sort_part.h"
@@ -120,10 +122,12 @@ const char *engine_policy_names[] = {"none",
                                      "fof search",
                                      "time-step limiter",
                                      "time-step sync",
-                                     "logger",
+                                     "csds",
                                      "line of sight",
                                      "sink",
                                      "rt"};
+
+const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
 /** The rank of the engine as a global variable (for messages). */
 int engine_rank;
@@ -1084,13 +1088,17 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->policy & engine_policy_sinks) {
     /* 1 drift, 2 kicks, 1 time-step, 1 sink formation */
     n1 += 5;
+    if (e->policy & engine_policy_stars) {
+      /* 1 star formation */
+      n1 += 1;
+    }
   }
   if (e->policy & engine_policy_fof) {
     n1 += 2;
   }
-#if defined(WITH_LOGGER)
+#if defined(WITH_CSDS)
   /* each cell logs its particles */
-  if (e->policy & engine_policy_logger) {
+  if (e->policy & engine_policy_csds) {
     n1 += 1;
   }
 #endif
@@ -1370,7 +1378,10 @@ int engine_prepare(struct engine *e) {
     engine_drift_all(e, /*drift_mpole=*/0);
     drifted_all = 1;
 
-    engine_fof(e, /*dump_results=*/0, /*seed_black_holes=*/1);
+    engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
+               /*seed_black_holes=*/1);
+
+    if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }
 
   /* Perform particle splitting. Only if there is a rebuild coming and no
@@ -1549,6 +1560,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
+        t->type == task_type_star_formation_sink ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||
@@ -1563,6 +1575,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
         t->type == task_type_bh_out || t->type == task_type_rt_ghost1 ||
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
+        t->type == task_type_neutrino_weight || t->type == task_type_csds ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
@@ -1766,20 +1779,20 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
       (e->policy & engine_policy_temperature))
     cooling_update(e->cosmology, e->cooling_func, e->s);
 
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    /* Mark the first time step in the particle logger file. */
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
+    /* Mark the first time step in the particle csds file. */
     if (e->policy & engine_policy_cosmology) {
-      logger_log_timestamp(e->logger, e->ti_current, e->cosmology->a,
-                           &e->logger->timestamp_offset);
+      csds_log_timestamp(e->csds, e->ti_current, e->cosmology->a,
+                         &e->csds->timestamp_offset);
     } else {
-      logger_log_timestamp(e->logger, e->ti_current, e->time,
-                           &e->logger->timestamp_offset);
+      csds_log_timestamp(e->csds, e->ti_current, e->time,
+                         &e->csds->timestamp_offset);
     }
-    /* Make sure that we have enough space in the particle logger file
+    /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    logger_ensure_size(e->logger, s->nr_parts, s->nr_gparts, s->nr_sparts);
-    logger_write_description(e->logger, e);
+    csds_ensure_size(e->csds, e);
+    csds_write_description(e->csds, e);
   }
 #endif
 
@@ -1869,7 +1882,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   TIMER_TOC2(timer_runners);
 
   /* Initialise additional RT data now that time bins are set */
-  if (e->policy & engine_policy_rt) {
+  if ((e->policy & engine_policy_rt) &&
+      !e->rt_props->hydro_controlled_injection) {
     space_convert_rt_quantities(e->s, e->verbose);
   }
 
@@ -2175,20 +2189,19 @@ void engine_step(struct engine *e) {
     }
   }
 
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    /* Mark the current time step in the particle logger file. */
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
+    /* Mark the current time step in the particle csds file. */
     if (e->policy & engine_policy_cosmology) {
-      logger_log_timestamp(e->logger, e->ti_current, e->cosmology->a,
-                           &e->logger->timestamp_offset);
+      csds_log_timestamp(e->csds, e->ti_current, e->cosmology->a,
+                         &e->csds->timestamp_offset);
     } else {
-      logger_log_timestamp(e->logger, e->ti_current, e->time,
-                           &e->logger->timestamp_offset);
+      csds_log_timestamp(e->csds, e->ti_current, e->time,
+                         &e->csds->timestamp_offset);
     }
-    /* Make sure that we have enough space in the particle logger file
+    /* Make sure that we have enough space in the particle csds file
      * to store the particles in current time step. */
-    logger_ensure_size(e->logger, e->s->nr_parts, e->s->nr_gparts,
-                       e->s->nr_sparts);
+    csds_ensure_size(e->csds, e);
   }
 #endif
 
@@ -2377,6 +2390,12 @@ void engine_step(struct engine *e) {
   space_check_unskip_flags(e->s);
 #endif
 
+#if defined(SWIFT_RT_DEBUG_CHECKS)
+  /* if we're running the debug RT scheme, do some checks after every step */
+  if (e->policy & engine_policy_rt)
+    rt_debugging_checks_end_of_step(e, e->verbose);
+#endif
+
   /* Collect information about the next time-step */
   engine_collect_end_of_step(e, 1);
   e->forcerebuild = e->collect_group1.forcerebuild;
@@ -2394,6 +2413,12 @@ void engine_step(struct engine *e) {
     error("Obtained a time-step of size 0");
 #endif
 
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds && e->verbose)
+    message("The CSDS currently uses %f GB of storage",
+            e->collect_group1.csds_file_size_gb);
+#endif
+
   /********************************************************/
   /* OK, we are done with the regular stuff. Time for i/o */
   /********************************************************/
@@ -2402,11 +2427,6 @@ void engine_step(struct engine *e) {
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
   engine_check_for_dumps(e);
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    engine_check_for_index_dump(e);
-  }
-#endif
 
   TIMER_TOC2(timer_step);
 
@@ -2747,6 +2767,7 @@ void engine_unpin(void) {
  * @param stars The #stars_props used for this run.
  * @param black_holes The #black_holes_props used for this run.
  * @param sinks The #sink_props used for this run.
+ * @param neutrinos The #neutrino_props used for this run.
  * @param feedback The #feedback_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
  * @param potential The properties of the external potential.
@@ -2765,14 +2786,18 @@ void engine_init(
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
-    struct gravity_props *gravity, const struct stars_props *stars,
+    struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
+    const struct neutrino_props *neutrinos, struct feedback_props *feedback,
+    struct rt_props *rt, struct pm_mesh *mesh,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
     struct fof_props *fof_properties, struct los_props *los_properties) {
+
+  struct clocks_time tic, toc;
+  if (engine_rank == 0) clocks_gettime(&tic);
 
   /* Clean-up everything */
   bzero(e, sizeof(struct engine));
@@ -2812,6 +2837,11 @@ void engine_init(
   parser_get_param_string(params, "Snapshots:basename", e->snapshot_base_name);
   parser_get_opt_param_string(params, "Snapshots:subdir", e->snapshot_subdir,
                               engine_default_snapshot_subdir);
+  parser_get_opt_param_int_array(params, "Snapshots:subsample",
+                                 swift_type_count, e->snapshot_subsample);
+  parser_get_opt_param_float_array(params, "Snapshots:subsample_fraction",
+                                   swift_type_count,
+                                   e->snapshot_subsample_fraction);
   e->snapshot_run_on_dump =
       parser_get_opt_param_int(params, "Snapshots:run_on_dump", 0);
   if (e->snapshot_run_on_dump) {
@@ -2826,6 +2856,8 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
       parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
+  e->dump_catalogue_when_seeding =
+      parser_get_opt_param_int(params, "FOF:dump_catalogue_when_seeding", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
   e->snapshot_output_count = 0;
@@ -2856,6 +2888,7 @@ void engine_init(
   e->stars_properties = stars;
   e->black_holes_properties = black_holes;
   e->sink_properties = sinks;
+  e->neutrino_properties = neutrinos;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
@@ -2875,13 +2908,6 @@ void engine_init(
 #endif
   e->total_nr_cells = 0;
   e->total_nr_tasks = 0;
-
-#if defined(WITH_LOGGER)
-  if (e->policy & engine_policy_logger) {
-    e->logger = (struct logger_writer *)malloc(sizeof(struct logger_writer));
-    logger_init(e->logger, e, params);
-  }
-#endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   e->force_checks_only_all_active =
@@ -2981,6 +3007,20 @@ void engine_init(
   } else {
     e->neutrino_mass_conversion_factor = 0.f;
   }
+
+  if (engine_rank == 0) {
+    clocks_gettime(&toc);
+    message("took %.3f %s.", clocks_diff(&tic, &toc), clocks_getunit());
+    fflush(stdout);
+  }
+
+  /* Initialize the CSDS (already timed, not need to include it) */
+#if defined(WITH_CSDS)
+  if (e->policy & engine_policy_csds) {
+    e->csds = (struct csds_writer *)malloc(sizeof(struct csds_writer));
+    csds_init(e->csds, e, params);
+  }
+#endif
 }
 
 /**
@@ -3229,10 +3269,10 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_options_clean(e->output_options);
 
   swift_free("links", e->links);
-#if defined(WITH_LOGGER)
-  if (e->policy & engine_policy_logger) {
-    logger_free(e->logger);
-    free(e->logger);
+#if defined(WITH_CSDS)
+  if (e->policy & engine_policy_csds) {
+    csds_free(e->csds);
+    free(e->csds);
   }
 #endif
   scheduler_clean(&e->sched);
@@ -3271,9 +3311,11 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->output_options);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
+    free((void *)e->rt_props);
     free((void *)e->sink_properties);
     free((void *)e->stars_properties);
     free((void *)e->gravity_properties);
+    free((void *)e->neutrino_properties);
     free((void *)e->hydro_properties);
     free((void *)e->physical_constants);
     free((void *)e->internal_units);
@@ -3295,8 +3337,8 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->output_list_stats) free((void *)e->output_list_stats);
     if (e->output_list_stf) free((void *)e->output_list_stf);
     if (e->output_list_los) free((void *)e->output_list_los);
-#ifdef WITH_LOGGER
-    if (e->policy & engine_policy_logger) free((void *)e->logger);
+#ifdef WITH_CSDS
+    if (e->policy & engine_policy_csds) free((void *)e->csds);
 #endif
     free(e->s);
   }
@@ -3338,8 +3380,10 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
+  rt_struct_dump(e->rt_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
+  neutrino_struct_dump(e->neutrino_properties, stream);
   chemistry_struct_dump(e->chemistry, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
@@ -3348,9 +3392,9 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
 
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    logger_struct_dump(e->logger, stream);
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
+    csds_struct_dump(e->csds, stream);
   }
 #endif
 }
@@ -3454,6 +3498,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
 
+  struct rt_props *rt_properties =
+      (struct rt_props *)malloc(sizeof(struct rt_props));
+  rt_struct_restore(rt_properties, stream);
+  e->rt_props = rt_properties;
+
   struct black_holes_props *black_holes_properties =
       (struct black_holes_props *)malloc(sizeof(struct black_holes_props));
   black_holes_struct_restore(black_holes_properties, stream);
@@ -3463,6 +3512,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct sink_props *)malloc(sizeof(struct sink_props));
   sink_struct_restore(sink_properties, stream);
   e->sink_properties = sink_properties;
+
+  struct neutrino_props *neutrino_properties =
+      (struct neutrino_props *)malloc(sizeof(struct neutrino_props));
+  neutrino_struct_restore(neutrino_properties, stream);
+  e->neutrino_properties = neutrino_properties;
 
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(
@@ -3492,12 +3546,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   output_options_struct_restore(output_options, stream);
   e->output_options = output_options;
 
-#ifdef WITH_LOGGER
-  if (e->policy & engine_policy_logger) {
-    struct logger_writer *log =
-        (struct logger_writer *)malloc(sizeof(struct logger_writer));
-    logger_struct_restore(log, stream);
-    e->logger = log;
+#ifdef WITH_CSDS
+  if (e->policy & engine_policy_csds) {
+    struct csds_writer *log =
+        (struct csds_writer *)malloc(sizeof(struct csds_writer));
+    csds_struct_restore(log, stream);
+    e->csds = log;
   }
 #endif
 

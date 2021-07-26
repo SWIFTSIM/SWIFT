@@ -80,6 +80,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
   const int with_rt = (e->policy & engine_policy_rt);
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
+  const struct rt_props *rt_props = e->rt_props;
   const float stars_h_max = e->hydro_properties->h_max;
   const float stars_h_min = e->hydro_properties->h_min;
   const float eps = e->stars_properties->h_tolerance;
@@ -252,6 +253,35 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               feedback_reset_feedback(sp, feedback_props);
             }
 
+            if (with_rt && !rt_props->hydro_controlled_injection) {
+
+              rt_reset_spart(sp);
+
+              /* Get particle time-step */
+              double dt_star;
+              if (with_cosmology) {
+
+                /* get star's age and time step for stellar emission rates */
+                const integertime_t ti_begin =
+                    get_integer_time_begin(e->ti_current - 1, sp->time_bin);
+                const integertime_t ti_step =
+                    get_integer_timestep(sp->time_bin);
+                dt_star = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                                   ti_begin + ti_step);
+
+              } else {
+                dt_star = get_timestep(sp->time_bin, e->time_base);
+              }
+
+              /* Calculate age of the star at current time */
+              const double star_age_end_of_step =
+                  stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
+
+              rt_compute_stellar_emission_rate(sp, e->time,
+                                               star_age_end_of_step, dt_star,
+                                               rt_props, phys_const, us);
+            }
+
             /* Ok, we are done with this particle */
             continue;
           }
@@ -332,6 +362,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             /* Do some damage control if no neighbours at all were found */
             if (has_no_neighbours) {
               stars_spart_has_no_neighbours(sp, cosmo);
+              rt_spart_has_no_neighbours(sp);
             }
 
           } else {
@@ -393,7 +424,9 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           feedback_reset_feedback(sp, feedback_props);
         }
 
-        if (with_rt) {
+        if (with_rt && !rt_props->hydro_controlled_injection) {
+
+          rt_reset_spart(sp);
 
           /* Get particle time-step */
           double dt_star;
@@ -415,7 +448,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
 
           rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
-                                           dt_star);
+                                           dt_star, rt_props, phys_const, us);
         }
       }
 
@@ -1208,6 +1241,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
+            rt_reset_part(p);
+
             /* Ok, we are done with this particle */
             continue;
           }
@@ -1229,7 +1264,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           }
 
 #ifdef SWIFT_DEBUG_CHECKS
-          if ((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old))
+          if (((f > 0.f && h_new > h_old) || (f < 0.f && h_new < h_old)) &&
+              (h_old < 0.999f * hydro_props->h_max))
             error(
                 "Smoothing length correction not going in the right direction");
 #endif
@@ -1303,6 +1339,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               pressure_floor_part_has_no_neighbours(p, xp, cosmo);
               star_formation_part_has_no_neighbours(p, xp, star_formation,
                                                     cosmo);
+              rt_part_has_no_neighbours(p);
             }
 
           } else {
@@ -1365,6 +1402,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         hydro_reset_acceleration(p);
 
 #endif /* EXTRA_HYDRO_LOOP */
+
+        rt_reset_part(p);
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -1543,7 +1582,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
       /* Skip inactive parts */
       if (!part_is_active(p, e)) continue;
 
-      rt_finalise_gradient(p);
+      rt_end_gradient(p);
     }
   }
 

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2021 Edo Altamura (edoardo.altamura@manchester.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -319,7 +320,8 @@ runner_iact_nonsym_bh_gas_swallow(
       /* Compute the maximum allowed velocity */
       float v2_max = bh_props->max_reposition_velocity_ratio *
                      bh_props->max_reposition_velocity_ratio *
-                     bi->sound_speed_gas * bi->sound_speed_gas;
+                     bi->sound_speed_gas * bi->sound_speed_gas *
+                     cosmo->a_factor_sound_speed * cosmo->a_factor_sound_speed;
 
       /* If desired, limit the value of the threshold (v2_max) to be no
        * smaller than a user-defined value */
@@ -510,7 +512,8 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
       /* Compute the maximum allowed velocity */
       float v2_max = bh_props->max_reposition_velocity_ratio *
                      bh_props->max_reposition_velocity_ratio *
-                     bi->sound_speed_gas * bi->sound_speed_gas;
+                     bi->sound_speed_gas * bi->sound_speed_gas *
+                     cosmo->a_factor_sound_speed * cosmo->a_factor_sound_speed;
 
       /* If desired, limit the value of the threshold (v2_max) to be no
        * smaller than a user-defined value */
@@ -671,6 +674,9 @@ runner_iact_nonsym_bh_gas_feedback(
      * AGN energy in thermal form */
     if (num_of_energy_inj_received_by_gas > 0) {
 
+      /* Save gas density and entropy before feedback */
+      tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
+
       /* Compute new energy per unit mass of this particle
        * The energy the particle receives is proportional to the number of rays
        * (num_of_energy_inj_received_by_gas) to which the particle was found to
@@ -688,8 +694,8 @@ runner_iact_nonsym_bh_gas_feedback(
 
       /* Store the feedback energy */
       const double delta_energy = delta_u * hydro_get_mass(pj);
-      tracers_after_black_holes_feedback(xpj, with_cosmology, cosmo->a, time,
-                                         delta_energy);
+      tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
+                                         time, delta_energy);
 
       /* message( */
       /*     "We did some AGN heating! id %llu BH id %llu probability " */

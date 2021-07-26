@@ -135,8 +135,8 @@ struct cosmology {
   /*! Hubble time 1/H0 */
   double Hubble_time;
 
-  /*! Matter density parameter */
-  double Omega_m;
+  /*! Cold Dark Matter density parameter */
+  double Omega_cdm;
 
   /*! Baryon density parameter */
   double Omega_b;
@@ -158,9 +158,6 @@ struct cosmology {
 
   /*! Ultra-relativistic species (e.g. massless neutrinos) density parameter */
   double Omega_ur;
-
-  /*! Cold dark matter density parameter */
-  double Omega_cdm;
 
   /*! Curvature density parameter */
   double Omega_k;
@@ -197,6 +194,9 @@ struct cosmology {
 
   /*! Degeneracy of each massive neutrino species */
   double *deg_nu;
+
+  /*! Sum of massive neutrino degeneracies */
+  double deg_nu_tot;
 
   /*! Log of starting expansion factor for neutrino interpolation tables */
   double log_a_long_begin;
@@ -239,6 +239,9 @@ struct cosmology {
 
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
+
+  /*! Time between Big Bang and last entry in the table */
+  double time_interp_table_max;
 
   /*! Time at the present-day (a=1) */
   double universe_age_at_present_day;

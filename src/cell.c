@@ -1281,7 +1281,6 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   if (ti_current == 0) return;
 
   integertime_t ti_end_min = max_nr_timesteps;
-  integertime_t ti_end_max = 0;
   integertime_t ti_beg_max = 0;
 
   int count = 0;
@@ -1306,7 +1305,6 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
     }
 
     ti_end_min = min(ti_end, ti_end_min);
-    ti_end_max = max(ti_end, ti_end_max);
     ti_beg_max = max(ti_beg, ti_beg_max);
   }
 
@@ -1331,12 +1329,6 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
             "depth=%d",
             c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
     }
-
-    if (ti_end_max > c->hydro.ti_end_max)
-      error(
-          "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
-          "depth=%d",
-          c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
 
     if (ti_beg_max != c->hydro.ti_beg_max)
       error(

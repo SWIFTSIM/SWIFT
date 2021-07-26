@@ -556,8 +556,9 @@ int main(int argc, char *argv[]) {
              sinks, sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
              Nnupart, periodic, replicate, /*remap_ids=*/0,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
-             /*with_star_formation=*/0, with_DM_background_particles,
-             with_neutrinos, talking, /*dry_run=*/0, nr_nodes);
+             /*with_star_formation=*/0, /*sink=*/N_total[swift_type_sink],
+             with_DM_background_particles, with_neutrinos, talking,
+             /*dry_run=*/0, nr_nodes);
 
   if (myrank == 0) {
     clocks_gettime(&toc);
@@ -632,7 +633,6 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) engine_policies |= engine_policy_cosmology;
 
   /* Initialize the engine with the space and policies. */
-  if (myrank == 0) clocks_gettime(&tic);
   engine_init(
       &e, &s, params, output_options, N_total[swift_type_gas],
       N_total[swift_type_count], N_total[swift_type_sink],
@@ -641,26 +641,19 @@ int main(int argc, char *argv[]) {
       engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
       /*hydro_properties=*/NULL, /*entropy_floor=*/NULL, &gravity_properties,
       /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
-      /*sink_properties=*/NULL,
+      /*sink_properties=*/NULL, /*neutrino_properties=*/NULL,
       /*feedback_properties=*/NULL, /*rt_properties=*/NULL, &mesh,
       /*potential=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
       &fof_properties, /*los_properties=*/NULL);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
-                nr_threads, with_aff, talking, NULL);
-
-  if (myrank == 0) {
-    clocks_gettime(&toc);
-    message("engine_init took %.3f %s.", clocks_diff(&tic, &toc),
-            clocks_getunit());
-    fflush(stdout);
-  }
+                nr_threads, nr_threads, with_aff, talking, NULL);
 
   /* Get some info to the user. */
   if (myrank == 0) {
     const long long N_DM = N_total[swift_type_dark_matter] +
-                           N_total[swift_type_dark_matter_background] +
-                           N_total[swift_type_neutrino];
+                           N_total[swift_type_dark_matter_background];
+
     message(
         "Running FOF on %lld gas particles, %lld sink particles, %lld stars "
         "particles %lld black hole particles, %lld neutrino particles, and "
@@ -694,7 +687,7 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Perform the FOF search */
-  engine_fof(&e, /*dump_results=*/1, /*seed_black_holes=*/0);
+  engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0, /*seed_black_holes=*/0);
 
   /* Write output. */
   engine_dump_snapshot(&e);
