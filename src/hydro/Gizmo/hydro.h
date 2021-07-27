@@ -473,9 +473,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const float dt_alpha) {
+    const float dt_alpha, const float dt_therm, const integertime_t ti_end) {
 
   hydro_part_reset_fluxes(p);
+  p->force.dt = dt_therm;
+  p->force.ti_end = ti_end;
 }
 
 /**
@@ -676,16 +678,19 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Update conserved variables. */
   p->conserved.mass += hydro_gizmo_mfv_mass_update_term(flux[0], dt_therm);
-  p->conserved.momentum[0] += flux[1] * dt_therm;
-  p->conserved.momentum[1] += flux[2] * dt_therm;
-  p->conserved.momentum[2] += flux[3] * dt_therm;
+  p->conserved.momentum[0] += flux[1];
+  p->conserved.momentum[1] += flux[2];
+  p->conserved.momentum[2] += flux[3];
 #if defined(EOS_ISOTHERMAL_GAS)
   /* We use the EoS equation in a sneaky way here just to get the constant u */
   p->conserved.energy =
       p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-  p->conserved.energy += flux[4] * dt_therm;
+  p->conserved.energy += flux[4];
 #endif
+
+  hydro_part_reset_hydro_fluxes(p);
+  p->force.dt = -1.0f;
 
 #ifndef HYDRO_GAMMA_5_3
 

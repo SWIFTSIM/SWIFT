@@ -154,6 +154,13 @@ struct part {
     /* Needed to drift the primitive variables. */
     float h_dt;
 
+    /* Particle time step. Used to compute time-integrated fluxes. */
+    float dt;
+
+    /* End time for the particle on the integer time line. Used to detect
+     * passive neighbours. */
+    integertime_t ti_end;
+
   } force;
 
   /* Specific stuff for the gravity-hydro coupling. */
