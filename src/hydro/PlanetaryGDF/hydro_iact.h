@@ -132,9 +132,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->weighted_wcount += mi * r2 * wj_dx * r_inv;
 
 #ifdef PLANETARY_IMBALANCE
-  /* Use sqrt(w) from now on */
-  wi = sqrtf(wi);
-  wj = sqrtf(wj);
+  /* Use sqrt(w) from now on */ // sqrt/nosqrt variation (on/off)
+  //wi = sqrtf(wi);
+  //wj = sqrtf(wj);
 
   /* Add contribution to kernel averages */
   pi->sum_wij += wi*mj;
@@ -235,8 +235,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->weighted_wcount += mj * r2 * wi_dx * r_inv;
 
 #ifdef PLANETARY_IMBALANCE
-  /* Use sqrt(w) from now on */
-  wi = sqrtf(wi);
+  /* Use sqrt(w) from now on */ // sqrt/nosqrt variation (on/off)
+  //wi = sqrtf(wi);
 
   /* Add contribution to kernel averages */
   pi->sum_wij += wi*mj;
