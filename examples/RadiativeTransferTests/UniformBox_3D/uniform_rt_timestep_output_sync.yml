@@ -12,15 +12,15 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.      # The starting time of the simulation (in internal units).
-  time_end:   1.953125e-03
-  dt_min:     1.e-8   # The minimal time-step size of the simulation (in internal units).
-  dt_max:     1.e-4   # The maximal time-step size of the simulation (in internal units).
+  time_end:   9.536742e-07
+  dt_min:     1.e-12   # The minimal time-step size of the simulation (in internal units).
+  dt_max:     5.e-8   # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            output       # Common part of the name of output files
   time_first:          0.           # Time of the first output (in internal units)
-  delta_time:          6.103516e-05
+  delta_time:          2.980232e-08
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -53,6 +53,7 @@ DebugRT:
   all_parts_have_stars:  0          # Set to 1 to do additional tests that only work if all hydro particles have a star particle neighbour
 
 GEARRT:
+  f_reduce_c: 0.1 # reduce speed of light by this factor
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]  # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N).
   use_const_emission_rates: 1                    # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_per_s parameter
   star_emission_rates_LSol: [7.839e-34, 7.839e-34, 7.839e-34, 7.839e-34] # 1 erg/s in LSol
