@@ -44,7 +44,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_hydro_fluxes(
 __attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
     struct part* restrict p) {
 
-  hydro_part_reset_hydro_fluxes(p);
+  /*  hydro_part_reset_hydro_fluxes(p);*/
 
   p->gravity.mflux[0] = 0.0f;
   p->gravity.mflux[1] = 0.0f;
