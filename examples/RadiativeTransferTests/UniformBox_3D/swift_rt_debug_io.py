@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
 
 # --------------------------------------------------
 # 'Module' containing RT I/O routines for the RT
@@ -66,6 +85,7 @@ class RTSnapData(object):
         self.snapnr = None
         self.ncells = None
         self.boxsize = None
+        self.has_stars = True
         self.stars = RTStarData()
         self.gas = RTGasData()
         return
@@ -78,6 +98,7 @@ class Rundata(object):
 
     def __init__(self):
         self.hydro_controlled_injection = False
+        self.has_stars = False  # assume we don't have stars, check while reading in
 
         return
 
@@ -192,19 +213,25 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
 
         newsnap.gas.RadiationAbsorbedTot = Gas["RTDebugRadAbsorbedTot"][:][inds]
 
-        Stars = F["PartType4"]
-        ids = Stars["ParticleIDs"][:]
-        inds = np.argsort(ids)
+        try:
+            Stars = F["PartType4"]
+            ids = Stars["ParticleIDs"][:]
+            inds = np.argsort(ids)
 
-        newsnap.stars.IDs = ids[inds]
-        newsnap.stars.coords = Stars["Coordinates"][:][inds]
-        newsnap.stars.h = Stars["SmoothingLengths"][:][inds]
+            newsnap.stars.IDs = ids[inds]
+            newsnap.stars.coords = Stars["Coordinates"][:][inds]
+            newsnap.stars.h = Stars["SmoothingLengths"][:][inds]
 
-        newsnap.stars.RTHydroIact = Stars["RTDebugHydroIact"][:][inds]
-        newsnap.stars.EmissionRateSet = Stars["RTDebugEmissionRateSet"][:][inds]
+            newsnap.stars.RTHydroIact = Stars["RTDebugHydroIact"][:][inds]
+            newsnap.stars.EmissionRateSet = Stars["RTDebugEmissionRateSet"][:][inds]
 
-        newsnap.stars.RadiationEmittedTot = Stars["RTDebugRadEmittedTot"][:][inds]
+            newsnap.stars.RadiationEmittedTot = Stars["RTDebugRadEmittedTot"][:][inds]
+        except KeyError:
+            newsnap.has_stars = False
 
         snapdata.append(newsnap)
+
+    for snap in snapdata:
+        rundata.has_stars = rundata.has_stars or snap.has_stars
 
     return snapdata, rundata
