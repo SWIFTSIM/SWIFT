@@ -117,8 +117,8 @@ __attribute__((always_inline, const)) INLINE static float pow_gamma(float x) {
   const float icbrt = icbrtf(x); /* x^(-1/3) */
   return icbrt * x * x;          /* x^(5/3) */
 #else
-  const float cbrt = cbrtf(x);                 /* x^(1/3) */
-  return cbrt * cbrt * x;                      /* x^(5/3) */
+  const float cbrt = cbrtf(x); /* x^(1/3) */
+  return cbrt * cbrt * x;      /* x^(5/3) */
 #endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_7_5)
@@ -128,10 +128,10 @@ __attribute__((always_inline, const)) INLINE static float pow_gamma(float x) {
 #elif defined(HYDRO_GAMMA_4_3)
 
 #ifdef WITH_ICBRTF
-  const float icbrt = icbrtf(x);               /* x^(-1/3) */
-  return icbrt * icbrt * x * x;                /* x^(4/3) */
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return icbrt * icbrt * x * x;  /* x^(4/3) */
 #else
-  return cbrtf(x) * x;                   /* x^(4/3) */
+  return cbrtf(x) * x; /* x^(4/3) */
 #endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_2_1)
@@ -161,8 +161,8 @@ __attribute__((always_inline, const)) INLINE static float pow_gamma_minus_one(
   const float icbrt = icbrtf(x); /* x^(-1/3) */
   return x * icbrt;              /* x^(2/3) */
 #else
-  const float cbrt = cbrtf(x);                 /* x^(1/3) */
-  return cbrt * cbrt;                          /* x^(2/3) */
+  const float cbrt = cbrtf(x); /* x^(1/3) */
+  return cbrt * cbrt;          /* x^(2/3) */
 #endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_7_5)
@@ -172,10 +172,10 @@ __attribute__((always_inline, const)) INLINE static float pow_gamma_minus_one(
 #elif defined(HYDRO_GAMMA_4_3)
 
 #ifdef WITH_ICBRTF
-  const float icbrt = icbrtf(x);               /* x^(-1/3) */
-  return x * icbrt * icbrt;                    /* x^(1/3) */
+  const float icbrt = icbrtf(x); /* x^(-1/3) */
+  return x * icbrt * icbrt;      /* x^(1/3) */
 #else
-  return cbrtf(x);                       /* x^(1/3) */
+  return cbrtf(x); /* x^(1/3) */
 #endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_2_1)
@@ -205,8 +205,8 @@ pow_minus_gamma_minus_one(float x) {
   const float icbrt = icbrtf(x); /* x^(-1/3) */
   return icbrt * icbrt;          /* x^(-2/3) */
 #else
-  const float cbrt_inv = 1.f / cbrtf(x);       /* x^(-1/3) */
-  return cbrt_inv * cbrt_inv;                  /* x^(-2/3) */
+  const float cbrt_inv = 1.f / cbrtf(x); /* x^(-1/3) */
+  return cbrt_inv * cbrt_inv;            /* x^(-2/3) */
 #endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_7_5)
@@ -216,9 +216,9 @@ pow_minus_gamma_minus_one(float x) {
 #elif defined(HYDRO_GAMMA_4_3)
 
 #ifdef WITH_ICBRTF
-  return icbrtf(x);                            /* x^(-1/3) */
+  return icbrtf(x); /* x^(-1/3) */
 #else
-  return 1.f / cbrtf(x);                 /* x^(-1/3) */
+  return 1.f / cbrtf(x); /* x^(-1/3) */
 #endif  // WITH_ICBRTF
 
 #elif defined(HYDRO_GAMMA_2_1)
@@ -264,7 +264,7 @@ __attribute__((always_inline, const)) INLINE static float pow_minus_gamma(
 #elif defined(HYDRO_GAMMA_4_3)
 
 #ifdef WITH_ICBRTF
-  const float cbrt_inv = icbrtf(x);            /* x^(-1/3) */
+  const float cbrt_inv = icbrtf(x); /* x^(-1/3) */
 #else
   const float cbrt_inv = 1.f / cbrtf(x); /* x^(-1/3) */
 #endif  // WITH_ICBRTF

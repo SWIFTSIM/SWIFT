@@ -883,9 +883,9 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
   /* Get the sorting index. */
   int sid = 0;
   for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-                         ? 0
-                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)   ? 0
+                     : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2
+                                                                : 1);
 
   /* Switch the cells around? */
   const int flipped = runner_flip[sid];

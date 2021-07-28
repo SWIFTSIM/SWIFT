@@ -69,7 +69,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /* Coefficients for the kernel. */
 #define kernel_name "Quartic spline (M5)"
 #define kernel_degree 4 /* Degree of the polynomial */
-#define kernel_ivals 5  /* Number of branches */
+#define kernel_ivals 5 /* Number of branches */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.018932))
 #define kernel_constant ((float)(15625. * M_1_PI / 512.))
@@ -95,7 +95,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /* Coefficients for the kernel. */
 #define kernel_name "Quintic spline (M6)"
 #define kernel_degree 5 /* Degree of the polynomial */
-#define kernel_ivals 3  /* Number of branches */
+#define kernel_ivals 3 /* Number of branches */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.195775))
 #define kernel_constant ((float)(2187. * M_1_PI / 40.))
@@ -123,7 +123,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /* Coefficients for the kernel. */
 #define kernel_name "Wendland C2"
 #define kernel_degree 5 /* Degree of the polynomial */
-#define kernel_ivals 1  /* Number of branches */
+#define kernel_ivals 1 /* Number of branches */
 #if defined(HYDRO_DIMENSION_1D)
 /* Wendland C* have different form in 1D than 2D/3D */
 #define kernel_gamma ((float)(1.620185))
@@ -151,7 +151,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /* Coefficients for the kernel. */
 #define kernel_name "Wendland C4"
 #define kernel_degree 8 /* Degree of the polynomial */
-#define kernel_ivals 1  /* Number of branches */
+#define kernel_ivals 1 /* Number of branches */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.207940))
 #define kernel_constant ((float)(495. * M_1_PI / 32.))
@@ -174,7 +174,7 @@ static const float kernel_coeffs[(kernel_degree + 1) * (kernel_ivals + 1)]
 /* Coefficients for the kernel. */
 #define kernel_name "Wendland C6"
 #define kernel_degree 11 /* Degree of the polynomial */
-#define kernel_ivals 1   /* Number of branches */
+#define kernel_ivals 1 /* Number of branches */
 #if defined(HYDRO_DIMENSION_3D)
 #define kernel_gamma ((float)(2.449490))
 #define kernel_constant ((float)(1365. * M_1_PI / 64.))

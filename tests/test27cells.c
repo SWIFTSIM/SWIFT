@@ -631,7 +631,7 @@ int main(int argc, char *argv[]) {
 
   /* Output timing */
   message("Brute force calculation took : %.3f %s.",
-	  clocks_from_ticks(toc - tic), clocks_getunit());
+          clocks_from_ticks(toc - tic), clocks_getunit());
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);

@@ -39,6 +39,6 @@ struct eos_parameters eos = {.isothermal_internal_energy = -1.};
 struct eos_parameters eos;
 #endif
 
-#else  /* i.e. not __APPLE__ */
+#else /* i.e. not __APPLE__ */
 struct eos_parameters eos;
 #endif /* __APPLE__ */

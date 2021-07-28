@@ -970,7 +970,7 @@ int main(int argc, char *argv[]) {
 
   /* Output timing */
   message("Brute force calculation took : %.3f %s.",
-	  clocks_from_ticks(toc - tic), clocks_getunit());
+          clocks_from_ticks(toc - tic), clocks_getunit());
 
   sprintf(outputFileName, "brute_force_125_%.150s.dat",
           outputFileNameExtension);
