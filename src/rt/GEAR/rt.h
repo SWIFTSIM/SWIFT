@@ -240,6 +240,7 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
     const struct cosmology* cosmo) {
   if (with_cosmology) {
     error("GEAR RT with cosmology not implemented yet! :(");
+    return 0.f;
   } else {
     return (ti_end - ti_beg) * time_base;
   }
