@@ -37,14 +37,12 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_hydro_fluxes(
 }
 
 /**
- * @brief Reset all the fluxes for the given particle.
+ * @brief Reset the gravity fluxes for the given particle.
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
-    struct part* restrict p) {
-
-  /*  hydro_part_reset_hydro_fluxes(p);*/
+__attribute__((always_inline)) INLINE static void
+hydro_part_reset_gravity_fluxes(struct part* restrict p) {
 
   p->gravity.mflux[0] = 0.0f;
   p->gravity.mflux[1] = 0.0f;
@@ -98,6 +96,7 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
  * @param p Particle.
  * @param fluxes Fluxes accross the interface.
  * @param dx Distance between the particles that share the interface.
+ * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
     struct part* restrict p, const float* fluxes, const float* dx,
@@ -131,6 +130,7 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
  * @param p Particle.
  * @param fluxes Fluxes accross the interface.
  * @param dx Distance between the particles that share the interface.
+ * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,

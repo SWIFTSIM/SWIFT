@@ -404,17 +404,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   float totflux[5];
   hydro_compute_flux(Wi, Wj, n_unit, vij, Anorm, totflux);
 
+  /* get the time step for the flux exchange. This is always the smallest time
+     step among the two particles */
   const float mindt =
-      (pj->force.dt > 0.0f) ? fminf(pi->force.dt, pj->force.dt) : pi->force.dt;
+      (pj->flux.dt > 0.0f) ? fminf(pi->flux.dt, pj->flux.dt) : pi->flux.dt;
 
   hydro_part_update_fluxes_left(pi, totflux, dx, mindt);
 
-  /* Note that this used to be much more complicated in early implementations of
-   * the GIZMO scheme, as we wanted manifest conservation of conserved variables
-   * and had to do symmetric flux exchanges. Now we don't care about manifest
-   * conservation anymore and just assume the current fluxes are representative
-   * for the flux over the entire time step. */
-  if (mode == 1 || (pj->force.dt < 0.0f)) {
+  /* Unlike in SPH schemes, we do need to update inactive neighbours, so that
+     the fluxes are always exchanged symmetrically. Thanks to our sneaky use
+     of flux.dt, we can detect inactive neighbours through their negative
+     time step. */
+  if (mode == 1 || (pj->flux.dt < 0.0f)) {
     hydro_part_update_fluxes_right(pj, totflux, dx, mindt);
   }
 }

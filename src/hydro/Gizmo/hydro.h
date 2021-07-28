@@ -469,15 +469,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part* restrict p, struct xpart* restrict xp,
     const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const float dt_alpha, const float dt_therm, const integertime_t ti_end) {
+    const float dt_alpha, const float dt_therm) {
 
-  hydro_part_reset_fluxes(p);
-  p->force.dt = dt_therm;
-  p->force.ti_end = ti_end;
+  hydro_part_reset_gravity_fluxes(p);
+  p->flux.dt = dt_therm;
 }
 
 /**
@@ -546,6 +546,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* skip the drift if we are using Lloyd's algorithm */
   hydro_gizmo_lloyd_skip_drift();
+
+  /* skip the drift in all other cases; it is broken */
+  return;
 
   const float h_inv = 1.0f / p->h;
 
@@ -689,8 +692,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   p->conserved.energy += flux[4];
 #endif
 
+  /* reset the fluxes, so that they do not get used again in kick1 */
   hydro_part_reset_hydro_fluxes(p);
-  p->force.dt = -1.0f;
+  /* invalidate the particle time step. It is considered to be inactive until
+     dt is set again in hydro_prepare_force() */
+  p->flux.dt = -1.0f;
 
 #ifndef HYDRO_GAMMA_5_3
 

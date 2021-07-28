@@ -22,11 +22,11 @@
 #include "riemann.h"
 
 /**
- * @brief Reset the fluxes for the given particle.
+ * @brief Reset the hydrodynamical fluxes for the given particle.
  *
  * @param p Particle.
  */
-__attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
+__attribute__((always_inline)) INLINE static void hydro_part_reset_hydro_fluxes(
     struct part* restrict p) {
 
   p->flux.momentum[0] = 0.0f;
@@ -34,6 +34,16 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_fluxes(
   p->flux.momentum[2] = 0.0f;
   p->flux.energy = 0.0f;
 }
+
+/**
+ * @brief Reset the gravity fluxes for the given particle.
+ *
+ * Does nothing, since MFM does not have gravity fluxes.
+ *
+ * @param p Particle.
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_part_reset_gravity_fluxes(struct part* restrict p) {}
 
 /**
  * @brief Get the fluxes for the given particle.
@@ -80,19 +90,21 @@ __attribute__((always_inline)) INLINE static void hydro_compute_flux(
  * @param p Particle.
  * @param fluxes Fluxes accross the interface.
  * @param dx Distance between the particles that share the interface.
+ * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
-    struct part* restrict p, const float* fluxes, const float* dx) {
+    struct part* restrict p, const float* fluxes, const float* dx,
+    const float dt) {
 
-  p->flux.momentum[0] -= fluxes[1];
-  p->flux.momentum[1] -= fluxes[2];
-  p->flux.momentum[2] -= fluxes[3];
-  p->flux.energy -= fluxes[4];
+  p->flux.momentum[0] -= fluxes[1] * dt;
+  p->flux.momentum[1] -= fluxes[2] * dt;
+  p->flux.momentum[2] -= fluxes[3] * dt;
+  p->flux.energy -= fluxes[4] * dt;
 
 #ifndef GIZMO_TOTAL_ENERGY
-  p->flux.energy += fluxes[1] * p->v[0];
-  p->flux.energy += fluxes[2] * p->v[1];
-  p->flux.energy += fluxes[3] * p->v[2];
+  p->flux.energy += fluxes[1] * p->v[0] * dt;
+  p->flux.energy += fluxes[2] * p->v[1] * dt;
+  p->flux.energy += fluxes[3] * p->v[2] * dt;
 #endif
 }
 
@@ -103,20 +115,21 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
  * @param p Particle.
  * @param fluxes Fluxes accross the interface.
  * @param dx Distance between the particles that share the interface.
+ * @param dt Time step for the flux exchange.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
-                               const float* dx) {
+                               const float* dx, const float dt) {
 
-  p->flux.momentum[0] += fluxes[1];
-  p->flux.momentum[1] += fluxes[2];
-  p->flux.momentum[2] += fluxes[3];
-  p->flux.energy += fluxes[4];
+  p->flux.momentum[0] += fluxes[1] * dt;
+  p->flux.momentum[1] += fluxes[2] * dt;
+  p->flux.momentum[2] += fluxes[3] * dt;
+  p->flux.energy += fluxes[4] * dt;
 
 #ifndef GIZMO_TOTAL_ENERGY
-  p->flux.energy -= fluxes[1] * p->v[0];
-  p->flux.energy -= fluxes[2] * p->v[1];
-  p->flux.energy -= fluxes[3] * p->v[2];
+  p->flux.energy -= fluxes[1] * p->v[0] * dt;
+  p->flux.energy -= fluxes[2] * p->v[1] * dt;
+  p->flux.energy -= fluxes[3] * p->v[2] * dt;
 #endif
 }
 
