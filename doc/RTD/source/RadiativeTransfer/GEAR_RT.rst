@@ -23,7 +23,7 @@ Compiling for GEAR RT
     ``--with-rt-riemann-solver=GLF`` works, the ``HLL`` will be added later.
     The ``GLF`` solver is more diffusive, but the ``HLL`` solver produces less 
     spherically symmetric radiation from stars. See 
-    `Rosdahl et al 2013 <https://arxiv.org/abs/1304.7126>`_
+    `Rosdahl et al 2013 <https://ui.adsabs.harvard.edu/abs/2013MNRAS.436.2188R/abstract>`_
 
 -   GEAR RT is only compatible with the Meshless Finite Volume scheme. You'll
     need to compile using ``--with-hydro=gizmo-mfv``, which will also require
