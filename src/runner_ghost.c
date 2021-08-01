@@ -1412,6 +1412,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       count = redo;
       if (count > 0) {
 
+        /* Start by collecting the maximal h of the remaining particles to treat
+         */
+        float h_max_subset = 0.f;
+        for (int i = 0; i < count; ++i) {
+          const struct part *p = &parts[pid[i]];
+          h_max_subset = max(h_max_subset, p->h);
+        }
+
         /* Climb up the cell hierarchy. */
         for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
@@ -1424,12 +1432,19 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self)
+            if (l->t->type == task_type_self) {
+#ifdef ONLY_SUBTASKS
+              error("Found some self tasks!");
+#else
               runner_doself_subset_branch_density(r, finger, parts, pid, count);
+#endif
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
-
+#ifdef ONLY_SUBTASKS
+              error("Found some pair tasks!");
+#else
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dopair_subset_branch_density(r, finger, parts, pid,
@@ -1437,6 +1452,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
               else
                 runner_dopair_subset_branch_density(r, finger, parts, pid,
                                                     count, l->t->ci);
+#endif
             }
 
             /* Otherwise, sub-self interaction? */
