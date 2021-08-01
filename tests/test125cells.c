@@ -969,7 +969,8 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Output timing */
-  message("Brute force calculation took: %15lli ticks.", toc - tic);
+  message("Brute force calculation took : %.3f %s.",
+          clocks_from_ticks(toc - tic), clocks_getunit());
 
   sprintf(outputFileName, "brute_force_125_%.150s.dat",
           outputFileNameExtension);
