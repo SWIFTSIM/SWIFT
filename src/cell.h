@@ -713,6 +713,16 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
                        c->hydro.dx_max_part_old) < 0.5f * c->dmin);
 }
 
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_subset_pair_hydro_task(const struct cell *c,
+                                           const float h_max_subset) {
+
+  /* If so, is the cut-off radius plus the max distance the parts have moved */
+  /* smaller than the sub-cell sizes ? */
+  return (kernel_gamma * h_max_subset + c->hydro.dx_max_part_old) <
+         0.5f * c->dmin;
+}
+
 /**
  * @brief Can a sub-pair hydro task recurse to a lower level based
  * on the status of the particles in the cell.
@@ -754,6 +764,20 @@ cell_can_recurse_in_self_hydro_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
   return c->split && (kernel_gamma * c->hydro.h_max_old < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a hydro task recurse to a lower level based
+ * on the status of the particles in the cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_subset_hydro_task(const struct cell *c,
+                                           const float h_max_subset) {
+
+  /* Is the cell not smaller than the smoothing length? */
+  return kernel_gamma * h_max_subset < 0.5f * c->dmin;
 }
 
 /**
