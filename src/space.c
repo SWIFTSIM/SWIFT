@@ -507,6 +507,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
+        lock_init(&cells[j]->hydro.extra_sort_lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||

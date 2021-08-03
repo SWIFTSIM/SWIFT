@@ -1178,11 +1178,13 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY FUNCTION_TASK_LOOP == \
+     TASK_LOOP_STARS_PREP2)
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK || \
+       FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
   /* Here we update the gas --> the gas cell must be local */
   const int ci_local = (cj->nodeID == e->nodeID);
   const int cj_local = (ci->nodeID == e->nodeID);
@@ -1254,11 +1256,13 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK || \
+       FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP1)
   /* Here we update the gas --> the gas cell must be local */
   const int ci_local = (cj->nodeID == e->nodeID);
   const int cj_local = (ci->nodeID == e->nodeID);
