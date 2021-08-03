@@ -489,6 +489,7 @@ INLINE static float Til_density_from_pressure_and_temperature(
     P_mid = Til_pressure_from_temperature(rho_mid, T, mat);
     P_max = Til_pressure_from_temperature(rho_max, T, mat);
     
+    // Bisection method
     if (P_des >= P_min && P_des <= P_max){
         while ((rho_max - rho_min) > tolerance && counter < max_counter){
         
@@ -510,10 +511,25 @@ INLINE static float Til_density_from_pressure_and_temperature(
         }
     
     } else {
-        error("Error in Til_density_from_pressure_and_temperature");
-        return 0.f;
+	// Print in case something goes wrong
+	printf(
+      	"## Til_density_from_pressure_and_temperature: \n"
+      	"mat_id, P, P_des, T\n"
+      	"rho_min, P_min, rho_max, P_max\n"
+      	"%d, %.7g, %.7g, %.7g,\n"
+      	"%.7g, %.7g, %.7g, %.7g\n",
+      	mat->mat_id, P, P_des, T, rho_min, P_min, rho_max, P_max);
+
+	// Try avoid crash
+	if (P_des < P_min){
+	  return rho_min;
+	} else if (P_des > P_max){
+	  return rho_max;
+	} else {
+          error("Error in Til_density_from_pressure_and_temperature");
+          return 0.f;
+    	}
     }
-    
     return rho_mid;
 }
 

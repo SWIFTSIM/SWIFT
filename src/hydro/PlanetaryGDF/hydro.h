@@ -715,24 +715,30 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* End computation */
   p->sum_wij_exp_P /= p->sum_wij_exp;
   p->sum_wij_exp_T /= p->sum_wij_exp;
+  
+  /* Compute new P */ 
+  float P_new = 0.f;
+  P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
+  p->P = P_new;
+
+  /* Compute new T */
+  float T_new = 0.f;
+  T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
+  p->T = T_new;
 
   /* Compute new density */
-  float new_density =
-      gas_density_from_pressure_and_temperature(p->sum_wij_exp_P, p->sum_wij_exp_T, p->mat_id);
-  
-  /* Compute combined density */
-  float rho_combined = 0.f;
-  rho_combined = expf(-p->I*p->I)*p->rho + (1.f - expf(-p->I*p->I))*new_density;
-  
+  float rho_new =
+      gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
+ 
   /* Ensure new density is not lower than minimum SPH density */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
-  if (rho_combined < rho_min){
+  if (rho_new < rho_min){
     p->rho = rho_min;
   } else {
-    p->rho = rho_combined;
+    p->rho = rho_new;
   }
 #endif
 }
@@ -778,8 +784,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 #endif
 
   /* Compute the pressure */
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  //const float pressure =
+  //    gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -815,7 +821,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Update variables. */
   p->force.f = grad_h_term;
-  p->force.pressure = pressure;
+  p->force.pressure = p->P; 
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
 }
