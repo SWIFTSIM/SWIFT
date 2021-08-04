@@ -35,7 +35,6 @@
 #include "gravity_properties.h"
 
 
-
 #define sidm_props_default_max_iterations 30
 #define sidm_props_default_h_max FLT_MAX
 #define sidm_props_default_h_min_ratio 0.f

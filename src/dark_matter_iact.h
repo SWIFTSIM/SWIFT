@@ -618,8 +618,8 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
 
     
     /*! change flag to indicate the particle has been scattered */
-    pj->sidm_data.sidm_flag = 1;
-    pi->sidm_data.sidm_flag = 1;
+//    pj->sidm_data.sidm_flag = 1;
+//    pi->sidm_data.sidm_flag = 1;
     
     /* Add counter of DM-DM collisions of individual particles */
     pj->sidm_data.number_of_sidm_events += 1.f;
@@ -724,10 +724,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Manage time interval of particle i */
     double dti;
+    const integertime_t ti_begin = get_integer_time_begin(t_current - 1, pi->time_bin);
     if (with_cosmology) {
         const integertime_t ti_step = get_integer_timestep(pi->time_bin);
-        const integertime_t ti_begin =
-                get_integer_time_begin(t_current - 1, pi->time_bin);
         dti = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
     } else {
         dti = get_timestep(pi->time_bin, time_base);
@@ -755,21 +754,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     /* DM particle mass */
     const double mass_j = pj->mass;
 
-    /*float gij = integrate_kernels(r2, hi, hj);
-    float normed_gij = norm_for_kernels_integral(hi, hj);*/
+//    float gij = integrate_kernels(r2, hi, hj);
+//    float normed_gij = norm_for_kernels_integral(hi, hj);
 
     float gij = integrate_kernels_analytical(r2, hi, hj) * cosmo->a3_inv;
     float normed_gij = norm_for_kernels_analytical_integral(hi, hj);
 
     float Rate_SIDM_i = mass_j * sigma * vij * gij / normed_gij;
-    
+
     pi->sidm_probability += mass_j * sigma * vij * gij / normed_gij;
+
+//    /* DM-DM distance */
+//    float hi_3 = hi * hi * hi;
+//
+//    /* Calculate scattering rate */
+//    float Rate_SIDM_i = sigma * mass_j * vij * cosmo->a3_inv / (4.0f * M_PI * hi_3 / 3.0f);
 
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
 
     /* Draw a random number */
-    const float rand = random_unit_interval(pi->id_or_neg_offset, t_current, random_number_SIDM);
+    const float rand = random_unit_interval(pi->id_or_neg_offset, ti_begin, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > rand) {
@@ -815,10 +820,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
 
     /* Manage time interval of particles i & j */
     double dti;
+    const integertime_t ti_begin = get_integer_time_begin(t_current - 1, pi->time_bin);
     if (with_cosmology) {
         const integertime_t ti_step = get_integer_timestep(pi->time_bin);
-        const integertime_t ti_begin =
-                get_integer_time_begin(t_current - 1, pi->time_bin);
         dti = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
     } else {
         dti = get_timestep(pi->time_bin, time_base);
@@ -826,10 +830,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
 
     /* Same for particle j */
     double dtj;
+    const integertime_t tj_begin = get_integer_time_begin(t_current - 1, pj->time_bin);
     if (with_cosmology) {
         const integertime_t tj_step = get_integer_timestep(pj->time_bin);
-        const integertime_t tj_begin =
-                get_integer_time_begin(t_current - 1, pj->time_bin);
         dtj = cosmology_get_delta_time(cosmo, tj_begin, tj_begin + tj_step);
     } else {
         dtj = get_timestep(pj->time_bin, time_base);
@@ -863,10 +866,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     const double mass_j = pj->mass;
 
     /* Calculate scattering rate */
-    /*float gij = integrate_kernels(r2, hi, hj);
-    float normed_gij = norm_for_kernels_integral(hi, hj);
-    float gji = integrate_kernels(r2, hj, hi);
-    float normed_gji = norm_for_kernels_integral(hj, hi);*/
+//    float gij = integrate_kernels(r2, hi, hj);
+//    float normed_gij = norm_for_kernels_integral(hi, hj);
+//    float gji = integrate_kernels(r2, hj, hi);
+//    float normed_gji = norm_for_kernels_integral(hj, hi);
 
     float gij = integrate_kernels_analytical(r2, hi, hj) * cosmo->a3_inv;
     float normed_gij = norm_for_kernels_analytical_integral(hi, hj);
@@ -892,8 +895,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float Probability_SIDM_j = Rate_SIDM_j * dtj;
 
     /* Draw a random number */
-    const float randi = random_unit_interval(pi->id_or_neg_offset, t_current, random_number_SIDM);
-    const float randj = random_unit_interval(pj->id_or_neg_offset, t_current, random_number_SIDM);
+    const float randi = random_unit_interval(pi->id_or_neg_offset, ti_begin, random_number_SIDM);
+    const float randj = random_unit_interval(pj->id_or_neg_offset, tj_begin, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
