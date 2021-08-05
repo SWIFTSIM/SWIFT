@@ -715,10 +715,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 
     /* Velocities of interacting particles */
 
+    const double a2_Hubble = a * a * H;
     double dv[3];
-    dv[0] = pi->v_full[0] - pj->v_full[0];
-    dv[1] = pi->v_full[1] - pj->v_full[1];
-    dv[2] = pi->v_full[2] - pj->v_full[2];
+    dv[0] = pi->v_full[0] - pj->v_full[0] + a2_Hubble * dx[0];
+    dv[1] = pi->v_full[1] - pj->v_full[1] + a2_Hubble * dx[1];
+    dv[2] = pi->v_full[2] - pj->v_full[2] + a2_Hubble * dx[2];
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
     const double vij = sqrt(v2) * cosmo->a_inv;
 
@@ -811,12 +812,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
 /*    struct sidm_history* sidm_history, const struct cosmology* cosmo) {*/
 
     /* Velocities of interacting particles */
+    const double a2_Hubble = a * a * H;
     double dv[3];
-    dv[0] = pi->v_full[0] - pj->v_full[0];
-    dv[1] = pi->v_full[1] - pj->v_full[1];
-    dv[2] = pi->v_full[2] - pj->v_full[2];
+    dv[0] = pi->v_full[0] - pj->v_full[0] + a2_Hubble * dx[0];
+    dv[1] = pi->v_full[1] - pj->v_full[1] + a2_Hubble * dx[1];
+    dv[2] = pi->v_full[2] - pj->v_full[2] + a2_Hubble * dx[2];
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    const double vij = sqrt(v2) * cosmo->a_inv;
+
+    /* Are the particles moving towards each others ? */
+    const double vij = max(sqrt(v2) * cosmo->a_inv, 0.f);
 
     /* Manage time interval of particles i & j */
     double dti;
