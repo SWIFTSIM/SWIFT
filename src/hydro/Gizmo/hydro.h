@@ -302,9 +302,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* compute primitive variables */
   /* eqns (3)-(5) */
-  const float Q[5] = {p->conserved.mass, p->conserved.momentum[0],
-                      p->conserved.momentum[1], p->conserved.momentum[2],
-                      p->conserved.energy};
+  float Q[5] = {p->conserved.mass, p->conserved.momentum[0],
+                p->conserved.momentum[1], p->conserved.momentum[2],
+                p->conserved.energy};
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (Q[0] < 0.) {
@@ -547,9 +547,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* skip the drift if we are using Lloyd's algorithm */
   hydro_gizmo_lloyd_skip_drift();
 
-  /* skip the drift in all other cases; it is broken */
-  return;
-
   const float h_inv = 1.0f / p->h;
 
   /* Predict smoothing length */
@@ -575,30 +572,28 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   float W[5];
   hydro_part_get_primitive_variables(p, W);
-  float flux[5];
-  hydro_part_get_fluxes(p, flux);
+  float gradrho[3], gradvx[3], gradvy[3], gradvz[3], gradP[3];
+  hydro_part_get_gradients(p, gradrho, gradvx, gradvy, gradvz, gradP);
 
-  W[0] +=
-      hydro_gizmo_mfv_density_drift_term(flux[0], dt_therm, p->geometry.volume);
+  const float divv = gradvx[0] + gradvy[1] + gradvz[2];
 
-  if (p->conserved.mass > 0.0f) {
-    const float m_inv = 1.0f / p->conserved.mass;
-
-    W[1] += flux[1] * dt_therm * m_inv;
-    W[2] += flux[2] * dt_therm * m_inv;
-    W[3] += flux[3] * dt_therm * m_inv;
-
-#if !defined(EOS_ISOTHERMAL_GAS)
-#ifdef GIZMO_TOTAL_ENERGY
-    const float Etot = p->conserved.energy + flux[4] * dt_therm;
-    const float v2 = (W[1] * W[1] + W[2] * W[2] + W[3] * W[3]);
-    const float u = (Etot * m_inv - 0.5f * v2);
-#else
-    const float u = (p->conserved.energy + flux[4] * dt_therm) * m_inv;
-#endif
-    W[4] = hydro_gamma_minus_one * u * W[0];
-#endif
+  float Wprime[5];
+  Wprime[0] = W[0] - dt_therm * (W[0] * divv + W[1] * gradrho[0] +
+                                 W[2] * gradrho[1] + W[3] * gradrho[2]);
+  if (W[0] != 0.0f) {
+    const float rhoinv = 1.0f / W[0];
+    Wprime[1] = W[1] - dt_therm * (W[1] * divv + rhoinv * gradP[0]);
+    Wprime[2] = W[2] - dt_therm * (W[2] * divv + rhoinv * gradP[1]);
+    Wprime[3] = W[3] - dt_therm * (W[3] * divv + rhoinv * gradP[2]);
   }
+  Wprime[4] = W[4] - dt_therm * (hydro_gamma * W[4] * divv + W[1] * gradP[0] +
+                                 W[2] * gradP[1] + W[3] * gradP[2]);
+
+  W[0] = Wprime[0];
+  W[1] = Wprime[1];
+  W[2] = Wprime[2];
+  W[3] = Wprime[3];
+  W[4] = Wprime[4];
 
   // MATTHIEU: Apply the entropy floor here.
 
@@ -676,27 +671,30 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
   }
 
-  float flux[5];
-  hydro_part_get_fluxes(p, flux);
+  if (p->flux.dt > 0.0f) {
+    float flux[5];
+    hydro_part_get_fluxes(p, flux);
 
-  /* Update conserved variables. */
-  p->conserved.mass += hydro_gizmo_mfv_mass_update_term(flux[0], dt_therm);
-  p->conserved.momentum[0] += flux[1];
-  p->conserved.momentum[1] += flux[2];
-  p->conserved.momentum[2] += flux[3];
+    /* Update conserved variables. */
+    p->conserved.mass += hydro_gizmo_mfv_mass_update_term(flux[0], dt_therm);
+    p->conserved.momentum[0] += flux[1];
+    p->conserved.momentum[1] += flux[2];
+    p->conserved.momentum[2] += flux[3];
 #if defined(EOS_ISOTHERMAL_GAS)
-  /* We use the EoS equation in a sneaky way here just to get the constant u */
-  p->conserved.energy =
-      p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
+    /* We use the EoS equation in a sneaky way here just to get the constant u
+     */
+    p->conserved.energy =
+        p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-  p->conserved.energy += flux[4];
+    p->conserved.energy += flux[4];
 #endif
 
-  /* reset the fluxes, so that they do not get used again in kick1 */
-  hydro_part_reset_hydro_fluxes(p);
-  /* invalidate the particle time step. It is considered to be inactive until
-     dt is set again in hydro_prepare_force() */
-  p->flux.dt = -1.0f;
+    /* reset the fluxes, so that they do not get used again in kick1 */
+    hydro_part_reset_hydro_fluxes(p);
+    /* invalidate the particle time step. It is considered to be inactive until
+       dt is set again in hydro_prepare_force() */
+    p->flux.dt = -1.0f;
+  }
 
 #ifndef HYDRO_GAMMA_5_3
 
