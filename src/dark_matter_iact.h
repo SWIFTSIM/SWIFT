@@ -714,14 +714,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
 /*    struct sidm_history* sidm_history, const struct cosmology* cosmo) {*/
 
     /* Velocities of interacting particles */
-
     const double a2_Hubble = a * a * H;
     double dv[3];
     dv[0] = pi->v_full[0] - pj->v_full[0] + a2_Hubble * dx[0];
     dv[1] = pi->v_full[1] - pj->v_full[1] + a2_Hubble * dx[1];
     dv[2] = pi->v_full[2] - pj->v_full[2] + a2_Hubble * dx[2];
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    const double vij = sqrt(v2) * cosmo->a_inv;
+    const double vij = max(sqrt(v2) * cosmo->a_inv, 0.f);
 
     /* Manage time interval of particle i */
     double dti;
@@ -775,7 +774,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     float Probability_SIDM_i = Rate_SIDM_i * dti;
 
     /* Draw a random number */
-    const float rand = random_unit_interval(pi->id_or_neg_offset, ti_begin, random_number_SIDM);
+    const float rand = random_unit_interval(pi->id_or_neg_offset, t_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability_SIDM_i > rand) {
@@ -900,7 +899,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     float Probability = 0.5 * (Probability_SIDM_i + Probability_SIDM_j);
 
     /* Draw a random number */
-    const float rand = random_unit_interval(pi->id_or_neg_offset, ti_begin, random_number_SIDM);
+    const float rand = random_unit_interval(pi->id_or_neg_offset, t_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
     if (Probability > rand) {
