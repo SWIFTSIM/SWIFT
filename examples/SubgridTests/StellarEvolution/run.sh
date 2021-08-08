@@ -9,7 +9,7 @@ fi
 if [ ! -e stellar_evolution.hdf5 ]
 then
     echo "Generating initial conditions for the 3D stellar evolution example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Get the Yield tables
