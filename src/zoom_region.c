@@ -338,10 +338,10 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
               max_width = widths[k];
       }
 
-      if (verbose)
-          message("N_zoomtopcells: [%f %f %f] dim: [%f %f %f]",
-          max_width / tl_cell_widths[0], max_width / tl_cell_widths[1], max_width / tl_cell_widths[2],
-          max_width, max_width, max_width);
+//    if (verbose)
+      message("N_zoomtopcells: [%f %f %f] dim: [%f %f %f]",
+      max_width / tl_cell_widths[0], max_width / tl_cell_widths[1], max_width / tl_cell_widths[2],
+      max_width, max_width, max_width);
 
       /* Overwrite zoom region properties. */
       s->zoom_props->dim[0] = max_width;

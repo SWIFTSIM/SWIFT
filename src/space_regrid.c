@@ -184,6 +184,7 @@ void space_regrid(struct space *s, int verbose) {
       cdim[2] < s->cdim[2]) {
 
 #ifdef WITH_ZOOM_REGION
+    message("Constructing zoom region.");
     /* Compute the bounds of the zoom region from the DM particles. */
     if (s->with_zoom_region) construct_zoom_region(s, verbose);
 #endif
