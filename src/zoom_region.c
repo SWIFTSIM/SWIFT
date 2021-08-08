@@ -217,6 +217,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   const int zoom_cell_offset = cdim[0] * cdim[1] * cdim[2];
   float dmin_zoom = 0.f;
   double widths[3] = {0.0, 0.0, 0.0};
+  double tl_cell_widths[3] = {0.0, 0.0, 0.0};
 
   /* Loop over top level cells twice, second time is for the zoom region. */
   for (int n = 0; n < 2; n++) {
@@ -313,6 +314,11 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
               zoom_region_bounds[4] = c->loc[2];
             if (c->loc[2] + c->width[2] > zoom_region_bounds[5])
               zoom_region_bounds[5] = c->loc[2] + c->width[2];
+
+            if (i == 0 && j == 0 && k == 0)
+              tl_cell_widths[0] = c->width[0];
+              tl_cell_widths[1] = c->width[1];
+              tl_cell_widths[2] = c->width[2];
           }
         }
 
@@ -334,7 +340,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
       if (verbose)
           message("N_zoomtopcells: [%f %f %f] dim: [%f %f %f]",
-          max_width / c->width[0], max_width / c->width[1], max_width / c->width[2],
+          max_width / tl_cell_widths[0], max_width / tl_cell_widths[1], max_width / ttl_cell_widths[2],
           max_width, max_width, max_width);
 
       /* Overwrite zoom region properties. */
