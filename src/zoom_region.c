@@ -116,6 +116,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   const size_t nr_gparts = s->nr_gparts;
   double mtot = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
+  double widths[3] = {0.0, 0.0, 0.0};
 
   /* Find the min/max location in each dimension for each mask particle, and their COM. */
   for (size_t k = 0; k < nr_gparts; k++) {
@@ -171,9 +172,20 @@ void construct_zoom_region(struct space *s, int verbose) {
   /* Store result. */
   for (int k = 0; k < 3; k++) s->zoom_props->com[k] = com[k];
 
-  s->zoom_props->dim[0] = (new_zoom_boundary[1] - new_zoom_boundary[0]) * zoom_boost_factor;
-  s->zoom_props->dim[1] = (new_zoom_boundary[3] - new_zoom_boundary[2]) * zoom_boost_factor;
-  s->zoom_props->dim[2] = (new_zoom_boundary[5] - new_zoom_boundary[4]) * zoom_boost_factor;
+  /* Assign each axis to array. */
+  widths[0] = (new_zoom_boundary[1] - new_zoom_boundary[0]);
+  widths[1] = (new_zoom_boundary[3] - new_zoom_boundary[2]);
+  widths[2] = (new_zoom_boundary[5] - new_zoom_boundary[4]);
+
+  /* Get the maximum axis length and assign it to the zoom region dimension. */
+  double max_width = 0;
+  for (int k = 0; k < 3; k++) {
+      if (widths[k] > max_width)
+          max_width = widths[k];
+  }
+  s->zoom_props->dim[0] = max_width * zoom_boost_factor;
+  s->zoom_props->dim[1] = max_width * zoom_boost_factor;
+  s->zoom_props->dim[2] = max_width * zoom_boost_factor;
 
   if (verbose)
     message("com: [%f %f %f] dim: [%f %f %f]",
@@ -190,7 +202,7 @@ void construct_zoom_region(struct space *s, int verbose) {
  * Construct an additional set of TL "zoom" cells embedded within the TL cell structure
  * with the dimensions of each cell structure being the same (with differing widths).
  *
- * Therefore the new TL cell structure is 2*cdim**3, with the "natural" TL cells ocupying the 
+ * Therefore the new TL cell structure is 2*cdim**3, with the "natural" TL cells occupying the
  * first half of the TL cell list, and the "zoom" TL cells ocupying the second half.
  *
  * @param s The space.
@@ -204,6 +216,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   double zoom_region_bounds[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
   const int zoom_cell_offset = cdim[0] * cdim[1] * cdim[2];
   float dmin_zoom = 0.f;
+  double widths[3] = {0.0, 0.0, 0.0};
 
   /* Loop over top level cells twice, second time is for the zoom region. */
   for (int n = 0; n < 2; n++) {
@@ -306,10 +319,28 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
     /* Compute size of top level zoom cells on first iteration. */
     if (n == 1) continue;
     if (s->with_zoom_region) {
-      s->zoom_props->dim[0] = zoom_region_bounds[1] - zoom_region_bounds[0];
-      s->zoom_props->dim[1] = zoom_region_bounds[3] - zoom_region_bounds[2];
-      s->zoom_props->dim[2] = zoom_region_bounds[5] - zoom_region_bounds[4];
 
+      /* Assign each axis to array. */
+      widths[0] = (zoom_region_bounds[1] - zoom_region_bounds[0]);
+      widths[1] = (zoom_region_bounds[3] - zoom_region_bounds[2]);
+      widths[2] = (zoom_region_bounds[5] - zoom_region_bounds[4]);
+
+      /* Get the maximum axis length of the zoom region. */
+      double max_width = 0;
+      for (int k = 0; k < 3; k++) {
+          if (widths[k] > max_width)
+              max_width = widths[k];
+      }
+
+      if (verbose)
+          message("N_zoomtopcells: [%f %f %f] dim: [%f %f %f]",
+          max_width / c->width[0], max_width / c->width[1], max_width / c->width[2],
+          max_width, max_width, max_width);
+
+      /* Overwrite zoom region properties. */
+      s->zoom_props->dim[0] = max_width;
+      s->zoom_props->dim[1] = max_width;
+      s->zoom_props->dim[2] = max_width;
       for (int l = 0; l < 3; l++) {
         s->zoom_props->width[l] = s->zoom_props->dim[l] / cdim[l];
         s->zoom_props->iwidth[l] = 1 / s->zoom_props->width[l];
