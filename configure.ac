@@ -2611,12 +2611,7 @@ AC_MSG_RESULT([
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
 
-<<<<<<< HEAD
-   Particle Logger      : $with_logger
-   Python enabled       : $have_python
    Zoom region support  : $with_zoom_region
-=======
    Continuous Sim. Data Stream : $with_csds
->>>>>>> master
 
  ------------------------])
