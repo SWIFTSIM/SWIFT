@@ -118,8 +118,6 @@ void construct_zoom_region(struct space *s, int verbose) {
   double com[3] = {0.0, 0.0, 0.0};
   double widths[3] = {0.0, 0.0, 0.0};
 
-  message("Constructing zoom region, from within zoom region");
-
   /* Find the min/max location in each dimension for each mask particle, and their COM. */
   for (size_t k = 0; k < nr_gparts; k++) {
     if (s->gparts[k].type != swift_type_dark_matter) continue;
@@ -340,7 +338,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
               max_width = widths[k];
       }
 
-//    if (verbose)
+    if (verbose)
       message("N_zoomtopcells: [%f %f %f] dim: [%f %f %f]",
       max_width / tl_cell_widths[0], max_width / tl_cell_widths[1], max_width / tl_cell_widths[2],
       max_width, max_width, max_width);
