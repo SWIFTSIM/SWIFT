@@ -22,7 +22,7 @@ fi
 if [ ! -e photometry ]
 then
     echo "Fetching EAGLE photometry tables..."
-    ../getEaglePhotometryTable.sh
+    ./getEaglePhotometryTable.sh
 fi
 
 # Get the solutions
