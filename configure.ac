@@ -1693,12 +1693,15 @@ case "$with_hydro" in
    ;;
    gizmo-mfv)
       AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
+      need_riemann_solver=yes
    ;;
    gizmo-mfm)
       AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
+      need_riemann_solver=yes
    ;;
    shadowfax)
       AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
+      need_riemann_solver=yes
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
@@ -1912,6 +1915,10 @@ case "$with_riemann" in
       AC_MSG_ERROR([Unknown Riemann solver: $with_riemann])
    ;;
 esac
+
+if test "x$need_riemann_solver" == "xyes" -a "$with_riemann" == "none"; then
+  AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
+fi
 
 #  chemistry function
 AC_ARG_WITH([chemistry],
