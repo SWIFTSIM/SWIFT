@@ -983,17 +983,17 @@ void csds_write_file_header(struct csds_writer *log) {
 
     // mask name.
     csds_write_data(logfile, &file_offset, CSDS_STRING_SIZE,
-                    &log->list_fields[i].name);
+                    (const char *)&log->list_fields[i].name);
 
     // mask size.
     csds_write_data(logfile, &file_offset, sizeof(unsigned int),
-                    &log->list_fields[i].size);
+                    (const char *)&log->list_fields[i].size);
   }
   memcpy(skip_unique_masks, &unique_mask, sizeof(unsigned int));
 
   /* Write the number of fields per particle */
   csds_write_data(logfile, &file_offset, sizeof(log->number_fields),
-                  log->number_fields);
+                  (const char *)log->number_fields);
 
   /* Now write the order for each particle type */
   for (int i = 0; i < swift_type_count; i++) {
@@ -1009,7 +1009,7 @@ void csds_write_file_header(struct csds_writer *log) {
       /* Find the index among all the fields. */
       for (int m = 0; m < log->total_number_fields; m++) {
         if (log->list_fields[m].mask == current_mask) {
-          csds_write_data(logfile, &file_offset, sizeof(int), &m);
+          csds_write_data(logfile, &file_offset, sizeof(int), (const char *)&m);
           break;
         }
       }
