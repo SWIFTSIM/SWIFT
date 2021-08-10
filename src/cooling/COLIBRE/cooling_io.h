@@ -226,13 +226,13 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "ElectronNumberDensities", FLOAT, 1, UNIT_CONV_NUMBER_DENSITY, 0.f, parts,
       xparts, convert_part_e_density,
       "Electron number densities in the physical frame computed based on the "
-      "cooling tables.");
+      "cooling tables. This is 0 for star-forming particles.");
 
   list[7] = io_make_output_field_convert_part(
       "ComptonYParameters", DOUBLE, 1, UNIT_CONV_AREA, 0.f, parts, xparts,
       convert_part_y_compton,
       "Compton y parameters in the physical frame computed based on the "
-      "cooling tables.");
+      "cooling tables. This is 0 for star-forming particles.");
 
   return 8;
 }
