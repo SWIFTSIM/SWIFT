@@ -23,7 +23,13 @@
 /**
  * @file src/rt/GEAR/rt_slope_limiters_cell.h
  * @brief File containing routines concerning the cell slope
- * limiter for the GEAR RT scheme */
+ * limiter for the GEAR RT scheme. (= fist slope limiting step
+ * that limits gradients such that they don't predict new extrema
+ * at neighbour praticle's positions )
+ *
+ * The Gizmo-style slope limiter doesn't help for RT problems for
+ * now, so nothing in this file should actually be called.
+ * */
 
 /**
  * @brief Initialize variables for the cell wide slope limiter
@@ -55,57 +61,63 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_cell_init(
  *
  * @param pi Particle i.
  * @param pj Particle j.
- * @param r Distance between particle i and particle j.
+ * @param g index of photon group
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_cell_collect(
-    struct part* pi, struct part* pj) {
+    struct part* restrict pi, struct part* restrict pj, int g) {
 
   struct rt_part_data* rtdi = &pi->rt_data;
   struct rt_part_data* rtdj = &pj->rt_data;
 
   /* basic slope limiter: collect the maximal and the minimal value for the
    * primitive variables among the ngbs */
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    rtdi->limiter[g].energy[0] =
-        min(rtdj->density[g].energy, rtdi->limiter[g].energy[0]);
-    rtdi->limiter[g].energy[1] =
-        max(rtdj->density[g].energy, rtdi->limiter[g].energy[1]);
+  rtdi->limiter[g].energy[0] =
+      min(rtdj->density[g].energy, rtdi->limiter[g].energy[0]);
+  rtdi->limiter[g].energy[1] =
+      max(rtdj->density[g].energy, rtdi->limiter[g].energy[1]);
 
-    rtdi->limiter[g].flux[0][0] =
-        min(rtdj->density[g].flux[0], rtdi->limiter[g].flux[0][0]);
-    rtdi->limiter[g].flux[0][1] =
-        max(rtdj->density[g].flux[0], rtdi->limiter[g].flux[0][1]);
-    rtdi->limiter[g].flux[1][0] =
-        min(rtdj->density[g].flux[1], rtdi->limiter[g].flux[1][0]);
-    rtdi->limiter[g].flux[1][1] =
-        max(rtdj->density[g].flux[1], rtdi->limiter[g].flux[1][1]);
-    rtdi->limiter[g].flux[2][0] =
-        min(rtdj->density[g].flux[2], rtdi->limiter[g].flux[2][0]);
-    rtdi->limiter[g].flux[2][1] =
-        max(rtdj->density[g].flux[2], rtdi->limiter[g].flux[2][1]);
-  }
-
+  rtdi->limiter[g].flux[0][0] =
+      min(rtdj->density[g].flux[0], rtdi->limiter[g].flux[0][0]);
+  rtdi->limiter[g].flux[0][1] =
+      max(rtdj->density[g].flux[0], rtdi->limiter[g].flux[0][1]);
+  rtdi->limiter[g].flux[1][0] =
+      min(rtdj->density[g].flux[1], rtdi->limiter[g].flux[1][0]);
+  rtdi->limiter[g].flux[1][1] =
+      max(rtdj->density[g].flux[1], rtdi->limiter[g].flux[1][1]);
+  rtdi->limiter[g].flux[2][0] =
+      min(rtdj->density[g].flux[2], rtdi->limiter[g].flux[2][0]);
+  rtdi->limiter[g].flux[2][1] =
+      max(rtdj->density[g].flux[2], rtdi->limiter[g].flux[2][1]);
   /* just use the hydro one */
   /* pi->limiter.maxr = max(r, pi->limiter.maxr); */
 }
 
 /**
  * @brief Slope-limit the given quantity. Result will be written directly
- * to float* gradient.
+ * to float gradient[3].
+ *
+ * @param gradient the gradient of the quantity
+ * @param maxr maximal distance to any neighbour of the particle
+ * @param value the current value of the quantity
+ * @param valmin the minimal value amongst all neighbours of the quantity
+ * @param valmax the maximal value amongst all neighbours of the quantity
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_quantity(
-    float* gradient, const float maxr, const float value, const float valmin,
+    float gradient[3], const float maxr, const float value, const float valmin,
     const float valmax) {
 
   float gradtrue = sqrtf(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
                          gradient[2] * gradient[2]);
   if (gradtrue != 0.0f) {
     gradtrue *= maxr;
-    const float gradmax = valmax - value;
-    const float gradmin = value - valmin;
     const float gradtrue_inv = 1.0f / gradtrue;
-    const float alpha =
-        min3(1.0f, gradmax * gradtrue_inv, gradmin * gradtrue_inv);
+    const float gradmax = valmax - value;
+    const float gradmin = valmin - value;
+    const float beta = 0.5f; /* TODO: test for best value here. For now, take
+                                stability over diffusivity. */
+    const float min_temp =
+        min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
+    const float alpha = min(1.f, min_temp);
     gradient[0] *= alpha;
     gradient[1] *= alpha;
     gradient[2] *= alpha;
@@ -125,23 +137,26 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_cell(
   struct rt_part_data* rtd = &p->rt_data;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
-    float test = rtd->gradient[g].energy[0];
-    rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].energy, maxr,
-                            /*value=*/rtd->density[g].energy,
-                            /*valmin=*/rtd->limiter[g].energy[0],
-                            /*valmax=*/rtd->limiter[g].energy[1]);
-    rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].flux[0], maxr,
-                            /*value=*/rtd->density[g].flux[0],
-                            /*valmin=*/rtd->limiter[g].flux[0][0],
-                            /*valmax=*/rtd->limiter[g].flux[0][1]);
-    rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].flux[1], maxr,
-                            /*value=*/rtd->density[g].flux[1],
-                            /*valmin=*/rtd->limiter[g].flux[1][0],
-                            /*valmax=*/rtd->limiter[g].flux[1][1]);
-    rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].flux[2], maxr,
-                            /*value=*/rtd->density[g].flux[2],
-                            /*valmin=*/rtd->limiter[g].flux[2][0],
-                            /*valmax=*/rtd->limiter[g].flux[2][1]);
+    rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].energy,
+                            /*maxr=    */ maxr,
+                            /*value=   */ rtd->density[g].energy,
+                            /*valmin=  */ rtd->limiter[g].energy[0],
+                            /*valmax=  */ rtd->limiter[g].energy[1]);
+    rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].flux[0],
+                            /*maxr=    */ maxr,
+                            /*value=   */ rtd->density[g].flux[0],
+                            /*valmin=  */ rtd->limiter[g].flux[0][0],
+                            /*valmax=  */ rtd->limiter[g].flux[0][1]);
+    rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].flux[1],
+                            /*maxr=    */ maxr,
+                            /*value=   */ rtd->density[g].flux[1],
+                            /*valmin=  */ rtd->limiter[g].flux[1][0],
+                            /*valmax=  */ rtd->limiter[g].flux[1][1]);
+    rt_slope_limit_quantity(/*gradient=*/rtd->gradient[g].flux[2],
+                            /*maxr=    */ maxr,
+                            /*value=   */ rtd->density[g].flux[2],
+                            /*valmin=  */ rtd->limiter[g].flux[2][0],
+                            /*valmax=  */ rtd->limiter[g].flux[2][1]);
   }
 }
 #endif /* SWIFT_RT_SLOPE_LIMITERS_CELL_GEAR_H */

@@ -46,7 +46,7 @@ from swift_rt_GEAR_io import get_snap_data
 from matplotlib import pyplot as plt
 
 # some behaviour options
-print_diffs = False  # print differences you find
+print_diffs = True  # print differences you find
 print_additional_information = True
 break_on_diff = False  # quit when you find a difference
 skip_plots = False  # skip showing plots for diagnosis

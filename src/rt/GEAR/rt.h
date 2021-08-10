@@ -20,11 +20,14 @@
 #define SWIFT_RT_GEAR_H
 
 #include "rt_debugging.h"
+#include "rt_flux.h"
 #include "rt_gradients.h"
 #include "rt_properties.h"
-#include "rt_slope_limiters_cell.h"
+/* #include "rt_slope_limiters_cell.h" */ /* skipped for now. */
 #include "rt_stellar_emission_rate.h"
 #include "rt_thermochemistry.h"
+
+#include <float.h>
 
 /**
  * @file src/rt/GEAR/rt.h
@@ -35,12 +38,16 @@
  * @brief Initialisation of the RT density loop related particle data.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
  * are both called individually.
+ *
+ * @param p Particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {
 
   rt_gradients_init(p);
-  rt_slope_limit_cell_init(p);
+  /* the Gizmo-style slope limiting doesn't help for RT as is,
+   * so we're skipping it for now. */
+  /* rt_slope_limit_cell_init(p); */
 }
 
 /**
@@ -49,6 +56,8 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * are both called individually. Also, if debugging checks are active, an
  * extra call to rt_reset_part is made in space_convert_rt_quantities() after
  * the zeroth time step is finished.
+ *
+ * @param p the particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
     struct part* restrict p) {
@@ -70,10 +79,14 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   p->rt_data.debug_transport_done = 0;
   p->rt_data.debug_thermochem_done = 0;
 #endif
+
+  rt_part_reset_fluxes(p);
 }
 
 /**
  * @brief First initialisation of the RT hydro particle data.
+ *
+ * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
     struct part* restrict p) {
@@ -96,6 +109,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
  * @brief Initialisation of the RT density loop related star particle data.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
  * are both called individually.
+ *
+ * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
     struct spart* restrict sp) {}
@@ -106,6 +121,8 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
  * are both called individually. Also, if debugging checks are active, an
  * extra call to rt_reset_spart is made in space_convert_rt_quantities() after
  * the zeroth time step is finished.
+ *
+ * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_spart(
     struct spart* restrict sp) {
@@ -131,6 +148,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
 
 /**
  * @brief First initialisation of the RT star particle data.
+ *
+ * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {
@@ -169,7 +188,7 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
  *
- * @param p The #part.
+ * @param sp The star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     struct spart* sp) {
@@ -181,6 +200,51 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
   }
   message("WARNING: found star without neighbours");
 };
+
+/**
+ * @brief Computes the next radiative transfer time step size
+ * of a given particle (during timestep tasks)
+ *
+ * @param p particle to work on
+ * @param rt_props the RT properties struct
+ * @param cosmo the cosmology
+ */
+__attribute__((always_inline)) INLINE static float rt_compute_timestep(
+    const struct part* restrict p, const struct rt_props* restrict rt_props,
+    const struct cosmology* restrict cosmo) {
+
+  /* just mimic the gizmo particle "size" for now */
+  const float psize = cosmo->a * cosmo->a *
+                      powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                           hydro_dimension_inv);
+  float dt = psize * rt_params.reduced_speed_of_light_inverse *
+             0.9; /* TODO: CFL-like factor? */
+
+  return dt;
+}
+
+/**
+ * @brief Compute the time-step length for an RT step of a particle.
+ *
+ * @param ti_beg Start of the time-step (on the integer time-line).
+ * @param ti_end End of the time-step (on the integer time-line).
+ * @param time_base Minimal time-step size on the time-line.
+ * @param with_cosmology Are we running with cosmology integration?
+ * @param cosmo The #cosmology object.
+ *
+ * @return The time-step size for the rt integration. (internal units).
+ */
+__attribute__((always_inline)) INLINE static double rt_part_dt(
+    const integertime_t ti_beg, const integertime_t ti_end,
+    const double time_base, const int with_cosmology,
+    const struct cosmology* cosmo) {
+  if (with_cosmology) {
+    error("GEAR RT with cosmology not implemented yet! :(");
+    return 0.f;
+  } else {
+    return (ti_end - ti_beg) * time_base;
+  }
+}
 
 /**
  * @brief  This function finalises the injection step.
@@ -199,6 +263,8 @@ rt_injection_update_photon_density(struct part* restrict p,
     p->rt_data.density[g].flux[0] = p->rt_data.conserved[g].flux[0] * Vinv;
     p->rt_data.density[g].flux[1] = p->rt_data.conserved[g].flux[1] * Vinv;
     p->rt_data.density[g].flux[2] = p->rt_data.conserved[g].flux[2] * Vinv;
+    rt_check_unphysical_density(&p->rt_data.flux[g].energy,
+                                p->rt_data.flux[g].flux, 3);
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -273,16 +339,17 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
   p->rt_data.debug_gradients_done += 1;
 #endif
 
-  rt_finalize_gradient_part(p);
+  rt_finalise_gradient_part(p);
 }
 
 /**
  * @brief finishes up the transport step
  *
  * @param p particle to work on
+ * @param dt the current time step of the particle of the particle
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p) {
+    struct part* restrict p, const double dt) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (p->rt_data.debug_injection_done != 1)
@@ -316,6 +383,17 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   p->rt_data.debug_transport_done += 1;
 #endif
+
+  struct rt_part_data* restrict rtd = &p->rt_data;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rtd->conserved[g].energy += rtd->flux[g].energy * dt;
+    rtd->conserved[g].flux[0] += rtd->flux[g].flux[0] * dt;
+    rtd->conserved[g].flux[1] += rtd->flux[g].flux[1] * dt;
+    rtd->conserved[g].flux[2] += rtd->flux[g].flux[2] * dt;
+    rt_check_unphysical_conserved(&rtd->conserved[g].energy,
+                                  rtd->conserved[g].flux);
+  }
 }
 
 /**

@@ -168,7 +168,8 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         )
         quit()
 
-    rundata.ngroups = int(firstfile.metadata.subgrid_scheme["PhotonGroupNumber"])
+    ngroups = int(firstfile.metadata.subgrid_scheme["PhotonGroupNumber"])
+    rundata.ngroups = ngroups
     rundata.use_const_emission_rate = bool(
         firstfile.metadata.parameters["GEARRT:use_const_emission_rates"]
     )

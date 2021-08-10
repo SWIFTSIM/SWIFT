@@ -17,6 +17,16 @@
  *
  ******************************************************************************/
 
+#ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
+#define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
+
+/* Some standard headers. */
+#include <float.h>
+
+/* Local headers. */
+#include "minmax.h"
+#include "sign.h"
+
 /**
  * @brief Slope limit a single quantity at the interface
  *
@@ -29,16 +39,6 @@
  * @return The slope limited difference between the quantity at the particle
  * position and the quantity at the interface position.
  */
-#ifndef SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
-#define SWIFT_GIZMO_SLOPE_LIMITER_FACE_H
-
-/* Some standard headers. */
-#include <float.h>
-
-/* Local headers. */
-#include "minmax.h"
-#include "sign.h"
-
 __attribute__((always_inline)) INLINE static float
 hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
                                 float xij_norm, float r_inv) {
