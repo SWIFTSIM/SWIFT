@@ -26,7 +26,10 @@
 #endif
 
 #include "hydro.h" /* needed for hydro_part_geometry_well_behaved() */
-#include "rt_slope_limiters_cell.h"
+#include "rt_getters.h"
+/* #include "rt_slope_limiters_cell.h" */ /* skipped for now. */
+#include "rt_slope_limiters_face.h"
+#include "rt_unphysical.h"
 
 /**
  * @file src/rt/GEAR/rt_gradients.h
@@ -36,6 +39,8 @@
 
 /**
  * @brief Initialisation of the RT gradient data.
+ *
+ * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_init(
     struct part *restrict p) {
@@ -58,10 +63,10 @@ __attribute__((always_inline)) INLINE static void rt_gradients_init(
  *
  * @param p Particle
  * @param g photon group index to update (0 <= g < RT_NGROUPS)
- * @param dE energy gradient contribution
- * @param dFx flux gradient contribution in x direction
- * @param dFy flux gradient contribution in y direction
- * @param dFy flux gradient contribution in z direction
+ * @param dE energy gradient
+ * @param dFx gradient of the x direction flux component
+ * @param dFy gradient of the y direction flux component
+ * @param dFz gradient of the z direction flux component
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_update_part(
     struct part *restrict p, int g, float dE[3], float dFx[3], float dFy[3],
@@ -87,13 +92,13 @@ __attribute__((always_inline)) INLINE static void rt_gradients_update_part(
 }
 
 /**
- * @brief Finalize the gradient computation after all
+ * @brief Finalise the gradient computation after all
  * particle-particle interactions are finished.
  *
  * @param p the Particle
  **/
 
-__attribute__((always_inline)) INLINE static void rt_finalize_gradient_part(
+__attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
     struct part *restrict p) {
 
   /* add kernel normalization to gradients */
@@ -122,7 +127,9 @@ __attribute__((always_inline)) INLINE static void rt_finalize_gradient_part(
     }
   }
 
-  rt_slope_limit_cell(p);
+  /* the Gizmo-style slope limiting doesn't help for RT as is,
+   * so we're skipping it for now. */
+  /* rt_slope_limit_cell(p); */
 }
 
 /**
@@ -175,15 +182,14 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
   const float qi = r * hi_inv;
-  kernel_deval(qi, &wi,
-               &wi_dx); /* factor 1/omega for psi is swallowed in matrix */
+  /* Note: factor 1/omega for psi is swallowed in matrix */
+  kernel_deval(qi, &wi, &wi_dx);
 
   /* Compute kernel of pj */
   float wj, wj_dx;
   const float hj_inv = 1.0f / hj;
   const float qj = r * hj_inv;
-  kernel_deval(qj, &wj,
-               &wj_dx); /* factor 1/omega for psi is swallowed in matrix */
+  kernel_deval(qj, &wj, &wj_dx);
 
   /* Compute psi tilde */
   float psii_tilde[3];
@@ -216,17 +222,13 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     psij_tilde[2] = norm * dx[2];
   }
 
-  struct rt_part_data *rtdi = &pi->rt_data;
-  struct rt_part_data *rtdj = &pj->rt_data;
-
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    const float Qi[4] = {rtdi->density[g].energy, rtdi->density[g].flux[0],
-                         rtdi->density[g].flux[1], rtdi->density[g].flux[2]};
-    const float Qj[4] = {rtdj->density[g].energy, rtdj->density[g].flux[0],
-                         rtdj->density[g].flux[1], rtdj->density[g].flux[2]};
-    const float dQ[4] = {Qi[0] - Qj[0], Qi[1] - Qj[1], Qi[2] - Qj[2],
-                         Qi[3] - Qj[3]};
+    float Ui[4], Uj[4];
+    rt_part_get_density_vector(pi, g, Ui);
+    rt_part_get_density_vector(pj, g, Uj);
+    const float dU[4] = {Ui[0] - Uj[0], Ui[1] - Uj[1], Ui[2] - Uj[2],
+                         Ui[3] - Uj[3]};
 
     /* First to the gradients of pi */
     float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
@@ -234,44 +236,48 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     /* Compute gradients for pi */
     /* there is a sign difference w.r.t. eqn. (6) because of the inverse
      * definition of dx */
-    dE_i[0] = dQ[0] * psii_tilde[0];
-    dE_i[1] = dQ[0] * psii_tilde[1];
-    dE_i[2] = dQ[0] * psii_tilde[2];
+    dE_i[0] = dU[0] * psii_tilde[0];
+    dE_i[1] = dU[0] * psii_tilde[1];
+    dE_i[2] = dU[0] * psii_tilde[2];
 
-    dFx_i[0] = dQ[1] * psii_tilde[0];
-    dFx_i[1] = dQ[1] * psii_tilde[1];
-    dFx_i[2] = dQ[1] * psii_tilde[2];
-    dFy_i[0] = dQ[2] * psii_tilde[0];
-    dFy_i[1] = dQ[2] * psii_tilde[1];
-    dFy_i[2] = dQ[2] * psii_tilde[2];
-    dFz_i[0] = dQ[3] * psii_tilde[0];
-    dFz_i[1] = dQ[3] * psii_tilde[1];
-    dFz_i[2] = dQ[3] * psii_tilde[2];
+    dFx_i[0] = dU[1] * psii_tilde[0];
+    dFx_i[1] = dU[1] * psii_tilde[1];
+    dFx_i[2] = dU[1] * psii_tilde[2];
+    dFy_i[0] = dU[2] * psii_tilde[0];
+    dFy_i[1] = dU[2] * psii_tilde[1];
+    dFy_i[2] = dU[2] * psii_tilde[2];
+    dFz_i[0] = dU[3] * psii_tilde[0];
+    dFz_i[1] = dU[3] * psii_tilde[1];
+    dFz_i[2] = dU[3] * psii_tilde[2];
 
     rt_gradients_update_part(pi, g, dE_i, dFx_i, dFy_i, dFz_i);
-    rt_slope_limit_cell_collect(pi, pj);
+    /* the Gizmo-style slope limiting doesn't help for RT as is,
+     * so we're skipping it for now. */
+    /* rt_slope_limit_cell_collect(pi, pj, g); */
 
     /* Now do the gradients of pj */
     float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
 
-    /* We don't need a sign change here: both the dx and the dQ
+    /* We don't need a sign change here: both the dx and the dU
      * should switch their sign, resulting in no net change */
-    dE_j[0] = dQ[0] * psij_tilde[0];
-    dE_j[1] = dQ[0] * psij_tilde[1];
-    dE_j[2] = dQ[0] * psij_tilde[2];
+    dE_j[0] = dU[0] * psij_tilde[0];
+    dE_j[1] = dU[0] * psij_tilde[1];
+    dE_j[2] = dU[0] * psij_tilde[2];
 
-    dFx_j[0] = dQ[1] * psij_tilde[0];
-    dFx_j[1] = dQ[1] * psij_tilde[1];
-    dFx_j[2] = dQ[1] * psij_tilde[2];
-    dFy_j[0] = dQ[2] * psij_tilde[0];
-    dFy_j[1] = dQ[2] * psij_tilde[1];
-    dFy_j[2] = dQ[2] * psij_tilde[2];
-    dFz_j[0] = dQ[3] * psij_tilde[0];
-    dFz_j[1] = dQ[3] * psij_tilde[1];
-    dFz_j[2] = dQ[3] * psij_tilde[2];
+    dFx_j[0] = dU[1] * psij_tilde[0];
+    dFx_j[1] = dU[1] * psij_tilde[1];
+    dFx_j[2] = dU[1] * psij_tilde[2];
+    dFy_j[0] = dU[2] * psij_tilde[0];
+    dFy_j[1] = dU[2] * psij_tilde[1];
+    dFy_j[2] = dU[2] * psij_tilde[2];
+    dFz_j[0] = dU[3] * psij_tilde[0];
+    dFz_j[1] = dU[3] * psij_tilde[1];
+    dFz_j[2] = dU[3] * psij_tilde[2];
 
     rt_gradients_update_part(pj, g, dE_j, dFx_j, dFy_j, dFz_j);
-    rt_slope_limit_cell_collect(pj, pi);
+    /* the Gizmo-style slope limiting doesn't help for RT as is,
+     * so we're skipping it for now. */
+    /* rt_slope_limit_cell_collect(pj, pi, g); */
   }
 }
 
@@ -315,8 +321,8 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
   const float qi = r * hi_inv;
-  kernel_deval(qi, &wi,
-               &wi_dx); /* factor 1/omega for psi is swallowed in matrix */
+  /* factor 1/omega for psi is swallowed in matrix */
+  kernel_deval(qi, &wi, &wi_dx);
 
   /* Compute psi tilde */
   float psii_tilde[3];
@@ -334,41 +340,114 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     psii_tilde[2] = norm * dx[2];
   }
 
-  struct rt_part_data *rtdi = &pi->rt_data;
-  struct rt_part_data *rtdj = &pj->rt_data;
-
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    const float Qi[4] = {rtdi->density[g].energy, rtdi->density[g].flux[0],
-                         rtdi->density[g].flux[1], rtdi->density[g].flux[2]};
-    const float Qj[4] = {rtdj->density[g].energy, rtdj->density[g].flux[0],
-                         rtdj->density[g].flux[1], rtdj->density[g].flux[2]};
-    const float dQ[4] = {Qi[0] - Qj[0], Qi[1] - Qj[1], Qi[2] - Qj[2],
-                         Qi[3] - Qj[3]};
+    float Ui[4], Uj[4];
+    rt_part_get_density_vector(pi, g, Ui);
+    rt_part_get_density_vector(pj, g, Uj);
+    const float dU[4] = {Ui[0] - Uj[0], Ui[1] - Uj[1], Ui[2] - Uj[2],
+                         Ui[3] - Uj[3]};
 
     float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
 
     /* Compute gradients for pi */
     /* there is a sign difference w.r.t. eqn. (6) because of the inverse
      * definition of dx */
-    dE_i[0] = dQ[0] * psii_tilde[0];
-    dE_i[1] = dQ[0] * psii_tilde[1];
-    dE_i[2] = dQ[0] * psii_tilde[2];
+    dE_i[0] = dU[0] * psii_tilde[0];
+    dE_i[1] = dU[0] * psii_tilde[1];
+    dE_i[2] = dU[0] * psii_tilde[2];
 
-    dFx_i[0] = dQ[1] * psii_tilde[0];
-    dFx_i[1] = dQ[1] * psii_tilde[1];
-    dFx_i[2] = dQ[1] * psii_tilde[2];
-    dFy_i[0] = dQ[2] * psii_tilde[0];
-    dFy_i[1] = dQ[2] * psii_tilde[1];
-    dFy_i[2] = dQ[2] * psii_tilde[2];
-    dFz_i[0] = dQ[3] * psii_tilde[0];
-    dFz_i[1] = dQ[3] * psii_tilde[1];
-    dFz_i[2] = dQ[3] * psii_tilde[2];
+    dFx_i[0] = dU[1] * psii_tilde[0];
+    dFx_i[1] = dU[1] * psii_tilde[1];
+    dFx_i[2] = dU[1] * psii_tilde[2];
+    dFy_i[0] = dU[2] * psii_tilde[0];
+    dFy_i[1] = dU[2] * psii_tilde[1];
+    dFy_i[2] = dU[2] * psii_tilde[2];
+    dFz_i[0] = dU[3] * psii_tilde[0];
+    dFz_i[1] = dU[3] * psii_tilde[1];
+    dFz_i[2] = dU[3] * psii_tilde[2];
 
     rt_gradients_update_part(pi, g, dE_i, dFx_i, dFy_i, dFz_i);
-
-    rt_slope_limit_cell_collect(pi, pj);
+    /* the Gizmo-style slope limiting doesn't help for RT as is,
+     * so we're skipping it for now. */
+    /* rt_slope_limit_cell_collect(pi, pj, g); */
   }
+}
+
+/**
+ * @brief Extrapolate the given gradient over the given distance.
+ *
+ * @param dU Gradient of the quantity
+ * @param dx Distance vector
+ * @return Change in the quantity after a displacement along the given distance
+ * vector.
+ */
+__attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
+    const float dU[3], const float dx[3]) {
+
+  return dU[0] * dx[0] + dU[1] * dx[1] + dU[2] * dx[2];
+}
+
+/**
+ * @brief Gradients reconstruction. Predict the value at point x_ij given
+ * current values at particle positions and gradients at particle positions.
+ *
+ * @param pi Particle i
+ * @param pj Particle j
+ * @param Ui Resulting predicted and limited (density) state of particle i
+ * @param Uj Resulting predicted and limited (density) state of particle j
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param r Comoving distance between particle i and particle j.
+ * @param xij_i Position of the "interface" w.r.t. position of particle i
+ */
+__attribute__((always_inline)) INLINE static void rt_gradients_predict(
+    const struct part *restrict pi, const struct part *restrict pj, float Ui[4],
+    float Uj[4], int group, const float *dx, float r, const float xij_i[3]) {
+
+  rt_part_get_density_vector(pi, group, Ui);
+  rt_check_unphysical_density(Ui, &Ui[1], 0);
+
+  rt_part_get_density_vector(pj, group, Uj);
+  rt_check_unphysical_density(Uj, &Uj[1], 0);
+
+  float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
+  float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
+  rt_part_get_gradients(pi, group, dE_i, dFx_i, dFy_i, dFz_i);
+  rt_part_get_gradients(pj, group, dE_j, dFx_j, dFy_j, dFz_j);
+
+  /* Compute interface position (relative to pj, since we don't need the actual
+   * position) eqn. (8)
+   * Do it this way in case dx contains periodicity corrections already */
+  const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
+
+  float dUi[4];
+  dUi[0] = rt_gradients_extrapolate(dE_i, xij_i);
+  dUi[1] = rt_gradients_extrapolate(dFx_i, xij_i);
+  dUi[2] = rt_gradients_extrapolate(dFy_i, xij_i);
+  dUi[3] = rt_gradients_extrapolate(dFz_i, xij_i);
+
+  float dUj[4];
+  dUj[0] = rt_gradients_extrapolate(dE_j, xij_j);
+  dUj[1] = rt_gradients_extrapolate(dFx_j, xij_j);
+  dUj[2] = rt_gradients_extrapolate(dFy_j, xij_j);
+  dUj[3] = rt_gradients_extrapolate(dFz_j, xij_j);
+
+  /* Apply the slope limiter at this interface */
+  rt_slope_limit_face(dUi, dUj);
+
+  Ui[0] += dUi[0];
+  Ui[1] += dUi[1];
+  Ui[2] += dUi[2];
+  Ui[3] += dUi[3];
+
+  Uj[0] += dUj[0];
+  Uj[1] += dUj[1];
+  Uj[2] += dUj[2];
+  Uj[3] += dUj[3];
+
+  rt_check_unphysical_density(Ui, &Ui[1], 1);
+  rt_check_unphysical_density(Uj, &Uj[1], 1);
 }
 
 #endif /* SWIFT_RT_GRADIENT_GEAR_H */

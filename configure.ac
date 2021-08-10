@@ -2394,6 +2394,31 @@ AC_ARG_WITH([rt],
    [with_rt="none"]
 )
 
+# For GEAR-RT scheme: Select a RT Riemann solver
+AC_ARG_WITH([rt-riemann-solver],
+   [AS_HELP_STRING([--with-rt-riemann-solver=<scheme>],
+      [Riemann solver for the moments of the ratiadiative transfer equation with the M1 closure to use @<:@none, HLL, GLF, default: none@:>@. 
+      For the GEAR RT scheme, you need to select one Riemann solver.]
+   )],
+   [with_rt_riemann_solver="$withval"],
+   [with_rt_riemann_solver="none"]
+)
+
+case "$with_rt_riemann_solver" in
+    none)
+        AC_DEFINE([RT_RIEMANN_SOLVER_NONE], [1], [No RT riemann solver])
+        ;;
+    HLL)
+        AC_DEFINE([RT_RIEMANN_SOLVER_HLL], [1], [HLL RT riemann solver])
+        ;;
+    GLF)
+        AC_DEFINE([RT_RIEMANN_SOLVER_GLF], [1], [GLF RT riemann solver])
+        ;;
+    *)
+        AC_MSG_ERROR("Unknown RT Riemann solver: $with_rt_riemann_solver")
+        ;;
+esac
+
 case "$with_rt" in
    none)
       AC_DEFINE([RT_NONE], [1], [No radiative transfer scheme])
@@ -2417,7 +2442,11 @@ case "$with_rt" in
       fi
 
       if test "$with_hydro" != "gizmo-mfv"; then
-          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro])
+          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro. Compile using --with-hydro=gizmo-mfv])
+      fi
+
+      if test "$with_rt_riemann_solver" = "none"; then
+          AC_MSG_ERROR([GEAR-RT: You need to select an RT Riemann solver (--with-rt-riemann-solver=...)])
       fi
 
    ;;

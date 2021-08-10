@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_PROPERTIES_GEAR_H
 #define SWIFT_RT_PROPERTIES_GEAR_H
 
+#include "rt_parameters.h"
+
 /**
  * @file src/rt/GEAR/rt_properties.h
  * @brief Main header file for the 'GEAR' radiative transfer scheme
@@ -122,8 +124,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 #endif
 
   if (RT_NGROUPS <= 0) {
-    error("You need to run GEAR-RT with at least 1 photon group, you have %d",
-          RT_NGROUPS);
+    error(
+        "You need to run GEAR-RT with at least 1 photon group, "
+        "you have %d",
+        RT_NGROUPS);
   } else if (RT_NGROUPS == 1) {
     rtp->photon_groups[0] = 0.f;
   } else {
@@ -156,6 +160,12 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     /* kill the run for now */
     error("GEAR-RT can't run without constant stellar emission rates for now.");
   }
+
+  /* get reduced speed of light factor */
+  const float f_r = parser_get_param_float(params, "GEARRT:f_reduce_c");
+  rt_params.reduced_speed_of_light = phys_const->const_speed_light_c * f_r;
+  rt_params.reduced_speed_of_light_inverse =
+      1.f / rt_params.reduced_speed_of_light;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rtp->debug_radiation_emitted_tot = 0ULL;
