@@ -1483,6 +1483,12 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   double tmax[task_type_count][task_subtype_count];
   int count[task_type_count][task_subtype_count];
 
+#ifdef SWIFT_DEBUG_TASKS
+  double tdead[task_type_count][task_subtype_count];
+  double total_deadtime = 0.0;
+  double pure_deadtime = 0.0;
+#endif
+
   for (int j = 0; j < task_type_count; j++) {
     for (int k = 0; k < task_subtype_count; k++) {
       sum[j][k] = 0.0;
@@ -1492,8 +1498,28 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
       tmin[j][k] = DBL_MAX;
       max[j][k] = 0.0;
       tmax[j][k] = 0.0;
+#ifdef SWIFT_DEBUG_TASKS
+      tdead[j][k] = 0.0;
+#endif
     }
   }
+
+#ifdef SWIFT_DEBUG_TASKS
+  /* bin width (in ticks) for the dead time timeline */
+  const long long deadtime_wbin = 100000;
+  const ticks deadtime_nbin = (e->toc_step - e->tic_step) / deadtime_wbin;
+  if (e->verbose) {
+    message("using %llu dead time bins", deadtime_nbin);
+  }
+  int *deadtime_bins =
+      (int *)malloc(2 * e->nr_threads * deadtime_nbin * sizeof(int));
+  for (int it = 0; it < e->nr_threads; ++it) {
+    for (ticks ib = 0; ib < deadtime_nbin; ++ib) {
+      deadtime_bins[2 * it * deadtime_nbin + 2 * ib + 0] = -1;
+      deadtime_bins[2 * it * deadtime_nbin + 2 * ib + 1] = -1;
+    }
+  }
+#endif
 
   double stepdt = (double)e->toc_step - (double)e->tic_step;
   double total[1] = {0.0};
@@ -1525,6 +1551,16 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
       }
       total[0] += dt;
 
+#ifdef SWIFT_DEBUG_TASKS
+      const ticks tbeg = (e->sched.tasks[l].tic - e->tic_step) / deadtime_wbin;
+      const ticks tend = (e->sched.tasks[l].toc - e->tic_step) / deadtime_wbin;
+      const short int thread = e->sched.tasks[l].rid;
+      for (ticks ib = tbeg; ib < tend; ++ib) {
+        deadtime_bins[2 * thread * deadtime_nbin + 2 * ib + 0] = type;
+        deadtime_bins[2 * thread * deadtime_nbin + 2 * ib + 1] = subtype;
+      }
+#endif
+
       /* Check if this is a problematic task and make a report. */
       if (dump_tasks_threshold > 0. && dt / stepdt > dump_tasks_threshold) {
 
@@ -1543,6 +1579,62 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
       }
     }
   }
+
+#ifdef SWIFT_DEBUG_TASKS
+  for (ticks ib = 0; ib < deadtime_nbin; ++ib) {
+    int nidle = 0;
+    for (int it = 0; it < e->nr_threads; ++it) {
+      if (deadtime_bins[2 * it * deadtime_nbin + 2 * ib] == -1) {
+        ++nidle;
+      }
+    }
+    total_deadtime += nidle;
+    if (nidle > 0) {
+      if (nidle < e->nr_threads) {
+        const double idlefac =
+            ((double)nidle) / ((double)(e->nr_threads - nidle));
+        for (int it = 0; it < e->nr_threads; ++it) {
+          if (deadtime_bins[2 * it * deadtime_nbin + 2 * ib] != -1) {
+            const int type = deadtime_bins[2 * it * deadtime_nbin + 2 * ib + 0];
+            const int subtype =
+                deadtime_bins[2 * it * deadtime_nbin + 2 * ib + 1];
+            tdead[type][subtype] += idlefac;
+          }
+        }
+      } else {
+        pure_deadtime += nidle;
+      }
+    }
+  }
+  free(deadtime_bins);
+  char deadtimefile[35];
+  snprintf(deadtimefile, sizeof(deadtimefile), "dead_time-step%d.dat", e->step);
+  FILE *file = fopen(deadtimefile, "w");
+  fprintf(file, "# type\tsubtype\tdead time\tfraction\tfraction_nopure\n");
+  fprintf(file, "%i\t%i\t%g\t%g\t%g\n", -1, 0, total_deadtime, 1.,
+          total_deadtime / (total_deadtime - pure_deadtime));
+  fprintf(file, "%i\t%i\t%g\t%g\t%g\n", -1, 1, pure_deadtime,
+          pure_deadtime / total_deadtime, 1.);
+  double fracsumtot = 0.;
+  double fracsumpure = 0.;
+  double deadtot = 0.;
+  for (int j = 0; j < task_type_count; j++) {
+    for (int k = 0; k < task_subtype_count; k++) {
+      if (tdead[j][k] > 0.0) {
+        const double fractot = tdead[j][k] / total_deadtime;
+        const double fracpure = tdead[j][k] / (total_deadtime - pure_deadtime);
+        fprintf(file, "%i\t%i\t%g\t%g\t%g\n", j, k, tdead[j][k], fractot,
+                fracpure);
+        deadtot += tdead[j][k];
+        fracsumtot += fractot;
+        fracsumpure += fracpure;
+      }
+    }
+  }
+  fprintf(file, "%i\t%i\t%g\t%g\t%g\n", -1, 2, deadtot, fracsumtot,
+          fracsumpure);
+  fclose(file);
+#endif
 
 #ifdef WITH_MPI
   if (allranks || header) {
