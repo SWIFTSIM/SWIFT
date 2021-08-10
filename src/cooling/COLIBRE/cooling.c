@@ -283,13 +283,13 @@ float cooling_get_temperature(const struct phys_const *phys_const,
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
  */
-float cooling_get_electron_density(const struct phys_const *phys_const,
-                                   const struct hydro_props *hydro_props,
-                                   const struct unit_system *us,
-                                   const struct cosmology *cosmo,
-                                   const struct cooling_function_data *cooling,
-                                   const struct part *p,
-                                   const struct xpart *xp) {
+double cooling_get_electron_density(const struct phys_const *phys_const,
+                                    const struct hydro_props *hydro_props,
+                                    const struct unit_system *us,
+                                    const struct cosmology *cosmo,
+                                    const struct cooling_function_data *cooling,
+                                    const struct part *p,
+                                    const struct xpart *xp) {
 
   /* Get quantities in physical frame */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
