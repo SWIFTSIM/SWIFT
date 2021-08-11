@@ -720,7 +720,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
     dv[1] = pi->v_full[1] - pj->v_full[1] + a2_Hubble * dx[1];
     dv[2] = pi->v_full[2] - pj->v_full[2] + a2_Hubble * dx[2];
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-    const double vij = max(sqrt(v2) * cosmo->a_inv, 0.f);
+    const double vij = sqrt(v2) * cosmo->a_inv;
 
     /* Manage time interval of particle i */
     double dti;
@@ -817,9 +817,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     dv[1] = pi->v_full[1] - pj->v_full[1] + a2_Hubble * dx[1];
     dv[2] = pi->v_full[2] - pj->v_full[2] + a2_Hubble * dx[2];
     const double v2 = dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2];
-
-    /* Are the particles moving towards each others ? */
-    const double vij = max(sqrt(v2) * cosmo->a_inv, 0.f);
+    const double vij = sqrt(v2) * cosmo->a_inv;
 
     /* Manage time interval of particles i & j */
     double dti;
