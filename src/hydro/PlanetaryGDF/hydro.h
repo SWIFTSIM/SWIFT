@@ -485,6 +485,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->weighted_wcount = 0.f;
   p->weighted_neighbour_wcount = 0.f;
   p->f_gdf = 0.f;
+  p->P = 0.f;
+  p->T = 0.f;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -631,6 +633,28 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   p->weighted_wcount = p->mass * kernel_root * h_inv_dim;
   p->weighted_neighbour_wcount = 1.f;
 
+  // testing/searching the bug
+//#ifdef PLANETARY_IMBALANCE
+  // for some reason this is needed?. If erase you get
+  // seg fault for ANEOS high resolution impacts
+  /* Set imbalance statistic to 0 */
+  //p->I = 0.f;
+  /* Initialize kernel averages to 0 */
+  //p->sum_wij_exp_T = 0.f;
+  //p->sum_wij_exp_P = 0.f;
+  //p->sum_wij_exp = 0.f;
+
+  /* Compute the pressure */
+  //const float pressure =
+  //    gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+      
+  /* Compute the temperature */
+  //const float temperature =
+  //    gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+
+  //p->P = pressure;
+  //p->T = temperature;
+//#endif
 }
 
 /**
@@ -712,34 +736,75 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->sum_wij_exp_P += p->P * kernel_root * expf(-p->I*p->I);
   p->sum_wij_exp_T += p->T * kernel_root * expf(-p->I*p->I);
 
-  /* End computation */
-  p->sum_wij_exp_P /= p->sum_wij_exp;
-  p->sum_wij_exp_T /= p->sum_wij_exp;
-  
-  /* Compute new P */ 
-  float P_new = 0.f;
-  P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
-  p->P = P_new;
-
-  /* Compute new T */
-  float T_new = 0.f;
-  T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
-  p->T = T_new;
-
-  /* Compute new density */
-  float rho_new =
-      gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
- 
-  /* Ensure new density is not lower than minimum SPH density */
+  /* compute minimum SPH density */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
-  if (rho_new < rho_min){
-    p->rho = rho_min;
+  //const float P_min = gas_pressure_from_internal_energy(rho_min, p->u, p->mat_id);
+  //const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
+   
+  /* Bullet proof */
+  if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->sum_wij_exp_T > 0.f){
+	  /* End computation */
+	  p->sum_wij_exp_P /= p->sum_wij_exp;
+	  p->sum_wij_exp_T /= p->sum_wij_exp;
+	  
+	  /* Compute new P */ 
+	  float P_new = 0.f;
+	  P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
+	  //p->P = P_new;
+
+	  /* Compute new T */
+	  float T_new = 0.f;
+	  T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
+	  //p->T = T_new;
+
+          /* minimums? */
+          //if (P_new < P_min){
+          //  P_new = P_min;
+          //}
+          //if (T_new < T_min){
+          //  T_new = T_min;
+          //}
+
+	  //p->P = P_new;
+	  //p->T = T_new;
+
+	  /* Compute new density */
+	  float rho_new =
+	      gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
+	 
+	  /* Ensure new density is not lower than minimum SPH density */
+	  if (rho_new < rho_min){
+            const float P_min = gas_pressure_from_internal_energy(rho_min, p->u, p->mat_id);
+            const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
+	    p->rho = rho_min;
+            p->P = P_min;
+            p->T = T_min;
+	  } else {
+            p->rho = rho_new;
+            p->P = P_new;
+            p->T = T_new;
+	  }
   } else {
-    p->rho = rho_new;
+    const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+    const float T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+    p->P = P;
+    p->T = T;
   }
+
+  //if (p->rho > 1.f || p->rho < rho_min){
+//	printf(
+//	      "## Overdensity: "
+//	      "id, x[0], x[1], x[2], m, u, P, T, rho, h, mat_id \n"
+//	      "%lld, %.7g, %.7g, %.7g, %.7g"
+//	      "%.7g, %.7g, %.7g, %.7g, %.7g, %d \n",
+//	      p->id, p->mass, p->x[0], p->x[1], p->x[2],
+//	      p->u, p->P, p->rho, p->T, p->h, p->mat_id);
+
+  //}
+
 #endif
 }
 
@@ -784,8 +849,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 #endif
 
   /* Compute the pressure */
-  //const float pressure =
-  //    gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float pressure =
+      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -821,7 +886,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Update variables. */
   p->force.f = grad_h_term;
-  p->force.pressure = p->P; 
+  //p->force.pressure = p->P; 
+  p->force.pressure = pressure; 
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
 }

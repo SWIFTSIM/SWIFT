@@ -816,7 +816,8 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
 
   float rho, log_rho, log_T_1, log_T_2, log_rho_1, log_rho_2;
 
-  if (P <= 0.f) {
+  // Avoid impossible values
+  if (P <= 0.f || T <= 0.f) {
     return 0.f;
   }
 
