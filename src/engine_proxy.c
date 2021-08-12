@@ -32,6 +32,7 @@
 
 /* Local headers. */
 #include "proxy.h"
+#include "zoom_region.h"
 
 /**
  * @brief Create and fill the proxies.
@@ -39,6 +40,9 @@
  * @param e The #engine.
  */
 void engine_makeproxies(struct engine *e) {
+#ifdef WITH_ZOOM_REGION
+    engine_makeproxies_with_zoom_region(e);
+#else
 
 #ifdef WITH_MPI
   /* Let's time this */
@@ -302,5 +306,6 @@ void engine_makeproxies(struct engine *e) {
             clocks_getunit());
 #else
   error("SWIFT was not compiled with MPI support.");
-#endif
+#endif /* WITH_MPI */
+#endif /* WITH_ZOOM_REGION */
 }

@@ -21,5 +21,6 @@ void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data,
 double cell_min_dist2(const struct cell *restrict ci,
                       const struct cell *restrict cj, const int periodic,
                       const double dim[3]);
+void engine_makeproxies_with_zoom_region(struct engine *e);
 
 #endif /* SWIFT_ZOOM_H */
