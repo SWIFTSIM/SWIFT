@@ -696,7 +696,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
   e->nr_proxies = 0;
 
-  for (int n = 0; n < 2; i++) {
+  for (int n = 0; n < 2; n++) {
 
       if (n == 1 && !s->with_zoom_region) continue;
 
