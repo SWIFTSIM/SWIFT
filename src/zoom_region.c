@@ -726,13 +726,13 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       int delta_cells = 1; /*hydro case */
 
       /* Gravity needs to take the opening angle into account */
-      if (with_gravity) {
+      if (with_gravity && n == 0) {
           const double distance = 2. * r_max * theta_crit_inv;
-        if (n == 0) {
-            delta_cells = (int)(distance / cells[0].dmin) + 1;
-        } else {
-            delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
-        }
+          delta_cells = (int)(distance / cells[0].dmin) + 1;
+      }
+      if (with_gravity && n == 1) {
+          const double distance = 2. * r_max * theta_crit_inv;
+          delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
       }
 
       /* Turn this into upper and lower bounds for loops */
