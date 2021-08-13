@@ -705,22 +705,17 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           const double r_diag2 = cell_width[0] * cell_width[0] +
                                  cell_width[1] * cell_width[1] +
                                  cell_width[2] * cell_width[2];
-          const double r_diag = 0.5 * sqrt(r_diag2);
-
-          /* Maximal distance from shifted CoM to any corner */
-          const double r_max = 2 * r_diag;
-
       } else {
-
           /* Distance between centre of the cell and corners for zoom region cells*/
           const double r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
                                  zoom_cell_width[1] * zoom_cell_width[1] +
                                  zoom_cell_width[2] * zoom_cell_width[2];
-          const double r_diag = 0.5 * sqrt(r_diag2);
-
-          /* Maximal distance from shifted CoM to any corner */
-          const double r_max = 2 * r_diag;
       }
+
+      const double r_diag = 0.5 * sqrt(r_diag2);
+
+      /* Maximal distance from shifted CoM to any corner */
+      const double r_max = 2 * r_diag;
 
       /* Compute how many cells away we need to walk */
       int delta_cells = 1; /*hydro case */
