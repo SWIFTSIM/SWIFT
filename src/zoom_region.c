@@ -705,7 +705,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           const double r_diag2 = cell_width[0] * cell_width[0] +
                                  cell_width[1] * cell_width[1] +
                                  cell_width[2] * cell_width[2];
-      } else {
+      } else if (n == 1) {
           /* Distance between centre of the cell and corners for zoom region cells*/
           const double r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
                                  zoom_cell_width[1] * zoom_cell_width[1] +
