@@ -701,14 +701,14 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       if (n == 1 && !s->with_zoom_region) continue;
 
       /* Distance between centre of the cell and corners for top level cells*/
-      const double r_diag2 = cell_width[0] * cell_width[0] +
-                             cell_width[1] * cell_width[1] +
-                             cell_width[2] * cell_width[2];
+      double r_diag2 = cell_width[0] * cell_width[0] +
+                       cell_width[1] * cell_width[1] +
+                       cell_width[2] * cell_width[2];
       if (n == 1) {
           /* Distance between centre of the cell and corners for zoom region cells*/
-          const double r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
-                                 zoom_cell_width[1] * zoom_cell_width[1] +
-                                 zoom_cell_width[2] * zoom_cell_width[2];
+          r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
+                    zoom_cell_width[1] * zoom_cell_width[1] +
+                    zoom_cell_width[2] * zoom_cell_width[2];
       }
 
       const double r_diag = 0.5 * sqrt(r_diag2);
@@ -765,7 +765,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           for (int k = 0; k < cdim[2]; k++) {
 
             /* Get the cell ID. */
-            const int cid = cell_getid(cdim, i, j, k);
+            int cid = cell_getid(cdim, i, j, k);
             if (n  == 1) {
                 cid += zoom_cell_offset;
             }
@@ -785,7 +785,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   kkk = (kkk + cdim[2]) % cdim[2];
 
                   /* Get the cell ID. */
-                  const int cjd = cell_getid(cdim, iii, jjj, kkk);
+                  int cjd = cell_getid(cdim, iii, jjj, kkk);
                   if (n  == 1) {
                       cjd += zoom_cell_offset;
                   }
