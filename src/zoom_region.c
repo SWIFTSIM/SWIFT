@@ -673,9 +673,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                                 cells[0].width[2]};
 
   /* Some info about the zoom domain */
-  const double zoom_dim[3] = {s->zoom_props->dim[0],
-                                s->zoom_props->dim[1],
-                                s->zoom_props->dim[2]};
   const double zoom_cell_width[3] = {s->zoom_props->width[0],
                                        s->zoom_props->width[1],
                                        s->zoom_props->width[2]};
