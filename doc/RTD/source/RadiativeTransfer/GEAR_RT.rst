@@ -46,6 +46,7 @@ You need to provide the following runtime parameters in the yaml file:
        star_emission_rates_LSol: [1., 1., 1., 1.]         # stellar emission rates for each photon 
                                                           # frequency bin in units of solar luminosity
        f_reduce_c: 1e-3                                   # reduce the speed of light by this factor
+       CFL_condition: 0.99                                # CFL condition for time integration
 
 
 The ``photon_groups`` need to be ``N - 1`` frequency edges (floats) to separate 
