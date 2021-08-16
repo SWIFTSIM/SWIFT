@@ -244,6 +244,9 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->tl_cell_type = tl_cell;
             c->dmin = dmin;
           } else {
+          	/* On the second loop we need to set nr_zoom_cells for the natural cells. */
+          	&s->cells_top[cid]->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+
             /* Zoom region top level cells. */
             c = &s->cells_top[cid + zoom_cell_offset];
             c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
@@ -256,6 +259,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
               c->grav.multipole = &s->multipoles_top[cid + zoom_cell_offset];
             c->tl_cell_type = zoom_tl_cell;
             c->dmin = dmin_zoom;
+            c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
           }
           c->depth = 0;
           c->split = 0;
@@ -315,15 +319,12 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             if (c->loc[2] + c->width[2] > zoom_region_bounds[5])
               zoom_region_bounds[5] = c->loc[2] + c->width[2];
 
-            if (i == 0 && j == 0 && k == 0)
-              tl_cell_widths[0] = c->width[0];
-              tl_cell_widths[1] = c->width[1];
-              tl_cell_widths[2] = c->width[2];
           }
         }
 
     /* Compute size of top level zoom cells on first iteration. */
     if (n == 1) continue;
+
     if (s->with_zoom_region) {
 
       /* Assign each axis to array. */
@@ -338,11 +339,6 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
               max_width = widths[k];
       }
 
-    if (verbose)
-      message("N_zoomtopcells: [%f %f %f] dim: [%f %f %f]",
-      max_width / tl_cell_widths[0], max_width / tl_cell_widths[1], max_width / tl_cell_widths[2],
-      max_width, max_width, max_width);
-
       /* Overwrite zoom region properties. */
       s->zoom_props->dim[0] = max_width;
       s->zoom_props->dim[1] = max_width;
@@ -353,11 +349,25 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
         s->zoom_props->cdim[l] = cdim[l];
       }
 
+
+      if (verbose)
+	      message("tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f] "
+							 "nr_tl_cells_in_zoom: [%f %f %f] nr_zoom_cells: [%f %f %f] dim: [%f %f %f]",
+	      s->width[0], s->width[1], s->width[2],
+	      s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
+	      s->width[0] / s->zoom_props->width[0], s->width[1] / s->zoom_props->width[1],
+	      s->width[2] / s->zoom_props->width[2],
+	      max_width / s->width[0], max_width / s->width[1], max_width / s->width[2],
+	      max_width, max_width, max_width);
+
+      /* Set the number of zoom cells in a natural cell */
+
       for (int l = 0; l < 6; l++)
         s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
       s->zoom_props->tl_cell_offset = zoom_cell_offset;
       dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
                        s->zoom_props->width[2]);
+      s->zoom_props->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
     }
   }
 
@@ -723,7 +733,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       }
       if (with_gravity && n == 1) {
           const double distance = 2. * r_max * theta_crit_inv;
-          delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
+          delta_cells = (int)(distance / cells[zoom_cell_offset + 1].dmin) + 1;
       }
 
       /* Turn this into upper and lower bounds for loops */
