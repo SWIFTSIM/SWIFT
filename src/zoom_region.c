@@ -242,19 +242,14 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
               c->grav.multipole = &s->multipoles_top[cid];
             c->tl_cell_type = tl_cell;
             c->dmin = dmin;
-            c->parent_tl_cid = NULL;
           } else {
           	/* On the second loop we need to set zoom properties for the natural cells. */
           	c = &s->cells_top[cid];
           	c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
           	if (c->tl_cell_type == void_tl_cell) {
-              c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
+          		c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
 	            c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
 	            c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
-          	} else {
-          		c->start_i = NULL;
-	            c->start_j = NULL;
-	            c->start_k = NULL;
           	}
 
             /* Zoom region top level cells. */
@@ -272,9 +267,6 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->tl_cell_type = zoom_tl_cell;
             c->dmin = dmin_zoom;
             c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
-            c->start_i = NULL;
-            c->start_j = NULL;
-            c->start_k = NULL;
           }
           c->depth = 0;
           c->split = 0;
