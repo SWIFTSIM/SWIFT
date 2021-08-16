@@ -218,7 +218,7 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
                       powf(p->geometry.volume / hydro_dimension_unit_sphere,
                            hydro_dimension_inv);
   float dt = psize * rt_params.reduced_speed_of_light_inverse *
-             0.9; /* TODO: CFL-like factor? */
+             rt_props->CFL_condition;
 
   return dt;
 }

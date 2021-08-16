@@ -54,6 +54,7 @@ DebugRT:
 
 GEARRT:
   f_reduce_c: 1e-3                                   # reduce the speed of light for the RT solver by multiplying c with this factor
+  CFL_condition: 0.99                                # CFL condition for RT, independent of hydro
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]  # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N).
   use_const_emission_rates: 1                        # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_per_s parameter
   star_emission_rates_LSol: [7.839e-34, 7.839e-34, 7.839e-34, 7.839e-34] # 1 erg/s in LSol
