@@ -370,7 +370,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
         message("nr_tl_cells_in_zoom: [%f %f %f] nr_zoom_cells: [%f %f %f]",
         		max_width / s->width[0], max_width / s->width[1], max_width / s->width[2],
         		s->width[0] / s->zoom_props->width[0], s->width[1] / s->zoom_props->width[1],
-        		s->width[2] / s->zoom_props->width[2];
+        		s->width[2] / s->zoom_props->width[2]);
       }
 
       /* Set the number of zoom cells in a natural cell */
