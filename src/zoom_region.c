@@ -347,7 +347,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       }
 
       for (int k = 0; k < 3; k++) {
-      	mid_point = zoom_region_bounds[k] + ((zoom_region_bounds[(k * 2) + 1] - zoom_region_bounds[k * 2]) / 2);
+      	double mid_point = zoom_region_bounds[k] + ((zoom_region_bounds[(k * 2) + 1] - zoom_region_bounds[k * 2]) / 2);
       	zoom_region_bounds[k * 2] = mid_point - (max_width / 2);
       	zoom_region_bounds[(k * 2) + 1] = mid_point + (max_width / 2);
       }
