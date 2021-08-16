@@ -456,6 +456,18 @@ struct cell {
 #ifdef WITH_ZOOM_REGION
   /*! What kind of top level cell is this ? */
   enum tl_cell_types tl_cell_type;
+
+  /*! Top level cell cid (index in the cell array) for the top level cell the
+   * zoom cell occupies, NULL if a natural top level cell */
+  int parent_tl_cid;
+
+  /*! Grid cell start indices (ijk) for the zoom cells within a void top level cell */
+  int start_i;
+  int start_j;
+  int start_k;
+
+  /*! The number of zoom cells along an axis in a natural top level cell */
+  int nr_zoom_cells;
 #endif
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
