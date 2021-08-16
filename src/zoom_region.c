@@ -245,7 +245,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->dmin = dmin;
           } else {
           	/* On the second loop we need to set nr_zoom_cells for the natural cells. */
-          	&s->cells_top[cid]->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+          	c = &s->cells_top[cid];
+          	c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
 
             /* Zoom region top level cells. */
             c = &s->cells_top[cid + zoom_cell_offset];
