@@ -217,7 +217,6 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   const int zoom_cell_offset = cdim[0] * cdim[1] * cdim[2];
   float dmin_zoom = 0.f;
   double widths[3] = {0.0, 0.0, 0.0};
-  double tl_cell_widths[3] = {0.0, 0.0, 0.0};
 
   /* Loop over top level cells twice, second time is for the zoom region. */
   for (int n = 0; n < 2; n++) {
