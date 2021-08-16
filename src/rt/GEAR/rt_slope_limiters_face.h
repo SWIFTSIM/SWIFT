@@ -25,11 +25,11 @@
 /**
  * @file src/rt/GEAR/rt_slope_limiters_face.h
  * @brief File containing routines concerning the face slope
- * limiter for the GEAR RT scheme. (= second slope limiting
- * step done during actual particle interactions.) */
+ * limiter for the GEAR RT scheme, i.e. limiting the actual
+ * interparticle flux. */
 
 /**
- * @brief Slope limit a single quantity at the interface
+ * @brief Slope limit a single quantity at the interface. CURRENTLY NOT IN USE.
  *
  * @param phi_i Value of the quantity at the particle position.
  * @param phi_j Value of the quantity at the neighbouring particle position.
@@ -86,17 +86,18 @@ __attribute__((always_inline)) INLINE static float rt_slope_limit_face_quantity(
  * @param dQi left slope
  * @param dQj right slope
  */
-__attribute__((always_inline)) INLINE static float rt_limiter_minmod(
-    const float dQi, const float dQj) {
+__attribute__((always_inline)) INLINE static void rt_limiter_minmod(
+    float* dQi, float* dQj) {
 
-  if (dQi * dQj > 0) {
-    if (fabsf(dQi) < fabsf(dQj)) {
-      return dQi;
+  if (*dQi * *dQj > 0) {
+    if (fabsf(*dQi) < fabsf(*dQj)) {
+      *dQj = *dQi;
     } else {
-      return dQj;
+      *dQi = *dQj;
     }
   } else {
-    return 0.f;
+    *dQi = 0.f;
+    *dQj = 0.f;
   }
 }
 
@@ -157,11 +158,11 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_face(
      * give stable results in advection tests, superbee
      * and vanLeer limiters are unstable. */
 
-    /* const float alpha = rt_limiter_minmod(dQi[i], dQj[i]); */
-    const float alpha = rt_limiter_mc(dQi[i], dQj[i]);
+    rt_limiter_minmod(&dQi[i], &dQj[i]);
 
-    dQi[i] *= alpha;
-    dQj[i] *= alpha;
+    /* const float alpha = rt_limiter_mc(dQi[i], dQj[i]); */
+    /* dQi[i] *= alpha; */
+    /* dQj[i] *= alpha; */
   }
 }
 
