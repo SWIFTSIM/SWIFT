@@ -585,6 +585,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     Wprime[1] = W[1] - dt_therm * (W[1] * divv + rhoinv * gradP[0]);
     Wprime[2] = W[2] - dt_therm * (W[2] * divv + rhoinv * gradP[1]);
     Wprime[3] = W[3] - dt_therm * (W[3] * divv + rhoinv * gradP[2]);
+  } else {
+    Wprime[1] = 0.0f;
+    Wprime[2] = 0.0f;
+    Wprime[3] = 0.0f;
   }
   Wprime[4] = W[4] - dt_therm * (hydro_gamma * W[4] * divv + W[1] * gradP[0] +
                                  W[2] * gradP[1] + W[3] * gradP[2]);
