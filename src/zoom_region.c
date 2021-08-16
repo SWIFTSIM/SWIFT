@@ -362,8 +362,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
         s->zoom_props->cdim[l] = cdim[l];
       }
 
-      if (verbose)
-	      message("tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f] dim: [%f %f %f]",
+      if (verbose) {
+        message("tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f] dim: [%f %f %f]",
 	      		s->width[0], s->width[1], s->width[2],
 	      		s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
 	      		max_width, max_width, max_width);
@@ -371,6 +371,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
         		max_width / s->width[0], max_width / s->width[1], max_width / s->width[2],
         		s->width[0] / s->zoom_props->width[0], s->width[1] / s->zoom_props->width[1],
         		s->width[2] / s->zoom_props->width[2];
+      }
 
       /* Set the number of zoom cells in a natural cell */
 
