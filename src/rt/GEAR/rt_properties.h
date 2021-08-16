@@ -47,6 +47,9 @@ struct rt_props {
   /* Global constant stellar emission rates */
   double stellar_const_emission_rates[RT_NGROUPS];
 
+  /* CFL condition */
+  float CFL_condition;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Do extended tests where we assume that all parts
    * have spart neighbours? */
@@ -166,6 +169,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rt_params.reduced_speed_of_light = phys_const->const_speed_light_c * f_r;
   rt_params.reduced_speed_of_light_inverse =
       1.f / rt_params.reduced_speed_of_light;
+
+  /* get CFL condition */
+  const float CFL = parser_get_param_float(params, "GEARRT:CFL_condition");
+  rtp->CFL_condition = CFL;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rtp->debug_radiation_emitted_tot = 0ULL;
