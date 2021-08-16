@@ -467,7 +467,7 @@ struct cell {
   int start_k;
 
   /*! The number of zoom cells along an axis in a natural top level cell */
-  int nr_zoom_cells;
+  double nr_zoom_cells;
 #endif
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)

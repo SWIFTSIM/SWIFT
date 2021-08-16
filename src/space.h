@@ -363,7 +363,7 @@ struct zoom_region_properties {
   int tl_cell_offset;
 
 	/*! The number of zoom cells along an axis in a natural top level cell */
-	int nr_zoom_cells;
+	double nr_zoom_cells;
 };
 
 /* Function prototypes. */
