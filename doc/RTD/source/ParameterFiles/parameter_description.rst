@@ -825,6 +825,18 @@ the SHUFFLE filter is also applied to get higher compression rates. Note that up
 until HDF5 1.10.x this option is not available when using the MPI-parallel
 version of the i/o routines.
 
+When applying lossy compression (see :ref:`Compression_filters`), particles may
+be be getting positions that are marginally beyond the edge of the simulation
+volume. A small vector perpendicular to the edge can be added to the particles
+to alleviate this issue. This can be switched on by setting the parameter
+``use_delta_from_edge`` (default: ``0``) to ``1`` and the buffer size from the
+edge ``delta_from_edge`` (default: ``0.``). An example would be when using
+Mega-parsec as the base unit and using a filter rounding to the nearest 10
+parsec (``DScale5``). Adopting a buffer of 10pc (``delta_from_edge:1e-5``) would
+alleviate any possible issue of seeing particles beyond the simulation volume in
+the snapshots. In all practical applications the shift would be << than the
+softening.
+
 Users can run a program after a snapshot is dumped to disk using the following
 parameters:
 

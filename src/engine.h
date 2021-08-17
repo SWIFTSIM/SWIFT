@@ -322,6 +322,8 @@ struct engine {
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
   struct unit_system *snapshot_units;
+  int snapshot_use_delta_from_edge;
+  double snapshot_delta_from_edge;
   int snapshot_output_count;
 
   /* Structure finding information */

@@ -2856,6 +2856,12 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
       parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
+  e->snapshot_use_delta_from_edge =
+      parser_get_opt_param_int(params, "Snapshots:use_delta_from_edge", 0);
+  if (e->snapshot_use_delta_from_edge) {
+    e->snapshot_delta_from_edge =
+        parser_get_param_double(params, "Snapshots:delta_from_edge");
+  }
   e->dump_catalogue_when_seeding =
       parser_get_opt_param_int(params, "FOF:dump_catalogue_when_seeding", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
