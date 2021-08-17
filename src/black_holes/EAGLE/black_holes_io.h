@@ -69,6 +69,11 @@ INLINE static void convert_bpart_pos(const struct engine* e,
     ret[1] = bp->x[1];
     ret[2] = bp->x[2];
   }
+  if (e->snapshot_use_delta_from_edge) {
+    ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);
+    ret[1] = min(ret[1], s->dim[1] - e->snapshot_delta_from_edge);
+    ret[2] = min(ret[2], s->dim[2] - e->snapshot_delta_from_edge);
+  }
 }
 
 INLINE static void convert_bpart_vel(const struct engine* e,
