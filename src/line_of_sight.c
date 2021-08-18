@@ -826,7 +826,9 @@ void do_line_of_sight(struct engine *e) {
       }
 #ifdef WITH_MPI
       free(counts);
+      counts = NULL;
       free(offsets);
+      offsets = NULL;
 #endif
       swift_free("tl_cells_los", los_cells_top);
       continue;
@@ -835,6 +837,7 @@ void do_line_of_sight(struct engine *e) {
     /* Setup LOS part and xpart structures. */
     struct part *LOS_parts = NULL;
     struct xpart *LOS_xparts = NULL;
+    struct gpart *LOS_gparts = NULL;
 
     /* Rank 0 allocates more space as it will gather all the data for writing */
     if (e->nodeID == 0) {
@@ -848,6 +851,11 @@ void do_line_of_sight(struct engine *e) {
                sizeof(struct xpart) * LOS_list[j].particles_in_los_total)) ==
           NULL)
         error("Failed to allocate LOS xpart memory.");
+      if ((LOS_gparts = (struct gpart *)swift_malloc(
+               "los_gparts_array",
+               sizeof(struct gpart) * LOS_list[j].particles_in_los_total)) ==
+          NULL)
+        error("Failed to allocate LOS gpart memory.");
     } else {
       if ((LOS_parts = (struct part *)swift_malloc(
                "los_parts_array",
@@ -859,6 +867,11 @@ void do_line_of_sight(struct engine *e) {
                sizeof(struct xpart) * LOS_list[j].particles_in_los_local)) ==
           NULL)
         error("Failed to allocate LOS xpart memory.");
+      if ((LOS_gparts = (struct gpart *)swift_malloc(
+               "los_gparts_array",
+               sizeof(struct gpart) * LOS_list[j].particles_in_los_local)) ==
+          NULL)
+        error("Failed to allocate LOS gpart memory.");
     }
 
     /* Loop over each part again, pulling out those in LOS. */
@@ -877,6 +890,7 @@ void do_line_of_sight(struct engine *e) {
 
         /* Don't consider inhibited parts. */
         if (cell_parts[i].time_bin == time_bin_inhibited) continue;
+        if (cell_parts[i].time_bin == time_bin_not_created) continue;
 
         /* Don't consider part if outwith allowed z-range. */
         if (cell_parts[i].x[LOS_list[j].zaxis] <
@@ -921,6 +935,8 @@ void do_line_of_sight(struct engine *e) {
               /* Store part and xpart properties. */
               memcpy(&LOS_parts[count], &cell_parts[i], sizeof(struct part));
               memcpy(&LOS_xparts[count], &cell_xparts[i], sizeof(struct xpart));
+              memcpy(&LOS_gparts[count], cell_parts[i].gpart,
+                     sizeof(struct gpart));
 
               count++;
             }
@@ -941,14 +957,30 @@ void do_line_of_sight(struct engine *e) {
                   part_mpi_type, 0, MPI_COMM_WORLD);
       MPI_Gatherv(MPI_IN_PLACE, 0, xpart_mpi_type, LOS_xparts, counts, offsets,
                   xpart_mpi_type, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(MPI_IN_PLACE, 0, gpart_mpi_type, LOS_gparts, counts, offsets,
+                  gpart_mpi_type, 0, MPI_COMM_WORLD);
+
     } else {
       MPI_Gatherv(LOS_parts, LOS_list[j].particles_in_los_local, part_mpi_type,
                   LOS_parts, counts, offsets, part_mpi_type, 0, MPI_COMM_WORLD);
       MPI_Gatherv(LOS_xparts, LOS_list[j].particles_in_los_local,
                   xpart_mpi_type, LOS_xparts, counts, offsets, xpart_mpi_type,
                   0, MPI_COMM_WORLD);
+      MPI_Gatherv(LOS_gparts, LOS_list[j].particles_in_los_local,
+                  gpart_mpi_type, LOS_gparts, counts, offsets, gpart_mpi_type,
+                  0, MPI_COMM_WORLD);
     }
 #endif
+
+    /* Re-instate part->gpart pointer on teh receiving side */
+    if (e->nodeID == 0) {
+#ifdef WITH_MPI
+      for (int i = 0; i < LOS_list[j].particles_in_los_total; ++i) {
+        LOS_parts[i].gpart = &LOS_gparts[i];
+        LOS_gparts[i].id_or_neg_offset = -i;
+      }
+#endif
+    }
 
     /* Rank 0 writes particles to file. */
     if (e->nodeID == 0) {
@@ -968,6 +1000,12 @@ void do_line_of_sight(struct engine *e) {
       io_write_attribute(h_grp, "Xpos", DOUBLE, &LOS_list[j].Xpos, 1);
       io_write_attribute(h_grp, "Ypos", DOUBLE, &LOS_list[j].Ypos, 1);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      for (int i = 0; i < LOS_list[j].particles_in_los_total; ++i) {
+        if (LOS_parts[i].gpart != &LOS_gparts[i]) error("Incorrect pointers!");
+      }
+#endif
+
       /* Write the data for this LOS */
       write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total,
                               LOS_parts, e, LOS_xparts);
@@ -984,6 +1022,7 @@ void do_line_of_sight(struct engine *e) {
     swift_free("tl_cells_los", los_cells_top);
     swift_free("los_parts_array", LOS_parts);
     swift_free("los_xparts_array", LOS_xparts);
+    swift_free("los_gparts_array", LOS_gparts);
 
   } /* End of loop over each LOS */
 
