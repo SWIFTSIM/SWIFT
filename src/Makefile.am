@@ -65,7 +65,7 @@ include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += chemistry_csds.h star_formation_csds.h
-include_HEADERS += mesh_gravity.h mesh_gravity_mpi.h mesh_gravity_patch.h mesh_gravity_sort.h
+include_HEADERS += mesh_gravity.h mesh_gravity_mpi.h mesh_gravity_patch.h mesh_gravity_sort.h row_major_id.h
 
 # source files for QLA (Ploeckinger+20) cooling
 QLA_COOLING_SOURCES =
