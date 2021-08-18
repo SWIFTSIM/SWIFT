@@ -1340,9 +1340,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_elements,
 																										 void *extra_data) {
 
-	/* Let's time this */
-	const ticks tic = getticks();
-
 	/* Useful local information */
 	struct engine *e = (struct engine *)extra_data;
 	struct space *s = e->s;
@@ -1580,55 +1577,55 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
-													/* Let's cross-check that we had a proxy for that cell */
-													if (ci->nodeID == nodeID && cj_zoom->nodeID != engine_rank) {
-
-														/* Find the proxy for this node */
-														const int proxy_id = e->proxy_ind[cj_zoom->nodeID];
-														if (proxy_id < 0)
-															error("No proxy exists for that foreign node %d!", cj_zoom->nodeID);
-
-														const struct proxy *p = &e->proxies[proxy_id];
-
-														/* Check whether the cell exists in the proxy */
-														int m = 0;
-														for (; m < p->nr_cells_in; n++)
-															if (p->cells_in[n] == cj_zoom) {
-																break;
-															}
-														if (n == p->nr_cells_in)
-															error(
-																	"Cell %d not found in the proxy but trying to construct "
-																	"grav task!",
-																	cjd);
-													} else if (cj_zoom->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-														/* Find the proxy for this node */
-														const int proxy_id = e->proxy_ind[ci->nodeID];
-														if (proxy_id < 0)
-															error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-														const struct proxy *p = &e->proxies[proxy_id];
-
-														/* Check whether the cell exists in the proxy */
-														int m = 0;
-														for (; m < p->nr_cells_in; n++)
-															if (p->cells_in[n] == ci) {
-																break;
-															}
-														if (n == p->nr_cells_in)
-															error(
-																	"Cell %d not found in the proxy but trying to construct "
-																	"grav task!",
-																	cid);
-													}
-#endif /* WITH_MPI */
-#endif /* SWIFT_DEBUG_CHECKS */
-												}
-											}
-										}
-									}
-								}
+//													/* Let's cross-check that we had a proxy for that cell */
+//													if (ci->nodeID == nodeID && cj_zoom->nodeID != engine_rank) {
+//
+//														/* Find the proxy for this node */
+//														const int proxy_id = e->proxy_ind[cj_zoom->nodeID];
+//														if (proxy_id < 0)
+//															error("No proxy exists for that foreign node %d!", cj_zoom->nodeID);
+//
+//														const struct proxy *p = &e->proxies[proxy_id];
+//
+//														/* Check whether the cell exists in the proxy */
+//														int m = 0;
+//														for (; m < p->nr_cells_in; n++)
+//															if (p->cells_in[n] == cj_zoom) {
+//																break;
+//															}
+//														if (n == p->nr_cells_in)
+//															error(
+//																	"Cell %d not found in the proxy but trying to construct "
+//																	"grav task!",
+//																	cjd);
+//													} else if (cj_zoom->nodeID == nodeID && ci->nodeID != engine_rank) {
+//
+//														/* Find the proxy for this node */
+//														const int proxy_id = e->proxy_ind[ci->nodeID];
+//														if (proxy_id < 0)
+//															error("No proxy exists for that foreign node %d!", ci->nodeID);
+//
+//														const struct proxy *p = &e->proxies[proxy_id];
+//
+//														/* Check whether the cell exists in the proxy */
+//														int m = 0;
+//														for (; m < p->nr_cells_in; n++)
+//															if (p->cells_in[n] == ci) {
+//																break;
+//															}
+//														if (n == p->nr_cells_in)
+//															error(
+//																	"Cell %d not found in the proxy but trying to construct "
+//																	"grav task!",
+//																	cid);
+//													}
+//#endif /* WITH_MPI */
+//#endif /* SWIFT_DEBUG_CHECKS */
+//												}
+//											}
+//										}
+//									}
+//								}
 							}
 						}
 					}
@@ -1743,11 +1740,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 			}
 		}
 	}
-
-	/* Be clear about the time */
-	if (e->verbose)
-		message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-						clocks_getunit());
 }
 
 
