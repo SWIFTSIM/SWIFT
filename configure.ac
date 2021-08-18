@@ -1563,7 +1563,7 @@ AC_SUBST([NUMA_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, EAGLE, EAGLE-XL default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1599,6 +1599,18 @@ case "$with_subgrid" in
    ;;
    QLA)
 	with_subgrid_cooling=QLA
+	with_subgrid_chemistry=QLA
+	with_subgrid_tracers=none
+	with_subgrid_entropy_floor=QLA
+	with_subgrid_stars=basic
+	with_subgrid_star_formation=QLA
+	with_subgrid_feedback=none
+	with_subgrid_black_holes=none
+	with_subgrid_sink=none
+	enable_fof=no
+   ;;
+   QLA-EAGLE)
+	with_subgrid_cooling=QLA-EAGLE
 	with_subgrid_chemistry=QLA
 	with_subgrid_tracers=none
 	with_subgrid_entropy_floor=QLA
@@ -2049,6 +2061,10 @@ case "$with_cooling" in
    QLA)
       AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
       with_cooling="QLA (Ploeckinger+20 tables) with constant primordial Z"
+   ;;
+   QLA-EAGLE)
+      AC_DEFINE([COOLING_QLA_EAGLE], [1], [Cooling following the Quick-Lyman-alpha model])
+      with_cooling="QLA (Wiersma+09 tables) with constant primordial Z"
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
@@ -2530,7 +2546,8 @@ DX_INIT_DOXYGEN(SWIFT, doc/Doxyfile, doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Check if using QLA cooling
-AM_CONDITIONAL([HAVEQLACOOLING], [test "${with_cooling:0:3}" = "QLA"])
+AM_CONDITIONAL([HAVEQLACOOLING], [test "${with_cooling:0:6}" = "QLA (P"])
+AM_CONDITIONAL([HAVEQLAEAGLECOOLING], [test "${with_cooling:0:6}" = "QLA (W"])
 
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test "${with_cooling:0:5}" = "EAGLE"])
@@ -2678,4 +2695,5 @@ AC_MSG_RESULT([
 
    Continuous Sim. Data Stream : $with_csds
 
- ------------------------])
+ ------------------------]
+)

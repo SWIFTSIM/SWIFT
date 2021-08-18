@@ -266,6 +266,78 @@ float cooling_get_temperature(const struct phys_const *phys_const,
 }
 
 /**
+ * @brief Compute the electron number density of a #part based on the cooling
+ * function.
+ *
+ * Returns -1 in this model.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+float cooling_get_electron_density(const struct phys_const *phys_const,
+                                   const struct hydro_props *hydro_props,
+                                   const struct unit_system *us,
+                                   const struct cosmology *cosmo,
+                                   const struct cooling_function_data *cooling,
+                                   const struct part *p,
+                                   const struct xpart *xp) {
+
+  return -1.;
+}
+
+/**
+ * @brief Compute the electron pressure of a #part based on the cooling
+ * function.
+ *
+ * Returns -1. in this model.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+double cooling_get_electron_pressure(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return -1.;
+}
+
+/**
+ * @brief Compute the y-Compton contribution of a #part based on the cooling
+ * function.
+ *
+ * Returns -1 in this model.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+double cooling_get_ycompton(const struct phys_const *phys_const,
+                            const struct hydro_props *hydro_props,
+                            const struct unit_system *us,
+                            const struct cosmology *cosmo,
+                            const struct cooling_function_data *cooling,
+                            const struct part *p, const struct xpart *xp) {
+
+  return -1.f;
+}
+
+/**
  * @brief Bisection integration scheme
  *
  * @param u_ini_cgs Internal energy at beginning of hydro step in CGS.
@@ -686,6 +758,150 @@ __attribute__((always_inline)) INLINE void cooling_first_init_part(
     struct xpart *xp) {}
 
 /**
+ * @brief Compute the fraction of Hydrogen that is in HI based
+ * on the pressure of the gas.
+ *
+ * Always returns 0 in this model.
+ *
+ * @param us The internal system of units.
+ * @param phys_const The physical constants.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The cosmological model.
+ * @param floor_props The properties of the entropy floor.
+ * @param cooling The properties of the cooling scheme.
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+float cooling_get_particle_subgrid_HI_fraction(
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Compute the fraction of Hydrogen that is in HII based
+ * on the pressure of the gas.
+ *
+ * Always returns 0 in this model.
+ *
+ * @param us The internal system of units.
+ * @param phys_const The physical constants.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The cosmological model.
+ * @param floor_props The properties of the entropy floor.
+ * @param cooling The properties of the cooling scheme.
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+float cooling_get_particle_subgrid_HII_fraction(
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Compute the fraction of Hydrogen that is in H2 based
+ * on the pressure of the gas.
+ *
+ * Always returns 1. in this model.
+ *
+ * @param us The internal system of units.
+ * @param phys_const The physical constants.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The cosmological model.
+ * @param floor_props The properties of the entropy floor.
+ * @param cooling The properties of the cooling scheme.
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+float cooling_get_particle_subgrid_H2_fraction(
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return 1.;
+}
+
+/**
+ * @brief Compute the subgrid temperature of the gas.
+ *
+ * Always returns -1. in this model.
+ *
+ * @param us The internal system of units.
+ * @param phys_const The physical constants.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The cosmological model.
+ * @param floor_props The properties of the entropy floor.
+ * @param cooling The properties of the cooling scheme.
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+float cooling_get_particle_subgrid_temperature(
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return -1.f;
+}
+
+/**
+ * @brief Compute the physical density of the gas.
+ *
+ * Always returns -1. in this model.
+ *
+ * @param us The internal system of units.
+ * @param phys_const The physical constants.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cosmo The cosmological model.
+ * @param floor_props The properties of the entropy floor.
+ * @param cooling The properties of the cooling scheme.
+ * @param p The #part.
+ * @param xp The #xpart.
+ */
+float cooling_get_particle_subgrid_density(
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  return -1.f;
+}
+
+/**
+ * @brief Set the subgrid properties (rho, T) of the gas particle
+ *
+ * Nothing to do in this model.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The current cosmological model.
+ * @param hydro_props the hydro_props struct
+ * @param floor_props Properties of the entropy floor.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+void cooling_set_particle_subgrid_properties(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp) {}
+
+/**
  * @param Returns the subgrid temperature of a particle.
  *
  * This model has no subgrid quantity. We return an error.
@@ -926,8 +1142,8 @@ void cooling_restore_tables(struct cooling_function_data *cooling,
 void cooling_print_backend(const struct cooling_function_data *cooling) {
 
   message(
-      "Cooling function is 'Quick Lyman-alpha (COLIBRE with primordial Z "
-      "only)'.");
+      "Cooling function is 'Quick Lyman-alpha (Ploeckinger+20 tables with "
+      "primordial Z only)'.");
 }
 
 /**
