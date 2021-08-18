@@ -48,7 +48,7 @@
 /**
  * @brief Information required to compute the statistics in the mapper
  */
-struct index_data {
+struct space_index_data {
   /*! The space we play with */
   const struct space *s;
 
@@ -123,7 +123,7 @@ void stats_init(struct statistics *s) {
 void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -253,7 +253,7 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -341,7 +341,7 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
 void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -427,7 +427,7 @@ void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -523,7 +523,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -612,7 +612,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
 void stats_collect(const struct space *s, struct statistics *stats) {
 
   /* Prepare the data */
-  struct index_data extra_data;
+  struct space_index_data extra_data;
   extra_data.s = s;
   extra_data.stats = stats;
 
