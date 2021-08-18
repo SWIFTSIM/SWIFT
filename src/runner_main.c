@@ -209,10 +209,12 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-#ifdef SWIFT_DEBUG_TASKS
+#if defined(SWIFT_DEBUG_TASKS) || defined(SWIFT_DEAD_TIME_STATS)
       /* Mark the thread we run on */
       t->rid = r->cpuid;
+#endif
 
+#ifdef SWIFT_DEBUG_TASKS
       /* And recover the pair direction */
       if (t->type == task_type_pair || t->type == task_type_sub_pair) {
         struct cell *ci_temp = ci;

@@ -274,6 +274,18 @@ if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
 fi
 
+# Check if we want to compute dead-time statistics
+AC_ARG_ENABLE([dead-time-stats],
+  [AS_HELP_STRING([--enable-dead-time-stats],
+     [Store extra information for computing dead-time statistics @<:@yes/no@:>@]
+   )],
+   [enable_dead_time_stats="$enableval"],
+   [enable_dead_time_stats="no"]
+)
+if test "$enable_dead_time_stats" = "yes"; then
+   AC_DEFINE([SWIFT_DEAD_TIME_STATS],1,[Enable dead-time statistics])
+fi
+
 # Check if threadpool debugging is on.
 AC_ARG_ENABLE([threadpool-debugging],
    [AS_HELP_STRING([--enable-threadpool-debugging],
@@ -2621,6 +2633,7 @@ AC_MSG_RESULT([
    Atomic operations in tasks  : $enable_atomics_within_tasks
    Individual timers           : $enable_timers
    Task debugging              : $enable_task_debugging
+   Dead-time statistics        : $enable_dead_time_stats
    Threadpool debugging        : $enable_threadpool_debugging
    Debugging checks            : $enable_debugging_checks
    Interaction debugging       : $enable_debug_interactions

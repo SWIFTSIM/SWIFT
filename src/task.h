@@ -275,10 +275,12 @@ struct task {
   /*! Is this task implicit (i.e. does not do anything) ? */
   char implicit;
 
-#ifdef SWIFT_DEBUG_TASKS
+#if defined(SWIFT_DEBUG_TASKS) || defined(SWIFT_DEAD_TIME_STATS)
   /*! ID of the queue or runner owning this task */
   short int rid;
+#endif
 
+#ifdef SWIFT_DEBUG_TASKS
   /*! Information about the direction of the pair task */
   short int sid;
 #endif
@@ -307,6 +309,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
                      float dump_tasks_threshold, int header, int allranks);
 void task_dump_active(struct engine *e);
 void task_get_full_name(int type, int subtype, char *name);
+void task_create_name_files(const char *file_prefix);
 void task_get_group_name(int type, int subtype, char *cluster);
 enum task_categories task_get_category(const struct task *t);
 

@@ -1308,6 +1308,24 @@ void task_get_full_name(int type, int subtype, char *name) {
     sprintf(name, "%s_%s", taskID_names[type], subtaskID_names[subtype]);
 }
 
+void task_create_name_files(const char *file_prefix) {
+  char file_name[200];
+  sprintf(file_name, "%s_task_types.txt", file_prefix);
+  FILE *file = fopen(file_name, "w");
+  fprintf(file, "# type\tname\n");
+  for (int type = 0; type < task_type_count; type++) {
+    fprintf(file, "%i\t%s\n", type, taskID_names[type]);
+  }
+  fclose(file);
+  sprintf(file_name, "%s_task_subtypes.txt", file_prefix);
+  file = fopen(file_name, "w");
+  fprintf(file, "# subtype\tname\n");
+  for (int subtype = 0; subtype < task_subtype_count; subtype++) {
+    fprintf(file, "%i\t%s\n", subtype, subtaskID_names[subtype]);
+  }
+  fclose(file);
+}
+
 #ifdef WITH_MPI
 /**
  * @brief Create global communicators for each of the subtasks.
@@ -1483,7 +1501,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   double tmax[task_type_count][task_subtype_count];
   int count[task_type_count][task_subtype_count];
 
-#ifdef SWIFT_DEBUG_TASKS
+#ifdef SWIFT_DEAD_TIME_STATS
   double tdead[task_type_count][task_subtype_count];
   double total_deadtime = 0.0;
   double pure_deadtime = 0.0;
@@ -1498,13 +1516,13 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
       tmin[j][k] = DBL_MAX;
       max[j][k] = 0.0;
       tmax[j][k] = 0.0;
-#ifdef SWIFT_DEBUG_TASKS
+#ifdef SWIFT_DEAD_TIME_STATS
       tdead[j][k] = 0.0;
 #endif
     }
   }
 
-#ifdef SWIFT_DEBUG_TASKS
+#ifdef SWIFT_DEAD_TIME_STATS
   /* bin width (in ticks) for the dead time timeline */
   const long long deadtime_wbin = 100000;
   const ticks deadtime_nbin = (e->toc_step - e->tic_step) / deadtime_wbin;
@@ -1551,7 +1569,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
       }
       total[0] += dt;
 
-#ifdef SWIFT_DEBUG_TASKS
+#ifdef SWIFT_DEAD_TIME_STATS
       const ticks tbeg = (e->sched.tasks[l].tic - e->tic_step) / deadtime_wbin;
       const ticks tend = (e->sched.tasks[l].toc - e->tic_step) / deadtime_wbin;
       const short int thread = e->sched.tasks[l].rid;
@@ -1580,7 +1598,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
     }
   }
 
-#ifdef SWIFT_DEBUG_TASKS
+#ifdef SWIFT_DEAD_TIME_STATS
   for (ticks ib = 0; ib < deadtime_nbin; ++ib) {
     int nidle = 0;
     for (int it = 0; it < e->nr_threads; ++it) {
@@ -1610,29 +1628,38 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   char deadtimefile[35];
   snprintf(deadtimefile, sizeof(deadtimefile), "dead_time-step%d.dat", e->step);
   FILE *file = fopen(deadtimefile, "w");
-  fprintf(file, "# type\tsubtype\tdead time\tfraction\tfraction_nopure\n");
-  fprintf(file, "%i\t%i\t%g\t%g\t%g\n", -1, 0, total_deadtime, 1.,
-          total_deadtime / (total_deadtime - pure_deadtime));
-  fprintf(file, "%i\t%i\t%g\t%g\t%g\n", -1, 1, pure_deadtime,
-          pure_deadtime / total_deadtime, 1.);
+  fprintf(file,
+          "# type\tsubtype\tdead "
+          "time\tfraction\tfraction_nopure\tfraction_total\n");
+  fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", -1, 0, stepdt,
+          stepdt / total_deadtime, stepdt / (total_deadtime - pure_deadtime),
+          1.);
+  fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", -1, 0, total_deadtime, 1.,
+          total_deadtime / (total_deadtime - pure_deadtime),
+          total_deadtime / stepdt);
+  fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", -1, 1, pure_deadtime,
+          pure_deadtime / total_deadtime, 1., pure_deadtime / stepdt);
   double fracsumtot = 0.;
   double fracsumpure = 0.;
+  double fracsumall = 0.;
   double deadtot = 0.;
   for (int j = 0; j < task_type_count; j++) {
     for (int k = 0; k < task_subtype_count; k++) {
       if (tdead[j][k] > 0.0) {
         const double fractot = tdead[j][k] / total_deadtime;
         const double fracpure = tdead[j][k] / (total_deadtime - pure_deadtime);
-        fprintf(file, "%i\t%i\t%g\t%g\t%g\n", j, k, tdead[j][k], fractot,
-                fracpure);
+        const double fracall = tdead[j][k] / stepdt;
+        fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", j, k, tdead[j][k], fractot,
+                fracpure, fracall);
         deadtot += tdead[j][k];
         fracsumtot += fractot;
         fracsumpure += fracpure;
+        fracsumall += fracall;
       }
     }
   }
-  fprintf(file, "%i\t%i\t%g\t%g\t%g\n", -1, 2, deadtot, fracsumtot,
-          fracsumpure);
+  fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", -1, 2, deadtot, fracsumtot,
+          fracsumpure, fracsumall);
   fclose(file);
 #endif
 
