@@ -144,7 +144,7 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
 
 INLINE static void convert_part_e_density(const struct engine* e,
                                           const struct part* p,
-                                          const struct xpart* xp, float* ret) {
+                                          const struct xpart* xp, double* ret) {
 
   *ret = cooling_get_electron_density(e->physical_constants,
                                       e->hydro_properties, e->internal_units,
@@ -223,8 +223,8 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "pressure.");
 
   list[6] = io_make_output_field_convert_part(
-      "ElectronNumberDensities", FLOAT, 1, UNIT_CONV_NUMBER_DENSITY, 0.f, parts,
-      xparts, convert_part_e_density,
+      "ElectronNumberDensities", DOUBLE, 1, UNIT_CONV_NUMBER_DENSITY, 0.f,
+      parts, xparts, convert_part_e_density,
       "Electron number densities in the physical frame computed based on the "
       "cooling tables. This is 0 for star-forming particles.");
 
