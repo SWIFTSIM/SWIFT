@@ -118,6 +118,9 @@ struct gravity_props {
   /*! Periodic long-range mesh side-length */
   int mesh_size;
 
+  /*! Whether mesh is distributed between MPI ranks when we use MPI  */
+  int distributed_mesh;
+
   /*! Mesh smoothing scale in units of top-level cell size */
   float a_smooth;
 
