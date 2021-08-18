@@ -1354,6 +1354,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	/* Some info about the domain */
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+	const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+																cells[0].width[2]};
 	const int periodic = s->periodic;
 
 	/* Some info about the zoom domain */
@@ -1366,6 +1368,18 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const double max_mesh_dist = e->mesh->r_cut_max;
 	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
+	int delta_cells, parent_delta_cells,zoom_delta_cells;
+
+	/* Distance between centre of the cell and corners for natural top level cells */
+	double r_diag2 = cell_width[0] * cell_width[0] +
+			             cell_width[1] * cell_width[1] +
+			             cell_width[2] * cell_width[2];
+
+	const double r_diag = 0.5 * sqrt(r_diag2);
+
+	/* Maximal distance from shifted CoM to any corner */
+	const double r_max = 2 * r_diag;
+
 	/* First loop for natural cells (n = 0), second for zoom level (n = 1) */
 	for (int n = 0; n < 2; n++) {
 
@@ -1377,7 +1391,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		parent_delta_cells = delta_cells;
 		zoom_delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
 
-		}
 		if (n == 1) {
 			const double distance = 2. * r_max * theta_crit_inv;
 			delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
@@ -1479,7 +1492,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 										cell_min_dist2_same_size(ci, cj, periodic, dim);
 
 								/* Are we beyond the distance where the truncated forces are 0 ?*/
-								if (s->periodic && n == 0 && min_radius2 > max_distance2) continue;
+								if (s->periodic && n == 0 && min_radius2 > max_mesh_dist2) continue;
 
 								/* Are the cells too close for a MM interaction ? */
 								if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -1492,51 +1505,51 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
-								/* Let's cross-check that we had a proxy for that cell */
-								if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+									/* Let's cross-check that we had a proxy for that cell */
+									if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
 
-									/* Find the proxy for this node */
-									const int proxy_id = e->proxy_ind[cj->nodeID];
-									if (proxy_id < 0)
-										error("No proxy exists for that foreign node %d!", cj->nodeID);
+										/* Find the proxy for this node */
+										const int proxy_id = e->proxy_ind[cj->nodeID];
+										if (proxy_id < 0)
+											error("No proxy exists for that foreign node %d!", cj->nodeID);
 
-									const struct proxy *p = &e->proxies[proxy_id];
+										const struct proxy *p = &e->proxies[proxy_id];
 
-									/* Check whether the cell exists in the proxy */
-									int n = 0;
-									for (; n < p->nr_cells_in; n++)
-										if (p->cells_in[n] == cj) {
-											break;
-										}
-									if (n == p->nr_cells_in)
-										error(
-												"Cell %d not found in the proxy but trying to construct "
-												"grav task!",
-												cjd);
-								} else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+										/* Check whether the cell exists in the proxy */
+										int n = 0;
+										for (; n < p->nr_cells_in; n++)
+											if (p->cells_in[n] == cj) {
+												break;
+											}
+										if (n == p->nr_cells_in)
+											error(
+													"Cell %d not found in the proxy but trying to construct "
+													"grav task!",
+													cjd);
+									} else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
 
-									/* Find the proxy for this node */
-									const int proxy_id = e->proxy_ind[ci->nodeID];
-									if (proxy_id < 0)
-										error("No proxy exists for that foreign node %d!", ci->nodeID);
+										/* Find the proxy for this node */
+										const int proxy_id = e->proxy_ind[ci->nodeID];
+										if (proxy_id < 0)
+											error("No proxy exists for that foreign node %d!", ci->nodeID);
 
-									const struct proxy *p = &e->proxies[proxy_id];
+										const struct proxy *p = &e->proxies[proxy_id];
 
-									/* Check whether the cell exists in the proxy */
-									int n = 0;
-									for (; n < p->nr_cells_in; n++)
-										if (p->cells_in[n] == ci) {
-											break;
-										}
-									if (n == p->nr_cells_in)
-										error(
-												"Cell %d not found in the proxy but trying to construct "
-												"grav task!",
-												cid);
-								}
+										/* Check whether the cell exists in the proxy */
+										int n = 0;
+										for (; n < p->nr_cells_in; n++)
+											if (p->cells_in[n] == ci) {
+												break;
+											}
+										if (n == p->nr_cells_in)
+											error(
+													"Cell %d not found in the proxy but trying to construct "
+													"grav task!",
+													cid);
+									}
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
-							  }
+								}
 
 								/* For natural (n = 0) top level cell neighbours in the zoom
                  * region we need to include the nested zoom cells */
@@ -1575,7 +1588,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 														cell_min_dist2_diff_size(ci, cj, periodic, dim);
 
 												/* Are we beyond the distance where the truncated forces are 0 ?*/
-												if (s->periodic && n == 0 && min_radius2 > max_distance2) continue;
+												if (s->periodic && n == 0 && min_radius2 > max_mesh_dist2) continue;
 
 												/* Are the cells too close for a MM interaction ? */
 												if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -1754,6 +1767,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 				}
 			}
 		}
+	}
 
 	/* Be clear about the time */
 	if (e->verbose)
