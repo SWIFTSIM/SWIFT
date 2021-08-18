@@ -1514,8 +1514,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 										const struct proxy *p = &e->proxies[proxy_id];
 
 										/* Check whether the cell exists in the proxy */
-										int n = 0;
-										for (; n < p->nr_cells_in; n++)
+										int m = 0;
+										for (; m < p->nr_cells_in; n++)
 											if (p->cells_in[n] == cj) {
 												break;
 											}
@@ -1534,8 +1534,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 										const struct proxy *p = &e->proxies[proxy_id];
 
 										/* Check whether the cell exists in the proxy */
-										int n = 0;
-										for (; n < p->nr_cells_in; n++)
+										int m = 0;
+										for (; m < p->nr_cells_in; n++)
 											if (p->cells_in[n] == ci) {
 												break;
 											}
@@ -1610,8 +1610,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 														const struct proxy *p = &e->proxies[proxy_id];
 
 														/* Check whether the cell exists in the proxy */
-														int n = 0;
-														for (; n < p->nr_cells_in; n++)
+														int m = 0;
+														for (; m < p->nr_cells_in; n++)
 															if (p->cells_in[n] == cj_zoom) {
 																break;
 															}
@@ -1630,8 +1630,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 														const struct proxy *p = &e->proxies[proxy_id];
 
 														/* Check whether the cell exists in the proxy */
-														int n = 0;
-														for (; n < p->nr_cells_in; n++)
+														int m = 0;
+														for (; m < p->nr_cells_in; n++)
 															if (p->cells_in[n] == ci) {
 																break;
 															}
@@ -1720,8 +1720,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 											const struct proxy *p = &e->proxies[proxy_id];
 
 											/* Check whether the cell exists in the proxy */
-											int n = 0;
-											for (; n < p->nr_cells_in; n++)
+											int m = 0;
+											for (; m < p->nr_cells_in; n++)
 												if (p->cells_in[n] == cj) {
 													break;
 												}
@@ -1740,8 +1740,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 											const struct proxy *p = &e->proxies[proxy_id];
 
 											/* Check whether the cell exists in the proxy */
-											int n = 0;
-											for (; n < p->nr_cells_in; n++)
+											int m = 0;
+											for (; m < p->nr_cells_in; n++)
 												if (p->cells_in[n] == ci) {
 													break;
 												}
