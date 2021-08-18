@@ -1698,10 +1698,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 									if (multi_j == NULL && cj->nodeID != nodeID)
 										error("Multipole of cj was not exchanged properly via the proxies");
 
-									/* Minimal distance between any pair of particles */
-									const double min_radius2 =
-											cell_min_dist2_diff_size(ci, cj, periodic, dim);
-
 									/* Are the cells too close for a MM interaction ? */
 									if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
 																						/*is_tree_walk=*/0)) {
