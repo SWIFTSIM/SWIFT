@@ -1168,7 +1168,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 	                  if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
 	                    continue;
 	                  
-	                  proxy_type = 0;
+	                  int proxy_type = 0;
 	
 	                  /* In the hydro case, only care about direct neighbours */
 	                  if (with_hydro) {
