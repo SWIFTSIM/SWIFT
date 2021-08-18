@@ -101,9 +101,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
       const int ci_active_sinks =
           cell_is_active_sinks(ci, e) || ci_active_hydro;
-      const int ci_active_stars = cell_is_active_stars(ci, e) ||
-                                  (with_star_formation && ci_active_hydro) ||
-                                  (with_star_formation_sink && ci_active_sinks);
+      const int ci_active_stars = cell_need_activating_stars(
+          ci, e, with_star_formation, with_star_formation_sink);
       const int ci_active_rt = with_rt && rt_should_do_unskip_cell(ci, e);
 
       /* Activate the hydro drift */
@@ -404,14 +403,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int cj_active_sinks =
           cell_is_active_sinks(cj, e) || cj_active_hydro;
 
-      const int ci_active_stars =
-          cell_is_active_stars(ci, e) ||
-          (with_star_formation && ci_active_hydro) ||
-          (with_star_formation_sink && (ci_active_hydro || ci_active_sinks));
-      const int cj_active_stars =
-          cell_is_active_stars(cj, e) ||
-          (with_star_formation && cj_active_hydro) ||
-          (with_star_formation_sink && (cj_active_hydro || cj_active_sinks));
+      const int ci_active_stars = cell_need_activating_stars(
+          ci, e, with_star_formation, with_star_formation_sink);
+      const int cj_active_stars = cell_need_activating_stars(
+          cj, e, with_star_formation, with_star_formation_sink);
 
       const int ci_active_rt = with_rt && rt_should_iact_cell_pair(ci, cj, e);
       const int cj_active_rt = with_rt && rt_should_iact_cell_pair(cj, ci, e);
@@ -1318,19 +1313,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              t_type == task_type_stars_prep_ghost1 ||
              t_type == task_type_hydro_prep_ghost1 ||
              t_type == task_type_stars_prep_ghost2) {
-      if (cell_is_active_stars(t->ci, e) ||
-          (with_star_formation && cell_is_active_hydro(t->ci, e)) ||
-          (with_star_formation_sink &&
-           (cell_is_active_hydro(t->ci, e) || cell_is_active_sinks(t->ci, e))))
+      if (cell_need_activating_stars(t->ci, e, with_star_formation,
+                                     with_star_formation_sink))
         scheduler_activate(s, t);
     }
 
     /* Feedback implicit tasks? */
     else if (t_type == task_type_stars_in || t_type == task_type_stars_out) {
-      if (cell_is_active_stars(t->ci, e) ||
-          (with_star_formation && cell_is_active_hydro(t->ci, e)) ||
-          (with_star_formation_sink &&
-           (cell_is_active_hydro(t->ci, e) || cell_is_active_sinks(t->ci, e))))
+      if (cell_need_activating_stars(t->ci, e, with_star_formation,
+                                     with_star_formation_sink))
         scheduler_activate(s, t);
     }
 
