@@ -753,7 +753,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
       int delta_m = delta_cells;
       int delta_p = delta_cells;
 
-      /* Special case where every cell is in range of every other one */
+      /* Special case where every cell is in range of every other one
+       * Triggered for the zoom region in almost all cases*/
       if (delta_cells >= cdim[0] / 2) {
         if (cdim[0] % 2 == 0) {
           delta_m = cdim[0] / 2;
@@ -775,7 +776,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
               message(
                       "Looking for zoom proxies up to %d top-level zoom cells away (delta_m=%d "
                       "delta_p=%d)",
-                      delta_cells, delta_m, delta_p);
+                      (delta_m + delta_p) / 2, delta_m, delta_p);
           }
       }
 
@@ -1422,7 +1423,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 				message(
 						"Creating gravity tasks up to %d top-level zoom cells away (delta_m=%d "
 						"delta_p=%d)",
-						delta_cells, delta_m, delta_p);
+						(delta_m + delta_p) / 2, delta_m, delta_p);
 			}
 		}
 
@@ -1448,6 +1449,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
 															NULL);
 					}
+					message("%d %d %d, %d, self interaction built", i, j, k, cid);
 
 					/* Loop over all its neighbours in range. */
 					for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -1470,6 +1472,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 								}
 
 								struct cell *cj = &cells[cjd];
+
+								message("%d %d %d, %d, neighbour interaction building", iii, jjj, kkk, cjd);
 
 								/* Avoid duplicates, empty cells and completely foreign pairs */
 								if (cid >= cjd || cj->grav.count == 0 ||
@@ -1499,6 +1503,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 									/* Ok, we need to add a direct pair calculation */
 									scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
 																		ci, cj);
+									message("%d %d %d, %d, neighbour interaction built", iii, jjj, kkk, cjd);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
