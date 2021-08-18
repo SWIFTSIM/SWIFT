@@ -1636,9 +1636,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 						int parent_tl_cid = ci->parent_tl_cid;
 						struct cell *parent_ci = &cells[parent_tl_cid];
-						int parent_i = (int)(parent_ci.loc[0] * s->iwidth[0]);
-						int parent_j = (int)(parent_ci.loc[1] * s->iwidth[1]);
-						int parent_k = (int)(parent_ci.loc[2] * s->iwidth[2]);
+						int parent_i = (int)(parent_ci->loc[0] * s->iwidth[0]);
+						int parent_j = (int)(parent_ci->loc[1] * s->iwidth[1]);
+						int parent_k = (int)(parent_ci->loc[2] * s->iwidth[2]);
 
 						/* Turn this into upper and lower bounds for loops */
 						int parent_delta_m = parent_delta_cells;
