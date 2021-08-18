@@ -59,10 +59,10 @@
  * TODO use threadpool + csds function for multiple particles.
  * @param log The #csds_writer.
  * @param e The #engine.
- * @param first_log Is it the first log of the particles?
+ * @param flag The flag to use when writing the particles
  */
 void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
-                            int first_log) {
+                            const enum csds_special_flags flag) {
 
   /* Ensure that enough space is available. */
   csds_ensure_size(log, e);
@@ -72,10 +72,6 @@ void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
 
   /* some constants. */
   const struct space *s = e->s;
-
-  /* Create the flags */
-  const enum csds_special_flags flag =
-      first_log ? csds_flag_create : csds_flag_none;
 
   /* log the parts. */
   for (size_t i = 0; i < s->nr_parts; i++) {
