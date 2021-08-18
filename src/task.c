@@ -1505,6 +1505,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   double tdead[task_type_count][task_subtype_count];
   double total_deadtime = 0.0;
   double pure_deadtime = 0.0;
+  double total_time = 0.0;
 #endif
 
   for (int j = 0; j < task_type_count; j++) {
@@ -1535,6 +1536,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
     for (ticks ib = 0; ib < deadtime_nbin; ++ib) {
       deadtime_bins[2 * it * deadtime_nbin + 2 * ib + 0] = -1;
       deadtime_bins[2 * it * deadtime_nbin + 2 * ib + 1] = -1;
+      total_time += 1.;
     }
   }
 #endif
@@ -1572,6 +1574,10 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
 #ifdef SWIFT_DEAD_TIME_STATS
       const ticks tbeg = (e->sched.tasks[l].tic - e->tic_step) / deadtime_wbin;
       const ticks tend = (e->sched.tasks[l].toc - e->tic_step) / deadtime_wbin;
+      if (tbeg >= deadtime_nbin || tend >= deadtime_nbin) {
+        error("Task cannot be binned (tbeg: %llu, tend: %llu, nbin: %llu)!",
+              tbeg, tend, deadtime_nbin);
+      }
       const short int thread = e->sched.tasks[l].rid;
       for (ticks ib = tbeg; ib < tend; ++ib) {
         deadtime_bins[2 * thread * deadtime_nbin + 2 * ib + 0] = type;
@@ -1631,14 +1637,14 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   fprintf(file,
           "# type\tsubtype\tdead "
           "time\tfraction\tfraction_nopure\tfraction_total\n");
-  fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", -1, 0, stepdt,
-          stepdt / total_deadtime, stepdt / (total_deadtime - pure_deadtime),
-          1.);
+  fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", -1, 0, total_time,
+          total_time / total_deadtime,
+          total_time / (total_deadtime - pure_deadtime), 1.);
   fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", -1, 0, total_deadtime, 1.,
           total_deadtime / (total_deadtime - pure_deadtime),
-          total_deadtime / stepdt);
+          total_deadtime / total_time);
   fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", -1, 1, pure_deadtime,
-          pure_deadtime / total_deadtime, 1., pure_deadtime / stepdt);
+          pure_deadtime / total_deadtime, 1., pure_deadtime / total_time);
   double fracsumtot = 0.;
   double fracsumpure = 0.;
   double fracsumall = 0.;
@@ -1648,7 +1654,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
       if (tdead[j][k] > 0.0) {
         const double fractot = tdead[j][k] / total_deadtime;
         const double fracpure = tdead[j][k] / (total_deadtime - pure_deadtime);
-        const double fracall = tdead[j][k] / stepdt;
+        const double fracall = tdead[j][k] / total_time;
         fprintf(file, "%i\t%i\t%g\t%g\t%g\t%g\n", j, k, tdead[j][k], fractot,
                 fracpure, fracall);
         deadtot += tdead[j][k];
