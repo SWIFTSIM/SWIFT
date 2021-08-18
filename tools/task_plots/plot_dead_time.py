@@ -171,7 +171,7 @@ for file in files:
     # extract the first two lines that do not contain task output
     total_all += data[0]["dead_time"]
     total_w_pure += data[1]["dead_time"]
-    total_n_pure += data[2]["dead_time"]
+    total_n_pure += data[1]["dead_time"] - data[2]["dead_time"]
     # drop the final line that only contains task totals
     others = data[3:-1]
     # now parse the actual tasks
