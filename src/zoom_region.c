@@ -1473,7 +1473,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 										cell_min_dist2_same_size(ci, cj, periodic, dim);
 
 								/* Are we beyond the distance where the truncated forces are 0 ?*/
-								if (s->periodic && n == 0 && min_radius2 > max_mesh_dist2) continue;
+								if (periodic && n == 0 && min_radius2 > max_mesh_dist2) continue;
 
 								/* Are the cells too close for a MM interaction ? */
 								if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -1534,14 +1534,15 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 								/* For natural (n = 0) top level cell neighbours in the zoom
                  * region we need to include the nested zoom cells */
-								if (n == 0 && cells[cjd].tl_cell_type == void_tl_cell) {
+								if (n == 0 && cj->tl_cell_type == void_tl_cell) {
 
 									message("%d is a zoom natural cell", cjd);
 
 									int parent_tl_cjd = cjd;
-									int start_i = cells[parent_tl_cjd].start_i;
-									int start_j = cells[parent_tl_cjd].start_j;
-									int start_k = cells[parent_tl_cjd].start_k;
+									struct cell *parent_cj = &cells[parent_tl_cjd];
+									int start_i = parent_cj->start_i;
+									int start_j = parent_cj->start_j;
+									int start_k = parent_cj->start_k;
 
 									for (int iiii = start_i; iiii < start_i + nr_zoom_cells + 1; iiii++) {
 										for (int jjjj = start_j; jjjj < start_j + nr_zoom_cells + 1; jjjj++) {
@@ -1633,10 +1634,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 					/* For the zoom cells we need to find all natural neighbours */
 					if (n == 1) {
 
-						int parent_tl_cid = cells[cid].parent_tl_cid;
-						int parent_i = (int)(cells[parent_tl_cid].loc[0] * s->iwidth[0]);
-						int parent_j = (int)(cells[parent_tl_cid].loc[1] * s->iwidth[1]);
-						int parent_k = (int)(cells[parent_tl_cid].loc[2] * s->iwidth[2]);
+						int parent_tl_cid = ci->parent_tl_cid;
+						struct cell *parent_ci = &cells[parent_tl_cid];
+						int parent_i = (int)(parent_ci.loc[0] * s->iwidth[0]);
+						int parent_j = (int)(parent_ci.loc[1] * s->iwidth[1]);
+						int parent_k = (int)(parent_ci.loc[2] * s->iwidth[2]);
 
 						/* Turn this into upper and lower bounds for loops */
 						int parent_delta_m = parent_delta_cells;
