@@ -4262,15 +4262,18 @@ void engine_maketasks(struct engine *e) {
 
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) {
-    threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+#ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
-      //threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom,
-      //ne_make_self_gravity_tasks_mapper,               NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
-      threadpool_map(&e->threadpool,
-                     engine_make_self_gravity_tasks_mapper_between_toplevels,
-                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_with_zoom, NULL,
+										 s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    } else {
+    	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
+										 s->nr_cells, 1, threadpool_auto_chunk_size, e);
     }
+#else
+    threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
+									 s->nr_cells, 1, threadpool_auto_chunk_size, e);
+#endif
   }
 
   if (e->verbose)
