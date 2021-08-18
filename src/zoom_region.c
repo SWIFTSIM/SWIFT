@@ -1449,7 +1449,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
 															NULL);
 					}
-					message("%d %d %d, %d, self interaction built", i, j, k, cid);
 
 					/* Loop over all its neighbours in range. */
 					for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -1472,8 +1471,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 								}
 
 								struct cell *cj = &cells[cjd];
-
-								message("%d %d %d, %d, neighbour interaction building", iii, jjj, kkk, cjd);
 
 								/* Avoid duplicates, empty cells and completely foreign pairs */
 								if (cid >= cjd || cj->grav.count == 0 ||
@@ -1503,7 +1500,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 									/* Ok, we need to add a direct pair calculation */
 									scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
 																		ci, cj);
-									message("%d %d %d, %d, neighbour interaction built", iii, jjj, kkk, cjd);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -1558,6 +1554,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
                  * region we need to include the nested zoom cells */
 								if (n == 0 && cells[cjd].tl_cell_type == void_tl_cell) {
 
+									message("%d id a zoom natural cell", cjd);
+
 									int parent_tl_cjd = cjd;
 									int start_i = cells[parent_tl_cjd].start_i;
 									int start_j = cells[parent_tl_cjd].start_j;
@@ -1585,13 +1583,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 													error("Multipole of ci was not exchanged properly via the proxies");
 												if (multi_j_zoom == NULL && cj_zoom->nodeID != nodeID)
 													error("Multipole of cj was not exchanged properly via the proxies");
-
-												/* Minimal distance between any pair of particles */
-												const double min_radius2_zoom =
-														cell_min_dist2_diff_size(ci, cj_zoom, periodic, dim);
-
-												/* Are we beyond the distance where the truncated forces are 0 ?*/
-												if (s->periodic && n == 0 && min_radius2_zoom > max_mesh_dist2) continue;
 
 												/* Are the cells too close for a MM interaction ? */
 												if (!cell_can_use_pair_mm(ci, cj_zoom, e, s, /*use_rebuild_data=*/1,
