@@ -1412,21 +1412,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 			}
 		}
 
-		/* Let's be verbose about this choice */
-		if (e->verbose) {
-			if (n == 0) {
-				message(
-						"Creating gravity tasks up to %d top-level cells away (delta_m=%d "
-						"delta_p=%d)",
-						delta_cells, delta_m, delta_p);
-			} else {
-				message(
-						"Creating gravity tasks up to %d top-level zoom cells away (delta_m=%d "
-						"delta_p=%d)",
-						(delta_m + delta_p) / 2, delta_m, delta_p);
-			}
-		}
-
 		/* Loop over each cell in the space. */
 		for (int i = 0; i < cdim[0]; i++) {
 			for (int j = 0; j < cdim[1]; j++) {
@@ -1554,7 +1539,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
                  * region we need to include the nested zoom cells */
 								if (n == 0 && cells[cjd].tl_cell_type == void_tl_cell) {
 
-									message("%d id a zoom natural cell", cjd);
+									message("%d is a zoom natural cell", cjd);
 
 									int parent_tl_cjd = cjd;
 									int start_i = cells[parent_tl_cjd].start_i;
