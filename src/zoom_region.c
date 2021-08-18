@@ -791,10 +791,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
             int cid = cell_getid(cdim, i, j, k);
             if (n  == 1) {
                 cid += zoom_cell_offset;
-                int parent_tl_cid = cells[cid]->parent_tl_cid
-                int parent_i = (int)(cells[parent_tl_cid]->loc[0] * s->iwidth[0]);
-                int parent_j = (int)(cells[parent_tl_cid]->loc[1] * s->iwidth[1]);
-                int parent_k = (int)(cells[parent_tl_cid]->loc[2] * s->iwidth[2]);
             }
 
             /* Loop over all its neighbours in range. */
@@ -970,16 +966,16 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                   /* For natural (n = 0) top level cell neighbours in the zoom 
                    * region we need to include the nested zoom cells */
-                  if (n == 0 && cells[cjd]->tl_cell_type == void_tl_cell) {
+                  if (n == 0 && cells[cjd].tl_cell_type == void_tl_cell) {
                   	
                     int parent_tl_cjd = cjd;
-                    int start_i = cells[parent_tl_cjd]->start_i;
-                    int start_j = cells[parent_tl_cjd]->start_j;
-                    int start_k = cells[parent_tl_cjd]->start_k;
+                    int start_i = cells[parent_tl_cjd].start_i;
+                    int start_j = cells[parent_tl_cjd].start_j;
+                    int start_k = cells[parent_tl_cjd].start_k;
                     
-                    for (int iiii = start_i, iiii < start_i + nr_zoom_cells + 1, iiii++) {
-                      for (int jjjj = start_j, jjjj < start_j + nr_zoom_cells + 1, jjjj++) {
-                        for (int kkkk = start_k, kkkk < start_k + nr_zoom_cells + 1, kkkk++) {
+                    for (int iiii = start_i; iiii < start_i + nr_zoom_cells + 1; iiii++) {
+                      for (int jjjj = start_j; jjjj < start_j + nr_zoom_cells + 1; jjjj++) {
+                        for (int kkkk = start_k; kkkk < start_k + nr_zoom_cells + 1; kkkk++) {
                         	
                         	/* Zoom level neighbour */
                         	cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
@@ -1137,6 +1133,11 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
             /* For the zoom cells we need to find all natural neighbours */
             if (n == 1) {
+
+            	int parent_tl_cid = cells[cid].parent_tl_cid;
+            	int parent_i = (int)(cells[parent_tl_cid].loc[0] * s->iwidth[0]);
+            	int parent_j = (int)(cells[parent_tl_cid].loc[1] * s->iwidth[1]);
+            	int parent_k = (int)(cells[parent_tl_cid].loc[2] * s->iwidth[2]);
 
               /* Turn this into upper and lower bounds for loops */
 				      int delta_m = parent_delta_cells;
@@ -1316,8 +1317,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           }
         }
       }
-    }  
   }
+
 
   /* Be clear about the time */
   if (e->verbose)
