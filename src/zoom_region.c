@@ -696,9 +696,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                                 cells[0].width[2]};
 
   /* Some info about the zoom domain */
-  const double zoom_cell_width[3] = {s->zoom_props->width[0],
-                                       s->zoom_props->width[1],
-                                       s->zoom_props->width[2]};
   const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
   const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
@@ -980,7 +977,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                         	/* Zoom level neighbour */
                         	cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
                           
-                          int proxy_type = 0;
+                          proxy_type = 0;
 
 				                  /* In the hydro case, only care about direct neighbours
 				                   * NOTE: we will never have hydro tasks between grid levels */
@@ -1140,8 +1137,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
             	int parent_k = (int)(cells[parent_tl_cid].loc[2] * s->iwidth[2]);
 
               /* Turn this into upper and lower bounds for loops */
-				      int delta_m = parent_delta_cells;
-				      int delta_p = parent_delta_cells;
+				      delta_m = parent_delta_cells;
+				      delta_p = parent_delta_cells;
 
             	/* Loop over all its neighbours in range. */
 	            for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -1171,7 +1168,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 	                  if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
 	                    continue;
 	                  
-	                  int proxy_type = 0;
+	                  proxy_type = 0;
 	
 	                  /* In the hydro case, only care about direct neighbours */
 	                  if (with_hydro) {
