@@ -1363,7 +1363,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
 	/* Get some info about the physics */
-	const double theta_crit = e->gravity_properties->theta_crit;
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
 	const double max_mesh_dist = e->mesh->r_cut_max;
 	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
@@ -1379,6 +1378,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	/* Maximal distance from shifted CoM to any corner */
 	const double r_max = 2 * r_diag;
+	const double distance = 2. * r_max * theta_crit_inv;
 
 	/* First loop for natural cells (n = 0), second for zoom level (n = 1) */
 	for (int n = 0; n < 2; n++) {
@@ -1386,13 +1386,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		if (n == 1 && !s->with_zoom_region) continue;
 
 		/* Compute how many cells away we need to walk */
-		const double distance = 2. * r_max * theta_crit_inv;
 		delta_cells = (int)(distance / cells[0].dmin) + 1;
 		parent_delta_cells = delta_cells;
 		zoom_delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
 
 		if (n == 1) {
-			const double distance = 2. * r_max * theta_crit_inv;
 			delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
 			parent_delta_cells = (int)(distance / cells[0].dmin) + 1;
 			zoom_delta_cells = delta_cells;
@@ -1567,54 +1565,54 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 												/* Zoom level neighbour */
 												cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
 
-												struct cell *cj = &cells[cjd];
+												struct cell *cj_zoom = &cells[cjd];
 
 												/* Avoid duplicates, empty cells and completely foreign pairs */
-												if (cid >= cjd || cj->grav.count == 0 ||
-												(ci->nodeID != nodeID && cj->nodeID != nodeID))
+												if (cid >= cjd || cj_zoom->grav.count == 0 ||
+												(ci->nodeID != nodeID && cj_zoom->nodeID != nodeID))
 													continue;
 
 												/* Recover the multipole information */
-												const struct gravity_tensors *multi_i = ci->grav.multipole;
-												const struct gravity_tensors *multi_j = cj->grav.multipole;
+												const struct gravity_tensors *multi_i_zoom = ci->grav.multipole;
+												const struct gravity_tensors *multi_j_zoom = cj_zoom->grav.multipole;
 
-												if (multi_i == NULL && ci->nodeID != nodeID)
+												if (multi_i_zoom == NULL && ci->nodeID != nodeID)
 													error("Multipole of ci was not exchanged properly via the proxies");
-												if (multi_j == NULL && cj->nodeID != nodeID)
+												if (multi_j_zoom == NULL && cj_zoom->nodeID != nodeID)
 													error("Multipole of cj was not exchanged properly via the proxies");
 
 												/* Minimal distance between any pair of particles */
-												const double min_radius2 =
-														cell_min_dist2_diff_size(ci, cj, periodic, dim);
+												const double min_radius2_zoom =
+														cell_min_dist2_diff_size(ci, cj_zoom, periodic, dim);
 
 												/* Are we beyond the distance where the truncated forces are 0 ?*/
-												if (s->periodic && n == 0 && min_radius2 > max_mesh_dist2) continue;
+												if (s->periodic && n == 0 && min_radius2_zoom > max_mesh_dist2) continue;
 
 												/* Are the cells too close for a MM interaction ? */
-												if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+												if (!cell_can_use_pair_mm(ci, cj_zoom, e, s, /*use_rebuild_data=*/1,
 																									/*is_tree_walk=*/0)) {
 
 													/* Ok, we need to add a direct pair calculation */
 													scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
-																						ci, cj);
+																						ci, cj_zoom);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
 
 													/* Let's cross-check that we had a proxy for that cell */
-													if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+													if (ci->nodeID == nodeID && cj_zoom->nodeID != engine_rank) {
 
 														/* Find the proxy for this node */
-														const int proxy_id = e->proxy_ind[cj->nodeID];
+														const int proxy_id = e->proxy_ind[cj_zoom->nodeID];
 														if (proxy_id < 0)
-															error("No proxy exists for that foreign node %d!", cj->nodeID);
+															error("No proxy exists for that foreign node %d!", cj_zoom->nodeID);
 
 														const struct proxy *p = &e->proxies[proxy_id];
 
 														/* Check whether the cell exists in the proxy */
 														int n = 0;
 														for (; n < p->nr_cells_in; n++)
-															if (p->cells_in[n] == cj) {
+															if (p->cells_in[n] == cj_zoom) {
 																break;
 															}
 														if (n == p->nr_cells_in)
@@ -1622,7 +1620,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 																	"Cell %d not found in the proxy but trying to construct "
 																	"grav task!",
 																	cjd);
-													} else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+													} else if (cj_zoom->nodeID == nodeID && ci->nodeID != engine_rank) {
 
 														/* Find the proxy for this node */
 														const int proxy_id = e->proxy_ind[ci->nodeID];
