@@ -1379,11 +1379,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	/* Distance between centre of the cell and corners for natural top level cells */
 	double r_diag2 = cell_width[0] * cell_width[0] +
-			cell_width[1] * cell_width[1] +
-			cell_width[2] * cell_width[2];
+			             cell_width[1] * cell_width[1] +
+			             cell_width[2] * cell_width[2];
 	double zoom_r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
-			zoom_cell_width[1] * zoom_cell_width[1] +
-			zoom_cell_width[2] * zoom_cell_width[2];
+			                  zoom_cell_width[1] * zoom_cell_width[1] +
+			                  zoom_cell_width[2] * zoom_cell_width[2];
 
 	const double r_diag = 0.5 * sqrt(r_diag2);
 	const double zoom_r_diag = 0.5 * sqrt(zoom_r_diag2);
@@ -1426,29 +1426,36 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
+		int cid_with_offset = cid;
+
+		zoom_cell_flag = 0;
+
+		/* Integer indices of the cell in the natural parent */
+		int natural_i = cid / (cdim[1] * cdim[2]);
+		int natural_j = (cid / cdim[2]) % cdim[1];
+		int natural_k = cid % cdim[2];
 
 		if (cid >= zoom_cell_offset) {
 			zoom_cell_flag = 1;
-			const int cid_with_offset = cid - zoom_cell_offset;
+			cid_with_offset -= zoom_cell_offset;
 
 			/* Integer indices of the cell in the natural parent */
 			int natural_tl_cid = ci->parent_tl_cid;
-			const int natural_i = natural_tl_cid / (cdim[1] * cdim[2]);
-			const int natural_j = (natural_tl_cid / cdim[2]) % cdim[1];
-			const int natural_k = natural_tl_cid % cdim[2];
+			natural_i = natural_tl_cid / (cdim[1] * cdim[2]);
+			natural_j = (natural_tl_cid / cdim[2]) % cdim[1];
+			natural_k = natural_tl_cid % cdim[2];
 
-		};
+		}
 
 		/* Integer indices of the cell in the top-level grid */
-		const int i = cid / (cdim[1] * cdim[2]);
-		const int j = (cid / cdim[2]) % cdim[1];
-		const int k = cid % cdim[2];
+		const int i = cid_with_offset / (cdim[1] * cdim[2]);
+		const int j = (cid_with_offset / cdim[2]) % cdim[1];
+		const int k = cid_with_offset % cdim[2];
 
 //		if (zoom_cell_flag) {
 //			delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
 //			natural_delta_cells = (int)(distance / cells[0].dmin) + 1;
 //			zoom_delta_cells = delta_cells;
-		}
 
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
@@ -1574,7 +1581,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 								for (int kkkk = start_k; kkkk < end_k; kkkk++) {
 
 									/* Zoom level neighbour */
-									zoom_cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
+									const int zoom_cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
 
 									struct cell *cj_zoom = &cells[zoom_cjd];
 
@@ -1684,6 +1691,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 							continue;
 
 						/* Recover the multipole information */
+						const struct gravity_tensors *multi_i = ci->grav.multipole;
 						const struct gravity_tensors *nat_multi_j = nat_cj->grav.multipole;
 
 						if (multi_i == NULL && ci->nodeID != nodeID)
