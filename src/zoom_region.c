@@ -1392,7 +1392,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const double r_max = 2 * r_diag;
 	const double zoom_r_max = 2 * zoom_r_diag;
 	const double distance = 2. * r_max * theta_crit_inv;
-	const double zoom_distance = 2. * zoom_r_max * theta_crit_inv;
 
 	/* Compute how many cells away we need to walk
 	 * NOTE: Same for both grid levels ??? */
