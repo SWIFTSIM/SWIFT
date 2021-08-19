@@ -1361,6 +1361,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 	const int periodic = s->periodic;
+	const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+																cells[0].width[2]};
+	const double zoom_cell_width[3] = {cells[zoom_cell_offset].width[0],
+																		 cells[zoom_cell_offset].width[1],
+																		 cells[zoom_cell_offset].width[2]};
 
 	/* Some info about the zoom domain */
 	const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
@@ -1373,9 +1378,26 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	int delta_cells, parent_delta_cells,zoom_delta_cells;
 
+	/* Distance between centre of the cell and corners for natural top level cells */
+	double r_diag2 = cell_width[0] * cell_width[0] +
+			cell_width[1] * cell_width[1] +
+			cell_width[2] * cell_width[2];
+	double zoom_r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
+			zoom_cell_width[1] * zoom_cell_width[1] +
+			zoom_cell_width[2] * zoom_cell_width[2];
+
+	const double r_diag = 0.5 * sqrt(r_diag2);
+	const double zoom_r_diag = 0.5 * sqrt(zoom_r_diag2);
+
 	/* Maximal distance from shifted CoM to any corner */
-	const double distance = 2.5 * cells[0].width[0] * theta_crit_inv;
-	const double zoom_distance = 2.5 * cells[zoom_cell_offset].width[0] * theta_crit_inv;
+	const double r_max = 2 * r_diag;
+	const double zoom_r_max = 2 * zoom_r_diag;
+	const double distance = 2. * r_max * theta_crit_inv;
+	const double zoom_distance = 2. * zoom_r_max * theta_crit_inv;
+
+//	/* Maximal distance from shifted CoM to any corner */
+//	const double distance = 2.5 * cells[0].width[0] * theta_crit_inv;
+//	const double zoom_distance = 2.5 * cells[zoom_cell_offset].width[0] * theta_crit_inv;
 
 	/* First loop for natural cells (n = 0), second for zoom level (n = 1) */
 	for (int n = 0; n < 2; n++) {
