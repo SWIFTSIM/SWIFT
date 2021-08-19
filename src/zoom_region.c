@@ -1368,9 +1368,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const int periodic = s->periodic;
 	const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
 																cells[0].width[2]};
-	const double zoom_cell_width[3] = {cells[zoom_cell_offset].width[0],
-																		 cells[zoom_cell_offset].width[1],
-																		 cells[zoom_cell_offset].width[2]};
 
 	/* Get some info about the physics */
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
@@ -1381,16 +1378,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	double r_diag2 = cell_width[0] * cell_width[0] +
 			             cell_width[1] * cell_width[1] +
 			             cell_width[2] * cell_width[2];
-	double zoom_r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
-			                  zoom_cell_width[1] * zoom_cell_width[1] +
-			                  zoom_cell_width[2] * zoom_cell_width[2];
 
 	const double r_diag = 0.5 * sqrt(r_diag2);
-	const double zoom_r_diag = 0.5 * sqrt(zoom_r_diag2);
 
 	/* Maximal distance from shifted CoM to any corner */
 	const double r_max = 2 * r_diag;
-	const double zoom_r_max = 2 * zoom_r_diag;
 	const double distance = 2. * r_max * theta_crit_inv;
 
 	/* Compute how many cells away we need to walk
