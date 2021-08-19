@@ -688,16 +688,19 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   struct cell *cells = s->cells_top;
   struct proxy *proxies = e->proxies;
 
+  /* Some info about the zoom domain */
+  const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
+  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+
   /* Some info about the domain */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
                                 cells[0].width[2]};
-
-  /* Some info about the zoom domain */
-  const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
-  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+  const double zoom_cell_width[3] = {cells[zoom_cell_offset].width[0],
+																		 cells[zoom_cell_offset].width[1],
+																		 cells[zoom_cell_offset].width[2]};
 
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
@@ -714,20 +717,27 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
   e->nr_proxies = 0;
 
+  /* Distance between centre of the cell and corners for natural top level cells */
+  double r_diag2 = cell_width[0] * cell_width[0] +
+  		             cell_width[1] * cell_width[1] +
+  		             cell_width[2] * cell_width[2];
+  double zoom_r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
+  		                  zoom_cell_width[1] * zoom_cell_width[1] +
+  		                  zoom_cell_width[2] * zoom_cell_width[2];
+
+  const double r_diag = 0.5 * sqrt(r_diag2);
+  const double zoom_r_diag = 0.5 * sqrt(zoom_r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = 2 * r_diag;
+  const double zoom_r_max = 2 * zoom_r_diag;
+  const double distance = 2. * r_max * theta_crit_inv;
+  const double zoom_distance = 2. * zoom_r_max * theta_crit_inv;
+
   /* First loop for natural cells (n = 0), second for zoom level (n = 1) */
   for (int n = 0; n < 2; n++) {
 
       if (n == 1 && !s->with_zoom_region) continue;
-
-      /* Distance between centre of the cell and corners for natural top level cells */
-      double r_diag2 = cell_width[0] * cell_width[0] +
-                       cell_width[1] * cell_width[1] +
-                       cell_width[2] * cell_width[2];
-
-      const double r_diag = 0.5 * sqrt(r_diag2);
-
-      /* Maximal distance from shifted CoM to any corner */
-      const double r_max = 2 * r_diag;
 
       /* Compute how many cells away we need to walk */
       int delta_cells = 1; /*hydro case */
@@ -736,15 +746,13 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
       /* Gravity needs to take the opening angle into account */
       if (with_gravity && n == 0) {
-          const double distance = 2. * r_max * theta_crit_inv;
           delta_cells = (int)(distance / cells[0].dmin) + 1;
           parent_delta_cells = delta_cells;
           zoom_delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
 
       }
       if (with_gravity && n == 1) {
-          const double distance = 2. * r_max * theta_crit_inv;
-          delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
+      	  delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
           parent_delta_cells = (int)(distance / cells[0].dmin) + 1;
           zoom_delta_cells = delta_cells;
       }
@@ -1367,16 +1375,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	int delta_cells, parent_delta_cells,zoom_delta_cells;
 
-	/* Distance between centre of the cell and corners for natural top level cells */
-	double r_diag2 = cell_width[0] * cell_width[0] +
-			             cell_width[1] * cell_width[1] +
-			             cell_width[2] * cell_width[2];
-
-	const double r_diag = 0.5 * sqrt(r_diag2);
-
 	/* Maximal distance from shifted CoM to any corner */
-	const double r_max = 2 * r_diag;
-	const double distance = 2. * r_max * theta_crit_inv;
+	const double distance = 2.5 * cells[0].width[0] * theta_crit_inv;
+	const double zoom_distance = 2.5 * cells[zoom_cell_offset].width[0] * theta_crit_inv;
 
 	/* First loop for natural cells (n = 0), second for zoom level (n = 1) */
 	for (int n = 0; n < 2; n++) {
@@ -1389,7 +1390,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		zoom_delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
 
 		if (n == 1) {
-			delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
+			delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
 			parent_delta_cells = (int)(distance / cells[0].dmin) + 1;
 			zoom_delta_cells = delta_cells;
 		}
