@@ -1398,7 +1398,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	 * NOTE: Same for both grid levels ??? */
 	const int delta_cells = (int)(distance / cells[0].dmin) + 1;
 	const int natural_delta_cells = delta_cells;
-	const int zoom_delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
 
 	/* Turn this into upper and lower bounds for loops */
 	int delta_m = delta_cells;
