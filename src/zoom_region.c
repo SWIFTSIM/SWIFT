@@ -1360,8 +1360,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	/* Some info about the domain */
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-	const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
-																cells[0].width[2]};
 	const int periodic = s->periodic;
 
 	/* Some info about the zoom domain */
