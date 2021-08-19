@@ -1357,6 +1357,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	/* Handle on the cells and proxies */
 	struct cell *cells = s->cells_top;
 
+	/* Some info about the zoom domain */
+	const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
+	const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+
 	/* Some info about the domain */
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -1366,10 +1370,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const double zoom_cell_width[3] = {cells[zoom_cell_offset].width[0],
 																		 cells[zoom_cell_offset].width[1],
 																		 cells[zoom_cell_offset].width[2]};
-
-	/* Some info about the zoom domain */
-	const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
-	const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
 	/* Get some info about the physics */
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
