@@ -1535,8 +1535,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
                  * region we need to include the nested zoom cells */
 								if (n == 0 && cj->tl_cell_type == void_tl_cell) {
 
-									message("%d is a zoom natural cell", cjd);
-
 									int parent_tl_cjd = cjd;
 									struct cell *parent_cj = &cells[parent_tl_cjd];
 									int start_i = parent_cj->start_i;
