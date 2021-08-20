@@ -33,7 +33,7 @@
 #include "units.h"
 
 /* Include the CSDS */
-#include "csds/src/csds_logfile_writer.h"
+#include "csds/src/logfile_writer.h"
 
 /* Forward declaration. */
 struct gpart;
