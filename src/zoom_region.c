@@ -980,40 +980,25 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           }
 
           /* For natural top level cell neighbours in the zoom
-           * region we need to include the nested zoom cells */
+           * region we need to include the nested zoom cells
+           * NOTE: we will never have hydro tasks between grid levels */
           if (!zoom_cell_flag && cells[cjd].tl_cell_type == void_tl_cell) {
 
-            int natural_tl_cjd = cjd;
-            int start_i = cells[natural_tl_cjd].start_i;
-            int start_j = cells[natural_tl_cjd].start_j;
-            int start_k = cells[natural_tl_cjd].start_k;
+          	int start_i = cells[cjd].start_i;
+          	int start_j = cells[cjd].start_j;
+          	int start_k = cells[cjd].start_k;
+            int end_i = start_i + nr_zoom_cells + 1;
+            int end_j = start_j + nr_zoom_cells + 1;
+            int end_k = start_k + nr_zoom_cells + 1;
 
-            for (int iiii = start_i; iiii < start_i + nr_zoom_cells + 1; iiii++) {
-              for (int jjjj = start_j; jjjj < start_j + nr_zoom_cells + 1; jjjj++) {
-                for (int kkkk = start_k; kkkk < start_k + nr_zoom_cells + 1; kkkk++) {
+            for (int iiii = start_i; iiii < end_i; iiii++) {
+              for (int jjjj = start_j; jjjj < end_j; jjjj++) {
+                for (int kkkk = start_k; kkkk < end_k; kkkk++) {
 
                   /* Zoom level neighbour */
                   cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
 
                   proxy_type = 0;
-
-                  /* In the hydro case, only care about direct neighbours
-                   * NOTE: we will never have hydro tasks between grid levels */
-                  if (with_hydro) {
-
-                    // MATTHIEU: to do: Write a better expression for the
-                    // non-periodic case.
-
-                    /* This is super-ugly but checks for direct neighbours */
-                    /* with periodic BC */
-                    if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
-                          abs(i - iii + cdim[0]) <= 1) &&
-                         (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
-                          abs(j - jjj + cdim[1]) <= 1) &&
-                         (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
-                          abs(k - kkk + cdim[2]) <= 1)))
-                      proxy_type |= (int)proxy_cell_type_hydro;
-                  }
 
                   /* In the gravity case, check distances using the MAC.
                    * NOTE: The direct neighbour check is done on the natural
@@ -1594,7 +1579,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 //									struct cell *cj_zoom = &cells[zoom_cjd];
 //
 //									/* Avoid duplicates, empty cells and completely foreign pairs */
-//									if (cid >= zoom_cjd || cj_zoom->grav.count == 0 ||
+//									if (cj_zoom->grav.count == 0 ||
 //									(ci->nodeID != nodeID && cj_zoom->nodeID != nodeID))
 //										continue;
 //
