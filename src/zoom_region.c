@@ -1361,7 +1361,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	/* Some info about the zoom domain */
 	const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
-	const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+//	const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 	int zoom_cell_flag = 0;
 
 	/* Some info about the domain */
