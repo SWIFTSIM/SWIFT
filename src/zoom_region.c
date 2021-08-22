@@ -724,7 +724,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
   /* Maximal distance from shifted CoM to any corner */
   const double r_max = 2 * r_diag;
-  const double distance = /*2. * */ r_max * theta_crit_inv;
+  const double distance = 2. * r_max * theta_crit_inv;
 
   message("r_max=%f cell_width=%f zoom_cell_width=%f distance=%f mesh_distance=%f", r_max, cells[0].width[0],
 					cells[zoom_cell_offset].width[0], distance, max_mesh_dist);
@@ -1385,7 +1385,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	/* Maximal distance from shifted CoM to any corner */
 //	const double r_max = 2 * r_diag;
-	const double distance = /*2. * */ cell_width[0] * theta_crit_inv;
+	const double distance = 2. * cell_width[0] * theta_crit_inv;
 
 	/* Compute how many cells away we need to walk
 	 * NOTE: Same for both grid levels ??? */
@@ -1510,8 +1510,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						error("Multipole of cj was not exchanged properly via the proxies");
 
 					/* Minimal distance between any pair of particles */
-					const double min_radius2 =
-							cell_min_dist2_same_size(ci, cj, periodic, dim);
+					const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
 					/* Are we beyond the distance where the truncated forces are 0 ?*/
 					if (periodic && !zoom_cell_flag && min_radius2 > max_mesh_dist2) continue;
@@ -1709,8 +1708,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 							error("Multipole of cj was not exchanged properly via the proxies");
 
 						/* Minimal distance between any pair of particles */
-						const double nat_min_radius2 =
-								cell_min_dist2_same_size(ci, nat_cj, periodic, dim);
+						const double nat_min_radius2 = cell_min_dist2(ci, nat_cj, periodic, dim);
 
 						/* Are we beyond the distance where the truncated forces are 0 ?*/
 						if (periodic && nat_min_radius2 > max_mesh_dist2) continue;
