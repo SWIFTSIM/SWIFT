@@ -726,8 +726,8 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   const double r_max = 2 * r_diag;
   const double distance = 2. * r_max * theta_crit_inv;
 
-  message("r_max=%f cell_width=%f zoom_cell_width=%f distance=%f", r_max, cells[0].width[0],
-					cells[zoom_cell_offset].width[0], distance);
+  message("r_max=%f cell_width=%f zoom_cell_width=%f distance=%f mesh_distance=%f", r_max, cells[0].width[0],
+					cells[zoom_cell_offset].width[0], distance, max_mesh_dist);
 
   /* Compute how many cells away we need to walk
 	 * NOTE: Same for both grid levels ??? */
@@ -1386,9 +1386,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	/* Maximal distance from shifted CoM to any corner */
 	const double r_max = 2 * r_diag;
 	const double distance = 2. * r_max * theta_crit_inv;
-
-	message("r_max=%f cell_width=%f zoom_cell_width=%f distance=%f", r_max, cells[0].width[0],
-					cells[zoom_cell_offset].width[0], distance);
 
 	/* Compute how many cells away we need to walk
 	 * NOTE: Same for both grid levels ??? */
