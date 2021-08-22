@@ -1149,15 +1149,6 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
     /* For the zoom cells we need to find all natural neighbours */
     if (zoom_cell_flag) {
 
-      int natural_tl_cid = cells[cid].parent_tl_cid;
-      int natural_i = (int)(cells[natural_tl_cid].loc[0] * s->iwidth[0]);
-      int natural_j = (int)(cells[natural_tl_cid].loc[1] * s->iwidth[1]);
-      int natural_k = (int)(cells[natural_tl_cid].loc[2] * s->iwidth[2]);
-
-      /* Turn this into upper and lower bounds for loops */
-      int natural_delta_m = natural_delta_cells;
-      int natural_delta_p = natural_delta_cells;
-
       /* Loop over all its neighbours in range. */
       for (int ii = -natural_delta_m; ii <= natural_delta_p; ii++) {
         int iii = natural_i + ii;
