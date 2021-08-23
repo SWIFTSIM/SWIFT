@@ -693,15 +693,12 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
   /* Some info about the zoom domain */
   const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
-//  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
   int zoom_cell_flag = 0;
 
   /* Some info about the domain */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
-  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
-                                cells[0].width[2]};
 
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
@@ -719,24 +716,28 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   e->nr_proxies = 0;
 
   /* Distance between centre of the cell and corners for natural top level cells */
-  double r_diag2 = cell_width[0] * cell_width[0] +
-  		             cell_width[1] * cell_width[1] +
-  		             cell_width[2] * cell_width[2];
+  double r_diag2 = cells[0].width[0] * cells[0].width[0] +
+  		             cells[0].width[1] * cells[0].width[1] +
+  		             cells[0].width[2] * cells[0].width[2];
+  double zoom_r_diag2 = cells[zoom_cell_offset].width[0] * cells[zoom_cell_offset].width[0] +
+                        cells[zoom_cell_offset].width[1] * cells[zoom_cell_offset].width[1] +
+                        cells[zoom_cell_offset].width[2] * cells[zoom_cell_offset].width[2];
 
   const double r_diag = 0.5 * sqrt(r_diag2);
+  const double zoom_r_diag = 0.5 * sqrt(zoom_r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  const double r_max = 2 * r_diag;
+  const double natural_r_max = 2 * r_diag;
+  const double zoom_r_max = 2 * zoom_r_diag;
+  const double r_max = natural_r_max;
   const double distance = 2. * r_max * theta_crit_inv;
-
-  message("r_max=%f cell_width=%f zoom_cell_width=%f distance=%f mesh_distance=%f", r_max, cells[0].width[0],
-					cells[zoom_cell_offset].width[0], distance, max_mesh_dist);
+  const double zoom_distance = 2. * zoom_r_max * theta_crit_inv;
 
   /* Compute how many cells away we need to walk
 	 * NOTE: Same for both grid levels ??? */
   const int delta_cells = (int)(distance / cells[0].dmin) + 1;
   const int natural_delta_cells = delta_cells;
-  const int zoom_delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
+  const int zoom_delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;
@@ -805,6 +806,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   		/* Overwrite delta_m and delta_p with the number of zoom cells*/
   		delta_m = zoom_delta_m;
   		delta_p = zoom_delta_p;
+
+  		/* Set upper search distance to zoom */
+  		r_max = zoom_r_max;
 
   	}
 
@@ -1228,13 +1232,13 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                 if (periodic && !zoom_cell_flag) {
 
                   if ((min_dist_CoM2 < max_mesh_dist2) &&
-                      !(4. * r_max * r_max <
+                      !(4. * natural_r_max * natural_r_max <
                         theta_crit * theta_crit * min_dist_CoM2))
                     proxy_type |= (int)proxy_cell_type_gravity;
 
                 } else {
 
-                  if (!(4. * r_max * r_max <
+                  if (!(4. * natural_r_max * natural_r_max <
                         theta_crit * theta_crit * min_dist_CoM2)) {
                     proxy_type |= (int)proxy_cell_type_gravity;
                   }
@@ -1364,24 +1368,14 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 	const int periodic = s->periodic;
-	const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
-																cells[0].width[2]};
 
 	/* Get some info about the physics */
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
 	const double max_mesh_dist = e->mesh->r_cut_max;
 	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
-//	/* Distance between centre of the cell and corners for natural top level cells */
-//	double r_diag2 = cell_width[0] * cell_width[0] +
-//			             cell_width[1] * cell_width[1] +
-//			             cell_width[2] * cell_width[2];
-//
-//	const double r_diag = 0.5 * sqrt(r_diag2);
-
 	/* Maximal distance from shifted CoM to any corner */
-//	const double r_max = 2 * r_diag;
-	const double distance = 2. * cell_width[0] * theta_crit_inv;
+	const double distance = 2. * cells[0].width[0] * theta_crit_inv;
 
 	/* Compute how many cells away we need to walk
 	 * NOTE: Same for both grid levels ??? */
