@@ -679,6 +679,8 @@ double cell_min_dist2(const struct cell *restrict ci,
  */
 void engine_makeproxies_with_zoom_region(struct engine *e) {
 
+	if (!e->s->with_zoom_region) engine_makeproxies(e);
+
 #ifdef WITH_MPI
     /* Let's time this */
   const ticks tic = getticks();
@@ -1337,7 +1339,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
  *   criterion get a pair task.
  *
  * @param map_data Offset of first two indices disguised as a pointer.
- * @param num_elements Number of cells to traverse.
+ * @param num_elements Number of cells to traverse.a
  * @param extra_data The #engine.
 
  */
