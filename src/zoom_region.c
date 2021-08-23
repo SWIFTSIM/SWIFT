@@ -243,15 +243,6 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->tl_cell_type = tl_cell;
             c->dmin = dmin;
           } else {
-          	/* On the second loop we need to set zoom properties for the natural cells. */
-          	c = &s->cells_top[cid];
-          	c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
-          	if (c->tl_cell_type == void_tl_cell) {
-          		c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
-	            c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
-	            c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
-          	}
-
             /* Zoom region top level cells. */
             c = &s->cells_top[cid + zoom_cell_offset];
             c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
@@ -381,6 +372,12 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
                        s->zoom_props->width[2]);
       s->zoom_props->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+      c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+      if (c->tl_cell_type == void_tl_cell) {
+        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
+        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
+        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
+      }
     }
   }
 
@@ -987,16 +984,19 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           	int start_i = cells[cjd].start_i;
           	int start_j = cells[cjd].start_j;
           	int start_k = cells[cjd].start_k;
-            int end_i = start_i + nr_zoom_cells;
-            int end_j = start_j + nr_zoom_cells;
-            int end_k = start_k + nr_zoom_cells;
+            int end_i = start_i + nr_zoom_cells + 1;
+            int end_j = start_j + nr_zoom_cells + 1;
+            int end_k = start_k + nr_zoom_cells + 1;
 
             for (int iiii = start_i; iiii < end_i; iiii++) {
               for (int jjjj = start_j; jjjj < end_j; jjjj++) {
                 for (int kkkk = start_k; kkkk < end_k; kkkk++) {
 
                   /* Zoom level neighbour */
-                  cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
+                  int zoom_cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
+
+                  /* Ensure we are still in the natural neighbour */
+                  if (cells[zoom_cjd].parent_tl_cid != cjd) continue;
 
                   proxy_type = 0;
 
@@ -1032,7 +1032,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                       /* Minimal distance between any two points in the cells */
                       const double min_dist_CoM2 = cell_min_dist2(
-                              &cells[cid], &cells[cjd], periodic, dim);
+                              &cells[cid], &cells[zoom_cjd], periodic, dim);
 
                       /* Are we beyond the distance where the truncated forces are 0
                        * but not too far such that M2L can be used? */
@@ -1057,20 +1057,20 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   if (proxy_type == proxy_cell_type_none) continue;
 
                   /* Add to proxies? */
-                  if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+                  if (cells[cid].nodeID == nodeID && cells[zoom_cjd].nodeID != nodeID) {
 
                     /* Do we already have a relationship with this node? */
-                    int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+                    int proxy_id = e->proxy_ind[cells[zoom_cjd].nodeID];
                     if (proxy_id < 0) {
                       if (e->nr_proxies == engine_maxproxies)
                         error("Maximum number of proxies exceeded.");
 
                       /* Ok, start a new proxy for this pair of nodes */
                       proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                                 cells[cjd].nodeID);
+                                 cells[zoom_cjd].nodeID);
 
                       /* Store the information */
-                      e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+                      e->proxy_ind[cells[zoom_cjd].nodeID] = e->nr_proxies;
                       proxy_id = e->nr_proxies;
                       e->nr_proxies += 1;
 
@@ -1083,7 +1083,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                     }
 
                     /* Add the cell to the proxy */
-                    proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
+                    proxy_addcell_in(&proxies[proxy_id], &cells[zoom_cjd], proxy_type);
                     proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
 
                     /* Store info about where to send the cell */
@@ -1091,7 +1091,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   }
 
                   /* Same for the symmetric case? */
-                  if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+                  if (cells[zoom_cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
 
                     /* Do we already have a relationship with this node? */
                     int proxy_id = e->proxy_ind[cells[cid].nodeID];
@@ -1118,10 +1118,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                     /* Add the cell to the proxy */
                     proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
-                    proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+                    proxy_addcell_out(&proxies[proxy_id], &cells[zoom_cjd], proxy_type);
 
                     /* Store info about where to send the cell */
-                    cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+                    cells[zoom_cjd].mpi.sendto |= (1ULL << proxy_id);
                   }
                 }
               }
@@ -1558,16 +1558,16 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 					}
 
-					/* For natural (n = 0) top level cell neighbours in the zoom
+					/* For natural top level cell neighbours in the zoom
            * region we need to include the nested zoom cells */
 					if (!zoom_cell_flag && cj->tl_cell_type == void_tl_cell) {
 
 						int start_i = cj->start_i;
 						int start_j = cj->start_j;
 						int start_k = cj->start_k;
-						int end_i = start_i + nr_zoom_cells;
-						int end_j = start_j + nr_zoom_cells;
-						int end_k = start_k + nr_zoom_cells;
+						int end_i = start_i + nr_zoom_cells + 1;
+						int end_j = start_j + nr_zoom_cells + 1;
+						int end_k = start_k + nr_zoom_cells + 1;
 
 						for (int iiii = start_i; iiii < end_i; iiii++) {
 							for (int jjjj = start_j; jjjj < end_j; jjjj++) {
@@ -1577,6 +1577,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 									const int zoom_cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
 
 									struct cell *cj_zoom = &cells[zoom_cjd];
+
+									/* Ensure we are still in the natural neighbour */
+									if (cj_zoom->parent_tl_cid != cjd) continue;
 
 									/* Avoid duplicates, empty cells and completely foreign pairs */
 									if (cj_zoom->grav.count == 0 ||
