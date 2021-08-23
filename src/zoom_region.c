@@ -1004,7 +1004,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 									/* Ensure we are still in the natural neighbour */
 									if (zoom_cjd != cjd) {
 										message("%d, %d was not in the natural neighbour (%d %d %d, %d) (%d %d %d %d %d %d)",
-												cjd, zoom_cjd, iiii, jjjj, kkkk, cells[zoom_cjd].parent_tl_cell,
+												cjd, zoom_cjd, iiii, jjjj, kkkk, cells[zoom_cjd].parent_tl_cid,
 												start_i, start_j, start_k, end_i, end_j, end_k);
 										continue;
 									}
