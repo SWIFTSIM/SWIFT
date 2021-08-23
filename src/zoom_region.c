@@ -729,12 +729,11 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
   /* Maximal distance from shifted CoM to any corner */
   const double natural_r_max = 2 * r_diag;
   const double zoom_r_max = 2 * zoom_r_diag;
-  const double r_max = natural_r_max;
+  double r_max = natural_r_max; /* initially the loop needs the natural distance */
   const double distance = 2. * r_max * theta_crit_inv;
   const double zoom_distance = 2. * zoom_r_max * theta_crit_inv;
 
-  /* Compute how many cells away we need to walk
-	 * NOTE: Same for both grid levels ??? */
+  /* Compute how many cells away we need to walk */
   const int delta_cells = (int)(distance / cells[0].dmin) + 1;
   const int natural_delta_cells = delta_cells;
   const int zoom_delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
@@ -1006,12 +1005,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   int zoom_cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
 
 									/* Ensure we are still in the natural neighbour */
-									if (zoom_cjd != cjd) {
-										message("%d, %d was not in the natural neighbour (%d %d %d, %d) (%d %d %d %d %d %d)",
-												cjd, zoom_cjd, iiii, jjjj, kkkk, cells[zoom_cjd].parent_tl_cid,
-												start_i, start_j, start_k, end_i, end_j, end_k);
-										continue;
-									}
+									if (zoom_cjd != cjd) continue;
 
                   proxy_type = 0;
 
@@ -1376,12 +1370,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	/* Maximal distance from shifted CoM to any corner */
 	const double distance = 2. * cells[0].width[0] * theta_crit_inv;
+	const double zoom_distance = 2. * cells[zoom_cell_offset].width[0] * theta_crit_inv;
 
 	/* Compute how many cells away we need to walk
 	 * NOTE: Same for both grid levels ??? */
 	const int delta_cells = (int)(distance / cells[0].dmin) + 1;
 	const int natural_delta_cells = delta_cells;
-	const int zoom_delta_cells = (int)(distance / cells[zoom_cell_offset].dmin) + 1;
+	const int zoom_delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
 
 	/* Turn this into upper and lower bounds for loops */
 	int delta_m = delta_cells;
@@ -1396,9 +1391,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		if (cdim[0] % 2 == 0) {
 			delta_m = cdim[0] / 2;
 			delta_p = cdim[0] / 2 - 1;
+			natural_delta_m = cdim[0] / 2;
+			natural_delta_p = cdim[0] / 2 - 1;
 		} else {
 			delta_m = cdim[0] / 2;
 			delta_p = cdim[0] / 2;
+			natural_delta_m = cdim[0] / 2;
+			natural_delta_p = cdim[0] / 2 - 1;
 		}
 	}
 
@@ -1440,7 +1439,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 			natural_j = (natural_tl_cid / cdim[2]) % cdim[1];
 			natural_k = natural_tl_cid % cdim[2];
 
-			/* Overwrite delta_m and delta_p with the number of zoom cells*/
+			/* Overwrite delta_m and delta_p with the number of zoom cells */
 			delta_m = zoom_delta_m;
 			delta_p = zoom_delta_p;
 
@@ -1450,11 +1449,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		const int i = cid_with_offset / (cdim[1] * cdim[2]);
 		const int j = (cid_with_offset / cdim[2]) % cdim[1];
 		const int k = cid_with_offset % cdim[2];
-
-//		if (zoom_cell_flag) {
-//			delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
-//			natural_delta_cells = (int)(distance / cells[0].dmin) + 1;
-//			zoom_delta_cells = delta_cells;
 
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
