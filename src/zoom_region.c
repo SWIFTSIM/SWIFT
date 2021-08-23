@@ -243,6 +243,15 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->tl_cell_type = tl_cell;
             c->dmin = dmin;
           } else {
+          	/* On the second loop we need to assign zoom cell information to natural cells. */
+            c = &s->cells_top[cid];
+            c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+			      if (c->tl_cell_type == void_tl_cell) {
+			        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
+			        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
+			        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
+			      }
+
             /* Zoom region top level cells. */
             c = &s->cells_top[cid + zoom_cell_offset];
             c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
@@ -372,12 +381,6 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
                        s->zoom_props->width[2]);
       s->zoom_props->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
-      c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
-      if (c->tl_cell_type == void_tl_cell) {
-        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
-        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
-        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
-      }
     }
   }
 
