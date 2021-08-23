@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ * Copyright (c) 2021 Tsang Keung Chan (chantsangkeung@gmail.com)
+ * Copyright (c) 2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,29 +17,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_PROPERTIES_H
-#define SWIFT_RT_PROPERTIES_H
+#ifndef SWIFT_RT_STRUCT_SPHM1RT_H
+#define SWIFT_RT_STRUCT_SPHM1RT_H
 
 /**
- * @file src/rt_properties.h
- * @brief Branches between the different radiative transfer schemes properties.
+ * @file src/rt/SPHM1RT/rt_struct.h
+ * @brief Main header file for no radiative transfer struct.
+ * SPHM1RT method described in Chan+21: 2102.08404
  */
 
-/* Config parameters. */
-#include "../config.h"
-#include "rt.h"
+/* Additional RT data in hydro particle struct */
+struct rt_part_data {};
 
-/* Import the right RT definition */
-#if defined(RT_NONE)
-#include "./rt/none/rt_properties.h"
-#elif defined(RT_DEBUG)
-#include "./rt/debug/rt_properties.h"
-#elif defined(RT_SPHM1RT)
-#include "./rt/SPHM1RT/rt_properties.h"
-#elif defined(RT_GEAR)
-#include "./rt/GEAR/rt_properties.h"
-#else
-#error "Invalid choice of radiation scheme"
-#endif
+/* Additional RT data in star particle struct */
+struct rt_spart_data {};
 
-#endif /* SWIFT_RT_PROPERTIES_H */
+#endif /* SWIFT_RT_STRUCT_SPHM1RT_H */

@@ -40,6 +40,10 @@
 #define RT_IMPLEMENTATION "GEAR M1closure"
 #include "./rt/GEAR/rt.h"
 #include "./rt/GEAR/rt_iact.h"
+#elif defined(RT_SPHM1RT)
+#define RT_IMPLEMENTATION "SPH M1closure"
+#include "./rt/SPHM1RT/rt.h"
+#include "./rt/SPHM1RT/rt_iact.h"
 #else
 #error "Invalid choice of radiation scheme"
 #endif
