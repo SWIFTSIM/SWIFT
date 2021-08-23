@@ -461,10 +461,13 @@ struct cell {
    * zoom cell occupies, NULL if a natural top level cell */
   int parent_tl_cid;
 
-  /*! Grid cell start indices (ijk) for the zoom cells within a void top level cell */
+  /*! Grid cell start/end indices (ijk) for the zoom cells within a void top level cell */
   int start_i;
   int start_j;
   int start_k;
+  int end_i;
+  int end_j;
+  int end_k;
 
   /*! The number of zoom cells along an axis in a natural top level cell */
   double nr_zoom_cells;

@@ -250,6 +250,9 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 			        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
 			        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
 			        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
+			        c->end_i = (c->loc[0] - zoom_region_bounds[0] + c->width[0]) * s->zoom_props->iwidth[0];
+			        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[0]) * s->zoom_props->iwidth[1];
+			        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[0]) * s->zoom_props->iwidth[2];
 			      }
 
             /* Zoom region top level cells. */
@@ -987,9 +990,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           	int start_i = cells[cjd].start_i;
           	int start_j = cells[cjd].start_j;
           	int start_k = cells[cjd].start_k;
-            int end_i = start_i + nr_zoom_cells + 1;
-            int end_j = start_j + nr_zoom_cells + 1;
-            int end_k = start_k + nr_zoom_cells + 1;
+            int end_i = cells[cjd].end_i + 1;
+            int end_j = cells[cjd].end_j + 1;
+            int end_k = cells[cjd].end_k + 1;
 
             for (int iiii = start_i; iiii < end_i; iiii++) {
               for (int jjjj = start_j; jjjj < end_j; jjjj++) {
@@ -998,8 +1001,12 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   /* Zoom level neighbour */
                   int zoom_cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
 
-                  /* Ensure we are still in the natural neighbour */
-                  if (cells[zoom_cjd].parent_tl_cid != cjd) continue;
+									/* Ensure we are still in the natural neighbour */
+									if (cj_zoom->parent_tl_cid != cjd) {
+										message("%d, %d was not in the natural neighbour (%d %d %d) (%d %d %d %d %d %d)",
+												cjd, zoom_cjd, iiii, jjjj, kkkk, start_i, start_j, start_k, end_i, end_j, end_k)
+										continue;
+									}
 
                   proxy_type = 0;
 
@@ -1568,9 +1575,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						int start_i = cj->start_i;
 						int start_j = cj->start_j;
 						int start_k = cj->start_k;
-						int end_i = start_i + nr_zoom_cells + 1;
-						int end_j = start_j + nr_zoom_cells + 1;
-						int end_k = start_k + nr_zoom_cells + 1;
+						int end_i = cells[cjd].end_i + 1;
+						int end_j = cells[cjd].end_j + 1;
+						int end_k = cells[cjd].end_k + 1;
 
 						for (int iiii = start_i; iiii < end_i; iiii++) {
 							for (int jjjj = start_j; jjjj < end_j; jjjj++) {
