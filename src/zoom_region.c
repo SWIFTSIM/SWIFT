@@ -1002,9 +1002,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   int zoom_cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
 
 									/* Ensure we are still in the natural neighbour */
-									if (cj_zoom->parent_tl_cid != cjd) {
-										message("%d, %d was not in the natural neighbour (%d %d %d) (%d %d %d %d %d %d)",
-												cjd, zoom_cjd, iiii, jjjj, kkkk, start_i, start_j, start_k, end_i, end_j, end_k)
+									if (zoom_cjd != cjd) {
+										message("%d, %d was not in the natural neighbour (%d %d %d, %d) (%d %d %d %d %d %d)",
+												cjd, zoom_cjd, iiii, jjjj, kkkk, cells[zoom_cjd].parent_tl_cell,
+												start_i, start_j, start_k, end_i, end_j, end_k);
 										continue;
 									}
 
