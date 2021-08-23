@@ -2510,6 +2510,9 @@ case "$with_rt" in
       AC_DEFINE([RT_DEBUG], [1], [debugging scheme])
       AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
    ;;
+   SPHM1RT)
+      AC_DEFINE([RT_SPHM1RT], [1], [SPHM1RT radiative transfer scheme (Chan+21: 2102.08404)])
+   ;;
    *)
       AC_MSG_ERROR([Unknown radiative transfer scheme: $with_rt])
    ;;
