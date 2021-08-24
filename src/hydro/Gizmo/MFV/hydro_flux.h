@@ -34,6 +34,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_reset_hydro_fluxes(
   p->flux.momentum[1] = 0.0f;
   p->flux.momentum[2] = 0.0f;
   p->flux.energy = 0.0f;
+
+  p->flux.flux_count = 0;
 }
 
 /**

@@ -120,6 +120,9 @@ struct part {
     /* Particle time step. Used to compute time-integrated fluxes. */
     float dt;
 
+    /* Flux counter. */
+    long long flux_count;
+
   } flux;
 
   /* Gradients of the primitive variables. */
@@ -147,6 +150,9 @@ struct part {
 
     /* Fluid thermal energy (not per unit mass!). */
     float energy;
+
+    /* Flux counter. */
+    long long flux_count;
 
   } conserved;
 

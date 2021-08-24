@@ -410,6 +410,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
       (pj->flux.dt > 0.0f) ? fminf(pi->flux.dt, pj->flux.dt) : pi->flux.dt;
 
   hydro_part_update_fluxes_left(pi, totflux, dx, mindt);
+  hydro_part_update_flux_count_left(pi, pj);
 
   /* Unlike in SPH schemes, we do need to update inactive neighbours, so that
      the fluxes are always exchanged symmetrically. Thanks to our sneaky use
@@ -417,6 +418,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
      time step. */
   if (mode == 1 || (pj->flux.dt < 0.0f)) {
     hydro_part_update_fluxes_right(pj, totflux, dx, mindt);
+    hydro_part_update_flux_count_right(pi, pj);
   }
 }
 

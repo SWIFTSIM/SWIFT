@@ -25,4 +25,33 @@
 #include "MFM/hydro_flux.h"
 #endif
 
+__attribute__((always_inline)) INLINE static void hydro_part_reset_flux_count(
+    struct part* restrict p) {
+  p->flux.flux_count = 0;
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_part_update_flux_count_left(struct part* restrict pi,
+                                  const struct part* restrict pj) {
+  if (pi->id < pj->id) {
+    pi->flux.flux_count += 1;
+  } else if (pj->id < pi->id) {
+    pi->flux.flux_count -= 1;
+  } else {
+    error("Particle IDs are the same!");
+  }
+}
+
+__attribute__((always_inline)) INLINE static void
+hydro_part_update_flux_count_right(const struct part* restrict pi,
+                                   struct part* restrict pj) {
+  if (pi->id < pj->id) {
+    pj->flux.flux_count -= 1;
+  } else if (pj->id < pi->id) {
+    pj->flux.flux_count += 1;
+  } else {
+    error("Particle IDs are the same!");
+  }
+}
+
 #endif /* SWIFT_GIZMO_HYDRO_FLUX_H */

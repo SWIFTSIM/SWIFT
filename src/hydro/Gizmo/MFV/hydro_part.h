@@ -92,6 +92,12 @@ struct part {
     /* Fluid thermal energy (not per unit mass!). */
     float energy;
 
+    /* Flux counter. */
+    long long flux_count;
+
+    /* Count the number of flux updates for this particle. */
+    long long kick_count;
+
   } conserved;
 
   /* Fluxes. */
@@ -108,6 +114,9 @@ struct part {
 
     /* Particle time step. Used to compute time-integrated fluxes. */
     float dt;
+
+    /* Flux counter. */
+    long long flux_count;
 
   } flux;
 

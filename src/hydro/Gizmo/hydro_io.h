@@ -234,6 +234,29 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
+
+  ++(*num_fields);
+  list[11] = io_make_output_field(
+      "FluxCount", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      conserved.flux_count,
+      "Passively advected flux counter that can be used to check exact "
+      "conservation of conserved quantities.");
+  ++(*num_fields);
+  list[12] =
+      io_make_output_field("ActiveFluxCount", LONGLONG, 1, UNIT_CONV_NO_UNITS,
+                           0.f, parts, flux.flux_count,
+                           "Currently accumulated flux counter flux (should be "
+                           "0 if the current flux is up-to-date.");
+  ++(*num_fields);
+  list[13] = io_make_output_field("KickCount", LONGLONG, 1, UNIT_CONV_NO_UNITS,
+                                  0.f, parts, conserved.kick_count,
+                                  "Number of times the conserved variables for "
+                                  "the particle where updated.");
+
+  ++(*num_fields);
+  list[14] = io_make_output_field(
+      "FluxDt", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, flux.dt,
+      "Flux time step. Is -1 if the conerved variables are up-to-date.");
 }
 
 /**

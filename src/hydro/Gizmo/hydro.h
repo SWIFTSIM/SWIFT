@@ -159,6 +159,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   p->time_bin = 0;
 
+  p->conserved.flux_count = 0;
+  p->conserved.kick_count = 0;
+
   hydro_part_set_primitive_variables(p, W);
   hydro_part_set_conserved_variables(p, Q);
 
@@ -693,10 +696,19 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.energy += flux[4];
 #endif
 
+    p->conserved.flux_count += p->flux.flux_count;
+    p->conserved.kick_count += 1;
+
     /* reset the fluxes, so that they do not get used again in kick1 */
     hydro_part_reset_hydro_fluxes(p);
+    hydro_part_reset_flux_count(p);
     /* invalidate the particle time step. It is considered to be inactive until
        dt is set again in hydro_prepare_force() */
+    p->flux.dt = -1.0f;
+  } else if (p->flux.dt == 0.0f) {
+    /* the 0th time step calculated some fluxes. This is wrong. Reset them. */
+    hydro_part_reset_hydro_fluxes(p);
+    hydro_part_reset_flux_count(p);
     p->flux.dt = -1.0f;
   }
 
