@@ -108,7 +108,7 @@ static int repart_init_fixed_costs(void);
 static void pick_vector(struct space *s, int nregions, int *samplecells) {
 
   /* Get length of space and divide up. */
-  int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
+  int length = 2 * s->cdim[0] * s->cdim[1] * s->cdim[2];
   if (nregions > length) {
     error("Too few cells (%d) for this number of regions (%d)", length,
           nregions);
