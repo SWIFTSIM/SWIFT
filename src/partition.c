@@ -118,21 +118,40 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
   int n = 0;
   int m = 0;
   int l = 0;
-
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
-        if (n == 0 && l < nregions) {
-          samplecells[m++] = i;
-          samplecells[m++] = j;
-          samplecells[m++] = k;
-          l++;
-        }
+#ifdef WITH_ZOOM_REGION
+  for (int p = 0; p < 2; p++) {
+  	if (p == 1 && !s->with_zoom_region) continue;
+		for (int i = 0; i < s->cdim[0]; i++) {
+		  for (int j = 0; j < s->cdim[1]; j++) {
+		    for (int k = 0; k < s->cdim[2]; k++) {
+		      if (n == 0 && l < nregions) {
+		        samplecells[m++] = i;
+		        samplecells[m++] = j;
+		        samplecells[m++] = k;
+		        l++;
+          }
         n++;
         if (n == step) n = 0;
+        }
       }
     }
   }
+#else
+	for (int i = 0; i < s->cdim[0]; i++) {
+	  for (int j = 0; j < s->cdim[1]; j++) {
+	    for (int k = 0; k < s->cdim[2]; k++) {
+	      if (n == 0 && l < nregions) {
+	        samplecells[m++] = i;
+	        samplecells[m++] = j;
+	        samplecells[m++] = k;
+	        l++;
+        }
+      n++;
+      if (n == step) n = 0;
+      }
+    }
+  }
+#endif
 }
 #endif
 
