@@ -147,26 +147,27 @@ static void split_vector(struct space *s, int nregions, int *samplecells) {
   int n = 0;
 #ifdef WITH_ZOOM_REGION
   for (int p = 0; p < 2; p++) {
-      for (int i = 0; i < s->cdim[0]; i++) {
-          for (int j = 0; j < s->cdim[1]; j++) {
-              for (int k = 0; k < s->cdim[2]; k++) {
-                  int select = -1;
-                  float rsqmax = FLT_MAX;
-                  int m = 0;
-                  for (int l = 0; l < nregions; l++) {
-                      float dx = samplecells[m++] - i;
-                      float dy = samplecells[m++] - j;
-                      float dz = samplecells[m++] - k;
-                      float rsq = (dx * dx + dy * dy + dz * dz);
-                      if (rsq < rsqmax) {
-                          rsqmax = rsq;
-                          select = l;
-                      }
-                  }
-                  s->cells_top[n++].nodeID = select;
-              }
+  	if (p == 1 && !s->with_zoom_region) continue;
+    for (int i = 0; i < s->cdim[0]; i++) {
+      for (int j = 0; j < s->cdim[1]; j++) {
+        for (int k = 0; k < s->cdim[2]; k++) {
+          int select = -1;
+          float rsqmax = FLT_MAX;
+          int m = 0;
+          for (int l = 0; l < nregions; l++) {
+            float dx = samplecells[m++] - i;
+            float dy = samplecells[m++] - j;
+            float dz = samplecells[m++] - k;
+            float rsq = (dx * dx + dy * dy + dz * dz);
+            if (rsq < rsqmax) {
+              rsqmax = rsq;
+              select = l;
+            }
           }
+          s->cells_top[n++].nodeID = select;
+        }
       }
+    }
   }
 #else
   for (int i = 0; i < s->cdim[0]; i++) {
