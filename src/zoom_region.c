@@ -1006,6 +1006,14 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
                   /* Zoom level neighbour */
                   int zoom_cjd = cell_getid(cdim, iiii, jjjj, kkkk) + zoom_cell_offset;
 
+                  /* Early abort (both same node) */
+			            if (cells[cid].nodeID == nodeID && cells[zoom_cjd].nodeID == nodeID)
+			              continue;
+
+			            /* Early abort (both foreign node) */
+			            if (cells[cid].nodeID != nodeID && cells[zoom_cjd].nodeID != nodeID)
+			              continue;
+
 									/* Ensure we are still in the natural neighbour */
 									if (zoom_cjd != cjd) continue;
 
@@ -1160,17 +1168,14 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
             kkk = (kkk + cdim[2]) % cdim[2];
 
             /* Get the cell ID. */
-            int cjd = cell_getid(cdim, iii, jjj, kkk);
-
-            /* Early abort  */
-            if (cid >= cjd) continue;
+            int nat_cjd = cell_getid(cdim, iii, jjj, kkk);
 
             /* Early abort (both same node) */
-            if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID)
+            if (cells[cid].nodeID == nodeID && cells[nat_cjd].nodeID == nodeID)
               continue;
 
             /* Early abort (both foreign node) */
-            if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
+            if (cells[cid].nodeID != nodeID && cells[nat_cjd].nodeID != nodeID)
               continue;
 
             int proxy_type = 0;
@@ -1221,7 +1226,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                 /* Minimal distance between any two points in the cells */
                 const double min_dist_CoM2 = cell_min_dist2(
-                        &cells[cid], &cells[cjd], periodic, dim);
+                        &cells[cid], &cells[nat_cjd], periodic, dim);
 
                 /* Are we beyond the distance where the truncated forces are 0
                  * but not too far such that M2L can be used? */
@@ -1246,20 +1251,20 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
             if (proxy_type == proxy_cell_type_none) continue;
 
             /* Add to proxies? */
-            if (cells[cid].nodeID == nodeID && cells[cjd].nodeID != nodeID) {
+            if (cells[cid].nodeID == nodeID && cells[nat_cjd].nodeID != nodeID) {
 
               /* Do we already have a relationship with this node? */
-              int proxy_id = e->proxy_ind[cells[cjd].nodeID];
+              int proxy_id = e->proxy_ind[cells[nat_cjd].nodeID];
               if (proxy_id < 0) {
                 if (e->nr_proxies == engine_maxproxies)
                   error("Maximum number of proxies exceeded.");
 
                 /* Ok, start a new proxy for this pair of nodes */
                 proxy_init(&proxies[e->nr_proxies], e->nodeID,
-                           cells[cjd].nodeID);
+                           cells[nat_cjd].nodeID);
 
                 /* Store the information */
-                e->proxy_ind[cells[cjd].nodeID] = e->nr_proxies;
+                e->proxy_ind[cells[nat_cjd].nodeID] = e->nr_proxies;
                 proxy_id = e->nr_proxies;
                 e->nr_proxies += 1;
 
@@ -1272,7 +1277,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
               }
 
               /* Add the cell to the proxy */
-              proxy_addcell_in(&proxies[proxy_id], &cells[cjd], proxy_type);
+              proxy_addcell_in(&proxies[proxy_id], &cells[nat_cjd], proxy_type);
               proxy_addcell_out(&proxies[proxy_id], &cells[cid], proxy_type);
 
               /* Store info about where to send the cell */
@@ -1280,7 +1285,7 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
             }
 
             /* Same for the symmetric case? */
-            if (cells[cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
+            if (cells[nat_cjd].nodeID == nodeID && cells[cid].nodeID != nodeID) {
 
               /* Do we already have a relationship with this node? */
               int proxy_id = e->proxy_ind[cells[cid].nodeID];
@@ -1307,10 +1312,10 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
               /* Add the cell to the proxy */
               proxy_addcell_in(&proxies[proxy_id], &cells[cid], proxy_type);
-              proxy_addcell_out(&proxies[proxy_id], &cells[cjd], proxy_type);
+              proxy_addcell_out(&proxies[proxy_id], &cells[nat_cjd], proxy_type);
 
               /* Store info about where to send the cell */
-              cells[cjd].mpi.sendto |= (1ULL << proxy_id);
+              cells[nat_cjd].mpi.sendto |= (1ULL << proxy_id);
             }
           }
         }
