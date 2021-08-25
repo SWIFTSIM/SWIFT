@@ -251,8 +251,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 			        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
 			        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
 			        c->end_i = (c->loc[0] - zoom_region_bounds[0] + c->width[0]) * s->zoom_props->iwidth[0];
-			        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[0]) * s->zoom_props->iwidth[1];
-			        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[0]) * s->zoom_props->iwidth[2];
+			        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[1]) * s->zoom_props->iwidth[1];
+			        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[2]) * s->zoom_props->iwidth[2];
 			      }
 
             /* Zoom region top level cells. */
@@ -995,9 +995,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
           	int start_i = cells[cjd].start_i;
           	int start_j = cells[cjd].start_j;
           	int start_k = cells[cjd].start_k;
-            int end_i = cells[cjd].end_i + 2;
-            int end_j = cells[cjd].end_j + 2;
-            int end_k = cells[cjd].end_k + 2;
+            int end_i = cells[cjd].end_i + 1;
+            int end_j = cells[cjd].end_j + 1;
+            int end_k = cells[cjd].end_k + 1;
 
             for (int iiii = start_i; iiii < end_i; iiii++) {
               for (int jjjj = start_j; jjjj < end_j; jjjj++) {
@@ -1047,16 +1047,16 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
                       /* Are we beyond the distance where the truncated forces are 0
                        * but not too far such that M2L can be used? */
-                      if (periodic && !zoom_cell_flag) {
+                      if (periodic) {
 
                         if ((min_dist_CoM2 < max_mesh_dist2) &&
-                            !(4. * r_max * r_max <
+                            !(4. * natural_r_max * natural_r_max <
                               theta_crit * theta_crit * min_dist_CoM2))
                           proxy_type |= (int)proxy_cell_type_gravity;
 
                       } else {
 
-                        if (!(4. * r_max * r_max <
+                        if (!(4. * natural_r_max * natural_r_max <
                               theta_crit * theta_crit * min_dist_CoM2)) {
                           proxy_type |= (int)proxy_cell_type_gravity;
                         }
@@ -1566,9 +1566,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						int start_i = cj->start_i;
 						int start_j = cj->start_j;
 						int start_k = cj->start_k;
-						int end_i = cells[cjd].end_i + 2;
-						int end_j = cells[cjd].end_j + 2;
-						int end_k = cells[cjd].end_k + 2;
+						int end_i = cells[cjd].end_i + 1;
+						int end_j = cells[cjd].end_j + 1;
+						int end_k = cells[cjd].end_k + 1;
 
 						for (int iiii = start_i; iiii < end_i; iiii++) {
 							for (int jjjj = start_j; jjjj < end_j; jjjj++) {
