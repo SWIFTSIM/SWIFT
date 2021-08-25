@@ -1687,8 +1687,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 						struct cell *nat_cj = &cells[nat_cjd];
 
-						/* Avoid duplicates, empty cells and completely foreign pairs */
-						if (cid >= nat_cjd || nat_cj->grav.count == 0 ||
+						/* empty cells and completely foreign pairs */
+						if (nat_cj->grav.count == 0 ||
 						(ci->nodeID != nodeID && nat_cj->nodeID != nodeID))
 							continue;
 
