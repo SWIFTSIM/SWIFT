@@ -1347,6 +1347,21 @@ void task_free_mpi_comms(void) {
 }
 #endif
 
+void task_dump_all_dependencies(const struct task *parent,
+                                const struct task *link, FILE *file,
+                                ticks tic_step) {
+  for (int k = 0; k < parent->nr_unlock_tasks; ++k) {
+    struct task *child = parent->unlock_tasks[k];
+    if (!child->implicit) {
+      if (child->tic > tic_step) {
+        fprintf(file, " %p %p\n", link, child);
+      }
+    } else {
+      task_dump_all_dependencies(child, link, file, tic_step);
+    }
+  }
+}
+
 /**
  * @brief dump all the tasks of all the known engines into a file for
  * postprocessing.
@@ -1474,14 +1489,13 @@ void task_dump_all(struct engine *e, int step) {
   int linenr = 0;
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
+      /* add a line that links this task pointer to an info line in the other
+         file */
       fprintf(file_tline, " %p %i\n", &(e->sched.tasks[l]), linenr);
       ++linenr;
-    } else {
-      fprintf(file_tline, " %p %i\n", &(e->sched.tasks[l]), -1);
-    }
-    for (int k = 0; k < e->sched.tasks[l].nr_unlock_tasks; ++k) {
-      fprintf(file_graph, " %p %p\n", &(e->sched.tasks[l]),
-              e->sched.tasks[l].unlock_tasks[k]);
+      /* make a list of all direct and indirect dependencies of this task */
+      task_dump_all_dependencies(&(e->sched.tasks[l]), &(e->sched.tasks[l]),
+                                 file_graph, e->tic_step);
     }
   }
   fclose(file_tline);
