@@ -133,6 +133,14 @@ void restart_write(struct engine *e, const char *filename) {
   /* Save a backup the existing restart file, if requested. */
   if (e->restart_save) restart_save_previous(filename);
 
+  /* Use a single Lustre stripe with a rank-based OST offset? */
+  if (e->restart_lustre_OST_count != 0) {
+    char string[1200];
+    sprintf(string, "lfs setstripe -c 1 -i %d %s",
+            (e->nodeID % e->restart_lustre_OST_count), filename);
+    system(string);
+  }
+
   FILE *stream = fopen(filename, "w");
   if (stream == NULL)
     error("Failed to open restart file: %s (%s)", filename, strerror(errno));
