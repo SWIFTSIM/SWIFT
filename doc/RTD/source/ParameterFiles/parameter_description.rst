@@ -810,6 +810,19 @@ that can be used as if it was a non-distributed snapshot. In this case, the
 HDF5 library itself can figure out which file is needed when manipulating the
 snapshot.
 
+On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
+a good writing speed. If the parameter ``lustre_OST_count`` is set to the number
+of OSTs present on the system, then SWIFT will set the `stripe count` of each
+distributed file to `1` and set each file's `stripe index` to the MPI rank
+generating it modulo the OST count. If the parameter is not set then the files
+will be created with the default system policy (or whatever was set for the
+directory where the files are written). This parameter has no effect on
+non-Lustre file systems and no effect if distributed snapshots are not used.
+
+* The number of Lustre OSTs to distribute the single-striped distributed
+  snapshot files over: ``lustre_OST_count`` (default: ``0``)
+
+
 Users can optionally ask to randomly sub-sample the particles in the snapshots.
 This is specified for each particle type individually:
 
@@ -903,6 +916,7 @@ would have:
      invoke_fof:          1
      compression:         3
      distributed:         1
+     lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
      UnitLength_in_cgs:   1.  # Use cm in outputs
      UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
@@ -1058,6 +1072,18 @@ the MPI-rank. SWIFT writes one file per MPI rank. If the ``save`` option has
 been activated, the previous set of restart files will be named
 ``basename_000000.rst.prev``.
 
+On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
+a good writing and reading speed. If the parameter ``lustre_OST_count`` is set
+to the number of OSTs present on the system, then SWIFT will set the `stripe
+count` of each restart file to `1` and set each file's `stripe index` to the MPI
+rank generating it modulo the OST count. If the parameter is not set then the
+files will be created with the default system policy (or whatever was set for
+the directory where the files are written). This parameter has no effect on
+non-Lustre file systems.
+
+* The number of Lustre OSTs to distribute the single-striped restart files over:
+  ``lustre_OST_count`` (default: ``0``)
+
 SWIFT can also be stopped by creating an empty file called ``stop`` in the
 directory where the restart files are written (i.e. the directory speicified by
 the parameter ``subdir``). This will make SWIFT dump a fresh set of restart file
@@ -1099,6 +1125,7 @@ hours after which a shell command will be run, one would use:
     delta_hours:        5.0
     stop_steps:         100
     max_run_time:       24.0       # In hours
+    lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
     resubmit_on_exit:   1
     resubmit_command:   ./resub.sh
 
@@ -1565,4 +1592,7 @@ A complete specification of the model looks like
 
 .. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
 
-.. [#f3] The mapping is 0 --> gas, 1 --> dark matter, 2 --> background dark matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
+.. [#f3] The mapping is 0 --> gas, 1 --> dark matter, 2 --> background dark
+	 matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
+
+.. [#f4] https://wiki.lustre.org/Main_Page
