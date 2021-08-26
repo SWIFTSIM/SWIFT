@@ -2186,6 +2186,19 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_fof) {
     if (e->ti_end_min > e->ti_next_fof && e->ti_next_fof > 0) {
       e->run_fof = 1;
+      e->forcerebuild = 1;
+    }
+  }
+
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
+      e->mesh->ti_end_mesh_next == e->ti_current)
+    e->forcerebuild = 1;
+
+  /* Do we want a snapshot that will trigger a FOF call? */
+  if (e->ti_current + (e->ti_current - e->ti_old) > e->ti_next_snapshot &&
+      e->ti_next_snapshot > 0) {
+    if ((e->policy & engine_policy_fof) && e->snapshot_invoke_fof) {
+      e->forcerebuild = 1;
     }
   }
 
