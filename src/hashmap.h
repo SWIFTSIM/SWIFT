@@ -65,7 +65,7 @@ typedef struct _hashmap_element {
 } hashmap_element_t;
 
 /* Make sure a chunk fits in a given size. */
-#define HASHMAP_TARGET_CHUNK_BYTES (4 * 1024)
+#define HASHMAP_TARGET_CHUNK_BYTES (80 * 1024)
 #define HASHMAP_BITS_PER_ELEMENT ((int)sizeof(hashmap_element_t) * 8 + 1)
 #define HASHMAP_ELEMENTS_PER_CHUNK \
   ((HASHMAP_TARGET_CHUNK_BYTES * 8) / HASHMAP_BITS_PER_ELEMENT)
@@ -73,7 +73,7 @@ typedef struct _hashmap_element {
   ((HASHMAP_ELEMENTS_PER_CHUNK + HASHMAP_BITS_PER_MASK - 1) / \
    HASHMAP_BITS_PER_MASK)
 
-#define HASHMAP_ALLOCS_INITIAL_SIZE (8)
+#define HASHMAP_ALLOCS_INITIAL_SIZE (80 * 1024)
 #define HASHMAP_ALLOC_SIZE_FRACTION (0.1)
 
 #define HASHMAP_MAX_CHAIN_LENGTH (HASHMAP_ELEMENTS_PER_CHUNK / 8)
