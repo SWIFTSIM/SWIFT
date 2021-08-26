@@ -160,6 +160,7 @@ Snapshots:
   invoke_fof: 0           # (Optional) Call FOF every time a snapshot is written
   compression: 0          # (Optional) Set the level of GZIP compression of the HDF5 datasets [0-9]. 0 does no compression. The lossless compression is applied to *all* the fields.
   distributed: 0          # (Optional) When running over MPI, should each rank write a partial snapshot or do we want a single file? 1 implies one file per MPI rank.
+  lustre_OST_count:  0    # (Optional) If > 0, the number of lustre OSTs to distribure the single-striped files over. Has no effect on non-Lustre filesystems. Has an effect only on distributed snapshots.
   use_delta_from_edge: 0  # (Optional) Should particles close to the box edge be moved back towards 0 by a vector perpendicular to the box edge? This is useful in cases where lossy compression moves particle beyond the edge.
   delta_from_edge:     0. # (Optional) Norm of the vector to use when moving particles away from the edge
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
@@ -219,6 +220,7 @@ Restarts:
   max_run_time:       24.0       # (optional) Maximal wall-clock time in hours. The application will exit when this limit is reached.
   resubmit_on_exit:   0          # (Optional) whether to run a command when exiting after the time limit has been reached.
   resubmit_command:   ./resub.sh # (Optional) Command to run when time limit is reached. Compulsory if resubmit_on_exit is switched on. Note potentially unsafe.
+  lustre_OST_count:  0           # (Optional) If > 0, the number of lustre OSTs to distribure the single-striped restart files over. Has no effect on non-Lustre filesystems.
 
 # Parameters governing domain decomposition
 DomainDecomposition:
