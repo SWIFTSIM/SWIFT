@@ -55,8 +55,11 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
   /* Hook up the alloc, so that we can clean it up later. */
   if (m->allocs_count == m->allocs_size) {
     m->allocs_size *= 2;
+
     void **new_allocs =
         (void **)swift_malloc("hashmap", sizeof(void *) * m->allocs_size);
+    if (new_allocs == NULL) error("Unable to allocate new chunks.");
+
     memcpy(new_allocs, m->allocs, sizeof(void *) * m->allocs_count);
     swift_free("hashmap", m->allocs);
     m->allocs = new_allocs;
