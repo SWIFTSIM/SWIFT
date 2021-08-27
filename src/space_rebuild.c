@@ -606,7 +606,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef WITH_ZOOM_REGION
     b_index[k] = cell_getid_zoom(cdim, bp->x[0], bp->x[1], bp->x[2], s,
                               bp->x[0] * ih[0], bp->x[1] * ih[1], bp->x[2] * ih[2]);
-#elbe
+#else
     b_index[k] =
         cell_getid(cdim, bp->x[0] * ih[0], bp->x[1] * ih[1], bp->x[2] * ih[2]);
 #endif
@@ -854,7 +854,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #ifdef WITH_ZOOM_REGION
     g_index[k] = cell_getid_zoom(cdim, p->x[0], p->x[1], p->x[2], s,
                               p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-#elbe
+#else
     g_index[k] =
         cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
 #endif
