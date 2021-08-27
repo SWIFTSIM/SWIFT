@@ -125,8 +125,16 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     if (pos_z == dim_z) pos_z = 0.0;
 
     /* Get its cell index */
+#ifdef WITH_ZOOM_REGION
+	  const int index = cell_getid_zoom(cdim, pos_x,
+	                                    pos_y, pos_z, *s,
+	                                    pos_x * ih_x,
+	                                    pos_y * ih_y,
+	                                    pos_z * ih_z);
+#else
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -388,9 +396,17 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     if (pos_y == dim_y) pos_y = 0.0;
     if (pos_z == dim_z) pos_z = 0.0;
 
-    /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+	  /* Get its cell index */
+#ifdef WITH_ZOOM_REGION
+	  const int index = cell_getid_zoom(cdim, pos_x,
+	                                    pos_y, pos_z, *s,
+	                                    pos_x * ih_x,
+	                                    pos_y * ih_y,
+	                                    pos_z * ih_z);
+#else
+	  const int index =
+			  cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -516,9 +532,17 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     if (pos_y == dim_y) pos_y = 0.0;
     if (pos_z == dim_z) pos_z = 0.0;
 
-    /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+	  /* Get its cell index */
+#ifdef WITH_ZOOM_REGION
+	  const int index = cell_getid_zoom(cdim, pos_x,
+	                                    pos_y, pos_z, *s,
+	                                    pos_x * ih_x,
+	                                    pos_y * ih_y,
+	                                    pos_z * ih_z);
+#else
+	  const int index =
+			  cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -644,9 +668,17 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     if (pos_y == dim_y) pos_y = 0.0;
     if (pos_z == dim_z) pos_z = 0.0;
 
-    /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+	  /* Get its cell index */
+#ifdef WITH_ZOOM_REGION
+	  const int index = cell_getid_zoom(cdim, pos_x,
+	                                    pos_y, pos_z, *s,
+	                                    pos_x * ih_x,
+	                                    pos_y * ih_y,
+	                                    pos_z * ih_z);
+#else
+	  const int index =
+			  cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
