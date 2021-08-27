@@ -275,11 +275,11 @@ struct redist_mapper_data {
         else if (parts[k].x[j] >= s->dim[j])                               \
           parts[k].x[j] -= s->dim[j];                                      \
       }                                                                    \
-	    const int cid = cell_getid_zoom(s->cdim, s->parts[k].x[0],           \
-	        s->parts[k].x[1], s->parts[k].x[2], s,                          \
-	        s->parts[k].x[0] * s->iwidth[0],                                 \
-	        s->parts[k].x[1] * s->iwidth[1],                                 \
-	        s->parts[k].x[2] * s->iwidth[2]);                                \
+	    const int cid = cell_getid_zoom(s->cdim, parts[k].x[0],              \
+	        parts[k].x[1], parts[k].x[2], s,                                 \
+	        parts[k].x[0] * s->iwidth[0],                                    \
+	        parts[k].x[1] * s->iwidth[1],                                    \
+	        parts[k].x[2] * s->iwidth[2]);                                   \
       dest[k] = s->cells_top[cid].nodeID;                                  \
       size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
       lcounts[ind] += 1;                                                   \
@@ -958,6 +958,7 @@ void engine_redistribute(struct engine *e) {
     const int new_node = c->nodeID;
 
     if (g_dest[k] != new_node)
+    	message("cid=%d pos=%f %f %f cwidth=%f", new_cid, gp->x[0], gp->x[1], gp->x[2], c->width[0]);
       error("gpart's new node index not matching sorted index (%d != %d).",
             g_dest[k], new_node);
 
