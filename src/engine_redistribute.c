@@ -958,9 +958,8 @@ void engine_redistribute(struct engine *e) {
     const int new_node = c->nodeID;
 
     if (g_dest[k] != new_node)
-    	message("cid=%d pos=%f %f %f cwidth=%f", new_cid, gp->x[0], gp->x[1], gp->x[2], c->width[0]);
-      error("gpart's new node index not matching sorted index (%d != %d).",
-            g_dest[k], new_node);
+      error("gpart's new node index not matching sorted index (%d != %d). cid=%d pos=%f %f %f cwidth=%f",
+            g_dest[k], new_node, new_cid, gp->x[0], gp->x[1], gp->x[2], c->width[0]);
 
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
