@@ -127,7 +127,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Get its cell index */
 #ifdef WITH_ZOOM_REGION
 	  const int index = cell_getid_zoom(cdim, pos_x,
-	                                    pos_y, pos_z, *s,
+	                                    pos_y, pos_z, s,
 	                                    pos_x * ih_x,
 	                                    pos_y * ih_y,
 	                                    pos_z * ih_z);
@@ -399,7 +399,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 	  /* Get its cell index */
 #ifdef WITH_ZOOM_REGION
 	  const int index = cell_getid_zoom(cdim, pos_x,
-	                                    pos_y, pos_z, *s,
+	                                    pos_y, pos_z, s,
 	                                    pos_x * ih_x,
 	                                    pos_y * ih_y,
 	                                    pos_z * ih_z);
@@ -535,7 +535,7 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
 	  /* Get its cell index */
 #ifdef WITH_ZOOM_REGION
 	  const int index = cell_getid_zoom(cdim, pos_x,
-	                                    pos_y, pos_z, *s,
+	                                    pos_y, pos_z, s,
 	                                    pos_x * ih_x,
 	                                    pos_y * ih_y,
 	                                    pos_z * ih_z);
@@ -671,7 +671,7 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
 	  /* Get its cell index */
 #ifdef WITH_ZOOM_REGION
 	  const int index = cell_getid_zoom(cdim, pos_x,
-	                                    pos_y, pos_z, *s,
+	                                    pos_y, pos_z, s,
 	                                    pos_x * ih_x,
 	                                    pos_y * ih_y,
 	                                    pos_z * ih_z);

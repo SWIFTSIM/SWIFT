@@ -276,7 +276,7 @@ struct redist_mapper_data {
           parts[k].x[j] -= s->dim[j];                                      \
       }                                                                    \
 	    const int cid = cell_getid_zoom(s->cdim, s->parts[k].x[0],           \
-	        s->parts[k].x[1], s->parts[k].x[2], *s,                          \
+	        s->parts[k].x[1], s->parts[k].x[2], s,                          \
 	        s->parts[k].x[0] * s->iwidth[0],                                 \
 	        s->parts[k].x[1] * s->iwidth[1],                                 \
 	        s->parts[k].x[2] * s->iwidth[2]);                                \
@@ -731,7 +731,7 @@ void engine_redistribute(struct engine *e) {
 
     /* New cell index */
 #ifdef WITH_ZOOM_REGION
-    const int new_cid = cell_getid_zoom(s->cdim, p->x[0], p->x[1], p->x[2], *s,
+    const int new_cid = cell_getid_zoom(s->cdim, p->x[0], p->x[1], p->x[2], s,
     		p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1], p->x[2] * s->iwidth[2]);
 #else
     const int new_cid =
@@ -803,7 +803,7 @@ void engine_redistribute(struct engine *e) {
     
     /* New cell index */
 #ifdef WITH_ZOOM_REGION
-    const int new_cid = cell_getid_zoom(s->cdim, sp->x[0], sp->x[1], sp->x[2], *s,
+    const int new_cid = cell_getid_zoom(s->cdim, sp->x[0], sp->x[1], sp->x[2], s,
     		sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1], sp->x[2] * s->iwidth[2]);
 #else
     const int new_cid =
@@ -874,7 +874,7 @@ void engine_redistribute(struct engine *e) {
     
     /* New cell index */
 #ifdef WITH_ZOOM_REGION
-    const int new_cid = cell_getid_zoom(s->cdim, bp->x[0], bp->x[1], bp->x[2], *s,
+    const int new_cid = cell_getid_zoom(s->cdim, bp->x[0], bp->x[1], bp->x[2], s,
     		bp->x[0] * s->iwidth[0], bp->x[1] * s->iwidth[1], bp->x[2] * s->iwidth[2]);
 #else
     const int new_cid =
@@ -945,7 +945,7 @@ void engine_redistribute(struct engine *e) {
 
     /* New cell index */
 #ifdef WITH_ZOOM_REGION
-    const int new_cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], *s,
+    const int new_cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], s,
     		gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
 #else
     const int new_cid =
@@ -1215,7 +1215,7 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_parts_new; k++) {
 #ifdef WITH_ZOOM_REGION
     const int cid = cell_getid_zoom(s->cdim, s->parts[k].x[0], 
-    		s->parts[k].x[1], s->parts[k].x[2], *s,
+    		s->parts[k].x[1], s->parts[k].x[2], s,
     		s->parts[k].x[0] * s->iwidth[0], 
     		s->parts[k].x[1] * s->iwidth[1], 
     		s->parts[k].x[2] * s->iwidth[2]);
@@ -1231,7 +1231,7 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_gparts_new; k++) {
 #ifdef WITH_ZOOM_REGION
     const int cid = cell_getid_zoom(s->cdim, s->gparts[k].x[0], 
-    		s->gparts[k].x[1], s->gparts[k].x[2], *s,
+    		s->gparts[k].x[1], s->gparts[k].x[2], s,
     		s->gparts[k].x[0] * s->iwidth[0], 
     		s->gparts[k].x[1] * s->iwidth[1], 
     		s->gparts[k].x[2] * s->iwidth[2]);
@@ -1247,7 +1247,7 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_sparts_new; k++) {
 #ifdef WITH_ZOOM_REGION
     const int cid = cell_getid_zoom(s->cdim, s->sparts[k].x[0], 
-    		s->sparts[k].x[1], s->sparts[k].x[2], *s,
+    		s->sparts[k].x[1], s->sparts[k].x[2], s,
     		s->sparts[k].x[0] * s->iwidth[0], 
     		s->sparts[k].x[1] * s->iwidth[1], 
     		s->sparts[k].x[2] * s->iwidth[2]);
@@ -1263,7 +1263,7 @@ void engine_redistribute(struct engine *e) {
   for (size_t k = 0; k < nr_bparts_new; k++) {
 #ifdef WITH_ZOOM_REGION
     const int cid = cell_getid_zoom(s->cdim, s->bparts[k].x[0], 
-    		s->bparts[k].x[1], s->bparts[k].x[2], *s,
+    		s->bparts[k].x[1], s->bparts[k].x[2], s,
     		s->bparts[k].x[0] * s->iwidth[0], 
     		s->bparts[k].x[1] * s->iwidth[1], 
     		s->bparts[k].x[2] * s->iwidth[2]);

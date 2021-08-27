@@ -404,7 +404,7 @@ struct counts_mapper_data {
           parts[k].x[j] -= dim[j];                                             \
       }                                                                        \
 	    const int cid = cell_getid_zoom(cdim, parts[k].x[0],                     \
-	        parts[k].x[1], parts[k].x[2], *s,                                    \
+	        parts[k].x[1], parts[k].x[2], s,                                     \
 	        parts[k].x[0] * iwidth[0],                                           \
 	        parts[k].x[1] * iwidth[1],                                           \
 	        parts[k].x[2] * iwidth[2]);                                          \
@@ -416,7 +416,7 @@ struct counts_mapper_data {
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
 	    const int cid = cell_getid_zoom(cdim, parts[k].x[0],                     \
-	        parts[k].x[1], parts[k].x[2], *s,                                    \
+	        parts[k].x[1], parts[k].x[2], s,                                     \
 	        parts[k].x[0] * iwidth[0],                                           \
 	        parts[k].x[1] * iwidth[1],                                           \
 	        parts[k].x[2] * iwidth[2]);                                          \
