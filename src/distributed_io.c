@@ -943,7 +943,10 @@ void write_output_distributed(struct engine* e,
     char string[1200];
     sprintf(string, "lfs setstripe -c 1 -i %d %s",
             (e->nodeID % e->snapshot_lustre_OST_count), fileName);
-    system(string);
+    const int result = system(string);
+    if (result != 0) {
+      message("lfs setstripe command returned error code %d", result);
+    }
   }
 
   /* Open file */
