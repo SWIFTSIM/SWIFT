@@ -1554,7 +1554,7 @@ static INLINE void runner_doself_grav_pp_full(
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
-      if (gparts[pjd].time_bin == time_bin_not_created && mass_j != 0.) {
+      if (pjd < gcount && gparts[pjd].time_bin == time_bin_not_created && mass_j != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
 
@@ -1702,7 +1702,7 @@ static INLINE void runner_doself_grav_pp_truncated(
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
-      if (gparts[pjd].time_bin == time_bin_not_created && mass_j != 0.) {
+      if (pjd < gcount && gparts[pjd].time_bin == time_bin_not_created && mass_j != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
 
