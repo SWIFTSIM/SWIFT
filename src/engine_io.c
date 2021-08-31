@@ -795,8 +795,7 @@ void engine_compute_next_fof_time(struct engine *e) {
     if (e->policy & engine_policy_cosmology) {
       const float next_fof_time =
           exp(e->ti_next_fof * e->time_base) * e->cosmology->a_begin;
-      // if (e->verbose)
-      message("Next FoF time set to a=%e.", next_fof_time);
+      if (e->verbose) message("Next FoF time set to a=%e.", next_fof_time);
     } else {
       const float next_fof_time = e->ti_next_fof * e->time_base + e->time_begin;
       if (e->verbose) message("Next FoF time set to t=%e.", next_fof_time);
