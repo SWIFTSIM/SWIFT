@@ -669,7 +669,7 @@ double cell_min_dist2(const struct cell *restrict ci,
   return 0;
 #endif
 }
-
+#ifdef WITH_ZOOM_REGION
 /**
  * @brief Create and fill the proxies including the zoom region.
  *
@@ -1769,5 +1769,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		}
 	}
 }
+#endif /* WITH_ZOOM_REGION */
 
 
