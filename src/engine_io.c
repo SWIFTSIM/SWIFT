@@ -63,7 +63,14 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #endif
     if (dump) {
 
-      if (e->nodeID == 0) message("Writing restart files");
+      if (e->nodeID == 0) {
+
+        /* Flush the time-step file to avoid gaps in case of crashes
+         * before the next automated flush */
+        fflush(e->file_timesteps);
+
+        message("Writing restart files");
+      }
 
       /* Clean out the previous saved files, if found. Do this now as we are
        * MPI synchronized. */
