@@ -302,27 +302,28 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   if (h_grp < 0) error("Error while creating groups group.\n");
 
   struct io_props output_prop;
-  output_prop =
-      io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
-                            (char*)props->group_mass, sizeof(double), "aaa");
-  write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
-                       num_groups_local, compression_write_lossless,
-                       e->internal_units, e->snapshot_units);
-  output_prop = io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                      1.f, (char*)props->group_centre_of_mass,
-                                      3 * sizeof(double), "aaa");
+  output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
+                                      (char*)props->group_mass, sizeof(double),
+                                      "FOF group masses");
   write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
   output_prop =
-      io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->group_index, sizeof(size_t), "aaa");
+      io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
+                            (char*)props->group_centre_of_mass,
+                            3 * sizeof(double), "FOF group centres of mass");
   write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
-  output_prop =
-      io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->group_size, sizeof(size_t), "aaa");
+  output_prop = io_make_output_field_(
+      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+      (char*)props->group_index, sizeof(size_t), "FOF group IDs");
+  write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+  output_prop = io_make_output_field_(
+      "Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, (char*)props->group_size,
+      sizeof(size_t), "FOF group length (number of particles)");
   write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
