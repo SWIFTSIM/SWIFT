@@ -3851,6 +3851,11 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
 
+#ifdef WITH_ZOOM_REGION
+		/* If running a zoom and the cell is not a zoom cell continue */
+	  if (s->with_zoom_region && cid < s->zoom_props->tl_cell_offset) continue;
+#endif
+
     /* Integer indices of the cell in the top-level grid */
     const int i = cid / (cdim[1] * cdim[2]);
     const int j = (cid / cdim[2]) % cdim[1];
