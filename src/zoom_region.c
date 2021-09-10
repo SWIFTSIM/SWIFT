@@ -1788,7 +1788,6 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
 
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
-  const int periodic = e->s->periodic;
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_sinks = (e->policy & engine_policy_sinks);
