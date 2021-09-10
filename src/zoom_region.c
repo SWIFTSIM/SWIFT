@@ -1819,6 +1819,8 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
+    message("%d/%d has %d hydro particles", cid, cid_without_offset, ci->hydro.count)
+
     /* Skip cells without hydro or star particles */
     if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0) &&
         (!with_sinks || ci->sinks.count == 0) &&
