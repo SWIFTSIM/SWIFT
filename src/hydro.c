@@ -264,6 +264,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
   /* Creare files and write header */
   FILE *file_swift = fopen(file_name_swift, "w");
+  if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Hydro accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
@@ -309,6 +310,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
   /* Creare files and write header */
   FILE *file_exact = fopen(file_name_exact, "w");
+  if (file_exact == NULL) error("Could not create file '%s'.", file_name_exact);
   fprintf(file_exact, "# Hydro accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
   fprintf(file_exact, "# periodic= %d\n", s->periodic);

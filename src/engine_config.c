@@ -400,10 +400,15 @@ void engine_config(int restart, int fof, struct engine *e,
 
     if (nodeID == 0) {
       FILE *ranklog = NULL;
-      if (restart)
+      if (restart) {
         ranklog = fopen("rank_hostname.log", "a");
-      else
+        if (ranklog == NULL)
+          error("Could not create file 'rank_hostname.log'.");
+      } else {
         ranklog = fopen("rank_hostname.log", "w");
+        if (ranklog == NULL)
+          error("Could not open file 'rank_hostname.log' for writing.");
+      }
 
       /* Write the header every restart-cycle. It does not hurt. */
       fprintf(ranklog, "# step rank hostname\n");

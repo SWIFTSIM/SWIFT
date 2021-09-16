@@ -2531,6 +2531,7 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
   struct task *t, *tasks = s->tasks;
 
   FILE *file = fopen(fileName, "w");
+  if (file == NULL) error("Could not create file '%s'.", fileName);
 
   fprintf(file, "# Rank  Name  Subname  unlocks  waits\n");
 
@@ -2668,6 +2669,7 @@ void scheduler_dump_queues(struct engine *e) {
 #endif
 
   FILE *file_thread = fopen(dumpfile, "w");
+  if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
   fprintf(file_thread, "# rank queue index type subtype weight\n");
   for (int l = 0; l < s->nr_queues; l++) {
     queue_dump(engine_rank, l, file_thread, &s->queues[l]);
