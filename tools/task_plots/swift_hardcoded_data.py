@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
-#------------------------------------------------------------
-# This file contains data that is hardcoded into swift 
+# ------------------------------------------------------------
+# This file contains data that is hardcoded into swift
 # that needs to be reproduced exactly in order for analysis
-# outputs to make any sense. 
+# outputs to make any sense.
 # The data is used in other scripts in this directory, this
 # script is intended for imports only.
-#------------------------------------------------------------
-
+# ------------------------------------------------------------
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = [
@@ -77,8 +76,8 @@ TASKTYPES = [
     "sink_formation",
     "rt_ghost1",
     "rt_ghost2",
-    "rt_transport_out", 
-    "rt_tchem", 
+    "rt_transport_out",
+    "rt_tchem",
     #  "count",
 ]
 
@@ -122,9 +121,24 @@ SUBTYPES = [
     "sink_compute_formation",
     "sink_accretion",
     "rt_gradient",
-    "rt_transport", 
+    "rt_transport",
     #  "count",
 ]
+
+# check if label files are found that have (possibly different) labels
+# output by SWIFT itself
+import os
+
+if os.path.exists("task_labels_task_types.txt"):
+    with open("task_labels_task_types.txt", "r") as file:
+        TASKTYPES = []
+        for line in file.readlines()[1:]:
+            TASKTYPES.append(line.split()[1])
+if os.path.exists("task_labels_task_subtypes.txt"):
+    with open("task_labels_task_subtypes.txt", "r") as file:
+        SUBTYPES = []
+        for line in file.readlines()[1:]:
+            SUBTYPES.append(line.split()[1])
 
 SIDS = [
     "(-1,-1,-1)",
