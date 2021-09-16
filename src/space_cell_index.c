@@ -131,12 +131,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 	                                    pos_x * ih_x,
 	                                    pos_y * ih_y,
 	                                    pos_z * ih_z);
-	  message("nr_cells_per_level: %d zoom_cell_offset: %d cell_id: %d pos: [%f %f %f] zoom_bounds: [%f %f, %f %f, %f %f]",
-    cdim[0] * cdim[1] * cdim[2],
-    s->zoom_props->tl_cell_offset, index, pos_x, pos_y, pos_z,
-    s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1],
-    s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
-    s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]);
 #else
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
