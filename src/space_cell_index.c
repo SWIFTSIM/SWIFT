@@ -146,7 +146,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
             pos_z);
 #endif
-
+    message("cdim: %d cid: %d", cdim[0], index);
     if (p->time_bin == time_bin_inhibited) {
       /* Is this particle to be removed? */
       ind[k] = -1;
