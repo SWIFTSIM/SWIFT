@@ -1355,6 +1355,8 @@ void task_dump_all(struct engine *e, int step) {
   FILE *file_thread;
   if (engine_rank == 0) {
     file_thread = fopen(dumpfile, "w");
+    if (file_thread == NULL)
+      error("Could not create/erase file '%s'.", dumpfile);
     fclose(file_thread);
   }
   MPI_Barrier(MPI_COMM_WORLD);
@@ -1370,6 +1372,8 @@ void task_dump_all(struct engine *e, int step) {
 
       /* Open file and position at end. */
       file_thread = fopen(dumpfile, "a");
+      if (file_thread == NULL)
+        error("Could not open file '%s' for writing.", dumpfile);
 
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
@@ -1412,6 +1416,7 @@ void task_dump_all(struct engine *e, int step) {
   snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", step);
   FILE *file_thread;
   file_thread = fopen(dumpfile, "w");
+  if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
 
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
@@ -1586,6 +1591,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
 #endif
 
     FILE *dfile = fopen(dumpfile, "w");
+    if (dfile == NULL) error("Could not create file '%s'.", dumpfile);
     if (header) {
       fprintf(dfile, "/* use as src/partition_fixed_costs.h */\n");
       fprintf(dfile, "#define HAVE_FIXED_COSTS 1\n");
@@ -1663,6 +1669,7 @@ void task_dump_active(struct engine *e) {
 #endif
 
   FILE *file_thread = fopen(dumpfile, "w");
+  if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
   fprintf(file_thread,
           "# rank otherrank type subtype waits pair tic toc"
           " ci.hydro.count cj.hydro.count ci.grav.count cj.grav.count"
