@@ -693,6 +693,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 
   /* Creare files and write header */
   FILE *file_swift = fopen(file_name_swift, "w");
+  if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
   fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
@@ -762,6 +763,8 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       sprintf(file_name_exact, "gravity_checks_exact_step%.4d.dat", e->step);
 
     FILE *file_exact = fopen(file_name_exact, "w");
+    if (file_exact == NULL)
+      error("Could not create file '%s'.", file_name_exact);
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
     fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
     fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);

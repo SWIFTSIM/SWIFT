@@ -399,15 +399,23 @@ void engine_repartition_trigger(struct engine *e) {
         FILE *memlog = NULL;
         if (!opened) {
           timelog = fopen("rank_cpu_balance.log", "w");
+          if (timelog == NULL)
+            error("Could not create file 'rank_cpu_balance.log'.");
           fprintf(timelog, "# step rank user sys sum\n");
 
           memlog = fopen("rank_memory_balance.log", "w");
+          if (memlog == NULL)
+            error("Could not create file 'rank_memory_balance.log'.");
           fprintf(memlog, "# step rank resident\n");
 
           opened = 1;
         } else {
           timelog = fopen("rank_cpu_balance.log", "a");
+          if (timelog == NULL)
+            error("Could not open file 'rank_cpu_balance.log' for writing.");
           memlog = fopen("rank_memory_balance.log", "a");
+          if (memlog == NULL)
+            error("Could not open file 'rank_memory_balance.log' for writing.");
         }
 
         for (int k = 0; k < e->nr_nodes * 3; k += 3) {

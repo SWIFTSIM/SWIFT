@@ -571,6 +571,7 @@ void dumpCells(const char *prefix, int super, int active, int mpiactive,
   char fname[200];
   sprintf(fname, "%s_%03d_%03d.dat", prefix, rank, step);
   file = fopen(fname, "w");
+  if (file == NULL) error("Could not create file '%s'.", fname);
 
   /* Header. */
   fprintf(file,
@@ -660,13 +661,16 @@ void dumpMETISGraph(const char *prefix, idx_t nvertices, idx_t nvertexweights,
   /*  Open output files. */
   sprintf(fname, "%s_std_%03d.dat", prefix, nseq);
   stdfile = fopen(fname, "w");
+  if (stdfile == NULL) error("Could not create file '%s'.", fname);
 
   sprintf(fname, "%s_simple_%03d.dat", prefix, nseq);
   simplefile = fopen(fname, "w");
+  if (simplefile == NULL) error("Could not create file '%s'.", fname);
 
   if (havevertexweight || havevertexsize || haveedgeweight) {
     sprintf(fname, "%s_weights_%03d.dat", prefix, nseq);
     weightfile = fopen(fname, "w");
+    if (weightfile == NULL) error("Could not create file '%s'.", fname);
   }
 
   /*  Write the header lines. */
@@ -757,6 +761,7 @@ void dumpCellRanks(const char *prefix, struct cell *cells_top, int nr_cells) {
   nseq++;
 
   file = fopen(fname, "w");
+  if (file == NULL) error("Could not create file '%s'.", fname);
 
   /* Header. */
   fprintf(file, "# %6s %6s %6s %6s %6s %6s %6s\n", "x", "y", "z", "xw", "yw",
