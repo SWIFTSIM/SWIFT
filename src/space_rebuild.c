@@ -168,6 +168,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                                &count_inhibited_sinks, &count_extra_sinks,
                                verbose);
 
+	/* Temporary print number of particles associated to a cell */
+	for (int i = 0; i < s->nr_cells; ++i) {
+		message("NodeID: %d Cell: %d part_counts=[%d %d %d %d %d]", local_nodeID, i, cell_part_counts[i],
+				cell_gpart_counts[i], cell_spart_counts[i], cell_bpart_counts[i], cell_sink_counts[i])
+	}
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some safety checks */
   if (repartitioned && count_inhibited_parts)

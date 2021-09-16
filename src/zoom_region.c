@@ -1798,6 +1798,7 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
   const int nodeID = e->nodeID;
   const int *cdim = s->cdim;
   struct cell *cells = s->cells_top;
+  const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -1806,10 +1807,10 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
     const int cid = (size_t)(map_data) + ind;
 
 		/* If the cell is not a zoom cell continue */
-	  if (cid < s->zoom_props->tl_cell_offset) continue;
+	  if (cid < zoom_cell_offset) continue;
 
     /* Remove the offset to find grid position in the zoom cells */
-	  const int cid_without_offset = cid - s->zoom_props->tl_cell_offset;
+	  const int cid_without_offset = cid - zoom_cell_offset;
 
     /* Integer indices of the cell in the top-level grid */
     const int i = cid_without_offset / (cdim[1] * cdim[2]);
