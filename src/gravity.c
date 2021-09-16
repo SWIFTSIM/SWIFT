@@ -429,7 +429,7 @@ int gravity_exact_force_file_exits(const struct engine *e) {
 
     /* Let's check whether the header matches the parameters of this run */
     FILE *file = fopen(file_name, "r");
-    if (!file) error("Problem reading gravity_check file");
+    if (file == NULL) error("Problem reading gravity_check file");
 
     char line[100];
     char dummy1[10], dummy2[10];
