@@ -108,7 +108,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
         /* Compute arclength */
         ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays + i,
                                /*ray_type=*/ray_feedback_thermal, pj->id,
-                               rand_theta_SNII, rand_phi_SNII, pj->mass,
+                               rand_theta_SNII, rand_phi_SNII, mj,
                                /*ray_ext=*/NULL, /*v=*/NULL);
       }
       break;
@@ -126,7 +126,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
     case SNII_minimum_density_model: {
@@ -142,7 +142,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(rho, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
     case SNII_random_ngb_model: {
@@ -164,7 +164,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller 'fake' distances to the BH. */
       ray_minimise_distance(dist, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
   }

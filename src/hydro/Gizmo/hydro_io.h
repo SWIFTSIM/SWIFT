@@ -88,7 +88,7 @@ INLINE static void convert_u(const struct engine* e, const struct part* p,
  */
 INLINE static void convert_A(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
-  ret[0] = hydro_get_comoving_entropy(p);
+  ret[0] = hydro_get_comoving_entropy(p, xp);
 }
 
 /**
