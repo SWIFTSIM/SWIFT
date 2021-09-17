@@ -23,6 +23,7 @@
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
+#include "hydro_velocities.h"
 
 #define GIZMO_VOLUME_CORRECTION
 
