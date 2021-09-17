@@ -1312,6 +1312,7 @@ void task_create_name_files(const char *file_prefix) {
   char file_name[200];
   sprintf(file_name, "%s_task_types.txt", file_prefix);
   FILE *file = fopen(file_name, "w");
+  if (file == NULL) error("Could not create file '%s'.", file_name);
   fprintf(file, "# type\tname\n");
   for (int type = 0; type < task_type_count; type++) {
     fprintf(file, "%i\t%s\n", type, taskID_names[type]);
@@ -1319,6 +1320,7 @@ void task_create_name_files(const char *file_prefix) {
   fclose(file);
   sprintf(file_name, "%s_task_subtypes.txt", file_prefix);
   file = fopen(file_name, "w");
+  if (file == NULL) error("Could not create file '%s'.", file_name);
   fprintf(file, "# subtype\tname\n");
   for (int subtype = 0; subtype < task_subtype_count; subtype++) {
     fprintf(file, "%i\t%s\n", subtype, subtaskID_names[subtype]);
