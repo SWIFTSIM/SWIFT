@@ -1519,8 +1519,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 #ifdef SWIFT_DEBUG_CHECKS
 						/* Ensure both cells are in the same level */
-						if (!(ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
-						!(ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == zoom_tl_cell)) {
+						if !((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
+						(ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == zoom_tl_cell)) {
 							error("Cell %d and cell %d are not the same cell type! (ci=%d, cj=%d)",
 										cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
 						}
@@ -1725,7 +1725,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 																ci, nat_cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-						/* Ensure both cells are in the different levels */
+						/* Ensure both cells are in different levels */
 						if ((ci->tl_cell_type <= 2 && nat_cj->tl_cell_type <= 2) ||
 						(ci->tl_cell_type == zoom_tl_cell && nat_cj->tl_cell_type == zoom_tl_cell)) {
 							error("Cell %d and cell %d are the same cell type! (ci=%d, cj=%d)",
