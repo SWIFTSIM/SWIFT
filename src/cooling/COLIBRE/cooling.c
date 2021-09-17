@@ -419,7 +419,7 @@ double cooling_get_electron_pressure(
       colibre_cooling_N_internalenergy, colibre_cooling_N_metallicity,
       colibre_cooling_N_density, colibre_cooling_N_electrontypes);
 
-  const double num_H = p->mass * XH / phys_const->const_proton_mass;
+  const double num_H = hydro_get_mass(p) * XH / phys_const->const_proton_mass;
 
   /* Interpolate the temperature */
   const double log_10_T =
