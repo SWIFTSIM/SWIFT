@@ -1372,7 +1372,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	/* Some info about the zoom domain */
 	const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
 //	const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-	int zoom_cell_flag = 0;
 
 	/* Some info about the domain */
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -1437,15 +1436,12 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		struct cell *ci = &cells[cid];
 		int cid_with_offset = cid;
 
-		zoom_cell_flag = 0;
-
 		/* Integer indices of the cell in the natural parent */
 		int natural_i = cid / (cdim[1] * cdim[2]);
 		int natural_j = (cid / cdim[2]) % cdim[1];
 		int natural_k = cid % cdim[2];
 
 		if (cid >= zoom_cell_offset) {
-			zoom_cell_flag = 1;
 			cid_with_offset -= zoom_cell_offset;
 
 			/* Integer indices of the cell in the natural parent */
@@ -1477,20 +1473,21 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		/* Loop over all its neighbours in range. */
 		for (int ii = -delta_m; ii <= delta_p; ii++) {
 			int iii = i + ii;
-			if ((!periodic || zoom_cell_flag) && (iii < 0 || iii >= cdim[0])) continue;
+			if ((!periodic || cid >= zoom_cell_offset) && (iii < 0 || iii >= cdim[0])) continue;
 			iii = (iii + cdim[0]) % cdim[0];
 			for (int jj = -delta_m; jj <= delta_p; jj++) {
 				int jjj = j + jj;
-				if ((!periodic || zoom_cell_flag) && (jjj < 0 || jjj >= cdim[1])) continue;
+				if ((!periodic || cid >= zoom_cell_offset) && (jjj < 0 || jjj >= cdim[1])) continue;
 				jjj = (jjj + cdim[1]) % cdim[1];
 				for (int kk = -delta_m; kk <= delta_p; kk++) {
 					int kkk = k + kk;
-					if ((!periodic || zoom_cell_flag) && (kkk < 0 || kkk >= cdim[2])) continue;
+					if ((!periodic || cid >= zoom_cell_offset) && (kkk < 0 || kkk >= cdim[2])) continue;
 					kkk = (kkk + cdim[2]) % cdim[2];
 
 					/* Get the cell ID. */
 					int cjd = cell_getid(cdim, iii, jjj, kkk);
-					if (zoom_cell_flag) cjd += zoom_cell_offset;
+					if (cid >= zoom_cell_offset)
+						cjd += zoom_cell_offset;
 
 					struct cell *cj = &cells[cjd];
 
@@ -1574,7 +1571,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 //					/* For natural top level cell neighbours in the zoom
 //           * region we need to include the nested zoom cells */
-//					if (!zoom_cell_flag && cj->tl_cell_type == void_tl_cell) {
+//					if (!(cid >= zoom_cell_offset) && cj->tl_cell_type == void_tl_cell) {
 //
 //						int start_i = cj->start_i;
 //						int start_j = cj->start_j;
@@ -1674,7 +1671,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		}
 
 		/* For the zoom cells we need to find all natural cell neighbours */
-		if (zoom_cell_flag) {
+		if (cid >= zoom_cell_offset) {
 
 			/* Loop over all its neighbours in range. */
 			for (int ii = -natural_delta_m; ii <= natural_delta_p; ii++) {
@@ -1710,7 +1707,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 							error("Multipole of cj was not exchanged properly via the proxies");
 
 						/* Minimal distance between cells */
-						const double nat_min_radius2 = cell_min_dist2(ci, nat_cj, periodic, dim);
+						const double nat_min_radius2 = cell_min_dist2_diff_size(ci, nat_cj, periodic, dim);
 
 						/* Are we beyond the distance where the truncated forces are 0 ?*/
 						if (periodic && nat_min_radius2 > max_mesh_dist2) continue;
