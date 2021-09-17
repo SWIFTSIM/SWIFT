@@ -1509,7 +1509,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 					const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
 					/* Are we beyond the distance where the truncated forces are 0 ?*/
-					if (periodic && !zoom_cell_flag && min_radius2 > max_mesh_dist2) continue;
+					if (periodic && !(cid >= zoom_cell_offset) && min_radius2 > max_mesh_dist2) continue;
 
 					/* Are the cells too close for a MM interaction ? */
 					if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
