@@ -246,6 +246,16 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
           	/* On the second loop we need to assign zoom cell information to natural cells. */
             c = &s->cells_top[cid];
             c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+
+            /* We need to update the cell types after increasing the zoom region size in the first interation */
+				    if (c->loc[0] > zoom_region_bounds[0] && c->loc[0] < zoom_region_bounds[1] &&
+				        c->loc[1] > zoom_region_bounds[2] && c->loc[1] < zoom_region_bounds[3] &&
+				        c->loc[2] > zoom_region_bounds[4] && c->loc[2] < zoom_region_bounds[5]) {
+				    	/* Tag this top level cell as part of the zoom region. */
+              c->tl_cell_type = void_tl_cell;
+				    }
+
+            /* Assign the start and end indices for the zoom cells within this cell */
 			      if (c->tl_cell_type == void_tl_cell) {
 			        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
 			        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
@@ -1378,8 +1388,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const double distance = 2. * cells[0].width[0] * theta_crit_inv;
 	const double zoom_distance = 2. * cells[zoom_cell_offset].width[0] * theta_crit_inv;
 
-	/* Compute how many cells away we need to walk
-	 * NOTE: Same for both grid levels ??? */
+	/* Compute how many cells away we need to walk */
 	const int delta_cells = (int)(distance / cells[0].dmin) + 1;
 	const int natural_delta_cells = delta_cells;
 	const int zoom_delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
@@ -1406,8 +1415,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 			natural_delta_p = cdim[0] / 2 - 1;
 		}
 	}
-
-	/* Special case where every zoom cell is in range of every other one */
 	if (zoom_delta_cells >= cdim[0] / 2) {
 		if (cdim[0] % 2 == 0) {
 			zoom_delta_m = cdim[0] / 2;
@@ -1448,7 +1455,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 			/* Overwrite delta_m and delta_p with the number of zoom cells */
 			delta_m = zoom_delta_m;
 			delta_p = zoom_delta_p;
-
 		}
 
 		/* Integer indices of the cell in the top-level grid */
