@@ -106,11 +106,11 @@ void engine_activate_fof_tasks(struct engine *e) {
  * (including BH seed info)?
  * @param seed_black_holes Are we seeding black holes?
  * @param foreign_buffers_allocated Are the foreign buffers currently
- * allocated? 
+ * allocated?
  */
 void engine_fof(struct engine *e, const int dump_results,
                 const int dump_debug_results, const int seed_black_holes,
-		const int foreign_buffers_allocated) {
+                const int foreign_buffers_allocated) {
 
 #ifdef WITH_FOF
 
@@ -122,7 +122,7 @@ void engine_fof(struct engine *e, const int dump_results,
     space_free_foreign_parts(e->s, /*clear pointers=*/1);
 #endif
   }
-  
+
   /* Compute number of DM particles */
   const long long total_nr_baryons =
       e->total_nr_parts + e->total_nr_sparts + e->total_nr_bparts;
@@ -166,7 +166,7 @@ void engine_fof(struct engine *e, const int dump_results,
     engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
   }
-  
+
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
