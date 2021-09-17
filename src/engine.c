@@ -724,9 +724,13 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
  * memory and link all the cells that have tasks and all cells
  * deeper in the tree.
  *
+ * When running FOF, we only need #gpart arrays so we restrict
+ * the allocations to this particle type only
+ *
  * @param e The #engine.
+ * @param fof Are we allocating buffers just for FOF?
  */
-void engine_allocate_foreign_particles(struct engine *e) {
+void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
 #ifdef WITH_MPI
 
@@ -781,7 +785,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_parts_foreign = s->size_parts_foreign;
-  if (count_parts_in > s->size_parts_foreign) {
+  if (!fof && count_parts_in > s->size_parts_foreign) {
     if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
     if (swift_memalign("parts_foreign", (void **)&s->parts_foreign, part_align,
@@ -803,7 +807,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_sparts_foreign = s->size_sparts_foreign;
-  if (count_sparts_in > s->size_sparts_foreign) {
+  if (!fof && count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL)
       swift_free("sparts_foreign", s->sparts_foreign);
     s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
@@ -820,7 +824,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
 
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_bparts_foreign = s->size_bparts_foreign;
-  if (count_bparts_in > s->size_bparts_foreign) {
+  if (!fof && count_bparts_in > s->size_bparts_foreign) {
     if (s->bparts_foreign != NULL)
       swift_free("bparts_foreign", s->bparts_foreign);
     s->size_bparts_foreign = engine_foreign_alloc_margin * count_bparts_in;
@@ -871,7 +875,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
+      if (!fof && e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
 
         const size_t count_parts =
             cell_link_foreign_parts(e->proxies[k].cells_in[j], parts);
@@ -885,7 +889,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
         gparts = &gparts[count_gparts];
       }
 
-      if (with_stars) {
+      if (!fof && with_stars) {
 
         /* For stars, we just use the numbers in the top-level cells */
         cell_link_sparts(e->proxies[k].cells_in[j], sparts);
@@ -893,7 +897,7 @@ void engine_allocate_foreign_particles(struct engine *e) {
                          space_extra_sparts];
       }
 
-      if (with_black_holes) {
+      if (!fof && with_black_holes) {
 
         /* For black holes, we just use the numbers in the top-level cells */
         cell_link_bparts(e->proxies[k].cells_in[j], bparts);
