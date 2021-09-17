@@ -1414,8 +1414,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 			natural_delta_p = cdim[0] / 2 - 1;
 		}
 	}
-
-	/* Special case where every zoom cell is in range of every other one */
 	if (zoom_delta_cells >= cdim[0] / 2) {
 		if (cdim[0] % 2 == 0) {
 			zoom_delta_m = cdim[0] / 2;
@@ -1431,29 +1429,29 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 		/* Get the cell index. */
 		const int cid = (size_t)(map_data) + ind;
+		int cid_with_offset = cid;
 
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
-		int cid_with_offset = cid;
 
-		/* Integer indices of the cell in the natural parent */
-		int natural_i = cid / (cdim[1] * cdim[2]);
-		int natural_j = (cid / cdim[2]) % cdim[1];
-		int natural_k = cid % cdim[2];
+		/* Integer grid indices of the cell in the natural cells */
+		int natural_i = ci->loc[0] * s->iwidth[0];
+		int natural_j = ci->loc[1] * s->iwidth[1];
+		int natural_k = ci->loc[2] * s->iwidth[2];
 
 		if (cid >= zoom_cell_offset) {
-			cid_with_offset -= zoom_cell_offset;
 
-			/* Integer indices of the cell in the natural parent */
-			int natural_tl_cid = ci->parent_tl_cid;
-			natural_i = natural_tl_cid / (cdim[1] * cdim[2]);
-			natural_j = (natural_tl_cid / cdim[2]) % cdim[1];
-			natural_k = natural_tl_cid % cdim[2];
+			/* Remove the offset for zoom cells */
+			cid_with_offset -= zoom_cell_offset;
 
 			/* Overwrite delta_m and delta_p with the number of zoom cells */
 			delta_m = zoom_delta_m;
 			delta_p = zoom_delta_p;
 
+		} else {
+			/* Overwrite delta_m and delta_p with the number of natural cells */
+			delta_m = natural_delta_m;
+			delta_p = natural_delta_p;
 		}
 
 		/* Integer indices of the cell in the top-level grid */
@@ -1506,10 +1504,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						error("Multipole of cj was not exchanged properly via the proxies");
 
 					/* Minimal distance between any pair of particles */
-					const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
+					const double min_radius2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
 
 					/* Are we beyond the distance where the truncated forces are 0 ?*/
-					if (periodic && !(cid >= zoom_cell_offset) && min_radius2 > max_mesh_dist2) continue;
+					if (periodic && (cid < zoom_cell_offset) && min_radius2 > max_mesh_dist2) continue;
 
 					/* Are the cells too close for a MM interaction ? */
 					if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -1520,6 +1518,12 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 															ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
+						/* Ensure both cells are in the same level */
+						if (!(ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
+						!(ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == zoom_tl_cell)) {
+							error("Cell %d and cell %d are not the same cell type! (ci=%d, cj=%d)",
+										cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+						}
 #ifdef WITH_MPI
 
 						/* Let's cross-check that we had a proxy for that cell */
@@ -1704,7 +1708,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						if (multi_i == NULL && ci->nodeID != nodeID)
 							error("Multipole of ci was not exchanged properly via the proxies");
 						if (nat_multi_j == NULL && nat_cj->nodeID != nodeID)
-							error("Multipole of cj was not exchanged properly via the proxies");
+							error("Multipole of nat_cj was not exchanged properly via the proxies");
 
 						/* Minimal distance between cells */
 						const double nat_min_radius2 = cell_min_dist2_diff_size(ci, nat_cj, periodic, dim);
@@ -1721,6 +1725,12 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 																ci, nat_cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
+						/* Ensure both cells are in the different levels */
+						if ((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
+						(ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == zoom_tl_cell)) {
+							error("Cell %d and cell %d are the same cell type! (ci=%d, cj=%d)",
+										cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+						}
 #ifdef WITH_MPI
 
 							/* Let's cross-check that we had a proxy for that cell */
