@@ -2519,6 +2519,10 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
         "took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+
+  /* Allocate buffers to receive the gpart fof information */
+  engine_allocate_foreign_particles(e, /*fof=*/1);
+  
   /* Activate the tasks exchanging all the required gparts */
   engine_activate_gpart_comms(e);
 
@@ -2551,7 +2555,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Clean up memory. */
   swift_free("fof_cell_pairs", cell_pairs);
-
+  space_free_foreign_parts(e->s, /*clear pointers=*/1);
+  
   if (verbose)
     message("Searching for foreign links took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());

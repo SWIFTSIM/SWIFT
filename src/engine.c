@@ -1391,7 +1391,7 @@ int engine_prepare(struct engine *e) {
     drifted_all = 1;
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
-               /*seed_black_holes=*/1);
+               /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
 
     if (e->dump_catalogue_when_seeding) e->snapshot_output_count++;
   }
