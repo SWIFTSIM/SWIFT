@@ -217,7 +217,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   const int zoom_cell_offset = cdim[0] * cdim[1] * cdim[2];
   float dmin_zoom = 0.f;
   double widths[3] = {0.0, 0.0, 0.0};
-  double mid_point;
+  double mid_points[3] = {0.0, 0.0, 0.0};
 
   /* Loop over top level cells twice, second time is for the zoom region. */
   for (int n = 0; n < 2; n++) {
@@ -361,9 +361,9 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       }
 
       for (int k = 0; k < 3; k++) {
-      	mid_point = zoom_region_bounds[k * 2] + (widths[k] / 2);
-      	zoom_region_bounds[k * 2] = mid_point - (max_width / 2);
-      	zoom_region_bounds[(k * 2) + 1] = mid_point + (max_width / 2);
+      	mid_points[k] = zoom_region_bounds[k * 2] + (widths[k] / 2);
+      	zoom_region_bounds[k * 2] = mid_points[k] - (max_width / 2);
+      	zoom_region_bounds[(k * 2) + 1] = mid_points[k] + (max_width / 2);
       }
 
       /* Overwrite zoom region properties. */
@@ -377,6 +377,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       }
 
       if (verbose) {
+        message("zoom_region_cent: [%f %f %f]",
+        		mid_points[0], mid_points[1], mid_points[2]);
         message("tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f] dim: [%f %f %f]",
 	      		s->width[0], s->width[1], s->width[2],
 	      		s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
