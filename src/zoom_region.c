@@ -360,8 +360,11 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       }
 
       for (int k = 0; k < 3; k++) {
-      	zoom_region_bounds[k * 2] = s->zoom_props->com[k] - (max_width / 2);
-      	zoom_region_bounds[(k * 2) + 1] = s->zoom_props->com[k] + (max_width / 2);
+      	double mid_point = zoom_region_bounds[k * 2] + (widths[k] / 2);
+      	message("index: %d com: %f mid: %f diff: %f", k, s->zoom_props->com[k], mid_point,
+      			s->zoom_props->com[k] - mid_point);
+      	zoom_region_bounds[k * 2] = mid_point - (max_width / 2);
+      	zoom_region_bounds[(k * 2) + 1] = mid_point + (max_width / 2);
       }
 
       /* Overwrite zoom region properties. */
