@@ -1404,8 +1404,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	/* Turn this into upper and lower bounds for loops */
 	int delta_m = delta_cells;
 	int delta_p = delta_cells;
-	int natural_delta_m = natural_delta_cells;
-	int natural_delta_p = natural_delta_cells;
+	int natural_delta_m = natural_delta_cells + 1;
+	int natural_delta_p = natural_delta_cells + 1;
 	int zoom_delta_m = zoom_delta_cells;
 	int zoom_delta_p = zoom_delta_cells;
 
