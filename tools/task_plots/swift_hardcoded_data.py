@@ -130,15 +130,49 @@ SUBTYPES = [
 import os
 
 if os.path.exists("task_labels_task_types.txt"):
+    print("SWIFT task label file 'task_labels_task_types.txt' found, reading it.")
     with open("task_labels_task_types.txt", "r") as file:
-        TASKTYPES = []
+        NEW_TASKTYPES = []
         for line in file.readlines()[1:]:
-            TASKTYPES.append(line.split()[1])
+            NEW_TASKTYPES.append(line.split()[1])
+    if not len(NEW_TASKTYPES) == len(TASKTYPES):
+        print(
+            "Hardcoded labels do not match SWIFT labels,"
+            " consider updating the hardcoded labels (different list size)."
+        )
+    else:
+        for ilabel in range(len(TASKTYPES)):
+            if not NEW_TASKTYPES[ilabel] == TASKTYPES[ilabel]:
+                print(
+                    "Hardcoded labels do not match SWIFT labels,"
+                    " consider updating the hardcoded labels "
+                    " (different labels: TASKTYPES[{0}]: {1} vs {2}).".format(
+                        ilabel, TASKTYPES[ilabel], NEW_TASKTYPES[ilabel]
+                    )
+                )
+    TASKTYPES = NEW_TASKTYPES
 if os.path.exists("task_labels_task_subtypes.txt"):
+    print("SWIFT task label file 'task_labels_task_subtypes.txt' found, reading it.")
     with open("task_labels_task_subtypes.txt", "r") as file:
-        SUBTYPES = []
+        NEW_SUBTYPES = []
         for line in file.readlines()[1:]:
-            SUBTYPES.append(line.split()[1])
+            NEW_SUBTYPES.append(line.split()[1])
+    if not len(NEW_SUBTYPES) == len(SUBTYPES):
+        print(
+            "Hardcoded labels do not match SWIFT labels,"
+            " consider updating the hardcoded labels (different list size)."
+        )
+    else:
+        for ilabel in range(len(SUBTYPES)):
+            if not NEW_SUBTYPES[ilabel] == SUBTYPES[ilabel]:
+                print(
+                    "Hardcoded labels do not match SWIFT labels,"
+                    " consider updating the hardcoded labels"
+                    " (different labels: SUBTYPES[{0}]: {1} vs {2}).".format(
+                        ilabel, SUBTYPES[ilabel], NEW_SUBTYPES[ilabel]
+                    )
+                )
+    SUBTYPES = NEW_SUBTYPES
 
 SIDS = [
     "(-1,-1,-1)",
