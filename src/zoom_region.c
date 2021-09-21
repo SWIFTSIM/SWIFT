@@ -1380,7 +1380,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	/* Some info about the zoom domain */
 	const int zoom_cell_offset = s->zoom_props->tl_cell_offset;
-//	const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
 	/* Some info about the domain */
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
@@ -1469,7 +1468,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		const int k = cid_with_offset % cdim[2];
 
 		/* Skip cells without gravity particles or void cells */
-		if (ci->grav.count == 0 || ci->tl_cell_type == void_tl_cell) continue;
+		if (ci->grav.count == 0 || ci->tl_cell_type == void_tl_cell || cid >= zoom_cell_offset) continue;
 
 		/* If the cell is local build a self-interaction */
 		if (ci->nodeID == nodeID) {
