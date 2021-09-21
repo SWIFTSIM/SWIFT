@@ -954,6 +954,10 @@ int main(int argc, char *argv[]) {
     io_prepare_output_fields(output_options, with_cosmology, with_fof,
                              with_structure_finding, e.verbose);
 
+#if defined(SWIFT_DEBUG_TASKS)
+    task_create_name_files("task_labels");
+#endif
+
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
     units_init_from_params(&us, params, "InternalUnitSystem");
