@@ -33,10 +33,7 @@ import argparse
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Check MPI report")
 
-parser.add_argument("input",
-                    nargs="+",
-                    metavar="mpi-report",
-                    help="MPI report")
+parser.add_argument("input", nargs="+", metavar="mpi-report", help="MPI report")
 parser.add_argument(
     "-v",
     "--verbose",
@@ -49,20 +46,20 @@ args = parser.parse_args()
 infiles = args.input
 
 #  Indices for words in a line.
-sticcol=0
-eticcol=1
-dticcol=2
-stepcol=3
-rankcol=4
-otherrankcol=5
-typecol=6
-itypecol=7
-subtypecol=8
-isubtypecol=9
-activationcol=10
-tagcol=11
-sizecol=12
-sum=13
+sticcol = 0
+eticcol = 1
+dticcol = 2
+stepcol = 3
+rankcol = 4
+otherrankcol = 5
+typecol = 6
+itypecol = 7
+subtypecol = 8
+isubtypecol = 9
+activationcol = 10
+tagcol = 11
+sizecol = 12
+sum = 13
 
 #  Keyed lines.
 isends = {}
@@ -74,42 +71,56 @@ erecvs = {}
 #  for the sends and recvs, when they start and complete.
 for f in infiles:
     if args.verbose:
-        print "Processing: " + f
+        print("Processing: " + f)
     with open(f, "r") as fp:
         for line in fp:
-            if line[0] == '#':
+            if line[0] == "#":
                 continue
             words = line.split()
             if words[activationcol] == "1":
-                key = words[otherrankcol] + "/" + \
-                      words[rankcol] + "/" + \
-                      words[subtypecol] + "/" + \
-                      words[tagcol] + "/" + \
-                      words[sizecol]
+                key = (
+                    words[otherrankcol]
+                    + "/"
+                    + words[rankcol]
+                    + "/"
+                    + words[subtypecol]
+                    + "/"
+                    + words[tagcol]
+                    + "/"
+                    + words[sizecol]
+                )
                 if words[typecol] == "send":
                     isends[key] = [line[:-1]]
                 else:
                     irecvs[key] = [line[:-1]]
-                    
+
             else:
                 # Size will be negative.
-                key = words[otherrankcol] + "/" + \
-                      words[rankcol] + "/" + \
-                      words[subtypecol] + "/" + \
-                      words[tagcol] + "/" + \
-                      words[sizecol][1:]
+                key = (
+                    words[otherrankcol]
+                    + "/"
+                    + words[rankcol]
+                    + "/"
+                    + words[subtypecol]
+                    + "/"
+                    + words[tagcol]
+                    + "/"
+                    + words[sizecol][1:]
+                )
                 if words[typecol] == "send":
                     esends[key] = [line[:-1]]
                 else:
                     erecvs[key] = [line[:-1]]
 
 #  Now report any uncompleted sends or receives.
-print "# stic etic dtic step rank otherrank type itype subtype isubtype activation tag size sum"
+print(
+    "# stic etic dtic step rank otherrank type itype subtype isubtype activation tag size sum"
+)
 for key in isends:
     if not key in esends:
-        print isends[key][0]
+        print(isends[key][0])
 for key in irecvs:
     if not key in erecvs:
-        print irecvs[key][0]
+        print(irecvs[key][0])
 
 sys.exit(0)

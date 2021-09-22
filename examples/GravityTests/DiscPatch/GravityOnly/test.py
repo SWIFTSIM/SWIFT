@@ -89,4 +89,4 @@ for i in range(num_snapshots):
 # Maximal change
 delta_E = np.max(np.abs(E_tot - E_tot[0])) / E_tot[0]
 
-print("Maximal relative energy change   :", delta_E * 100, "%")
+print(("Maximal relative energy change   :", delta_E * 100, "%"))

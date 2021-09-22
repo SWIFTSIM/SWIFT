@@ -116,12 +116,12 @@ def write_header(f, boxsize, flag_entropy, np_total, np_total_hw, other=False):
     # We'll first build a dictionary to iterate through.
 
     default_attributes = {
-        "BoxSize" : boxsize,
-        "Flag_Entropy_ICs" : flag_entropy,
-        "NumPart_Total" : np_total,
-        "NumPart_Total_HighWord" : np_total_hw,
-        "NumFilesPerSnapshot" : 1,  # required for backwards compatibility
-        "NumPart_ThisFile" : np_total, # Also required for bw compatibility
+        "BoxSize": boxsize,
+        "Flag_Entropy_ICs": flag_entropy,
+        "NumPart_Total": np_total,
+        "NumPart_Total_HighWord": np_total_hw,
+        "NumFilesPerSnapshot": 1,  # required for backwards compatibility
+        "NumPart_ThisFile": np_total,  # Also required for bw compatibility
     }
 
     if other:
@@ -164,9 +164,7 @@ def write_runtime_pars(f, periodic_boundary, other=False):
 
     # First build the dictionary
 
-    default_attributes = {
-        "PeriodicBoundariesOn" : periodic_boundary,
-    }
+    default_attributes = {"PeriodicBoundariesOn": periodic_boundary}
 
     if other:
         attributes = dict(default_attributes, **other)
@@ -283,16 +281,16 @@ def write_block(f, part_type, pos, vel, ids, mass, int_energy, smoothing, other=
               the particle data. They will be passed such that the key is
               the name of the dataset in the hdf5 file.
     """
-    
+
     # Build the dictionary
 
     default_data = {
-        "Coordinates" : pos,
-        "Velocities" : vel,
-        "ParticleIDs" : ids,
-        "Masses" : mass,
-        "InternalEnergy" : int_energy,
-        "SmoothingLength" : smoothing,
+        "Coordinates": pos,
+        "Velocities": vel,
+        "ParticleIDs": ids,
+        "Masses": mass,
+        "InternalEnergy": int_energy,
+        "SmoothingLength": smoothing,
     }
 
     if other:
@@ -306,4 +304,3 @@ def write_block(f, part_type, pos, vel, ids, mass, int_energy, smoothing, other=
         particles.create_dataset(name, data=value)
 
     return
-

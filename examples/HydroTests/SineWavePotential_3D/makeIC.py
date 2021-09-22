@@ -27,52 +27,54 @@ import h5py
 # the definition below assumes the same thermal energy is defined in const.h,
 # and also that the code was configured with an adiabatic index of 5./3.
 uconst = 20.2615290634
-cs2 = 2.*uconst/3.
-A = 10.
+cs2 = 2.0 * uconst / 3.0
+A = 10.0
 
 fileName = "sineWavePotential.hdf5"
 numPart_1D = 20
-boxSize = [1., 1.]
-numPart = numPart_1D**3
+boxSize = [1.0, 1.0]
+numPart = numPart_1D ** 3
 
 coords = np.zeros((numPart, 3))
 v = np.zeros((numPart, 3))
-m = np.zeros(numPart) + 1.
-h = np.zeros(numPart) + 2./numPart
+m = np.zeros(numPart) + 1.0
+h = np.zeros(numPart) + 2.0 / numPart
 u = np.zeros(numPart) + uconst
-ids = np.arange(numPart, dtype = 'L')
+ids = np.arange(numPart, dtype="L")
 rho = np.zeros(numPart)
 
 # first set the positions, as we try to do a reasonable volume estimate to
 # set the masses
 for i in range(numPart_1D):
-#  coords[i,0] = (i+np.random.random())/numPart
-  for j in range(numPart_1D):
-    for k in range(numPart_1D):
-      coords[numPart_1D**2*i+numPart_1D*j+k,0] = (i+0.5)/numPart_1D
-      coords[numPart_1D**2*i+numPart_1D*j+k,1] = (j+0.5)/numPart_1D
-      coords[numPart_1D**2*i+numPart_1D*j+k,2] = (k+0.5)/numPart_1D
+    #  coords[i,0] = (i+np.random.random())/numPart
+    for j in range(numPart_1D):
+        for k in range(numPart_1D):
+            coords[numPart_1D ** 2 * i + numPart_1D * j + k, 0] = (i + 0.5) / numPart_1D
+            coords[numPart_1D ** 2 * i + numPart_1D * j + k, 1] = (j + 0.5) / numPart_1D
+            coords[numPart_1D ** 2 * i + numPart_1D * j + k, 2] = (k + 0.5) / numPart_1D
 
-V = 1./numPart
+V = 1.0 / numPart
 for i in range(numPart):
-  # reasonable mass estimate (actually not really good, but better than assuming
-  # a constant volume)
-#  if i == 0:
-#    V = 0.5*(coords[1,0]-coords[-1,0]+1.)
-#  elif i == numPart-1:
-#    V = 0.5*(coords[0,0]+1.-coords[-2,0])
-#  else:
-#    V = 0.5*(coords[i+1,0] - coords[i-1,0])
-  rho[i] = 1000.*np.exp(-0.5*A/np.pi/cs2*np.cos(2.*np.pi*coords[i,0]))
-  m[i] = rho[i]*V
+    # reasonable mass estimate (actually not really good, but better than assuming
+    # a constant volume)
+    #  if i == 0:
+    #    V = 0.5*(coords[1,0]-coords[-1,0]+1.)
+    #  elif i == numPart-1:
+    #    V = 0.5*(coords[0,0]+1.-coords[-2,0])
+    #  else:
+    #    V = 0.5*(coords[i+1,0] - coords[i-1,0])
+    rho[i] = 1000.0 * np.exp(
+        -0.5 * A / np.pi / cs2 * np.cos(2.0 * np.pi * coords[i, 0])
+    )
+    m[i] = rho[i] * V
 
-#File
-file = h5py.File(fileName, 'w')
+# File
+file = h5py.File(fileName, "w")
 
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
+grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
@@ -81,22 +83,22 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
 grp.attrs["Dimension"] = 3
 
-#Units
+# Units
 grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.
-grp.attrs["Unit mass in cgs (U_M)"] = 1.
-grp.attrs["Unit time in cgs (U_t)"] = 1.
-grp.attrs["Unit current in cgs (U_I)"] = 1.
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+grp.attrs["Unit length in cgs (U_L)"] = 1.0
+grp.attrs["Unit mass in cgs (U_M)"] = 1.0
+grp.attrs["Unit time in cgs (U_t)"] = 1.0
+grp.attrs["Unit current in cgs (U_I)"] = 1.0
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
-#Particle group
+# Particle group
 grp = file.create_group("/PartType0")
-grp.create_dataset('Coordinates', data=coords, dtype='d')
-grp.create_dataset('Velocities', data=v, dtype='f')
-grp.create_dataset('Masses', data=m, dtype='f')
-grp.create_dataset('SmoothingLength', data=h, dtype='f')
-grp.create_dataset('InternalEnergy', data=u, dtype='f')
-grp.create_dataset('ParticleIDs', data=ids, dtype='L')
-grp.create_dataset('Density', data=rho, dtype='f')
+grp.create_dataset("Coordinates", data=coords, dtype="d")
+grp.create_dataset("Velocities", data=v, dtype="f")
+grp.create_dataset("Masses", data=m, dtype="f")
+grp.create_dataset("SmoothingLength", data=h, dtype="f")
+grp.create_dataset("InternalEnergy", data=u, dtype="f")
+grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+grp.create_dataset("Density", data=rho, dtype="f")
 
 file.close()

@@ -107,13 +107,7 @@ def plot_snapshot(pos, mat_id, ax_lim):
         colour[mat_id == id_c] = c
 
     ax.scatter(
-        pos[:, 0],
-        pos[:, 1],
-        c=colour,
-        edgecolors="none",
-        marker=".",
-        s=10,
-        alpha=0.5,
+        pos[:, 0], pos[:, 1], c=colour, edgecolors="none", marker=".", s=10, alpha=0.5
     )
 
     ax.set_xlim(-ax_lim, ax_lim)

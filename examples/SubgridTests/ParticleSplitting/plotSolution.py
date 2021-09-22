@@ -14,9 +14,7 @@ except:
     pass
 
 
-def add_arrow(
-    line, position=None,
-):
+def add_arrow(line, position=None):
     """
     add an arrow to a line.
 

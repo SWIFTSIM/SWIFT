@@ -26,12 +26,12 @@ from scipy.optimize import bisect
 
 # Parameters
 N = [128, 192]  # Particles along one edge
-gamma = 7./5.  # Gas adiabatic index
-dv = 0.025    # velocity perturbation
-rho_h = 2    # high density region
-rho_l = 1    # Low density region
-g = -0.5    # gravitational acceleration
-box_size = [1., 1.5]  # size of the box
+gamma = 7.0 / 5.0  # Gas adiabatic index
+dv = 0.025  # velocity perturbation
+rho_h = 2  # high density region
+rho_l = 1  # Low density region
+g = -0.5  # gravitational acceleration
+box_size = [1.0, 1.5]  # size of the box
 
 fixed = [0.1, 1.4]  # y-range of non fixed particles
 perturbation_box = [0.3, 1.2]  # y-range for the velocity perturbation
@@ -40,7 +40,7 @@ fileOutputName = "rayleigh_taylor.hdf5"
 
 # ---------------------------------------------------
 
-if (N[0] / box_size[0] != N[1] / box_size[1]):
+if N[0] / box_size[0] != N[1] / box_size[1]:
     raise Exception("Suppose the same ratio for each directions")
 
 
@@ -53,11 +53,11 @@ def density(y):
 
     ind = y < 0.5 * box_size[1]
     rho = np.zeros(y.shape)
-    tmp = (gamma - 1.) * g / (gamma * P0)
-    alpha = 1. / (gamma - 1.)
+    tmp = (gamma - 1.0) * g / (gamma * P0)
+    alpha = 1.0 / (gamma - 1.0)
 
-    rho[ind] = rho_l * (1 + rho_l * tmp * (y[ind] - 0.5 * box_size[1]))**alpha
-    rho[~ind] = rho_h * (1 + rho_h * tmp * (y[~ind] - 0.5 * box_size[1]))**alpha
+    rho[ind] = rho_l * (1 + rho_l * tmp * (y[ind] - 0.5 * box_size[1])) ** alpha
+    rho[~ind] = rho_h * (1 + rho_h * tmp * (y[~ind] - 0.5 * box_size[1])) ** alpha
 
     return rho
 
@@ -72,14 +72,14 @@ def mass(y):
     ind = y < 0.5 * box_size[1]
     m = np.zeros(y.shape)
 
-    B = (gamma - 1.) * g / (gamma * P0)
-    alpha = 1. / (gamma - 1.)
+    B = (gamma - 1.0) * g / (gamma * P0)
+    alpha = 1.0 / (gamma - 1.0)
 
-    m[ind] = (1 + B * rho_l * (y[ind] - 0.5 * box_size[1]))**(alpha + 1)
+    m[ind] = (1 + B * rho_l * (y[ind] - 0.5 * box_size[1])) ** (alpha + 1)
 
-    m[~ind] = (1 + B * rho_h * (y[~ind] - 0.5 * box_size[1]))**(alpha + 1)
+    m[~ind] = (1 + B * rho_h * (y[~ind] - 0.5 * box_size[1])) ** (alpha + 1)
 
-    m -= (1 - 0.5 * B * box_size[1] * rho_l)**(alpha + 1)
+    m -= (1 - 0.5 * B * box_size[1] * rho_l) ** (alpha + 1)
 
     return box_size[0] * m / (B * (alpha + 1))
 
@@ -115,8 +115,8 @@ def entropy(y):
     ind = y < 0.5 * box_size[1]
 
     a = np.zeros(y.shape)
-    a[ind] = P0 * rho_l**(-gamma)
-    a[~ind] = P0 * rho_h**(-gamma)
+    a[ind] = P0 * rho_l ** (-gamma)
+    a[~ind] = P0 * rho_h ** (-gamma)
     return a
 
 
@@ -132,11 +132,11 @@ def growth_rate():
     Compute the growth rate of the instability.
     Assumes a wavelength equal to the boxsize.
     """
-    ymin = 0.
+    ymin = 0.0
     ymax = box_size[1]
     A = density(ymax) - density(ymin)
     A /= density(ymax) + density(ymin)
-    return np.sqrt(A * np.abs(g) * ymax / (2. * np.pi))
+    return np.sqrt(A * np.abs(g) * ymax / (2.0 * np.pi))
 
 
 def vy(x, y):
@@ -186,20 +186,21 @@ if __name__ == "__main__":
 
             coords[index, 0] = x
             coords[index, 1] = y_j
-            if (y_j < fixed[0] or y_j > fixed[1]):
+            if y_j < fixed[0] or y_j > fixed[1]:
                 ids[index] = uni_id
                 uni_id += 1
 
-    print("You need to compile the code with "
-          "--enable-boundary-particles=%i" % uni_id)
-    ids[ids == 0] = np.linspace(uni_id, numPart, numPart-uni_id+1)
+    print(
+        "You need to compile the code with " "--enable-boundary-particles=%i" % uni_id
+    )
+    ids[ids == 0] = np.linspace(uni_id, numPart, numPart - uni_id + 1)
 
     # density
     rho = density(coords[:, 1])
 
     # internal energy
     a = entropy(coords[:, 1])
-    u = a * rho**(gamma-1) / (gamma - 1.)
+    u = a * rho ** (gamma - 1) / (gamma - 1.0)
 
     # smoothing length
     h = smoothing_length(rho, m)
@@ -208,7 +209,7 @@ if __name__ == "__main__":
     vel[:, 1] = vy(coords[:, 0], coords[:, 1])
 
     # File
-    fileOutput = h5py.File(fileOutputName, 'w')
+    fileOutput = h5py.File(fileOutputName, "w")
 
     # Header
     grp = fileOutput.create_group("/Header")
@@ -224,27 +225,27 @@ if __name__ == "__main__":
 
     # Units
     grp = fileOutput.create_group("/Units")
-    grp.attrs["Unit length in cgs (U_L)"] = 1.
-    grp.attrs["Unit mass in cgs (U_M)"] = 1.
-    grp.attrs["Unit time in cgs (U_t)"] = 1.
-    grp.attrs["Unit current in cgs (U_I)"] = 1.
-    grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+    grp.attrs["Unit length in cgs (U_L)"] = 1.0
+    grp.attrs["Unit mass in cgs (U_M)"] = 1.0
+    grp.attrs["Unit time in cgs (U_t)"] = 1.0
+    grp.attrs["Unit current in cgs (U_I)"] = 1.0
+    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
     # Particle group
     grp = fileOutput.create_group("/PartType0")
-    ds = grp.create_dataset('Coordinates', (numPart, 3), 'd')
+    ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
     ds[()] = coords
-    ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
+    ds = grp.create_dataset("Velocities", (numPart, 3), "f")
     ds[()] = vel
-    ds = grp.create_dataset('Masses', (numPart, 1), 'f')
+    ds = grp.create_dataset("Masses", (numPart, 1), "f")
     ds[()] = m.reshape((numPart, 1))
-    ds = grp.create_dataset('SmoothingLength', (numPart, 1), 'f')
+    ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
     ds[()] = h.reshape((numPart, 1))
-    ds = grp.create_dataset('InternalEnergy', (numPart, 1), 'f')
+    ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
     ds[()] = u.reshape((numPart, 1))
-    ds = grp.create_dataset('ParticleIDs', (numPart, 1), 'L')
+    ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
     ds[()] = ids.reshape((numPart, 1))
-    ds = grp.create_dataset('Density', (numPart, 1), 'f')
+    ds = grp.create_dataset("Density", (numPart, 1), "f")
     ds[()] = rho.reshape((numPart, 1))
 
     fileOutput.close()

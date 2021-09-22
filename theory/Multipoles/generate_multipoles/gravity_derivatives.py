@@ -1,10 +1,13 @@
 import numpy as np
 import sys
 
-SUFFIXES = {1: 'st', 2: 'nd', 3: 'rd'}
+SUFFIXES = {1: "st", 2: "nd", 3: "rd"}
+
+
 def ordinal(num):
-    suffix = SUFFIXES.get(num % 10, 'th')
+    suffix = SUFFIXES.get(num % 10, "th")
     return str(num) + suffix
+
 
 # Get the order
 n = int(sys.argv[1])
@@ -12,7 +15,8 @@ verbose = int(sys.argv[2])
 
 # Get the sorting indexes
 def argsort(seq):
-    return sorted(range(len(seq)), key=seq.__getitem__)
+    return sorted(list(range(len(seq))), key=seq.__getitem__)
+
 
 def pochhammer(x):
     if x == 1:
@@ -34,18 +38,20 @@ def pochhammer(x):
     if x == 9:
         return "- 34459425."
     else:
-        print "Invalid x"
+        print("Invalid x")
         exit(-1)
+
 
 # Returns nth derivative of 1/sqrt[u]
 def derivative_phi(n):
     power = 2 * n + 1
     string = str(pochhammer(n))
-    #string += " * r_inv^%d"%power
+    # string += " * r_inv^%d"%power
     string += " * r_inv"
     for i in range(power - 1):
         string += " * r_inv"
     return string
+
 
 def u_derivative_is_non_zero(deriv):
     if len(deriv) > 2:
@@ -57,6 +63,7 @@ def u_derivative_is_non_zero(deriv):
             return False
     elif len(deriv) == 1:
         return True
+
 
 # All non-zero derivatives of u(r_x,r_y,r_z) = r_x^2 + r_y^2 + r_z^2 divided by two
 def u_derivative(deriv):
@@ -70,23 +77,22 @@ def u_derivative(deriv):
         return "r_z"
     else:
         return ""
-    
+
+
 # Return the array of derivatives to compute from a multi-index
 def map_derivatives(num_x, num_y, num_z):
 
     array = []
     for i in range(num_x):
-        array.append('x')
+        array.append("x")
     for i in range(num_y):
-        array.append('y')
+        array.append("y")
     for i in range(num_z):
-        array.append('z')
-    
+        array.append("z")
+
     return array
 
-    
 
-    
 # Generate all permutations of {1....n}
 permutations = []
 temp = []
@@ -95,8 +101,8 @@ for i in range(n):
 permutations.extend([list(temp)])
 
 # Use permutations in lexicographic order to generate partitions
-while temp != range(1,n+1):
-    i = n-1
+while temp != list(range(1, n + 1)):
+    i = n - 1
     while i >= 0 and temp[0] == 1:
         # Maximal value up to that point
         if i > 0:
@@ -104,17 +110,17 @@ while temp != range(1,n+1):
         else:
             max_i = 0
         # Can't go beyond the order not above the max+1
-        if temp[i] != n and not max_i+1 < temp[i]+1:
+        if temp[i] != n and not max_i + 1 < temp[i] + 1:
             temp[i] += 1
-            for j in range(i+1, n):
+            for j in range(i + 1, n):
                 temp[j] = 1
-            i = n-1
+            i = n - 1
             if temp[0] == 1:
                 permutations.extend([list(temp)])
         else:
             i -= 1
 
-                
+
 # Print the partitions and compute cardinality of each partition and block
 num_terms = len(permutations)
 partitions = []
@@ -124,7 +130,7 @@ for i in range(num_terms):
     cardinality = 0
     this_norm_b = []
     my_str = ""
-    for current in range(1,n+1):
+    for current in range(1, n + 1):
         count = 0
         for j in range(n):
             if permutations[i][j] == current:
@@ -135,7 +141,7 @@ for i in range(num_terms):
             cardinality += 1
             for j in range(n):
                 if permutations[i][j] == current:
-                    my_str += str(range(n)[j]+1)
+                    my_str += str(list(range(n))[j] + 1)
             my_str += "]"
     partitions.append(my_str)
     norm_pi.append(cardinality)
@@ -143,79 +149,78 @@ for i in range(num_terms):
 
 # Sort partitions in order of |pi|
 index = argsort(norm_pi)
-norm_pi = [ norm_pi[i] for i in index]
-norm_b = [ norm_b[i] for i in index]
-partitions = [ partitions[i] for i in index]
-permutations = [ permutations[i] for i in index]
+norm_pi = [norm_pi[i] for i in index]
+norm_b = [norm_b[i] for i in index]
+partitions = [partitions[i] for i in index]
+permutations = [permutations[i] for i in index]
 
 if verbose:
-    print "Paritions of {1...%d}"%n
-    print "Number of partitions:", num_terms
+    print("Paritions of {1...%d}" % n)
+    print("Number of partitions:", num_terms)
     for i in range(num_terms):
-        print "%3d)"%(i+1), permutations[i], "  ---> pi =",
-        print partitions[i],
-        for j in range(n-norm_pi[i]):
-            print " ",
-        print "  ---> |pi| =", norm_pi[i],
-        print "  ---> [|B|] =", norm_b[i]
+        print("%3d)" % (i + 1), permutations[i], "  ---> pi =", end=" ")
+        print(partitions[i], end=" ")
+        for j in range(n - norm_pi[i]):
+            print(" ", end=" ")
+        print("  ---> |pi| =", norm_pi[i], end=" ")
+        print("  ---> [|B|] =", norm_b[i])
 
 # Now we can start generating functions
-print "----------------------------------------------------------"
-print "Generating code for gravity derivatives of order", n, "(only)."
-print "----------------------------------------------------------\n"
+print("----------------------------------------------------------")
+print("Generating code for gravity derivatives of order", n, "(only).")
+print("----------------------------------------------------------\n")
 
-print "/*********************************/"
-print "/* %s order gravity derivatives */"%ordinal(n)
-print "/*********************************/\n"
+print("/*********************************/")
+print("/* %s order gravity derivatives */" % ordinal(n))
+print("/*********************************/\n")
 
 # Write out the functions
-for i in range(n+1):
-    for j in range(n+1):
-        for k in range(n+1):
+for i in range(n + 1):
+    for j in range(n + 1):
+        for k in range(n + 1):
             if i + j + k == n:
 
-                #if i != 4 or j != 2 or k != 0:
+                # if i != 4 or j != 2 or k != 0:
                 #    continue
-                
+
                 derivatives = map_derivatives(i, j, k)
 
                 terms = []
                 count_terms = []
                 norm_pi2 = []
                 count = 0
-                
+
                 for p in range(num_terms):
                     # Get the partition
                     part = ""
                     part += partitions[p]
-                    
+
                     # Replace the numbers by derivatives
                     for b in range(len(derivatives)):
-                        part = part.replace(str(b+1), derivatives[b])
+                        part = part.replace(str(b + 1), derivatives[b])
 
-                
                     # Check whether the derivatives are non-zero
                     non_zero = True
                     for b in part:
-                        if b=='[':
+                        if b == "[":
                             deriv = ""
                         elif b.isalnum():
                             deriv += b
-                        elif b==']':
+                        elif b == "]":
                             if not u_derivative_is_non_zero(deriv):
                                 non_zero = False
                                 count += 1
                                 break
-                            
+
                     if non_zero:
-                        
+
                         # Sort the blocks in lexicographic order
                         part2 = []
                         temp = ""
                         for c in range(len(part)):
-                            if part[c] == '[':
+                            if part[c] == "[":
                                 temp = ""
-                            elif part[c] == ']':
+                            elif part[c] == "]":
                                 part2.append(temp)
                             else:
                                 temp += part[c]
@@ -226,8 +231,8 @@ for i in range(n+1):
 
                 # Sort list of blocks
                 index = argsort(terms)
-                terms = [ terms[u] for u in index]
-                norm_pi2 = [ norm_pi2[u] for u in index]
+                terms = [terms[u] for u in index]
+                norm_pi2 = [norm_pi2[u] for u in index]
 
                 # Make the list unique
                 terms2 = []
@@ -239,50 +244,54 @@ for i in range(n+1):
                         norm_pi3.append(norm_pi2[b])
                     else:
                         count_terms[-1] += 1
-                    
-                            
-                # Write the documentation and prototype
-                print "/**"
-                print " * @brief Compute \\f$ \\frac{\\partial^%d}{"%n,
-                if i > 0: print "\\partial_x^%d"%i,
-                if j > 0: print "\\partial_y^%d"%j,
-                if k > 0: print "\\partial_z^%d"%k,
-                print "}\\phi(x, y, z} \\f$."
-                print " *"
-                print " * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)"
-                print " */"
-                print "__attribute__((always_inline)) INLINE static double D_%d%d%d(double r_x, double r_y, double r_z, double r_inv) {"%(i,j,k)
-                print "return",
 
+                # Write the documentation and prototype
+                print("/**")
+                print(" * @brief Compute \\f$ \\frac{\\partial^%d}{" % n, end=" ")
+                if i > 0:
+                    print("\\partial_x^%d" % i, end=" ")
+                if j > 0:
+                    print("\\partial_y^%d" % j, end=" ")
+                if k > 0:
+                    print("\\partial_z^%d" % k, end=" ")
+                print("}\\phi(x, y, z} \\f$.")
+                print(" *")
+                print(" * Note that r_inv = 1./sqrt(r_x^2 + r_y^2 + r_z^2)")
+                print(" */")
+                print(
+                    "__attribute__((always_inline)) INLINE static double D_%d%d%d(double r_x, double r_y, double r_z, double r_inv) {"
+                    % (i, j, k)
+                )
+                print("return", end=" ")
 
                 # Print the whole thing
                 for b in range(len(terms2)):
 
                     part2 = terms2[b]
-                    #print "/* %18s*/" %(part2),
-                    
+                    # print "/* %18s*/" %(part2),
+
                     # Write the derivative of phi
-                    print derivative_phi(norm_pi3[b]),
+                    print(derivative_phi(norm_pi3[b]), end=" ")
 
                     # Write out multiplicity
                     if count_terms[b] > 1:
-                        print "* %.1f "%count_terms[b],
-                        
+                        print("* %.1f " % count_terms[b], end=" ")
+
                     # Write out the derivatives of u
                     first = True
                     for c in part2:
                         deriv = u_derivative(c)
                         if deriv != "":
-                            if first :
-                                print " * (",
+                            if first:
+                                print(" * (", end=" ")
                                 first = False
                             else:
-                                print "*",
-                            print deriv,
+                                print("*", end=" ")
+                            print(deriv, end=" ")
                     if not first:
-                        print ")",
-                    
+                        print(")", end=" ")
+
                 # Finish the code fo the function
-                print ";"
-                print "/* %d zero-valued terms not written out */"%(count)
-                print "}\n"
+                print(";")
+                print("/* %d zero-valued terms not written out */" % (count))
+                print("}\n")

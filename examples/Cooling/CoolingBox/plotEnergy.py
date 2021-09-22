@@ -2,27 +2,28 @@ from h5py import File
 import numpy as np
 import matplotlib
 from glob import glob
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Plot parameters
 params = {
-    'axes.labelsize': 10,
-    'axes.titlesize': 10,
-    'font.size': 12,
-    'legend.fontsize': 12,
-    'xtick.labelsize': 10,
-    'ytick.labelsize': 10,
-    'text.usetex': True,
-    'figure.figsize': (5, 5),
-    'figure.subplot.left': 0.145,
-    'figure.subplot.right': 0.99,
-    'figure.subplot.bottom': 0.11,
-    'figure.subplot.top': 0.99,
-    'figure.subplot.wspace': 0.15,
-    'figure.subplot.hspace': 0.12,
-    'lines.markersize': 6,
-    'lines.linewidth': 3.,
+    "axes.labelsize": 10,
+    "axes.titlesize": 10,
+    "font.size": 12,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "text.usetex": True,
+    "figure.figsize": (5, 5),
+    "figure.subplot.left": 0.145,
+    "figure.subplot.right": 0.99,
+    "figure.subplot.bottom": 0.11,
+    "figure.subplot.top": 0.99,
+    "figure.subplot.wspace": 0.15,
+    "figure.subplot.hspace": 0.12,
+    "lines.markersize": 6,
+    "lines.linewidth": 3.0,
 }
 plt.rcParams.update(params)
 
@@ -39,7 +40,7 @@ stats_filename = "./energy.txt"
 snap_filename = "coolingBox_0000.hdf5"
 
 # Read the initial state of the gas
-f = File(snap_filename, 'r')
+f = File(snap_filename, "r")
 
 # Read the units parameters from the snapshot
 units = f["InternalCodeUnits"]
@@ -53,7 +54,7 @@ gamma = float(f["HydroScheme"].attrs["Adiabatic index"])
 
 def energyUnits(u):
     """ Compute the temperature from the internal energy. """
-    u *= (unit_length / unit_time)**2
+    u *= (unit_length / unit_time) ** 2
     return u * m_h_cgs / k_b_cgs
 
 
@@ -86,7 +87,7 @@ N = len(files)
 temp_snap = np.zeros(N)
 time_snap_cgs = np.zeros(N)
 for i in range(N):
-    snap = File(files[i], 'r')
+    snap = File(files[i], "r")
     u = snap["/PartType0/InternalEnergies"][:] * snap["/PartType0/Masses"][:]
     u = sum(u) / total_mass[0]
     temp_snap[i] = energyUnits(u)
@@ -96,14 +97,18 @@ for i in range(N):
 plt.figure()
 
 Myr_in_yr = 3.15e13
-plt.plot(time, total_energy_cgs, 'r-', lw=1.6, label="Gas total energy")
-plt.plot(time_snap_cgs, temp_snap, 'rD', ms=3)
-plt.plot(time, radiated_energy_cgs, 'g-', lw=1.6, label="Radiated energy")
-plt.plot(time, total_energy_cgs + radiated_energy_cgs, 'b-',
-         lw=0.6, label="Gas total + radiated")
+plt.plot(time, total_energy_cgs, "r-", lw=1.6, label="Gas total energy")
+plt.plot(time_snap_cgs, temp_snap, "rD", ms=3)
+plt.plot(time, radiated_energy_cgs, "g-", lw=1.6, label="Radiated energy")
+plt.plot(
+    time,
+    total_energy_cgs + radiated_energy_cgs,
+    "b-",
+    lw=0.6,
+    label="Gas total + radiated",
+)
 
-plt.legend(loc="right", fontsize=8, frameon=False,
-           handlelength=3, ncol=1)
+plt.legend(loc="right", fontsize=8, frameon=False, handlelength=3, ncol=1)
 plt.xlabel("${\\rm{Time~[Myr]}}$", labelpad=0)
 plt.ylabel("${\\rm{Internal ~Energy ~(u ~m_H / k_B) ~[K]}}$")
 

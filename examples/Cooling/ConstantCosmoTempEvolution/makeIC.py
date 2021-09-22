@@ -51,7 +51,7 @@ glass.close()
 # Calculate mean baryon density today from comological parameters
 H_0 = 100.0 * hubble_param * unyt.km / unyt.s / unyt.Mpc
 rho_crit_0 = 3.0 * H_0 ** 2 / (8.0 * np.pi * unyt.G)
-rho_bar_0 = Omega_bar * rho_crit_0 
+rho_bar_0 = Omega_bar * rho_crit_0
 
 # From this, we calculate the mass of the gas particles
 gas_particle_mass = rho_bar_0 * boxsize ** 3 / (n_p_1D ** 3)

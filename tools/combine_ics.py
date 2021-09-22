@@ -61,7 +61,7 @@ time = grp_header.attrs["Time"]
 # Combine the low- and high-words
 tot_num_parts = tot_num_parts.astype(np.int64)
 for i in range(6):
-    tot_num_parts[i] += (np.int64(tot_num_parts_high_word[i]) << 32)
+    tot_num_parts[i] += np.int64(tot_num_parts_high_word[i]) << 32
 
 tot_num_parts_swift = np.copy(tot_num_parts)
 tot_num_parts_swift[2] += tot_num_parts_swift[3]
@@ -226,7 +226,6 @@ for f in range(num_files):
             cumul_parts[2] : cumul_parts[2] + num_parts[3]
         ] = file[full_name_old]
 
-
     if num_parts[0] > 0:
         copy_grp_same_name("Coordinates", 0)
         copy_grp_same_name("Velocities", 0)
@@ -271,7 +270,7 @@ for f in range(num_files):
 
     cumul_parts[0] += num_parts[0]
     cumul_parts[1] += num_parts[1]
-    cumul_parts[2] += num_parts[3]   # Need to adjust for added pt-3
+    cumul_parts[2] += num_parts[3]  # Need to adjust for added pt-3
     cumul_parts[4] += num_parts[4]
     cumul_parts[5] += num_parts[5]
     file.close()

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Usage:
     plot_tasks.py [options] input.dat png-output-prefix
@@ -41,6 +41,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.collections as collections
 import matplotlib.ticker as plticker
@@ -292,9 +293,9 @@ for task in SUBTYPES:
 if args.verbose:
     print("#Selected colours:")
     for task in sorted(TASKCOLOURS.keys()):
-        print(("# " + task + ": " + TASKCOLOURS[task]))
+        print("# " + task + ": " + TASKCOLOURS[task])
     for task in sorted(SUBCOLOURS.keys()):
-        print(("# " + task + ": " + SUBCOLOURS[task]))
+        print("# " + task + ": " + SUBCOLOURS[task])
 
 #  Read input.
 data = pl.loadtxt(infile)
@@ -306,7 +307,7 @@ if full_step.size == 13:
     mpimode = True
     if ranks == None:
         ranks = list(range(int(max(data[:, 0])) + 1))
-    print(("# Number of ranks:", len(ranks)))
+    print("# Number of ranks:", len(ranks))
     rankcol = 0
     threadscol = 1
     taskcol = 2
@@ -327,16 +328,16 @@ else:
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-1]) / 1000.0
 if args.verbose:
-    print(("# CPU frequency:", CPU_CLOCK * 1000.0))
+    print("# CPU frequency:", CPU_CLOCK * 1000.0)
 
 nthread = int(max(data[:, threadscol])) + 1
-print(("# Number of threads:", nthread))
+print("# Number of threads:", nthread)
 
 # Avoid start and end times of zero.
 sdata = data[data[:, ticcol] != 0]
 sdata = sdata[sdata[:, toccol] != 0]
 
-if delta_t < 0.:
+if delta_t < 0.0:
     print("The time-range must be >=0!")
     sys.exit(1)
 # Each rank can have different clocks (compute node), but we want to use the
@@ -360,24 +361,24 @@ if delta_t == 0:
         dt = toc_step - tic_step
         if dt > delta_t:
             delta_t = dt
-    print(("# Data range: ", delta_t / CPU_CLOCK, "ms"))
+    print("# Data range: ", delta_t / CPU_CLOCK, "ms")
 
 # Once more doing the real gather and plots this time.
 for rank in ranks:
-    print(("# Processing rank: ", rank))
+    print("# Processing rank: ", rank)
     if mpimode:
         data = sdata[sdata[:, rankcol] == rank]
         full_step = data[0, :]
     tic_step = int(full_step[ticcol])
     toc_step = int(full_step[toccol])
-    print(("# Min tic = ", tic_step))
+    print("# Min tic = ", tic_step)
     data = data[1:, :]
     typesseen = []
     nethread = 0
 
     #  Dummy image for ranks that have no tasks.
     if data.size == 0:
-        print(("# Rank ", rank, " has no tasks"))
+        print("# Rank ", rank, " has no tasks")
         fig = pl.figure()
         ax = fig.add_subplot(1, 1, 1)
         ax.set_xlim(-delta_t * 0.01 / CPU_CLOCK, delta_t * 1.01 / CPU_CLOCK)
@@ -428,13 +429,13 @@ for rank in ranks:
             toc = int(data[line, toccol]) / CPU_CLOCK
             tasks[thread][-1]["tic"] = tic
             tasks[thread][-1]["toc"] = toc
-            if ("fof" in tasktype):
+            if "fof" in tasktype:
                 tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
-            elif(
-                 "self" in tasktype
-                 or "pair" in tasktype
-                 or "recv" in tasktype
-                 or "send" in tasktype
+            elif (
+                "self" in tasktype
+                or "pair" in tasktype
+                or "recv" in tasktype
+                or "send" in tasktype
             ):
                 fulltype = tasktype + "/" + subtype
                 if fulltype in SUBCOLOURS:
@@ -502,7 +503,7 @@ for rank in ranks:
         ax.set_ylabel("Thread ID")
     else:
         ax.set_ylabel("Thread ID * " + str(expand))
-    ax.set_yticks(pl.array(list(range(nethread))), True)
+    ax.set_yticks(pl.array(list(range(nethread))), minor=True)
 
     loc = plticker.MultipleLocator(base=expand)
     ax.yaxis.set_major_locator(loc)
@@ -514,6 +515,6 @@ for rank in ranks:
     else:
         outpng = outbase + ".png"
     pl.savefig(outpng, bbox_inches="tight")
-    print(("Graphics done, output written to", outpng))
+    print("Graphics done, output written to", outpng)
 
 sys.exit(0)

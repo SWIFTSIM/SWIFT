@@ -4,7 +4,9 @@ from h5py import File
 import shutil
 import numpy as np
 import sys
-from swiftsimio.visualisation.smoothing_length_generation import generate_smoothing_lengths
+from swiftsimio.visualisation.smoothing_length_generation import (
+    generate_smoothing_lengths,
+)
 import time
 from unyt import kpc
 
@@ -32,8 +34,8 @@ with File(output, "a") as f:
     f["Units"].attrs["Unit length in cgs (U_L)"] = u_l
     f["Units"].attrs["Unit mass in cgs (U_M)"] = u_m
     f["Units"].attrs["Unit time in cgs (U_t)"] = u_t
-    f["Units"].attrs["Unit current in cgs (U_I)"] = 1.
-    f["Units"].attrs["Unit temperature in cgs (U_T)"] = 1.
+    f["Units"].attrs["Unit current in cgs (U_I)"] = 1.0
+    f["Units"].attrs["Unit temperature in cgs (U_T)"] = 1.0
 
     # Create the mass arrays
     for i in range(len(npart)):
@@ -44,7 +46,7 @@ with File(output, "a") as f:
         if "Masses" in grp:
             continue
         masses = np.ones(npart[i]) * mass[i]
-        grp.create_dataset('Masses', data=masses, dtype='f')
+        grp.create_dataset("Masses", data=masses, dtype="f")
 
     # Create the smoothing lengths
     pos = f["PartType0/Coordinates"][:] * kpc
@@ -52,5 +54,7 @@ with File(output, "a") as f:
     f["PartType0"].create_dataset("SmoothingLength", data=h.value, dtype="f")
 
     # Deal with the internal energy
-    u = np.ones(h.shape) * -1  # We set it through the parameters => fill it with garbage
+    u = (
+        np.ones(h.shape) * -1
+    )  # We set it through the parameters => fill it with garbage
     f["PartType0"].create_dataset("InternalEnergy", data=u, dtype="f")
