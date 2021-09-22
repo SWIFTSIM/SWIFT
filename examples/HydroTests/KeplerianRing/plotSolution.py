@@ -26,11 +26,13 @@
 # and then our own density as a function of radius calculation.
 
 import matplotlib
+
 matplotlib.use("Agg")
 matplotlib.rc("text", usetex=True)
 
 try:
     import yt
+
     ytavail = True
 except ImportError:
     print("yt not found. Falling back on homebrew plots.")
@@ -66,7 +68,7 @@ def get_axes_grid(figure):
     gs = gridspec.GridSpec(2, 30)
 
     grid = []
-    
+
     grid.append(figure.add_subplot(gs[0, 0:10]))
     grid.append(figure.add_subplot(gs[0, 10:20]))
     grid.append(figure.add_subplot(gs[0, 20:]))
@@ -103,7 +105,7 @@ def chi_square(observed, expected):
     masked_expected = np.array(expected)[mask]
     masked_observed = np.array(observed)[mask]
 
-    return sum(((masked_observed - masked_expected)**2)/masked_expected**2)
+    return sum(((masked_observed - masked_expected) ** 2) / masked_expected ** 2)
 
 
 def load_data(filename):
@@ -118,11 +120,13 @@ def load_data(filename):
         # Check if z = 0 for all particles. If so we need to set the cetnre
         # to have z = 0 also.
         if np.sum(file["PartType0"]["Coordinates"][:, 2]) == 0:
-            centre = [boxsize[0] / 2., boxsize[0] / 2., 0.]
+            centre = [boxsize[0] / 2.0, boxsize[0] / 2.0, 0.0]
         else:
-            centre = boxsize / 2.
+            centre = boxsize / 2.0
 
-        radii = np.sqrt(np.sum(((file["PartType0"]["Coordinates"][...] - centre).T)**2, 0))
+        radii = np.sqrt(
+            np.sum(((file["PartType0"]["Coordinates"][...] - centre).T) ** 2, 0)
+        )
         masses = file["PartType0"]["Masses"][...]
 
     return radii, masses
@@ -137,16 +141,16 @@ def bin_density_r(radii, density, binrange, binnumber):
     indicies = np.digitize(radii, bins)
 
     binned_masses = np.zeros(len(bins) - 1)
-    
+
     for index, bin in enumerate(indicies):
         if bin >= len(bins) - 1:
             continue
 
         binned_masses[bin] += density[index]
 
-    areas = [np.pi * (a**2 - b**2) for a, b in zip(bins[1:], bins[:-1])]
-    binned_densities = binned_masses/areas
-    
+    areas = [np.pi * (a ** 2 - b ** 2) for a, b in zip(bins[1:], bins[:-1])]
+    binned_densities = binned_masses / areas
+
     return bins, binned_densities
 
 
@@ -179,7 +183,9 @@ def get_mass_outside_inside(snap, radius=2, filename="keplerian_ring"):
     return below, above
 
 
-def get_derived_data(minsnap, maxsnap, filename="keplerian_ring", binnumber=50, radius=2):
+def get_derived_data(
+    minsnap, maxsnap, filename="keplerian_ring", binnumber=50, radius=2
+):
     """
     Gets the derived data from our snapshots, i.e. the
     density(r) profile and the chi squared (based on the
@@ -188,36 +194,32 @@ def get_derived_data(minsnap, maxsnap, filename="keplerian_ring", binnumber=50, 
 
     initial = get_density_r(minsnap, filename, binnumber=binnumber)
     other_densities = [
-        get_density_r(snap, binnumber=binnumber)[1] for snap in tqdm(
-            range(minsnap+1, maxsnap+1), desc="Densities"
-        )
+        get_density_r(snap, binnumber=binnumber)[1]
+        for snap in tqdm(range(minsnap + 1, maxsnap + 1), desc="Densities")
     ]
     densities = [initial[1]] + other_densities
 
     masses_inside_outside = [
-        get_mass_outside_inside(snap, radius=radius, filename=filename)[0] for snap in tqdm(
-            range(minsnap, maxsnap+1), desc="Mass Flow"
-        )
+        get_mass_outside_inside(snap, radius=radius, filename=filename)[0]
+        for snap in tqdm(range(minsnap, maxsnap + 1), desc="Mass Flow")
     ]
 
     # Between the initial conditions and the first snapshot we hope that there
-    # has been no mass flow, hence the [0.] + 
-    mass_flows = [0.] + [
-        y - x for x, y in zip(
-            masses_inside_outside[1:],
-            masses_inside_outside[:-1]
-        )
+    # has been no mass flow, hence the [0.] +
+    mass_flows = [0.0] + [
+        y - x for x, y in zip(masses_inside_outside[1:], masses_inside_outside[:-1])
     ]
 
     cumulative_mass_flows = [
-        sum(mass_flows[:x])/masses_inside_outside[0] for x in range(len(mass_flows))
+        sum(mass_flows[:x]) / masses_inside_outside[0] for x in range(len(mass_flows))
     ]
 
     chisq = [
         chi_square(
-            dens[int(0.1*binnumber):int(0.4*binnumber)],
-            initial[1][int(0.1*binnumber):int(0.4*binnumber)]
-        ) for dens in tqdm(densities, desc="Chi Squared")
+            dens[int(0.1 * binnumber) : int(0.4 * binnumber)],
+            initial[1][int(0.1 * binnumber) : int(0.4 * binnumber)],
+        )
+        for dens in tqdm(densities, desc="Chi Squared")
     ]
 
     return initial[0], densities, chisq, cumulative_mass_flows
@@ -228,8 +230,10 @@ def plot_chisq(ax, minsnap, maxsnap, chisq, filename="keplerian_ring"):
     Plot the chisq(rotation).
     """
     snapshots = np.arange(minsnap, maxsnap + 1)
-    rotations = [convert_snapshot_number_to_rotations_at(1, snap, filename) for snap in snapshots]
-    ax.plot(rotations, np.array(chisq)/max(chisq))
+    rotations = [
+        convert_snapshot_number_to_rotations_at(1, snap, filename) for snap in snapshots
+    ]
+    ax.plot(rotations, np.array(chisq) / max(chisq))
 
     ax.set_xlabel("Number of rotations")
     ax.set_ylabel("$\chi^2 / \chi^2_{{max}}$ = {:3.5f}".format(max(chisq)))
@@ -242,7 +246,9 @@ def plot_mass_flow(ax, minsnap, maxsnap, mass_flow, filename="keplerian_ring"):
     Plot the mass_flow(rotation).
     """
     snapshots = np.arange(minsnap, maxsnap + 1)
-    rotations = [convert_snapshot_number_to_rotations_at(1, snap, filename) for snap in snapshots]
+    rotations = [
+        convert_snapshot_number_to_rotations_at(1, snap, filename) for snap in snapshots
+    ]
 
     ax.plot(rotations, mass_flow)
 
@@ -259,7 +265,7 @@ def plot_density_r(ax, bins, densities, snaplist, filename="keplerian_ring"):
     Densities is the _full_ list of density profiles, and
     snaplist is the ones that you wish to plot.
     """
-    radii = [(x + y)/2 for x, y in zip(bins[1:], bins[:-1])]
+    radii = [(x + y) / 2 for x, y in zip(bins[1:], bins[:-1])]
 
     for snap in snaplist:
         index = snap - snaplist[0]
@@ -281,25 +287,34 @@ def plot_extra_info(ax, filename):
     """
 
     metadata = get_metadata(filename)
-    
-    git = metadata['code']['Git Revision'].decode("utf-8")
-    compiler_name = metadata['code']['Compiler Name'].decode("utf-8")
-    compiler_version = metadata['code']['Compiler Version'].decode("utf-8")
-    scheme = metadata['hydro']['Scheme'].decode("utf-8")
-    kernel = metadata['hydro']['Kernel function'].decode("utf-8")
+
+    git = metadata["code"]["Git Revision"].decode("utf-8")
+    compiler_name = metadata["code"]["Compiler Name"].decode("utf-8")
+    compiler_version = metadata["code"]["Compiler Version"].decode("utf-8")
+    scheme = metadata["hydro"]["Scheme"].decode("utf-8")
+    kernel = metadata["hydro"]["Kernel function"].decode("utf-8")
     gas_gamma = metadata["hydro"]["Adiabatic index"][0]
     neighbors = metadata["hydro"]["Kernel target N_ngb"][0]
     eta = metadata["hydro"]["Kernel eta"][0]
-    
 
-    ax.text(-0.49, 0.9, "Keplerian Ring with  $\\gamma={:4.4f}$ in 2/3D".format(gas_gamma), fontsize=11)
+    ax.text(
+        -0.49,
+        0.9,
+        "Keplerian Ring with  $\\gamma={:4.4f}$ in 2/3D".format(gas_gamma),
+        fontsize=11,
+    )
     ax.text(-0.49, 0.8, f"Compiler: {compiler_name} {compiler_version}", fontsize=10)
     ax.text(-0.49, 0.7, "Rotations are quoted at $r=1$", fontsize=10)
-    ax.plot([-0.49, 0.1], [0.62, 0.62], 'k-', lw=1)
+    ax.plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
     ax.text(-0.49, 0.5, f"$\\textsc{{Swift}}$ {git}", fontsize=10)
     ax.text(-0.49, 0.4, scheme, fontsize=10)
     ax.text(-0.49, 0.3, kernel, fontsize=10)
-    ax.text(-0.49, 0.2, "${:2.2f}$ neighbours ($\\eta={:3.3f}$)".format(neighbors, eta), fontsize=10)
+    ax.text(
+        -0.49,
+        0.2,
+        "${:2.2f}$ neighbours ($\\eta={:3.3f}$)".format(neighbors, eta),
+        fontsize=10,
+    )
 
     ax.set_axis_off()
     ax.set_xlim(-0.5, 0.5)
@@ -308,7 +323,9 @@ def plot_extra_info(ax, filename):
     return
 
 
-def surface_density_plot_no_yt(ax, snapnum, filename="keplerian_ring", density_limits=None, vlim=None):
+def surface_density_plot_no_yt(
+    ax, snapnum, filename="keplerian_ring", density_limits=None, vlim=None
+):
     """
     Make the surface density plot (sans yt).
 
@@ -328,7 +345,6 @@ def surface_density_plot_no_yt(ax, snapnum, filename="keplerian_ring", density_l
 
     ax.scatter(x, y, c=density, vmin=vlim[0], vmax=vlim[1], s=0.1)
 
-
     metadata = get_metadata("{}_{:04d}.hdf5".format(filename, snapnum))
     period = metadata["period"]
 
@@ -336,10 +352,9 @@ def surface_density_plot_no_yt(ax, snapnum, filename="keplerian_ring", density_l
         2.5,
         7.5,
         "Snapshot = {:04d}\nRotations = {:1.2f}".format(
-            snapnum,
-            float(metadata["header"]["Time"])/period
+            snapnum, float(metadata["header"]["Time"]) / period
         ),
-        color='black'
+        color="black",
     )
 
     t.set_bbox(dict(alpha=0.5, color="white"))
@@ -351,23 +366,24 @@ def surface_density_plot_no_yt(ax, snapnum, filename="keplerian_ring", density_l
 
     # We now want to remove all of the ticklabels.
 
-    for axis in ['x', 'y']:
+    for axis in ["x", "y"]:
         ax.tick_params(
-            axis=axis,          
-            which='both',      
-            bottom='off',      
-            top='off',         
-            left='off',
-            right='off',
-            labelleft='off',
-            labelbottom='off'
-        ) 
+            axis=axis,
+            which="both",
+            bottom="off",
+            top="off",
+            left="off",
+            right="off",
+            labelleft="off",
+            labelbottom="off",
+        )
 
     return density_limits, vlim
 
 
-
-def surface_density_plot(ax, snapnum, filename="keplerian_ring", density_limits=None, vlim=None):
+def surface_density_plot(
+    ax, snapnum, filename="keplerian_ring", density_limits=None, vlim=None
+):
     """
     Make the surface density plot (via yt).
 
@@ -376,11 +392,7 @@ def surface_density_plot(ax, snapnum, filename="keplerian_ring", density_limits=
     max/min.
     """
 
-    unit_base = {
-        'length': (1.0, 'cm'),
-        'velocity': (1.0, 'cm/s'),
-        'mass': (1.0, 'g')
-    }
+    unit_base = {"length": (1.0, "cm"), "velocity": (1.0, "cm/s"), "mass": (1.0, "g")}
 
     filename = "{}_{:04d}.hdf5".format(filename, snapnum)
 
@@ -391,16 +403,11 @@ def surface_density_plot(ax, snapnum, filename="keplerian_ring", density_limits=
         # number. Just return what we're given.
         return density_limits, vlim
 
-    projection_plot = yt.ProjectionPlot(
-        snap,
-        "z",
-        ("gas", "cell_mass"),
-        width=5.5
-    )
+    projection_plot = yt.ProjectionPlot(snap, "z", ("gas", "cell_mass"), width=5.5)
 
     max_density = snap.all_data()[("gas", "cell_mass")].max()
     min_density = snap.all_data()[("gas", "cell_mass")].min()
-    
+
     new_density_limits = (min_density, max_density)
 
     if density_limits is None:
@@ -417,12 +424,7 @@ def surface_density_plot(ax, snapnum, filename="keplerian_ring", density_limits=
     if vlim is None:
         vlim = new_vlim
 
-    ax.imshow(
-        data[0],
-        cmap=data[1],
-        vmin=vlim[0],
-        vmax=vlim[1]
-    )
+    ax.imshow(data[0], cmap=data[1], vmin=vlim[0], vmax=vlim[1])
 
     metadata = get_metadata(filename)
     period = metadata["period"]
@@ -431,25 +433,24 @@ def surface_density_plot(ax, snapnum, filename="keplerian_ring", density_limits=
         20,
         80,
         "Snapshot = {:04d}\nRotations = {:1.2f}".format(
-            snapnum,
-            float(snap.current_time)/period
+            snapnum, float(snap.current_time) / period
         ),
-        color='white'
+        color="white",
     )
 
     # We now want to remove all of the ticklabels.
 
-    for axis in ['x', 'y']:
+    for axis in ["x", "y"]:
         ax.tick_params(
-            axis=axis,          
-            which='both',      
-            bottom='off',      
-            top='off',         
-            left='off',
-            right='off',
-            labelleft='off',
-            labelbottom='off'
-        ) 
+            axis=axis,
+            which="both",
+            bottom="off",
+            top="off",
+            left="off",
+            right="off",
+            labelleft="off",
+            labelbottom="off",
+        )
 
     return density_limits, vlim
 
@@ -485,7 +486,7 @@ if __name__ == "__main__":
              Default: First snapshot in the folder.
              """,
         default=-1,
-        required=False
+        required=False,
     )
 
     parser.add_argument(
@@ -496,7 +497,7 @@ if __name__ == "__main__":
              Default: (end - beginning) // 2.
              """,
         default=-1,
-        required=False
+        required=False,
     )
 
     parser.add_argument(
@@ -507,7 +508,7 @@ if __name__ == "__main__":
              Default: Last snapshot in the folder.
              """,
         default=-1,
-        required=False
+        required=False,
     )
 
     parser.add_argument(
@@ -518,7 +519,7 @@ if __name__ == "__main__":
              Default: plot.png
              """,
         default="plot.png",
-        required=False
+        required=False,
     )
 
     parser.add_argument(
@@ -529,7 +530,7 @@ if __name__ == "__main__":
              Default: 100.
              """,
         default=100,
-        required=False
+        required=False,
     )
 
     parser.add_argument(
@@ -541,7 +542,7 @@ if __name__ == "__main__":
              Default: 0.
              """,
         default=0,
-        required=False
+        required=False,
     )
 
     parser.add_argument(
@@ -553,9 +554,9 @@ if __name__ == "__main__":
              default value of keplerian_ring.
              """,
         default="keplerian_ring",
-        required=False
+        required=False,
     )
-    
+
     parser.add_argument(
         "-y",
         "--yt",
@@ -565,7 +566,7 @@ if __name__ == "__main__":
              setup. Default: False
              """,
         default=False,
-        required=False
+        required=False,
     )
 
     args = vars(parser.parse_args())
@@ -575,9 +576,9 @@ if __name__ == "__main__":
     if args["beginning"] == -1:
         # We look for the maximum number of snapshots.
         numbers = [
-            int(x[len(filename)+1:-5])
-            for x in os.listdir() if
-            x[:len(filename)] == filename and x[-1] == "5"
+            int(x[len(filename) + 1 : -5])
+            for x in os.listdir()
+            if x[: len(filename)] == filename and x[-1] == "5"
         ]
 
         snapshots = [min(numbers), (max(numbers) - min(numbers)) // 2, max(numbers)]
@@ -593,25 +594,21 @@ if __name__ == "__main__":
     for snap, ax in zip(snapshots, tqdm(axes[0:3], desc="Images")):
         if args["yt"] and ytavail:
             density_limits, vlim = surface_density_plot(
-                ax,
-                snap,
-                density_limits=density_limits,
-                vlim=vlim
+                ax, snap, density_limits=density_limits, vlim=vlim
             )
 
             figure.subplots_adjust(hspace=0, wspace=0)
         else:
             density_limits, vlim = surface_density_plot_no_yt(
-                ax,
-                snap,
-                density_limits=density_limits,
-                vlim=vlim
+                ax, snap, density_limits=density_limits, vlim=vlim
             )
 
     # Now we need to do the density(r) plot.
 
     # Derived data includes density profiles and chi squared
-    derived_data = get_derived_data(snapshots[0], snapshots[2], binnumber=int(args["nbins"]))
+    derived_data = get_derived_data(
+        snapshots[0], snapshots[2], binnumber=int(args["nbins"])
+    )
 
     if args["plotmassflow"]:
         plot_mass_flow(axes[3], snapshots[0], snapshots[2], derived_data[3])
@@ -623,5 +620,3 @@ if __name__ == "__main__":
     plot_extra_info(axes[5], "keplerian_ring_0000.hdf5")
 
     figure.savefig(args["filename"], dpi=300)
-
-

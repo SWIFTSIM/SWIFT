@@ -27,16 +27,16 @@ import pylab as pl
 
 # these should be the same as in makeIC.py
 uconst = 20.2615290634
-cs2 = 2.*uconst/3.
-A = 10.
+cs2 = 2.0 * uconst / 3.0
+A = 10.0
 
 if len(sys.argv) < 2:
-  print "Need to provide a filename argument!"
-  exit()
+    print("Need to provide a filename argument!")
+    exit()
 
 fileName = sys.argv[1]
 
-file = h5py.File(fileName, 'r')
+file = h5py.File(fileName, "r")
 coords = np.array(file["/PartType0/Coordinates"])
 rho = np.array(file["/PartType0/Densities"])
 u = np.array(file["/PartType0/InternalEnergies"])
@@ -50,35 +50,35 @@ ids = np.array(file["/PartType0/ParticleIDs"])
 # there initial positions
 ids_reverse = np.argsort(ids)
 
-x = np.linspace(0., 1., 1000)
-rho_x = 1000.*np.exp(-0.5*A/np.pi/cs2*np.cos(2.*np.pi*x))
+x = np.linspace(0.0, 1.0, 1000)
+rho_x = 1000.0 * np.exp(-0.5 * A / np.pi / cs2 * np.cos(2.0 * np.pi * x))
 
-P = cs2*rho
+P = cs2 * rho
 
-n1D = np.ceil(len(P)**(1./3.))
+n1D = np.ceil(len(P) ** (1.0 / 3.0))
 gradP = np.zeros(P.shape)
 for i in range(len(P)):
-  iself = int(ids[i]/n1D/n1D)
-  jself = int(int(ids[i]-n1D*iself)/n1D)
-  kself = int(ids[i]-n1D**2*iself-n1D*jself)
-  corr = 0.
-  im1 = iself-1
-  if im1 < 0:
-    im1 = n1D-1
-    corr = 1.
-  ip1 = iself+1
-  if ip1 == n1D:
-    ip1 = 0
-    corr = 1.
-  idxp1 = ids_reverse[ip1*n1D**2+jself*n1D+kself]
-  idxm1 = ids_reverse[im1*n1D**2+jself*n1D+kself]
-  gradP[i] = (P[idxp1]-P[idxm1])/(coords[idxp1,0]-coords[idxm1,0]+corr)
+    iself = int(ids[i] / n1D / n1D)
+    jself = int(int(ids[i] - n1D * iself) / n1D)
+    kself = int(ids[i] - n1D ** 2 * iself - n1D * jself)
+    corr = 0.0
+    im1 = iself - 1
+    if im1 < 0:
+        im1 = n1D - 1
+        corr = 1.0
+    ip1 = iself + 1
+    if ip1 == n1D:
+        ip1 = 0
+        corr = 1.0
+    idxp1 = ids_reverse[ip1 * n1D ** 2 + jself * n1D + kself]
+    idxm1 = ids_reverse[im1 * n1D ** 2 + jself * n1D + kself]
+    gradP[i] = (P[idxp1] - P[idxm1]) / (coords[idxp1, 0] - coords[idxm1, 0] + corr)
 
 fig, ax = pl.subplots(2, 2)
 
-ax[0][0].plot(coords[:,0], rho, "r.", markersize = 0.5)
+ax[0][0].plot(coords[:, 0], rho, "r.", markersize=0.5)
 ax[0][0].plot(x, rho_x, "g-")
-ax[0][1].plot(coords[:,0], gradP/rho, "b.")
-ax[1][0].plot(coords[:,0], agrav[:,0], "g.", markersize = 0.5)
-ax[1][1].plot(coords[:,0], m, "y.")
-pl.savefig("{fileName}.png".format(fileName = fileName[:-5]))
+ax[0][1].plot(coords[:, 0], gradP / rho, "b.")
+ax[1][0].plot(coords[:, 0], agrav[:, 0], "g.", markersize=0.5)
+ax[1][1].plot(coords[:, 0], m, "y.")
+pl.savefig("{fileName}.png".format(fileName=fileName[:-5]))

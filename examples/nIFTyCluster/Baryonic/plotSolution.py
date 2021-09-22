@@ -148,7 +148,7 @@ def gas_density(
 
         # Correct h-factors
         R /= h
-        rho *= (h * h)
+        rho *= h * h
         ax.plot(R, rho, linestyle="dashed", lw=1, label=scheme_name)
 
     ax.legend()
@@ -289,7 +289,7 @@ def entropy(
 
         # Correct h-factors
         R /= h
-        S /= (h * h)
+        S /= h * h
         ax.plot(R, S, linestyle="dashed", lw=1, label=scheme_name)
 
     ax.set_xlim(centers[0], centers[-1])
@@ -342,6 +342,7 @@ def info(
 
     ax.axis("off")
 
+
 def get_center(snapshot):
     catalogue_filename = f"halo_0303.properties"
 
@@ -352,7 +353,6 @@ def get_center(snapshot):
         z = handle["Zcmbp"][highest_mass]
 
     return [x, y, z] * unyt.Mpc
-
 
 
 if __name__ == "__main__":

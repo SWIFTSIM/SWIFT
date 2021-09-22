@@ -48,7 +48,7 @@ def get_energies(handle: h5py.File):
     unit_time_in_si = unit_time_in_cgs
 
     u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
-    u /= a ** (3 * (gas_gamma - 1.))
+    u /= a ** (3 * (gas_gamma - 1.0))
 
     return u
 
@@ -106,7 +106,6 @@ def get_halo_data(catalogue_filename: str) -> HaloData:
     that is given by VELOCIraptor.
     """
 
-
     with h5py.File(catalogue_filename, "r") as file:
         largest_halo = np.where(
             file["Mass_200crit"][...] == file["Mass_200crit"][...].max()
@@ -143,7 +142,7 @@ def get_radial_density_profile(radii, masses, bins: int) -> Tuple[np.ndarray]:
 
     volumes = np.array(
         [
-            (4. * np.pi / 3.) * (r_outer ** 3 - r_inner ** 3)
+            (4.0 * np.pi / 3.0) * (r_outer ** 3 - r_inner ** 3)
             for r_outer, r_inner in zip(bin_edges[1:], bin_edges[:-1])
         ]
     )
@@ -156,9 +155,9 @@ def mu(T, H_frac, T_trans):
     Get the molecular weight as a function of temperature.
     """
     if T > T_trans:
-        return 4. / (8. - 5. * (1. - H_frac))
+        return 4.0 / (8.0 - 5.0 * (1.0 - H_frac))
     else:
-        return 4. / (1. + 3. * H_frac)
+        return 4.0 / (1.0 + 3.0 * H_frac)
 
 
 def T(u, metadata: MetaData):
@@ -173,7 +172,7 @@ def T(u, metadata: MetaData):
     k_in_J_K = 1.38064852e-23
     mH_in_kg = 1.6737236e-27
 
-    T_over_mu = (gas_gamma - 1.) * u * mH_in_kg / k_in_J_K
+    T_over_mu = (gas_gamma - 1.0) * u * mH_in_kg / k_in_J_K
     ret = np.ones(np.size(u)) * T_trans
 
     # Enough energy to be ionized?

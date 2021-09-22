@@ -8,10 +8,11 @@ from copy import deepcopy
 from shutil import copyfile
 import os
 from subprocess import call
+
 sys.path.append("../../../csds/.libs/")
 import libcsds as csds
 
-boxsize = 80.
+boxsize = 80.0
 large_width = 15
 small_width = 0.4
 alpha_particle = 0
@@ -21,7 +22,7 @@ basename = "index"
 resolution = 1080
 resolution_mini = resolution * 100 // 512
 id_foc = 99839
-v_max = 8.
+v_max = 8.0
 
 traj = None
 
@@ -48,7 +49,7 @@ def getImage(parts, width, center, res):
     m = np.ones(pos.shape[0])
     # Do the projection
     img = vis.scatter(pos[:, 0], pos[:, 1], m, h, res).T
-    img /= width**3
+    img /= width ** 3
     ind = img == 0
     img[ind] = img[~ind].min()
     img = np.log10(img)
@@ -88,41 +89,56 @@ def doProjection(parts, t, skip):
     # Compute the images
     img = getImage(interp, width, position, resolution)
     img[:resolution_mini, -resolution_mini:] = getImage(
-        interp, 0.2 * boxsize, position, resolution_mini)
+        interp, 0.2 * boxsize, position, resolution_mini
+    )
     box = width * np.array([0, 1, 0, 1])
-    plt.imshow(img, origin="lower", extent=box, cmap="plasma",
-               vmin=0, vmax=v_max)
+    plt.imshow(img, origin="lower", extent=box, cmap="plasma", vmin=0, vmax=v_max)
 
     # plot the particles
     pos = interp["positions"] - position + 0.5 * width
     ind = selectParticles(pos, width)
     ms = 2
-    plt.plot(pos[ind, 0], pos[ind, 1], "o", markersize=ms,
-             alpha=alpha_particle, color="silver")
-    plt.plot(pos[id_foc, 0], pos[id_foc, 1], "or", markersize=2*ms,
-             alpha=alpha_particle)
+    plt.plot(
+        pos[ind, 0],
+        pos[ind, 1],
+        "o",
+        markersize=ms,
+        alpha=alpha_particle,
+        color="silver",
+    )
+    plt.plot(
+        pos[id_foc, 0], pos[id_foc, 1], "or", markersize=2 * ms, alpha=alpha_particle
+    )
 
     # plot time
-    plt.text(0.5 * width, 0.95 * width,
-             "Time = %0.2f Hours" % (t / (60 * 60)), color="w",
-             horizontalalignment="center")
+    plt.text(
+        0.5 * width,
+        0.95 * width,
+        "Time = %0.2f Hours" % (t / (60 * 60)),
+        color="w",
+        horizontalalignment="center",
+    )
 
     # plot trajectory
     tr = deepcopy(traj) - position + 0.5 * width
     plt.plot(tr[:, 0], tr[:, 1], "-", color="w", alpha=alpha_particle)
 
     # plot scale
-    plt.plot([0.05 * width, 0.15 * width], [0.05 * width, 0.05 * width],
-             "-w")
-    plt.text(0.1 * width, 0.06 * width, "%.2f R$_\oplus$" % (0.1 * width),
-             horizontalalignment='center', color="w")
+    plt.plot([0.05 * width, 0.15 * width], [0.05 * width, 0.05 * width], "-w")
+    plt.text(
+        0.1 * width,
+        0.06 * width,
+        "%.2f R$_\oplus$" % (0.1 * width),
+        horizontalalignment="center",
+        color="w",
+    )
 
     # style
     plt.axis("off")
     plt.xlim(box[:2])
     plt.ylim(box[2:])
     plt.tight_layout()
-    plt.style.use('dark_background')
+    plt.style.use("dark_background")
     return parts
 
 
@@ -137,7 +153,7 @@ def skipImage(i):
 def doMovie(parts, t0, t1, N, init):
     times = np.linspace(t0, t1, N)
     for i, t in enumerate(times):
-        print("Image %i / %i" % (i+1, N))
+        print("Image %i / %i" % (i + 1, N))
         skip = skipImage(i + init)
         parts = doProjection(parts, t, skip)
         if not skip:
@@ -153,10 +169,10 @@ def doZoom(parts, w_init, w_end, N, init, t0, t1, increase_alpha):
     if not increase_alpha:
         alpha = alpha[::-1]
     k = 5  # parameter for the steepness
-    alpha = 1. / (1 + np.exp(- 2 * k * alpha))
+    alpha = 1.0 / (1 + np.exp(-2 * k * alpha))
     times = np.linspace(t0, t1, N)
     for i, w in enumerate(widths):
-        print("Image %i / %i" % (i+1, N))
+        print("Image %i / %i" % (i + 1, N))
         skip = skipImage(i + init)
         width = w
         alpha_particle = alpha[i]
@@ -170,8 +186,7 @@ def doZoom(parts, w_init, w_end, N, init, t0, t1, increase_alpha):
 def doStatic(init, number, ref):
     # copy the first picture
     for i in range(number):
-        copyfile("output/image_%04i.png" % ref,
-                 "output/image_%04i.png" % (i + init))
+        copyfile("output/image_%04i.png" % ref, "output/image_%04i.png" % (i + init))
     return init + number
 
 
@@ -182,17 +197,15 @@ def doTitle(frames):
     plt.xlim(box[:2])
     plt.ylim(box[2:])
     plt.tight_layout()
-    plt.style.use('dark_background')
+    plt.style.use("dark_background")
 
     style = {
         "verticalalignment": "center",
         "horizontalalignment": "center",
-        "fontweight": "bold"
+        "fontweight": "bold",
     }
-    plt.text(0.5, 0.6, "Planetary Impact with the CSDS",
-             **style)
-    plt.text(0.5, 0.5, "L. Hausammann, J. Kegerreis and P. Gonnet 2020",
-             **style)
+    plt.text(0.5, 0.6, "Planetary Impact with the CSDS", **style)
+    plt.text(0.5, 0.5, "L. Hausammann, J. Kegerreis and P. Gonnet 2020", **style)
 
     for i in range(frames):
         plt.savefig("output/image_%04i.png" % i)
@@ -213,27 +226,39 @@ def main():
     init += frames_after_title
 
     # do a zoom while moving forward in time
-    init = doZoom(parts, large_width, small_width, 50,
-                  init=init, t0=t0, t1=0.07 * t1,
-                  increase_alpha=True)
+    init = doZoom(
+        parts,
+        large_width,
+        small_width,
+        50,
+        init=init,
+        t0=t0,
+        t1=0.07 * t1,
+        increase_alpha=True,
+    )
 
     # Copy a few frames
-    doStatic(after_title, frames_after_title,
-             after_title + frames_after_title)
-    init = doStatic(init, 10, init-1)
+    doStatic(after_title, frames_after_title, after_title + frames_after_title)
+    init = doStatic(init, 10, init - 1)
     # Do the main part of the movie
-    init = doMovie(parts, 0.07 * t1, 0.15 * t1, N=250,
-                   init=init)
+    init = doMovie(parts, 0.07 * t1, 0.15 * t1, N=250, init=init)
     # copy a few frames
-    init = doStatic(init, 10, init-1)
+    init = doStatic(init, 10, init - 1)
 
     # zoom out and finish the movie
-    init = doZoom(parts, small_width, large_width, 607,
-                  init=init, t0=0.15 * t1, t1=t1,
-                  increase_alpha=False)
+    init = doZoom(
+        parts,
+        small_width,
+        large_width,
+        607,
+        init=init,
+        t0=0.15 * t1,
+        t1=t1,
+        increase_alpha=False,
+    )
 
     # copy a few frames
-    init = doStatic(init, 10, init-1)
+    init = doStatic(init, 10, init - 1)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Usage:
     analyse_tasks.py [options] input.dat

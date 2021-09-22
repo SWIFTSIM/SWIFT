@@ -30,7 +30,7 @@ import numpy as np
 # Parameters
 gamma = 5.0 / 3.0
 initial_density = 0.1 * mh / (cm ** 3)
-initial_temperature = 2550 * (5/4) * K # Equilibrium temperature at solar abundance
+initial_temperature = 2550 * (5 / 4) * K  # Equilibrium temperature at solar abundance
 inject_temperature = 10 ** (7.5) * K
 mu = 0.5
 particle_mass = 1e6 * msun
@@ -57,7 +57,9 @@ if __name__ == "__main__":
     background_internal_energy = (
         (1.0 / (mu * mh)) * (kb / (gamma - 1.0)) * initial_temperature
     )
-    heated_internal_energy = (1.0 / (mu * mh)) * (kb / (gamma - 1.0)) * inject_temperature
+    heated_internal_energy = (
+        (1.0 / (mu * mh)) * (kb / (gamma - 1.0)) * inject_temperature
+    )
     internal_energy = np.ones_like(h) * background_internal_energy
     internal_energy[central_particle] = heated_internal_energy
 

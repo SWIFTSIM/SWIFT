@@ -34,12 +34,7 @@ if __name__ == "__main__":
     data = yt.load("initial_conditions.hdf5")
 
     plot = yt.ParticlePlot(
-        data,
-        "particle_position_x",
-        "particle_position_y",
-        "density"
+        data, "particle_position_x", "particle_position_y", "density"
     )
 
     plot.save("test.png")
-
-

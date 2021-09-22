@@ -35,9 +35,10 @@ class Particles(object):
     set their keplerian velocities based on their positions. These properties
     are set using the 'generationmethod' functions below.
     """
+
     def __init__(self, meta):
         self.gravitymass = meta["gravitymass"]
-        self.nparts = meta["nparts"]**2
+        self.nparts = meta["nparts"] ** 2
         self.particlemass = meta["particlemass"]
         self.softening = meta["softening"]
         self.boxsize = meta["boxsize"]
@@ -56,7 +57,6 @@ class Particles(object):
 
         return
 
-
     def calculate_masses(self):
         """
         Calculate the individual masses for the particles such that we have
@@ -66,7 +66,6 @@ class Particles(object):
         self.masses = self.densities * mass_factor
 
         return self.masses
-   
 
     def calculate_velocities(self, angle=0):
         """
@@ -75,25 +74,31 @@ class Particles(object):
 
         Please give angle in radians.
         """
-        force_modifier = np.sqrt(self.gravitymass / (self.radii**2 + self.softening**2)**(3/2)) * self.radii 
+        force_modifier = (
+            np.sqrt(
+                self.gravitymass / (self.radii ** 2 + self.softening ** 2) ** (3 / 2)
+            )
+            * self.radii
+        )
         try:
             v_x = np.sin(self.theta) * np.sin(self.phi) * np.cos(angle)
         except ValueError:
             # Phi are not yet set. Make them and then move on to v_x
             if angle:
                 raise ValueError("Unable to find phi.")
-            
+
             # If we have angle of inclination 0 we can set phi.
             self.phi = np.zeros_like(self.theta) + np.pi / 2
             v_x = np.sin(self.theta) * np.sin(self.phi) * np.cos(angle)
 
-        v_y = np.cos(self.phi) * np.sin(angle) - np.cos(self.theta) * np.sin(self.phi) * np.cos(angle)
+        v_y = np.cos(self.phi) * np.sin(angle) - np.cos(self.theta) * np.sin(
+            self.phi
+        ) * np.cos(angle)
         v_z = np.sin(self.theta) * np.sin(self.phi) * np.sin(angle)
 
         self.velocities = (force_modifier * np.array([v_x, v_y, v_z])).T
 
         return self.velocities
-
 
     def generate_ids(self):
         """
@@ -104,7 +109,6 @@ class Particles(object):
 
         return self.ids
 
-
     def convert_polar_to_cartesian(self, centre_of_ring=(5, 5), boxsize=None):
         """
         Converts self.radii, self.theta to self.positions.
@@ -114,7 +118,7 @@ class Particles(object):
         if len(self.phi) == 0:
             x = self.radii * np.cos(self.theta) + centre_of_ring[0]
             y = self.radii * np.sin(self.theta) + centre_of_ring[1]
-            z = np.zeros_like(x) + boxsize/2
+            z = np.zeros_like(x) + boxsize / 2
         else:
             x = self.radii * np.cos(self.theta) * np.sin(self.phi) + centre_of_ring[0]
             y = self.radii * np.sin(self.theta) * np.sin(self.phi) + centre_of_ring[1]
@@ -122,12 +126,11 @@ class Particles(object):
                 z = self.radii * np.cos(self.phi) + centre_of_ring[2]
             except AttributeError:
                 # Just set the central z value to the middle of the box
-                z = self.radii * np.cos(self.phi) + boxsize/2
+                z = self.radii * np.cos(self.phi) + boxsize / 2
 
         self.positions = np.array([x, y, z]).T
 
         return self.positions
-
 
     def convert_cartesian_to_polar(self, centre_of_ring=(5, 5)):
         """
@@ -142,9 +145,9 @@ class Particles(object):
         except AttributeError:
             raise AttributeError("Invalid array for centre_of_ring provided.")
 
-        xsquare = x*x
-        ysquare = y*y
-        zsquare = z*z
+        xsquare = x * x
+        ysquare = y * y
+        zsquare = z * z
 
         r = np.sqrt(xsquare + ysquare + zsquare)
 
@@ -157,15 +160,13 @@ class Particles(object):
         theta = theta_for_unmasked + mask * 0
 
         # Thankfully we have already ensured that r != 0.
-        phi = np.arccos(z/r)
-
+        phi = np.arccos(z / r)
 
         self.radii = r
         self.theta = theta
         self.phi = phi
 
         return r, theta, phi
-
 
     def wiggle_positions(self, tol=1e-3):
         """
@@ -177,32 +178,28 @@ class Particles(object):
 
         return
 
-
     def exclude_particles(self, range):
         """
         Exclude all particles that are *not* within range (of radii).
         """
-        mask = np.logical_or(
-            self.radii < range[0],
-            self.radii > range[1],
-        )
+        mask = np.logical_or(self.radii < range[0], self.radii > range[1])
 
-        x  = np.ma.array(self.positions[:, 0], mask=mask).compressed()
-        y  = np.ma.array(self.positions[:, 1], mask=mask).compressed()
-        z  = np.ma.array(self.positions[:, 2], mask=mask).compressed()
+        x = np.ma.array(self.positions[:, 0], mask=mask).compressed()
+        y = np.ma.array(self.positions[:, 1], mask=mask).compressed()
+        z = np.ma.array(self.positions[:, 2], mask=mask).compressed()
 
         self.positions = np.array([x, y, z]).T
-        
+
         try:
-            v_x  = np.ma.array(self.velocities[:, 0], mask=mask).compressed()
-            v_y  = np.ma.array(self.velocities[:, 1], mask=mask).compressed()
-            v_z  = np.ma.array(self.velocities[:, 2], mask=mask).compressed()
+            v_x = np.ma.array(self.velocities[:, 0], mask=mask).compressed()
+            v_y = np.ma.array(self.velocities[:, 1], mask=mask).compressed()
+            v_z = np.ma.array(self.velocities[:, 2], mask=mask).compressed()
 
             self.velocities = np.array([v_x, v_y, v_z])
         except IndexError:
             # We haven't filled them yet anyway...
             pass
-    
+
         try:
             self.ids = np.ma.array(self.ids, mask=mask).compressed()
         except np.ma.core.MaskError:
@@ -218,8 +215,8 @@ class Particles(object):
         # QSP Fix has modified us, so first we need to chop off extras.
         # Then, as they are all the same, we don't need to remove 'specific'
         # values, and so we can just chop off the ends.
-        self.smoothing = self.smoothing[:len(x)]
-        self.internalenergy = self.internalenergy[:len(x)]
+        self.smoothing = self.smoothing[: len(x)]
+        self.internalenergy = self.internalenergy[: len(x)]
 
         try:
             self.masses = np.ma.array(self.masses, mask=mask).compressed()
@@ -240,7 +237,6 @@ class Particles(object):
 
         return
 
-
     def tilt_particles(self, angle, center=(5, 5, 5)):
         """
         Tilts the particles around the x-axis around the point given.
@@ -250,36 +246,23 @@ class Particles(object):
         angle_radians = angle * np.pi / 180
         rotation_matrix = np.array(
             [
-                [  np.cos(angle_radians), 0, np.sin(angle_radians)  ],
-                [            0,           1,          0             ],
-                [ -np.sin(angle_radians), 0, np.cos(angle_radians)  ]
+                [np.cos(angle_radians), 0, np.sin(angle_radians)],
+                [0, 1, 0],
+                [-np.sin(angle_radians), 0, np.cos(angle_radians)],
             ]
         )
 
         self.positions = (
-            (
-                np.matmul(
-                    rotation_matrix,
-                    (self.positions - np.array(center)).T
-                )
-            ).T
+            (np.matmul(rotation_matrix, (self.positions - np.array(center)).T)).T
         ) + np.array(center)
 
-        self.velocities = (
-            (
-                np.matmul(
-                    rotation_matrix,
-                    (self.velocities).T
-                )
-            ).T
-        )
-        
+        self.velocities = (np.matmul(rotation_matrix, (self.velocities).T)).T
+
         self.convert_cartesian_to_polar(center)
 
         return
 
-
-    def save_to_gadget(self, filename, boxsize=10.):
+    def save_to_gadget(self, filename, boxsize=10.0):
         """
         Save the particle data to a GADGET .hdf5 file.
 
@@ -293,23 +276,15 @@ class Particles(object):
                 np_total=np.array([self.nparts, 0, 0, 0, 0, 0]),
                 np_total_hw=np.array([0, 0, 0, 0, 0, 0]),
                 other={
-                    "MassTable" : np.array([self.particlemass, 0, 0, 0, 0, 0]),
-                    "Time" : 0,
-                }
+                    "MassTable": np.array([self.particlemass, 0, 0, 0, 0, 0]),
+                    "Time": 0,
+                },
             )
 
-            wg.write_runtime_pars(
-                handle,
-                periodic_boundary=1,
-            )
+            wg.write_runtime_pars(handle, periodic_boundary=1)
 
             wg.write_units(
-                handle,
-                current=1.,
-                length=1.,
-                mass=1,
-                temperature=1.,
-                time=1.,
+                handle, current=1.0, length=1.0, mass=1, temperature=1.0, time=1.0
             )
 
             wg.write_block(
@@ -332,11 +307,11 @@ def __sigma(r):
     Density distribution of the ring, this comes directly from Hopkins 2015.
     """
     if r < 0.5:
-        return 0.01 + (r/0.5)**3
+        return 0.01 + (r / 0.5) ** 3
     elif r <= 2:
         return 1.01
     else:
-        return 0.01 + (1 + (r-2)/0.1)**(-3)
+        return 0.01 + (1 + (r - 2) / 0.1) ** (-3)
 
 
 # This is required because of the if, else statement above that does not
@@ -344,7 +319,7 @@ def __sigma(r):
 sigma = np.vectorize(__sigma)
 
 
-def generate_theta(r, theta_initial=0.):
+def generate_theta(r, theta_initial=0.0):
     """
     Generate the theta associated with the particles based on their radii.
     This uses the method from The effect of Poisson noise on SPH calculations,
@@ -370,7 +345,7 @@ def generate_theta(r, theta_initial=0.):
     # Need to do this awful loop because each entry relies on the one before it.
     # Unless someone knows how to do this in numpy.
     for i in range(len(d_theta_i)):  # first is theta_initial
-        theta_i[i+1] = theta_i[i] + d_theta_i[i]
+        theta_i[i + 1] = theta_i[i] + d_theta_i[i]
 
     return theta_i
 
@@ -425,7 +400,7 @@ def QSP_fix(r_i, theta_i):
     # We want to have all particles in each circle a fixed radius away from the
     # centre, as well as having even spacing between each particle. The final
     # ring may be a bit dodgy still, but we will see.
-    
+
     r_i_fixed = []
     theta_i_fixed = []
 
@@ -435,7 +410,7 @@ def QSP_fix(r_i, theta_i):
         theta_initial = circle[1][0]
 
         theta_sep = 2 * np.pi / n_particles
-        
+
         theta = [t * theta_sep for t in range(n_particles)]
         radii = [radius] * n_particles
 
@@ -451,24 +426,26 @@ def gen_particles_grid(meta):
     """
     particles = Particles(meta)
     range = (0, meta["boxsize"])
-    centre_of_ring = [meta["boxsize"]/2.] * 3
+    centre_of_ring = [meta["boxsize"] / 2.0] * 3
 
     # Because we are using a uniform grid we actually use the same x and y
     # range for the initial particle setup.
-    step = (range[1] - range[0])/meta["nparts"]
-    
+    step = (range[1] - range[0]) / meta["nparts"]
+
     x_values = np.arange(0, range[1] - range[0], step)
 
     # These are 2d arrays which isn't actually that helpful.
     x, y = np.meshgrid(x_values, x_values)
-    x = x.flatten() + centre_of_ring[0] - (range[1] - range[0])/2
-    y = y.flatten() + centre_of_ring[1] - (range[1] - range[0])/2
-    z = np.zeros_like(x) + meta["boxsize"]/2
+    x = x.flatten() + centre_of_ring[0] - (range[1] - range[0]) / 2
+    y = y.flatten() + centre_of_ring[1] - (range[1] - range[0]) / 2
+    z = np.zeros_like(x) + meta["boxsize"] / 2
 
     particles.positions = np.array([x, y, z]).T
-    particles.radii = np.sqrt((x - centre_of_ring[0])**2 + (y - centre_of_ring[1])**2)
+    particles.radii = np.sqrt(
+        (x - centre_of_ring[0]) ** 2 + (y - centre_of_ring[1]) ** 2
+    )
     particles.theta = np.arctan2(y - centre_of_ring[1], x - centre_of_ring[0])
-    particles.exclude_particles((particles.softening, 100.))
+    particles.exclude_particles((particles.softening, 100.0))
 
     particles.densities = sigma(particles.radii)
     particles.calculate_velocities()
@@ -488,23 +465,27 @@ def gen_particles_spiral(meta):
     object. Based on Cartwright, Stamatellos & Whitworth (2009).
     """
     particles = Particles(meta)
-    centre_of_ring = (meta["boxsize"]/2., meta["boxsize"]/2., meta["boxsize"]/2.)
-    max_r = meta["boxsize"]/2.
+    centre_of_ring = (
+        meta["boxsize"] / 2.0,
+        meta["boxsize"] / 2.0,
+        meta["boxsize"] / 2.0,
+    )
+    max_r = meta["boxsize"] / 2.0
 
-    m = (np.arange(particles.nparts) + 0.5)/particles.nparts
+    m = (np.arange(particles.nparts) + 0.5) / particles.nparts
     r = max_r * m
     theta = generate_theta(r)
 
     particles.radii, particles.theta = QSP_fix(r, theta)
     # We must do this afterwards as QSP does not always return the same number of parts.
-    phi = np.zeros_like(particles.theta) + np.pi/2
+    phi = np.zeros_like(particles.theta) + np.pi / 2
     particles.phi = phi
 
     particles.convert_polar_to_cartesian(centre_of_ring, meta["boxsize"])
     particles.nparts = len(particles.radii)
 
-    particles.exclude_particles((particles.softening, 100.))
-    
+    particles.exclude_particles((particles.softening, 100.0))
+
     # This way of doing densities does not work for different sized patches.
     # Therefore we need to weight by effecitve area.
     dtheta = (particles.theta[1:] - particles.theta[:-1]) / 2
@@ -521,7 +502,6 @@ def gen_particles_spiral(meta):
     if meta["angle"]:
         particles.tilt_particles(meta["angle"], centre_of_ring)
 
-
     return particles
 
 
@@ -533,25 +513,29 @@ def gen_particles_gaussian(meta):
     This generation function uses a Gaussian PDF.
     """
     particles = Particles(meta)
-    centre_of_ring = (meta["boxsize"]/2., meta["boxsize"]/2., meta["boxsize"]/2.)
-    max_r = meta["boxsize"]/2.
+    centre_of_ring = (
+        meta["boxsize"] / 2.0,
+        meta["boxsize"] / 2.0,
+        meta["boxsize"] / 2.0,
+    )
+    max_r = meta["boxsize"] / 2.0
 
-    m = (np.arange(particles.nparts) + 0.5)/particles.nparts
-    error_function = erfinv(2*m - 1)
+    m = (np.arange(particles.nparts) + 0.5) / particles.nparts
+    error_function = erfinv(2 * m - 1)
     r = 2 + 0.5 * error_function
 
     theta = generate_theta(r)
 
     particles.radii, particles.theta = QSP_fix(r, theta)
     # We must do this afterwards as QSP does not always return the same number of parts.
-    phi = np.zeros_like(particles.theta) + np.pi/2
+    phi = np.zeros_like(particles.theta) + np.pi / 2
     particles.phi = phi
 
     particles.convert_polar_to_cartesian(centre_of_ring, meta["boxsize"])
     particles.nparts = len(particles.radii)
 
-    particles.exclude_particles((particles.softening, 100.))
-    
+    particles.exclude_particles((particles.softening, 100.0))
+
     # This way of doing densities does not work for different sized patches.
     particles.densities = np.zeros_like(particles.radii)
     particles.calculate_velocities()
@@ -561,7 +545,6 @@ def gen_particles_gaussian(meta):
 
     if meta["angle"]:
         particles.tilt_particles(meta["angle"], centre_of_ring)
-
 
     return particles
 
@@ -585,7 +568,7 @@ if __name__ == "__main__":
              GM for the central point mass. Default: 1.
              """,
         required=False,
-        default=1.,
+        default=1.0,
     )
 
     PARSER.add_argument(
@@ -619,7 +602,7 @@ if __name__ == "__main__":
              Maximum mass of the gas particles. Default: 10.
              """,
         required=False,
-        default=10.,
+        default=10.0,
     )
 
     PARSER.add_argument(
@@ -644,7 +627,7 @@ if __name__ == "__main__":
         required=False,
         default=-1,
     )
-    
+
     PARSER.add_argument(
         "-i",
         "--internalenergy",
@@ -654,7 +637,7 @@ if __name__ == "__main__":
              SPH for details). Default: 0.015.
              """,
         required=False,
-        default=0.015
+        default=0.015,
     )
 
     PARSER.add_argument(
@@ -678,7 +661,7 @@ if __name__ == "__main__":
              The box size. Default: 10.
              """,
         required=False,
-        default=10.
+        default=10.0,
     )
 
     PARSER.add_argument(
@@ -691,9 +674,8 @@ if __name__ == "__main__":
              particles.
              """,
         required=False,
-        default=0.
+        default=0.0,
     )
-
 
     ### --- ### --- Argument Parsing --- ### --- ###
 
@@ -713,12 +695,10 @@ if __name__ == "__main__":
         )
         exit(1)
 
-
     if ARGS["smoothing"] == -1:
         smoothing = float(ARGS["boxsize"]) / int(ARGS["nparts"])
     else:
         smoothing = float(ARGS["smoothing"])
-
 
     META = {
         "gravitymass": float(ARGS["gravitymass"]),
@@ -728,13 +708,9 @@ if __name__ == "__main__":
         "softening": float(ARGS["softening"]),
         "internalenergy": float(ARGS["internalenergy"]),
         "boxsize": float(ARGS["boxsize"]),
-        "angle" : float(ARGS["angle"])
+        "angle": float(ARGS["angle"]),
     }
 
     PARTICLES = gen_particles(META)
 
-    PARTICLES.save_to_gadget(
-        filename=ARGS["filename"],
-        boxsize=ARGS["boxsize"],
-    )
-
+    PARTICLES.save_to_gadget(filename=ARGS["filename"], boxsize=ARGS["boxsize"])

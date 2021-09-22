@@ -27,16 +27,16 @@ for i in range(NPartType):
     grp[:] *= 1.823
 
     # fix issue due to the name of densities
-    fields = [("Density", "Densities"),
-              ("Entropies", "Entropies"),
-              ("InternalEnergy", "InternalEnergies"),
-              ("SmoothingLength", "SmoothingLengths")]
+    fields = [
+        ("Density", "Densities"),
+        ("Entropies", "Entropies"),
+        ("InternalEnergy", "InternalEnergies"),
+        ("SmoothingLength", "SmoothingLengths"),
+    ]
 
     for field in fields:
         if field[1] in f[name] and field[0] not in f[name]:
             f[name + "/" + field[0]] = f[name + "/" + field[1]]
-
-
 
 
 cosmo = f["Cosmology"].attrs

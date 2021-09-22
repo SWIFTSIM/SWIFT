@@ -28,32 +28,32 @@ import h5py
 
 fileName = "interactingBlastWaves.hdf5"
 numPart = 800
-boxSize = 2.
+boxSize = 2.0
 
 coords = np.zeros((numPart, 3))
 v = np.zeros((numPart, 3))
 m = np.zeros(numPart) + boxSize / numPart
-h = np.zeros(numPart) + 2. * boxSize / numPart
+h = np.zeros(numPart) + 2.0 * boxSize / numPart
 u = np.zeros(numPart)
-ids = np.arange(numPart, dtype = 'L')
+ids = np.arange(numPart, dtype="L")
 rho = np.ones(numPart)
 
 for i in range(numPart):
-  coords[i,0] = (i + 0.5) * boxSize / numPart
-  if coords[i,0] < 0.1 or coords[i,0] > 1.9:
-    u[i] = 2500.
-  elif coords[i,0] > 0.9 and coords[i,0] < 1.1:
-    u[i] = 250.
-  else:
-    u[i] = 0.025
+    coords[i, 0] = (i + 0.5) * boxSize / numPart
+    if coords[i, 0] < 0.1 or coords[i, 0] > 1.9:
+        u[i] = 2500.0
+    elif coords[i, 0] > 0.9 and coords[i, 0] < 1.1:
+        u[i] = 250.0
+    else:
+        u[i] = 0.025
 
-#File
-file = h5py.File(fileName, 'w')
+# File
+file = h5py.File(fileName, "w")
 
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
+grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
@@ -62,22 +62,22 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
 grp.attrs["Dimension"] = 1
 
-#Units
+# Units
 grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.
-grp.attrs["Unit mass in cgs (U_M)"] = 1.
-grp.attrs["Unit time in cgs (U_t)"] = 1.
-grp.attrs["Unit current in cgs (U_I)"] = 1.
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+grp.attrs["Unit length in cgs (U_L)"] = 1.0
+grp.attrs["Unit mass in cgs (U_M)"] = 1.0
+grp.attrs["Unit time in cgs (U_t)"] = 1.0
+grp.attrs["Unit current in cgs (U_I)"] = 1.0
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
-#Particle group
+# Particle group
 grp = file.create_group("/PartType0")
-grp.create_dataset('Coordinates', data=coords, dtype='d')
-grp.create_dataset('Velocities', data=v, dtype='f')
-grp.create_dataset('Masses', data=m, dtype='f')
-grp.create_dataset('SmoothingLength', data=h, dtype='f')
-grp.create_dataset('InternalEnergy', data=u, dtype='f')
-grp.create_dataset('ParticleIDs', data=ids, dtype='L')
-grp.create_dataset('Density', data=rho, dtype='f')
+grp.create_dataset("Coordinates", data=coords, dtype="d")
+grp.create_dataset("Velocities", data=v, dtype="f")
+grp.create_dataset("Masses", data=m, dtype="f")
+grp.create_dataset("SmoothingLength", data=h, dtype="f")
+grp.create_dataset("InternalEnergy", data=u, dtype="f")
+grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+grp.create_dataset("Density", data=rho, dtype="f")
 
 file.close()

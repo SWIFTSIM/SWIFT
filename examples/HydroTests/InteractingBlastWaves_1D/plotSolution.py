@@ -19,44 +19,46 @@
 
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import pylab as pl
 import h5py
 import sys
 
 # Parameters
-gamma = 1.4 # Polytropic index
+gamma = 1.4  # Polytropic index
 
 # Plot parameters
-params = {'axes.labelsize': 10,
-'axes.titlesize': 10,
-'font.size': 12,
-'legend.fontsize': 12,
-'xtick.labelsize': 10,
-'ytick.labelsize': 10,
-'text.usetex': True,
- 'figure.figsize' : (9.90,6.45),
-'figure.subplot.left'    : 0.045,
-'figure.subplot.right'   : 0.99,
-'figure.subplot.bottom'  : 0.05,
-'figure.subplot.top'     : 0.99,
-'figure.subplot.wspace'  : 0.15,
-'figure.subplot.hspace'  : 0.12,
-'lines.markersize' : 6,
-'lines.linewidth' : 3.,
-'text.latex.unicode': True
+params = {
+    "axes.labelsize": 10,
+    "axes.titlesize": 10,
+    "font.size": 12,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "text.usetex": True,
+    "figure.figsize": (9.90, 6.45),
+    "figure.subplot.left": 0.045,
+    "figure.subplot.right": 0.99,
+    "figure.subplot.bottom": 0.05,
+    "figure.subplot.top": 0.99,
+    "figure.subplot.wspace": 0.15,
+    "figure.subplot.hspace": 0.12,
+    "lines.markersize": 6,
+    "lines.linewidth": 3.0,
+    "text.latex.unicode": True,
 }
 pl.rcParams.update(params)
-pl.rc('font',**{'family':'sans-serif','sans-serif':['Times']})
+pl.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 # Read the snapshot index from the command line argument
 snap = int(sys.argv[1])
 
 # Open the file and read the relevant data
 file = h5py.File("interactingBlastWaves_{0:04d}.hdf5".format(snap), "r")
-x = file["/PartType0/Coordinates"][:,0]
+x = file["/PartType0/Coordinates"][:, 0]
 rho = file["/PartType0/Densities"]
-v = file["/PartType0/Velocities"][:,0]
+v = file["/PartType0/Velocities"][:, 0]
 u = file["/PartType0/InternalEnergies"]
 S = file["/PartType0/Entropies"]
 P = file["/PartType0/Pressures"]
@@ -74,59 +76,69 @@ ref = np.loadtxt("interactingBlastWaves1D_exact.txt")
 fig, ax = pl.subplots(2, 3)
 
 # Velocity profile
-ax[0][0].plot(x, v, "r.", markersize = 4.)
-ax[0][0].plot(ref[:,0], ref[:,2], "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][0].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[0][0].set_ylabel("${\\rm{Velocity}}~v_x$", labelpad = 0)
-ax[0][0].set_xlim(0., 1.)
-ax[0][0].set_ylim(-1., 15.)
+ax[0][0].plot(x, v, "r.", markersize=4.0)
+ax[0][0].plot(ref[:, 0], ref[:, 2], "k--", alpha=0.8, linewidth=1.2)
+ax[0][0].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[0][0].set_ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
+ax[0][0].set_xlim(0.0, 1.0)
+ax[0][0].set_ylim(-1.0, 15.0)
 
 # Density profile
-ax[0][1].plot(x, rho, "r.", markersize = 4.)
-ax[0][1].plot(ref[:,0], ref[:,1], "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][1].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[0][1].set_ylabel("${\\rm{Density}}~\\rho$", labelpad = 0)
-ax[0][1].set_xlim(0., 1.)
+ax[0][1].plot(x, rho, "r.", markersize=4.0)
+ax[0][1].plot(ref[:, 0], ref[:, 1], "k--", alpha=0.8, linewidth=1.2)
+ax[0][1].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[0][1].set_ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+ax[0][1].set_xlim(0.0, 1.0)
 
 # Pressure profile
-ax[0][2].plot(x, P, "r.", markersize = 4.)
-ax[0][2].plot(ref[:,0], ref[:,3], "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][2].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[0][2].set_ylabel("${\\rm{Pressure}}~P$", labelpad = 0)
-ax[0][2].set_xlim(0., 1.)
+ax[0][2].plot(x, P, "r.", markersize=4.0)
+ax[0][2].plot(ref[:, 0], ref[:, 3], "k--", alpha=0.8, linewidth=1.2)
+ax[0][2].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[0][2].set_ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+ax[0][2].set_xlim(0.0, 1.0)
 
 # Internal energy profile
-ax[1][0].plot(x, u, "r.", markersize = 4.)
-ax[1][0].plot(ref[:,0], ref[:,3] / ref[:,1] / (gamma - 1.), "k--", alpha = 0.8,
-              linewidth = 1.2)
-ax[1][0].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[1][0].set_ylabel("${\\rm{Internal~Energy}}~u$", labelpad = 0)
-ax[1][0].set_xlim(0., 1.)
+ax[1][0].plot(x, u, "r.", markersize=4.0)
+ax[1][0].plot(
+    ref[:, 0], ref[:, 3] / ref[:, 1] / (gamma - 1.0), "k--", alpha=0.8, linewidth=1.2
+)
+ax[1][0].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[1][0].set_ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+ax[1][0].set_xlim(0.0, 1.0)
 
 # Entropy profile
-ax[1][1].plot(x, S, "r.", markersize = 4.)
-ax[1][1].plot(ref[:,0], ref[:,3] / ref[:,1]**gamma, "k--", alpha = 0.8,
-              linewidth = 1.2)
-ax[1][1].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[1][1].set_ylabel("${\\rm{Entropy}}~S$", labelpad = 0)
-ax[1][1].set_xlim(0., 1.)
+ax[1][1].plot(x, S, "r.", markersize=4.0)
+ax[1][1].plot(
+    ref[:, 0], ref[:, 3] / ref[:, 1] ** gamma, "k--", alpha=0.8, linewidth=1.2
+)
+ax[1][1].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[1][1].set_ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+ax[1][1].set_xlim(0.0, 1.0)
 
 # Run information
 ax[1][2].set_frame_on(False)
-ax[1][2].text(-0.49, 0.9,
-  "Interacting blast waves test\nwith $\\gamma={0:.3f}$ in 1D at $t = {1:.2f}$".format(
-    gamma, time), fontsize = 10)
-ax[1][2].plot([-0.49, 0.1], [0.62, 0.62], "k-", lw = 1)
-ax[1][2].text(-0.49, 0.5, "$\\textsc{{Swift}}$ {0}".format(git), fontsize = 10)
-ax[1][2].text(-0.49, 0.4, scheme, fontsize = 10)
-ax[1][2].text(-0.49, 0.3, kernel, fontsize = 10)
-ax[1][2].text(-0.49, 0.2,
-  "${0:.2f}$ neighbours ($\\eta={1:.3f}$)".format(neighbours, eta),
-  fontsize = 10)
+ax[1][2].text(
+    -0.49,
+    0.9,
+    "Interacting blast waves test\nwith $\\gamma={0:.3f}$ in 1D at $t = {1:.2f}$".format(
+        gamma, time
+    ),
+    fontsize=10,
+)
+ax[1][2].plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
+ax[1][2].text(-0.49, 0.5, "$\\textsc{{Swift}}$ {0}".format(git), fontsize=10)
+ax[1][2].text(-0.49, 0.4, scheme, fontsize=10)
+ax[1][2].text(-0.49, 0.3, kernel, fontsize=10)
+ax[1][2].text(
+    -0.49,
+    0.2,
+    "${0:.2f}$ neighbours ($\\eta={1:.3f}$)".format(neighbours, eta),
+    fontsize=10,
+)
 ax[1][2].set_xlim(-0.5, 0.5)
-ax[1][2].set_ylim(0., 1.)
+ax[1][2].set_ylim(0.0, 1.0)
 ax[1][2].set_xticks([])
 ax[1][2].set_yticks([])
 
 pl.tight_layout()
-pl.savefig("InteractingBlastWaves.png", dpi = 200)
+pl.savefig("InteractingBlastWaves.png", dpi=200)

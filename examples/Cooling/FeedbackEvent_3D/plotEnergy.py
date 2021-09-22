@@ -9,7 +9,14 @@ from swiftsimio import load
 
 from unyt import Gyr, erg, mh, kb
 
-from makeIC import gamma, initial_density, initial_temperature, inject_temperature, mu, particle_mass
+from makeIC import (
+    gamma,
+    initial_density,
+    initial_temperature,
+    inject_temperature,
+    mu,
+    particle_mass,
+)
 
 try:
     plt.style.use("mnras_durham")
@@ -24,7 +31,7 @@ energy_units = units.mass * units.length ** 2 / (units.time ** 2)
 
 data = np.loadtxt("energy.txt").T
 
-# Assign correct units to each
+#  Assign correct units to each
 
 time = data[0] * units.time
 mass = data[1] * units.mass
@@ -42,7 +49,7 @@ heated_internal_energy = (1.0 / (mu * mh)) * (kb / (gamma - 1.0)) * inject_tempe
 
 injected_energy = (heated_internal_energy - background_internal_energy) * particle_mass
 
-# Also want to remove the 'background' energy
+#  Also want to remove the 'background' energy
 n_parts = snapshot.metadata.n_gas
 total_background_energy = background_internal_energy * n_parts * particle_mass
 
@@ -50,23 +57,13 @@ total_background_energy = background_internal_energy * n_parts * particle_mass
 
 fig, ax = plt.subplots()
 
-ax.plot(
-    time.to(Gyr),
-    (kinetic_energy).to(erg),
-    label="Kinetic"
-)
+ax.plot(time.to(Gyr), (kinetic_energy).to(erg), label="Kinetic")
 
 ax.plot(
-    time.to(Gyr),
-    (thermal_energy - total_background_energy).to(erg),
-    label="Thermal"
+    time.to(Gyr), (thermal_energy - total_background_energy).to(erg), label="Thermal"
 )
 
-ax.plot(
-    time.to(Gyr),
-    (radiative_cool ).to(erg),
-    label="Lost to cooling"
-)
+ax.plot(time.to(Gyr), (radiative_cool).to(erg), label="Lost to cooling")
 
 ax.set_xlim(0, 0.05 * Gyr)
 
