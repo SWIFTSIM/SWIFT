@@ -174,7 +174,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                     part_positions[s],
                     analytical_solutions[s, g],
                     **analytical_solution_kwargs,
-                    label="analytical solution"
+                    label="analytical solution",
                 )
             ax.scatter(
                 part_positions, photon_energy, **scatterplot_kwargs, label="simulation"
@@ -244,7 +244,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                     part_positions[s],
                     analytical_solutions[s, g],
                     **analytical_solution_kwargs,
-                    label="analytical solution"
+                    label="analytical solution",
                 )
             ax.scatter(
                 part_positions, photon_energy, **scatterplot_kwargs, label="simulation"
