@@ -93,7 +93,8 @@ def parse_files():
 
                 # Find the last line with meaningful output (avoid crash report, batch system stuff....)
                 if re.findall(r"\[[0-9]{4}\][ ]\[*", line) or re.findall(
-                        r"^\[[0-9]*[.][0-9]+\][ ]", line):
+                    r"^\[[0-9]*[.][0-9]+\][ ]", line
+                ):
                     lastline = line
 
     return threads, total_time
@@ -105,7 +106,7 @@ def cleanup_data(threads, total_time):
 
     # Remove the functions not found
     time = np.sum(total_time, axis=1)
-    ind = time == 0.
+    ind = time == 0.0
     total_time = np.delete(total_time, ind, axis=0)
     for i in range(n_labels)[::-1]:
         if ind[i]:
@@ -144,14 +145,13 @@ def cleanup_data(threads, total_time):
     print("\nNumber of threads found", threads)
 
     # Avoid division by 0
-    total_time[total_time == 0.] = 1e-6
+    total_time[total_time == 0.0] = 1e-6
 
     # Find speed-up and parallel efficiency
     speed_up = total_time[:, 0][:, np.newaxis] / total_time
     parallel_eff = speed_up / threads
 
     return threads, total_time, speed_up, parallel_eff
-
 
 
 def plot_results(threads, total_time, speed_up, parallel_eff):
@@ -193,10 +193,12 @@ def plot_results(threads, total_time, speed_up, parallel_eff):
         label = labels[i][0]
         # Data
         total_time_plot.loglog(
-            threads, total_time[i, :], c=colors[i_color], label=label)
+            threads, total_time[i, :], c=colors[i_color], label=label
+        )
         # Perfect scaling
-        total_time_plot.loglog(pts, total_time[i, 0] / pts, "--", c=colors[i_color],
-                               lw=1.0)
+        total_time_plot.loglog(
+            pts, total_time[i, 0] / pts, "--", c=colors[i_color], lw=1.0
+        )
 
     y_min = 10 ** np.floor(np.log10(total_time.min() * 0.6))
     y_max = 1.0 * 10 ** np.floor(np.log10(total_time.max() * 1.5) + 1)
@@ -208,17 +210,15 @@ def plot_results(threads, total_time, speed_up, parallel_eff):
 
     total_time_plot.legend(
         bbox_to_anchor=(1.21, 0.97),
-        loc=2, ncol=2,
+        loc=2,
+        ncol=2,
         borderaxespad=0.0,
         prop={"size": 12},
         frameon=False,
     )
     empty_plot.axis("off")
 
-    fig.suptitle(
-        "Speed up, parallel efficiency and time to solution",
-        fontsize=16,
-    )
+    fig.suptitle("Speed up, parallel efficiency and time to solution", fontsize=16)
 
     return
 

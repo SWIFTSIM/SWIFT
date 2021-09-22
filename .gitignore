@@ -371,3 +371,6 @@ sympy-plots-for-*.tex/
 
 # vim
 *.swp
+
+# black formatting
+black_formatting_env

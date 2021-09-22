@@ -58,4 +58,3 @@ dataset.gas.particle_ids = unyt.unyt_array(
 )
 
 dataset.write("particleSplitting.hdf5")
-

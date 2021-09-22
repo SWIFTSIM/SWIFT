@@ -39,14 +39,14 @@ import random
 #                         Size of the patch -- side_length
 
 # Parameters of the gas disc
-surface_density = 10.
-scale_height    = 100.
-gas_gamma       = 5./3.
+surface_density = 10.0
+scale_height = 100.0
+gas_gamma = 5.0 / 3.0
 
 # Parameters of the problem
-x_factor        = 2
-side_length     = 400.
-numPart         = 1000
+x_factor = 2
+side_length = 400.0
+numPart = 1000
 
 # File
 fileName = "Disc-Patch.hdf5"
@@ -54,112 +54,119 @@ fileName = "Disc-Patch.hdf5"
 ####################################################################
 
 # physical constants in cgs
-NEWTON_GRAVITY_CGS  = 6.67408e-8
-SOLAR_MASS_IN_CGS   = 1.98848e33
-PARSEC_IN_CGS       = 3.08567758e18
-PROTON_MASS_IN_CGS  = 1.672621898e-24
-BOLTZMANN_IN_CGS    = 1.38064852e-16
-YEAR_IN_CGS         = 3.15569252e7
+NEWTON_GRAVITY_CGS = 6.67408e-8
+SOLAR_MASS_IN_CGS = 1.98848e33
+PARSEC_IN_CGS = 3.08567758e18
+PROTON_MASS_IN_CGS = 1.672621898e-24
+BOLTZMANN_IN_CGS = 1.38064852e-16
+YEAR_IN_CGS = 3.15569252e7
 
 # choice of units
-unit_length_in_cgs   =   (PARSEC_IN_CGS)
-unit_mass_in_cgs     =   (SOLAR_MASS_IN_CGS)
-unit_velocity_in_cgs =   (1e5)
-unit_time_in_cgs     =   unit_length_in_cgs / unit_velocity_in_cgs
+unit_length_in_cgs = PARSEC_IN_CGS
+unit_mass_in_cgs = SOLAR_MASS_IN_CGS
+unit_velocity_in_cgs = 1e5
+unit_time_in_cgs = unit_length_in_cgs / unit_velocity_in_cgs
 
-print "UnitMass_in_cgs:     %.5e"%unit_mass_in_cgs
-print "UnitLength_in_cgs:   %.5e"%unit_length_in_cgs
-print "UnitVelocity_in_cgs: %.5e"%unit_velocity_in_cgs
-print "UnitTime_in_cgs:     %.5e"%unit_time_in_cgs
-print ""
+print("UnitMass_in_cgs:     %.5e" % unit_mass_in_cgs)
+print("UnitLength_in_cgs:   %.5e" % unit_length_in_cgs)
+print("UnitVelocity_in_cgs: %.5e" % unit_velocity_in_cgs)
+print("UnitTime_in_cgs:     %.5e" % unit_time_in_cgs)
+print("")
 
 # Derived units
-const_G  = NEWTON_GRAVITY_CGS * unit_mass_in_cgs * unit_time_in_cgs**2 * \
-           unit_length_in_cgs**-3
-const_mp = PROTON_MASS_IN_CGS * unit_mass_in_cgs**-1
-const_kb = BOLTZMANN_IN_CGS * unit_mass_in_cgs**-1 * unit_length_in_cgs**-2 * \
-           unit_time_in_cgs**2
+const_G = (
+    NEWTON_GRAVITY_CGS
+    * unit_mass_in_cgs
+    * unit_time_in_cgs ** 2
+    * unit_length_in_cgs ** -3
+)
+const_mp = PROTON_MASS_IN_CGS * unit_mass_in_cgs ** -1
+const_kb = (
+    BOLTZMANN_IN_CGS
+    * unit_mass_in_cgs ** -1
+    * unit_length_in_cgs ** -2
+    * unit_time_in_cgs ** 2
+)
 
-print "--- Some constants [internal units] ---"
-print "G_Newton:    %.5e"%const_G
-print "m_proton:    %.5e"%const_mp
-print "k_boltzmann: %.5e"%const_kb
-print ""
+print("--- Some constants [internal units] ---")
+print("G_Newton:    %.5e" % const_G)
+print("m_proton:    %.5e" % const_mp)
+print("k_boltzmann: %.5e" % const_kb)
+print("")
 
 # derived quantities
-temp       = math.pi * const_G * surface_density * scale_height * const_mp / \
-             const_kb
-u_therm    = const_kb * temp / ((gas_gamma-1) * const_mp)
-v_disp     = math.sqrt(2 * u_therm)
-soundspeed = math.sqrt(u_therm / (gas_gamma * (gas_gamma-1.)))
-t_dyn      = math.sqrt(scale_height / (const_G * surface_density))
-t_cross    = scale_height / soundspeed
+temp = math.pi * const_G * surface_density * scale_height * const_mp / const_kb
+u_therm = const_kb * temp / ((gas_gamma - 1) * const_mp)
+v_disp = math.sqrt(2 * u_therm)
+soundspeed = math.sqrt(u_therm / (gas_gamma * (gas_gamma - 1.0)))
+t_dyn = math.sqrt(scale_height / (const_G * surface_density))
+t_cross = scale_height / soundspeed
 
-print "--- Properties of the gas [internal units] ---"
-print "Gas temperature:     %.5e"%temp
-print "Gas thermal_energy:  %.5e"%u_therm
-print "Dynamical time:      %.5e"%t_dyn
-print "Sound crossing time: %.5e"%t_cross
-print "Gas sound speed:     %.5e"%soundspeed
-print "Gas 3D vel_disp:     %.5e"%v_disp
-print ""
+print("--- Properties of the gas [internal units] ---")
+print("Gas temperature:     %.5e" % temp)
+print("Gas thermal_energy:  %.5e" % u_therm)
+print("Dynamical time:      %.5e" % t_dyn)
+print("Sound crossing time: %.5e" % t_cross)
+print("Gas sound speed:     %.5e" % soundspeed)
+print("Gas 3D vel_disp:     %.5e" % v_disp)
+print("")
 
 # Problem properties
 boxSize_x = side_length
 boxSize_x *= x_factor
 volume = boxSize_x
-M_tot = surface_density * math.tanh(boxSize_x / (2. * scale_height))
+M_tot = surface_density * math.tanh(boxSize_x / (2.0 * scale_height))
 density = M_tot / volume
-entropy = (gas_gamma - 1.) * u_therm / density**(gas_gamma - 1.)
+entropy = (gas_gamma - 1.0) * u_therm / density ** (gas_gamma - 1.0)
 
-print "--- Problem properties [internal units] ---"
-print "Box:        %.1f"%boxSize_x
-print "Volume:     %.5e"%volume
-print "Total mass: %.5e"%M_tot
-print "Density:    %.5e"%density
-print "Entropy:    %.5e"%entropy
-print ""
+print("--- Problem properties [internal units] ---")
+print("Box:        %.1f" % boxSize_x)
+print("Volume:     %.5e" % volume)
+print("Total mass: %.5e" % M_tot)
+print("Density:    %.5e" % density)
+print("Entropy:    %.5e" % entropy)
+print("")
 
 ####################################################################
 
 # Now create enough copies to fill the volume in x
 pos = np.zeros((numPart, 3))
-h = np.zeros(numPart) + 2. * boxSize_x / numPart
+h = np.zeros(numPart) + 2.0 * boxSize_x / numPart
 for i in range(numPart):
     pos[i, 0] = (i + 0.5) * boxSize_x / numPart
 
 # Compute further properties of ICs
 mass = M_tot / numPart
 
-print "--- Particle properties [internal units] ---"
-print "Number part.: ", numPart
-print "Part. mass:   %.5e"%mass
-print ""
+print("--- Particle properties [internal units] ---")
+print("Number part.: ", numPart)
+print("Part. mass:   %.5e" % mass)
+print("")
 
 # Create additional arrays
-u    = np.ones(numPart) * u_therm
+u = np.ones(numPart) * u_therm
 mass = np.ones(numPart) * mass
-vel  = np.zeros((numPart, 3))
-ids  = 1 + np.linspace(0, numPart, numPart, endpoint=False)
+vel = np.zeros((numPart, 3))
+ids = 1 + np.linspace(0, numPart, numPart, endpoint=False)
 
 ####################################################################
 # Create and write output file
 
-#File
-file = h5py.File(fileName, 'w')
+# File
+file = h5py.File(fileName, "w")
 
-#Units
+# Units
 grp = file.create_group("/Units")
 grp.attrs["Unit length in cgs (U_L)"] = unit_length_in_cgs
 grp.attrs["Unit mass in cgs (U_M)"] = unit_mass_in_cgs
 grp.attrs["Unit time in cgs (U_t)"] = unit_time_in_cgs
-grp.attrs["Unit current in cgs (U_I)"] = 1.
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+grp.attrs["Unit current in cgs (U_I)"] = 1.0
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSize_x, 1., 1.]
-grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
+grp.attrs["BoxSize"] = [boxSize_x, 1.0, 1.0]
+grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
@@ -169,22 +176,22 @@ grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["Dimension"] = 1
 
 # write gas particles
-grp0   = file.create_group("/PartType0")
+grp0 = file.create_group("/PartType0")
 
-ds = grp0.create_dataset('Coordinates', (numPart, 3), 'f', data=pos)
-ds = grp0.create_dataset('Velocities', (numPart, 3), 'f')
-ds = grp0.create_dataset('Masses', (numPart,), 'f', data=mass)
-ds = grp0.create_dataset('SmoothingLength', (numPart,), 'f', data=h)
-ds = grp0.create_dataset('InternalEnergy', (numPart,), 'f', data=u)
-ds = grp0.create_dataset('ParticleIDs', (numPart, ), 'L', data=ids)
+ds = grp0.create_dataset("Coordinates", (numPart, 3), "f", data=pos)
+ds = grp0.create_dataset("Velocities", (numPart, 3), "f")
+ds = grp0.create_dataset("Masses", (numPart,), "f", data=mass)
+ds = grp0.create_dataset("SmoothingLength", (numPart,), "f", data=h)
+ds = grp0.create_dataset("InternalEnergy", (numPart,), "f", data=u)
+ds = grp0.create_dataset("ParticleIDs", (numPart,), "L", data=ids)
 
 ####################################################################
 
-print "--- Runtime parameters (YAML file): ---"
-print "DiscPatchPotential:surface_density:    ", surface_density
-print "DiscPatchPotential:scale_height:       ", scale_height
-print "DiscPatchPotential:x_disc:             ", 0.5 * boxSize_x
-print ""
+print("--- Runtime parameters (YAML file): ---")
+print("DiscPatchPotential:surface_density:    ", surface_density)
+print("DiscPatchPotential:scale_height:       ", scale_height)
+print("DiscPatchPotential:x_disc:             ", 0.5 * boxSize_x)
+print("")
 
-print "--- Constant parameters: ---"
-print "const_isothermal_internal_energy: %ef"%u_therm
+print("--- Constant parameters: ---")
+print("const_isothermal_internal_energy: %ef" % u_therm)

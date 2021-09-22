@@ -116,13 +116,13 @@ def generate_views(data: SimulationData, res=2048) -> Tuple[np.ndarray]:
     zoomed_res = (res * 6) // 10
     mask = np.logical_and(
         np.logical_and(
-            data.coordinates[0] > (data.boxsize/2-4-20),
-            data.coordinates[0] < (data.boxsize/2+6-20)
+            data.coordinates[0] > (data.boxsize / 2 - 4 - 20),
+            data.coordinates[0] < (data.boxsize / 2 + 6 - 20),
         ),
         np.logical_and(
-            data.coordinates[1] > (data.boxsize/2-3.5-20),
-            data.coordinates[1] < (data.boxsize/2+6.5-20)
-        )
+            data.coordinates[1] > (data.boxsize / 2 - 3.5 - 20),
+            data.coordinates[1] < (data.boxsize / 2 + 6.5 - 20),
+        ),
     )
     qv_zoomed = QuickView(
         data.coordinates.T[mask].T,

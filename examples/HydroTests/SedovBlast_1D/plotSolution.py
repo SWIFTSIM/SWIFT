@@ -328,4 +328,3 @@ yticks([])
 tight_layout()
 
 savefig("Sedov.png")
-
