@@ -111,9 +111,11 @@ __attribute__((always_inline)) INLINE static void hydro_part_get_slope_limiter(
  * @brief Returns the comoving internal energy of a particle
  *
  * @param p The particle of interest.
+ * @param xp The extended data of the particle of interest.
  */
 __attribute__((always_inline)) INLINE static float
-hydro_get_comoving_internal_energy(const struct part* restrict p) {
+hydro_get_comoving_internal_energy(const struct part* restrict p,
+                                   const struct xpart* restrict xp) {
 
   if (p->rho > 0.0f)
     return gas_internal_energy_from_pressure(p->rho, p->P);
@@ -134,7 +136,7 @@ hydro_get_physical_internal_energy(const struct part* restrict p,
                                    const struct cosmology* cosmo) {
 
   return cosmo->a_factor_internal_energy *
-         hydro_get_comoving_internal_energy(p);
+         hydro_get_comoving_internal_energy(p, xp);
 }
 
 /**
@@ -158,7 +160,7 @@ hydro_get_drifted_physical_internal_energy(const struct part* restrict p,
 __attribute__((always_inline)) INLINE static float
 hydro_get_drifted_comoving_internal_energy(const struct part* restrict p) {
 
-  return hydro_get_comoving_internal_energy(p);
+  return hydro_get_comoving_internal_energy(p, NULL);
 }
 
 /**
@@ -305,13 +307,39 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
  *
  * We assume a constant density.
  *
+ * Gizmo does not have a du/dt variable, nor can it be derived from the flux
+ * variables, since those store time integrated fluxes. The easiest way to get
+ * the equivalent of du/dt is by using the Euler equation and the gradients:
+ * @f[
+ *    \frac{\partial{}u}{\partial{}t} =
+ *      \frac{P}{(\gamma{}-1)\rho{}^2} \vec{v}.\vec{\nabla{}}\rho{}
+ *      - \frac{1}{(\gamma{}-1)\rho{}} \vec{v}.\vec{\nabla{}}P
+ *      - \frac{P}{\rho{}} \vec{\nabla{}}.\vec{v}.
+ * @f]
+ *
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 
-  error("Needs implementing");
-  return 0.0f;
+  const float rho = p->rho;
+  if (rho == 0.0f) {
+    return 0.0f;
+  }
+  const float rhoinv = 1.0f / rho;
+  const float* v = p->fluid_v;
+  const float P = p->P;
+
+  float drho[3], dvx[3], dvy[3], dvz[3], dP[3];
+  hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP);
+
+  const float v_dot_gradrho = v[0] * drho[0] + v[1] * drho[1] + v[2] * drho[2];
+  const float v_dot_gradP = v[0] * dP[0] + v[1] * dP[1] + v[2] * dP[2];
+  const float divv = dvx[0] + dvy[1] + dvz[2];
+
+  return hydro_one_over_gamma_minus_one * rhoinv * rhoinv * P * v_dot_gradrho -
+         hydro_one_over_gamma_minus_one * rhoinv * v_dot_gradP -
+         rhoinv * P * divv;
 }
 
 /**
@@ -325,8 +353,8 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
 __attribute__((always_inline)) INLINE static float
 hydro_get_physical_internal_energy_dt(const struct part* restrict p,
                                       const struct cosmology* cosmo) {
-  error("Needs implementing");
-  return 0.0f;
+  return hydro_get_comoving_internal_energy_dt(p) *
+         cosmo->a_factor_internal_energy;
 }
 
 /**
