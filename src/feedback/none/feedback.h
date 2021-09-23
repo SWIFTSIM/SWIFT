@@ -79,13 +79,10 @@ __attribute__((always_inline)) INLINE static int feedback_do_feedback(
  * or of the system's state.
  *
  * @param sp The #spart.
- * @param time The current simulation time (Non-cosmological runs).
- * @param cosmo The cosmological model (cosmological runs).
- * @param with_cosmology Are we doing a cosmological run?
+ * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static int feedback_is_active(
-    const struct spart* sp, const float time, const struct cosmology* cosmo,
-    const int with_cosmology) {
+    const struct spart* sp, const struct engine* e) {
 
   return 1;
 }

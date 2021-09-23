@@ -218,13 +218,9 @@ void feedback_will_do_feedback(
  * @brief Should this particle be doing any feedback-related operation?
  *
  * @param sp The #spart.
- * @param time The current simulation time (Non-cosmological runs).
- * @param cosmo The cosmological model (cosmological runs).
- * @param with_cosmology Are we doing a cosmological run?
+ * @param e The #engine.
  */
-int feedback_is_active(const struct spart* sp, const double time,
-                       const struct cosmology* cosmo,
-                       const int with_cosmology) {
+int feedback_is_active(const struct spart* sp, const struct engine* e) {
 
   return sp->feedback_data.will_do_feedback;
 }

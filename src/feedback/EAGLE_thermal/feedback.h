@@ -20,6 +20,7 @@
 #define SWIFT_FEEDBACK_EAGLE_THERMAL_H
 
 #include "cosmology.h"
+#include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"
@@ -64,15 +65,13 @@ __attribute__((always_inline)) INLINE static void feedback_reset_part(
  * @brief Should this particle be doing any feedback-related operation?
  *
  * @param sp The #spart.
- * @param time The current simulation time (Non-cosmological runs).
- * @param cosmo The cosmological model (cosmological runs).
- * @param with_cosmology Are we doing a cosmological run?
+ * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static int feedback_is_active(
-    const struct spart* sp, const float time, const struct cosmology* cosmo,
-    const int with_cosmology) {
+    const struct spart* sp, const struct engine* e) {
 
-  return (sp->birth_time != -1.) && (sp->count_since_last_enrichment == 0);
+  return e->step <= 0 ||
+         ((sp->birth_time != -1.) && (sp->count_since_last_enrichment == 0));
 }
 
 /**
@@ -91,6 +90,10 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
 
   /* Reset all ray structs carried by this star particle */
   ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
+
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+  sp->has_done_feedback = 0;
+#endif
 }
 
 /**
@@ -230,6 +233,10 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     sp->last_enrichment_time = cosmo->a;
   else
     sp->last_enrichment_time = time;
+
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+  sp->has_done_feedback = 1;
+#endif
 }
 
 /**
