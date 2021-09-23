@@ -405,8 +405,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
     }
   }
 
-//  /* Now find what cells neighbour the zoom region. */
-//  if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
+  /* Now find what cells neighbour the zoom region. */
+  if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
 
 #endif
 }
@@ -1704,6 +1704,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						int nat_cjd = cell_getid(cdim, nat_iii, nat_jjj, nat_kkk);
 
 						struct cell *nat_cj = &cells[nat_cjd];
+
+						if (nat_cj->tl_cell_type != tl_cell_neighbour) continue;
 
 						/* empty cells and completely foreign pairs */
 						if (nat_cj->grav.count == 0 ||
