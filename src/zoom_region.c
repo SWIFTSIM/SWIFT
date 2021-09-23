@@ -1467,6 +1467,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		const int j = (cid_with_offset / cdim[2]) % cdim[1];
 		const int k = cid_with_offset % cdim[2];
 
+		message("cid=%d i,j,k = [%d %d %d] nat_i=%d nat_j=%d nat_k=%d", cid, i, j, k, natural_i, natural_j, natural_k);
+
 		/* Skip cells without gravity particles or void cells */
 		if (ci->grav.count == 0) continue;
 
@@ -1704,8 +1706,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 						int nat_cjd = cell_getid(cdim, nat_iii, nat_jjj, nat_kkk);
 
 						struct cell *nat_cj = &cells[nat_cjd];
-
-						if (nat_cj->tl_cell_type != tl_cell_neighbour) continue;
 
 						/* empty cells and completely foreign pairs */
 						if (nat_cj->grav.count == 0 ||
