@@ -1470,8 +1470,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		/* Skip cells without gravity particles or void cells */
 		if (ci->grav.count == 0 || ci->tl_cell_type == void_tl_cell) continue;
 
-		if (cid < zoom_cell_offset) continue;
-
 		/* If the cell is local build a self-interaction */
 		if (ci->nodeID == nodeID) {
 			scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
