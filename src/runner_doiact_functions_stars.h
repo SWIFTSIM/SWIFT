@@ -42,7 +42,6 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -75,7 +74,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
     if (!spart_is_active(si, e)) continue;
 
     /* Skip inactive particles */
-    if (!feedback_is_active(si, e->time, cosmo, with_cosmology)) continue;
+    if (!feedback_is_active(si, e)) continue;
 
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -150,7 +149,6 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -192,7 +190,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
     if (!spart_is_active(si, e)) continue;
 
     /* Skip inactive particles */
-    if (!feedback_is_active(si, e->time, cosmo, with_cosmology)) continue;
+    if (!feedback_is_active(si, e)) continue;
 
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -262,7 +260,6 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -335,7 +332,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       if (!spart_is_active(spi, e)) continue;
 
       /* Skip inactive particles */
-      if (!feedback_is_active(spi, e->time, cosmo, with_cosmology)) continue;
+      if (!feedback_is_active(spi, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -476,7 +473,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       if (!spart_is_active(spj, e)) continue;
 
       /* Skip inactive particles */
-      if (!feedback_is_active(spj, e->time, cosmo, with_cosmology)) continue;
+      if (!feedback_is_active(spj, e)) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spj->x[0], spj->x[1], spj->x[2]};
