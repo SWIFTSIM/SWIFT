@@ -393,7 +393,7 @@ void engine_check_for_dumps(struct engine *e) {
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_allocate(e->mesh);
 #ifdef WITH_MPI
-        engine_allocate_foreign_particles(e);
+        engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
 
         /* ... and find the next output time */
