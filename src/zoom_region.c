@@ -1432,6 +1432,18 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		}
 	}
 
+	  /* Let's be verbose about this choice */
+  if (e->verbose) {
+    message(
+        "Looking for grav tasks up to %d top-level cells away (delta_m=%d "
+				"delta_p=%d)",
+				natural_delta_cells, natural_delta_m, natural_delta_p);
+    message(
+        "Looking for zoom grav tasks up to %d top-level zoom cells away (delta_m=%d "
+				"delta_p=%d)",
+				(zoom_delta_m + zoom_delta_p) / 2, zoom_delta_m, zoom_delta_p);
+  }
+
 	/* Loop through the elements, which are just byte offsets from NULL. */
 	for (int ind = 0; ind < num_elements; ind++) {
 
@@ -1443,13 +1455,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		struct cell *ci = &cells[cid];
 
 		/* Integer grid indices of the cell in the natural cells */
-		int natural_i = ci->loc[0] * s->iwidth[0];
-		int natural_j = ci->loc[1] * s->iwidth[1];
-		int natural_k = ci->loc[2] * s->iwidth[2];
+		int natural_i = (ci->loc[0] + (s->zoom_props->width[0] / 2)) * s->iwidth[0];
+		int natural_j = (ci->loc[1] + (s->zoom_props->width[1] / 2)) * s->iwidth[1];
+		int natural_k = (ci->loc[2] + (s->zoom_props->width[2] / 2)) * s->iwidth[2];
 
 		if (cid >= zoom_cell_offset) {
 
-			/* Remove the offset for zoom cells */
+			/* Remove the offset for zoom cell ids */
 			cid_with_offset -= zoom_cell_offset;
 
 			/* Overwrite delta_m and delta_p with the number of zoom cells */
@@ -1466,8 +1478,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		const int i = cid_with_offset / (cdim[1] * cdim[2]);
 		const int j = (cid_with_offset / cdim[2]) % cdim[1];
 		const int k = cid_with_offset % cdim[2];
-
-		message("cid=%d i,j,k = [%d %d %d] nat_i=%d nat_j=%d nat_k=%d", cid, i, j, k, natural_i, natural_j, natural_k);
 
 		/* Skip cells without gravity particles or void cells */
 		if (ci->grav.count == 0) continue;
