@@ -1468,7 +1468,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		const int k = cid_with_offset % cdim[2];
 
 		/* Skip cells without gravity particles or void cells */
-		if (ci->grav.count == 0 || ci->tl_cell_type == void_tl_cell || cid >= zoom_cell_offset) continue;
+		if (ci->grav.count == 0 || ci->tl_cell_type == void_tl_cell) continue;
+
+		if (cid < zoom_cell_offset) continue;
 
 		/* If the cell is local build a self-interaction */
 		if (ci->nodeID == nodeID) {
@@ -1492,8 +1494,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 					/* Get the cell ID. */
 					int cjd = cell_getid(cdim, iii, jjj, kkk);
-					if (cid >= zoom_cell_offset)
+					if (cid >= zoom_cell_offset) {
 						cjd += zoom_cell_offset;
+					}
 
 					struct cell *cj = &cells[cjd];
 
