@@ -1396,9 +1396,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const double zoom_distance = 2. * cells[zoom_cell_offset].width[0] * theta_crit_inv;
 
 	/* Compute how many cells away we need to walk */
-	const int delta_cells = (int)(distance / cells[0].dmin) + 1;
-	const int natural_delta_cells = delta_cells;
-	const int zoom_delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
+	  /* Compute how many cells away we need to walk */
+  const int delta_cells = (int)(distance / cells[0].dmin) + 1;
+  const int natural_delta_cells = delta_cells;
+  const int zoom_delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
+//	const int delta_cells = (int)(distance / cells[0].dmin) + 1;
+//	const int natural_delta_cells = delta_cells;
+//	const int zoom_delta_cells = (int)(zoom_distance / cells[zoom_cell_offset].dmin) + 1;
 
 	/* Turn this into upper and lower bounds for loops */
 	int delta_m = delta_cells;
@@ -1431,18 +1435,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 			zoom_delta_p = cdim[0] / 2;
 		}
 	}
-
-	  /* Let's be verbose about this choice */
-  if (e->verbose) {
-    message(
-        "Looking for grav tasks up to %d top-level cells away (delta_m=%d "
-				"delta_p=%d)",
-				natural_delta_cells, natural_delta_m, natural_delta_p);
-    message(
-        "Looking for zoom grav tasks up to %d top-level zoom cells away (delta_m=%d "
-				"delta_p=%d)",
-				(zoom_delta_m + zoom_delta_p) / 2, zoom_delta_m, zoom_delta_p);
-  }
 
 	/* Loop through the elements, which are just byte offsets from NULL. */
 	for (int ind = 0; ind < num_elements; ind++) {
