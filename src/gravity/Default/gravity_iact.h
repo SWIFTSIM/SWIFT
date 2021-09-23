@@ -56,19 +56,19 @@ runner_iact_grav_pp_full(const float r2, const float h2, const float h_inv,
 
     /* Get Newtonian gravity */
     *f_ij = mass * r_inv * r_inv * r_inv;
+    *pot_ij = -mass * r_inv;
 
   } else {
 
     const float r = r2 * r_inv;
     const float ui = r * h_inv;
     const float W_f_ij = kernel_grav_force_eval(ui);
+    const float W_pot_ij = kernel_grav_pot_eval(ui);
 
     /* Get softened gravity */
     *f_ij = mass * h_inv3 * W_f_ij;
+    *pot_ij = mass * h_inv * W_pot_ij;
   }
-
-  /* No potential calculation */
-  *pot_ij = 0.f;
 }
 
 /**
@@ -102,24 +102,25 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
 
     /* Get Newtonian gravity */
     *f_ij = mass * r_inv * r_inv * r_inv;
+    *pot_ij = -mass * r_inv;
 
   } else {
 
     const float ui = r * h_inv;
     const float W_f_ij = kernel_grav_force_eval(ui);
+    const float W_pot_ij = kernel_grav_pot_eval(ui);
 
     /* Get softened gravity */
     *f_ij = mass * h_inv3 * W_f_ij;
+    *pot_ij = mass * h_inv * W_pot_ij;
   }
 
   /* Get long-range correction */
   const float u_lr = r * r_s_inv;
-  float corr_f_lr, dummy;
-  kernel_long_grav_eval(u_lr, &corr_f_lr, &dummy);
+  float corr_f_lr, corr_pot_lr;
+  kernel_long_grav_eval(u_lr, &corr_f_lr, &corr_pot_lr);
   *f_ij *= corr_f_lr;
-
-  /* No potential calculation */
-  *pot_ij = 0.f;
+  *pot_ij *= corr_pot_lr;
 }
 
 /**
@@ -154,12 +155,10 @@ runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
   gravity_M2P(m, r_x, r_y, r_z, r2, h, /*periodic=*/0, /*rs_inv=*/0.f, &l);
 
   /* Write back */
+  *pot = l.F_000;
   *f_x = l.F_100;
   *f_y = l.F_010;
   *f_z = l.F_001;
-
-  /* No potential calculation */
-  *pot = 0.f;
 }
 
 /**
@@ -196,12 +195,10 @@ runner_iact_grav_pm_truncated(const float r_x, const float r_y, const float r_z,
   gravity_M2P(m, r_x, r_y, r_z, r2, h, /*periodic=*/1, r_s_inv, &l);
 
   /* Write back */
+  *pot = l.F_000;
   *f_x = l.F_100;
   *f_y = l.F_010;
   *f_z = l.F_001;
-
-  /* No potential calculation */
-  *pot = 0.f;
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IACT_H */
