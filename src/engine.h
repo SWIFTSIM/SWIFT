@@ -578,7 +578,7 @@ void engine_unskip_timestep_communications(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
-void engine_allocate_foreign_particles(struct engine *e);
+void engine_allocate_foreign_particles(struct engine *e, const int fof);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
@@ -634,7 +634,8 @@ void engine_clean(struct engine *e, const int fof, const int restart);
 int engine_estimate_nr_tasks(const struct engine *e);
 void engine_print_task_counts(const struct engine *e);
 void engine_fof(struct engine *e, const int dump_results,
-                const int dump_debug_results, const int seed_black_holes);
+                const int dump_debug_results, const int seed_black_holes,
+                const int foreign_buffers_allocated);
 void engine_activate_gpart_comms(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
