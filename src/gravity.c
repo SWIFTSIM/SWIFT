@@ -752,63 +752,63 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   /* Be nice */
   fclose(file_swift);
 
-  if (!gravity_exact_force_file_exits(e)) {
-
-    char file_name_exact[100];
-    if (s->periodic)
-      sprintf(file_name_exact, "gravity_checks_exact_periodic_step%.4d.dat",
-              e->step);
-    else
-      sprintf(file_name_exact, "gravity_checks_exact_step%.4d.dat", e->step);
-
-    FILE *file_exact = fopen(file_name_exact, "w");
-    fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
-    fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
-    fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
-    fprintf(file_exact, "# periodic= %d\n", s->periodic);
-    fprintf(file_exact, "# Git Branch: %s\n", git_branch());
-    fprintf(file_exact, "# Git Revision: %s\n", git_revision());
-    fprintf(file_exact,
-            "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s "
-            "%16s %16s %16s\n",
-            "id", "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
-            "a_exact[2]", "potential", "a_exact_short[0]", "a_exact_short[1]",
-            "a_exact_short[2]", "a_exact_long[0]", "a_exact_long[1]",
-            "a_exact_long[2]");
-
-    /* Output particle exact accelerations  */
-    for (size_t i = 0; i < s->nr_gparts; ++i) {
-
-      struct gpart *gpi = &s->gparts[i];
-
-      long long id = 0;
-      if (gpi->type == swift_type_gas)
-        id = parts[-gpi->id_or_neg_offset].id;
-      else if (gpi->type == swift_type_stars)
-        id = sparts[-gpi->id_or_neg_offset].id;
-      else if (gpi->type == swift_type_black_hole)
-        id = bparts[-gpi->id_or_neg_offset].id;
-      else
-        id = gpi->id_or_neg_offset;
-
-      /* Is the particle was active and part of the subset to be tested ? */
-      if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
-        fprintf(file_exact,
-                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-                "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
-                id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
-                gpi->a_grav_exact[1], gpi->a_grav_exact[2],
-                gpi->potential_exact, gpi->a_grav_exact_short[0],
-                gpi->a_grav_exact_short[1], gpi->a_grav_exact_short[2],
-                gpi->a_grav_exact_long[0], gpi->a_grav_exact_long[1],
-                gpi->a_grav_exact_long[2]);
-      }
-    }
-
-    message("Written exact accelerations in file '%s'.", file_name_exact);
-
-    /* Be nice */
-    fclose(file_exact);
+//  if (!gravity_exact_force_file_exits(e)) {
+//
+//    char file_name_exact[100];
+//    if (s->periodic)
+//      sprintf(file_name_exact, "gravity_checks_exact_periodic_step%.4d.dat",
+//              e->step);
+//    else
+//      sprintf(file_name_exact, "gravity_checks_exact_step%.4d.dat", e->step);
+//
+//    FILE *file_exact = fopen(file_name_exact, "w");
+//    fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
+//    fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
+//    fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
+//    fprintf(file_exact, "# periodic= %d\n", s->periodic);
+//    fprintf(file_exact, "# Git Branch: %s\n", git_branch());
+//    fprintf(file_exact, "# Git Revision: %s\n", git_revision());
+//    fprintf(file_exact,
+//            "# %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s %16s "
+//            "%16s %16s %16s\n",
+//            "id", "pos[0]", "pos[1]", "pos[2]", "a_exact[0]", "a_exact[1]",
+//            "a_exact[2]", "potential", "a_exact_short[0]", "a_exact_short[1]",
+//            "a_exact_short[2]", "a_exact_long[0]", "a_exact_long[1]",
+//            "a_exact_long[2]");
+//
+//    /* Output particle exact accelerations  */
+//    for (size_t i = 0; i < s->nr_gparts; ++i) {
+//
+//      struct gpart *gpi = &s->gparts[i];
+//
+//      long long id = 0;
+//      if (gpi->type == swift_type_gas)
+//        id = parts[-gpi->id_or_neg_offset].id;
+//      else if (gpi->type == swift_type_stars)
+//        id = sparts[-gpi->id_or_neg_offset].id;
+//      else if (gpi->type == swift_type_black_hole)
+//        id = bparts[-gpi->id_or_neg_offset].id;
+//      else
+//        id = gpi->id_or_neg_offset;
+//
+//      /* Is the particle was active and part of the subset to be tested ? */
+//      if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
+//        fprintf(file_exact,
+//                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
+//                "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
+//                id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
+//                gpi->a_grav_exact[1], gpi->a_grav_exact[2],
+//                gpi->potential_exact, gpi->a_grav_exact_short[0],
+//                gpi->a_grav_exact_short[1], gpi->a_grav_exact_short[2],
+//                gpi->a_grav_exact_long[0], gpi->a_grav_exact_long[1],
+//                gpi->a_grav_exact_long[2]);
+//      }
+//    }
+//
+//    message("Written exact accelerations in file '%s'.", file_name_exact);
+//
+//    /* Be nice */
+//    fclose(file_exact);
   }
 #else
   error("Gravity checking function called without the corresponding flag.");
