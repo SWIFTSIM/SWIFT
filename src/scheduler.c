@@ -1010,11 +1010,16 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 
-        /* Replace by a single sub-task? */
+	/* Are we deep enought that it's not worth the effort? */
         if (scheduler_dosub &&
             gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
+
+	  /* --> Do nothing. i.e. keep the gravity pair task as it is. */
+
+	  
           /* Otherwise, split it. */
         } else {
+	  
           /* Turn the task into a M-M task that will take care of all the
            * progeny pairs */
           t->type = task_type_grav_mm;
@@ -1040,7 +1045,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     t->flags |= (1ULL << flag);
 
                   } else {
-                    /* Ok, we actually have to create a task */
+		    
+                    /* Ok, we actually have to create a direct task for
+		     * this specific pair of progenitors */
                     scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair, task_subtype_grav,
                                           0, 0, ci->progeny[i], cj->progeny[j]),
