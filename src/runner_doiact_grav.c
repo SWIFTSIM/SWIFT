@@ -2204,18 +2204,15 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
  */
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
                                   struct cell *cj, const int gettimer) {
-
+  /* Some constants */
   const struct engine *e = r->e;
+  const int nodeID = e->nodeID;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const int periodic = e->mesh->periodic;
 
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
   runner_clear_grav_flags(cj, e);
-
-  /* Some constants */
-  const int nodeID = e->nodeID;
-  const int periodic = e->mesh->periodic;
-  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double max_distance = e->mesh->r_cut_max;
 
   /* Anything to do here? */
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
@@ -2248,24 +2245,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   struct gravity_tensors *const multi_i = ci->grav.multipole;
   struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-  /* Get the distance between the CoMs */
-  double dx = multi_i->CoM[0] - multi_j->CoM[0];
-  double dy = multi_i->CoM[1] - multi_j->CoM[1];
-  double dz = multi_i->CoM[2] - multi_j->CoM[2];
-
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-  const double r2 = dx * dx + dy * dy + dz * dz;
-
-  /* Minimal distance between any 2 particles in the two cells */
-  const double r_lr_check = sqrt(r2) - (multi_i->r_max + multi_j->r_max);
-
   /* Are we beyond the distance where the truncated forces are 0? */
-  if (periodic && r_lr_check > max_distance) {
+  if (cell_grav_pair_use_mesh(multi_i, multi_j, e->mesh)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_active_gravity(ci, e))
@@ -2285,11 +2266,25 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
       accumulate_add_ll(&multi_j->pot.num_interacted_pm,
                         multi_i->m_pole.num_gpart);
 #endif
+    
     return;
   }
 
   /* OK, we actually need to compute this pair. Let's find the cheapest
    * option... */
+  
+  /* Get the distance between the CoMs */
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
 
   if (ci->grav.count <= 1 || cj->grav.count <= 1) {
 

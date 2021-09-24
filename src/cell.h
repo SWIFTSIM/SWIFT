@@ -49,6 +49,7 @@
 
 /* Avoid cyclic inclusions */
 struct engine;
+struct pm_mesh;
 struct scheduler;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
@@ -631,6 +632,9 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+int cell_grav_pair_use_mesh(const struct gravity_tensors *const multi_i,
+			    const struct gravity_tensors *const multi_j,
+			    const struct pm_mesh *const mesh);
 
 /**
  * @brief Compute the square of the minimal distance between any two points in

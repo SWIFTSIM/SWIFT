@@ -1468,3 +1468,31 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
   return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
                                       use_rebuild_data, periodic);
 }
+
+int cell_grav_pair_use_mesh(const struct gravity_tensors *restrict multi_i,
+			    const struct gravity_tensors *restrict multi_j,
+			    const struct pm_mesh *const mesh) {
+
+  const int periodic = mesh->periodic;
+  const double dim[3] = {mesh->dim[0], mesh->dim[1], mesh->dim[2]};
+  const double max_distance = mesh->r_cut_max;
+  
+  /* Get the distance between the CoMs */
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  /* Minimal distance between any 2 particles in the two cells */
+  const double r_lr_check = sqrt(r2) - (multi_i->r_max + multi_j->r_max);
+
+  /* Are we beyond the distance where the truncated forces are 0? */
+  return periodic && (r_lr_check > max_distance);
+}
