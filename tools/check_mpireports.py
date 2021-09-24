@@ -105,7 +105,7 @@ for f in infiles:
                     + "/"
                     + words[tagcol]
                     + "/"
-                    + words[sizecol][1:]
+                    + words[sizecol].replace("-", "")
                 )
                 if words[typecol] == "send":
                     esends[key] = [line[:-1]]
