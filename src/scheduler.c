@@ -925,6 +925,7 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
 static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
   const struct space *sp = s->space;
   struct engine *e = sp->e;
+  const struct pm_mesh *mesh = e->mesh;
 
   /* Iterate on this task until we're done with it. */
   int redo = 1;
@@ -1005,13 +1006,13 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_gravity_task(ci) &&
-          cell_can_split_pair_gravity_task(cj)) {
+      if ((cell_can_split_pair_gravity_task(ci) &&
+	   cell_can_split_pair_gravity_task(cj))) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 
 	/* Are we deep enought that it's not worth the effort? */
-        if (scheduler_dosub &&
+        if (0 && scheduler_dosub &&
             gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
 
 	  /* --> Do nothing. i.e. keep the gravity pair task as it is. */
@@ -1031,6 +1032,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
             if (ci->progeny[i] != NULL) {
               for (int j = 0; j < 8; j++) {
                 if (cj->progeny[j] != NULL) {
+		  
                   /* Can we use a M-M interaction here? */
                   if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e,
                                            sp, /*use_rebuild_data=*/1,
@@ -1045,6 +1047,15 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     t->flags |= (1ULL << flag);
 
                   } else {
+
+		      /* Recover the multipole information */
+		    struct gravity_tensors *const multi_i = ci->grav.multipole;
+		    struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+		    if (multi_i == NULL) error("aa");
+		    if (multi_j == NULL) error("bb");
+
+		    if (1 || !cell_grav_pair_use_mesh(multi_i, multi_j, mesh)) {
 		    
                     /* Ok, we actually have to create a direct task for
 		     * this specific pair of progenitors */
@@ -1052,6 +1063,14 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                         scheduler_addtask(s, task_type_pair, task_subtype_grav,
                                           0, 0, ci->progeny[i], cj->progeny[j]),
                         s);
+
+		    } else {
+
+                    const int flag = i * 8 + j;
+                    t->flags |= (1ULL << flag);
+
+		      
+		    }
                   }
                 }
               }
