@@ -809,7 +809,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
 //
 //    /* Be nice */
 //    fclose(file_exact);
-  }
+//  }
 #else
   error("Gravity checking function called without the corresponding flag.");
 #endif
