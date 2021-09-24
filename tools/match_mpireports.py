@@ -102,7 +102,7 @@ for f in infiles:
                     + "/"
                     + words[tagcol]
                     + "/"
-                    + words[sizecol][1:]
+                    + words[sizecol].replace("-", "")
                 )
 
                 if not key in recvs:
