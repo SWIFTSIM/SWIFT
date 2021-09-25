@@ -260,9 +260,13 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 
     /* Get its cell index */
 #ifdef WITH_ZOOM_REGION
-    const int index = cell_getid_zoom(cdim, pos_x, pos_y, pos_z, s,
+    if (gp->type == 1) {
+    	const int index = cell_getid_zoom(cdim, pos_x, pos_y, pos_z, s,
                               (int)(pos_x * ih_x), (int)(pos_y * ih_y),
                               (int)(pos_z * ih_z));
+    } else {
+    	const int index = cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    };
 #else  
     const int index = cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
 #endif
