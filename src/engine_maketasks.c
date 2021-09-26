@@ -1912,6 +1912,14 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       atomic_inc(&cj->grav.nr_mm_tasks);
       engine_addlink(e, &ci->grav.mm, t);
       engine_addlink(e, &cj->grav.mm, t);
+
+      /* Particle-multipole interaction */
+    } else if (t_type == task_type_grav_pm) {
+
+      atomic_inc(&ci->grav.nr_mm_tasks);
+      atomic_inc(&cj->grav.nr_mm_tasks);
+      engine_addlink(e, &ci->grav.mm, t);
+      engine_addlink(e, &cj->grav.mm, t);
     }
   }
 }
@@ -2078,6 +2086,17 @@ void engine_link_gravity_tasks(struct engine *e) {
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
           scheduler_addunlock(sched, t, cj_parent->grav.down_in);
         }
+      }
+    }
+
+    /* Otherwise P-M interaction? */
+    else if (t_type == task_type_grav_pm) {
+
+      if (ci_nodeID == nodeID) {
+
+        /* init -----> gravity --> grav_down */
+        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
     }
   }
