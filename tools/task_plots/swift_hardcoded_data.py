@@ -40,6 +40,7 @@ TASKTYPES = [
     "unpack",
     "grav_long_range",
     "grav_mm",
+    "grav_pm",
     "grav_down_in",
     "grav_down",
     "grav_end_force",

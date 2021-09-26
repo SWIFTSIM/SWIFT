@@ -80,6 +80,7 @@ const char *taskID_names[task_type_count] = {
     "unpack",
     "grav_long_range",
     "grav_mm",
+    "grav_pm",
     "grav_down_in",
     "grav_down",
     "grav_end_force",
@@ -690,6 +691,12 @@ void task_unlock(struct task *t) {
 #endif
       break;
 
+    case task_type_grav_pm:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+      cell_gunlocktree(ci);
+#endif
+      break;
+
     case task_type_star_formation:
       cell_unlocktree(ci);
       cell_sunlocktree(ci);
@@ -1106,6 +1113,12 @@ int task_lock(struct task *t) {
         cell_munlocktree(ci);
         return 0;
       }
+#endif
+      break;
+
+    case task_type_grav_pm:
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+      if (cell_glocktree(ci) != 0) return 0;
 #endif
       break;
 
@@ -1803,6 +1816,7 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_init_grav:
     case task_type_grav_long_range:
     case task_type_grav_mm:
+    case task_type_grav_pm:
     case task_type_grav_down:
     case task_type_end_grav_force:
       return task_category_gravity;
