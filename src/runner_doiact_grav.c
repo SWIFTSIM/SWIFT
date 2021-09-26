@@ -2266,13 +2266,13 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
       accumulate_add_ll(&multi_j->pot.num_interacted_pm,
                         multi_i->m_pole.num_gpart);
 #endif
-    
+
     return;
   }
 
   /* OK, we actually need to compute this pair. Let's find the cheapest
    * option... */
-  
+
   /* Get the distance between the CoMs */
   double dx = multi_i->CoM[0] - multi_j->CoM[0];
   double dy = multi_i->CoM[1] - multi_j->CoM[1];

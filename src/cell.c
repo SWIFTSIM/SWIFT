@@ -1470,13 +1470,13 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
 }
 
 int cell_grav_pair_use_mesh(const struct gravity_tensors *restrict multi_i,
-			    const struct gravity_tensors *restrict multi_j,
-			    const struct pm_mesh *const mesh) {
+                            const struct gravity_tensors *restrict multi_j,
+                            const struct pm_mesh *const mesh) {
 
   const int periodic = mesh->periodic;
   const double dim[3] = {mesh->dim[0], mesh->dim[1], mesh->dim[2]};
   const double max_distance = mesh->r_cut_max;
-  
+
   /* Get the distance between the CoMs */
   double dx = multi_i->CoM[0] - multi_j->CoM[0];
   double dy = multi_i->CoM[1] - multi_j->CoM[1];
