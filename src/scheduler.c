@@ -1054,11 +1054,13 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     if (cell_can_use_pair_pm(cip, cjp) &&
                         cell_can_use_pair_pm(cip, cjp)) {
 
-                      scheduler_addtask(s, task_type_grav_pm, task_subtype_none,
-                                        0, 0, cip, cjp);
+                      if (cip->nodeID == s->nodeID)
+                        scheduler_addtask(s, task_type_grav_pm,
+                                          task_subtype_none, 0, 0, cip, cjp);
 
-                      scheduler_addtask(s, task_type_grav_pm, task_subtype_none,
-                                        0, 0, cjp, cip);
+                      if (cjp->nodeID == s->nodeID)
+                        scheduler_addtask(s, task_type_grav_pm,
+                                          task_subtype_none, 0, 0, cjp, cip);
                     } else {
 
                       /* Ok, we actually have to create a direct task for
