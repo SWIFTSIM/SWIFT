@@ -40,6 +40,9 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
                                      struct cell *restrict ci,
                                      struct cell *restrict cj);
 
+void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
+                           struct cell *restrict cj);
+
 void runner_do_grav_long_range(struct runner *r, struct cell *ci, int timer);
 
 /* Internal functions (for unit tests and debugging) */

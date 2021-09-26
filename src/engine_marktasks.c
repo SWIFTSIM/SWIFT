@@ -1295,7 +1295,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const struct cell *cj = t->cj;
 #ifdef WITH_MPI
       const int ci_nodeID = ci->nodeID;
-      const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+      const int cj_nodeID = cj->nodeID;
 #else
       const int ci_nodeID = nodeID;
       const int cj_nodeID = nodeID;
@@ -1306,6 +1306,23 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if ((ci_active_gravity && ci_nodeID == nodeID) ||
           (cj_active_gravity && cj_nodeID == nodeID))
         scheduler_activate(s, t);
+    }
+
+    /* Particle - Multipole interaction task */
+    else if (t_type == task_type_grav_pm) {
+
+      /* Local pointers. */
+      const struct cell *ci = t->ci;
+#ifdef WITH_MPI
+      const int ci_nodeID = ci->nodeID;
+#else
+      const int ci_nodeID = nodeID;
+#endif
+      const int ci_active_gravity = cell_is_active_gravity(ci, e);
+
+      if (ci_active_gravity && ci_nodeID == nodeID) {
+        scheduler_activate(s, t);
+      }
     }
 
     /* Star ghost tasks ? */

@@ -1932,24 +1932,38 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-    const int ci_active = cell_is_active_gravity_mm(ci, e);
-    const int cj_active = cell_is_active_gravity_mm(cj, e);
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
-    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+    const int cj_nodeID = cj->nodeID;
 #else
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (t->type != task_type_grav_mm) error("Incorrectly linked gravity task!");
-#endif
+    if (t->type == task_type_grav_mm) {
 
-    /* Only activate tasks that involve a local active cell. */
-    if ((ci_active && ci_nodeID == nodeID) ||
-        (cj_active && cj_nodeID == nodeID)) {
-      scheduler_activate(s, t);
+      const int ci_active = cell_is_active_gravity_mm(ci, e);
+      const int cj_active = cell_is_active_gravity_mm(cj, e);
+
+      /* Only activate tasks that involve a local active cell. */
+      if ((ci_active && ci_nodeID == nodeID) ||
+          (cj_active && cj_nodeID == nodeID)) {
+        scheduler_activate(s, t);
+      }
+
+    } else if (t->type == task_type_grav_pm) {
+
+      const int ci_active = cell_is_active_gravity(ci, e);
+
+      if (ci_active && ci_nodeID == nodeID) {
+        scheduler_activate(s, t);
+      }
+
+    } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      error("Incorrectly linked gravity task!");
+#endif
     }
   }
 
