@@ -2090,6 +2090,9 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
   }
 }
 
+void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
+                           struct cell *restrict cj) {}
+
 void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
                                      const struct cell *cj) {
 
