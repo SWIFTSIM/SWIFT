@@ -1469,6 +1469,45 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
                                       use_rebuild_data, periodic);
 }
 
+int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
+                         const struct gravity_props *props,
+                         const int periodic) {
+
+  /* List of all 8 corners on the unit cube */
+  static const double corners[8][3] = {{0., 0., 0.}, {1., 0., 0.}, {0., 1., 0.},
+                                       {0., 0., 1.}, {1., 1., 0.}, {1., 0., 1.},
+                                       {0., 1., 1.}, {1., 1., 1.}};
+
+  const struct gravity_tensors *multi_i = ci->grav.multipole;
+  const struct gravity_tensors *multi_j = cj->grav.multipole;
+  const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+
+  /* We are going to test all 8 corners of ci to see whether they
+   * could interact with the m-pole in cj. */
+  for (int k = 0; k < 8; ++k) {
+
+    const double x_i = ci->loc[0] + corners[k][0] * ci->width[0];
+    const double y_i = ci->loc[1] + corners[k][1] * ci->width[1];
+    const double z_i = ci->loc[2] + corners[k][2] * ci->width[2];
+
+    const float dx_multi = (double)(CoM_j[0] - x_i);
+    const float dy_multi = (double)(CoM_j[1] - y_i);
+    const float dz_multi = (double)(CoM_j[2] - z_i);
+
+    const float r2_multi =
+        dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
+
+    struct gpart gp;
+    gp.epsilon = multi_i->m_pole.max_softening;
+    gp.old_a_grav_norm = multi_i->m_pole.min_old_a_grav_norm;
+
+    if (!gravity_M2P_accept(props, &gp, multi_j, r2_multi, periodic)) return 0;
+  }
+
+  /* All corners OK */
+  return 1;
+}
+
 int cell_grav_pair_use_mesh(const struct gravity_tensors *restrict multi_i,
                             const struct gravity_tensors *restrict multi_j,
                             const struct pm_mesh *const mesh) {
