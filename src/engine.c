@@ -2515,7 +2515,8 @@ void engine_reconstruct_multipoles(struct engine *e) {
 }
 
 /**
- * @brief Split the underlying space into regions and assign to separate nodes.
+ * @brief Split the underlying space into regions, construct proxies and
+ * distribute the particles where they belong.
  *
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
@@ -2533,102 +2534,20 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Make the proxies. */
   engine_makeproxies(e);
 
-  /* Re-allocate the local parts. */
-  if (e->verbose)
-    message("Re-allocating parts array from %zu to %zu.", s->size_parts,
-            (size_t)(s->nr_parts * engine_redistribute_alloc_margin));
-  s->size_parts = s->nr_parts * engine_redistribute_alloc_margin;
-  struct part *parts_new = NULL;
-  struct xpart *xparts_new = NULL;
-  if (swift_memalign("parts", (void **)&parts_new, part_align,
-                     sizeof(struct part) * s->size_parts) != 0 ||
-      swift_memalign("xparts", (void **)&xparts_new, xpart_align,
-                     sizeof(struct xpart) * s->size_parts) != 0)
-    error("Failed to allocate new part data.");
+  /* Turn off the csds to avoid writing the communications to
+   * the CSDS (since we haven't properly started the run yet) */
+  const int with_csds = e->policy & engine_policy_csds;
+  if (with_csds) e->policy &= ~engine_policy_csds;
 
-  if (s->nr_parts > 0) {
-    memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
-    memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->nr_parts);
-  }
-  swift_free("parts", s->parts);
-  swift_free("xparts", s->xparts);
-  s->parts = parts_new;
-  s->xparts = xparts_new;
+  /* Move the particles to the ranks they belong to */
+  engine_redistribute(e);
 
-  /* Re-link the gparts to their parts. */
-  if (s->nr_parts > 0 && s->nr_gparts > 0)
-    part_relink_gparts_to_parts(s->parts, s->nr_parts, 0);
-
-  /* Re-allocate the local sparts. */
-  if (e->verbose)
-    message("Re-allocating sparts array from %zu to %zu.", s->size_sparts,
-            (size_t)(s->nr_sparts * engine_redistribute_alloc_margin));
-  s->size_sparts = s->nr_sparts * engine_redistribute_alloc_margin;
-  struct spart *sparts_new = NULL;
-  if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
-                     sizeof(struct spart) * s->size_sparts) != 0)
-    error("Failed to allocate new spart data.");
-
-  if (s->nr_sparts > 0)
-    memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->nr_sparts);
-  swift_free("sparts", s->sparts);
-  s->sparts = sparts_new;
-
-  /* Re-link the gparts to their sparts. */
-  if (s->nr_sparts > 0 && s->nr_gparts > 0)
-    part_relink_gparts_to_sparts(s->sparts, s->nr_sparts, 0);
-
-  /* Re-allocate the local bparts. */
-  if (e->verbose)
-    message("Re-allocating bparts array from %zu to %zu.", s->size_bparts,
-            (size_t)(s->nr_bparts * engine_redistribute_alloc_margin));
-  s->size_bparts = s->nr_bparts * engine_redistribute_alloc_margin;
-  struct bpart *bparts_new = NULL;
-  if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
-                     sizeof(struct bpart) * s->size_bparts) != 0)
-    error("Failed to allocate new bpart data.");
-
-  if (s->nr_bparts > 0)
-    memcpy(bparts_new, s->bparts, sizeof(struct bpart) * s->nr_bparts);
-  swift_free("bparts", s->bparts);
-  s->bparts = bparts_new;
-
-  /* Re-link the gparts to their bparts. */
-  if (s->nr_bparts > 0 && s->nr_gparts > 0)
-    part_relink_gparts_to_bparts(s->bparts, s->nr_bparts, 0);
-
-  /* Re-allocate the local gparts. */
-  if (e->verbose)
-    message("Re-allocating gparts array from %zu to %zu.", s->size_gparts,
-            (size_t)(s->nr_gparts * engine_redistribute_alloc_margin));
-  s->size_gparts = s->nr_gparts * engine_redistribute_alloc_margin;
-  struct gpart *gparts_new = NULL;
-  if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
-                     sizeof(struct gpart) * s->size_gparts) != 0)
-    error("Failed to allocate new gpart data.");
-
-  if (s->nr_gparts > 0)
-    memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
-  swift_free("gparts", s->gparts);
-  s->gparts = gparts_new;
-
-  /* Re-link everything to the gparts. */
-  if (s->nr_gparts > 0)
-    part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts, s->sinks,
-                                    s->sparts, s->bparts, &e->threadpool);
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-  /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, e->verbose);
-#endif
+  /* Turn it back on */
+  if (with_csds) e->policy |= engine_policy_csds;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
-
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif

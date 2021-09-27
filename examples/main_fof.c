@@ -672,7 +672,6 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   /* Split the space. */
   engine_split(&e, &initial_partition);
-  engine_redistribute(&e);
 #endif
 
 #ifdef SWIFT_DEBUG_TASKS
