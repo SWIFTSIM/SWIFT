@@ -1473,11 +1473,20 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
                          const struct gravity_props *props,
                          const int periodic) {
 
+  /* Quick exit if cj contains only a single particle. 
+   * In this case, we can always approximate the interaction via M2P */
+  if (cj->grav.count == 1) return 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cj->grav.count == 0)
+    error("Found an empty cell! Something must be wrong with the tree construction.");
+#endif
+  
   /* List of all 8 corners on the unit cube */
   static const double corners[8][3] = {{0., 0., 0.}, {1., 0., 0.}, {0., 1., 0.},
                                        {0., 0., 1.}, {1., 1., 0.}, {1., 0., 1.},
                                        {0., 1., 1.}, {1., 1., 1.}};
-
+  
   const struct gravity_tensors *multi_i = ci->grav.multipole;
   const struct gravity_tensors *multi_j = cj->grav.multipole;
   const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
