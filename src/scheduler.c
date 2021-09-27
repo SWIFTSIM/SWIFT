@@ -1008,7 +1008,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
       /* Should this task be split-up? */
       if ((cell_can_split_pair_gravity_task(ci) &&
-	   cell_can_split_pair_gravity_task(cj))) {
+           cell_can_split_pair_gravity_task(cj))) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 
@@ -1051,14 +1051,10 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     struct cell *cip = ci->progeny[i];
                     struct cell *cjp = cj->progeny[j];
 
-                    //message("bb");
-
                     /* Let's try to interact these two cells via a pair of
                      * non-symmetric PM calls */
                     if (cell_can_use_pair_pm(cip, cjp, props, periodic) &&
                         cell_can_use_pair_pm(cip, cjp, props, periodic)) {
-
-                      //message("a");
 
                       if (cip->nodeID == s->nodeID)
                         scheduler_addtask(s, task_type_grav_pm,
