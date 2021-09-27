@@ -1476,12 +1476,6 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
     /* Split the space. */
     engine_split(&e, &initial_partition);
-    /* Turn off the csds to avoid writing the communications */
-    if (with_csds) e.policy &= ~engine_policy_csds;
-
-    engine_redistribute(&e);
-    /* Turn it back on */
-    if (with_csds) e.policy |= engine_policy_csds;
 #endif
 
     /* Initialise the particles */
