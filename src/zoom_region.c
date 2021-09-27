@@ -1435,6 +1435,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	/* Loop through the elements, which are just byte offsets from NULL. */
 	for (int ind = 0; ind < num_elements; ind++) {
 
+		periodic = s->periodic;
+
 		/* Get the cell index. */
 		const int cid = (size_t)(map_data) + ind;
 		int cid_with_offset = cid;
@@ -1467,7 +1469,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		const int j = (cid_with_offset / cdim[2]) % cdim[1];
 		const int k = cid_with_offset % cdim[2];
 
-		/* Skip cells without gravity particles or void cells */
+		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
 		/* If the cell is local build a self-interaction */
@@ -1685,6 +1687,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 		/* For the zoom cells we need to find all natural cell neighbours */
 		if (ci->tl_cell_type == zoom_tl_cell) {
+
+			periodic = 0;
 
 			/* Loop over all its neighbours in range. */
 			for (int ii = -natural_delta_m; ii <= natural_delta_p; ii++) {
