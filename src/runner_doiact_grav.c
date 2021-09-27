@@ -2091,7 +2091,34 @@ void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
 }
 
 void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
-                           struct cell *restrict cj) {}
+                           struct cell *restrict cj) {
+
+
+  struct gpart *gparts_i = ci->grav.parts;
+  
+  for (int pid = 0; pid < ci->grav.count; ++pid) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Update the interaction counter */
+    //if (pid < gcount_i)
+      accumulate_add_ll(&gparts_i[pid].num_interacted,
+                        cj->grav.multipole->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+    /* Update the M2P interaction counter and forces. */
+    //if (pid < gcount_i) {
+      accumulate_add_ll(&gparts_i[pid].num_interacted_m2p,
+                        cj->grav.multipole->m_pole.num_gpart);
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[0], 0.f);
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[1], 0.f);
+      accumulate_add_f(&gparts_i[pid].a_grav_m2p[2], 0.f);
+      //}
+#endif
+
+  }
+
+}
 
 void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
                                      const struct cell *cj) {
