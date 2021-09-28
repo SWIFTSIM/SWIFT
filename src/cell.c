@@ -1474,7 +1474,7 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
                          const int periodic) {
 
   /* Quick exit if cj contains only a single particle.
-   * In this case, we can always approximate the interaction via M2P */
+   * In this case, we can always approximate the interaction via M2P (i.e. P2P) */
   if (cj->grav.count == 1) return 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1484,39 +1484,65 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
         "construction.");
 #endif
 
-  /* List of all 8 corners on the unit cube */
-  static const double corners[8][3] = {{0., 0., 0.}, {1., 0., 0.}, {0., 1., 0.},
-                                       {0., 0., 1.}, {1., 1., 0.}, {1., 0., 1.},
-                                       {0., 1., 1.}, {1., 1., 1.}};
-
   const struct gravity_tensors *multi_i = ci->grav.multipole;
   const struct gravity_tensors *multi_j = cj->grav.multipole;
   const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
 
-  /* We are going to test all 8 corners of ci to see whether they
-   * could interact with the m-pole in cj. */
-  for (int k = 0; k < 8; ++k) {
+  /* We need to find the closest point on the surface of ci to the multipole
+   * in cj. */
 
-    const double x_i = ci->loc[0] + corners[k][0] * ci->width[0];
-    const double y_i = ci->loc[1] + corners[k][1] * ci->width[1];
-    const double z_i = ci->loc[2] + corners[k][2] * ci->width[2];
+  /* Centre of the cube */
+  const double centre[3] = {ci->loc[0] + ci->width[0] * 0.5, /* x */
+    ci->loc[1] + ci->width[1] * 0.5, /* y */
+    ci->loc[2] + ci->width[2] * 0.5}; /* z */
+  
+  /* Offset the CoM to the frame centred around the middle of the cube */
+  const double point[3] = {(CoM_j[0] - centre[0]),
+                           (CoM_j[1] - centre[1]),
+                           (CoM_j[2] - centre[2])};
 
-    const float dx_multi = (double)(CoM_j[0] - x_i);
-    const float dy_multi = (double)(CoM_j[1] - y_i);
-    const float dz_multi = (double)(CoM_j[2] - z_i);
+  const double dx = fabs(point[0]) - 0.5 * ci->width[0];
+  const double dy = fabs(point[1]) - 0.5 * ci->width[1];
+  const double dz = fabs(point[2]) - 0.5 * ci->width[2];
+  
+  double r2;
+  if (dx < 0.) {
+    
+    if (dy < 0.) {
+      r2 = dz * dz;     
+    } else {
+      if (dz < 0.) {
+	r2 = dy * dy;       
+      } else {
+	r2 = dy*dy + dz*dz;	
+      }
+    }
 
-    const float r2_multi =
-        dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
+  } else {
 
-    struct gpart gp;
-    gp.epsilon = multi_i->m_pole.max_softening;
-    gp.old_a_grav_norm = multi_i->m_pole.min_old_a_grav_norm;
-
-    if (!gravity_M2P_accept(props, &gp, multi_j, r2_multi, periodic)) return 0;
+    if (dy < 0.) {
+      if (dz < 0.) {
+	r2 = dx * dx;       
+      } else {
+	r2 = dx*dx + dz*dz;	
+      }
+    } else {
+      if (dz < 0.) {
+	r2 = dx*dx + dy * dy;       
+      } else {
+	r2 = dx*dx+dy*dy + dz*dz;	
+      }
+    }
+    
   }
+  
+  /* Create a fake particle to carry the remaining information 
+     that the M2P check requires. */
+  struct gpart gp;
+  gp.epsilon = multi_i->m_pole.max_softening;
+  gp.old_a_grav_norm = multi_i->m_pole.min_old_a_grav_norm;
 
-  /* All corners OK */
-  return 1;
+  return gravity_M2P_accept(props, &gp, multi_j, r2, periodic);
 }
 
 int cell_grav_pair_use_mesh(const struct gravity_tensors *restrict multi_i,
