@@ -485,8 +485,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->weighted_wcount = 0.f;
   p->weighted_neighbour_wcount = 0.f;
   p->f_gdf = 0.f;
+#ifdef PLANETARY_IMBALANCE
   p->P = 0.f;
   p->T = 0.f;
+#endif
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -799,11 +801,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->u = gas_internal_energy_from_entropy(p->rho, p->s_fixed, p->mat_id);
   xp->u_full = p->u;
 #endif
-
-  /* Compute the pressure */
-  //const float pressure =
-  //    gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-
+  
   /* Compute the sound speed */
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
@@ -843,8 +841,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* Update variables. */
   p->force.f = grad_h_term;
-  p->force.pressure = p->P; 
-  //p->force.pressure = pressure; 
+#ifdef PLANETARY_IMBALANCE
+  p->force.pressure = p->P;
+#else 
+  /* Compute the pressure */
+  const float pressure =
+    gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  p->force.pressure = pressure;
+#endif
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
 }
