@@ -2101,78 +2101,91 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e) || ci->nodeID != e->nodeID) return;
 
-  /* Some constants */
-  const int periodic = e->mesh->periodic;
-  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
-                        (float)e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  if (ci->split) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Early abort? */
-  if (ci->grav.count == 0 || cj->grav.count == 0)
-    error("Doing pair gravity on an empty cell !");
-
-  /* Sanity check */
-  if (ci == cj) error("Pair interaction between a cell and itself.");
-
-  if (cj->grav.ti_old_multipole != e->ti_current)
-    error("cj->grav.multipole not drifted.");
-#endif
-
-  /* Start by constructing particle caches */
-
-  /* Cache to play with */
-  struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
-
-  /* Computed the padded counts */
-  const int gcount_i = ci->grav.count;
-  const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Check that we fit in cache */
-  if (gcount_i > ci_cache->count)
-    error("Not enough space in the cache! gcount_i=%d", gcount_i);
-#endif
-
-  /* Recover the multipole info and the CoM locations */
-  const struct multipole *multi_j = &cj->grav.multipole->m_pole;
-  const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
-                          (float)(cj->grav.multipole->CoM[1]),
-                          (float)(cj->grav.multipole->CoM[2])};
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (cj->grav.count == 1)
-    error("Constructing cache for M2P interaction with multipole of size 0!");
-#endif
-
-  /* Fill the cache */
-  gravity_cache_populate_all_mpole(
-      e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
-      gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties);
-
-  /* Can we use the Newtonian version or do we need the truncated one ? */
-  if (!periodic) {
-
-    runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                               periodic, dim, e, ci->grav.parts, gcount_i, cj);
+    /* Recurse? */
+    for (int k = 0; k < 8; ++k) {
+      if (ci->progeny[k] != NULL) {
+        runner_dopair_grav_pm(r, ci->progeny[k], cj);
+      }
+    }
 
   } else {
 
-    runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                    dim, r_s_inv, e, ci->grav.parts, gcount_i,
-                                    cj);
+    /* Some constants */
+    const int periodic = e->mesh->periodic;
+    const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
+                          (float)e->mesh->dim[2]};
+    const float r_s_inv = e->mesh->r_s_inv;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Early abort? */
+    if (ci->grav.count == 0 || cj->grav.count == 0)
+      error("Doing pair gravity on an empty cell !");
+
+    /* Sanity check */
+    if (ci == cj) error("Pair interaction between a cell and itself.");
+
+    if (cj->grav.ti_old_multipole != e->ti_current)
+      error("cj->grav.multipole not drifted.");
+#endif
+
+    /* Start by constructing particle caches */
+
+    /* Cache to play with */
+    struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
+
+    /* Computed the padded counts */
+    const int gcount_i = ci->grav.count;
+    const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that we fit in cache */
+    if (gcount_i > ci_cache->count)
+      error("Not enough space in the cache! gcount_i=%d", gcount_i);
+#endif
+
+    /* Recover the multipole info and the CoM locations */
+    const struct multipole *multi_j = &cj->grav.multipole->m_pole;
+    const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
+                            (float)(cj->grav.multipole->CoM[1]),
+                            (float)(cj->grav.multipole->CoM[2])};
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cj->grav.count == 1)
+      error("Constructing cache for M2P interaction with multipole of size 0!");
+#endif
+
+    /* Fill the cache */
+    gravity_cache_populate_all_mpole(
+        e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
+        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties);
+
+    /* Can we use the Newtonian version or do we need the truncated one ? */
+    if (!periodic) {
+
+      runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
+                                 periodic, dim, e, ci->grav.parts, gcount_i,
+                                 cj);
+
+    } else {
+
+      runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j, multi_j,
+                                      dim, r_s_inv, e, ci->grav.parts, gcount_i,
+                                      cj);
+    }
+
+    /* Write back to the particles */
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    lock_lock(&ci->grav.plock);
+#endif
+
+    gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
+
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+    if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
+#endif
   }
-
-  /* Write back to the particles */
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-  lock_lock(&ci->grav.plock);
-#endif
-
-  gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
-
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-  if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
-#endif
 }
 
 void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
