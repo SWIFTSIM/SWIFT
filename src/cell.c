@@ -1498,42 +1498,19 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
                             ci->loc[2] + ci->width[2] * 0.5}; /* z */
 
   /* Offset the CoM to the frame centred around the middle of the cube */
-  const double point[3] = {(CoM_j[0] - centre[0]), (CoM_j[1] - centre[1]),
-                           (CoM_j[2] - centre[2])};
+  const double point[3] = {(CoM_j[0] - centre[0]),  /* x */
+                           (CoM_j[1] - centre[1]),  /* y */
+                           (CoM_j[2] - centre[2])}; /* z */
 
   const double dx = fabs(point[0]) - 0.5 * ci->width[0];
   const double dy = fabs(point[1]) - 0.5 * ci->width[1];
   const double dz = fabs(point[2]) - 0.5 * ci->width[2];
 
-  double r2;
-  if (dx < 0.) {
+  const double m_dx = max(dx, 0.);
+  const double m_dy = max(dy, 0.);
+  const double m_dz = max(dz, 0.);
 
-    if (dy < 0.) {
-      r2 = dz * dz;
-    } else {
-      if (dz < 0.) {
-        r2 = dy * dy;
-      } else {
-        r2 = dy * dy + dz * dz;
-      }
-    }
-
-  } else {
-
-    if (dy < 0.) {
-      if (dz < 0.) {
-        r2 = dx * dx;
-      } else {
-        r2 = dx * dx + dz * dz;
-      }
-    } else {
-      if (dz < 0.) {
-        r2 = dx * dx + dy * dy;
-      } else {
-        r2 = dx * dx + dy * dy + dz * dz;
-      }
-    }
-  }
+  const double r2 = m_dx * m_dx + m_dy * m_dy + m_dz * m_dz;
 
   /* Create a fake particle to carry the remaining information
      that the M2P check requires. */
