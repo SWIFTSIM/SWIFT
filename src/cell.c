@@ -1474,7 +1474,8 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
                          const int periodic) {
 
   /* Quick exit if cj contains only a single particle.
-   * In this case, we can always approximate the interaction via M2P (i.e. P2P) */
+   * In this case, we can always approximate the interaction via M2P (i.e. P2P)
+   */
   if (cj->grav.count == 1) return 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1492,29 +1493,28 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
    * in cj. */
 
   /* Centre of the cube */
-  const double centre[3] = {ci->loc[0] + ci->width[0] * 0.5, /* x */
-    ci->loc[1] + ci->width[1] * 0.5, /* y */
-    ci->loc[2] + ci->width[2] * 0.5}; /* z */
-  
+  const double centre[3] = {ci->loc[0] + ci->width[0] * 0.5,  /* x */
+                            ci->loc[1] + ci->width[1] * 0.5,  /* y */
+                            ci->loc[2] + ci->width[2] * 0.5}; /* z */
+
   /* Offset the CoM to the frame centred around the middle of the cube */
-  const double point[3] = {(CoM_j[0] - centre[0]),
-                           (CoM_j[1] - centre[1]),
+  const double point[3] = {(CoM_j[0] - centre[0]), (CoM_j[1] - centre[1]),
                            (CoM_j[2] - centre[2])};
 
   const double dx = fabs(point[0]) - 0.5 * ci->width[0];
   const double dy = fabs(point[1]) - 0.5 * ci->width[1];
   const double dz = fabs(point[2]) - 0.5 * ci->width[2];
-  
+
   double r2;
   if (dx < 0.) {
-    
+
     if (dy < 0.) {
-      r2 = dz * dz;     
+      r2 = dz * dz;
     } else {
       if (dz < 0.) {
-	r2 = dy * dy;       
+        r2 = dy * dy;
       } else {
-	r2 = dy*dy + dz*dz;	
+        r2 = dy * dy + dz * dz;
       }
     }
 
@@ -1522,21 +1522,20 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
 
     if (dy < 0.) {
       if (dz < 0.) {
-	r2 = dx * dx;       
+        r2 = dx * dx;
       } else {
-	r2 = dx*dx + dz*dz;	
+        r2 = dx * dx + dz * dz;
       }
     } else {
       if (dz < 0.) {
-	r2 = dx*dx + dy * dy;       
+        r2 = dx * dx + dy * dy;
       } else {
-	r2 = dx*dx+dy*dy + dz*dz;	
+        r2 = dx * dx + dy * dy + dz * dz;
       }
     }
-    
   }
-  
-  /* Create a fake particle to carry the remaining information 
+
+  /* Create a fake particle to carry the remaining information
      that the M2P check requires. */
   struct gpart gp;
   gp.epsilon = multi_i->m_pole.max_softening;
