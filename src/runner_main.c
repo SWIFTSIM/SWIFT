@@ -524,6 +524,12 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_xv) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_gradient) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_rho) {
+            free(t->buff);
           }
           break;
         case task_type_recv:
@@ -545,10 +551,16 @@ void *runner_main(void *data) {
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
           } else if (t->subtype == task_subtype_xv) {
+            cell_unpack_xv(ci, (struct xv_message_part *)t->buff);
+            free(t->buff);
             runner_do_recv_part(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_rho) {
+            cell_unpack_rho(ci, (struct rho_message_part *)t->buff);
+            free(t->buff);
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gradient) {
+            cell_unpack_gradient(ci, (struct gradient_message_part *)t->buff);
+            free(t->buff);
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_part_swallow) {
             cell_unpack_part_swallow(ci,

@@ -2076,15 +2076,37 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
               sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
           buff = t->buff = malloc(count);
 
-        } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_part_prep1) {
+        } else if (t->subtype == task_subtype_part_prep1) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
+
+        } else if (t->subtype == task_subtype_xv) {
+
+          size = count = t->ci->hydro.count * sizeof(struct xv_message_part);
+          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
+            error("Error allocating xv recv buffer");
+          type = MPI_BYTE;
+          t->buff = buff;
+
+        } else if (t->subtype == task_subtype_rho) {
+
+          size = count = t->ci->hydro.count * sizeof(struct rho_message_part);
+          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
+            error("Error allocating rho recv buffer");
+          type = MPI_BYTE;
+          t->buff = buff;
+
+        } else if (t->subtype == task_subtype_gradient) {
+
+          size = count =
+              t->ci->hydro.count * sizeof(struct gradient_message_part);
+          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
+            error("Error allocating gradient recv buffer");
+          type = MPI_BYTE;
+          t->buff = buff;
 
         } else if (t->subtype == task_subtype_limiter) {
 
@@ -2203,15 +2225,40 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           cell_pack_bpart_swallow(t->ci,
                                   (struct black_holes_bpart_data *)t->buff);
 
-        } else if (t->subtype == task_subtype_xv ||
-                   t->subtype == task_subtype_rho ||
-                   t->subtype == task_subtype_gradient ||
-                   t->subtype == task_subtype_part_prep1) {
+        } else if (t->subtype == task_subtype_part_prep1) {
 
           count = t->ci->hydro.count;
           size = count * sizeof(struct part);
           type = part_mpi_type;
           buff = t->ci->hydro.parts;
+
+        } else if (t->subtype == task_subtype_xv) {
+
+          size = count = t->ci->hydro.count * sizeof(struct xv_message_part);
+          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
+            error("Error allocating xv send buffer");
+          t->buff = buff;
+          cell_pack_xv(t->ci, (struct xv_message_part *)t->buff);
+          type = MPI_BYTE;
+
+        } else if (t->subtype == task_subtype_rho) {
+
+          size = count = t->ci->hydro.count * sizeof(struct rho_message_part);
+          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
+            error("Error allocating rho send buffer");
+          t->buff = buff;
+          cell_pack_rho(t->ci, (struct rho_message_part *)t->buff);
+          type = MPI_BYTE;
+
+        } else if (t->subtype == task_subtype_gradient) {
+
+          size = count =
+              t->ci->hydro.count * sizeof(struct gradient_message_part);
+          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, count) != 0)
+            error("Error allocating gradient send buffer");
+          t->buff = buff;
+          cell_pack_gradient(t->ci, (struct gradient_message_part *)t->buff);
+          type = MPI_BYTE;
 
         } else if (t->subtype == task_subtype_limiter) {
 

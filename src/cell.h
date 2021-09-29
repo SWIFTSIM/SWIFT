@@ -38,6 +38,7 @@
 #include "cell_hydro.h"
 #include "cell_sinks.h"
 #include "cell_stars.h"
+#include "hydro_pack.h"
 #include "kernel_hydro.h"
 #include "multipole_struct.h"
 #include "part.h"
@@ -510,6 +511,16 @@ int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+
+void cell_pack_xv(const struct cell *c, struct xv_message_part *data);
+void cell_unpack_xv(struct cell *c, const struct xv_message_part *data);
+void cell_pack_rho(const struct cell *c, struct rho_message_part *data);
+void cell_unpack_rho(struct cell *c, const struct rho_message_part *data);
+void cell_pack_gradient(const struct cell *c,
+                        struct gradient_message_part *data);
+void cell_unpack_gradient(struct cell *c,
+                          const struct gradient_message_part *data);
+
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
