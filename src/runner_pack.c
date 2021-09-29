@@ -66,3 +66,33 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
 
   free(buffer);
 }
+
+void runner_do_pack_xv(struct runner *r, struct cell *c, void **buffer,
+                       const int timer) {
+
+  const size_t count = c->hydro.count * sizeof(struct xv_message_part);
+  if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
+    error("Error allocating xv send buffer");
+
+  cell_pack_xv(c, (struct xv_message_part *)*buffer);
+}
+
+void runner_do_pack_rho(struct runner *r, struct cell *c, void **buffer,
+                        const int timer) {
+
+  const size_t count = c->hydro.count * sizeof(struct rho_message_part);
+  if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
+    error("Error allocating rho send buffer");
+
+  cell_pack_rho(c, (struct rho_message_part *)*buffer);
+}
+
+void runner_do_pack_gradient(struct runner *r, struct cell *c, void **buffer,
+                             const int timer) {
+
+  const size_t count = c->hydro.count * sizeof(struct gradient_message_part);
+  if (posix_memalign((void **)buffer, SWIFT_CACHE_ALIGNMENT, count) != 0)
+    error("Error allocating gradient send buffer");
+
+  cell_pack_gradient(c, (struct gradient_message_part *)*buffer);
+}

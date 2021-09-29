@@ -595,11 +595,24 @@ void *runner_main(void *data) {
           break;
 
         case task_type_pack:
-          runner_do_pack_limiter(r, ci, &t->buff, 1);
-          task_get_unique_dependent(t)->buff = t->buff;
+          if (t->subtype == task_subtype_limiter) {
+            runner_do_pack_limiter(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          } else if (t->subtype == task_subtype_xv) {
+            runner_do_pack_xv(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          } else if (t->subtype == task_subtype_rho) {
+            runner_do_pack_rho(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          } else if (t->subtype == task_subtype_gradient) {
+            runner_do_pack_gradient(r, ci, &t->buff, 1);
+            task_get_unique_dependent(t)->buff = t->buff;
+          }
           break;
         case task_type_unpack:
-          runner_do_unpack_limiter(r, ci, t->buff, 1);
+          if (t->subtype == task_subtype_limiter) {
+            runner_do_unpack_limiter(r, ci, t->buff, 1);
+          }
           break;
 #endif
         case task_type_grav_down:
