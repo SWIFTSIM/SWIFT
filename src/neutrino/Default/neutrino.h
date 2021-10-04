@@ -27,6 +27,7 @@
 #include "fermi_dirac.h"
 #include "neutrino_properties.h"
 #include "relativity.h"
+#include "renderer.h"
 
 /* Riemann function zeta(3) */
 #define M_ZETA_3 1.2020569031595942853997
