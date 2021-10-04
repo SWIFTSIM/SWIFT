@@ -2318,6 +2318,11 @@ void engine_step(struct engine *e) {
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
 
+    /* linear response neutrino contribution */
+    if (e->neutrino_properties->use_linear_response)
+      renderer_compute(e->cosmology, e->neutrino_properties,
+                       e->neutrino_renderer, e->mesh, e->verbose);
+
     /* Check whether we need to update the mesh time-step length */
     engine_recompute_displacement_constraint(e);
 
@@ -2732,8 +2737,8 @@ void engine_init(
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos, struct feedback_props *feedback,
-    struct rt_props *rt, struct pm_mesh *mesh,
+    const struct neutrino_props *neutrinos, struct neutrino_renderer *renderer,
+    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
@@ -2841,6 +2846,7 @@ void engine_init(
   e->black_holes_properties = black_holes;
   e->sink_properties = sinks;
   e->neutrino_properties = neutrinos;
+  e->neutrino_renderer = renderer;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
@@ -3336,6 +3342,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
   neutrino_struct_dump(e->neutrino_properties, stream);
+  renderer_struct_dump(e->neutrino_renderer, stream);
   chemistry_struct_dump(e->chemistry, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
@@ -3469,6 +3476,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct neutrino_props *)malloc(sizeof(struct neutrino_props));
   neutrino_struct_restore(neutrino_properties, stream);
   e->neutrino_properties = neutrino_properties;
+
+  struct neutrino_renderer *neutrino_renderer =
+      (struct neutrino_renderer *)malloc(sizeof(struct neutrino_renderer));
+  renderer_struct_restore(neutrino_renderer, stream);
+  e->neutrino_renderer = neutrino_renderer;
 
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(
