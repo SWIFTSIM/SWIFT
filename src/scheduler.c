@@ -1008,8 +1008,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if ((cell_can_split_pair_gravity_task(ci) &&
-           cell_can_split_pair_gravity_task(cj))) {
+      if (cell_can_split_pair_gravity_task(ci) &&
+          cell_can_split_pair_gravity_task(cj)) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 
@@ -1056,8 +1056,10 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                      * non-symmetric PM calls (note we allow for 1% breathing
                      * space here) */
                     if (cell_can_use_pair_pm(cip, cjp, props, periodic, dim,
+                                             /*rebuild_data=*/1,
                                              /*buffer factor=*/0.99) &&
                         cell_can_use_pair_pm(cjp, cip, props, periodic, dim,
+                                             /*rebuild_data=*/1,
                                              /*buffer factor=*/0.99)) {
 
                       if (cip->nodeID == s->nodeID)

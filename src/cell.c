@@ -1471,7 +1471,8 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
 
 int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
                          const struct gravity_props *props, const int periodic,
-                         const double dim[3], const double fac) {
+                         const double dim[3], const int use_rebuild_data,
+                         const double fac) {
 
   /* Quick exit if cj contains only a single particle.
    * In this case, we can always approximate the interaction via M2P (i.e. P2P)
@@ -1487,7 +1488,17 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
 
   const struct gravity_tensors *multi_i = ci->grav.multipole;
   const struct gravity_tensors *multi_j = cj->grav.multipole;
-  const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+
+  double CoM_j[3];
+  if (use_rebuild_data) {
+    CoM_j[0] = multi_j->CoM_rebuild[0];
+    CoM_j[1] = multi_j->CoM_rebuild[1];
+    CoM_j[2] = multi_j->CoM_rebuild[2];
+  } else {
+    CoM_j[0] = multi_j->CoM[0];
+    CoM_j[1] = multi_j->CoM[1];
+    CoM_j[2] = multi_j->CoM[2];
+  }
 
   /* We need to find the closest point on the surface of ci to the multipole
    * in cj. */
