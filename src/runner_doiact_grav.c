@@ -2094,12 +2094,20 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
 
   const struct engine *e = r->e;
+    /* Some constants */
+    const int periodic = e->mesh->periodic;
+    const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
+                          (float)e->mesh->dim[2]};
+    const float r_s_inv = e->mesh->r_s_inv;
 
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
 
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e) || ci->nodeID != e->nodeID) return;
+
+  if (!cell_can_use_pair_pm(ci, cj, e->gravity_properties, periodic, /*buffer factor=*/1.0))
+    error("Use of PM not allowed in this cell!");
 
   if (ci->split) {
 
@@ -2111,12 +2119,6 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
     }
 
   } else {
-
-    /* Some constants */
-    const int periodic = e->mesh->periodic;
-    const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
-                          (float)e->mesh->dim[2]};
-    const float r_s_inv = e->mesh->r_s_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Early abort? */
@@ -2130,6 +2132,35 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
       error("cj->grav.multipole not drifted.");
 #endif
 
+    if (cj->grav.count == 1) {
+
+      const int gcount_i = ci->grav.count;
+      struct gpart* gparts_i = ci->grav.parts;
+      
+  /* Loop over sink particles */
+  for (int i = 0; i < gcount_i; ++i) {
+
+    //struct gpart *gpi = &gparts_i[i];
+
+      
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Update the interaction counter */
+    accumulate_inc_ll(&gparts_i[i].num_interacted);
+#endif
+    
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+    /* Update the p2p interaction counter */
+    accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
+    //accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
+    //accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
+    //accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
+#endif
+
+  }
+
+
+    } else {
+    
     /* Start by constructing particle caches */
 
     /* Cache to play with */
@@ -2185,6 +2216,7 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
 #ifndef SWIFT_TASKS_WITHOUT_ATOMICS
     if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
+  }
   }
 }
 
