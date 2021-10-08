@@ -1471,7 +1471,7 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
 
 int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
                          const struct gravity_props *props,
-                         const int periodic, const double fac) {
+                         const int periodic, const double dim[3], const double fac) {
 
   /* Quick exit if cj contains only a single particle.
    * In this case, we can always approximate the interaction via M2P (i.e. P2P)
@@ -1498,9 +1498,20 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
                             ci->loc[2] + ci->width[2] * 0.5}; /* z */
 
   /* Offset the CoM to the frame centred around the middle of the cube */
-  const double point[3] = {(CoM_j[0] - centre[0]),  /* x */
-                           (CoM_j[1] - centre[1]),  /* y */
-                           (CoM_j[2] - centre[2])}; /* z */
+  double point[3];
+  if (periodic) {
+
+    point[0] = nearest(CoM_j[0] - centre[0], dim[0]);
+    point[1] = nearest(CoM_j[1] - centre[1], dim[1]);
+    point[2] = nearest(CoM_j[2] - centre[2], dim[2]);
+    
+  } else {
+  
+    point[0] = CoM_j[0] - centre[0];
+    point[1] = CoM_j[1] - centre[1];
+    point[2] = CoM_j[2] - centre[2];
+
+  }
 
   const double dx = fabs(point[0]) - 0.5 * ci->width[0];
   const double dy = fabs(point[1]) - 0.5 * ci->width[1];

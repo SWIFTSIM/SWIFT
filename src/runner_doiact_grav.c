@@ -2106,7 +2106,7 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e) || ci->nodeID != e->nodeID) return;
 
-  if (!cell_can_use_pair_pm(ci, cj, e->gravity_properties, periodic, /*buffer factor=*/1.0))
+  if (!cell_can_use_pair_pm(ci, cj, e->gravity_properties, periodic, e->s->dim, /*buffer factor=*/1.0))
     error("Use of PM not allowed in this cell!");
 
   if (ci->split) {

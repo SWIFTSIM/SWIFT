@@ -926,6 +926,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
   const struct space *sp = s->space;
   struct engine *e = sp->e;
   const int periodic = sp->periodic;
+  const double dim[3] = {sp->dim[0], sp->dim[1], sp->dim[2]};
   const struct gravity_props *props = e->gravity_properties;
 
   /* Iterate on this task until we're done with it. */
@@ -1053,8 +1054,8 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
                     /* Let's try to interact these two cells via a pair of
                      * non-symmetric PM calls (note we allow for 1% breathing space here) */
-                    if (cell_can_use_pair_pm(cip, cjp, props, periodic, 0.99) &&
-                        cell_can_use_pair_pm(cjp, cip, props, periodic, 0.99)) {
+                    if (cell_can_use_pair_pm(cip, cjp, props, periodic, dim, 0.99) &&
+                        cell_can_use_pair_pm(cjp, cip, props, periodic, dim, 0.99)) {
 
                       if (cip->nodeID == s->nodeID)
                         scheduler_addtask(s, task_type_grav_pm,
