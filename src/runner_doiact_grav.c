@@ -2106,9 +2106,14 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e) || ci->nodeID != e->nodeID) return;
 
+  /* Do we need drifting first? */
+  if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
+
+#ifdef SWIFT_DEBUG_CHECKS
   if (!cell_can_use_pair_pm(ci, cj, e->gravity_properties, periodic, e->s->dim,
                             1, /*buffer factor=*/1.0))
     error("Use of PM not allowed in this cell!");
+#endif
 
   if (ci->split) {
 
