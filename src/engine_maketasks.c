@@ -2095,7 +2095,7 @@ void engine_link_gravity_tasks(struct engine *e) {
       if (ci_nodeID == nodeID) {
 
         /* init -----> gravity --> grav_down */
-        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+        scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
     }

@@ -1957,6 +1957,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
 
       if (ci_active && ci_nodeID == nodeID) {
         scheduler_activate(s, t);
+        cell_activate_drift_gpart(ci, s);
       }
 
     } else {

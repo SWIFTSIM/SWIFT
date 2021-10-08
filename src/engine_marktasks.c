@@ -1312,7 +1312,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_grav_pm) {
 
       /* Local pointers. */
-      const struct cell *ci = t->ci;
+      struct cell *ci = t->ci;
 #ifdef WITH_MPI
       const int ci_nodeID = ci->nodeID;
 #else
@@ -1322,6 +1322,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       if (ci_active_gravity && ci_nodeID == nodeID) {
         scheduler_activate(s, t);
+        cell_activate_drift_gpart(ci, s);
       }
     }
 
