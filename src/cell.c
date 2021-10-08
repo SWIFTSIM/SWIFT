@@ -1471,7 +1471,7 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
 
 int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
                          const struct gravity_props *props,
-                         const int periodic) {
+                         const int periodic, const double fac) {
 
   /* Quick exit if cj contains only a single particle.
    * In this case, we can always approximate the interaction via M2P (i.e. P2P)
@@ -1518,7 +1518,7 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
   gp.epsilon = multi_i->m_pole.max_softening;
   gp.old_a_grav_norm = multi_i->m_pole.min_old_a_grav_norm;
 
-  return gravity_M2P_accept(props, &gp, multi_j, r2, periodic);
+  return gravity_M2P_accept(props, &gp, multi_j, r2 * fac, periodic);
 }
 
 int cell_grav_pair_use_mesh(const struct gravity_tensors *restrict multi_i,

@@ -1052,9 +1052,9 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     struct cell *cjp = cj->progeny[j];
 
                     /* Let's try to interact these two cells via a pair of
-                     * non-symmetric PM calls */
-                    if (cell_can_use_pair_pm(cip, cjp, props, periodic) &&
-                        cell_can_use_pair_pm(cip, cjp, props, periodic)) {
+                     * non-symmetric PM calls (note we allow for 1% breathing space here) */
+                    if (cell_can_use_pair_pm(cip, cjp, props, periodic, 0.99) &&
+                        cell_can_use_pair_pm(cjp, cip, props, periodic, 0.99)) {
 
                       if (cip->nodeID == s->nodeID)
                         scheduler_addtask(s, task_type_grav_pm,

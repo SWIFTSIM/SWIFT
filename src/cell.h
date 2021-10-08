@@ -633,7 +633,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
 int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
-                         const struct gravity_props *props, const int periodic);
+                         const struct gravity_props *props, const int periodic,
+			 const double fac);
 int cell_grav_pair_use_mesh(const struct gravity_tensors *const multi_i,
                             const struct gravity_tensors *const multi_j,
                             const struct pm_mesh *const mesh);
