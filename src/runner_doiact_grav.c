@@ -2094,11 +2094,11 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
                            struct cell *restrict cj) {
 
   const struct engine *e = r->e;
-    /* Some constants */
-    const int periodic = e->mesh->periodic;
-    const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
-                          (float)e->mesh->dim[2]};
-    const float r_s_inv = e->mesh->r_s_inv;
+  /* Some constants */
+  const int periodic = e->mesh->periodic;
+  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
+                        (float)e->mesh->dim[2]};
+  const float r_s_inv = e->mesh->r_s_inv;
 
   /* Clear the flags */
   runner_clear_grav_flags(ci, e);
@@ -2106,7 +2106,8 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e) || ci->nodeID != e->nodeID) return;
 
-  if (!cell_can_use_pair_pm(ci, cj, e->gravity_properties, periodic, e->s->dim, /*buffer factor=*/1.0))
+  if (!cell_can_use_pair_pm(ci, cj, e->gravity_properties, periodic, e->s->dim,
+                            /*buffer factor=*/1.0))
     error("Use of PM not allowed in this cell!");
 
   if (ci->split) {
@@ -2134,89 +2135,69 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
 
     if (cj->grav.count == 1) {
 
+      /* We have one cheap cell on the RHS. Go P-P. */
+      runner_dopair_grav_pp_no_cache(r, ci, cj);
+
+    } else {
+
+      /* Start by constructing particle caches */
+
+      /* Cache to play with */
+      struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
+
+      /* Computed the padded counts */
       const int gcount_i = ci->grav.count;
-      struct gpart* gparts_i = ci->grav.parts;
-      
-  /* Loop over sink particles */
-  for (int i = 0; i < gcount_i; ++i) {
-
-    //struct gpart *gpi = &gparts_i[i];
-
-      
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Update the interaction counter */
-    accumulate_inc_ll(&gparts_i[i].num_interacted);
-#endif
-    
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    /* Update the p2p interaction counter */
-    accumulate_inc_ll(&gparts_i[i].num_interacted_p2p);
-    //accumulate_add_f(&gparts_i[i].a_grav_p2p[0], a_x);
-    //accumulate_add_f(&gparts_i[i].a_grav_p2p[1], a_y);
-    //accumulate_add_f(&gparts_i[i].a_grav_p2p[2], a_z);
-#endif
-
-  }
-
-
-    } else {
-    
-    /* Start by constructing particle caches */
-
-    /* Cache to play with */
-    struct gravity_cache *const ci_cache = &r->ci_gravity_cache;
-
-    /* Computed the padded counts */
-    const int gcount_i = ci->grav.count;
-    const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
+      const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Check that we fit in cache */
-    if (gcount_i > ci_cache->count)
-      error("Not enough space in the cache! gcount_i=%d", gcount_i);
+      /* Check that we fit in cache */
+      if (gcount_i > ci_cache->count)
+        error("Not enough space in the cache! gcount_i=%d", gcount_i);
 #endif
 
-    /* Recover the multipole info and the CoM locations */
-    const struct multipole *multi_j = &cj->grav.multipole->m_pole;
-    const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
-                            (float)(cj->grav.multipole->CoM[1]),
-                            (float)(cj->grav.multipole->CoM[2])};
+      /* Recover the multipole info and the CoM locations */
+      const struct multipole *multi_j = &cj->grav.multipole->m_pole;
+      const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
+                              (float)(cj->grav.multipole->CoM[1]),
+                              (float)(cj->grav.multipole->CoM[2])};
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cj->grav.count == 1)
-      error("Constructing cache for M2P interaction with multipole of size 0!");
+      if (cj->grav.count == 1)
+        error(
+            "Constructing cache for M2P interaction with multipole of size 0!");
 #endif
 
-    /* Fill the cache */
-    gravity_cache_populate_all_mpole(
-        e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
-        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties);
+      /* Fill the cache */
+      gravity_cache_populate_all_mpole(
+          e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
+          gcount_padded_i, ci, CoM_j, cj->grav.multipole,
+          e->gravity_properties);
 
-    /* Can we use the Newtonian version or do we need the truncated one ? */
-    if (!periodic) {
+      /* Can we use the Newtonian version or do we need the truncated one ? */
+      if (!periodic) {
 
-      runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                 periodic, dim, e, ci->grav.parts, gcount_i,
-                                 cj);
+        runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
+                                   periodic, dim, e, ci->grav.parts, gcount_i,
+                                   cj);
 
-    } else {
+      } else {
 
-      runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                      dim, r_s_inv, e, ci->grav.parts, gcount_i,
-                                      cj);
+        runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
+                                        multi_j, dim, r_s_inv, e,
+                                        ci->grav.parts, gcount_i, cj);
+      }
+
+      /* Write back to the particles */
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+      lock_lock(&ci->grav.plock);
+#endif
+
+      gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
+
+#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
+      if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
+#endif
     }
-
-    /* Write back to the particles */
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    lock_lock(&ci->grav.plock);
-#endif
-
-    gravity_cache_write_back(ci_cache, ci->grav.parts, gcount_i);
-
-#ifndef SWIFT_TASKS_WITHOUT_ATOMICS
-    if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
-#endif
-  }
   }
 }
 
