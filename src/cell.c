@@ -1539,7 +1539,8 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
   gp.epsilon = multi_i->m_pole.max_softening;
   gp.old_a_grav_norm = multi_i->m_pole.min_old_a_grav_norm;
 
-  return gravity_M2P_accept(props, &gp, multi_j, r2 * fac * fac, periodic);
+  return gravity_M2P_accept(props, &gp, multi_j, r2 * fac * fac,
+                            /*allow_zero_size=*/0, periodic);
 }
 
 int cell_grav_pair_use_mesh(const struct gravity_tensors *restrict multi_i,

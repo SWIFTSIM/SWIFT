@@ -202,10 +202,13 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
  * @param B The gravity tensors that act as a source.
  * @param r2 The square of the distance between pa and the centres of mass of B.
  * @param periodic Are we using periodic BCs?
+ * @param allow_zero_size Are we allowing 0-sized m-poles? (i.e. use P2M where
+ * P2P would be cheaper)
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const struct gravity_props *props, const struct gpart *pa,
-    const struct gravity_tensors *B, const float r2, const int periodic) {
+    const struct gravity_tensors *B, const float r2, const int periodic,
+    const int allow_zero_size) {
 
   /* Order of the expansion */
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
@@ -218,7 +221,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
       max(B->m_pole.max_softening, gravity_get_softening(pa, props));
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (rho_B == 0.) error("Size of multipole B is 0!");
+  if (!allow_zero_size && rho_B == 0.) error("Size of multipole B is 0!");
 #endif
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */

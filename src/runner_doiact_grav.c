@@ -238,8 +238,9 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
 
     /* Can we use the Mulipole here? */
-    if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
-                                           /*periodic=*/1)) {
+    if (gcount_j > 1 &&
+        gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
+                           /*allow_0_size=*/0, /*periodic=*/1)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -435,8 +436,9 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
 
     /* Can we use the Mulipole here? */
-    if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
-                                           /*periodic=*/1)) {
+    if (gcount_j > 1 &&
+        gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
+                           /*allow_zero_size=*/0, /*periodic=*/1)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -993,7 +995,7 @@ static INLINE void runner_dopair_grav_pm_full(
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
-                            cj->grav.multipole, r2 * 1.01, periodic))
+                            cj->grav.multipole, r2 * 1.01, 0, periodic))
       error("use_mpole[i] set when M2P accept fails");
 #endif
 
@@ -1142,7 +1144,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
-                            cj->grav.multipole, r2 * 1.01, /*periodic=*/1))
+                            cj->grav.multipole, r2 * 1.01, 0, /*periodic=*/1))
       error("use_mpole[i] set when M2P accept fails");
 #endif
 
@@ -2109,12 +2111,7 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
   /* Do we need drifting first? */
   if (cj->grav.ti_old_multipole < e->ti_current) cell_drift_multipole(cj, e);
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (!cell_can_use_pair_pm(ci, cj, e->gravity_properties, periodic, e->s->dim,
-                            1, /*buffer factor=*/1.0))
-    error("Use of PM not allowed in this cell!");
-#endif
-
+  /* Should we recurse? */
   if (ci->split) {
 
     /* Recurse? */
@@ -2125,6 +2122,19 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
     }
 
   } else {
+
+    /* If we are not at a leaf level, we could maybe gain some
+     * accuracy by recusring on the 'j' side. Let's try that... */
+    if (cj->split && !cell_can_use_pair_pm(
+                         ci, cj, e->gravity_properties, periodic, e->s->dim,
+                         /*allow_zero_size=*/1, /*buffer factor=*/1.0)) {
+
+      for (int k = 0; k < 8; ++k) {
+        if (cj->progeny[k] != NULL) {
+          runner_dopair_grav_pm(r, ci, cj->progeny[k]);
+        }
+      }
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Early abort? */
@@ -2158,11 +2168,6 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
     const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
                             (float)(cj->grav.multipole->CoM[1]),
                             (float)(cj->grav.multipole->CoM[2])};
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cj->grav.count == 1)
-      error("Constructing cache for M2P interaction with multipole of size 0!");
-#endif
 
     /* Fill the cache */
     gravity_cache_populate_all_mpole(
