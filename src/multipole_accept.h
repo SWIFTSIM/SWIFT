@@ -203,7 +203,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
  * @param r2 The square of the distance between pa and the centres of mass of B.
  * @param periodic Are we using periodic BCs?
  * @param allow_zero_size Are we allowing 0-sized m-poles? (i.e. use P2M where
- * P2P would be cheaper)
+ * P2P would be cheaper, debugging)
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const struct gravity_props *props, const struct gpart *pa,

@@ -240,7 +240,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     /* Can we use the Mulipole here? */
     if (gcount_j > 1 &&
         gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
-                           /*allow_0_size=*/0, /*periodic=*/1)) {
+                           /*periodic=*/1, /*allow_0_size=*/0)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -438,7 +438,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     /* Can we use the Mulipole here? */
     if (gcount_j > 1 &&
         gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
-                           /*allow_zero_size=*/0, /*periodic=*/1)) {
+                           /*periodic=*/1, /*allow_zero_size=*/0)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -906,13 +906,14 @@ static INLINE void runner_dopair_grav_pp_truncated(
  * @param gcount_i The number of particles in the cell i (for debugging checks
  * only).
  * @param cj The #cell j (for debugging checks only).
+ * @param check Shall we check that the m-pole can be used? (debugging)
  */
 static INLINE void runner_dopair_grav_pm_full(
     struct gravity_cache *ci_cache, const int gcount_padded_i,
     const float CoM_j[3], const struct multipole *restrict multi_j,
     const int periodic, const float dim[3], const struct engine *restrict e,
     struct gpart *restrict gparts_i, const int gcount_i,
-    const struct cell *restrict cj) {
+    const struct cell *restrict cj, const int check) {
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -994,8 +995,9 @@ static INLINE void runner_dopair_grav_pm_full(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
-                            cj->grav.multipole, r2 * 1.01, 0, periodic))
+    if (check && !gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
+                                     cj->grav.multipole, r2 * 1.01, periodic,
+                                     /*allow_zero_size=*/0))
       error("use_mpole[i] set when M2P accept fails");
 #endif
 
@@ -1052,13 +1054,14 @@ static INLINE void runner_dopair_grav_pm_full(
  * @param gcount_i The number of particles in the cell i (for debugging checks
  * only).
  * @param cj The #cell j (for debugging checks only).
+ * @param check Shall we check that the m-pole can be used? (debugging)
  */
 static INLINE void runner_dopair_grav_pm_truncated(
     struct gravity_cache *ci_cache, const int gcount_padded_i,
     const float CoM_j[3], const struct multipole *restrict multi_j,
     const float dim[3], const float r_s_inv, const struct engine *restrict e,
     struct gpart *restrict gparts_i, const int gcount_i,
-    const struct cell *restrict cj) {
+    const struct cell *restrict cj, const int check) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (!e->s->periodic)
@@ -1143,8 +1146,10 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
-                            cj->grav.multipole, r2 * 1.01, 0, /*periodic=*/1))
+    if (check &&
+        !gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
+                            cj->grav.multipole, r2 * 1.01, /*periodic=*/1,
+                            /*allow_zero_size=*/0))
       error("use_mpole[i] set when M2P accept fails");
 #endif
 
@@ -1299,7 +1304,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       if (allow_multipole_j)
         runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
                                    periodic, dim, e, ci->grav.parts, gcount_i,
-                                   cj);
+                                   cj, /*check=*/1);
     }
     if (cj_active && symmetric) {
 
@@ -1312,7 +1317,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       if (allow_multipole_i)
         runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
                                    periodic, dim, e, cj->grav.parts, gcount_j,
-                                   ci);
+                                   ci, /*check=*/1);
     }
 
   } else { /* Periodic BC */
@@ -1346,9 +1351,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Then the M2P */
         if (allow_multipole_j)
-          runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
-                                          multi_j, dim, r_s_inv, e,
-                                          ci->grav.parts, gcount_i, cj);
+          runner_dopair_grav_pm_truncated(
+              ci_cache, gcount_padded_i, CoM_j, multi_j, dim, r_s_inv, e,
+              ci->grav.parts, gcount_i, cj, /*check=*/1);
       }
       if (cj_active && symmetric) {
 
@@ -1359,9 +1364,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Then the M2P */
         if (allow_multipole_i)
-          runner_dopair_grav_pm_truncated(cj_cache, gcount_padded_j, CoM_i,
-                                          multi_i, dim, r_s_inv, e,
-                                          cj->grav.parts, gcount_j, ci);
+          runner_dopair_grav_pm_truncated(
+              cj_cache, gcount_padded_j, CoM_i, multi_i, dim, r_s_inv, e,
+              cj->grav.parts, gcount_j, ci, /*check=*/1);
       }
 
     } else {
@@ -1380,7 +1385,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         if (allow_multipole_j)
           runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
                                      periodic, dim, e, ci->grav.parts, gcount_i,
-                                     cj);
+                                     cj, /*check=*/1);
       }
       if (cj_active && symmetric) {
 
@@ -1393,7 +1398,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         if (allow_multipole_i)
           runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
                                      periodic, dim, e, cj->grav.parts, gcount_j,
-                                     ci);
+                                     ci, /*check=*/1);
       }
     }
   }
@@ -2175,21 +2180,21 @@ void runner_dopair_grav_pm(struct runner *r, struct cell *restrict ci,
       /* Fill the cache */
       gravity_cache_populate_all_mpole(
           e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
-          gcount_padded_i, ci, CoM_j, cj->grav.multipole,
-          e->gravity_properties);
+          gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties,
+          /*check=*/0);
 
       /* Can we use the Newtonian version or do we need the truncated one ? */
       if (!periodic) {
 
         runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
                                    periodic, dim, e, ci->grav.parts, gcount_i,
-                                   cj);
+                                   cj, /*check=*/0);
 
       } else {
 
-        runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j,
-                                        multi_j, dim, r_s_inv, e,
-                                        ci->grav.parts, gcount_i, cj);
+        runner_dopair_grav_pm_truncated(
+            ci_cache, gcount_padded_i, CoM_j, multi_j, dim, r_s_inv, e,
+            ci->grav.parts, gcount_i, cj, /*check=*/0);
       }
 
       /* Write back to the particles */
@@ -2276,20 +2281,21 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     /* Fill the cache */
     gravity_cache_populate_all_mpole(
         e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
-        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties);
+        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties,
+        /*check=*/1);
 
     /* Can we use the Newtonian version or do we need the truncated one ? */
     if (!periodic) {
 
       runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                 periodic, dim, e, ci->grav.parts, gcount_i,
-                                 cj);
+                                 periodic, dim, e, ci->grav.parts, gcount_i, cj,
+                                 /*check=*/1);
 
     } else {
 
       runner_dopair_grav_pm_truncated(ci_cache, gcount_padded_i, CoM_j, multi_j,
                                       dim, r_s_inv, e, ci->grav.parts, gcount_i,
-                                      cj);
+                                      cj, /*check=*/1);
     }
 
     /* Write back to the particles */
