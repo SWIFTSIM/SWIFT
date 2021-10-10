@@ -1014,7 +1014,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
         const long long gcount_j = cj->grav.count;
 
         /* Are we deep enough that it's not worth the effort? */
-        if (0 && scheduler_dosub &&
+        if (scheduler_dosub &&
             gcount_i * gcount_j < ((long long)space_subsize_pair_grav)) {
 
           /* --> Do nothing. i.e. keep the gravity pair task as it is. */
