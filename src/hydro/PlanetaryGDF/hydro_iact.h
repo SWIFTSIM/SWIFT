@@ -127,14 +127,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->N_density++;
 #endif
 
-  /* Correction factors for kernel gradients */
-  pi->weighted_wcount += mj * r2 * wi_dx * r_inv;
-  pj->weighted_wcount += mi * r2 * wj_dx * r_inv;
-
 #ifdef PLANETARY_IMBALANCE
-  /* Use sqrt(w) from now on */ // sqrt/nosqrt variation (on/off)
-  //wi = sqrtf(wi);
-  //wj = sqrtf(wj);
 
   /* Add contribution to kernel averages */
   pi->sum_wij += wi*mj;
@@ -231,12 +224,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->N_density++;
 #endif
 
-  /* Correction factors for kernel gradients */
-  pi->weighted_wcount += mj * r2 * wi_dx * r_inv;
-
 #ifdef PLANETARY_IMBALANCE
-  /* Use sqrt(w) from now on */ // sqrt/nosqrt variation (on/off)
-  //wi = sqrtf(wi);
 
   /* Add contribution to kernel averages */
   pi->sum_wij += wi*mj;
@@ -277,9 +265,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   float wi, wj, wi_dx, wj_dx;
 
-  /* Get r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Compute kernel of pi. */
   const float hi_inv = 1.f / hi;
@@ -294,6 +282,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   /* Correction factors for kernel gradients */ 
   const float rho_inv_i = 1.f / pi->rho;
   const float rho_inv_j = 1.f / pj->rho;
+  
+  pi->weighted_wcount += pj->mass * r2 * wi_dx * r_inv;
+  pj->weighted_wcount += pi->mass * r2 * wj_dx * r_inv;
 
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
@@ -332,10 +323,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   float wi, wi_dx;
 
-  /* Get r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
+  /* Compute kernel of pi. */
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
   kernel_deval(ui, &wi, &wi_dx);
@@ -344,6 +336,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   const float rho_inv_j = 1.f / pj->rho;
 
+  pi->weighted_wcount += pj->mass * r2 * wi_dx * r_inv;
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
 
 #ifdef PLANETARY_IMBALANCE
@@ -443,6 +436,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float sph_acc_term =
       (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
 
+  // Debug
+  /*if (pi->id == 1526793){ 
+  FILE *fp;
+  fp = fopen("./picle_history_iact_1526793.txt", "a");
+  fprintf(fp,
+      "%lld, %.7g, %.7g, %.7g, %.7g, "
+      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, "
+      "%.7g, %.7g, %.7g, %.7g\n",
+      pj->id, pressurei, pressurej, r_inv, kernel_gradient,
+      pi->rho, pj->rho, mj*sph_acc_term*dx[0], mj*sph_acc_term*dx[1], mj, dx[0], dx[1],
+      pi->f_gdf, pj->f_gdf, wi_dr, wj_dr);
+  fclose(fp);
+  }*/
+
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
 
@@ -460,6 +467,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       pressurei * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
   const float sph_du_term_j =
       pressurej * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
+
+  /*if (abs(sph_du_term_i*mj) > 1E+05 && pi->mat_id == 100){
+  printf(
+    "du_term_i: %.7g\n"
+    "dvdr, r_inv, kernel: %.7g, %.7g, %.7g\n"
+    "u_i, P_i, rho_i, mat_id_i, u_j, P_j, rho_j, mat_id_j:\n"
+    "%.7g, %.7g, %.7g %d, %.7g, %.7g, %.7g, %d\n",
+    sph_du_term_i*mj, dvdr, r_inv, kernel_gradient,
+    pi->u, pressurei, rhoi, pi->mat_id,
+    pj->u, pressurej, rhoj, pj->mat_id);
+
+  }*/
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;
@@ -576,6 +595,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* SPH acceleration term */
   const float sph_acc_term =
       (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
+
+  // Debug
+  /*if (pi->id == 1526793){ 
+  FILE *fp;
+  fp = fopen("./picle_history_iact_1526793.txt", "a");
+  fprintf(fp,
+      "%lld, %.7g, %.7g, %.7g, %.7g, "
+      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, "
+      "%.7g, %.7g, %.7g, %.7g\n",
+      pj->id, pressurei, pressurej, r_inv, kernel_gradient,
+      pi->rho, pj->rho, mj*sph_acc_term*dx[0], mj*sph_acc_term*dx[1], mj, dx[0], dx[1],
+      pi->f_gdf, pj->f_gdf, wi_dr, wj_dr);
+  fclose(fp);
+  }*/
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;

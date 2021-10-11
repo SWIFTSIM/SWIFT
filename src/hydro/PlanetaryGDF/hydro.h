@@ -47,7 +47,7 @@
 #include "kernel_hydro.h"
 #include "minmax.h"
 #include "math.h"
-
+#include <stdio.h>
 /*
  * Note: Define PLANETARY_SPH_NO_BALSARA to disable the Balsara (1995) switch
  * for the artificial viscosity and use the vanilla Monaghan (1992) instead.
@@ -448,6 +448,22 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
 
+  // Debug
+  /*if (p->id == 1526793){
+  const float R_earth = 6371000.f;
+  FILE *fp;
+  fp = fopen("./picle_history_1526793.txt", "a");
+  fprintf(fp,
+      "%lld, %.7g, %.7g, %.7g, %.7g, "
+      "%.7g, %.7g, %.7g, %.7g, %.7g, %d, "
+      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g\n",
+      p->id, p->x[0]/R_earth, p->x[1]/R_earth, p->v[0]/R_earth, p->v[1]/R_earth, p->mass,
+      p->u, p->force.pressure, p->rho, p->h, p->mat_id,
+      dt_cfl, p->force.v_sig, p->u_dt, p->f_gdf,
+      p->weighted_wcount, p->weighted_neighbour_wcount);
+  fclose(fp);
+  }*/
+
   return dt_cfl;
 }
 
@@ -579,17 +595,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->I *= h_inv; 
   p->I /= p->sum_wij;
 
-  /* Define alpha depending on kernel and eta=1.2348 */ // sqrt variation
-/*#ifdef CUBIC_SPLINE_KERNEL
-  const float alpha = 4.9f;
-#endif
-#ifdef WENDLAND_C6_KERNEL
-  const float alpha = 4.5f;
-#endif
-  p->I *= alpha;
-#endif
-*/
-
   /* Define alpha depending on kernel and eta=1.2348 */ // nosqrt variation
 #ifdef CUBIC_SPLINE_KERNEL
   const float alpha = 7.5f;
@@ -716,12 +721,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->sum_wij_exp_P += p->P * kernel_root * expf(-p->I*p->I);
   p->sum_wij_exp_T += p->T * kernel_root * expf(-p->I*p->I);
 
-  /* compute minimum SPH density */
+  /* compute minimum SPH quantities */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
-   
+  const float P_min = gas_pressure_from_internal_energy(rho_min, p->u, p->mat_id);
+  const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
+ 
   /* Bullet proof */
   if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->sum_wij_exp_T > 0.f){
 	  /* End computation */
@@ -732,9 +739,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 	  float P_new = 0.f;
 	  P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
 
+          if (P_new < P_min){
+            P_new = P_min;
+          }
+
 	  /* Compute new T */
 	  float T_new = 0.f;
 	  T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
+          
+          if (T_new < T_min){
+            T_new = T_min;
+          }
 
 	  /* Compute new density */
 	  float rho_new =
@@ -742,8 +757,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 	 
 	  /* Ensure new density is not lower than minimum SPH density */
 	  if (rho_new < rho_min){
-            const float P_min = gas_pressure_from_internal_energy(rho_min, p->u, p->mat_id);
-            const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
 	    p->rho = rho_min;
             p->P = P_min;
             p->T = T_min;
