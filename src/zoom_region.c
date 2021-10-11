@@ -1386,6 +1386,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 	int periodic = s->periodic;
 
+	message("periodic=%d zoom_cell_offset=%d", periodic, zoom_cell_offset)
+
 	/* Get some info about the physics */
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
 	const double max_mesh_dist = e->mesh->r_cut_max;
@@ -1434,8 +1436,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 	/* Loop through the elements, which are just byte offsets from NULL. */
 	for (int ind = 0; ind < num_elements; ind++) {
-
-		periodic = s->periodic;
 
 		/* Get the cell index. */
 		const int cid = (size_t)(map_data) + ind;
@@ -1494,6 +1494,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 					/* Get the cell ID. */
 					int cjd = cell_getid(cdim, iii, jjj, kkk);
+					message("cid=%d cid_with_offset=%d cjd=%d cjd_with_offset=%d ii,jj,kk=%d %d %d i + ii,j + jj,k + kk=%d %d %d iii,jjj,kkk=%d %d %d", cid, cid_with_offset, cjd, cjd + zoom_cell_offset, ii, jj, kk, i + ii, j + jj, k + kk, iii, jjj, kkk)
 					if (cid >= zoom_cell_offset) {
 						cjd += zoom_cell_offset;
 					}
@@ -1688,8 +1689,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		/* For the zoom cells we need to find all natural cell neighbours */
 		if (ci->tl_cell_type == zoom_tl_cell) {
 
-			periodic = 0;
-
 			/* Loop over all its neighbours in range. */
 			for (int ii = -natural_delta_m; ii <= natural_delta_p; ii++) {
 				int nat_iii = natural_i + ii;
@@ -1706,6 +1705,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 						/* Get the cell ID. */
 						int nat_cjd = cell_getid(cdim, nat_iii, nat_jjj, nat_kkk);
+						message("cid=%d cid_with_offset=%d nat_cjd=%d ii,jj,kk=%d %d %d natural_i + ii,natural_j + jj,natural_k + kk=%d %d %d nat_iii,nat_jjj,nat_kkk=%d %d %d", cid, cid_with_offset, nat_cjd, ii, jj, kk, natural_i + ii, natural_j + jj, natural_k + kk, nat_iii, nat_jjj, nat_kkk)
 
 						struct cell *nat_cj = &cells[nat_cjd];
 
