@@ -1386,7 +1386,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 	int periodic = s->periodic;
 
-	message("periodic=%d zoom_cell_offset=%d", periodic, zoom_cell_offset)
+	message("periodic=%d zoom_cell_offset=%d", periodic, zoom_cell_offset);
 
 	/* Get some info about the physics */
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
