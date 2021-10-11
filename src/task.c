@@ -1348,16 +1348,22 @@ void task_free_mpi_comms(void) {
 #endif
 
 void task_dump_all_dependencies(const struct task *parent,
-                                const struct task *link, FILE *file,
-                                ticks tic_step) {
+                                const struct task *link,
+                                const struct task *offset, FILE *file,
+                                ticks tic_step, int rank) {
   for (int k = 0; k < parent->nr_unlock_tasks; ++k) {
     struct task *child = parent->unlock_tasks[k];
     if (!child->implicit) {
       if (child->tic > tic_step) {
-        fprintf(file, " %p %p\n", link, child);
+        if (rank == -1) {
+          fprintf(file, " %li %li\n", (link - offset), (child - offset));
+        } else {
+          fprintf(file, " %i %li %li\n", rank, (link - offset),
+                  (child - offset));
+        }
       }
     } else {
-      task_dump_all_dependencies(child, link, file, tic_step);
+      task_dump_all_dependencies(child, link, offset, file, tic_step, rank);
     }
   }
 }
@@ -1388,11 +1394,18 @@ void task_dump_all(struct engine *e, int step) {
   char dumpfile[35];
   snprintf(dumpfile, sizeof(dumpfile), "thread_info_MPI-step%d.dat", step);
   FILE *file_thread;
+  char graphfile[32];
+  snprintf(graphfile, sizeof(graphfile), "task_graph_MPI-step%d.dat", step);
+  FILE *file_graph;
   if (engine_rank == 0) {
     file_thread = fopen(dumpfile, "w");
     if (file_thread == NULL)
       error("Could not create/erase file '%s'.", dumpfile);
     fclose(file_thread);
+    file_graph = fopen(graphfile, "w");
+    if (file_graph == NULL)
+      error("Could not create/erase file '%s'.", graphfile);
+    fclose(file_graph);
   }
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1412,16 +1425,17 @@ void task_dump_all(struct engine *e, int step) {
 
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
-      fprintf(file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld\n",
-              engine_rank, (long long int)e->tic_step,
-              (long long int)e->toc_step, e->updates, e->g_updates,
-              e->s_updates, cpufreq);
+      fprintf(
+          file_thread, " %03d 0 0 0 0 %lld %lld %lld %lld %lld 0 0 %lld %i\n",
+          engine_rank, (long long int)e->tic_step, (long long int)e->toc_step,
+          e->updates, e->g_updates, e->s_updates, cpufreq, -1);
       int count = 0;
       for (int l = 0; l < e->sched.nr_tasks; l++) {
         if (!e->sched.tasks[l].implicit &&
             e->sched.tasks[l].tic > e->tic_step) {
           fprintf(
-              file_thread, " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i\n",
+              file_thread,
+              " %03i %i %i %i %i %lli %lli %i %i %i %i %lli %i %i\n",
               engine_rank, e->sched.tasks[l].rid, e->sched.tasks[l].type,
               e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
               (long long int)e->sched.tasks[l].tic,
@@ -1434,11 +1448,25 @@ void task_dump_all(struct engine *e, int step) {
                                              : 0,
               (e->sched.tasks[l].cj != NULL) ? e->sched.tasks[l].cj->grav.count
                                              : 0,
-              e->sched.tasks[l].flags, e->sched.tasks[l].sid);
+              e->sched.tasks[l].flags, e->sched.tasks[l].sid, l);
         }
         count++;
       }
       fclose(file_thread);
+
+      file_graph = fopen(graphfile, "a");
+      if (file_graph == NULL)
+        error("Could not open file '%s' for writing.", graphfile);
+      for (int l = 0; l < e->sched.nr_tasks; l++) {
+        if (!e->sched.tasks[l].implicit &&
+            e->sched.tasks[l].tic > e->tic_step) {
+          /* make a list of all direct and indirect dependencies of this task */
+          task_dump_all_dependencies(&(e->sched.tasks[l]), &(e->sched.tasks[l]),
+                                     e->sched.tasks, file_graph, e->tic_step,
+                                     engine_rank);
+        }
+      }
+      fclose(file_graph);
     }
 
     /* And we wait for all to synchronize. */
@@ -1455,14 +1483,14 @@ void task_dump_all(struct engine *e, int step) {
 
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
-  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld\n", -2,
+  fprintf(file_thread, " %d %d %d %d %lld %lld %lld %lld %lld %d %lld %d\n", -2,
           -1, -1, 1, (unsigned long long)e->tic_step,
           (unsigned long long)e->toc_step, e->updates, e->g_updates,
-          e->s_updates, 0, cpufreq);
+          e->s_updates, 0, cpufreq, -1);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
       fprintf(
-          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i\n",
+          file_thread, " %i %i %i %i %lli %lli %i %i %i %i %i %i\n",
           e->sched.tasks[l].rid, e->sched.tasks[l].type,
           e->sched.tasks[l].subtype, (e->sched.tasks[l].cj == NULL),
           (unsigned long long)e->sched.tasks[l].tic,
@@ -1473,32 +1501,24 @@ void task_dump_all(struct engine *e, int step) {
                                          : e->sched.tasks[l].cj->hydro.count,
           (e->sched.tasks[l].ci == NULL) ? 0 : e->sched.tasks[l].ci->grav.count,
           (e->sched.tasks[l].cj == NULL) ? 0 : e->sched.tasks[l].cj->grav.count,
-          e->sched.tasks[l].sid);
+          e->sched.tasks[l].sid, l);
     }
   }
   fclose(file_thread);
 
-  char taskfile[32];
-  snprintf(taskfile, sizeof(taskfile), "task_line-step%d.dat", step);
-  FILE *file_tline;
-  file_tline = fopen(taskfile, "w");
   char graphfile[32];
   snprintf(graphfile, sizeof(graphfile), "task_graph-step%d.dat", step);
   FILE *file_graph;
   file_graph = fopen(graphfile, "w");
-  int linenr = 0;
+  if (file_graph == NULL)
+    error("Could not open file '%s' for writing.", graphfile);
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
-      /* add a line that links this task pointer to an info line in the other
-         file */
-      fprintf(file_tline, " %p %i\n", &(e->sched.tasks[l]), linenr);
-      ++linenr;
       /* make a list of all direct and indirect dependencies of this task */
       task_dump_all_dependencies(&(e->sched.tasks[l]), &(e->sched.tasks[l]),
-                                 file_graph, e->tic_step);
+                                 e->sched.tasks, file_graph, e->tic_step, -1);
     }
   }
-  fclose(file_tline);
   fclose(file_graph);
 #endif  // WITH_MPI
 
