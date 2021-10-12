@@ -263,7 +263,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 #ifdef SWIFT_DEBUG_CHECKS
   if (age < 0.f) error("Negative age for a star.");
 
-  if (sp->count_since_last_enrichment != 0)
+  if (sp->count_since_last_enrichment != 0 && engine_current_step > 0)
     error("Computing feedback on a star that should not");
 #endif
 
