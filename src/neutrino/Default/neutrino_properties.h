@@ -60,6 +60,9 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
       parser_get_opt_param_longlong(params, "Neutrino:neutrino_seed", 0);
   np->use_linear_response =
       parser_get_opt_param_int(params, "Neutrino:use_linear_response", 0);
+
+  if (np->use_delta_f && np->use_linear_response)
+    error("Cannot use two neutrino implementations concurrently.");
 }
 
 /**
