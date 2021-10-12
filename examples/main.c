@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct sink_props sink_properties;
   struct neutrino_props neutrino_properties;
-  struct neutrino_renderer renderer;
+  struct neutrino_mesh neutrino_mesh;
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
@@ -1274,12 +1274,6 @@ int main(int argc, char *argv[]) {
       neutrino_props_init(&neutrino_properties, &prog_const, &us, params,
                           &cosmo);
 
-    /* Initialize the neutrino renderer if used */
-    bzero(&renderer, sizeof(struct neutrino_renderer));
-    if (neutrino_properties.use_linear_response)
-      renderer_init(params, &us, &prog_const, &cosmo, &neutrino_properties,
-                    &renderer);
-
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
@@ -1306,6 +1300,12 @@ int main(int argc, char *argv[]) {
           &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
           with_external_gravity, with_baryon_particles, with_DM_particles,
           with_neutrinos, with_DM_background_particles, periodic, s.dim);
+
+    /* Initialize the neutrino mesh if used */
+    bzero(&neutrino_mesh, sizeof(struct neutrino_mesh));
+    if (neutrino_properties.use_linear_response)
+      neutrino_mesh_init(params, &us, s.dim, &cosmo, &neutrino_properties,
+                         &gravity_properties, &neutrino_mesh, verbose);
 
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));
@@ -1429,7 +1429,7 @@ int main(int argc, char *argv[]) {
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &neutrino_properties,
-                &renderer, &feedback_properties, &rt_properties, &mesh,
+                &neutrino_mesh, &feedback_properties, &rt_properties, &mesh,
                 &potential, &cooling_func, &starform, &chemistry,
                 &fof_properties, &los_properties);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
@@ -1779,7 +1779,7 @@ int main(int argc, char *argv[]) {
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (e.neutrino_properties->use_linear_response)
-    renderer_clean(e.neutrino_renderer);
+    neutrino_mesh_clean(e.neutrino_mesh);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);

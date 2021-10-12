@@ -39,6 +39,8 @@
 #include "kernel_long_gravity.h"
 #include "mesh_gravity_mpi.h"
 #include "mesh_gravity_patch.h"
+#include "neutrino_properties.h"
+#include "neutrino_mesh.h"
 #include "part.h"
 #include "restart.h"
 #include "row_major_id.h"
@@ -735,6 +737,16 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
 
   tic = getticks();
 
+  /* Apply linear neutrino response to local slice of the MPI mesh */
+  if (s->e->neutrino_properties->use_linear_response)
+    neutrino_mesh_compute(s, mesh, tp, frho, verbose, local_0_start, local_n0);
+
+  if (verbose)
+    message("Applying neutrino response took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
   /* Carry out the reverse MPI Fourier transform */
   fftw_plan mpi_inverse_plan = fftw_mpi_plan_dft_c2r_3d(
       N, N, N, frho_slice, rho_slice, MPI_COMM_WORLD,
@@ -912,6 +924,17 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
 
   if (verbose)
     message("Applying Green function took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Apply linear neutrino response to mesh */
+  if (s->e->neutrino_properties->use_linear_response)
+    neutrino_mesh_compute(s, mesh, tp, frho, verbose, /*slice_offset=*/0,
+                          /*slice_width=*/N);
+
+  if (verbose)
+    message("Applying neutrino response took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();

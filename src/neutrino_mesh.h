@@ -16,13 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NEUTRINO_RENDERER_H
-#define SWIFT_NEUTRINO_RENDERER_H
+#ifndef SWIFT_NEUTRINO_MESH_H
+#define SWIFT_NEUTRINO_MESH_H
 
 /* Config parameters. */
 #include "../config.h"
 
 /* Select the correct neutrino model */
-#include "./neutrino/Default/renderer.h"
+#include "./neutrino/Default/neutrino_mesh.h"
 
-#endif /* SWIFT_NEUTRINO_PROPERTIES_H */
+#endif /* SWIFT_NEUTRINO_MESH_H */
