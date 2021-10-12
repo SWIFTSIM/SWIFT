@@ -586,15 +586,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   /* Compute norm sum_rij */
   float sum_rij_norm = 0.f;
-  sum_rij_norm += p->sum_rij[0]*p->sum_rij[0];
-  sum_rij_norm += p->sum_rij[1]*p->sum_rij[1];
-  sum_rij_norm += p->sum_rij[2]*p->sum_rij[2];
+  sum_rij_norm += p->sum_rij[0] * p->sum_rij[0] * h_inv * h_inv / p->sum_wij / p->sum_wij;
+  sum_rij_norm += p->sum_rij[1] * p->sum_rij[1] * h_inv * h_inv / p->sum_wij / p->sum_wij;
+  sum_rij_norm += p->sum_rij[2] * p->sum_rij[2] * h_inv * h_inv / p->sum_wij / p->sum_wij;
   p->I = sqrtf(sum_rij_norm);
    
-  /* End imbalance statistic computation */
-  p->I *= h_inv; 
-  p->I /= p->sum_wij;
-
   /* Define alpha depending on kernel and eta=1.2348 */ // nosqrt variation
 #ifdef CUBIC_SPLINE_KERNEL
   const float alpha = 7.5f;
