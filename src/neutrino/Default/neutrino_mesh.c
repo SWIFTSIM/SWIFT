@@ -133,7 +133,7 @@ void neutrino_mesh_init(struct swift_params *params,
   read_vector_length(h_file, z_name, &N_z);
   read_vector_length(h_file, k_name, &N_k);
 
-  /* The transfer function should be a square array of size (N_z, N_k) */
+  /* The transfer function should be a rank-2 array of size (N_z, N_k) */
   const hsize_t tf_size = N_z * N_k;
 
   /* Allocate temporary memory for the transfer functions */
@@ -183,7 +183,7 @@ void neutrino_mesh_init(struct swift_params *params,
   swift_free("delta_b", delta_b);
   swift_free("delta_ncdm", delta_ncdm);
 
-  /* Read the length unit assumed by transfer function file */
+  /* The length unit used by transfer function file */
   double UnitLengthCGS;
 
   /* Check if a Units group exists */
@@ -212,7 +212,7 @@ void neutrino_mesh_init(struct swift_params *params,
   /* Determine the range of wavenumbers needed for this simulation */
   const double boxlen = dim[0];
   const int mesh_size = gp->mesh_size;
-  const double k_margin = 1.1;
+  const double k_margin = 1.1;  // safety margin around the edges
   const double k_min = 2.0 * M_PI / boxlen / k_margin;
   const double k_max = sqrt(3.0) * k_min * mesh_size * k_margin * k_margin;
   const double k_unit = UnitLengthCGS / us->UnitLength_in_cgs;
@@ -266,7 +266,7 @@ void neutrino_mesh_init(struct swift_params *params,
     message("(a_min, a_max) = (%g, %g)", a_min, a_max);
   }
 
-  /* We will remap the data such that it just covers the required domain
+  /* We will remap the data such that it exactly covers the required domain
    * with a constant log spacing, allowing for faster interpolation.
    * We only use the slower GSL interpolation for the remapping. */
 
@@ -281,7 +281,7 @@ void neutrino_mesh_init(struct swift_params *params,
   const double delta_log_a = (log_a_max - log_a_min) / timestep_length;
   const double delta_log_k = (log_k_max - log_k_min) / wavenumber_length;
 
-  /* Store the remapped dimensions, spacing, and bounding values */
+  /* Store the remapped bounding values and log spacing */
   numesh->log_a_min = log_a_min;
   numesh->log_a_max = log_a_max;
   numesh->log_k_min = log_k_min;
@@ -307,7 +307,7 @@ void neutrino_mesh_init(struct swift_params *params,
     log_wavenumbers[i] = log(wavenumbers[i] * k_unit);
   }
 
-  /* Free the temporary buffers for the redshifts and wavenumbers */
+  /* Free the temporary buffers for the original redshifts and wavenumbers */
   swift_free("redshifts", redshifts);
   swift_free("wavenumbers", wavenumbers);
 
@@ -316,7 +316,7 @@ void neutrino_mesh_init(struct swift_params *params,
    * feed the transpose into spline2d_init. */
   const gsl_interp2d_type *T = gsl_interp2d_bilinear;
   gsl_spline2d *spline = gsl_spline2d_alloc(T, N_k, N_z);
-  gsl_interp_accel *z_acc = gsl_interp_accel_alloc();
+  gsl_interp_accel *a_acc = gsl_interp_accel_alloc();
   gsl_interp_accel *k_acc = gsl_interp_accel_alloc();
   gsl_spline2d_init(spline, log_wavenumbers, log_scale_factors, ncdm_over_cb,
                     N_k, N_z);
@@ -332,13 +332,13 @@ void neutrino_mesh_init(struct swift_params *params,
       double log_a = log_a_min + i * delta_log_a;
       double log_k = log_k_min + j * delta_log_k;
       numesh->ncdm_over_cb[N_k * i + j] =
-          gsl_spline2d_eval(spline, log_k, log_a, k_acc, z_acc);
+          gsl_spline2d_eval(spline, log_k, log_a, k_acc, a_acc);
     }
   }
 
   /* Clean up GSL interpolation */
   gsl_spline2d_free(spline);
-  gsl_interp_accel_free(z_acc);
+  gsl_interp_accel_free(a_acc);
   gsl_interp_accel_free(k_acc);
 
   /* Free the temporary buffers */
@@ -354,71 +354,25 @@ void neutrino_mesh_clean(struct neutrino_mesh *numesh) {
   swift_free("numesh.ncdm_over_cb", numesh->ncdm_over_cb);
 }
 
-/* Write binary boxes in HDF5 format */
-int writeGRF_H5(const double *box, int N, double boxlen, const char *fname) {
-  /* Create the hdf5 file */
-  hid_t h_file = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-
-  /* Create the Header group */
-  hid_t h_grp =
-      H5Gcreate(h_file, "/Header", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-  /* Create dataspace for BoxSize attribute */
-  const hsize_t arank = 1;
-  const hsize_t adims[1] = {3};  // 3D space
-  hid_t h_aspace = H5Screate_simple(arank, adims, NULL);
-
-  /* Create the BoxSize attribute and write the data */
-  hid_t h_attr =
-      H5Acreate1(h_grp, "BoxSize", H5T_NATIVE_DOUBLE, h_aspace, H5P_DEFAULT);
-  double boxsize[3] = {boxlen, boxlen, boxlen};
-  H5Awrite(h_attr, H5T_NATIVE_DOUBLE, boxsize);
-
-  /* Close the attribute, corresponding dataspace, and the Header group */
-  H5Aclose(h_attr);
-  H5Sclose(h_aspace);
-  H5Gclose(h_grp);
-
-  /* Create the Field group */
-  h_grp = H5Gcreate(h_file, "/Field", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-  /* Create dataspace for the field */
-  const hsize_t frank = 3;
-  const hsize_t fdims[3] = {N, N, N};  // 3D space
-  hid_t h_fspace = H5Screate_simple(frank, fdims, NULL);
-
-  /* Create the dataset for the field */
-  hid_t h_data = H5Dcreate(h_grp, "Field", H5T_NATIVE_DOUBLE, h_fspace,
-                           H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
-  /* Write the data */
-  H5Dwrite(h_data, H5T_NATIVE_DOUBLE, h_fspace, h_fspace, H5P_DEFAULT, box);
-
-  /* Close the dataset, corresponding dataspace, and the Field group */
-  H5Dclose(h_data);
-  H5Sclose(h_fspace);
-  H5Gclose(h_grp);
-
-  /* Close the file */
-  H5Fclose(h_file);
-
-  return 0;
-}
-
 /**
  * @brief Shared information about the neutrino mesh used by the threads.
  */
 struct neutrino_mesh_tp_data {
 
+  /* Mesh properties */
   int N;
   fftw_complex *frho;
-  double delta_k;
+  double boxlen;
   int slice_offset;
   int slice_width;
+
+  /* Interpolation properties */
   double inv_delta_log_k;
   double log_k_min;
   int a_index;
   double u_a;
+
+  /* Background and perturbed density ratios */
   double bg_density_ratio;
   double *ncdm_over_cb_arr;
 };
@@ -435,20 +389,23 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
 
   struct neutrino_mesh_tp_data *data = (struct neutrino_mesh_tp_data *)extra;
 
-  /* Unpack the array */
+  /* Unpack the mesh properties */
   fftw_complex *const frho = data->frho;
   const int N = data->N;
   const int N_half = N / 2;
-  const double delta_k = data->delta_k;
+  const double boxlen = boxlen;
+  const double delta_k = 2.0 * M_PI / data->boxlen;
 
-  /* Unpack the neutrino mesh properties */
+  /* Unpack the interpolation properties */
   const hsize_t a_index = data->a_index;
   const double u_a = data->u_a;
-  const double bg_density_ratio = data->bg_density_ratio;
-  const double *ncdm_over_cb_arr = data->ncdm_over_cb_arr;
-  const int N_k = wavenumber_length;
   const double inv_delta_log_k = data->inv_delta_log_k;
   const double log_k_min = data->log_k_min;
+  const int N_k = wavenumber_length;
+
+  /* Unpack the density ratios */
+  const double bg_density_ratio = data->bg_density_ratio;
+  const double *ncdm_over_cb_arr = data->ncdm_over_cb_arr;
 
   /* Find what slice of the full mesh is stored on this MPI rank */
   const int slice_offset = data->slice_offset;
@@ -478,10 +435,10 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
         const double u_k = log_k_steps - k_index;
 
         /* Retrieve the bounding values */
-        double T11 = ncdm_over_cb_arr[N_k * a_index + k_index];
-        double T21 = ncdm_over_cb_arr[N_k * a_index + k_index + 1];
-        double T12 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index];
-        double T22 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index + 1];
+        const double T11 = ncdm_over_cb_arr[N_k * a_index + k_index];
+        const double T21 = ncdm_over_cb_arr[N_k * a_index + k_index + 1];
+        const double T12 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index];
+        const double T22 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index + 1];
 
         /* Bilinear interpolation of the tranfer function ratio */
         double ncdm_over_cb = (1.0 - u_a) * ((1.0 - u_k) * T11 + u_k * T21) +
@@ -510,7 +467,6 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   /* Grid size */
   const int N = mesh->N;
   const double boxlen = mesh->dim[0];
-  const double delta_k = 2 * M_PI / boxlen;  // U_L^-1
 
   /* Calculate the background neutrino density at the present time */
   const double Omega_nu = cosmology_get_neutrino_density(c, c->a);
@@ -525,8 +481,7 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   const double log_k_min = numesh->log_k_min;
 
   /* Interpolate along the a-axis */
-  const double a = c->a;
-  const double log_a = log(a);
+  const double log_a = log(c->a);
   const double log_a_steps = (log_a - log_a_min) * inv_delta_log_a;
   int a_index = (int)log_a_steps;
   double u_a = log_a_steps - a_index;
@@ -544,7 +499,7 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   struct neutrino_mesh_tp_data data;
   data.frho = frho;
   data.N = N;
-  data.delta_k = delta_k;
+  data.boxlen = boxlen;
   data.slice_offset = slice_offset;
   data.slice_width = slice_width;
   data.inv_delta_log_k = inv_delta_log_k;
