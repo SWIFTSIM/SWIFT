@@ -102,7 +102,7 @@ void neutrino_mesh_init(struct swift_params *params,
   /* Do we need to do anything? */
   if (!np->use_linear_response) return;
 
-#ifndef HAVE_LIBGSL
+#ifdef HAVE_LIBGSL
 
   /* Parse file name parameter */
   char filename[PARSER_MAX_LINE_SIZE];
