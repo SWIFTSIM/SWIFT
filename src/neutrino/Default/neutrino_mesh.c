@@ -102,6 +102,8 @@ void neutrino_mesh_init(struct swift_params *params,
   /* Do we need to do anything? */
   if (!np->use_linear_response) return;
 
+#ifndef HAVE_LIBGSL
+
   /* Parse file name parameter */
   char filename[PARSER_MAX_LINE_SIZE];
   parser_get_param_string(params, "Neutrino:transfer_functions_filename",
@@ -343,6 +345,9 @@ void neutrino_mesh_init(struct swift_params *params,
   swift_free("log_scale_factors", log_scale_factors);
   swift_free("log_wavenumbers", log_wavenumbers);
   swift_free("ncdm_over_cb", ncdm_over_cb);
+#else
+  error("No GSL library found. Cannot remap the transfer functions.");
+#endif
 }
 
 void neutrino_mesh_clean(struct neutrino_mesh *numesh) {
