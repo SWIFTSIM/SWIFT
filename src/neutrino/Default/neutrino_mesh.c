@@ -22,8 +22,8 @@
 #include "parser.h"
 
 #ifdef HAVE_LIBGSL
-#include <gsl/gsl_math.h>
 #include <gsl/gsl_interp2d.h>
+#include <gsl/gsl_math.h>
 #include <gsl/gsl_spline2d.h>
 #endif
 
@@ -37,33 +37,33 @@ const hsize_t wavenumber_length = 10000;
 
 void read_vector_length(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
                         hsize_t *length) {
-                              
+
   /* Open the dataset */
   hid_t h_data = H5Dopen2(h_file, title, H5P_DEFAULT);
 
   /* Open the dataspace and fetch the dimensions */
   hid_t h_space = H5Dget_space(h_data);
-  
+
   /* Fetch the rank and size of the dataset */
   int ndims = H5Sget_simple_extent_ndims(h_space);
   hsize_t dims[ndims];
   H5Sget_simple_extent_dims(h_space, dims, NULL);
-  
+
   /* Close the dataspace */
   H5Sclose(h_space);
-    
+
   /* Verify that this is vector and return the length */
-  if (ndims != 1 || dims[0] <= 0) error("We expected a non-empty vector.");     
+  if (ndims != 1 || dims[0] <= 0) error("We expected a non-empty vector.");
   length[0] = dims[0];
 
   /* Close the dataset */
-  H5Dclose(h_data);                
+  H5Dclose(h_data);
 }
 
 void read_transfer_function(struct neutrino_mesh *numesh, hid_t h_file,
                             char title[PARSER_MAX_LINE_SIZE], double *dest,
                             hsize_t N_z, hsize_t N_k) {
-                              
+
   /* Open the dataset */
   hid_t h_data = H5Dopen2(h_file, title, H5P_DEFAULT);
 
@@ -72,27 +72,29 @@ void read_transfer_function(struct neutrino_mesh *numesh, hid_t h_file,
   int ndims = H5Sget_simple_extent_ndims(h_space);
   hsize_t dims[ndims];
   H5Sget_simple_extent_dims(h_space, dims, NULL);
-  
+
   /* Close the dataspace */
   H5Sclose(h_space);
-    
+
   /* Verify the dimensions */
-  if (ndims != 2) error("We expected a rank-2 tensor.");     
+  if (ndims != 2) error("We expected a rank-2 tensor.");
   if (dims[0] != N_z)
     error("Number of redshifts does not match array dimensions.");
   if (dims[1] != N_k)
     error("Number of wavenumbers does not match array dimensions.");
 
   /* Read out the data */
-  hid_t h_err = H5Dread(h_data, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, dest);
+  hid_t h_err =
+      H5Dread(h_data, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, dest);
   if (h_err < 0) error("Error reading dataset '%s'.\n", title);
-  
+
   /* Close the dataset */
-  H5Dclose(h_data);                
+  H5Dclose(h_data);
 }
 
-void neutrino_mesh_init(struct swift_params *params, const struct unit_system *us,
-                        const double dim[3], const struct cosmology *c,
+void neutrino_mesh_init(struct swift_params *params,
+                        const struct unit_system *us, const double dim[3],
+                        const struct cosmology *c,
                         const struct neutrino_props *np,
                         const struct gravity_props *gp,
                         struct neutrino_mesh *numesh, int verbose) {
@@ -102,8 +104,9 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
 
   /* Parse file name parameter */
   char filename[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "Neutrino:transfer_functions_filename", filename);
-  
+  parser_get_param_string(params, "Neutrino:transfer_functions_filename",
+                          filename);
+
   /* Titles of the redshift, wavenumber, and transfer functions datasets */
   char z_name[PARSER_MAX_LINE_SIZE];
   char k_name[PARSER_MAX_LINE_SIZE];
@@ -115,19 +118,19 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
   parser_get_param_string(params, "Neutrino:dataset_delta_cdm", d_cdm_name);
   parser_get_param_string(params, "Neutrino:dataset_delta_baryon", d_b_name);
   parser_get_param_string(params, "Neutrino:dataset_delta_nu", d_ncdm_name);
-  
+
   if (verbose) message("Reading transfer functions file '%s'", filename);
-  
+
   /* Open the hdf5 file */
   hid_t h_file = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
   hid_t h_data, h_err, h_status;
-  
+
   /* Obtain the number of redshifts and wavenumbers in the file */
-  hsize_t N_z; // redshifts
-  hsize_t N_k; // wavenumbers
+  hsize_t N_z;  // redshifts
+  hsize_t N_k;  // wavenumbers
   read_vector_length(h_file, z_name, &N_z);
   read_vector_length(h_file, k_name, &N_k);
-  
+
   /* The transfer function should be a square array of size (N_z, N_k) */
   const hsize_t tf_size = N_z * N_k;
 
@@ -136,23 +139,27 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
   double *delta_b;
   double *delta_ncdm;
   double *ncdm_over_cb;
-  if ((delta_cdm = (double *)swift_malloc("delta_cdm", sizeof(double) * tf_size)) == NULL)
+  if ((delta_cdm = (double *)swift_malloc("delta_cdm",
+                                          sizeof(double) * tf_size)) == NULL)
     error("Failed to allocate memory for delta_cdm.");
-  if ((delta_b = (double *)swift_malloc("delta_b", sizeof(double) * tf_size)) == NULL)
+  if ((delta_b = (double *)swift_malloc("delta_b", sizeof(double) * tf_size)) ==
+      NULL)
     error("Failed to allocate memory for delta_b.");
-  if ((delta_ncdm = (double *)swift_malloc("delta_ncdm", sizeof(double) * tf_size)) == NULL)
+  if ((delta_ncdm = (double *)swift_malloc("delta_ncdm",
+                                           sizeof(double) * tf_size)) == NULL)
     error("Failed to allocate memory for delta_ncdm.");
-  if ((ncdm_over_cb = (double *)swift_malloc("ncdm_over_cb", sizeof(double) * tf_size)) == NULL)
+  if ((ncdm_over_cb = (double *)swift_malloc("ncdm_over_cb",
+                                             sizeof(double) * tf_size)) == NULL)
     error("Failed to allocate memory for ncdm_over_cb.");
-          
+
   /* Read the necessary transfer functions */
   read_transfer_function(numesh, h_file, d_cdm_name, delta_cdm, N_z, N_k);
   read_transfer_function(numesh, h_file, d_b_name, delta_b, N_z, N_k);
   read_transfer_function(numesh, h_file, d_ncdm_name, delta_ncdm, N_z, N_k);
-    
+
   /* Compute relative cdm to cdm and baryon fraction */
   const double f_cdm = c->Omega_cdm / (c->Omega_cdm + c->Omega_b);
-  
+
   /* Compute the transfer function ratio */
   for (hsize_t i = 0; i < N_z; i++) {
     for (hsize_t j = 0; j < N_k; j++) {
@@ -160,15 +167,15 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
       double d_cdm = delta_cdm[N_k * i + j];
       double d_b = delta_b[N_k * i + j];
       double d_ncdm = delta_ncdm[N_k * i + j];
-  
+
       /* Weighted baryon-cdm density */
       double d_cb = f_cdm * d_cdm + (1.0 - f_cdm) * d_b;
-  
+
       /* Store the ratio */
       ncdm_over_cb[N_k * i + j] = d_ncdm / d_cb;
     }
   }
-  
+
   /* Free temporary transfer function memory */
   swift_free("delta_cdm", delta_cdm);
   swift_free("delta_b", delta_b);
@@ -178,28 +185,28 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
   double UnitLengthCGS;
 
   /* Check if a Units group exists */
-  h_status = H5Eset_auto1(NULL, NULL);  //turn off error printing
+  h_status = H5Eset_auto1(NULL, NULL);  // turn off error printing
   h_status = H5Gget_objinfo(h_file, "/Units", 0, NULL);
-  
+
   /* If the group exists */
   if (h_status == 0) {
-      hid_t h_attr, h_grp;
-        
-      /* Open the Units group */
-      h_grp = H5Gopen(h_file, "Units", H5P_DEFAULT);
-        
-      /* Read the length unit in CGS units */
-      h_attr = H5Aopen(h_grp, "Unit length in cgs (U_L)", H5P_DEFAULT);
-      h_err = H5Aread(h_attr, H5T_NATIVE_DOUBLE, &UnitLengthCGS);
-      H5Aclose(h_attr);
-      
-      /* Close the Units grou */
-      H5Gclose(h_grp);
+    hid_t h_attr, h_grp;
+
+    /* Open the Units group */
+    h_grp = H5Gopen(h_file, "Units", H5P_DEFAULT);
+
+    /* Read the length unit in CGS units */
+    h_attr = H5Aopen(h_grp, "Unit length in cgs (U_L)", H5P_DEFAULT);
+    h_err = H5Aread(h_attr, H5T_NATIVE_DOUBLE, &UnitLengthCGS);
+    H5Aclose(h_attr);
+
+    /* Close the Units grou */
+    H5Gclose(h_grp);
   } else {
     /* Assume the internal unit system */
     UnitLengthCGS = us->UnitLength_in_cgs;
   }
-  
+
   /* Determine the range of wavenumbers needed for this simulation */
   const double boxlen = dim[0];
   const int mesh_size = gp->mesh_size;
@@ -213,32 +220,37 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
   const double a_max = c->a_end;
   const double z_max = 1.0 / a_min - 1.0;
   const double z_min = 1.0 / a_max - 1.0;
-  
+
   /* Allocate temporary memory for the redshifts and wavenumbers */
   double *redshifts;
   double *wavenumbers;
-  if ((redshifts = (double *)swift_malloc("redshifts", sizeof(double) * N_z)) == NULL)
+  if ((redshifts = (double *)swift_malloc("redshifts", sizeof(double) * N_z)) ==
+      NULL)
     error("Failed to allocate memory for redshifts.");
-  if ((wavenumbers = (double *)swift_malloc("wavenumbers", sizeof(double) * N_k)) == NULL)
+  if ((wavenumbers =
+           (double *)swift_malloc("wavenumbers", sizeof(double) * N_k)) == NULL)
     error("Failed to allocate memory for wavenumbers.");
 
-  /* Open the redshifts dataset, read the data, then close it */  
+  /* Open the redshifts dataset, read the data, then close it */
   h_data = H5Dopen2(h_file, z_name, H5P_DEFAULT);
-  h_err = H5Dread(h_data, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, redshifts);
+  h_err = H5Dread(h_data, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                  redshifts);
   if (h_err < 0) error("Error reading dataset '%s'.\n", z_name);
   H5Dclose(h_data);
-  
-  /* Open the wavenumbers dataset, read the data, then close it */  
+
+  /* Open the wavenumbers dataset, read the data, then close it */
   h_data = H5Dopen2(h_file, k_name, H5P_DEFAULT);
-  h_err = H5Dread(h_data, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, wavenumbers);
+  h_err = H5Dread(h_data, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+                  wavenumbers);
   if (h_err < 0) error("Error reading dataset '%s'.\n", k_name);
   H5Dclose(h_data);
 
   /* Ensure that the data is ascending in time and wavenumber */
   for (hsize_t i = 1; i < N_z; i++)
-    if (redshifts[i] > redshifts[i-1]) error("Redshifts not descending.");
+    if (redshifts[i] > redshifts[i - 1]) error("Redshifts not descending.");
   for (hsize_t i = 1; i < N_k; i++)
-    if (wavenumbers[i] < wavenumbers[i-1]) error("Wavenumbers not ascending.");
+    if (wavenumbers[i] < wavenumbers[i - 1])
+      error("Wavenumbers not ascending.");
 
   /* Ensure that we have data covering the required domain */
   if (redshifts[0] < z_max || redshifts[N_z - 1] > z_min)
@@ -255,10 +267,10 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
   /* We will remap the data such that it just covers the required domain
    * with a constant log spacing, allowing for faster interpolation.
    * We only use the slower GSL interpolation for the remapping. */
-   
+
   /* Determine the dimensions of the remapped data */
   const hsize_t remap_tf_size = timestep_length * wavenumber_length;
-    
+
   /* Determine the constant log spacing and bounding values */
   const double log_a_min = log(a_min);
   const double log_a_max = log(a_max);
@@ -266,23 +278,25 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
   const double log_k_max = log(k_max);
   const double delta_log_a = (log_a_max - log_a_min) / timestep_length;
   const double delta_log_k = (log_k_max - log_k_min) / wavenumber_length;
-  
+
   /* Store the remapped dimensions, spacing, and bounding values */
   numesh->log_a_min = log_a_min;
   numesh->log_a_max = log_a_max;
   numesh->log_k_min = log_k_min;
   numesh->log_k_max = log_k_max;
   numesh->delta_log_a = delta_log_a;
-  numesh->delta_log_k = delta_log_k;  
-  
+  numesh->delta_log_k = delta_log_k;
+
   /* Allocate temporary memory for the log of scale factors and wavenumbers */
   double *log_scale_factors;
   double *log_wavenumbers;
-  if ((log_scale_factors = (double *)swift_malloc("log_scale_factors", sizeof(double) * N_z)) == NULL)
+  if ((log_scale_factors = (double *)swift_malloc(
+           "log_scale_factors", sizeof(double) * N_z)) == NULL)
     error("Failed to allocate memory for log_scale_factors.");
-  if ((log_wavenumbers = (double *)swift_malloc("log_wavenumbers", sizeof(double) * N_k)) == NULL)
+  if ((log_wavenumbers = (double *)swift_malloc("log_wavenumbers",
+                                                sizeof(double) * N_k)) == NULL)
     error("Failed to allocate memory for log_wavenumbers.");
-  
+
   /* Convert the read vectors to logarithms of dimensionless units */
   for (hsize_t i = 0; i < N_z; i++) {
     log_scale_factors[i] = -log(1.0 + redshifts[i]);
@@ -290,12 +304,12 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
   for (hsize_t i = 0; i < N_k; i++) {
     log_wavenumbers[i] = log(wavenumbers[i] * k_unit);
   }
-  
+
   /* Free the temporary buffers for the redshifts and wavenumbers */
   swift_free("redshifts", redshifts);
   swift_free("wavenumbers", wavenumbers);
 
-  /* Initialize GSL interpolation */  
+  /* Initialize GSL interpolation */
   /* NB: GSL uses column major indices, but we use row major. This is why we
    * feed the transpose into spline2d_init. */
   const gsl_interp2d_type *T = gsl_interp2d_bilinear;
@@ -306,7 +320,8 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
                     N_k, N_z);
 
   /* Allocate memory for the transfer function ratio with constant spacing */
-  if ((numesh->ncdm_over_cb = (double *)swift_malloc("numesh.ncdm_over_cb", sizeof(double) * remap_tf_size)) == NULL)
+  if ((numesh->ncdm_over_cb = (double *)swift_malloc(
+           "numesh.ncdm_over_cb", sizeof(double) * remap_tf_size)) == NULL)
     error("Failed to allocate memory for numesh.ncdm_over_cb.");
 
   /* Remap the transfer function ratio */
@@ -314,24 +329,24 @@ void neutrino_mesh_init(struct swift_params *params, const struct unit_system *u
     for (hsize_t j = 0; j < wavenumber_length; j++) {
       double log_a = log_a_min + i * delta_log_a;
       double log_k = log_k_min + j * delta_log_k;
-      numesh->ncdm_over_cb[N_k * i + j] = gsl_spline2d_eval(spline, log_k, log_a, k_acc, z_acc);
+      numesh->ncdm_over_cb[N_k * i + j] =
+          gsl_spline2d_eval(spline, log_k, log_a, k_acc, z_acc);
     }
   }
 
-  /* Clean up GSL interpolation */                    
+  /* Clean up GSL interpolation */
   gsl_spline2d_free(spline);
   gsl_interp_accel_free(z_acc);
   gsl_interp_accel_free(k_acc);
-  
+
   /* Free the temporary buffers */
   swift_free("log_scale_factors", log_scale_factors);
-  swift_free("log_wavenumbers", log_wavenumbers); 
+  swift_free("log_wavenumbers", log_wavenumbers);
   swift_free("ncdm_over_cb", ncdm_over_cb);
-
 }
 
 void neutrino_mesh_clean(struct neutrino_mesh *numesh) {
-  swift_free("numesh.ncdm_over_cb", numesh->ncdm_over_cb); 
+  swift_free("numesh.ncdm_over_cb", numesh->ncdm_over_cb);
 }
 
 /* Write binary boxes in HDF5 format */
@@ -391,12 +406,12 @@ int writeGRF_H5(const double *box, int N, double boxlen, const char *fname) {
 struct neutrino_mesh_tp_data {
 
   int N;
-  fftw_complex* frho;  
-  double delta_k;  
+  fftw_complex *frho;
+  double delta_k;
   int slice_offset;
-  int slice_width;  
+  int slice_width;
   double inv_delta_log_k;
-  double log_k_min;  
+  double log_k_min;
   int a_index;
   double u_a;
   double bg_density_ratio;
@@ -410,17 +425,17 @@ struct neutrino_mesh_tp_data {
  * @param num The number of elements to iterate on (along the x-axis).
  * @param extra The properties of the neutrino mesh.
  */
-void neutrino_mesh_apply_neutrino_response_mapper(void* map_data, const int num,
-                                      void* extra) {
+void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
+                                                  void *extra) {
 
-  struct neutrino_mesh_tp_data* data = (struct neutrino_mesh_tp_data*)extra;
+  struct neutrino_mesh_tp_data *data = (struct neutrino_mesh_tp_data *)extra;
 
   /* Unpack the array */
-  fftw_complex* const frho = data->frho;
+  fftw_complex *const frho = data->frho;
   const int N = data->N;
   const int N_half = N / 2;
   const double delta_k = data->delta_k;
- 
+
   /* Unpack the neutrino mesh properties */
   const hsize_t a_index = data->a_index;
   const double u_a = data->u_a;
@@ -434,53 +449,54 @@ void neutrino_mesh_apply_neutrino_response_mapper(void* map_data, const int num,
   const int slice_offset = data->slice_offset;
 
   /* Range of x coordinates in the full mesh handled by this call */
-  const int x_start = ((fftw_complex*)map_data - frho) + slice_offset;
+  const int x_start = ((fftw_complex *)map_data - frho) + slice_offset;
   const int x_end = x_start + num;
-  
+
   /* Loop over the x range corresponding to this thread */
   for (int x = x_start; x < x_end; x++) {
     for (int y = 0; y < N; y++) {
       for (int z = 0; z < N_half + 1; z++) {
-          
-          /* Compute the wavevector (U_L^-1) */
-          const double k_x = (x > N_half) ? (x - N) * delta_k : x * delta_k;
-          const double k_y = (y > N_half) ? (y - N) * delta_k : y * delta_k;
-          const double k_z = (z > N_half) ? (z - N) * delta_k : z * delta_k;
-          const double k2 = k_x * k_x + k_y * k_y + k_z * k_z;
 
-          /* Skip the DC mode */
-          if (k2 == 0.) continue;
-          
-          /* Interpolate along the k-axis */
-          const double log_k = 0.5 * log(k2);
-          const double log_k_steps = (log_k - log_k_min) * inv_delta_log_k;
-          const int k_index = (int) log_k_steps;
-          const double u_k = log_k_steps - k_index;
-          
-          /* Retrieve the bounding values */
-          double T11 = ncdm_over_cb_arr[N_k * a_index + k_index];
-          double T21 = ncdm_over_cb_arr[N_k * a_index + k_index + 1];
-          double T12 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index];
-          double T22 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index + 1];
+        /* Compute the wavevector (U_L^-1) */
+        const double k_x = (x > N_half) ? (x - N) * delta_k : x * delta_k;
+        const double k_y = (y > N_half) ? (y - N) * delta_k : y * delta_k;
+        const double k_z = (z > N_half) ? (z - N) * delta_k : z * delta_k;
+        const double k2 = k_x * k_x + k_y * k_y + k_z * k_z;
 
-          /* Bilinear interpolation of the tranfer function ratio */
-          double ncdm_over_cb = (1.0 - u_a) * ((1.0 - u_k) * T11 + u_k * T21) +
-                                 u_a * ((1.0 - u_k) * T12 + u_k * T22);
-          double correction = 1.0 + ncdm_over_cb * bg_density_ratio;
-          
-          /* Apply to the mesh */
-          const int index =
-              N * (N_half + 1) * (x - slice_offset) + (N_half + 1) * y + z;
-          frho[index][0] *= correction;
-          frho[index][1] *= correction;
+        /* Skip the DC mode */
+        if (k2 == 0.) continue;
+
+        /* Interpolate along the k-axis */
+        const double log_k = 0.5 * log(k2);
+        const double log_k_steps = (log_k - log_k_min) * inv_delta_log_k;
+        const int k_index = (int)log_k_steps;
+        const double u_k = log_k_steps - k_index;
+
+        /* Retrieve the bounding values */
+        double T11 = ncdm_over_cb_arr[N_k * a_index + k_index];
+        double T21 = ncdm_over_cb_arr[N_k * a_index + k_index + 1];
+        double T12 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index];
+        double T22 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index + 1];
+
+        /* Bilinear interpolation of the tranfer function ratio */
+        double ncdm_over_cb = (1.0 - u_a) * ((1.0 - u_k) * T11 + u_k * T21) +
+                              u_a * ((1.0 - u_k) * T12 + u_k * T22);
+        double correction = 1.0 + ncdm_over_cb * bg_density_ratio;
+
+        /* Apply to the mesh */
+        const int index =
+            N * (N_half + 1) * (x - slice_offset) + (N_half + 1) * y + z;
+        frho[index][0] *= correction;
+        frho[index][1] *= correction;
       }
     }
   }
 }
 
 void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
-                      struct threadpool* tp, fftw_complex* frho, int verbose,
-                      const int slice_offset, const int slice_width) {
+                           struct threadpool *tp, fftw_complex *frho,
+                           int verbose, const int slice_offset,
+                           const int slice_width) {
 #ifdef HAVE_FFTW
 
   const struct cosmology *c = s->e->cosmology;
@@ -490,31 +506,31 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   const int N = mesh->N;
   const double boxlen = mesh->dim[0];
   const double delta_k = 2 * M_PI / boxlen;  // U_L^-1
-  
+
   /* Calculate the background neutrino density at the present time */
   const double Omega_nu = cosmology_get_neutrino_density(c, c->a);
   const double Omega_m = c->Omega_cdm + c->Omega_b;  // does not include nu's
   /* The comoving density is (Omega_nu * a^-4) * a^3  = Omega_nu / a */
   const double bg_density_ratio = (Omega_nu / c->a) / Omega_m;
-  
+
   /* Transfer function bounds and spacing */
   const double inv_delta_log_a = 1.0 / numesh->delta_log_a;
   const double inv_delta_log_k = 1.0 / numesh->delta_log_k;
   const double log_a_min = numesh->log_a_min;
   const double log_k_min = numesh->log_k_min;
-  
+
   /* Interpolate along the a-axis */
   const double a = c->a;
   const double log_a = log(a);
   const double log_a_steps = (log_a - log_a_min) * inv_delta_log_a;
-  int a_index = (int) log_a_steps;
+  int a_index = (int)log_a_steps;
   double u_a = log_a_steps - a_index;
-  
+
   /* Perform bounds checks */
   if (a_index < 0) {
     a_index = 0;
     u_a = 0;
-  } else if ((hsize_t) a_index > timestep_length - 2) {
+  } else if ((hsize_t)a_index > timestep_length - 2) {
     a_index = timestep_length - 2;
     u_a = 1.0;
   }
@@ -537,8 +553,9 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
      threadpool to split the x-axis loop over the threads.
      The array is N x N x (N/2). We use the thread to each deal with
      a range [i_min, i_max[ x N x (N/2) */
-  threadpool_map(tp, neutrino_mesh_apply_neutrino_response_mapper, frho, slice_width,
-                 sizeof(fftw_complex), threadpool_auto_chunk_size, &data);
+  threadpool_map(tp, neutrino_mesh_apply_neutrino_response_mapper, frho,
+                 slice_width, sizeof(fftw_complex), threadpool_auto_chunk_size,
+                 &data);
 
   /* Correct singularity at (0,0,0) */
   if (slice_offset == 0 && slice_width > 0) {
@@ -557,9 +574,10 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh, FILE *stream) {
-  restart_write_blocks((void *)numesh, sizeof(struct neutrino_mesh), 1,
-                       stream, "numesh", "neutrino mesh");
+void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
+                               FILE *stream) {
+  restart_write_blocks((void *)numesh, sizeof(struct neutrino_mesh), 1, stream,
+                       "numesh", "neutrino mesh");
 
   /* Store the perturbation data */
   restart_write_blocks((double *)numesh->ncdm_over_cb, sizeof(double),
@@ -579,9 +597,10 @@ void neutrino_mesh_struct_restore(struct neutrino_mesh *numesh, FILE *stream) {
                       NULL, "neutrino mesh");
 
   /* Restore the perturbation data */
-  numesh->ncdm_over_cb = (double *)swift_malloc("numesh.ncdm_over_cb",
+  numesh->ncdm_over_cb = (double *)swift_malloc(
+      "numesh.ncdm_over_cb",
       timestep_length * wavenumber_length * sizeof(double));
   restart_read_blocks((double *)numesh->ncdm_over_cb, sizeof(double),
-                      timestep_length * wavenumber_length, stream,
-                      NULL, "ncdm_over_cb");
+                      timestep_length * wavenumber_length, stream, NULL,
+                      "ncdm_over_cb");
 }

@@ -33,39 +33,42 @@
  * @brief Structure for handling the linear neutrino response on the mesh
  */
 struct neutrino_mesh {
-    
+
   /*! Logarithm of minimum scale factor for which we have transfer functions */
   double log_a_min;
-  
+
   /*! Logarithm of maximum scale factor for which we have transfer functions */
   double log_a_max;
-  
+
   /*! Logarithm of minimum wavenumber for which we have transfer functions */
   double log_k_min;
-  
+
   /*! Logarithm of maximum wavenumber for which we have transfer functions */
   double log_k_max;
-  
+
   /*! Spacing of log scale factor for transfer function interpolation */
   double delta_log_a;
-  
+
   /*! Spacing of log wavenumber for transfer function interpolation */
   double delta_log_k;
-  
+
   /*! Table of the neutrino overdensity to cdm & baryon overdensity ratio */
   double *ncdm_over_cb;
 };
 
-void neutrino_mesh_init(struct swift_params *params, const struct unit_system *us,
-                        const double dim[3], const struct cosmology *c,
+void neutrino_mesh_init(struct swift_params *params,
+                        const struct unit_system *us, const double dim[3],
+                        const struct cosmology *c,
                         const struct neutrino_props *np,
                         const struct gravity_props *gp,
                         struct neutrino_mesh *numesh, int verbose);
 void neutrino_mesh_clean(struct neutrino_mesh *numesh);
 void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
-                      struct threadpool* tp, fftw_complex* frho, int verbose,
-                      const int slice_offset, const int slice_width);
-void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh, FILE *stream);
+                           struct threadpool *tp, fftw_complex *frho,
+                           int verbose, const int slice_offset,
+                           const int slice_width);
+void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
+                               FILE *stream);
 void neutrino_mesh_struct_restore(struct neutrino_mesh *numesh, FILE *stream);
 
 #endif /* SWIFT_DEFAULT_NEUTRINO_MESH_H */
