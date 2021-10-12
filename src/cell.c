@@ -1536,7 +1536,9 @@ int cell_can_use_pair_pm(const struct cell *ci, const struct cell *cj,
   /* Create a fake particle to carry the remaining information
      that the M2P check requires. */
   struct gpart gp;
+#ifdef MULTI_SOFTENING_GRAVITY
   gp.epsilon = multi_i->m_pole.max_softening;
+#endif
   gp.old_a_grav_norm = multi_i->m_pole.min_old_a_grav_norm;
 
   return gravity_M2P_accept(props, &gp, multi_j, r2 * fac * fac, periodic,
