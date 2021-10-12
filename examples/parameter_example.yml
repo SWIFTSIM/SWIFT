@@ -649,6 +649,13 @@ Neutrino:
   use_delta_f:                        1          # Use the delta-f method for shot noise reduction
   generate_ics:                       0          # Automatically generate neutrino velocities at the start of the run
   neutrino_seed:                      1234       # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
+  use_linear_response: 1                         # Option to use the linear response method
+  transfer_functions_filename: perturb.hdf5      # For linear response neutrinos, path to an hdf5 file with transfer functions, redshifts, and wavenumbers
+  dataset_redshifts: Redshifts                   # For linear response neutrinos, name of the dataset with the redshifts (a vector of length N_z)
+  dataset_wavenumbers: Wavenumbers               # For linear response neutrinos, name of the dataset with the wavenumbers (a vector of length N_k)
+  dataset_delta_cdm: Functions/d_cdm             # For linear response neutrinos, name of the dataset with the cdm density transfer function (N_z x N_k)
+  dataset_delta_baryon: Functions/d_b            # For linear response neutrinos, name of the dataset with the cdm density transfer function (N_z x N_k)
+  dataset_delta_nu: Functions/d_ncdm[0]          # For linear response neutrinos, name of the dataset with the cdm density transfer function (N_z x N_k)
 
 # Parameters related to the sink particles ---------------------------------------
 
