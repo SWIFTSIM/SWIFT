@@ -29,6 +29,9 @@ struct neutrino_props {
   /* Whether to run with the delta-f method for neutrino weighting */
   char use_delta_f;
 
+  /* Whether to run with the delta-f method on the mesh only */
+  char use_delta_f_mesh_only;
+
   /* Whether to generate random neutrino velocities in the initial conditions */
   char generate_ics;
 
@@ -54,15 +57,20 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
                                        struct swift_params *params,
                                        const struct cosmology *cosmo) {
 
-  np->use_delta_f = parser_get_param_int(params, "Neutrino:use_delta_f");
-  np->generate_ics = parser_get_param_int(params, "Neutrino:generate_ics");
+  np->use_delta_f = parser_get_opt_param_int(params, "Neutrino:use_delta_f", 0);
+  np->use_delta_f_mesh_only =
+      parser_get_opt_param_int(params, "Neutrino:use_delta_f_mesh_only", 0);
+  np->generate_ics =
+      parser_get_opt_param_int(params, "Neutrino:generate_ics", 0);
   np->neutrino_seed =
       parser_get_opt_param_longlong(params, "Neutrino:neutrino_seed", 0);
   np->use_linear_response =
       parser_get_opt_param_int(params, "Neutrino:use_linear_response", 0);
 
-  if (np->use_delta_f && np->use_linear_response)
-    error("Cannot use two neutrino implementations concurrently.");
+  int methods_in_use =
+      np->use_delta_f + np->use_delta_f_mesh_only + np->use_linear_response;
+  if (methods_in_use > 1)
+    error("Cannot use multiple neutrino implementations concurrently.");
 }
 
 /**

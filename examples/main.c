@@ -1270,9 +1270,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the neutrino properties if we have neutrino particles */
     bzero(&neutrino_properties, sizeof(struct neutrino_props));
-    if (with_neutrinos)
-      neutrino_props_init(&neutrino_properties, &prog_const, &us, params,
-                          &cosmo);
+    neutrino_props_init(&neutrino_properties, &prog_const, &us, params, &cosmo);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);

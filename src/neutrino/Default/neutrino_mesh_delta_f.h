@@ -17,10 +17,31 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_DEFAULT_NEUTRINO_MESH_H
-#define SWIFT_DEFAULT_NEUTRINO_MESH_H
+#ifndef SWIFT_DEFAULT_NEUTRINO_MESH_DELTA_F_H
+#define SWIFT_DEFAULT_NEUTRINO_MESH_DELTA_F_H
 
-#include "neutrino_mesh_delta_f.h" /* The delta-f method on the mesh */
-#include "neutrino_mesh_linres.h"  /* The linear response method */
+#ifdef HAVE_FFTW
+#include <fftw3.h>
+#endif
 
-#endif /* SWIFT_DEFAULT_NEUTRINO_MESH_H */
+#include "cosmology.h"
+#include "neutrino_properties.h"
+#include "physical_constants.h"
+#include "units.h"
+
+/**
+ * @brief Shared information for delta-f neutrino weighting of a cell.
+ */
+struct neutrino_data {
+  char use_delta_f;
+  double *m_eV_array;
+  int N_nu;
+  double fac;
+  long long neutrino_seed;
+};
+
+void gather_neutrino_data(const struct space *s, struct neutrino_data *nu_data);
+void gpart_neutrino_weight(const struct gpart* gp,
+                           const struct neutrino_data *nu_data, double *weight);
+
+#endif /* SWIFT_DEFAULT_NEUTRINO_MESH_DELTA_F_H */
