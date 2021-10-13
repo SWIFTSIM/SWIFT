@@ -1494,7 +1494,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 					/* Get the cell ID. */
 					int cjd = cell_getid(cdim, iii, jjj, kkk);
-					message("cid=%d cid_with_offset=%d cjd=%d cjd_with_offset=%d ii,jj,kk=%d %d %d i + ii,j + jj,k + kk=%d %d %d iii,jjj,kkk=%d %d %d", cid, cid_with_offset, cjd, cjd + zoom_cell_offset, ii, jj, kk, i + ii, j + jj, k + kk, iii, jjj, kkk);
+//					message("cid=%d cid_with_offset=%d cjd=%d cjd_with_offset=%d ii,jj,kk=%d %d %d i + ii,j + jj,k + kk=%d %d %d iii,jjj,kkk=%d %d %d", cid, cid_with_offset, cjd, cjd + zoom_cell_offset, ii, jj, kk, i + ii, j + jj, k + kk, iii, jjj, kkk);
 					if (cid >= zoom_cell_offset) {
 						cjd += zoom_cell_offset;
 					}
@@ -1705,7 +1705,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 						/* Get the cell ID. */
 						int nat_cjd = cell_getid(cdim, nat_iii, nat_jjj, nat_kkk);
-						message("cid=%d cid_with_offset=%d nat_cjd=%d ii,jj,kk=%d %d %d natural_i + ii,natural_j + jj,natural_k + kk=%d %d %d nat_iii,nat_jjj,nat_kkk=%d %d %d", cid, cid_with_offset, nat_cjd, ii, jj, kk, natural_i + ii, natural_j + jj, natural_k + kk, nat_iii, nat_jjj, nat_kkk);
+//						message("cid=%d cid_with_offset=%d nat_cjd=%d ii,jj,kk=%d %d %d natural_i + ii,natural_j + jj,natural_k + kk=%d %d %d nat_iii,nat_jjj,nat_kkk=%d %d %d", cid, cid_with_offset, nat_cjd, ii, jj, kk, natural_i + ii, natural_j + jj, natural_k + kk, nat_iii, nat_jjj, nat_kkk);
 
 						struct cell *nat_cj = &cells[nat_cjd];
 
