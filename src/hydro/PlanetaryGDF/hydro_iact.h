@@ -299,6 +299,41 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->sum_wij_exp_P += pi->P * wj * expf(-pi->I*pi->I);
   pj->sum_wij_exp_T += pi->T * wj * expf(-pi->I*pi->I);
 #endif
+    
+      
+    const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+    const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+   
+    pi->Cinv[0][0] += pj->mass * dx[0] * dx[0] * wi * hid_inv * rho_inv_j;
+    pi->Cinv[0][1] += pj->mass * dx[0] * dx[1] * wi * hid_inv   * rho_inv_j;
+    pi->Cinv[0][2] += pj->mass * dx[0] * dx[2] * wi * hid_inv   * rho_inv_j;
+    pi->Cinv[1][0] += pj->mass * dx[1] * dx[0] * wi * hid_inv   * rho_inv_j;
+    pi->Cinv[1][1] += pj->mass * dx[1] * dx[1] * wi * hid_inv   * rho_inv_j;
+    pi->Cinv[1][2] += pj->mass * dx[1] * dx[2] * wi * hid_inv   * rho_inv_j;
+    pi->Cinv[2][0] += pj->mass * dx[2] * dx[0] * wi * hid_inv   * rho_inv_j;
+    pi->Cinv[2][1] += pj->mass * dx[2] * dx[1] * wi * hid_inv   * rho_inv_j;
+    pi->Cinv[2][2] += pj->mass * dx[2] * dx[2] * wi * hid_inv   * rho_inv_j;
+        
+    pj->Cinv[0][0] += pi->mass * dx[0] * dx[0] * wj * hjd_inv  * rho_inv_i;
+    pj->Cinv[0][1] += pi->mass * dx[0] * dx[1] * wj * hjd_inv  * rho_inv_i;
+    pj->Cinv[0][2] += pi->mass * dx[0] * dx[2] * wj * hjd_inv  * rho_inv_i;
+    pj->Cinv[1][0] += pi->mass * dx[1] * dx[0] * wj * hjd_inv  * rho_inv_i;
+    pj->Cinv[1][1] += pi->mass * dx[1] * dx[1] * wj * hjd_inv  * rho_inv_i;
+    pj->Cinv[1][2] += pi->mass * dx[1] * dx[2] * wj * hjd_inv  * rho_inv_i;
+    pj->Cinv[2][0] += pi->mass * dx[2] * dx[0] * wj * hjd_inv  * rho_inv_i;
+    pj->Cinv[2][1] += pi->mass * dx[2] * dx[1] * wj * hjd_inv  * rho_inv_i;
+    pj->Cinv[2][2] += pi->mass * dx[2] * dx[2] * wj * hjd_inv  * rho_inv_i;
+    
+    
+    
+        #if defined(HYDRO_DIMENSION_2D)
+
+    pi->Cinv[2][2] = 1.f;
+    pj->Cinv[2][2] = 1.f;
+
+    #elif defined(HYDRO_DIMENSION_1D)
+    error("The dimension is not defined !");
+    #endif
 }
 
 /**
@@ -345,6 +380,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->sum_wij_exp_P += pj->P * wi * expf(-pj->I*pj->I);
   pi->sum_wij_exp_T += pj->T * wi * expf(-pj->I*pj->I);
 #endif
+    
+    
+    const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
+    
+    pi->Cinv[0][0] += pj->mass * dx[0] * dx[0] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[0][1] += pj->mass * dx[0] * dx[1] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[0][2] += pj->mass * dx[0] * dx[2] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[1][0] += pj->mass * dx[1] * dx[0] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[1][1] += pj->mass * dx[1] * dx[1] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[1][2] += pj->mass * dx[1] * dx[2] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[2][0] += pj->mass * dx[2] * dx[0] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[2][1] += pj->mass * dx[2] * dx[1] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[2][2] += pj->mass * dx[2] * dx[2] * wi * hid_inv  * rho_inv_j;
+    
+    
+    #if defined(HYDRO_DIMENSION_2D)
+
+    pi->Cinv[2][2] = 1.f;
+
+    #elif defined(HYDRO_DIMENSION_1D)
+    error("The dimension is not defined !");
+    #endif
   
 }
 
@@ -390,22 +447,50 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
+    
+    
+    
+    const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+    const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+    
+  float Gj[3], Gi[3];  
 
-  /* Variable smoothing length term */
-  float kernel_gradient = 0.5f * (wi_dr * pi->f_gdf + wj_dr * pj->f_gdf);
+    int k;
+    for(k=0;k<3;k++){
+        Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi * hid_inv;//wi_dr * dx[k] * r_inv;//
+        Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj * hjd_inv;//wj_dr * dx[k] * r_inv;//
+    }
+
+ float kernel_gradient[3];
+    kernel_gradient[0] = 0.5f * (Gi[0] + Gj[0]);//0.5f * (Gi[0] * pi->f_gdf + Gj[0] * pj->f_gdf);//
+    kernel_gradient[1] = 0.5f * (Gi[1] + Gj[1]);//0.5f * (Gi[1] * pi->f_gdf + Gj[1] * pj->f_gdf);//
+    kernel_gradient[2] = 0.5f * (Gi[2]  + Gj[2]);//0.5f * (Gi[2] * pi->f_gdf + Gj[2] * pj->f_gdf);//
+    
+    
+    
+              // Compute dv dot G. 
+    const float dvdGi = (pi->v[0] - pj->v[0]) * Gi[0] +
+                    (pi->v[1] - pj->v[1]) * Gi[1] +
+                    (pi->v[2] - pj->v[2]) * Gi[2];
+      
+    
+    const float dvdGj = (pj->v[0] - pi->v[0]) * Gj[0] +
+                     (pj->v[1] - pi->v[1]) * Gj[1] +
+                    (pj->v[2] - pi->v[2]) * Gj[2];
+    
+    
+        const float dvdGij = (pi->v[0] - pj->v[0]) * kernel_gradient[0] +
+                     (pi->v[1] - pj->v[1]) * kernel_gradient[1] +
+                     (pi->v[2] - pj->v[2]) * kernel_gradient[2];
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -430,43 +515,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
-  const float visc_acc_term = visc * kernel_gradient * r_inv;
+  const float visc_acc_term = visc;
 
   /* SPH acceleration term */
   const float sph_acc_term =
-      (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
-
-  // Debug
-  /*if (pi->id == 1526793){ 
-  FILE *fp;
-  fp = fopen("./picle_history_iact_1526793.txt", "a");
-  fprintf(fp,
-      "%lld, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g\n",
-      pj->id, pressurei, pressurej, r_inv, kernel_gradient,
-      pi->rho, pj->rho, mj*sph_acc_term*dx[0], mj*sph_acc_term*dx[1], mj, dx[0], dx[1],
-      pi->f_gdf, pj->f_gdf, wi_dr, wj_dr);
-  fclose(fp);
-  }*/
+      (pressurei + pressurej) / (pi->rho * pj->rho);//(pressurei + Q_i + pressurej + Q_j) / (pi->rho * pj->rho);
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
+  pi->a_hydro[0] -= mj * acc * kernel_gradient[0];
+  pi->a_hydro[1] -= mj * acc * kernel_gradient[1];
+  pi->a_hydro[2] -= mj * acc * kernel_gradient[2];
 
-  pj->a_hydro[0] += mi * acc * dx[0];
-  pj->a_hydro[1] += mi * acc * dx[1];
-  pj->a_hydro[2] += mi * acc * dx[2];
+  pj->a_hydro[0] += mi * acc * kernel_gradient[0];
+  pj->a_hydro[1] += mi * acc * kernel_gradient[1];
+  pj->a_hydro[2] += mi * acc * kernel_gradient[2];
 
   /* Get the time derivative for u. */
   const float sph_du_term_i =
-      pressurei * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
+      (pressurei) * dvdGij / (rhoi * rhoj);//(pressurei + Q_i) * dvdGij / (rhoi * rhoj);
   const float sph_du_term_j =
-      pressurej * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
+      (pressurej) * dvdGij / (rhoi * rhoj);//(pressurej + Q_j) * dvdGij / (rhoi * rhoj);
 
   /*if (abs(sph_du_term_i*mj) > 1E+05 && pi->mat_id == 100){
   printf(
@@ -481,7 +552,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   }*/
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+  const float visc_du_term = 0.5f * visc_acc_term * dvdGij;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;
@@ -492,8 +563,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
+  pi->force.h_dt -= mj * dvdGi / rhoj;
+  pj->force.h_dt -= -mi * dvdGj / rhoi;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
@@ -548,22 +619,45 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
-  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
-  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
-  const float wj_dr = hjd_inv * wj_dx;
 
-  /* Variable smoothing length term */
-  const float kernel_gradient = 0.5f * (wi_dr * pi->f_gdf + wj_dr * pj->f_gdf);
+    
+    const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+    const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+    
+  float Gj[3], Gi[3];  
+
+    int k;
+    for(k=0;k<3;k++){
+        Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi * hid_inv;//wi_dr * dx[k] * r_inv;//
+        Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj * hjd_inv;//wj_dr * dx[k] * r_inv;//
+    }
+
+  float kernel_gradient[3];
+    kernel_gradient[0] = 0.5f * (Gi[0] + Gj[0]);//0.5f * (Gi[0] * pi->f_gdf + Gj[0] * pj->f_gdf);//
+    kernel_gradient[1] = 0.5f * (Gi[1] + Gj[1]);//0.5f * (Gi[1] * pi->f_gdf + Gj[1] * pj->f_gdf);//
+    kernel_gradient[2] = 0.5f * (Gi[2]  + Gj[2]);//0.5f * (Gi[2] * pi->f_gdf + Gj[2] * pj->f_gdf);//
+    
+                  // Compute dv dot G. 
+    const float dvdGi = (pi->v[0] - pj->v[0]) * Gi[0] +
+                    (pi->v[1] - pj->v[1]) * Gi[1] +
+                    (pi->v[2] - pj->v[2]) * Gi[2];
+      
+    
+    
+        const float dvdGij = (pi->v[0] - pj->v[0]) * kernel_gradient[0] +
+                     (pi->v[1] - pj->v[1]) * kernel_gradient[1] +
+                     (pi->v[2] - pj->v[2]) * kernel_gradient[2];
+    
+    
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -590,40 +684,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
-  const float visc_acc_term = visc * kernel_gradient * r_inv;
-
+  const float visc_acc_term = visc;
+ 
   /* SPH acceleration term */
   const float sph_acc_term =
-      (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
-
-  // Debug
-  /*if (pi->id == 1526793){ 
-  FILE *fp;
-  fp = fopen("./picle_history_iact_1526793.txt", "a");
-  fprintf(fp,
-      "%lld, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g\n",
-      pj->id, pressurei, pressurej, r_inv, kernel_gradient,
-      pi->rho, pj->rho, mj*sph_acc_term*dx[0], mj*sph_acc_term*dx[1], mj, dx[0], dx[1],
-      pi->f_gdf, pj->f_gdf, wi_dr, wj_dr);
-  fclose(fp);
-  }*/
+      (pressurei + pressurej)/ (pi->rho * pj->rho);//(pressurei + Q_i + pressurej + Q_j)/ (pi->rho * pj->rho);
 
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term + visc;
 
   /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * dx[0];
-  pi->a_hydro[1] -= mj * acc * dx[1];
-  pi->a_hydro[2] -= mj * acc * dx[2];
+  pi->a_hydro[0] -= mj * acc * kernel_gradient[0];
+  pi->a_hydro[1] -= mj * acc * kernel_gradient[1];
+  pi->a_hydro[2] -= mj * acc * kernel_gradient[2];
 
-  /* Get the time derivative for u. */ 
-  const float sph_du_term_i =
-      pressurei * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
+ /* Get the time derivative for u. */
+      const float sph_du_term_i =
+      (pressurei) * dvdGij / (rhoi * rhoj); //;(pressurei + Q_i) * dvdGij / (rhoi * rhoj);    
 
   /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdr;
+  const float visc_du_term = 0.5f * visc_acc_term * dvdGij;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term;
@@ -632,7 +712,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+      pi->force.h_dt -= mj * dvdGi / rhoj;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);

@@ -132,6 +132,9 @@ struct part {
 
   /* Correction factors for kernel gradients. f = weighted_wcount/(rho*weighted_neighbour_wcount) */
   float f_gdf;
+    
+  /*! Particle C matrix. */
+  float C[3][3], Cinv[3][3];
 
 
   /* Store density/force specific stuff. */

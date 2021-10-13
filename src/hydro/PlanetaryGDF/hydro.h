@@ -674,6 +674,17 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->P = pressure;
   p->T = temperature;
 #endif
+    
+          
+    p->Cinv[0][0] = 0.f;
+    p->Cinv[0][1] = 0.f;
+    p->Cinv[0][2] = 0.f;
+    p->Cinv[1][0] = 0.f;
+    p->Cinv[1][1] = 0.f;
+    p->Cinv[1][2] = 0.f;
+    p->Cinv[2][0] = 0.f;
+    p->Cinv[2][1] = 0.f;
+    p->Cinv[2][2] = 0.f;
 }
 
 /**
@@ -769,6 +780,21 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   }
 
 #endif
+    
+        
+  /* matrix inverse */
+  int i,j;
+  float determinant=0.f;
+ 
+ 
+  for(i=0;i<3;i++)
+      determinant += (p->Cinv[0][i]*(p->Cinv[1][(i+1)%3]*p->Cinv[2][(i+2)%3] - p->Cinv[1][(i+2)%3]*p->Cinv[2][(i+1)%3]));
+ 
+   for(i=0;i<3;i++){
+      for(j=0;j<3;j++) 
+          p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ determinant;
+   }
+ 
 }
 
 
@@ -907,7 +933,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Compute the pressure */
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-
+    
   /* Compute the sound speed */
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
