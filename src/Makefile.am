@@ -145,7 +145,8 @@ AM_SOURCES += fof.c fof_catalogue_io.c
 AM_SOURCES += hashmap.c pressure_floor.c
 AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c
 AM_SOURCES += runner_neutrino.c
-AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_mesh.c
+AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c
+AM_SOURCES += neutrino/Default/neutrino_mesh_delta_f.c neutrino/Default/neutrino_mesh_linres.c
 AM_SOURCES += rt_parameters.c
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
@@ -392,6 +393,7 @@ nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h
 nobase_noinst_HEADERS += neutrino.h neutrino_properties.h neutrino_io.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino.h neutrino/Default/relativity.h neutrino/Default/fermi_dirac.h neutrino/Default/fermi_dirac.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino_properties.h neutrino/Default/neutrino_io.h
+nobase_noinst_HEADERS += neutrino/Default/neutrino_mesh.h neutrino/Default/neutrino_mesh_linres.h neutrino/Default/neutrino_mesh_delta_f.h
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c

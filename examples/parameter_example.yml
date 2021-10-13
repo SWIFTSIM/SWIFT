@@ -647,6 +647,7 @@ EAGLEAGN:
 # Parameters related to the neutrino particles ----------------------------------
 Neutrino:
   use_delta_f:                        1          # Use the delta-f method for shot noise reduction
+  use_delta_f_mesh_only:              0          # Use the delta-f method, but only in the mesh gravity calculation and outputs
   generate_ics:                       0          # Automatically generate neutrino velocities at the start of the run
   neutrino_seed:                      1234       # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
   use_linear_response: 0                         # Option to use the linear response method
