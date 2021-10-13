@@ -16,7 +16,7 @@
 
 /* Define some values, shouldn't need to change these. */
 #define zoom_boost_factor 1.1 // Multiply zoom region by this to give a buffer.
-#define neighbour_cell_delta 1 // How many layers of neighbours do we go out?
+#define neighbour_cell_delta 2 // How many layers of neighbours do we go out?
 
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the zoom_region struct.
@@ -1385,8 +1385,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 	int periodic = s->periodic;
-
-	message("periodic=%d zoom_cell_offset=%d", periodic, zoom_cell_offset);
 
 	/* Get some info about the physics */
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
