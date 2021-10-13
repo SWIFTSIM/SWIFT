@@ -50,12 +50,14 @@ struct neutrino_props {
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
+ * @param with_neutrinos Are we running with neutrinos?
  */
 INLINE static void neutrino_props_init(struct neutrino_props *np,
                                        const struct phys_const *phys_const,
                                        const struct unit_system *us,
                                        struct swift_params *params,
-                                       const struct cosmology *cosmo) {
+                                       const struct cosmology *cosmo,
+                                       const int with_neutrinos) {
 
   np->use_delta_f = parser_get_opt_param_int(params, "Neutrino:use_delta_f", 0);
   np->use_delta_f_mesh_only =
@@ -67,10 +69,10 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
   np->use_linear_response =
       parser_get_opt_param_int(params, "Neutrino:use_linear_response", 0);
 
-  int methods_in_use =
-      np->use_delta_f + np->use_delta_f_mesh_only + np->use_linear_response;
-  if (methods_in_use > 1)
+  if (np->use_delta_f + np->use_delta_f_mesh_only + np->use_linear_response > 1)
     error("Cannot use multiple neutrino implementations concurrently.");
+  if (with_neutrinos && np->use_linear_response)
+    error("Cannot use both linear response and particle neutrinos.");
 }
 
 /**
