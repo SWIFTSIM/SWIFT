@@ -596,7 +596,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float alpha = 7.5f;
 #endif
 #ifdef WENDLAND_C6_KERNEL
-  const float alpha = 7.1f;
+  const float alpha = 5.1f;
 #endif
   p->I *= alpha;
 #endif
