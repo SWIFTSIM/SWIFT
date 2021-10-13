@@ -399,7 +399,7 @@ static void ACCUMULATE_SIZES_MAPPER(gpart);
  *
  * dmpart version.
  */
-static void ACCUMULATE_SIZES_MAPPER(dmpart);
+// static void ACCUMULATE_SIZES_MAPPER(dmpart);
 
 /**
  * @brief Accumulate the sized counts of particles per cell.
@@ -434,7 +434,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   double gsize = 0.0;
   double hsize = 0.0;
   double ssize = 0.0;
-  double dmsize = 0.0;
+  //  double dmsize = 0.0;
 
   if (s->nr_gparts > 0) {
     /* Self-gravity gets more efficient with density (see gitlab issue #640)
@@ -481,7 +481,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     }
     if (verbose) message("clipped gravity part counts of %d cells", nadj);
     free(ptrs);
-
+  }
 
   /* Other particle types are assumed to correlate with processing time. */
   if (s->nr_parts > 0) {
@@ -501,18 +501,18 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
                    &mapper_data);
   }
 
-  if (s->nr_dmparts > 0) {
-    dmsize = (double)sizeof(struct dmpart);
-    mapper_data.size = dmsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_dmpart, s->dmparts,
-                   s->nr_dmparts, sizeof(struct dmpart), space_splitsize,
-                   &mapper_data);
-  }
-
+  //  if (s->nr_dmparts > 0) {
+  //    dmsize = (double)sizeof(struct dmpart);
+  //    mapper_data.size = dmsize;
+  //    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_dmpart,
+  //    s->dmparts,
+  //                   s->nr_dmparts, sizeof(struct dmpart), space_splitsize,
+  //                   &mapper_data);
+  //  }
 
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
    * gparts. */
-  if (s->nr_parts > 0 || s->nr_sparts > 0 || s->nr_dmparts > 0) {
+  if (s->nr_parts > 0 || s->nr_sparts > 0) {
     if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to allreduce particle cell weights.");
@@ -531,7 +531,6 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
       sum += counts[k];
     }
   }
-
 
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if (sum > (double)(IDX_MAX - 10000)) {
