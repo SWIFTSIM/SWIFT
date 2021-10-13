@@ -41,7 +41,7 @@ struct neutrino_data {
 };
 
 void gather_neutrino_data(const struct space *s, struct neutrino_data *nu_data);
-void gpart_neutrino_weight(const struct gpart* gp,
+void gpart_neutrino_weight(const struct gpart *gp,
                            const struct neutrino_data *nu_data, double *weight);
 
 #endif /* SWIFT_DEFAULT_NEUTRINO_MESH_DELTA_F_H */

@@ -52,7 +52,7 @@ void gather_neutrino_data(const struct space *s,
  * @param nu_data Properties of the neutrino model
  * @param weight The resulting weight (output)
  */
-void gpart_neutrino_weight(const struct gpart* gp,
+void gpart_neutrino_weight(const struct gpart *gp,
                            const struct neutrino_data *nu_data,
                            double *weight) {
 
@@ -70,7 +70,7 @@ void gpart_neutrino_weight(const struct gpart* gp,
 
   /* The neutrino mass and degeneracy (we cycle based on the seed) */
   const double m_eV = neutrino_seed_to_mass(N_nu, m_eV_array, seed);
-  
+
   /* Compute the current dimensionless momentum */
   double p = neutrino_momentum(gp->v_full, m_eV, fac);
 
