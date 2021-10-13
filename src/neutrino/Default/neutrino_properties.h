@@ -50,7 +50,7 @@ struct neutrino_props {
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
- * @param with_neutrinos Are we running with neutrinos?
+ * @param with_neutrinos Are we running with neutrino particles?
  */
 INLINE static void neutrino_props_init(struct neutrino_props *np,
                                        const struct phys_const *phys_const,

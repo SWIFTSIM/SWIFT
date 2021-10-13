@@ -37,7 +37,7 @@ INLINE static double neutrino_momentum(const float v[3], const double m_eV,
 
 void gather_neutrino_data(const struct space *s,
                           struct neutrino_data *nu_data) {
-  nu_data->use_delta_f = 1;
+  nu_data->use_mesh_delta_f = 1;
   nu_data->m_eV_array = s->e->cosmology->M_nu_eV;
   nu_data->N_nu = s->e->cosmology->N_nu;
   nu_data->fac = 1.0 / (s->e->physical_constants->const_speed_light_c *

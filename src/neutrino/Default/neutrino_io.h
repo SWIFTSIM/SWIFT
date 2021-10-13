@@ -125,7 +125,7 @@ INLINE static void convert_gpart_weight(const struct engine* e,
     struct neutrino_data nu_data;
     gather_neutrino_data(e->s, &nu_data);
 
-    /* Obtain the weight */
+    /* Compute the weight */
     double weight;
     gpart_neutrino_weight(gp, &nu_data, &weight);
 
@@ -157,7 +157,7 @@ __attribute__((always_inline)) INLINE static int neutrino_write_particles(
 
   list[2] = io_make_output_field_convert_gpart(
       "NeutrinoWeights", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
-      convert_gpart_weight, "Statistical weight of neutrino particles");
+      convert_gpart_weight, "Statistical weights of neutrino particles");
 
   return 3;
 }

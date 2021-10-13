@@ -55,7 +55,7 @@
  * @param c The #cell containing the particles.
  * @param map The hashmap in which to store the results
  * @param lock A lock used to prevent concurrent access to map
- * @param nu_data Properties of the neutrino model
+ * @param nu_data Struct with neutrino constants
  *
  */
 void accumulate_cell_to_local_patch(const int N, const double fac,
@@ -104,7 +104,7 @@ void accumulate_cell_to_local_patch(const int N, const double fac,
 
     /* Statistical weight for this #gpart (for neutrino delta-f weighting) */
     double weight = 1.0;
-    if (nu_data->use_delta_f && gp->type == swift_type_neutrino)
+    if (nu_data->use_mesh_delta_f && gp->type == swift_type_neutrino)
       gpart_neutrino_weight(gp, nu_data, &weight);
 
     /* Accumulate contributions to the local mesh patch */

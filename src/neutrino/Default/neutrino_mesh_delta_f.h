@@ -33,7 +33,7 @@
  * @brief Shared information for delta-f neutrino weighting of a cell.
  */
 struct neutrino_data {
-  char use_delta_f;
+  char use_mesh_delta_f;
   double *m_eV_array;
   int N_nu;
   double fac;
