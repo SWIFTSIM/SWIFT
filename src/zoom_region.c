@@ -1707,8 +1707,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 						struct cell *nat_cj = &cells[nat_cjd];
 
-						/* Only considering "neighbours". */
-			      if (nat_cj->tl_cell_type != tl_cell_neighbour) continue;
+//						/* Only considering "neighbours". */
+//			      if (nat_cj->tl_cell_type != tl_cell_neighbour) continue;
 
 						/* empty cells and completely foreign pairs */
 						if (nat_cj->grav.count == 0 ||
