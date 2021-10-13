@@ -16,7 +16,7 @@
 
 /* Define some values, shouldn't need to change these. */
 #define zoom_boost_factor 1.1 // Multiply zoom region by this to give a buffer.
-#define neighbour_cell_delta 9 // How many layers of neighbours do we go out?
+#define neighbour_cell_delta 1 // How many layers of neighbours do we go out?
 
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the zoom_region struct.
@@ -1707,8 +1707,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 
 						struct cell *nat_cj = &cells[nat_cjd];
 
-						/* Only considering "neighbours". */
-			      if (nat_cj->tl_cell_type != tl_cell_neighbour) continue;
+//						/* Only considering "neighbours". */
+//			      if (nat_cj->tl_cell_type != tl_cell_neighbour) continue;
 
 						/* empty cells and completely foreign pairs */
 						if (nat_cj->grav.count == 0 ||
