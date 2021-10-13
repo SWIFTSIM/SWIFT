@@ -52,7 +52,7 @@ void read_vector_length(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
   /* Close the dataspace */
   H5Sclose(h_space);
 
-  /* Verify that this is vector and return the length */
+  /* Verify that this is a vector and return the length */
   if (ndims != 1 || dims[0] <= 0) error("We expected a non-empty vector.");
   length[0] = dims[0];
 
@@ -60,9 +60,8 @@ void read_vector_length(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
   H5Dclose(h_data);
 }
 
-void read_transfer_function(struct neutrino_mesh *numesh, hid_t h_file,
-                            char title[PARSER_MAX_LINE_SIZE], double *dest,
-                            hsize_t N_z, hsize_t N_k) {
+void read_transfer_function(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
+                            double *dest, hsize_t N_z, hsize_t N_k) {
 
   /* Open the dataset */
   hid_t h_data = H5Dopen2(h_file, title, H5P_DEFAULT);
@@ -155,11 +154,11 @@ void neutrino_mesh_init(struct swift_params *params,
     error("Failed to allocate memory for ncdm_over_cb.");
 
   /* Read the necessary transfer functions */
-  read_transfer_function(numesh, h_file, d_cdm_name, delta_cdm, N_z, N_k);
-  read_transfer_function(numesh, h_file, d_b_name, delta_b, N_z, N_k);
-  read_transfer_function(numesh, h_file, d_ncdm_name, delta_ncdm, N_z, N_k);
+  read_transfer_function(h_file, d_cdm_name, delta_cdm, N_z, N_k);
+  read_transfer_function(h_file, d_b_name, delta_b, N_z, N_k);
+  read_transfer_function(h_file, d_ncdm_name, delta_ncdm, N_z, N_k);
 
-  /* Compute relative cdm to cdm and baryon fraction */
+  /* Compute the background mass ratio of cdm to cb (= cdm + baryon) */
   const double f_cdm = c->Omega_cdm / (c->Omega_cdm + c->Omega_b);
 
   /* Compute the transfer function ratio */
@@ -183,7 +182,7 @@ void neutrino_mesh_init(struct swift_params *params,
   swift_free("delta_b", delta_b);
   swift_free("delta_ncdm", delta_ncdm);
 
-  /* The length unit used by transfer function file */
+  /* The length unit used by the transfer function file */
   double UnitLengthCGS;
 
   /* Check if a Units group exists */
@@ -299,7 +298,7 @@ void neutrino_mesh_init(struct swift_params *params,
                                                 sizeof(double) * N_k)) == NULL)
     error("Failed to allocate memory for log_wavenumbers.");
 
-  /* Convert the read vectors to logarithms of dimensionless units */
+  /* Convert units and compute logarithms */
   for (hsize_t i = 0; i < N_z; i++) {
     log_scale_factors[i] = -log(1.0 + redshifts[i]);
   }
@@ -509,10 +508,9 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   data.bg_density_ratio = bg_density_ratio;
   data.ncdm_over_cb_arr = numesh->ncdm_over_cb;
 
-  /* Parallelize the neutrino linear respones function application using the
-     threadpool to split the x-axis loop over the threads.
-     The array is N x N x (N/2). We use the thread to each deal with
-     a range [i_min, i_max[ x N x (N/2) */
+  /* Parallelize the neutrino linear respones application using the
+     to split the x-axis loop over the threads. The array is N x N x (N/2).
+     We use the thread to each deal with a range [i_min, i_max[ x N x (N/2) */
   threadpool_map(tp, neutrino_mesh_apply_neutrino_response_mapper, frho,
                  slice_width, sizeof(fftw_complex), threadpool_auto_chunk_size,
                  &data);

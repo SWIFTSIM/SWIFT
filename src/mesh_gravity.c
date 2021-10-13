@@ -184,7 +184,7 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
- * @param nu_data Properties of the neutrino model
+ * @param nu_data Struct with neutrino constants
  */
 void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
                             const double fac, const double dim[3],
@@ -199,7 +199,7 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
 
     /* Statistical weight for this #gpart (for neutrino delta-f weighting) */
     double weight = 1.0;
-    if (nu_data->use_delta_f && gparts[i].type == swift_type_neutrino)
+    if (nu_data->use_mesh_delta_f && gparts[i].type == swift_type_neutrino)
       gpart_neutrino_weight(&gparts[i], nu_data, &weight);
 
     /* CIC */
@@ -239,7 +239,7 @@ void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
 
     /* Statistical weight for this #gpart (for neutrino delta-f weighting) */
     double weight = 1.0;
-    if (nu_data->use_delta_f && gparts[i].type == swift_type_neutrino)
+    if (nu_data->use_mesh_delta_f && gparts[i].type == swift_type_neutrino)
       gpart_neutrino_weight(&gparts[i], nu_data, &weight);
 
     /* CIC */
@@ -757,7 +757,7 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
 
   tic = getticks();
 
-  /* Apply linear neutrino response to local slice of the MPI mesh */
+  /* If using linear response neutrinos, apply to local slice of the MPI mesh */
   if (s->e->neutrino_properties->use_linear_response)
     neutrino_mesh_compute(s, mesh, tp, frho, verbose, local_0_start, local_n0);
 
@@ -955,7 +955,7 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
 
   tic = getticks();
 
-  /* Apply linear neutrino response to mesh */
+  /* If using linear response neutrinos, apply the response to the mesh */
   if (s->e->neutrino_properties->use_linear_response)
     neutrino_mesh_compute(s, mesh, tp, frho, verbose, /*slice_offset=*/0,
                           /*slice_width=*/N);
