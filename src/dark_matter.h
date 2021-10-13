@@ -170,7 +170,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     dmp->density.rho_dh *= h_inv_dim_plus_one;
     dmp->density.wcount *= h_inv_dim;
     dmp->density.wcount_dh *= h_inv_dim_plus_one;
-    /*/*dmp->velocity_dispersion *= h_inv_dim * rho_inv;
+    /*dmp->velocity_dispersion *= h_inv_dim * rho_inv;
     dmp->velocity_ngb[0] *= h_inv_dim * rho_inv;
     dmp->velocity_ngb[1] *= h_inv_dim * rho_inv;
     dmp->velocity_ngb[2] *= h_inv_dim * rho_inv;*/
