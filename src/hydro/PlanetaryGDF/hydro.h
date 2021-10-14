@@ -527,6 +527,26 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->I = 0.f;
   p->sum_wij = 0.f;
 #endif
+    
+p->Dinv[0][0] = 0.f;
+p->Dinv[0][1] = 0.f;
+p->Dinv[0][2] = 0.f;
+p->Dinv[1][0] = 0.f;
+p->Dinv[1][1] = 0.f;
+p->Dinv[1][2] = 0.f;
+p->Dinv[2][0] = 0.f;
+p->Dinv[2][1] = 0.f;
+p->Dinv[2][2] = 0.f;
+
+p->E_v[0][0] = 0.f;
+p->E_v[0][1] = 0.f;
+p->E_v[0][2] = 0.f;
+p->E_v[1][0] = 0.f;
+p->E_v[1][1] = 0.f;
+p->E_v[1][2] = 0.f;
+p->E_v[2][0] = 0.f;
+p->E_v[2][1] = 0.f;
+p->E_v[2][2] = 0.f;
 }
 
 /**
@@ -600,6 +620,43 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 #endif
   p->I *= alpha;
 #endif
+    
+        
+  int i,j,k;
+  float determinant=0.f;
+ 
+ 
+  for(i=0;i<3;i++)
+      determinant += (p->Dinv[0][i]*(p->Dinv[1][(i+1)%3]*p->Dinv[2][(i+2)%3] - p->Dinv[1][(i+2)%3]*p->Dinv[2][(i+1)%3]));
+ 
+   for(i=0;i<3;i++){
+      for(j=0;j<3;j++) 
+          p->D[i][j] = ((p->Dinv[(i+1)%3][(j+1)%3] * p->Dinv[(i+2)%3][(j+2)%3]) - (p->Dinv[(i+1)%3][(j+2)%3]*p->Dinv[(i+2)%3][(j+1)%3]))/ determinant;
+   }
+    
+    
+    
+    // matrix multiplication D and E
+    
+    
+    p->dv_aux[0][0] = 0.f;
+    p->dv_aux[0][1] = 0.f;
+    p->dv_aux[0][2] = 0.f;
+    p->dv_aux[1][0] = 0.f;
+    p->dv_aux[1][1] = 0.f;
+    p->dv_aux[1][2] = 0.f;
+    p->dv_aux[2][0] = 0.f;
+    p->dv_aux[2][1] = 0.f;
+    p->dv_aux[2][2] = 0.f;
+    
+      
+    for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+         for (k = 0; k < 3; ++k) {
+            p->dv_aux[i][j] += p->D[i][k] * p->E_v[j][k];
+         }
+      }
+   }
 }
 
 /**
@@ -685,6 +742,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     p->Cinv[2][0] = 0.f;
     p->Cinv[2][1] = 0.f;
     p->Cinv[2][2] = 0.f;
+    
+    int i,j,k;
+    for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+         p->dv[i][j] = 0.f;
+         for (k = 0; k < 3; ++k) {
+            p->ddv[i][j][k] = 0.f;
+         }
+      }
+   }
+    
+    
+    p->N_grad=0.f;
 }
 
 /**
@@ -783,7 +853,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
         
   /* matrix inverse */
-  int i,j;
+  int i,j,k,l;
   float determinant=0.f;
  
  
@@ -793,6 +863,35 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
    for(i=0;i<3;i++){
       for(j=0;j<3;j++) 
           p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ determinant;
+   }
+    
+    
+    
+   for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+         p->C_dv[i][j] = 0.f;
+         for (k = 0; k < 3; ++k) {
+            p->C_ddv[i][j][k] = 0.f;
+         }
+      }
+   }
+    
+    
+    
+    
+    
+
+    for (i = 0; i < 3; ++i) {      
+      for (j = 0; j < 3; ++j) {
+         for (k = 0; k < 3; ++k) {
+                       
+             p->C_dv[i][j] += p->C[i][k] * p->dv[j][k];
+             for (l = 0; l < 3; ++l) {
+             
+                p->C_ddv[i][j][k] += p->C[i][l] * p->ddv[j][k][l];
+             }
+         }
+      }
    }
  
 }

@@ -77,6 +77,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float hi_inv = 1.f / hi;
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float wi_dr = hid_inv * wi_dx;
 
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
@@ -87,7 +89,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
   kernel_deval(uj, &wj, &wj_dx);
-
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+  const float wj_dr = hjd_inv * wj_dx;
+    
   pj->rho += mi * wj;
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
@@ -154,6 +158,59 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->sum_rij[2] += -dx[2]*wj*mi;
   }
 #endif
+        pi->Dinv[0][0] += pj->mass * dx[0] * dx[0] * wi_dr  * r_inv;
+    pi->Dinv[0][1] += pj->mass * dx[0] * dx[1] * wi_dr  * r_inv;
+    pi->Dinv[0][2] += pj->mass * dx[0] * dx[2] * wi_dr  * r_inv;
+    pi->Dinv[1][0] += pj->mass * dx[1] * dx[0] * wi_dr  * r_inv;
+    pi->Dinv[1][1] += pj->mass * dx[1] * dx[1] * wi_dr  * r_inv;
+    pi->Dinv[1][2] += pj->mass * dx[1] * dx[2] * wi_dr  * r_inv;
+    pi->Dinv[2][0] += pj->mass * dx[2] * dx[0] * wi_dr  * r_inv;
+    pi->Dinv[2][1] += pj->mass * dx[2] * dx[1] * wi_dr  * r_inv;
+    pi->Dinv[2][2] += pj->mass * dx[2] * dx[2] * wi_dr  * r_inv;
+        
+    pj->Dinv[0][0] += pi->mass * dx[0] * dx[0] * wj_dr  * r_inv;
+    pj->Dinv[0][1] += pi->mass * dx[0] * dx[1] * wj_dr  * r_inv;
+    pj->Dinv[0][2] += pi->mass * dx[0] * dx[2] * wj_dr  * r_inv;
+    pj->Dinv[1][0] += pi->mass * dx[1] * dx[0] * wj_dr  * r_inv;
+    pj->Dinv[1][1] += pi->mass * dx[1] * dx[1] * wj_dr  * r_inv;
+    pj->Dinv[1][2] += pi->mass * dx[1] * dx[2] * wj_dr  * r_inv;
+    pj->Dinv[2][0] += pi->mass * dx[2] * dx[0] * wj_dr  * r_inv;
+    pj->Dinv[2][1] += pi->mass * dx[2] * dx[1] * wj_dr  * r_inv;
+    pj->Dinv[2][2] += pi->mass * dx[2] * dx[2] * wj_dr  * r_inv;
+    
+    
+    
+        #if defined(HYDRO_DIMENSION_2D)
+
+   pi->Dinv[2][2] = 1.f;
+    pj->Dinv[2][2] = 1.f;
+
+    #elif defined(HYDRO_DIMENSION_1D)
+
+  error("The dimension is not defined !");
+ 
+    #endif
+    
+
+    pi->E_v[0][0] += pj->mass * (pi->v[0] - pj->v[0]) * dx[0] * wi_dr  * r_inv;
+    pi->E_v[0][1] += pj->mass * (pi->v[0] - pj->v[0]) * dx[1] * wi_dr  * r_inv;
+    pi->E_v[0][2] += pj->mass * (pi->v[0] - pj->v[0]) * dx[2] * wi_dr  * r_inv;
+    pi->E_v[1][0] += pj->mass * (pi->v[1] - pj->v[1]) * dx[0] * wi_dr  * r_inv;
+    pi->E_v[1][1] += pj->mass * (pi->v[1] - pj->v[1]) * dx[1] * wi_dr  * r_inv;
+    pi->E_v[1][2] += pj->mass * (pi->v[1] - pj->v[1]) * dx[2] * wi_dr  * r_inv;
+    pi->E_v[2][0] += pj->mass * (pi->v[2] - pj->v[2]) * dx[0] * wi_dr  * r_inv;
+    pi->E_v[2][1] += pj->mass * (pi->v[2] - pj->v[2]) * dx[1] * wi_dr  * r_inv;
+    pi->E_v[2][2] += pj->mass * (pi->v[2] - pj->v[2]) * dx[2] * wi_dr  * r_inv;
+        
+    pj->E_v[0][0] += pi->mass * (pi->v[0] - pj->v[0]) * dx[0] * wj_dr  * r_inv;
+    pj->E_v[0][1] += pi->mass * (pi->v[0] - pj->v[0]) * dx[1] * wj_dr  * r_inv;
+    pj->E_v[0][2] += pi->mass * (pi->v[0] - pj->v[0]) * dx[2] * wj_dr  * r_inv;
+    pj->E_v[1][0] += pi->mass * (pi->v[1] - pj->v[1]) * dx[0] * wj_dr  * r_inv;
+    pj->E_v[1][1] += pi->mass * (pi->v[1] - pj->v[1]) * dx[1] * wj_dr  * r_inv;
+    pj->E_v[1][2] += pi->mass * (pi->v[1] - pj->v[1]) * dx[2] * wj_dr  * r_inv;
+    pj->E_v[2][0] += pi->mass * (pi->v[2] - pj->v[2]) * dx[0] * wj_dr  * r_inv;
+    pj->E_v[2][1] += pi->mass * (pi->v[2] - pj->v[2]) * dx[1] * wj_dr  * r_inv;
+    pj->E_v[2][2] += pi->mass * (pi->v[2] - pj->v[2]) * dx[2] * wj_dr  * r_inv;
 }
 
 /**
@@ -192,6 +249,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
   kernel_deval(ui, &wi, &wi_dx);
+  const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
+  const float wi_dr = hid_inv * wi_dx;
 
   pi->rho += mj * wi;
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
@@ -242,6 +301,40 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->sum_rij[2] += dx[2]*wi*mj;
   }
 #endif
+    
+    pi->Dinv[0][0] += pj->mass * dx[0] * dx[0] * wi_dr  * r_inv;
+    pi->Dinv[0][1] += pj->mass * dx[0] * dx[1] * wi_dr  * r_inv;
+    pi->Dinv[0][2] += pj->mass * dx[0] * dx[2] * wi_dr  * r_inv;
+    pi->Dinv[1][0] += pj->mass * dx[1] * dx[0] * wi_dr  * r_inv;
+    pi->Dinv[1][1] += pj->mass * dx[1] * dx[1] * wi_dr  * r_inv;
+    pi->Dinv[1][2] += pj->mass * dx[1] * dx[2] * wi_dr  * r_inv;
+    pi->Dinv[2][0] += pj->mass * dx[2] * dx[0] * wi_dr  * r_inv;
+    pi->Dinv[2][1] += pj->mass * dx[2] * dx[1] * wi_dr  * r_inv;
+    pi->Dinv[2][2] += pj->mass * dx[2] * dx[2] * wi_dr  * r_inv;
+        
+    
+    
+        #if defined(HYDRO_DIMENSION_2D)
+
+  pi->Dinv[2][2] = 1.f;
+
+
+    #elif defined(HYDRO_DIMENSION_1D)
+
+  error("The dimension is not defined !");
+  
+
+    #endif
+
+    pi->E_v[0][0] += pj->mass * (pi->v[0] - pj->v[0]) * dx[0] * wi_dr  * r_inv;
+    pi->E_v[0][1] += pj->mass * (pi->v[0] - pj->v[0]) * dx[1] * wi_dr  * r_inv;
+    pi->E_v[0][2] += pj->mass * (pi->v[0] - pj->v[0]) * dx[2] * wi_dr  * r_inv;
+    pi->E_v[1][0] += pj->mass * (pi->v[1] - pj->v[1]) * dx[0] * wi_dr  * r_inv;
+    pi->E_v[1][1] += pj->mass * (pi->v[1] - pj->v[1]) * dx[1] * wi_dr  * r_inv;
+    pi->E_v[1][2] += pj->mass * (pi->v[1] - pj->v[1]) * dx[2] * wi_dr  * r_inv;
+    pi->E_v[2][0] += pj->mass * (pi->v[2] - pj->v[2]) * dx[0] * wi_dr  * r_inv;
+    pi->E_v[2][1] += pj->mass * (pi->v[2] - pj->v[2]) * dx[1] * wi_dr  * r_inv;
+    pi->E_v[2][2] += pj->mass * (pi->v[2] - pj->v[2]) * dx[2] * wi_dr  * r_inv;
 }
 
 /**
@@ -333,6 +426,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     #elif defined(HYDRO_DIMENSION_1D)
     error("The dimension is not defined !");
     #endif
+    
+    
+    
+          int i,j,k;
+    for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+          
+          pi->dv[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi  * rho_inv_j;
+          pj->dv[i][j] += pi->mass * (pi->v[i] - pj->v[i]) * dx[j] * wj  * rho_inv_i;
+          
+         for (k = 0; k < 3; ++k) {
+             
+              pi->ddv[i][j][k] += pj->mass * (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi  * rho_inv_j;
+              pj->ddv[i][j][k] += pi->mass * (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wj  * rho_inv_i;
+
+             
+         }
+      }
+   }
+    
+    
+    
+    
+  pi->N_grad+=1.f;
+  pj->N_grad+=1.f;
 }
 
 /**
@@ -401,6 +519,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     #elif defined(HYDRO_DIMENSION_1D)
     error("The dimension is not defined !");
     #endif
+    
+    
+              int i,j,k;
+    for (i = 0; i < 3; ++i) { 
+      for (j = 0; j < 3; ++j) {
+          
+          pi->dv[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi  * rho_inv_j;
+          
+         for (k = 0; k < 3; ++k) {
+             
+              pi->ddv[i][j][k] += pj->mass * (pi->dv_aux[i][j] - pj->dv_aux[i][j]) * dx[k] * wi  * rho_inv_j;
+
+
+             
+         }
+      }
+   }
+    
+    pi->N_grad+=1.f;
   
 }
 
@@ -468,6 +605,145 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
         Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi;//wi_dr * dx[k] * r_inv;//
         Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj;//wj_dr * dx[k] * r_inv;//
     }
+    
+    
+        float phi_i_v, phi_j_v;
+    float eta_ab = min(r * hi_inv, r * hj_inv);  //note: 2 from our h being their h/2
+
+    
+    int i, j;
+        // A numerators and denominators
+    float A_i_v = 0.f;
+    float A_j_v = 0.f;
+
+    for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+            A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
+            A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
+          
+      }
+    }
+    
+    
+    
+        //for 3D            
+    float eta_crit = 2.172975 / cbrt((pi->N_grad + pj->N_grad)*0.5);
+    
+    #if defined(HYDRO_DIMENSION_2D)
+    
+    //for 2D
+    eta_crit = 2.754572 / sqrtf((pi->N_grad + pj->N_grad)*0.5);
+
+    #endif
+
+
+   
+    phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+    phi_i_v = max(0.f, phi_i_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
+    
+    
+    phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+    phi_j_v = max(0.f, phi_j_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
+    
+
+    if(eta_ab>eta_crit){
+        phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+        phi_i_v = max(0.f, phi_i_v);
+            
+        phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+        phi_j_v = max(0.f, phi_j_v);
+    }
+    
+    
+    if(isnan(phi_i_v)){phi_i_v = 0.f;}
+    if(isnan(phi_j_v)){phi_j_v = 0.f;}
+
+    
+    
+
+    
+    // terms in square brackets in rosswog 2020 eq 17
+    float v_quad_i[3] = {0};
+    float v_quad_j[3] = {0};
+
+    
+
+    for (i = 0; i < 3; ++i) {
+        
+        v_quad_i[0] -= 0.5 * pi->C_dv[i][0] * dx[i];
+        v_quad_i[1] -= 0.5 * pi->C_dv[i][1] * dx[i];
+        v_quad_i[2] -= 0.5 * pi->C_dv[i][2] * dx[i];
+        
+        v_quad_j[0] += 0.5 * pj->C_dv[i][0] * dx[i];
+        v_quad_j[1] += 0.5 * pj->C_dv[i][1] * dx[i];
+        v_quad_j[2] += 0.5 * pj->C_dv[i][2] * dx[i];
+        
+        
+      for (j = 0; j < 3; ++j) {
+
+          v_quad_i[0] += 0.125 * pi->C_ddv[i][0][j] * dx[i] * dx[j];
+          v_quad_i[1] += 0.125 * pi->C_ddv[i][1][j] * dx[i] * dx[j];
+          v_quad_i[2] += 0.125 * pi->C_ddv[i][2][j] * dx[i] * dx[j];
+          
+          v_quad_j[0] += 0.125 * pj->C_ddv[i][0][j] * dx[i] * dx[j];
+          v_quad_j[1] += 0.125 * pj->C_ddv[i][1][j] * dx[i] * dx[j];
+          v_quad_j[2] += 0.125 * pj->C_ddv[i][2][j] * dx[i] * dx[j];
+
+      }
+   }
+    
+    
+    
+    
+    float vtilde_i[3], vtilde_j[3];
+    vtilde_i[0] = pi->v[0] + phi_i_v * v_quad_i[0];
+    vtilde_i[1] = pi->v[1] + phi_i_v * v_quad_i[1];
+    vtilde_i[2] = pi->v[2] + phi_i_v * v_quad_i[2];
+        
+    vtilde_j[0] = pj->v[0] + phi_j_v * v_quad_j[0];
+    vtilde_j[1] = pj->v[1] + phi_j_v * v_quad_j[1];
+    vtilde_j[2] = pj->v[2] + phi_j_v * v_quad_j[2];
+    
+    
+    
+    // hard coded in for now
+    float alpha = 1.f;
+    float beta = 2.f;
+    float epsilon = 0.1;
+    
+    
+    
+    float eta_i_2 = r2 * hi_inv * hi_inv; //note 2s from def of h
+    float eta_j_2 = r2 * hj_inv * hj_inv;
+    
+    // (vtilde_i - vtilde_j) dot (-dx/h)
+    
+    float mu_i = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] + (vtilde_i[1] - vtilde_j[1]) * dx[1] + (vtilde_i[2] - vtilde_j[2]) * dx[2]) * hi_inv / (eta_i_2 + epsilon * epsilon));
+    float mu_j = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] + (vtilde_i[1] - vtilde_j[1]) * dx[1] + (vtilde_i[2] - vtilde_j[2]) * dx[2]) * hj_inv / (eta_j_2 + epsilon * epsilon));
+    
+    
+
+      const float ci = pi->force.soundspeed;
+      const float cj = pj->force.soundspeed;
+        
+    float Q_i = rhoi * (-alpha * ci * mu_i + beta * mu_i * mu_i);
+    float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
+
+    
+    
+     // Compute dv dot r. 
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
+    
+
+  const float omega_ij = min(dvdr, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; 
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
+
+    if(Q_i == 100000000000000000.f){}
+    if(Q_j == 100000000000000000.f){}
+
 
  float kernel_gradient[3];
     kernel_gradient[0] = 0.5f * (Gi[0] + Gj[0]);//0.5f * (Gi[0] * pi->f_gdf + Gj[0] * pj->f_gdf);//
@@ -491,37 +767,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[1] - pj->v[1]) * kernel_gradient[1] +
                      (pi->v[2] - pj->v[2]) * kernel_gradient[2];
 
-  /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
-
-  /* Balsara term */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
-
-  /* Are the particles moving towards each other? */
-  const float omega_ij = min(dvdr, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Compute sound speeds and signal velocity */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
-
-  /* Now construct the full viscosity term */
-  const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term = visc;
+         
 
   /* SPH acceleration term */
-  const float sph_acc_term =
-      (pressurei + pressurej) / (pi->rho * pj->rho);//(pressurei + Q_i + pressurej + Q_j) / (pi->rho * pj->rho);
+  const float sph_acc_term = (pressurei + Q_i + pressurej + Q_j) / (pi->rho * pj->rho);
 
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc_acc_term;
+  const float acc = sph_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * kernel_gradient[0];
@@ -534,9 +786,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the time derivative for u. */
   const float sph_du_term_i =
-      (pressurei) * dvdGij / (rhoi * rhoj);//(pressurei + Q_i) * dvdGij / (rhoi * rhoj);
+      (pressurei + Q_i) * dvdGij / (rhoi * rhoj);
   const float sph_du_term_j =
-      (pressurej) * dvdGij / (rhoi * rhoj);//(pressurej + Q_j) * dvdGij / (rhoi * rhoj);
+      (pressurej + Q_j) * dvdGij / (rhoi * rhoj);
 
   /*if (abs(sph_du_term_i*mj) > 1E+05 && pi->mat_id == 100){
   printf(
@@ -550,12 +802,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   }*/
 
-  /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdGij;
-
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
-  const float du_dt_j = sph_du_term_j + visc_du_term;
+  const float du_dt_i = sph_du_term_i;
+  const float du_dt_j = sph_du_term_j;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -640,6 +889,143 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
         Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj;//wj_dr * dx[k] * r_inv;//
     }
 
+            float phi_i_v, phi_j_v;
+    float eta_ab = min(r * hi_inv, r * hj_inv);  //note: 2 from our h being their h/2
+
+    
+    int i, j;
+        // A numerators and denominators
+    float A_i_v = 0.f;
+    float A_j_v = 0.f;
+
+    for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+            A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
+            A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
+          
+      }
+    }
+    
+    
+    
+        //for 3D            
+    float eta_crit = 2.172975 / cbrt((pi->N_grad + pj->N_grad)*0.5);
+    
+    #if defined(HYDRO_DIMENSION_2D)
+    
+    //for 2D
+    eta_crit = 2.754572 / sqrtf((pi->N_grad + pj->N_grad)*0.5);
+
+    #endif
+
+
+   
+    phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+    phi_i_v = max(0.f, phi_i_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
+    
+    
+    phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+    phi_j_v = max(0.f, phi_j_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
+    
+
+    if(eta_ab>eta_crit){
+        phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+        phi_i_v = max(0.f, phi_i_v);
+            
+        phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+        phi_j_v = max(0.f, phi_j_v);
+    }
+    
+    
+    if(isnan(phi_i_v)){phi_i_v = 0.f;}
+    if(isnan(phi_j_v)){phi_j_v = 0.f;}
+
+    
+    
+
+    
+    // terms in square brackets in rosswog 2020 eq 17
+    float v_quad_i[3] = {0};
+    float v_quad_j[3] = {0};
+
+    
+
+    for (i = 0; i < 3; ++i) {
+        
+        v_quad_i[0] -= 0.5 * pi->C_dv[i][0] * dx[i];
+        v_quad_i[1] -= 0.5 * pi->C_dv[i][1] * dx[i];
+        v_quad_i[2] -= 0.5 * pi->C_dv[i][2] * dx[i];
+        
+        v_quad_j[0] += 0.5 * pj->C_dv[i][0] * dx[i];
+        v_quad_j[1] += 0.5 * pj->C_dv[i][1] * dx[i];
+        v_quad_j[2] += 0.5 * pj->C_dv[i][2] * dx[i];
+        
+        
+      for (j = 0; j < 3; ++j) {
+
+          v_quad_i[0] += 0.125 * pi->C_ddv[i][0][j] * dx[i] * dx[j];
+          v_quad_i[1] += 0.125 * pi->C_ddv[i][1][j] * dx[i] * dx[j];
+          v_quad_i[2] += 0.125 * pi->C_ddv[i][2][j] * dx[i] * dx[j];
+          
+          v_quad_j[0] += 0.125 * pj->C_ddv[i][0][j] * dx[i] * dx[j];
+          v_quad_j[1] += 0.125 * pj->C_ddv[i][1][j] * dx[i] * dx[j];
+          v_quad_j[2] += 0.125 * pj->C_ddv[i][2][j] * dx[i] * dx[j];
+
+      }
+   }
+    
+    
+    
+    
+    float vtilde_i[3], vtilde_j[3];
+    vtilde_i[0] = pi->v[0] + phi_i_v * v_quad_i[0];
+    vtilde_i[1] = pi->v[1] + phi_i_v * v_quad_i[1];
+    vtilde_i[2] = pi->v[2] + phi_i_v * v_quad_i[2];
+        
+    vtilde_j[0] = pj->v[0] + phi_j_v * v_quad_j[0];
+    vtilde_j[1] = pj->v[1] + phi_j_v * v_quad_j[1];
+    vtilde_j[2] = pj->v[2] + phi_j_v * v_quad_j[2];
+    
+    
+    
+    // hard coded in for now
+    float alpha = 1.f;
+    float beta = 2.f;
+    float epsilon = 0.1;
+    
+    
+    
+    float eta_i_2 = r2 * hi_inv * hi_inv; //note 2s from def of h
+    float eta_j_2 = r2 * hj_inv * hj_inv;
+    
+    // (vtilde_i - vtilde_j) dot (-dx/h)
+    
+    float mu_i = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] + (vtilde_i[1] - vtilde_j[1]) * dx[1] + (vtilde_i[2] - vtilde_j[2]) * dx[2]) * hi_inv / (eta_i_2 + epsilon * epsilon));
+    float mu_j = min(0.f, ((vtilde_i[0] - vtilde_j[0]) * dx[0] + (vtilde_i[1] - vtilde_j[1]) * dx[1] + (vtilde_i[2] - vtilde_j[2]) * dx[2]) * hj_inv / (eta_j_2 + epsilon * epsilon));
+    
+    
+
+      const float ci = pi->force.soundspeed;
+      const float cj = pj->force.soundspeed;
+        
+    float Q_i = rhoi * (-alpha * ci * mu_i + beta * mu_i * mu_i);
+    float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
+
+    
+    
+     // Compute dv dot r. 
+  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
+                     (pi->v[1] - pj->v[1]) * dx[1] +
+                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
+    
+
+  const float omega_ij = min(dvdr, 0.f);
+  const float mu_ij = fac_mu * r_inv * omega_ij; 
+  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
+
+    if(Q_i == 100000000000000000.f){}
+    if(Q_j == 100000000000000000.f){}
+    
   float kernel_gradient[3];
     kernel_gradient[0] = 0.5f * (Gi[0] + Gj[0]);//0.5f * (Gi[0] * pi->f_gdf + Gj[0] * pj->f_gdf);//
     kernel_gradient[1] = 0.5f * (Gi[1] + Gj[1]);//0.5f * (Gi[1] * pi->f_gdf + Gj[1] * pj->f_gdf);//
@@ -656,41 +1042,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[1] - pj->v[1]) * kernel_gradient[1] +
                      (pi->v[2] - pj->v[2]) * kernel_gradient[2];
     
-    
-
-  /* Compute dv dot r. */
-  const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
-                     (pi->v[1] - pj->v[1]) * dx[1] +
-                     (pi->v[2] - pj->v[2]) * dx[2] + a2_Hubble * r2;
-
-  /* Balsara term */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
-
-  /* Are the particles moving towards each other? */
-  const float omega_ij = min(dvdr, 0.f);
-  const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
-
-  /* Compute sound speeds */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-
-  /* Signal velocity */
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
-
-  /* Construct the full viscosity term */
-  const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
-
-  /* Convolve with the kernel */
-  const float visc_acc_term = visc;
  
   /* SPH acceleration term */
-  const float sph_acc_term =
-      (pressurei + pressurej)/ (pi->rho * pj->rho);//(pressurei + Q_i + pressurej + Q_j)/ (pi->rho * pj->rho);
+  const float sph_acc_term = (pressurei + Q_i + pressurej + Q_j)/ (pi->rho * pj->rho);
 
   /* Assemble the acceleration */
-  const float acc = sph_acc_term + visc;
+  const float acc = sph_acc_term;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * kernel_gradient[0];
@@ -699,13 +1056,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
  /* Get the time derivative for u. */
       const float sph_du_term_i =
-      (pressurei) * dvdGij / (rhoi * rhoj); //;(pressurei + Q_i) * dvdGij / (rhoi * rhoj);    
+      (pressurei + Q_i) * dvdGij / (rhoi * rhoj);    
 
-  /* Viscosity term */
-  const float visc_du_term = 0.5f * visc_acc_term * dvdGij;
 
   /* Assemble the energy equation term */
-  const float du_dt_i = sph_du_term_i + visc_du_term;
+  const float du_dt_i = sph_du_term_i;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;

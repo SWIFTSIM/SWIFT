@@ -135,6 +135,27 @@ struct part {
     
   /*! Particle C matrix. */
   float C[3][3], Cinv[3][3];
+    
+  /*! Particle D matrix. */
+  float D[3][3], Dinv[3][3];
+    
+  /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
+  float E_v[3][3]; 
+    
+  /*! Particle auxiliary gradient*/
+  float dv_aux[3][3];
+    
+  /*! Particle gradients from eq 18 (without C multiplied)*/
+  float dv[3][3];
+  float ddv[3][3][3];
+
+  /*! Particle gradients from eq 18 (with C multiplied)*/
+  float C_dv[3][3];
+  float C_ddv[3][3][3];
+    
+  /*! Number of particles in grad loop*/
+  float N_grad;
+    
 
 
   /* Store density/force specific stuff. */
