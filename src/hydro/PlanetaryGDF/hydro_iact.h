@@ -301,29 +301,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #endif
     
       
-    const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
-    const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+    //const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+    //const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
    
-    pi->Cinv[0][0] += pj->mass * dx[0] * dx[0] * wi * hid_inv * rho_inv_j;
-    pi->Cinv[0][1] += pj->mass * dx[0] * dx[1] * wi * hid_inv   * rho_inv_j;
-    pi->Cinv[0][2] += pj->mass * dx[0] * dx[2] * wi * hid_inv   * rho_inv_j;
-    pi->Cinv[1][0] += pj->mass * dx[1] * dx[0] * wi * hid_inv   * rho_inv_j;
-    pi->Cinv[1][1] += pj->mass * dx[1] * dx[1] * wi * hid_inv   * rho_inv_j;
-    pi->Cinv[1][2] += pj->mass * dx[1] * dx[2] * wi * hid_inv   * rho_inv_j;
-    pi->Cinv[2][0] += pj->mass * dx[2] * dx[0] * wi * hid_inv   * rho_inv_j;
-    pi->Cinv[2][1] += pj->mass * dx[2] * dx[1] * wi * hid_inv   * rho_inv_j;
-    pi->Cinv[2][2] += pj->mass * dx[2] * dx[2] * wi * hid_inv   * rho_inv_j;
+    pi->Cinv[0][0] += pj->mass * dx[0] * dx[0] * wi * rho_inv_j;
+    pi->Cinv[0][1] += pj->mass * dx[0] * dx[1] * wi * rho_inv_j;
+    pi->Cinv[0][2] += pj->mass * dx[0] * dx[2] * wi * rho_inv_j;
+    pi->Cinv[1][0] += pj->mass * dx[1] * dx[0] * wi * rho_inv_j;
+    pi->Cinv[1][1] += pj->mass * dx[1] * dx[1] * wi * rho_inv_j;
+    pi->Cinv[1][2] += pj->mass * dx[1] * dx[2] * wi * rho_inv_j;
+    pi->Cinv[2][0] += pj->mass * dx[2] * dx[0] * wi * rho_inv_j;
+    pi->Cinv[2][1] += pj->mass * dx[2] * dx[1] * wi * rho_inv_j;
+    pi->Cinv[2][2] += pj->mass * dx[2] * dx[2] * wi * rho_inv_j;
         
-    pj->Cinv[0][0] += pi->mass * dx[0] * dx[0] * wj * hjd_inv  * rho_inv_i;
-    pj->Cinv[0][1] += pi->mass * dx[0] * dx[1] * wj * hjd_inv  * rho_inv_i;
-    pj->Cinv[0][2] += pi->mass * dx[0] * dx[2] * wj * hjd_inv  * rho_inv_i;
-    pj->Cinv[1][0] += pi->mass * dx[1] * dx[0] * wj * hjd_inv  * rho_inv_i;
-    pj->Cinv[1][1] += pi->mass * dx[1] * dx[1] * wj * hjd_inv  * rho_inv_i;
-    pj->Cinv[1][2] += pi->mass * dx[1] * dx[2] * wj * hjd_inv  * rho_inv_i;
-    pj->Cinv[2][0] += pi->mass * dx[2] * dx[0] * wj * hjd_inv  * rho_inv_i;
-    pj->Cinv[2][1] += pi->mass * dx[2] * dx[1] * wj * hjd_inv  * rho_inv_i;
-    pj->Cinv[2][2] += pi->mass * dx[2] * dx[2] * wj * hjd_inv  * rho_inv_i;
-    
+    pj->Cinv[0][0] += pi->mass * dx[0] * dx[0] * wj * rho_inv_i;
+    pj->Cinv[0][1] += pi->mass * dx[0] * dx[1] * wj * rho_inv_i;
+    pj->Cinv[0][2] += pi->mass * dx[0] * dx[2] * wj * rho_inv_i;
+    pj->Cinv[1][0] += pi->mass * dx[1] * dx[0] * wj * rho_inv_i;
+    pj->Cinv[1][1] += pi->mass * dx[1] * dx[1] * wj * rho_inv_i;
+    pj->Cinv[1][2] += pi->mass * dx[1] * dx[2] * wj * rho_inv_i;
+    pj->Cinv[2][0] += pi->mass * dx[2] * dx[0] * wj * rho_inv_i;
+    pj->Cinv[2][1] += pi->mass * dx[2] * dx[1] * wj * rho_inv_i;
+    pj->Cinv[2][2] += pi->mass * dx[2] * dx[2] * wj * rho_inv_i;
     
     
         #if defined(HYDRO_DIMENSION_2D)
@@ -382,17 +381,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
     
     
-    const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
+    //const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
     
-    pi->Cinv[0][0] += pj->mass * dx[0] * dx[0] * wi * hid_inv  * rho_inv_j;
-    pi->Cinv[0][1] += pj->mass * dx[0] * dx[1] * wi * hid_inv  * rho_inv_j;
-    pi->Cinv[0][2] += pj->mass * dx[0] * dx[2] * wi * hid_inv  * rho_inv_j;
-    pi->Cinv[1][0] += pj->mass * dx[1] * dx[0] * wi * hid_inv  * rho_inv_j;
-    pi->Cinv[1][1] += pj->mass * dx[1] * dx[1] * wi * hid_inv  * rho_inv_j;
-    pi->Cinv[1][2] += pj->mass * dx[1] * dx[2] * wi * hid_inv  * rho_inv_j;
-    pi->Cinv[2][0] += pj->mass * dx[2] * dx[0] * wi * hid_inv  * rho_inv_j;
-    pi->Cinv[2][1] += pj->mass * dx[2] * dx[1] * wi * hid_inv  * rho_inv_j;
-    pi->Cinv[2][2] += pj->mass * dx[2] * dx[2] * wi * hid_inv  * rho_inv_j;
+    pi->Cinv[0][0] += pj->mass * dx[0] * dx[0] * wi * rho_inv_j;
+    pi->Cinv[0][1] += pj->mass * dx[0] * dx[1] * wi * rho_inv_j;
+    pi->Cinv[0][2] += pj->mass * dx[0] * dx[2] * wi * rho_inv_j;
+    pi->Cinv[1][0] += pj->mass * dx[1] * dx[0] * wi * rho_inv_j;
+    pi->Cinv[1][1] += pj->mass * dx[1] * dx[1] * wi * rho_inv_j;
+    pi->Cinv[1][2] += pj->mass * dx[1] * dx[2] * wi * rho_inv_j;
+    pi->Cinv[2][0] += pj->mass * dx[2] * dx[0] * wi * rho_inv_j;
+    pi->Cinv[2][1] += pj->mass * dx[2] * dx[1] * wi * rho_inv_j;
+    pi->Cinv[2][2] += pj->mass * dx[2] * dx[2] * wi * rho_inv_j;
     
     
     #if defined(HYDRO_DIMENSION_2D)
@@ -459,15 +458,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     
     
     
-    const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
-    const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+    //const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+    //const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
     
   float Gj[3], Gi[3];  
 
     int k;
     for(k=0;k<3;k++){
-        Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi * hid_inv;//wi_dr * dx[k] * r_inv;//
-        Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj * hjd_inv;//wj_dr * dx[k] * r_inv;//
+        Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi;//wi_dr * dx[k] * r_inv;//
+        Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj;//wj_dr * dx[k] * r_inv;//
     }
 
  float kernel_gradient[3];
@@ -630,15 +629,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xj, &wj, &wj_dx);
 
     
-    const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
-    const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+    //const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+    //const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
     
   float Gj[3], Gi[3];  
 
     int k;
     for(k=0;k<3;k++){
-        Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi * hid_inv;//wi_dr * dx[k] * r_inv;//
-        Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj * hjd_inv;//wj_dr * dx[k] * r_inv;//
+        Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi;//wi_dr * dx[k] * r_inv;//
+        Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj;//wj_dr * dx[k] * r_inv;//
     }
 
   float kernel_gradient[3];
