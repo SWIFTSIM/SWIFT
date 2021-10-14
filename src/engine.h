@@ -163,6 +163,10 @@ struct engine {
   /* Dimensionless factor for the RMS time-step condition. */
   double max_RMS_displacement_factor;
 
+  /* When computing the max RMS dt, should only the gas particles
+   * be considered as the baryon component? */
+  int max_RMS_dt_use_only_gas;
+
   /* Time of the simulation beginning */
   double time_begin;
 

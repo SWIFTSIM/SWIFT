@@ -601,9 +601,13 @@ the start and end times or scale factors from the parameter file.
 
 * Dimensionless pre-factor of the maximal allowed displacement:
   ``max_dt_RMS_factor`` (default: ``0.25``)
-
-This value rarely needs altering. See the theory documents for its
-precise meaning.
+* Whether or not only the gas particle masses should be considered for
+  the baryon component of the calculation: ``dt_RMS_use_gas_only`` (default: ``0``)
+  
+These values rarely need altering. The second parameter is only
+meaningful if a subgrid model produces star (or other) particles with
+masses substantially smaller than the gas masses. See the theory
+documents for the precise meanings.
 
 A full time-step section for a non-cosmological run would be:
 
@@ -620,10 +624,11 @@ Whilst for a cosmological run, one would need:
 .. code:: YAML
 
   TimeIntegration:
-    dt_max:            1e-4
-    dt_min:            1e-10
-    max_dt_RMS_factor: 0.25     # Default optional value
-
+    dt_max:              1e-4
+    dt_min:              1e-10
+    max_dt_RMS_factor:   0.25     # Default optional value
+    dt_RMS_use_gas_only: 0        # Default optional value
+    
 .. _Parameters_ICs:
 
 Initial Conditions
