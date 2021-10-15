@@ -596,7 +596,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float alpha = 7.5f;
 #endif
 #ifdef WENDLAND_C6_KERNEL
-  const float alpha = 7.1f;
+  //const float alpha = 7.1f; // eta=1.2348
+  const float alpha = 5.1;  // eta=2.2
 #endif
   p->I *= alpha;
 #endif
@@ -761,9 +762,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
             p->P = P_new;
             p->T = T_new;
 	  }
-  } else {
+  } else { 
     const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
     const float T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+    /*printf("Exception: %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g\n",
+           p->sum_wij_exp, p->sum_wij_exp_P, p->sum_wij_exp_T, p->rho, p->u, P, T);*/
     p->P = P;
     p->T = T;
   }

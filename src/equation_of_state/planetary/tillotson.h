@@ -447,7 +447,10 @@ INLINE static float Til_temperature_from_internal_energy(
     u_cold = compute_fast_u_cold(density, mat);
     
     T = (u - u_cold)/(mat->CV);
-    
+    if (T < 0.f){
+      T = 0.f;
+    }
+
     return T;
     
 }
