@@ -1239,7 +1239,7 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
  * @param cj The second cell to interact.
  */
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, int flags,
+                               enum task_subtypes subtype, long long flags,
                                int implicit, struct cell *ci, struct cell *cj) {
   /* Get the next free task. */
   const int ind = atomic_inc(&s->tasks_next);

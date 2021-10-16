@@ -375,8 +375,8 @@ static void parse_line(char *line, struct swift_params *params) {
         parse_value(no_space_line, params);
       }
       /* Check for invalid lines,not including the start and end of file. */
-      else if (strcmp(trim_line, PARSER_START_OF_FILE) &&
-               strcmp(trim_line, PARSER_END_OF_FILE)) {
+      else if (!strcmp(trim_line, PARSER_START_OF_FILE) &&
+               !strcmp(trim_line, PARSER_END_OF_FILE)) {
         error("Invalid line:%d '%s'.", lineNumber, trim_line);
       }
     }

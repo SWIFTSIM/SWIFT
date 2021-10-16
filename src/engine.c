@@ -1162,7 +1162,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 
   float ntasks = n1 * ntop + n2 * (ncells - ntop);
-  if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
+  if (ncells > 0) tasks_per_cell = ceilf(ntasks / ncells);
 
   if (tasks_per_cell < 1.0f) tasks_per_cell = 1.0f;
   if (e->verbose)
