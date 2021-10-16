@@ -2820,6 +2820,8 @@ void engine_init(
   e->dt_max_RMS_displacement = FLT_MAX;
   e->max_RMS_displacement_factor = parser_get_opt_param_double(
       params, "TimeIntegration:max_dt_RMS_factor", 0.25);
+  e->max_RMS_dt_use_only_gas = parser_get_opt_param_int(
+      params, "TimeIntegration:dt_RMS_use_gas_only", 0);
   e->dt_kick_grav_mesh_for_io = 0.f;
   e->a_first_statistics =
       parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
@@ -3115,9 +3117,12 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     /* Baryon case */
     if (N_b > 0.f) {
 
-      /* Minimal mass for the baryons */
-      const float min_mass_b =
-          min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
+      /* Minimal mass for the bayons */
+      float min_mass_b;
+      if (e->max_RMS_dt_use_only_gas)
+        min_mass_b = min_mass[0];
+      else
+        min_mass_b = min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
 
       /* Inter-particle sepration for the baryons */
       const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
