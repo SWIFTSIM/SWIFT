@@ -758,14 +758,15 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
   tic = getticks();
 
   /* If using linear response neutrinos, apply to local slice of the MPI mesh */
-  if (s->e->neutrino_properties->use_linear_response)
+  if (s->e->neutrino_properties->use_linear_response) {
     neutrino_mesh_compute(s, mesh, tp, frho, local_0_start, local_n0, verbose);
 
-  if (verbose)
-    message("Applying neutrino response took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    if (verbose)
+      message("Applying neutrino response took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  tic = getticks();
+    tic = getticks();
+  }
 
   /* Carry out the reverse MPI Fourier transform */
   fftw_plan mpi_inverse_plan = fftw_mpi_plan_dft_c2r_3d(
@@ -956,15 +957,16 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   tic = getticks();
 
   /* If using linear response neutrinos, apply the response to the mesh */
-  if (s->e->neutrino_properties->use_linear_response)
+  if (s->e->neutrino_properties->use_linear_response) {
     neutrino_mesh_compute(s, mesh, tp, frho, /*slice_offset=*/0,
                           /*slice_width=*/N, verbose);
 
-  if (verbose)
-    message("Applying neutrino response took %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
+    if (verbose)
+      message("Applying neutrino response took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  tic = getticks();
+    tic = getticks();
+  }
 
   /* Fourier transform to come back from magic-land */
   fftw_execute(inverse_plan);
