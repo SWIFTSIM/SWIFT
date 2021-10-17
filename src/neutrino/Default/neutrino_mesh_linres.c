@@ -330,7 +330,7 @@ void neutrino_mesh_init(struct swift_params *params,
     for (hsize_t j = 0; j < wavenumber_length; j++) {
       double log_a = log_a_min + i * delta_log_a;
       double log_k = log_k_min + j * delta_log_k;
-      numesh->ncdm_over_cb[N_k * i + j] =
+      numesh->ncdm_over_cb[wavenumber_length * i + j] =
           gsl_spline2d_eval(spline, log_k, log_a, k_acc, a_acc);
     }
   }
