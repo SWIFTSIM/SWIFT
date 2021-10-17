@@ -115,6 +115,9 @@ struct gravity_props {
 
   /* ------------- Properties of the mesh-based gravity ---------------- */
 
+  /*! Whether to trigger a tree rebuild on mesh gravity timesteps */
+  int rebuild_on_mesh_steps;
+
   /*! Periodic long-range mesh side-length */
   int mesh_size;
 
