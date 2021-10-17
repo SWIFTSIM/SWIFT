@@ -42,7 +42,10 @@ void compute_neutrino_diagnostics(
     const struct neutrino_props *neutrino_properties, const int rank, double *r,
     double *I_df, double *mass_tot) {
 
-  if (!neutrino_properties->use_delta_f) {
+  int use_df = neutrino_properties->use_delta_f;
+  int use_df_mesh = neutrino_properties->use_delta_f_mesh_only;
+
+  if (!use_df && !use_df_mesh) {
     error("Neutrino diagnostics only defined when using the delta-f method.");
   }
 
@@ -165,19 +168,26 @@ void neutrino_check_cosmology(const struct space *s,
                               const struct neutrino_props *neutrino_props,
                               const int rank, const int verbose) {
 
-  /* Check that we are not missing any neutrino particles */
-  if (!s->with_neutrinos) {
-    int use_df = parser_get_opt_param_int(params, "Neutrino:use_delta_f", 0);
-    int genics = parser_get_opt_param_int(params, "Neutrino:generate_ics", 0);
-    if (use_df || genics)
-      error(
-          "Running without neutrino particles, but specified a neutrino "
-          "model in the parameter file.");
+  /* Check that we have neutrino particles if we need them and vice-versa */
+  int use_df = neutrino_props->use_delta_f;
+  int use_df_mesh = neutrino_props->use_delta_f_mesh_only;
+  int use_linres = neutrino_props->use_linear_response;
+  int genics = neutrino_props->generate_ics;
+
+  if ((use_df || use_df_mesh || genics) && !s->with_neutrinos) {
+    error(
+        "Running without neutrino particles, but specified a neutrino "
+        "model that requires them.");
+  } else if (use_linres && s->with_neutrinos) {
+    error(
+        "Running with neutrino particles, but specified a neutrino "
+        "model that is incompatible with particles.");
   }
 
-  /* We are done if the delta-f method is not used, since in that case the
-   * total mass has already been checked in space_check_cosmology. */
-  if (!neutrino_props->use_delta_f) return;
+  /* We are done if the delta-f method is not used, since the total mass
+   * has already been checked in space_check_cosmology if we use no special
+   * neutrino model and the mass is zero if we use the linear response model. */
+  if (!use_df && !use_df_mesh) return;
 
   /* Compute neutrino diagnostics, including the total mass */
   double r, I_df, total_mass;

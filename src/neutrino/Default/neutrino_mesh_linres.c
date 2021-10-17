@@ -130,6 +130,12 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
   /* Do we need to do anything? */
   if (!np->use_linear_response) return;
 
+  /* Check that we have a degenerate neutrino mass spectrum */
+  if (c->N_nu > 1)
+    error(
+        "Non-degenerate neutrino mass spectra not supported with the linear "
+        "response methid.");
+
 #ifdef HAVE_LIBGSL
 
   /* Parse file name parameter */

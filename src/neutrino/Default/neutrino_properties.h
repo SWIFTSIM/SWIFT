@@ -71,8 +71,6 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
 
   if (np->use_delta_f + np->use_delta_f_mesh_only + np->use_linear_response > 1)
     error("Cannot use multiple neutrino implementations concurrently.");
-  if (with_neutrinos && np->use_linear_response)
-    error("Cannot use both linear response and particle neutrinos.");
 }
 
 /**
