@@ -1490,7 +1490,9 @@ int main(int argc, char *argv[]) {
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
     if (with_cosmology && with_self_gravity && !dry_run) {
-      const int check_neutrinos = !neutrino_properties.use_delta_f;
+      const int check_neutrinos = !neutrino_properties.use_delta_f &&
+                                  !neutrino_properties.use_delta_f_mesh_only &&
+                                  !neutrino_properties.use_linear_response;
       space_check_cosmology(&s, &cosmo, with_hydro, myrank, check_neutrinos);
       neutrino_check_cosmology(&s, &cosmo, &prog_const, params,
                                &neutrino_properties, myrank, verbose);
