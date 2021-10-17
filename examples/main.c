@@ -1303,8 +1303,8 @@ int main(int argc, char *argv[]) {
     /* Initialize the neutrino mesh if used */
     bzero(&neutrino_mesh, sizeof(struct neutrino_mesh));
     if (neutrino_properties.use_linear_response)
-      neutrino_mesh_init(params, &us, s.dim, &cosmo, &neutrino_properties,
-                         &gravity_properties, &neutrino_mesh, verbose);
+      neutrino_mesh_init(&neutrino_mesh, params, &us, s.dim, &cosmo,
+                         &neutrino_properties, &gravity_properties, verbose);
 
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));

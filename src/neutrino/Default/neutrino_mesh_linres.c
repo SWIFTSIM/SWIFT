@@ -35,6 +35,13 @@ const hsize_t timestep_length = 10000;
 /*! Number of wavenumbers in the neutrino density interpolation table */
 const hsize_t wavenumber_length = 10000;
 
+/**
+ * @brief Determine the length of an HDF5 dataset
+ *
+ * @param h_file The file object
+ * @param title The title of the dataset
+ * @param length (Output) The vector length
+ */
 void read_vector_length(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
                         hsize_t *length) {
 
@@ -60,6 +67,15 @@ void read_vector_length(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
   H5Dclose(h_data);
 }
 
+/**
+ * @brief Read transfer funtion from an HDF5 dataset with expected size N_z*N_k
+ *
+ * @param h_file The file object
+ * @param title The title of the dataset
+ * @param length (Output) Memory fot the transfer function data
+ * @param N_z Expected number of timesteps
+ * @param N_k Expected number of wavenumbers
+ */
 void read_transfer_function(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
                             double *dest, hsize_t N_z, hsize_t N_k) {
 
@@ -91,12 +107,26 @@ void read_transfer_function(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
   H5Dclose(h_data);
 }
 
-void neutrino_mesh_init(struct swift_params *params,
+/**
+ * @brief Initialize the #neutrino_mesh object by reading an HDF5 file with
+ * transfer functions and pre-computing a transfer function ratio.
+ *
+ * @param numesh The #neutrino_mesh to be initialized
+ * @param params The parsed parameter file.
+ * @param us The system of units used internally.
+ * @param dim Spatial dimensions of the domain.
+ * @param c The #cosmology used for this run.
+ * @param np The #neutrino_props used for this run.
+ * @param gp The #gravity_props used for this run.
+ * @param verbose Are we talkative ?
+ */
+void neutrino_mesh_init(struct neutrino_mesh *numesh,
+                        struct swift_params *params,
                         const struct unit_system *us, const double dim[3],
                         const struct cosmology *c,
                         const struct neutrino_props *np,
                         const struct gravity_props *gp,
-                        struct neutrino_mesh *numesh, int verbose) {
+                        int verbose) {
 
   /* Do we need to do anything? */
   if (!np->use_linear_response) return;
@@ -265,7 +295,7 @@ void neutrino_mesh_init(struct swift_params *params,
     message("(a_min, a_max) = (%g, %g)", a_min, a_max);
   }
 
-  /* We will remap the data such that it exactly covers the required domain
+  /* We will remap the data such that it just covers the required domain
    * with a constant log spacing, allowing for faster interpolation.
    * We only use the slower GSL interpolation for the remapping. */
 
@@ -373,7 +403,7 @@ struct neutrino_mesh_tp_data {
 
   /* Background and perturbed density ratios */
   double bg_density_ratio;
-  double *ncdm_over_cb_arr;
+  const double *ncdm_over_cb_arr;
 };
 
 /**
@@ -454,10 +484,24 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
   }
 }
 
+/**
+ * @brief Apply the linear neutrino response to the Fourier transform of the
+ * gravitational potential.
+ *
+ * @param s The current #space
+ * @param mesh The #pm_mesh used to store the potential
+ * @param tp The #threadpool object used for parallelisation
+ * @param frho The NxNx(N/2) complex array of the Fourier transform of the
+ * density field
+ * @param slice_offset The x coordinate of the start of the slice on this MPI
+ * rank
+ * @param slice_width The width of the local slice on this MPI rank
+ * @param verbose Are we talkative?
+ */
 void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
                            struct threadpool *tp, fftw_complex *frho,
-                           int verbose, const int slice_offset,
-                           const int slice_width) {
+                           const int slice_offset, const int slice_width,
+                           int verbose) {
 #ifdef HAVE_FFTW
 
   const struct cosmology *c = s->e->cosmology;
