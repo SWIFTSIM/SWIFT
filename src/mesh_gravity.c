@@ -759,7 +759,8 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
 
   /* If using linear response neutrinos, apply to local slice of the MPI mesh */
   if (s->e->neutrino_properties->use_linear_response) {
-    neutrino_mesh_compute(s, mesh, tp, frho, local_0_start, local_n0, verbose);
+    neutrino_mesh_compute(s, mesh, tp, frho_slice, local_0_start, local_n0,
+                          verbose);
 
     if (verbose)
       message("Applying neutrino response took %.3f %s.",
