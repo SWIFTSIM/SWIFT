@@ -125,8 +125,7 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
                         const struct unit_system *us, const double dim[3],
                         const struct cosmology *c,
                         const struct neutrino_props *np,
-                        const struct gravity_props *gp,
-                        int verbose) {
+                        const struct gravity_props *gp, int verbose) {
 
   /* Do we need to do anything? */
   if (!np->use_linear_response) return;
