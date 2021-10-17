@@ -427,7 +427,6 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
   fftw_complex *const frho = data->frho;
   const int N = data->N;
   const int N_half = N / 2;
-  const double boxlen = boxlen;
   const double delta_k = 2.0 * M_PI / data->boxlen;
 
   /* Unpack the interpolation properties */
