@@ -56,17 +56,18 @@ struct neutrino_mesh {
   double *ncdm_over_cb;
 };
 
-void neutrino_mesh_init(struct swift_params *params,
+void neutrino_mesh_init(struct neutrino_mesh *numesh,
+                        struct swift_params *params,
                         const struct unit_system *us, const double dim[3],
                         const struct cosmology *c,
                         const struct neutrino_props *np,
                         const struct gravity_props *gp,
-                        struct neutrino_mesh *numesh, int verbose);
+                        int verbose);
 void neutrino_mesh_clean(struct neutrino_mesh *numesh);
 void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
                            struct threadpool *tp, fftw_complex *frho,
-                           int verbose, const int slice_offset,
-                           const int slice_width);
+                           const int slice_offset, const int slice_width,
+                           int verbose);
 void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
                                FILE *stream);
 void neutrino_mesh_struct_restore(struct neutrino_mesh *numesh, FILE *stream);
