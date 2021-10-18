@@ -464,7 +464,7 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
         /* Interpolate along the k-axis */
         const double log_k = 0.5 * log(k2);
         const double log_k_steps = (log_k - log_k_min) * inv_delta_log_k;
-        const int k_index = (int)log_k_steps;
+        const hsize_t k_index = (hsize_t)log_k_steps;
         const double u_k = log_k_steps - k_index;
 
         /* Retrieve the bounding values */
@@ -477,6 +477,11 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
         double ncdm_over_cb = (1.0 - u_a) * ((1.0 - u_k) * T11 + u_k * T21) +
                               u_a * ((1.0 - u_k) * T12 + u_k * T22);
         double correction = 1.0 + ncdm_over_cb * bg_density_ratio;
+
+        if (u_k < 0 || u_a < 0 || u_k > 1 || u_a > 1 ||
+            k_index > wavenumber_length || a_index > timestep_length)
+          error("Interpolation out of bounds error: %g %g %g %g %llu %llu\n",
+                u_k, u_a, sqrt(k2), ncdm_over_cb, k_index, a_index);
 
         /* Apply to the mesh */
         const int index =
@@ -530,14 +535,14 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   /* Interpolate along the a-axis */
   const double log_a = log(c->a);
   const double log_a_steps = (log_a - log_a_min) * inv_delta_log_a;
-  int a_index = (int)log_a_steps;
+  hsize_t a_index = (hsize_t)log_a_steps;
   double u_a = log_a_steps - a_index;
 
   /* Perform bounds checks */
-  if (a_index < 0) {
+  if (log_a_steps < 0) {
     a_index = 0;
     u_a = 0;
-  } else if ((hsize_t)a_index > timestep_length - 2) {
+  } else if (a_index > timestep_length - 2) {
     a_index = timestep_length - 2;
     u_a = 1.0;
   }
