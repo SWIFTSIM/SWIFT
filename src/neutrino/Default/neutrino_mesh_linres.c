@@ -577,36 +577,44 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
 /**
  * @brief Write a neutrino mesh struct to the given FILE as a stream of bytes.
  *
+ * @param enabled Whether the neutrino mesh is used
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
+void neutrino_mesh_struct_dump(int enabled, const struct neutrino_mesh *numesh,
                                FILE *stream) {
   restart_write_blocks((void *)numesh, sizeof(struct neutrino_mesh), 1, stream,
                        "numesh", "neutrino mesh");
 
-  /* Store the perturbation data */
-  restart_write_blocks((double *)numesh->ncdm_over_cb, sizeof(double),
-                       timestep_length * wavenumber_length, stream,
-                       "ncdm_over_cb", "ncdm_over_cb");
+  if (enabled) {
+    /* Store the perturbation data */
+    restart_write_blocks((double *)numesh->ncdm_over_cb, sizeof(double),
+                         timestep_length * wavenumber_length, stream,
+                         "ncdm_over_cb", "ncdm_over_cb");
+  }
 }
 
 /**
  * @brief Restore a neutrino mesh struct from the given FILE as a stream of
  * bytes.
  *
+ * @param enabled Whether the neutrino mesh is used
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_mesh_struct_restore(struct neutrino_mesh *numesh, FILE *stream) {
+void neutrino_mesh_struct_restore(int enabled, struct neutrino_mesh *numesh,
+                                  FILE *stream) {
   restart_read_blocks((void *)numesh, sizeof(struct neutrino_mesh), 1, stream,
                       NULL, "neutrino mesh");
 
-  /* Restore the perturbation data */
-  numesh->ncdm_over_cb = (double *)swift_malloc(
-      "numesh.ncdm_over_cb",
-      timestep_length * wavenumber_length * sizeof(double));
-  restart_read_blocks((double *)numesh->ncdm_over_cb, sizeof(double),
-                      timestep_length * wavenumber_length, stream, NULL,
-                      "ncdm_over_cb");
+  if (enabled) {
+    /* Allocate memory for the perturbation data */
+    numesh->ncdm_over_cb = (double *)swift_malloc(
+        "numesh.ncdm_over_cb",
+        timestep_length * wavenumber_length * sizeof(double));
+    /* Restore the perturbation data */
+    restart_read_blocks((double *)numesh->ncdm_over_cb, sizeof(double),
+                        timestep_length * wavenumber_length, stream, NULL,
+                        "ncdm_over_cb");
+  }
 }

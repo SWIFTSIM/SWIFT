@@ -67,8 +67,9 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
                            struct threadpool *tp, fftw_complex *frho,
                            const int slice_offset, const int slice_width,
                            int verbose);
-void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
+void neutrino_mesh_struct_dump(int enabled, const struct neutrino_mesh *numesh,
                                FILE *stream);
-void neutrino_mesh_struct_restore(struct neutrino_mesh *numesh, FILE *stream);
+void neutrino_mesh_struct_restore(int enabled, struct neutrino_mesh *numesh,
+                                  FILE *stream);
 
 #endif /* SWIFT_DEFAULT_NEUTRINO_MESH_LINRES_H */
