@@ -125,7 +125,7 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
                         const struct unit_system *us, const double dim[3],
                         const struct cosmology *c,
                         const struct neutrino_props *np,
-                        const struct gravity_props *gp, int verbose) {
+                        const struct gravity_props *gp, int rank, int verbose) {
 
   /* Do we need to do anything? */
   if (!np->use_linear_response) return;
@@ -155,7 +155,8 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
   parser_get_param_string(params, "Neutrino:dataset_delta_baryon", d_b_name);
   parser_get_param_string(params, "Neutrino:dataset_delta_nu", d_ncdm_name);
 
-  if (verbose) message("Reading transfer functions file '%s'", filename);
+  if (rank == 0 && verbose)
+    message("Reading transfer functions file '%s'", filename);
 
   /* Open the hdf5 file */
   hid_t h_file = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
@@ -294,7 +295,7 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
   if (wavenumbers[0] * k_unit > k_min || wavenumbers[N_k - 1] * k_unit < k_max)
     error("Wavenumbers do not cover the interval (%g, %g)", k_min, k_max);
 
-  if (verbose) {
+  if (rank == 0 && verbose) {
     message("We have transfer functions covering the domain:");
     message("(k_min, k_max) = (%g, %g) U_L^-1", k_min, k_max);
     message("(a_min, a_max) = (%g, %g)", a_min, a_max);
@@ -356,19 +357,22 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
                     N_k, N_z);
 
   /* Allocate memory for the transfer function ratio with constant spacing */
-  if ((numesh->ncdm_over_cb = (double *)swift_malloc(
-           "numesh.ncdm_over_cb", sizeof(double) * remap_tf_size)) == NULL)
-    error("Failed to allocate memory for numesh.ncdm_over_cb.");
+  if ((numesh->pt_density_ratio = (double *)swift_malloc(
+           "numesh.pt_density_ratio", sizeof(double) * remap_tf_size)) == NULL)
+    error("Failed to allocate memory for numesh.pt_density_ratio.");
 
   /* Remap the transfer function ratio */
   for (hsize_t i = 0; i < timestep_length; i++) {
     for (hsize_t j = 0; j < wavenumber_length; j++) {
       double log_a = log_a_min + i * delta_log_a;
       double log_k = log_k_min + j * delta_log_k;
-      numesh->ncdm_over_cb[wavenumber_length * i + j] =
+      numesh->pt_density_ratio[wavenumber_length * i + j] =
           gsl_spline2d_eval(spline, log_k, log_a, k_acc, a_acc);
     }
   }
+
+  /* Store the array size */
+  numesh->tf_size = wavenumber_length * timestep_length;
 
   /* Clean up GSL interpolation */
   gsl_spline2d_free(spline);
@@ -385,7 +389,7 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
 }
 
 void neutrino_mesh_clean(struct neutrino_mesh *numesh) {
-  swift_free("numesh.ncdm_over_cb", numesh->ncdm_over_cb);
+  swift_free("numesh.pt_density_ratio", numesh->pt_density_ratio);
 }
 
 /**
@@ -408,7 +412,7 @@ struct neutrino_mesh_tp_data {
 
   /* Background and perturbed density ratios */
   double bg_density_ratio;
-  const double *ncdm_over_cb_arr;
+  const double *pt_density_ratio;
 };
 
 /**
@@ -436,9 +440,9 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
   const double log_k_min = data->log_k_min;
   const int N_k = wavenumber_length;
 
-  /* Unpack the density ratios */
+  /* Unpack the density ratios (background & perturbation) */
   const double bg_density_ratio = data->bg_density_ratio;
-  const double *ncdm_over_cb_arr = data->ncdm_over_cb_arr;
+  const double *pt_density_ratio = data->pt_density_ratio;
 
   /* Find what slice of the full mesh is stored on this MPI rank */
   const int slice_offset = data->slice_offset;
@@ -468,20 +472,20 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
         const double u_k = log_k_steps - k_index;
 
         /* Retrieve the bounding values */
-        const double T11 = ncdm_over_cb_arr[N_k * a_index + k_index];
-        const double T21 = ncdm_over_cb_arr[N_k * a_index + k_index + 1];
-        const double T12 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index];
-        const double T22 = ncdm_over_cb_arr[N_k * (a_index + 1) + k_index + 1];
+        const double T11 = pt_density_ratio[N_k * a_index + k_index];
+        const double T21 = pt_density_ratio[N_k * a_index + k_index + 1];
+        const double T12 = pt_density_ratio[N_k * (a_index + 1) + k_index];
+        const double T22 = pt_density_ratio[N_k * (a_index + 1) + k_index + 1];
 
         /* Bilinear interpolation of the tranfer function ratio */
-        double ncdm_over_cb = (1.0 - u_a) * ((1.0 - u_k) * T11 + u_k * T21) +
-                              u_a * ((1.0 - u_k) * T12 + u_k * T22);
-        double correction = 1.0 + ncdm_over_cb * bg_density_ratio;
+        double pt_ratio_interp = (1.0 - u_a) * ((1.0 - u_k) * T11 + u_k * T21) +
+                                 u_a * ((1.0 - u_k) * T12 + u_k * T22);
+        double correction = 1.0 + pt_ratio_interp * bg_density_ratio;
 
         if (u_k < 0 || u_a < 0 || u_k > 1 || u_a > 1 ||
             k_index > wavenumber_length || a_index > timestep_length)
           error("Interpolation out of bounds error: %g %g %g %g %llu %llu\n",
-                u_k, u_a, sqrt(k2), ncdm_over_cb, k_index, a_index);
+                u_k, u_a, sqrt(k2), pt_ratio_interp, k_index, a_index);
 
         /* Apply to the mesh */
         const int index =
@@ -559,7 +563,7 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   data.a_index = a_index;
   data.u_a = u_a;
   data.bg_density_ratio = bg_density_ratio;
-  data.ncdm_over_cb_arr = numesh->ncdm_over_cb;
+  data.pt_density_ratio = numesh->pt_density_ratio;
 
   /* Parallelize the neutrino linear respones application using the
      to split the x-axis loop over the threads. The array is N x N x (N/2).
@@ -582,20 +586,19 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
 /**
  * @brief Write a neutrino mesh struct to the given FILE as a stream of bytes.
  *
- * @param enabled Whether the neutrino mesh is used
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_mesh_struct_dump(int enabled, const struct neutrino_mesh *numesh,
+void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
                                FILE *stream) {
   restart_write_blocks((void *)numesh, sizeof(struct neutrino_mesh), 1, stream,
                        "numesh", "neutrino mesh");
 
-  if (enabled) {
-    /* Store the perturbation data */
-    restart_write_blocks((double *)numesh->ncdm_over_cb, sizeof(double),
-                         timestep_length * wavenumber_length, stream,
-                         "ncdm_over_cb", "ncdm_over_cb");
+  /* Store the perturbation data */
+  if (numesh->tf_size > 0) {
+    restart_write_blocks((double *)numesh->pt_density_ratio, sizeof(double),
+                         numesh->tf_size, stream, "pt_density_ratio",
+                         "pt_density_ratio");
   }
 }
 
@@ -603,23 +606,18 @@ void neutrino_mesh_struct_dump(int enabled, const struct neutrino_mesh *numesh,
  * @brief Restore a neutrino mesh struct from the given FILE as a stream of
  * bytes.
  *
- * @param enabled Whether the neutrino mesh is used
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_mesh_struct_restore(int enabled, struct neutrino_mesh *numesh,
-                                  FILE *stream) {
+void neutrino_mesh_struct_restore(struct neutrino_mesh *numesh, FILE *stream) {
   restart_read_blocks((void *)numesh, sizeof(struct neutrino_mesh), 1, stream,
                       NULL, "neutrino mesh");
 
-  if (enabled) {
-    /* Allocate memory for the perturbation data */
-    numesh->ncdm_over_cb = (double *)swift_malloc(
-        "numesh.ncdm_over_cb",
-        timestep_length * wavenumber_length * sizeof(double));
-    /* Restore the perturbation data */
-    restart_read_blocks((double *)numesh->ncdm_over_cb, sizeof(double),
-                        timestep_length * wavenumber_length, stream, NULL,
-                        "ncdm_over_cb");
+  /* Restore the perturbation data */
+  if (numesh->tf_size > 0) {
+    numesh->pt_density_ratio = (double *)swift_malloc(
+        "numesh.pt_density_ratio", numesh->tf_size * sizeof(double));
+    restart_read_blocks((double *)numesh->pt_density_ratio, sizeof(double),
+                        numesh->tf_size, stream, NULL, "pt_density_ratio");
   }
 }
