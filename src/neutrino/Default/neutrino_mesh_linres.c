@@ -155,6 +155,10 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
   parser_get_param_string(params, "Neutrino:dataset_delta_baryon", d_b_name);
   parser_get_param_string(params, "Neutrino:dataset_delta_nu", d_ncdm_name);
 
+  /* Read additional parameters */
+  numesh->fixed_bg_density =
+      parser_get_param_int(params, "Neutrino:linear_response_fixed_bg_density");
+
   if (rank == 0 && verbose)
     message("Reading transfer functions file '%s'", filename);
 
@@ -525,10 +529,11 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   const double boxlen = mesh->dim[0];
 
   /* Calculate the background neutrino density at the present time */
-  const double Omega_nu = cosmology_get_neutrino_density(c, c->a);
+  const double a = numesh->fixed_bg_density ? 1.0 : c->a;
+  const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_m = c->Omega_cdm + c->Omega_b;  // does not include nu's
   /* The comoving density is (Omega_nu * a^-4) * a^3  = Omega_nu / a */
-  const double bg_density_ratio = (Omega_nu / c->a) / Omega_m;
+  const double bg_density_ratio = (Omega_nu / a) / Omega_m;
 
   /* Transfer function bounds and spacing */
   const double inv_delta_log_a = 1.0 / numesh->delta_log_a;
