@@ -1442,10 +1442,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
 
-		/* Integer grid indices of the cell in the natural cells */
-		int natural_i = (ci->loc[0] + (s->zoom_props->width[0] / 2)) * s->iwidth[0];
-		int natural_j = (ci->loc[1] + (s->zoom_props->width[1] / 2)) * s->iwidth[1];
-		int natural_k = (ci->loc[2] + (s->zoom_props->width[2] / 2)) * s->iwidth[2];
+//		/* Integer grid indices of the cell in the natural cells */
+//		int natural_i = (ci->loc[0] + (s->zoom_props->width[0] / 2)) * s->iwidth[0];
+//		int natural_j = (ci->loc[1] + (s->zoom_props->width[1] / 2)) * s->iwidth[1];
+//		int natural_k = (ci->loc[2] + (s->zoom_props->width[2] / 2)) * s->iwidth[2];
 
 		if (cid >= zoom_cell_offset) {
 
