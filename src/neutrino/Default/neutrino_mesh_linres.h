@@ -57,6 +57,9 @@ struct neutrino_mesh {
 
   /*! Size of the transfer function ratio table */
   hsize_t tf_size;
+
+  /*! Whether to use a fixed present-day background density */
+  char fixed_bg_density;
 };
 
 void neutrino_mesh_init(struct neutrino_mesh *numesh,
