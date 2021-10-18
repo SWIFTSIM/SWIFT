@@ -1770,9 +1770,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 									"grav task!",
 									cid);
 					}
-				}
+
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
+				}
 			}
 		}
 
