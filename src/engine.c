@@ -3343,8 +3343,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
   neutrino_struct_dump(e->neutrino_properties, stream);
-  neutrino_mesh_struct_dump(e->neutrino_properties->use_linear_response,
-                            e->neutrino_mesh, stream);
+  neutrino_mesh_struct_dump(e->neutrino_mesh, stream);
   chemistry_struct_dump(e->chemistry, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
@@ -3481,8 +3480,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   struct neutrino_mesh *neutrino_mesh =
       (struct neutrino_mesh *)malloc(sizeof(struct neutrino_mesh));
-  neutrino_mesh_struct_restore(e->neutrino_properties->use_linear_response,
-                               neutrino_mesh, stream);
+  neutrino_mesh_struct_restore(neutrino_mesh, stream);
   e->neutrino_mesh = neutrino_mesh;
 
   struct chemistry_global_data *chemistry =
