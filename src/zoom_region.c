@@ -1688,7 +1688,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 		/* For the zoom cells we need to find all natural cell neighbours */
 		if (ci->tl_cell_type == zoom_tl_cell) {
 
-			for (int nat_cjd = 0; nat_cjd < zoom_cell_offset; ind++) {
+			for (int nat_cjd = 0; nat_cjd < zoom_cell_offset; nat_cjd++) {
 				struct cell *nat_cj = &cells[nat_cjd];
 
 				/* empty cells and completely foreign pairs */
