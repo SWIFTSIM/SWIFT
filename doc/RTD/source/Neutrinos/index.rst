@@ -103,15 +103,19 @@ are:
     dataset_delta_cdm: Functions/d_cdm             # For linear response neutrinos, name of the dataset with the cdm density transfer function (N_z x N_k)
     dataset_delta_baryon: Functions/d_b            # For linear response neutrinos, name of the dataset with the baryon density transfer function (N_z x N_k)
     dataset_delta_nu: Functions/d_ncdm[0]          # For linear response neutrinos, name of the dataset with the neutrino density transfer function (N_z x N_k)
+    fixed_bg_density: 1                            # For linear response neutrinos, whether to use a fixed present-day background density
 
 In this example, the code reads an HDF5 file "perturb.hdf5" with transfer
 functions. The file must contain a vector with redshifts of length :math:`N_z`,
 a vector with wavenumbers :math:`N_k`, and three arrays with dimensions
 :math:`N_z \times N_k` of density transfer functions for cdm, baryons, and
 neutrinos respectively. It is recommended to store the units of the wavenumbers
-as an attribute at "Units/Unit length in cgs (U_L)".
+as an attribute at "Units/Unit length in cgs (U_L)". The `fixed_bg_density`
+flag determines whether the linear response scales as :math:`\Omega_\nu(a)`
+or the present-day value :math:`\Omega_{\nu,0}`, either of which may be
+appropriate depending on the initial conditions.
 
-This mode currently only supports degenerate mass models with a single
-neutrino transfer function.
+The linear response mode currently only supports degenerate mass models
+with a single neutrino transfer function.
 
 .. [#f1] Currently, it is not guaranteed that a particle ID is unique.
