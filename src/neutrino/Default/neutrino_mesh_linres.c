@@ -157,7 +157,7 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
 
   /* Read additional parameters */
   numesh->fixed_bg_density =
-      parser_get_param_int(params, "Neutrino:linear_response_fixed_bg_density");
+      parser_get_param_int(params, "Neutrino:fixed_bg_density");
 
   if (rank == 0 && verbose)
     message("Reading transfer functions file '%s'", filename);
