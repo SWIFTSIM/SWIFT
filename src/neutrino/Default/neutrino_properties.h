@@ -32,6 +32,9 @@ struct neutrino_props {
   /* Whether to run with the delta-f method on the mesh only */
   char use_delta_f_mesh_only;
 
+  /* Whether to run without any neutrino perturbations */
+  char use_model_none;
+
   /* Whether to generate random neutrino velocities in the initial conditions */
   char generate_ics;
 
@@ -62,6 +65,8 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
   np->use_delta_f = parser_get_opt_param_int(params, "Neutrino:use_delta_f", 0);
   np->use_delta_f_mesh_only =
       parser_get_opt_param_int(params, "Neutrino:use_delta_f_mesh_only", 0);
+  np->use_model_none =
+      parser_get_opt_param_int(params, "Neutrino:use_model_none", 0);
   np->generate_ics =
       parser_get_opt_param_int(params, "Neutrino:generate_ics", 0);
   np->neutrino_seed =
@@ -69,7 +74,9 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
   np->use_linear_response =
       parser_get_opt_param_int(params, "Neutrino:use_linear_response", 0);
 
-  if (np->use_delta_f + np->use_delta_f_mesh_only + np->use_linear_response > 1)
+  if (np->use_delta_f + np->use_delta_f_mesh_only + np->use_linear_response +
+          np->use_model_none >
+      1)
     error("Cannot use multiple neutrino implementations concurrently.");
 }
 
