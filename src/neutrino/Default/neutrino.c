@@ -168,7 +168,7 @@ void neutrino_check_cosmology(const struct space *s,
                               const struct neutrino_props *neutrino_props,
                               const int rank, const int verbose) {
 
-  /* Check that we have neutrino particles if we need them and vice-versa */
+  /* Check that we have neutrino particles if and only if we need them */
   int use_df = neutrino_props->use_delta_f;
   int use_df_mesh = neutrino_props->use_delta_f_mesh_only;
   int use_linres = neutrino_props->use_linear_response;
