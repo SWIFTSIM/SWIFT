@@ -658,6 +658,7 @@ Neutrino:
   dataset_delta_baryon: Functions/d_b            # For linear response neutrinos, name of the dataset with the baryon density transfer function (N_z x N_k)
   dataset_delta_nu: Functions/d_ncdm[0]          # For linear response neutrinos, name of the dataset with the neutrino density transfer function (N_z x N_k)
   fixed_bg_density: 1                            # For linear response neutrinos, whether to use a fixed present-day background density
+  use_model_none: 0                              # Option to use no neutrino model
 
 # Parameters related to the sink particles ---------------------------------------
 

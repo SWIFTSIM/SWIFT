@@ -172,13 +172,14 @@ void neutrino_check_cosmology(const struct space *s,
   int use_df = neutrino_props->use_delta_f;
   int use_df_mesh = neutrino_props->use_delta_f_mesh_only;
   int use_linres = neutrino_props->use_linear_response;
+  int use_none = neutrino_props->use_model_none;
   int genics = neutrino_props->generate_ics;
 
   if ((use_df || use_df_mesh || genics) && !s->with_neutrinos) {
     error(
         "Running without neutrino particles, but specified a neutrino "
         "model that requires them.");
-  } else if (use_linres && s->with_neutrinos) {
+  } else if ((use_linres || use_none) && s->with_neutrinos) {
     error(
         "Running with neutrino particles, but specified a neutrino "
         "model that is incompatible with particles.");
