@@ -44,7 +44,6 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -64,7 +63,6 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
   struct xpart *restrict xparts = c->hydro.xparts;
 #endif
 
-#endif
 #if (!(defined RT_NONE) && (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK))
   /* Don't exit early if star isn't active for feedback
    * when we're running with RT */
@@ -178,7 +176,6 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 #endif
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -319,7 +316,6 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -1178,8 +1174,8 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY FUNCTION_TASK_LOOP == \
-     TASK_LOOP_STARS_PREP2)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY || \
+     FUNCTION_TASK_LOOP == TASK_LOOP_STARS_PREP2)
   /* Here we update the stars --> the star cell must be local */
   const int ci_local = (ci->nodeID == e->nodeID);
   const int cj_local = (cj->nodeID == e->nodeID);
