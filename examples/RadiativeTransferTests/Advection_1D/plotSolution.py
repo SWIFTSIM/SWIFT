@@ -123,7 +123,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
         if plot_all_data:
             # prepare also the fluxes
             for direction in ["X"]:
-                #  for direction in ["X", "Y", "Z"]:
                 new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 setattr(data.gas, new_attribute_str, f)

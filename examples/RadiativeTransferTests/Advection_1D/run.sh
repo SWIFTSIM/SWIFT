@@ -2,6 +2,7 @@
 
 # make run.sh fail if a subcommand fails
 set -e
+set -o pipefail
 
 if [ ! -f advection_1D.hdf5 ]; then
     echo "Generating ICs"
@@ -17,6 +18,7 @@ fi
     --stars \
     --feedback \
     --external-gravity \
+    -e \
     ./rt_advection1D.yml 2>&1 | tee output.log
 
 python3 ./plotSolution.py

@@ -92,11 +92,16 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
    * Also even with nonzero flux, the norm may round down
    * to exactly zero, so exit early if that is the case. */
   if ((U[1] == 0.f && U[2] == 0.f && U[3] == 0.f) || normF == 0.f) {
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        pressure_tensor[i][j] = 0.f;
-      }
-    }
+    const float diagonal_element = U[0] / 3.f;
+    pressure_tensor[0][0] = diagonal_element;
+    pressure_tensor[0][1] = 0.f;
+    pressure_tensor[0][2] = 0.f;
+    pressure_tensor[1][0] = 0.f;
+    pressure_tensor[1][1] = diagonal_element;
+    pressure_tensor[1][2] = 0.f;
+    pressure_tensor[2][0] = 0.f;
+    pressure_tensor[2][1] = 0.f;
+    pressure_tensor[2][2] = diagonal_element;
     return;
   }
 
