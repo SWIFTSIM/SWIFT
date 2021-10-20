@@ -537,9 +537,11 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         w *= units_cgs_conversion_factor(us, UNIT_CONV_TIME); /* physical but internal units now */
         double w2 = w * w;
         const float a = v * v / w2;
-        const float a2 = a * a;
-        const float dx = u / ( 2.f * ( a + 1.f )) - 1.f / ( 2.f * a );
-        const float x = ( 1.f / dx ) / a2 + ( a + 2.f) / a;
+//        const float a2 = a * a;
+//        const float dx = u / ( 2.f * ( a + 1.f )) - 1.f / ( 2.f * a );
+//        const float x = ( 1.f / dx ) / a2 + ( a + 2.f) / a;
+        const float dx = u * a / (1.+ a) - 1.f;
+        const float x = (( 2.f / dx ) + 2.f + a ) / a;
         
         /* Calculate theta from prob. distribution */
         const float theta = acos(x);
