@@ -2,6 +2,7 @@
 
 # make run.sh fail if a subcommand fails
 set -e
+set -o pipefail
 
 if [ ! -f 'uniformBox-rt.hdf5' ]; then
     echo "Generating ICs"

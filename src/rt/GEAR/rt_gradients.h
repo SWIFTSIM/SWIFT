@@ -160,7 +160,6 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
         pj->rt_data.debug_injection_done, pj->id);
 
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;
-
   pj->rt_data.debug_calls_iact_gradient_interaction += 1;
 #endif
 

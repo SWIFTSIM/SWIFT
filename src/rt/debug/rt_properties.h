@@ -51,6 +51,22 @@ struct rt_props {
   /* total radiation absorbed by gas. This is not really a property,
    * but a placeholder to sum up a global variable */
   unsigned long long debug_radiation_absorbed_tot;
+
+  /* Interactions of a star with gas during injection prep this step. This is
+   * not really a property, but a placeholder to sum up a global variable */
+  int debug_star_injection_prep_iacts_with_parts_this_step;
+
+  /* Interactions of a star with gas during injection prep. This is not
+   * really a property, but a placeholder to sum up a global variable */
+  unsigned long long debug_star_injection_prep_iacts_with_parts_tot;
+
+  /* Interactions of a star with gas during injection prep this step. This is
+   * not really a property, but a placeholder to sum up a global variable */
+  int debug_part_injection_prep_iacts_with_stars_this_step;
+
+  /* Interactions of a star with gas during injection prep. This is not
+   * really a property, but a placeholder to sum up a global variable */
+  unsigned long long debug_part_injection_prep_iacts_with_stars_tot;
 };
 
 /**
@@ -98,6 +114,8 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   rtp->debug_radiation_emitted_tot = 0ULL;
   rtp->debug_radiation_absorbed_tot = 0ULL;
+  rtp->debug_star_injection_prep_iacts_with_parts_tot = 0LL;
+  rtp->debug_part_injection_prep_iacts_with_stars_tot = 0LL;
 
   /* After initialisation, print params to screen */
   rt_props_print(rtp);
