@@ -1433,7 +1433,6 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
                                     struct scheduler *s) {
 
-#if 0
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
@@ -1542,8 +1541,6 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
       }
     }
   }
-
-#endif
 }
 
 /**

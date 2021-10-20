@@ -111,8 +111,6 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
         /* Interact loop of type 1? */
         if (r2 < hig2) {
 
-          // if (id != pj->id && r2 < 1e-10 && e->step == SCHECK) continue;
-
           const float mj = pj->mass;
 
           float wi, wi_dx;
