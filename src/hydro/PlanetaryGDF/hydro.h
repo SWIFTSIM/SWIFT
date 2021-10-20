@@ -736,18 +736,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 	  float P_new = 0.f;
 	  P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
 
-          if (P_new < P_min){
-            P_new = P_min;
-          }
-
-	  /* Compute new T */
+          /* Compute new T */
 	  float T_new = 0.f;
 	  T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
           
-          if (T_new < T_min){
-            T_new = T_min;
-          }
-
 	  /* Compute new density */
 	  float rho_new =
 	      gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
