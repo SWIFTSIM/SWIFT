@@ -113,24 +113,6 @@ def check_all_hydro_is_equal(snapdata):
                 if break_on_diff:
                     quit()
 
-        # Calls to star interactions
-        if (ref.gas.RTStarIact != compare.gas.RTStarIact).any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            print("--- Calls to star interactions vary")
-
-            if print_diffs:
-                for i in range(npart):
-                    if ref.gas.RTStarIact[i] != compare.gas.RTStarIact[i]:
-                        print(
-                            "-----",
-                            ref.gas.IDs[i],
-                            ref.gas.RTStarIact[i],
-                            compare.gas.RTStarIact[i],
-                        )
-
-            if break_on_diff:
-                quit()
-
         # Photon number updates
         if (ref.gas.InjectionDone != compare.gas.InjectionDone).any():
             print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
@@ -287,6 +269,9 @@ def check_all_stars_is_equal(snapdata):
     print("checking stars")
 
     for compare in snapdata[1:]:
+
+        if not compare.has_stars:
+            continue
 
         # Coordinates
         if not skip_coords:

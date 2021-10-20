@@ -66,9 +66,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
+  p->rt_data.debug_iact_stars_inject_prep = 0;
 
-  p->rt_data.debug_calls_iact_gradient = 0;
-  p->rt_data.debug_calls_iact_transport = 0;
   /* skip this for GEAR */
   /* p->rt_data.debug_injection_check = 0; */
   p->rt_data.debug_calls_iact_gradient_interaction = 0;
@@ -102,6 +101,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   }
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
+  p->rt_data.debug_iact_stars_inject_prep_tot = 0ULL;
 #endif
 }
 
@@ -113,7 +113,12 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
  * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+
+  for (int i = 0; i < 8; i++) {
+    sp->rt_data.octant_weights[i] = 0.f;
+  }
+}
 
 /**
  * @brief Reset of the RT star particle data not related to the density.
@@ -135,6 +140,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   sp->rt_data.debug_iact_hydro_inject = 0;
+  sp->rt_data.debug_iact_hydro_inject_prep = 0;
 
   sp->rt_data.debug_emission_rate_set = 0;
   /* skip this for GEAR */
@@ -247,7 +253,7 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
 }
 
 /**
- * @brief  This function finalises the injection step.
+ * @brief This function finalises the injection step.
  *
  * @param p particle to work on
  * @param props struct #rt_props that contains global RT properties
@@ -325,11 +331,6 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
         "where injection count = %d",
         p->rt_data.debug_injection_done);
 
-  if (p->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called finalise gradient on particle "
-        "with iact gradient count = %d",
-        p->rt_data.debug_calls_iact_gradient);
   if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
     message(
         "WARNING: Called finalise gradient on particle "
@@ -346,7 +347,7 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @brief finishes up the transport step
  *
  * @param p particle to work on
- * @param dt the current time step of the particle of the particle
+ * @param dt the current time step of the particle
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt) {
@@ -364,17 +365,6 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
         "rt_finalise_gradient count is %d",
         p->rt_data.debug_gradients_done);
 
-  if (p->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called finalise transport on particle "
-        "with iact gradient count = %d",
-        p->rt_data.debug_calls_iact_gradient);
-
-  if (p->rt_data.debug_calls_iact_transport == 0)
-    error(
-        "Called finalise transport on particle "
-        "with iact transport count = %d",
-        p->rt_data.debug_calls_iact_transport);
   if (p->rt_data.debug_calls_iact_transport_interaction == 0)
     message(
         "WARNING: Called finalise transport on particle "
@@ -415,6 +405,13 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
  * @param props the #rt_props.
  */
 __attribute__((always_inline)) INLINE static void rt_clean(
-    struct rt_props* props) {}
+    struct rt_props* props) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  fclose(props->conserved_energy_filep);
+  fclose(props->energy_density_filep);
+  fclose(props->star_emitted_energy_filep);
+#endif
+}
 
 #endif /* SWIFT_RT_GEAR_H */

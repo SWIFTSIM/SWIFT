@@ -35,11 +35,17 @@
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
     float* energy, float* flux, int c) {
 
+  /* Check for negative energies */
 #ifdef SWIFT_DEBUG_CHECKS
-  if (*energy < 0.f && fabs(*energy) > 1.e-1)
-    message("Fixing unphysical energy case%d %.3g | %.3g %.3g %.3g", c, *energy,
+  /* Only print something if it might be significant. Also skip
+   * message for case c=1, which is gradients predicting energies. */
+  if (*energy < 0.f && fabs(*energy) > 1.e-1 && c != 1)
+    message("Fixing unphysical energy case%d %.6e | %.6e %.6e %.6e", c, *energy,
             flux[0], flux[1], flux[2]);
 #endif
+  if (isnan(*energy) || isinf(*energy))
+    error("Got inf/nan radiation energy case%d %.6e | %.6e %.6e %.6e", c,
+          *energy, flux[0], flux[1], flux[2]);
   if (*energy <= 0.f) {
     *energy = 0.f;
     flux[0] = 0.f;
@@ -48,16 +54,22 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
     return;
   }
 
-  /* const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] *
-   * flux[2]; */
-  /* const float flux_norm = sqrtf(flux2); */
-  /* const float flux_max = rt_params.reduced_speed_of_light * *energy; */
-  /* if (flux_norm > flux_max) { */
-  /*   const float correct = flux_max / flux_norm; */
-  /*   flux[0] *= correct; */
-  /*   flux[1] *= correct; */
-  /*   flux[2] *= correct; */
-  /* } */
+  /* Check for too high fluxes */
+  /*   const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * */
+  /*   flux[2]; */
+  /*   const float flux_norm = sqrtf(flux2); */
+  /*   const float flux_max = rt_params.reduced_speed_of_light * *energy; */
+  /*   if (flux_norm > flux_max) { */
+  /*     const float correct = flux_max / flux_norm; */
+  /* #ifdef SWIFT_DEBUG_CHECKS */
+  /*     message("Correcting max fluxes case%d %.6e | %.6e %.6e %.6e | %.6e", c,
+   * *energy, */
+  /*             flux[0], flux[1], flux[2], correct); */
+  /* #endif */
+  /*     flux[0] *= correct; */
+  /*     flux[1] *= correct; */
+  /*     flux[2] *= correct; */
+  /*   } */
 }
 
 /**
@@ -70,11 +82,15 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
     float* energy, float* flux) {
 
+  /* Check for negative energies */
 #ifdef SWIFT_DEBUG_CHECKS
   if (*energy < 0.f && fabs(*energy) > 1.e-1)
-    message("Fixing unphysical energy %.3g | %.3g %.3g %.3g", *energy, flux[0],
+    message("Fixing unphysical energy %.6e | %.6e %.6e %.6e", *energy, flux[0],
             flux[1], flux[2]);
 #endif
+  if (isinf(*energy) || isnan(*energy))
+    error("Got inf/nan radiation energy %.6e | %.6e %.6e %.6e", *energy,
+          flux[0], flux[1], flux[2]);
   if (*energy <= 0.f) {
     *energy = 0.f;
     flux[0] = 0.f;
@@ -83,16 +99,22 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
     return;
   }
 
-  /* const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] *
-   * flux[2]; */
-  /* const float flux_norm = sqrtf(flux2); */
-  /* const float flux_max = rt_params.reduced_speed_of_light * *energy; */
-  /* if (flux_norm > flux_max) { */
-  /*   const float correct = flux_max / flux_norm; */
-  /*   flux[0] *= correct; */
-  /*   flux[1] *= correct; */
-  /*   flux[2] *= correct; */
-  /* } */
+  /* Check for too high fluxes */
+  /*   const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * */
+  /*   flux[2]; */
+  /*   const float flux_norm = sqrtf(flux2); */
+  /*   const float flux_max = rt_params.reduced_speed_of_light * *energy; */
+  /*   if (flux_norm > flux_max) { */
+  /*     const float correct = flux_max / flux_norm; */
+  /* #ifdef SWIFT_DEBUG_CHECKS */
+  /*     message("Correcting max fluxes %.6e | %.6e %.6e %.6e | %.6e", *energy,
+   * flux[0], */
+  /*             flux[1], flux[2], correct); */
+  /* #endif */
+  /*     flux[0] *= correct; */
+  /*     flux[1] *= correct; */
+  /*     flux[2] *= correct; */
+  /*   } */
 }
 
 /**
@@ -105,10 +127,11 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   int nans = 0;
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 3; j++) {
-      if (flux[i][j] != flux[i][j]) {
+      if (isnan(flux[i][j])) {
         nans += 1;
         break;
       }
@@ -123,10 +146,11 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
         flux[0][0], flux[0][1], flux[0][2], flux[1][0], flux[1][1], flux[1][2],
         flux[2][0], flux[2][1], flux[2][2], flux[3][0], flux[3][1], flux[3][2]);
   }
+#endif
 
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 3; j++) {
-      if (flux[i][j] != flux[i][j]) {
+      if (isnan(flux[i][j])) {
         flux[i][j] = 0.f;
       }
     }

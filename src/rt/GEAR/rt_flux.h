@@ -28,6 +28,8 @@
 #error "No valid choice of RT Riemann solver has been selected"
 #endif
 
+#include "rt_unphysical.h"
+
 /**
  * @file src/rt/GEAR/rt_flux.h
  * @brief Functions related to compute the interparticle flux term of the

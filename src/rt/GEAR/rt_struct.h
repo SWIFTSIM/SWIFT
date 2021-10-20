@@ -68,25 +68,48 @@ struct rt_part_data {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* debugging data to store during entire run */
-  unsigned long long
-      debug_radiation_absorbed_tot; /* how much radiation this part received
-                                    from stars during total lifetime */
+
+  /*! how much radiation this part received from stars during total lifetime */
+  unsigned long long debug_radiation_absorbed_tot;
+
+  /*! how many interactions this part had with stars in injection prep over
+   * total lifetime */
+  unsigned long long debug_iact_stars_inject_prep_tot;
 
   /* data to store during one time step */
-  int debug_iact_stars_inject;    /* how many stars this part interacted with */
-  int debug_calls_iact_gradient;  /* calls from gradient interaction loop */
-  int debug_calls_iact_transport; /* calls from transport interaction loop */
+
+  /*! how many stars this part interacted with during preparation*/
+  /* Note: It's useless to write this in outputs, as it gets reset
+   * at the end of every step. */
+  int debug_iact_stars_inject_prep;
+
+  /*! how many stars this part interacted with during injection*/
+  /* Note: It's useless to write this in outputs, as it gets reset
+   * at the end of every step. */
+  int debug_iact_stars_inject;
+
   /* skip this for GEAR */
-  /* int debug_injection_check;   [> called in a self/rt_injection task? <] */
-  /* calls from gradient interaction loop in actual function */
+  /* called in a self/rt_injection task? */
+  /* int debug_injection_check; */
+
+  /*! calls from gradient interaction loop in actual function */
   int debug_calls_iact_gradient_interaction;
-  /* calls from transport interaction loop in actual function */
+
+  /*! calls from transport interaction loop in actual function */
   int debug_calls_iact_transport_interaction;
 
-  int debug_injection_done;  /* calls from ghost1 tasks */
-  int debug_gradients_done;  /* finalised computing gradients? */
-  int debug_transport_done;  /* transport step done? */
-  int debug_thermochem_done; /* thermochemistry done? */
+  /*! calls from ghost1 tasks */
+  int debug_injection_done;
+
+  /*! finalised computing gradients? */
+  int debug_gradients_done;
+
+  /*! transport step done? */
+  int debug_transport_done;
+
+  /*! thermochemistry done? */
+  int debug_thermochem_done;
+
 #endif
 };
 
@@ -99,26 +122,45 @@ struct rt_spart_data {
    * store results with each hydro-star interaction in here */
   float emission_this_step[RT_NGROUPS];
 
+  /*! Neighbour weigths in each octant surrounding the star */
+  float octant_weights[8];
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* data to store during entire run */
-  unsigned long long
-      debug_radiation_emitted_tot; /* how much radiation this star emitted
-                                      during total lifetime */
+
+  /*! how much radiation this star emitted during total lifetime */
+  unsigned long long debug_radiation_emitted_tot;
+
+  /*! how many interactions this star had with parts during
+   * injection prep over total lifetime */
+  unsigned long long debug_iact_hydro_inject_prep_tot;
 
   /* data to store during one time step */
-  int debug_iact_hydro_inject; /* how many hydro particles this particle
-                                  interacted with */
-  int debug_emission_rate_set; /* stellar photon emisison rate computed? */
-  /* skip this for GEAR */
-  /* int debug_injection_check; [> called in a self/rt_injection task? <] */
 
-  float debug_injected_energy[RT_NGROUPS];     /* how much energy this star
-                                                  particle actually has injected
-                                                  into the gas */
-  float debug_injected_energy_tot[RT_NGROUPS]; /* how much energy this star
-                                              particle actually has injected
-                                              into the gas over the entire
-                                              run*/
+  /*! how many hydro particles this particle interacted with */
+  /* Note: It's useless to write this in outputs, as it gets reset
+   * at the end of every step. */
+  int debug_iact_hydro_inject;
+
+  /*! how many hydro particles this particle interacted with
+   * during injection prep*/
+  /* Note: It's useless to write this in outputs, as it gets reset
+   * at the end of every step. */
+  int debug_iact_hydro_inject_prep;
+
+  /*! stellar photon emisison rate computed? */
+  int debug_emission_rate_set;
+
+  /* skip this for GEAR */
+  /* !called in a self/rt_injection task? */
+  /* int debug_injection_check; */
+
+  /*! how much energy this star particle actually has injected into the gas */
+  float debug_injected_energy[RT_NGROUPS];
+
+  /*! how much energy this star particle actually has injected into the gas over
+   * the entire run*/
+  float debug_injected_energy_tot[RT_NGROUPS];
 #endif
 };
 
