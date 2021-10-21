@@ -838,8 +838,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                     scheduler_activate(s, cj->hydro.super->hydro.rt_ghost1);
 
 
-                    /* Do ci */
-                    if (ci_active_rt) {
+                  /* Do ci */
+                  if (ci_active_rt) {
 
                       /* hydro for ci */
                       atomic_or(&ci->stars.requires_sorts, 1 << t->flags);
@@ -856,10 +856,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                         /* Check the sorts and activate them if needed. */
                         cell_activate_hydro_sorts(cj, t->flags, s);
                         cell_activate_stars_sorts(ci, t->flags, s);
-                    }
+                  }
 
-                    /* Do cj */
-                    if (cj_active_rt) {
+                  /* Do cj */
+                  if (cj_active_rt) {
 
                         /* hydro for ci */
                         atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
@@ -876,7 +876,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                         /* Check the sorts and activate them if needed. */
                         cell_activate_hydro_sorts(ci, t->flags, s);
                         cell_activate_stars_sorts(cj, t->flags, s);
-                    }
+                  }
                 }
 
                     /* Store current values of dx_max and h_max. */
