@@ -153,7 +153,6 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     
     /* Final operation on the density (add self-contribution). */
     dmp->rho += dmp->mass * dm_kernel_root;
-    /*const float rho_inv = 1.f / dmp->rho;*/
 
     dmp->density.rho_dh -= hydro_dimension * dmp->mass * dm_kernel_root;
     dmp->density.wcount += dm_kernel_root;
@@ -164,10 +163,6 @@ __attribute__((always_inline)) INLINE static void dark_matter_end_density(
     dmp->density.rho_dh *= h_inv_dim_plus_one;
     dmp->density.wcount *= h_inv_dim;
     dmp->density.wcount_dh *= h_inv_dim_plus_one;
-    /*/*dmp->velocity_dispersion *= h_inv_dim * rho_inv;
-    dmp->velocity_ngb[0] *= h_inv_dim * rho_inv;
-    dmp->velocity_ngb[1] *= h_inv_dim * rho_inv;
-    dmp->velocity_ngb[2] *= h_inv_dim * rho_inv;*/
 
     dmp->velocity_dispersion /= dmp->num_neighbours;
     dmp->velocity_ngb[0] /= dmp->num_neighbours;
@@ -275,9 +270,6 @@ __attribute__((always_inline)) INLINE static void sidm_kick_to_dmpart(struct dmp
             dmp->sidm_data.max_sidm_events_per_timestep = dmp->sidm_data.sidm_events_per_timestep;
         
     }
-    /* Remove flag */
-    dmp->sidm_data.sidm_flag = 0.f;
-    
 }
 
 

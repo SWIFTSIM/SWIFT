@@ -373,17 +373,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
                           pj->v_full[1] - pi->v_full[1],
                           pj->v_full[2] - pi->v_full[2]};
 
-    /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
-    /*pi->velocity_ngb[0] += mj * dvi[0] * wi;
-    pi->velocity_ngb[1] += mj * dvi[1] * wi;
-    pi->velocity_ngb[2] += mj * dvi[2] * wi;*/
-
     pi->velocity_ngb[0] += dvi[0];
     pi->velocity_ngb[1] += dvi[1];
     pi->velocity_ngb[2] += dvi[2];
 
-
-    /*/*pi->velocity_dispersion += mj * wi * (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);*/
     pi->velocity_dispersion += (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);
 
     /* Compute density of pj. */
@@ -400,15 +393,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_densit
                           pi->v_full[1] - pj->v_full[1],
                           pi->v_full[2] - pj->v_full[2]};
 
-    /*/*pj->velocity_ngb[0] += mi * dvj[0] * wj;
-    pj->velocity_ngb[1] += mi * dvj[1] * wj;
-    pj->velocity_ngb[2] += mi * dvj[2] * wj;*/
-
     pj->velocity_ngb[0] += dvj[0];
     pj->velocity_ngb[1] += dvj[1];
     pj->velocity_ngb[2] += dvj[2];
 
-    /*/*pj->velocity_dispersion += mi * wj * (dvj[0] * dvj[0] + dvj[1] * dvj[1] + dvj[2] * dvj[2]);*/
     pj->velocity_dispersion += (dvj[0] * dvj[0] + dvj[1] * dvj[1] + dvj[2] * dvj[2]);
 
     /* Increasing counters */
@@ -458,15 +446,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_dark_matter
                           pj->v_full[1] - pi->v_full[1],
                           pj->v_full[2] - pi->v_full[2]};
 
-    /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
-    /*/*pi->velocity_ngb[0] += mj * dvi[0] * wi;
-    pi->velocity_ngb[1] += mj * dvi[1] * wi;
-    pi->velocity_ngb[2] += mj * dvi[2] * wi;*/
     pi->velocity_ngb[0] += dvi[0];
     pi->velocity_ngb[1] += dvi[1];
     pi->velocity_ngb[2] += dvi[2];
 
-    /*/*pi->velocity_dispersion += mj * wi * (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);*/
     pi->velocity_dispersion += (dvi[0] * dvi[0] + dvi[1] * dvi[1] + dvi[2] * dvi[2]);
 
     /* Increasing counter */
@@ -881,13 +864,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_dark_matter_sidm(
     /* Calculate SIDM probability */
     float Probability_SIDM_i = Rate_SIDM_i * dti;
     float Probability_SIDM_j = Rate_SIDM_j * dtj;
+    float Probability = 0.5 * (Probability_SIDM_i + Probability_SIDM_j);
 
     /* Draw a random number */
-    const float randi = random_unit_interval(pi->id_or_neg_offset, t_current, random_number_SIDM);
-    const float randj = random_unit_interval(pj->id_or_neg_offset, t_current, random_number_SIDM);
+    const float rand = random_unit_interval(pi->id_or_neg_offset, t_current, random_number_SIDM);
 
     /* Are we lucky? If so we have DM-DM interactions */
-    if (Probability_SIDM_i > randi || Probability_SIDM_j > randj) {
+    if (Probability > rand) {
 
         /* Doing SIDM kick */
         sidm_do_kick(pi, pj, t_current, cosmo, sidm_props, us);
