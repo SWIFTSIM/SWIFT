@@ -481,7 +481,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
     }
     if (verbose) message("clipped gravity part counts of %d cells", nadj);
     free(ptrs);
-
+  }
 
   /* Other particle types are assumed to correlate with processing time. */
   if (s->nr_parts > 0) {
@@ -504,11 +504,10 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   if (s->nr_dmparts > 0) {
     dmsize = (double)sizeof(struct dmpart);
     mapper_data.size = dmsize;
-    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_dmpart, s->dmparts,
-                   s->nr_dmparts, sizeof(struct dmpart), space_splitsize,
-                   &mapper_data);
+    threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_dmpart,
+                   s->dmparts, s->nr_dmparts, sizeof(struct dmpart),
+                   space_splitsize, &mapper_data);
   }
-
 
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
    * gparts. */
@@ -531,7 +530,6 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
       sum += counts[k];
     }
   }
-
 
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if (sum > (double)(IDX_MAX - 10000)) {
