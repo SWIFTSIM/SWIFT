@@ -502,7 +502,6 @@ int main(int argc, char *argv[]) {
   struct cosmology cosmo;
   struct hydro_props hydro_props;
   struct runner *runner;
-  char c;
   static long long partId = 0;
   char outputFileNameExtension[100] = "";
   char swiftOutputFileName[200] = "";
@@ -520,6 +519,7 @@ int main(int argc, char *argv[]) {
   /* Generate a RNG seed from time. */
   unsigned int seed = time(NULL);
 
+  int c;
   while ((c = getopt(argc, argv, "h:p:n:r:t:d:s:f:")) != -1) {
     switch (c) {
       case 'h':

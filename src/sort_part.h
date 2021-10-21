@@ -56,8 +56,8 @@ static const double runner_shift[13][3] = {
 };
 
 /* Does the axis need flipping ? */
-static const char runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-                                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static const int runner_flip[27] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /* Map shift vector to sortlist. */
 static const int sortlistID[27] = {

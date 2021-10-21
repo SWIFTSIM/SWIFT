@@ -63,7 +63,14 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #endif
     if (dump) {
 
-      if (e->nodeID == 0) message("Writing restart files");
+      if (e->nodeID == 0) {
+
+        /* Flush the time-step file to avoid gaps in case of crashes
+         * before the next automated flush */
+        fflush(e->file_timesteps);
+
+        message("Writing restart files");
+      }
 
       /* Clean out the previous saved files, if found. Do this now as we are
        * MPI synchronized. */
@@ -309,17 +316,17 @@ void engine_check_for_dumps(struct engine *e) {
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_free(e->mesh);
 
-        /* Do we want FoF group IDs in the snapshot? */
-        if (with_fof && e->snapshot_invoke_fof) {
-          engine_fof(e, /*dump_results=*/1, /*dump_debug=*/0,
-                     /*seed_black_holes=*/0);
-        }
-
-        /* Free the foreign particles to get more breathing space.
-         * This cannot be done before FOF as comms are used in there. */
+          /* Free the foreign particles to get more breathing space.
+           * If called, the FOF code itself will reallocate what it needs. */
 #ifdef WITH_MPI
         space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
 #endif
+
+        /* Do we want FoF group IDs in the snapshot? */
+        if (with_fof && e->snapshot_invoke_fof) {
+          engine_fof(e, /*dump_results=*/1, /*dump_debug=*/0,
+                     /*seed_black_holes=*/0, /*buffers allocated=*/0);
+        }
 
         /* Do we want a corresponding VELOCIraptor output? */
         if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
@@ -349,7 +356,7 @@ void engine_check_for_dumps(struct engine *e) {
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_allocate(e->mesh);
 #ifdef WITH_MPI
-        engine_allocate_foreign_particles(e);
+        engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
 
         /* ... and find the next output time */
@@ -386,7 +393,7 @@ void engine_check_for_dumps(struct engine *e) {
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_allocate(e->mesh);
 #ifdef WITH_MPI
-        engine_allocate_foreign_particles(e);
+        engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
 
         /* ... and find the next output time */
@@ -795,8 +802,7 @@ void engine_compute_next_fof_time(struct engine *e) {
     if (e->policy & engine_policy_cosmology) {
       const float next_fof_time =
           exp(e->ti_next_fof * e->time_base) * e->cosmology->a_begin;
-      // if (e->verbose)
-      message("Next FoF time set to a=%e.", next_fof_time);
+      if (e->verbose) message("Next FoF time set to a=%e.", next_fof_time);
     } else {
       const float next_fof_time = e->ti_next_fof * e->time_base + e->time_begin;
       if (e->verbose) message("Next FoF time set to t=%e.", next_fof_time);

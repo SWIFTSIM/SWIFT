@@ -102,6 +102,7 @@ void profiler_write_timing_info_header(const struct engine *e,
 
   /* Open the file and write the header. */
   *file = fopen(fullFileName, "w");
+  if (*file == NULL) error("Could not create file '%s'.", fullFileName);
   fprintf(*file,
           "# Host: %s\n# Branch: %s\n# Revision: %s\n# Compiler: %s, "
           "Version: %s \n# "

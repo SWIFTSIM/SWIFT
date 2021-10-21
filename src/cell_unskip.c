@@ -263,6 +263,7 @@ void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
 
   if (c == c->hydro.super) {
     cell_activate_drift_spart(c, s);
+    cell_set_flag(c, cell_flag_do_stars_drift);
   } else {
     if (c->split) {
       for (int k = 0; k < 8; ++k) {
@@ -931,11 +932,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Self interaction? */
   if (cj == NULL) {
 
-    const int ci_active =
-        cell_is_active_stars(ci, e) ||
-        (with_star_formation && cell_is_active_hydro(ci, e)) ||
-        (with_star_formation_sink &&
-         (cell_is_active_hydro(ci, e) || cell_is_active_sinks(ci, e)));
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
 
     /* Do anything? */
     if (!ci_active || ci->hydro.count == 0 ||
@@ -973,16 +971,10 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     double shift[3];
     const int sid = space_getsid(s->space, &ci, &cj, shift);
 
-    const int ci_active =
-        cell_is_active_stars(ci, e) ||
-        (with_star_formation && cell_is_active_hydro(ci, e)) ||
-        (with_star_formation_sink &&
-         (cell_is_active_hydro(ci, e) || cell_is_active_sinks(ci, e)));
-    const int cj_active =
-        cell_is_active_stars(cj, e) ||
-        (with_star_formation && cell_is_active_hydro(cj, e)) ||
-        (with_star_formation_sink &&
-         (cell_is_active_hydro(cj, e) || cell_is_active_sinks(cj, e)));
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+    const int cj_active = cell_need_activating_stars(cj, e, with_star_formation,
+                                                     with_star_formation_sink);
 
     /* Should we even bother? */
     if (!ci_active && !cj_active) return;
@@ -2013,6 +2005,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
     if (c->top->hydro.star_formation != NULL) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
+      cell_activate_super_spart_drifts(c->top, s);
     }
     if (c->top->hydro.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
@@ -2198,10 +2191,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
   int rebuild = 0;
 
   if (c->stars.drift != NULL) {
-    if (cell_is_active_stars(c, e) ||
-        (with_star_formation && cell_is_active_hydro(c, e)) ||
-        (with_star_formation_sink &&
-         (cell_is_active_hydro(c, e) || cell_is_active_sinks(c, e)))) {
+    if (cell_need_activating_stars(c, e, with_star_formation,
+                                   with_star_formation_sink)) {
 
       cell_activate_drift_spart(c, s);
     }
@@ -2220,18 +2211,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int cj_nodeID = nodeID;
 #endif
 
-    const int ci_active =
-        cell_is_active_stars(ci, e) ||
-        (with_star_formation && cell_is_active_hydro(ci, e)) ||
-        (with_star_formation_sink &&
-         (cell_is_active_hydro(ci, e) || cell_is_active_sinks(ci, e)));
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
 
     const int cj_active =
-        (cj != NULL) &&
-        (cell_is_active_stars(cj, e) ||
-         (with_star_formation && cell_is_active_hydro(cj, e)) ||
-         (with_star_formation_sink &&
-          (cell_is_active_hydro(cj, e) || cell_is_active_sinks(cj, e))));
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
 
     /* Activate the drifts */
     if (t->type == task_type_self && ci_active) {
@@ -2246,6 +2231,13 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       scheduler_activate(s, t);
 
       if (t->type == task_type_pair) {
+        /* Activate stars_in for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->stars.stars_in);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->stars.stars_in);
+
         /* Do ci */
         if (ci_active) {
           /* stars for ci */
@@ -2411,12 +2403,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int cj_nodeID = nodeID;
 #endif
 
-    const int ci_active = cell_is_active_stars(ci, e) ||
-                          (with_star_formation && cell_is_active_hydro(ci, e));
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
 
     const int cj_active =
-        (cj != NULL) && (cell_is_active_stars(cj, e) ||
-                         (with_star_formation && cell_is_active_hydro(cj, e)));
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (with_star_formation_sink) {
@@ -2481,12 +2473,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     }
 #endif
 
-    const int ci_active = cell_is_active_stars(ci, e) ||
-                          (with_star_formation && cell_is_active_hydro(ci, e));
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
 
     const int cj_active =
-        (cj != NULL) && (cell_is_active_stars(cj, e) ||
-                         (with_star_formation && cell_is_active_hydro(cj, e)));
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
 
     if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
@@ -2527,18 +2519,21 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int cj_nodeID = nodeID;
 #endif
 
-    const int ci_active =
-        cell_is_active_stars(ci, e) ||
-        (with_star_formation && cell_is_active_hydro(ci, e)) ||
-        (with_star_formation_sink &&
-         (cell_is_active_hydro(ci, e) || cell_is_active_sinks(ci, e)));
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
 
     const int cj_active =
-        (cj != NULL) &&
-        (cell_is_active_stars(cj, e) ||
-         (with_star_formation && cell_is_active_hydro(cj, e)) ||
-         (with_star_formation_sink &&
-          (cell_is_active_hydro(cj, e) || cell_is_active_sinks(cj, e))));
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    if (t->type == task_type_pair) {
+      /* Activate stars_out for each cell that is part of
+       * a pair task as to not miss any dependencies */
+      if (ci_nodeID == nodeID)
+        scheduler_activate(s, ci->hydro.super->stars.stars_out);
+      if (cj_nodeID == nodeID)
+        scheduler_activate(s, cj->hydro.super->stars.stars_out);
+    }
 
     if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
@@ -2568,10 +2563,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID) {
-    if (cell_is_active_stars(c, e) ||
-        (with_star_formation && cell_is_active_hydro(c, e)) ||
-        (with_star_formation_sink &&
-         (cell_is_active_hydro(c, e) || cell_is_active_sinks(c, e)))) {
+    if (cell_need_activating_stars(c, e, with_star_formation,
+                                   with_star_formation_sink)) {
 
       if (c->stars.density_ghost != NULL)
         scheduler_activate(s, c->stars.density_ghost);
@@ -2581,6 +2574,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         scheduler_activate(s, c->hydro.prep1_ghost);
       if (c->stars.prep2_ghost != NULL)
         scheduler_activate(s, c->stars.prep2_ghost);
+      /* If we don't have pair tasks, then the stars_in and stars_out still
+       * need reactivation. */
       if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
       if (c->stars.stars_out != NULL) scheduler_activate(s, c->stars.stars_out);
       if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
@@ -2651,6 +2646,13 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
         if (cj_nodeID == nodeID) cell_activate_drift_bpart(cj, s);
+
+        /* Activate bh_in for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->black_holes.black_holes_in);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->black_holes.black_holes_in);
       }
 
       /* Store current values of dx_max and h_max. */
@@ -2847,12 +2849,23 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
       scheduler_activate(s, t);
+
+      if (t->type == task_type_pair) {
+        /* Activate bh_out for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->black_holes.black_holes_out);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->black_holes.black_holes_out);
+      }
     }
   }
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_black_holes(c, e)) {
 
+    /* If the cell doesn't have any pair type tasks,
+     * then we haven't unskipped all the implicit tasks yet. */
     if (c->black_holes.density_ghost != NULL)
       scheduler_activate(s, c->black_holes.density_ghost);
     if (c->black_holes.swallow_ghost_0 != NULL)
@@ -3102,12 +3115,18 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
         if (cj_nodeID == nodeID) {
           cell_activate_drift_sink(cj, s);
           cell_activate_sink_formation_tasks(cj->top, s);
+          /* Activate all sink_in tasks for each cell involved
+           * in pair type tasks */
+          scheduler_activate(s, cj->hydro.super->sinks.sink_in);
         }
         if (ci_nodeID == nodeID) {
           cell_activate_drift_sink(ci, s);
           if (ci->top != cj->top) {
             cell_activate_sink_formation_tasks(ci->top, s);
           }
+          /* Activate all sink_in tasks for each cell involved
+           * in pair type tasks */
+          scheduler_activate(s, ci->hydro.super->sinks.sink_in);
         }
 
         /* Do ci */
@@ -3210,6 +3229,15 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
+
+      if (t->type == task_type_pair) {
+        /* Activate sinks_out for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->sinks.sink_out);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->sinks.sink_out);
+      }
     }
   }
 
@@ -3287,6 +3315,19 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
           (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
         scheduler_activate(s, t);
 
+        /* Activate rt_in for each cell that is part of
+         * a pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->hydro.rt_in);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->hydro.rt_in);
+
+        /* For the same reason, catch the dependencies with the RT ghost1 */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->hydro.rt_ghost1);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->hydro.rt_ghost1);
+
         /* Do ci */
         if (ci_active) {
           /* stars for ci */
@@ -3352,29 +3393,99 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
       /* TODO: all the MPI checks */
       /* I assume that all hydro related subcell unskipping/activation necessary
        * here is being done in the hydro part of cell_unskip */
-      if (cell_is_active_hydro(l->t->ci, e)) scheduler_activate(s, l->t);
+
+      struct task *t = l->t;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+#ifdef WITH_MPI
+      const int ci_nodeID = ci->nodeID;
+      const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+      const int ci_nodeID = nodeID;
+      const int cj_nodeID = nodeID;
+#endif
+
+      const int ci_active = cell_is_active_hydro(ci, e);
+      const int cj_active = (cj != NULL) && cell_is_active_hydro(cj, e);
+
+      if (t->type == task_type_self || t->type == task_type_sub_self ||
+          t->type == task_type_sub_pair) {
+        if (ci_active) scheduler_activate(s, t);
+      }
+
+      else if (t->type == task_type_pair) {
+
+        /* Only activate tasks that involve a local active cell. */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+
+          /* Activate rt_ghost1 dependencies for each cell that is part of
+           * a pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->hydro.rt_ghost1);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->hydro.rt_ghost1);
+        }
+      }
     }
+
     for (struct link *l = c->hydro.rt_transport; l != NULL; l = l->next) {
       /* TODO: all the MPI checks */
       /* I assume that all hydro related subcell unskipping/activation necessary
        * here is being done in the hydro part of cell_unskip */
-      if (cell_is_active_hydro(l->t->ci, e)) scheduler_activate(s, l->t);
+
+      struct task *t = l->t;
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+#ifdef WITH_MPI
+      const int ci_nodeID = ci->nodeID;
+      const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+      const int ci_nodeID = nodeID;
+      const int cj_nodeID = nodeID;
+#endif
+
+      const int ci_active = cell_is_active_hydro(ci, e);
+      const int cj_active = (cj != NULL) && cell_is_active_hydro(cj, e);
+
+      if (t->type == task_type_self || t->type == task_type_sub_self ||
+          t->type == task_type_sub_pair) {
+        if (ci_active) scheduler_activate(s, t);
+      }
+
+      else if (t->type == task_type_pair) {
+
+        /* Only activate tasks that involve a local active cell. */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+
+          /* Activate transport_out for each cell that is part of
+           * a pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->hydro.rt_transport_out);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->hydro.rt_transport_out);
+        }
+      }
     }
 
     /* Unskip all the other task types */
 
     if (rt_should_do_unskip_cell(c, e)) {
+      /* If we don't have any pair tasks for this cell, then we haven't
+       * unskipped the ghosts yet. Do this now. */
+
       /* You need to pay attention to stars as well when unskipping rt_in
-       * to gather dependencies from the feedback loop */
+       * to gather dependencies from the feedback loop. */
       if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
 
       /* Also activate the rt_ghost1 task even if you don't have stars in
        * this cell to gather dependencies properly. Otherwise, dependency
        * issues arise when the timestep task starts changing what's active
        * and what's not active */
-      if (c->hydro.rt_ghost1 != NULL) {
-        scheduler_activate(s, c->hydro.rt_ghost1);
-      }
+      if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
     }
 
     if (cell_is_active_hydro(c, e)) {

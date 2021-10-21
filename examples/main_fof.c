@@ -678,7 +678,6 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
   /* Split the space. */
   engine_split(&e, &initial_partition);
-  engine_redistribute(&e);
 #endif
 
 #ifdef SWIFT_DEBUG_TASKS
@@ -693,7 +692,8 @@ int main(int argc, char *argv[]) {
 #endif
 
   /* Perform the FOF search */
-  engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0, /*seed_black_holes=*/0);
+  engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0, /*seed_black_holes=*/0,
+             /*buffers allocated=*/1);
 
   /* Write output. */
   engine_dump_snapshot(&e);

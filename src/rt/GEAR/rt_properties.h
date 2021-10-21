@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_PROPERTIES_GEAR_H
 #define SWIFT_RT_PROPERTIES_GEAR_H
 
+#include "rt_parameters.h"
+
 /**
  * @file src/rt/GEAR/rt_properties.h
  * @brief Main header file for the 'GEAR' radiative transfer scheme
@@ -45,6 +47,9 @@ struct rt_props {
   /* Global constant stellar emission rates */
   double stellar_const_emission_rates[RT_NGROUPS];
 
+  /* CFL condition */
+  float CFL_condition;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Do extended tests where we assume that all parts
    * have spart neighbours? */
@@ -52,7 +57,8 @@ struct rt_props {
   /* int debug_do_all_parts_have_stars_checks; */
 
   /* radiation emitted by stars this step. This is not really a property,
-   * but a placeholder to sum up a global variable */
+   * but a placeholder to sum up a global variable. It's being reset
+   * every timestep. */
   int debug_radiation_emitted_this_step;
 
   /* total radiation emitted by stars. This is not really a property,
@@ -66,6 +72,32 @@ struct rt_props {
   /* total radiation absorbed by gas. This is not really a property,
    * but a placeholder to sum up a global variable */
   unsigned long long debug_radiation_absorbed_tot;
+
+  /* Interactions of a star with gas during injection prep this step. This is
+   * not really a property, but a placeholder to sum up a global variable */
+  int debug_star_injection_prep_iacts_with_parts_this_step;
+
+  /* Interactions of a star with gas during injection prep. This is not
+   * really a property, but a placeholder to sum up a global variable */
+  unsigned long long debug_star_injection_prep_iacts_with_parts_tot;
+
+  /* Interactions of a star with gas during injection prep this step. This is
+   * not really a property, but a placeholder to sum up a global variable */
+  int debug_part_injection_prep_iacts_with_stars_this_step;
+
+  /* Interactions of a star with gas during injection prep. This is not
+   * really a property, but a placeholder to sum up a global variable */
+  unsigned long long debug_part_injection_prep_iacts_with_stars_tot;
+
+  /* Total radiation energy in the gas. It's being reset every step. */
+  float debug_total_radiation_conserved_energy[RT_NGROUPS];
+  float debug_total_radiation_energy_density[RT_NGROUPS];
+  float debug_total_star_emitted_energy[RT_NGROUPS];
+
+  /* Files to write energy budget to after every step */
+  FILE* conserved_energy_filep;
+  FILE* energy_density_filep;
+  FILE* star_emitted_energy_filep;
 #endif
 };
 
@@ -122,8 +154,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 #endif
 
   if (RT_NGROUPS <= 0) {
-    error("You need to run GEAR-RT with at least 1 photon group, you have %d",
-          RT_NGROUPS);
+    error(
+        "You need to run GEAR-RT with at least 1 photon group, "
+        "you have %d",
+        RT_NGROUPS);
   } else if (RT_NGROUPS == 1) {
     rtp->photon_groups[0] = 0.f;
   } else {
@@ -157,9 +191,47 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     error("GEAR-RT can't run without constant stellar emission rates for now.");
   }
 
+  /* get reduced speed of light factor */
+  const float f_r = parser_get_param_float(params, "GEARRT:f_reduce_c");
+  rt_params.reduced_speed_of_light = phys_const->const_speed_light_c * f_r;
+  rt_params.reduced_speed_of_light_inverse =
+      1.f / rt_params.reduced_speed_of_light;
+
+  /* get CFL condition */
+  const float CFL = parser_get_param_float(params, "GEARRT:CFL_condition");
+  rtp->CFL_condition = CFL;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rtp->debug_radiation_emitted_tot = 0ULL;
   rtp->debug_radiation_absorbed_tot = 0ULL;
+  rtp->debug_star_injection_prep_iacts_with_parts_tot = 0LL;
+  rtp->debug_part_injection_prep_iacts_with_stars_tot = 0LL;
+  for (int g = 0; g < RT_NGROUPS; g++)
+    rtp->debug_total_star_emitted_energy[g] = 0.f;
+
+  /* Open up files for energy budgets */
+  rtp->conserved_energy_filep = fopen("RT_conserved_energy_budget.txt", "w");
+  if (rtp->conserved_energy_filep == NULL)
+    error("Couldn't open RT conserved energy budget file to write in");
+  rtp->energy_density_filep = fopen("RT_energy_density_budget.txt", "w");
+  if (rtp->energy_density_filep == NULL)
+    error("Couldn't open RT energy density budget file to write in");
+  rtp->star_emitted_energy_filep = fopen("RT_star_injected_energy.txt", "w");
+  if (rtp->star_emitted_energy_filep == NULL)
+    error("Couldn't open RT star energy budget file to write in");
+
+  if (rtp->use_const_emission_rates) {
+    FILE* files[3] = {rtp->conserved_energy_filep, rtp->energy_density_filep,
+                      rtp->star_emitted_energy_filep};
+    for (int f = 0; f < 3; f++) {
+      fprintf(files[f], "# Emission rates: ");
+      const double solar_luminosity = 3.826e33; /* erg/s */
+      for (int g = 0; g < RT_NGROUPS; g++)
+        fprintf(files[f], "%12.6e ",
+                rtp->stellar_const_emission_rates[g] * solar_luminosity);
+      fprintf(files[f], "\n");
+    }
+  }
 #endif
 
   /* After initialisation, print params to screen */

@@ -1,13 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-#------------------------------------------------------------
-# This file contains data that is hardcoded into swift 
+# ------------------------------------------------------------
+# This file contains data that is hardcoded into swift
 # that needs to be reproduced exactly in order for analysis
-# outputs to make any sense. 
+# outputs to make any sense.
 # The data is used in other scripts in this directory, this
 # script is intended for imports only.
-#------------------------------------------------------------
-
+# ------------------------------------------------------------
 
 #  Tasks and subtypes. Indexed as in tasks.h.
 TASKTYPES = [
@@ -77,8 +76,8 @@ TASKTYPES = [
     "sink_formation",
     "rt_ghost1",
     "rt_ghost2",
-    "rt_transport_out", 
-    "rt_tchem", 
+    "rt_transport_out",
+    "rt_tchem",
     #  "count",
 ]
 
@@ -122,9 +121,58 @@ SUBTYPES = [
     "sink_compute_formation",
     "sink_accretion",
     "rt_gradient",
-    "rt_transport", 
+    "rt_transport",
     #  "count",
 ]
+
+# check if label files are found that have (possibly different) labels
+# output by SWIFT itself
+import os
+
+if os.path.exists("task_labels_task_types.txt"):
+    print("SWIFT task label file 'task_labels_task_types.txt' found, reading it.")
+    with open("task_labels_task_types.txt", "r") as file:
+        NEW_TASKTYPES = []
+        for line in file.readlines()[1:]:
+            NEW_TASKTYPES.append(line.split()[1])
+    if not len(NEW_TASKTYPES) == len(TASKTYPES):
+        print(
+            "Hardcoded labels do not match SWIFT labels,"
+            " consider updating the hardcoded labels (different list size)."
+        )
+    else:
+        for ilabel in range(len(TASKTYPES)):
+            if not NEW_TASKTYPES[ilabel] == TASKTYPES[ilabel]:
+                print(
+                    "Hardcoded labels do not match SWIFT labels,"
+                    " consider updating the hardcoded labels "
+                    " (different labels: TASKTYPES[{0}]: {1} vs {2}).".format(
+                        ilabel, TASKTYPES[ilabel], NEW_TASKTYPES[ilabel]
+                    )
+                )
+    TASKTYPES = NEW_TASKTYPES
+if os.path.exists("task_labels_task_subtypes.txt"):
+    print("SWIFT task label file 'task_labels_task_subtypes.txt' found, reading it.")
+    with open("task_labels_task_subtypes.txt", "r") as file:
+        NEW_SUBTYPES = []
+        for line in file.readlines()[1:]:
+            NEW_SUBTYPES.append(line.split()[1])
+    if not len(NEW_SUBTYPES) == len(SUBTYPES):
+        print(
+            "Hardcoded labels do not match SWIFT labels,"
+            " consider updating the hardcoded labels (different list size)."
+        )
+    else:
+        for ilabel in range(len(SUBTYPES)):
+            if not NEW_SUBTYPES[ilabel] == SUBTYPES[ilabel]:
+                print(
+                    "Hardcoded labels do not match SWIFT labels,"
+                    " consider updating the hardcoded labels"
+                    " (different labels: SUBTYPES[{0}]: {1} vs {2}).".format(
+                        ilabel, SUBTYPES[ilabel], NEW_SUBTYPES[ilabel]
+                    )
+                )
+    SUBTYPES = NEW_SUBTYPES
 
 SIDS = [
     "(-1,-1,-1)",

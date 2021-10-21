@@ -275,6 +275,9 @@ float cooling_get_temperature(const struct phys_const *phys_const,
  *
  * The electron density returned is in physical internal units.
  *
+ * Note that particles that are star-forming are ignored and
+ * will return an electron density of zero.
+ *
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
@@ -283,13 +286,16 @@ float cooling_get_temperature(const struct phys_const *phys_const,
  * @param p #part data.
  * @param xp Pointer to the #xpart data.
  */
-float cooling_get_electron_density(const struct phys_const *phys_const,
-                                   const struct hydro_props *hydro_props,
-                                   const struct unit_system *us,
-                                   const struct cosmology *cosmo,
-                                   const struct cooling_function_data *cooling,
-                                   const struct part *p,
-                                   const struct xpart *xp) {
+double cooling_get_electron_density(const struct phys_const *phys_const,
+                                    const struct hydro_props *hydro_props,
+                                    const struct unit_system *us,
+                                    const struct cosmology *cosmo,
+                                    const struct cooling_function_data *cooling,
+                                    const struct part *p,
+                                    const struct xpart *xp) {
+
+  /* Do not include star-forming particles */
+  if (star_formation_get_SFR(p, xp) > 0) return 0.;
 
   /* Get quantities in physical frame */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -340,7 +346,7 @@ float cooling_get_electron_density(const struct phys_const *phys_const,
  * function.
  *
  * Returns the total electron pressure of the particle, P_e * V, in code units.
- * Note that particles above a density threshold of 0.1 cm^(-3) are ignored and
+ * Note that particles that are star-forming are ignored and
  * will return an electron pressure of zero.
  *
  * @param phys_const #phys_const data structure.
@@ -364,6 +370,9 @@ double cooling_get_electron_pressure(
         "--temperature runtime flag?");
 #endif
 
+  /* Do not include star-forming particles */
+  if (star_formation_get_SFR(p, xp) > 0) return 0.;
+
   /* Get quantities in physical frame */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);
   const float rho_phys = hydro_get_physical_density(p, cosmo);
@@ -376,9 +385,6 @@ double cooling_get_electron_pressure(
   /* Get density in Hydrogen number density */
   const double n_H = rho_phys * XH / phys_const->const_proton_mass;
   const double n_H_cgs = n_H * cooling->number_density_to_cgs;
-
-  /* Do not include high-density particles */
-  if (n_H_cgs > 0.1) return 0.;
 
   /* Get this particle's metallicity ratio to solar.
    *
@@ -413,7 +419,7 @@ double cooling_get_electron_pressure(
       colibre_cooling_N_internalenergy, colibre_cooling_N_metallicity,
       colibre_cooling_N_density, colibre_cooling_N_electrontypes);
 
-  const double num_H = p->mass * XH / phys_const->const_proton_mass;
+  const double num_H = hydro_get_mass(p) * XH / phys_const->const_proton_mass;
 
   /* Interpolate the temperature */
   const double log_10_T =
@@ -430,6 +436,9 @@ double cooling_get_electron_pressure(
  *
  * This is eq. (2) of McCarthy et al. (2017).
  *
+ * Note that particles that are star-forming are ignored and
+ * will return a Compton Y value of 0.
+ *
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
  * @param us The internal system of units.
@@ -444,6 +453,9 @@ double cooling_get_ycompton(const struct phys_const *phys_const,
                             const struct cosmology *cosmo,
                             const struct cooling_function_data *cooling,
                             const struct part *p, const struct xpart *xp) {
+
+  /* Do not include star-forming particles */
+  if (star_formation_get_SFR(p, xp) > 0) return 0.;
 
   /* Get quantities in physical frame */
   const float u_phys = hydro_get_physical_internal_energy(p, xp, cosmo);

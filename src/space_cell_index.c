@@ -38,7 +38,7 @@
 /**
  * @brief Information required to compute the particle cell indices.
  */
-struct index_data {
+struct space_index_data {
   struct space *s;
   int *ind;
   int *cell_counts;
@@ -68,7 +68,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
   /* Unpack the data */
   struct part *restrict parts = (struct part *)map_data;
-  struct index_data *data = (struct index_data *)extra_data;
+  struct space_index_data *data = (struct space_index_data *)extra_data;
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(parts - s->parts);
 
@@ -195,7 +195,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
 
   /* Unpack the data */
   struct gpart *restrict gparts = (struct gpart *)map_data;
-  struct index_data *data = (struct index_data *)extra_data;
+  struct space_index_data *data = (struct space_index_data *)extra_data;
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(gparts - s->gparts);
 
@@ -327,7 +327,7 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 
   /* Unpack the data */
   struct spart *restrict sparts = (struct spart *)map_data;
-  struct index_data *data = (struct index_data *)extra_data;
+  struct space_index_data *data = (struct space_index_data *)extra_data;
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(sparts - s->sparts);
 
@@ -455,7 +455,7 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
 
   /* Unpack the data */
   struct bpart *restrict bparts = (struct bpart *)map_data;
-  struct index_data *data = (struct index_data *)extra_data;
+  struct space_index_data *data = (struct space_index_data *)extra_data;
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(bparts - s->bparts);
 
@@ -583,7 +583,7 @@ void space_dmparts_get_cell_index_mapper(void *map_data, int nr_dmparts,
 
     /* Unpack the data */
     struct dmpart *restrict dmparts = (struct dmpart *)map_data;
-    struct index_data *data = (struct index_data *)extra_data;
+    struct space_index_data *data = (struct space_index_data *)extra_data;
     struct space *s = data->s;
     int *const ind = data->ind + (ptrdiff_t)(dmparts - s->dmparts);
 
@@ -712,7 +712,7 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
 
   /* Unpack the data */
   struct sink *restrict sinks = (struct sink *)map_data;
-  struct index_data *data = (struct index_data *)extra_data;
+  struct space_index_data *data = (struct space_index_data *)extra_data;
   struct space *s = data->s;
   int *const ind = data->ind + (ptrdiff_t)(sinks - s->sinks);
 
@@ -851,7 +851,7 @@ void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
   s->sum_part_vel_norm = 0.f;
 
   /* Pack the extra information */
-  struct index_data data;
+  struct space_index_data data;
   data.s = s;
   data.ind = ind;
   data.cell_counts = cell_counts;
@@ -904,7 +904,7 @@ void space_gparts_get_cell_index(struct space *s, int *gind, int *cell_counts,
   s->sum_gpart_vel_norm = 0.f;
 
   /* Pack the extra information */
-  struct index_data data;
+  struct space_index_data data;
   data.s = s;
   data.ind = gind;
   data.cell_counts = cell_counts;
@@ -957,7 +957,7 @@ void space_sparts_get_cell_index(struct space *s, int *sind, int *cell_counts,
   s->sum_spart_vel_norm = 0.f;
 
   /* Pack the extra information */
-  struct index_data data;
+  struct space_index_data data;
   data.s = s;
   data.ind = sind;
   data.cell_counts = cell_counts;
@@ -1008,7 +1008,7 @@ void space_sinks_get_cell_index(struct space *s, int *sink_ind,
   s->sum_sink_vel_norm = 0.f;
 
   /* Pack the extra information */
-  struct index_data data;
+  struct space_index_data data;
   data.s = s;
   data.ind = sink_ind;
   data.cell_counts = cell_counts;
@@ -1061,7 +1061,7 @@ void space_bparts_get_cell_index(struct space *s, int *bind, int *cell_counts,
   s->sum_bpart_vel_norm = 0.f;
 
   /* Pack the extra information */
-  struct index_data data;
+  struct space_index_data data;
   data.s = s;
   data.ind = bind;
   data.cell_counts = cell_counts;
@@ -1114,7 +1114,7 @@ void space_dmparts_get_cell_index(struct space *s, int *dmind, int *cell_counts,
     s->sum_dmpart_vel_norm = 0.f;
 
     /* Pack the extra information */
-    struct index_data data;
+    struct space_index_data data;
     data.s = s;
     data.ind = dmind;
     data.cell_counts = cell_counts;

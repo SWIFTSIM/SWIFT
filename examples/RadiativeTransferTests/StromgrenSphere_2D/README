@@ -1,0 +1,22 @@
+Strömgen Sphere example in 2D
+
+For now, there are no gas interactions, and we use this
+example to perform tests and checks on photon injection
+and their propagation. The example contains 1 star in a
+glass hydro distribution in 2D. (State 09/2021)
+
+Intented to compile with :
+    --with-rt=GEAR_1 --with-hydro-dimension=2 --with-rt-riemann-solver=GLF
+
+Scripts in this directory:
+
+    - plotRadiationProjection.py:
+        plot photon energies and fluxes as a 2D image
+
+    - plotPhotonPropagationCheck.py:
+        Plots radiation energies and fluxes as function of 
+        radius centered on the injecting star. 
+        NOTE: Make sure that you use a photon group that 
+        doesn't interact with the gas to check the 
+        propagation properly. You'll have to hard-code
+        the index of the photon group in the script itself.

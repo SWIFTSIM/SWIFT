@@ -19,50 +19,52 @@
 
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import pylab as pl
 import h5py
 import sys
 
 # Parameters
-gamma = 5. / 3. # Polytropic index
-rhoL = 1.       # Initial density in the non vacuum state
-vL = 0.         # Initial velocity in the non vacuum state
-PL = 1.         # Initial pressure in the non vacuum state
-rhoR = 0.       # Initial vacuum density
-vR = 0.         # Initial vacuum velocity
-PR = 0.         # Initial vacuum pressure
+gamma = 5.0 / 3.0  # Polytropic index
+rhoL = 1.0  # Initial density in the non vacuum state
+vL = 0.0  # Initial velocity in the non vacuum state
+PL = 1.0  # Initial pressure in the non vacuum state
+rhoR = 0.0  # Initial vacuum density
+vR = 0.0  # Initial vacuum velocity
+PR = 0.0  # Initial vacuum pressure
 
 # Plot parameters
-params = {'axes.labelsize': 10,
-'axes.titlesize': 10,
-'font.size': 12,
-'legend.fontsize': 12,
-'xtick.labelsize': 10,
-'ytick.labelsize': 10,
-'text.usetex': True,
- 'figure.figsize' : (9.90,6.45),
-'figure.subplot.left'    : 0.045,
-'figure.subplot.right'   : 0.99,
-'figure.subplot.bottom'  : 0.05,
-'figure.subplot.top'     : 0.99,
-'figure.subplot.wspace'  : 0.15,
-'figure.subplot.hspace'  : 0.12,
-'lines.markersize' : 6,
-'lines.linewidth' : 3.,
-'text.latex.unicode': True
+params = {
+    "axes.labelsize": 10,
+    "axes.titlesize": 10,
+    "font.size": 12,
+    "legend.fontsize": 12,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "text.usetex": True,
+    "figure.figsize": (9.90, 6.45),
+    "figure.subplot.left": 0.045,
+    "figure.subplot.right": 0.99,
+    "figure.subplot.bottom": 0.05,
+    "figure.subplot.top": 0.99,
+    "figure.subplot.wspace": 0.15,
+    "figure.subplot.hspace": 0.12,
+    "lines.markersize": 6,
+    "lines.linewidth": 3.0,
+    "text.latex.unicode": True,
 }
 pl.rcParams.update(params)
-pl.rc('font',**{'family':'sans-serif','sans-serif':['Times']})
+pl.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 # Read the snapshot index from the command line argument
 snap = int(sys.argv[1])
 
 # Open the file and read the relevant data
 file = h5py.File("vacuum_{0:04d}.hdf5".format(snap), "r")
-x = file["/PartType0/Coordinates"][:,0]
+x = file["/PartType0/Coordinates"][:, 0]
 rho = file["/PartType0/Densities"]
-v = file["/PartType0/Velocities"][:,0]
+v = file["/PartType0/Velocities"][:, 0]
 u = file["/PartType0/InternalEnergies"]
 S = file["/PartType0/Entropies"]
 P = file["/PartType0/Pressures"]
@@ -81,7 +83,7 @@ git = file["Code"].attrs["Git Revision"]
 aL = np.sqrt(gamma * PL / rhoL)
 
 # vacuum front speed
-SL = vL + 2. / (gamma - 1.) * aL
+SL = vL + 2.0 / (gamma - 1.0) * aL
 
 # we evaluate the solution centred on 0., and shift to the correct position
 # afterwards
@@ -91,90 +93,101 @@ va = np.zeros(len(xa))
 Pa = np.zeros(len(xa))
 
 for i in range(len(xa)):
-  dxdt = xa[i] / time
-  if dxdt > vL - aL:
-    if dxdt < SL:
-      # rarefaction regime
-      # factor that appears in both the density and pressure expression
-      fac = 2. / (gamma + 1.) + \
-            (gamma - 1.) / (gamma + 1.) * (vL - dxdt) / aL
-      rhoa[i] = rhoL * fac**(2. / (gamma - 1.))
-      va[i] = 2. / (gamma + 1.) * (aL + 0.5 * (gamma - 1.) * vL + dxdt)
-      Pa[i] = PL * fac**(2. * gamma / (gamma - 1.))
+    dxdt = xa[i] / time
+    if dxdt > vL - aL:
+        if dxdt < SL:
+            # rarefaction regime
+            # factor that appears in both the density and pressure expression
+            fac = 2.0 / (gamma + 1.0) + (gamma - 1.0) / (gamma + 1.0) * (vL - dxdt) / aL
+            rhoa[i] = rhoL * fac ** (2.0 / (gamma - 1.0))
+            va[i] = 2.0 / (gamma + 1.0) * (aL + 0.5 * (gamma - 1.0) * vL + dxdt)
+            Pa[i] = PL * fac ** (2.0 * gamma / (gamma - 1.0))
+        else:
+            # vacuum regime
+            rhoa[i] = 0.0
+            va[i] = 0.0
+            Pa[i] = 0.0
     else:
-      # vacuum regime
-      rhoa[i] = 0.
-      va[i] = 0.
-      Pa[i] = 0.
-  else:
-    # left state regime
-    rhoa[i] = rhoL
-    va[i] = vL
-    Pa[i] = PL
+        # left state regime
+        rhoa[i] = rhoL
+        va[i] = vL
+        Pa[i] = PL
 
-ua = Pa / (gamma - 1.) / rhoa
-Sa = Pa / rhoa**gamma
+ua = Pa / (gamma - 1.0) / rhoa
+Sa = Pa / rhoa ** gamma
 
 # Plot the interesting quantities
 fig, ax = pl.subplots(2, 3)
 
 # Velocity profile
-ax[0][0].plot(x, v, "r.", markersize = 4.)
-ax[0][0].plot(xa + 0.75, va, "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][0].plot(xa + 0.25, -va[::-1], "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][0].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[0][0].set_ylabel("${\\rm{Velocity}}~v_x$", labelpad = 0)
+ax[0][0].plot(x, v, "r.", markersize=4.0)
+ax[0][0].plot(xa + 0.75, va, "k--", alpha=0.8, linewidth=1.2)
+ax[0][0].plot(xa + 0.25, -va[::-1], "k--", alpha=0.8, linewidth=1.2)
+ax[0][0].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[0][0].set_ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
 
 # Density profile
-ax[0][1].plot(x, rho, "r.", markersize = 4.)
-ax[0][1].plot(xa + 0.75, rhoa, "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][1].plot(xa + 0.25, rhoa[::-1], "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][1].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[0][1].set_ylabel("${\\rm{Density}}~\\rho$", labelpad = 0)
+ax[0][1].plot(x, rho, "r.", markersize=4.0)
+ax[0][1].plot(xa + 0.75, rhoa, "k--", alpha=0.8, linewidth=1.2)
+ax[0][1].plot(xa + 0.25, rhoa[::-1], "k--", alpha=0.8, linewidth=1.2)
+ax[0][1].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[0][1].set_ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 
 # Pressure profile
-ax[0][2].plot(x, P, "r.", markersize = 4.)
-ax[0][2].plot(xa + 0.75, Pa, "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][2].plot(xa + 0.25, Pa[::-1], "k--", alpha = 0.8, linewidth = 1.2)
-ax[0][2].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[0][2].set_ylabel("${\\rm{Pressure}}~P$", labelpad = 0)
+ax[0][2].plot(x, P, "r.", markersize=4.0)
+ax[0][2].plot(xa + 0.75, Pa, "k--", alpha=0.8, linewidth=1.2)
+ax[0][2].plot(xa + 0.25, Pa[::-1], "k--", alpha=0.8, linewidth=1.2)
+ax[0][2].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[0][2].set_ylabel("${\\rm{Pressure}}~P$", labelpad=0)
 
 # Internal energy profile
-ax[1][0].plot(x, u, "r.", markersize = 4.)
-ax[1][0].plot(xa + 0.75, ua, "k--", alpha = 0.8, linewidth = 1.2)
-ax[1][0].plot(xa + 0.25, ua[::-1], "k--", alpha = 0.8, linewidth = 1.2)
-ax[1][0].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[1][0].set_ylabel("${\\rm{Internal~Energy}}~u$", labelpad = 0)
+ax[1][0].plot(x, u, "r.", markersize=4.0)
+ax[1][0].plot(xa + 0.75, ua, "k--", alpha=0.8, linewidth=1.2)
+ax[1][0].plot(xa + 0.25, ua[::-1], "k--", alpha=0.8, linewidth=1.2)
+ax[1][0].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[1][0].set_ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 
 # Entropy profile
-ax[1][1].plot(x, S, "r.", markersize = 4.)
-ax[1][1].plot(xa + 0.75, Sa, "k--", alpha = 0.8, linewidth = 1.2)
-ax[1][1].plot(xa + 0.25, Sa[::-1], "k--", alpha = 0.8, linewidth = 1.2)
-ax[1][1].set_xlabel("${\\rm{Position}}~x$", labelpad = 0)
-ax[1][1].set_ylabel("${\\rm{Entropy}}~S$", labelpad = 0)
+ax[1][1].plot(x, S, "r.", markersize=4.0)
+ax[1][1].plot(xa + 0.75, Sa, "k--", alpha=0.8, linewidth=1.2)
+ax[1][1].plot(xa + 0.25, Sa[::-1], "k--", alpha=0.8, linewidth=1.2)
+ax[1][1].set_xlabel("${\\rm{Position}}~x$", labelpad=0)
+ax[1][1].set_ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 
 # Run information
 ax[1][2].set_frame_on(False)
-ax[1][2].text(-0.49, 0.9,
-  "Vacuum test with $\\gamma={0:.3f}$ in 1D at $t = {1:.2f}$".format(
-    gamma, time), fontsize = 10)
-ax[1][2].text(-0.49, 0.8,
-  "Left:~~ $(P_L, \\rho_L, v_L) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(
-    PL, rhoL, vL), fontsize = 10)
-ax[1][2].text(-0.49, 0.7,
-  "Right: $(P_R, \\rho_R, v_R) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(
-    PR, rhoR, vR), fontsize = 10)
-ax[1][2].plot([-0.49, 0.1], [0.62, 0.62], "k-", lw = 1)
-ax[1][2].text(-0.49, 0.5, "$\\textsc{{Swift}}$ {0}".format(git), fontsize = 10)
-ax[1][2].text(-0.49, 0.4, scheme, fontsize = 10)
-ax[1][2].text(-0.49, 0.3, kernel, fontsize = 10)
-ax[1][2].text(-0.49, 0.2,
-  "${0:.2f}$ neighbours ($\\eta={1:.3f}$)".format(neighbours, eta),
-  fontsize = 10)
+ax[1][2].text(
+    -0.49,
+    0.9,
+    "Vacuum test with $\\gamma={0:.3f}$ in 1D at $t = {1:.2f}$".format(gamma, time),
+    fontsize=10,
+)
+ax[1][2].text(
+    -0.49,
+    0.8,
+    "Left:~~ $(P_L, \\rho_L, v_L) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(PL, rhoL, vL),
+    fontsize=10,
+)
+ax[1][2].text(
+    -0.49,
+    0.7,
+    "Right: $(P_R, \\rho_R, v_R) = ({0:.3f}, {1:.3f}, {2:.3f})$".format(PR, rhoR, vR),
+    fontsize=10,
+)
+ax[1][2].plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
+ax[1][2].text(-0.49, 0.5, "$\\textsc{{Swift}}$ {0}".format(git), fontsize=10)
+ax[1][2].text(-0.49, 0.4, scheme, fontsize=10)
+ax[1][2].text(-0.49, 0.3, kernel, fontsize=10)
+ax[1][2].text(
+    -0.49,
+    0.2,
+    "${0:.2f}$ neighbours ($\\eta={1:.3f}$)".format(neighbours, eta),
+    fontsize=10,
+)
 ax[1][2].set_xlim(-0.5, 0.5)
-ax[1][2].set_ylim(0., 1.)
+ax[1][2].set_ylim(0.0, 1.0)
 ax[1][2].set_xticks([])
 ax[1][2].set_yticks([])
 
 pl.tight_layout()
-pl.savefig("Vacuum.png", dpi = 200)
+pl.savefig("Vacuum.png", dpi=200)

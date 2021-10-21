@@ -408,9 +408,10 @@ void test_interactions(struct part test_part, struct part *parts, size_t count,
   if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
     message("Differences found...");
 
-  message("The serial interactions took     : %15lli ticks.",
-          serial_time / runs);
-  message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
+  message("The serial interactions took     : %.3f %s.",
+          clocks_from_ticks(serial_time / runs), clocks_getunit());
+  message("The vectorised interactions took : %.3f %s.",
+          clocks_from_ticks(vec_time / runs), clocks_getunit());
   message("Speed up: %15fx.", (double)(serial_time) / vec_time);
 }
 
@@ -683,9 +684,10 @@ void test_force_interactions(struct part test_part, struct part *parts,
   if (check_results(pi_serial, pj_serial, pi_vec, pj_vec, count))
     message("Differences found...");
 
-  message("The serial interactions took     : %15lli ticks.",
-          serial_time / runs);
-  message("The vectorised interactions took : %15lli ticks.", vec_time / runs);
+  message("The serial interactions took     : %.3f %s.",
+          clocks_from_ticks(serial_time / runs), clocks_getunit());
+  message("The vectorised interactions took : %.3f %s.",
+          clocks_from_ticks(vec_time / runs), clocks_getunit());
   message("Speed up: %15fx.", (double)(serial_time) / vec_time);
 }
 
@@ -699,7 +701,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "h:s:n:r:")) != -1) {
     switch (c) {
       case 'h':

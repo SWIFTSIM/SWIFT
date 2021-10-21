@@ -166,6 +166,10 @@ struct engine {
   /* Dimensionless factor for the RMS time-step condition. */
   double max_RMS_displacement_factor;
 
+  /* When computing the max RMS dt, should only the gas particles
+   * be considered as the baryon component? */
+  int max_RMS_dt_use_only_gas;
+
   /* Time of the simulation beginning */
   double time_begin;
 
@@ -337,10 +341,13 @@ struct engine {
   float snapshot_subsample_fraction[swift_type_count];
   int snapshot_run_on_dump;
   int snapshot_distributed;
+  int snapshot_lustre_OST_count;
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
   struct unit_system *snapshot_units;
+  int snapshot_use_delta_from_edge;
+  double snapshot_delta_from_edge;
   int snapshot_output_count;
 
   /* Structure finding information */
@@ -532,6 +539,9 @@ struct engine {
   /* Whether to dump restart files after the last step. */
   int restart_onexit;
 
+  /* Number of Lustre OSTs on the system to use as rank-based striping offset */
+  int restart_lustre_OST_count;
+
   /* Name of the restart file. */
   const char *restart_file;
 
@@ -597,7 +607,7 @@ void engine_unskip_timestep_communications(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
-void engine_allocate_foreign_particles(struct engine *e);
+void engine_allocate_foreign_particles(struct engine *e, const int fof);
 void engine_print_stats(struct engine *e);
 void engine_check_for_dumps(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
@@ -655,7 +665,8 @@ void engine_clean(struct engine *e, const int fof, const int restart);
 int engine_estimate_nr_tasks(const struct engine *e);
 void engine_print_task_counts(const struct engine *e);
 void engine_fof(struct engine *e, const int dump_results,
-                const int dump_debug_results, const int seed_black_holes);
+                const int dump_debug_results, const int seed_black_holes,
+                const int foreign_buffers_allocated);
 void engine_activate_gpart_comms(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
