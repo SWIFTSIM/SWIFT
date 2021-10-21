@@ -365,6 +365,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_rt) {
           scheduler_activate(s, t);
           cell_activate_subcell_rt_tasks(ci, NULL, s);
+          cell_activate_drift_part(ci, s);
         }
       }
 
@@ -876,6 +877,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Store current values of dx_max and h_max. */
           else if (t_type == task_type_sub_pair) {
             cell_activate_subcell_rt_tasks(ci, cj, s);
+
+            /* Activate the drift tasks. */
+            if (ci_nodeID == nodeID) cell_activate_drift_spart(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+            /* Activate the drift tasks. */
+            if (cj_nodeID == nodeID) cell_activate_drift_spart(cj, s);
+            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
 
             /* Add rt_in dependencies for each cell that is part of
              * a sub_pair task as to not miss any dependencies */
