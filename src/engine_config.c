@@ -485,10 +485,11 @@ void engine_config(int restart, int fof, struct engine *e,
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
-              "[%s] %6s\n",
+              "[%s] %6s %s [%s]\n",
               "Step", "Time", "Scale-factor", "Redshift", "Time-step",
               "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
-              "b-Updates", "Wall-clock time", clocks_getunit(), "Props");
+              "b-Updates", "Wall-clock time", clocks_getunit(), "Props",
+              "Dead time", clocks_getunit());
       fflush(e->file_timesteps);
     }
 
