@@ -231,6 +231,7 @@ void *runner_main(void *data) {
       r->t = t;
 #endif
 
+      const ticks task_beg = getticks();
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
@@ -635,6 +636,7 @@ void *runner_main(void *data) {
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
+      r->active_time += (getticks() - task_beg);
 
 /* Mark that we have run this task on these cells */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -661,3 +663,9 @@ void *runner_main(void *data) {
   /* Be kind, rewind. */
   return NULL;
 }
+
+ticks runner_get_active_time(const struct runner *restrict r) {
+  return r->active_time;
+}
+
+void runner_reset_active_time(struct runner *restrict r) { r->active_time = 0; }

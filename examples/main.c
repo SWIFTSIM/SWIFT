@@ -1519,10 +1519,11 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
     printf(
         "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s [%s] "
-        "%6s\n",
+        "%6s %s [%s] \n",
         "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
         "Updates", "g-Updates", "s-Updates", "sink-Updates", "b-Updates",
-        "Wall-clock time", clocks_getunit(), "Props");
+        "Wall-clock time", clocks_getunit(), "Props", "Dead time",
+        clocks_getunit());
     fflush(stdout);
   }
 
@@ -1664,23 +1665,25 @@ int main(int argc, char *argv[]) {
   /* Write final time information */
   if (myrank == 0) {
 
+    const double dead_time = e.global_deadtime / (nr_nodes * e.nr_threads);
+
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
         "%12lld"
-        " %21.3f %6d\n",
+        " %21.3f %6d %21.3f\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.sink_updates, e.b_updates, e.wallclock_time, e.step_props);
+        e.sink_updates, e.b_updates, e.wallclock_time, e.step_props, dead_time);
     fflush(stdout);
 
     fprintf(e.file_timesteps,
             "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
-            " %12lld %21.3f %6d\n",
+            " %12lld %21.3f %6d %21.3f\n",
             e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
             e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
             e.s_updates, e.sink_updates, e.b_updates, e.wallclock_time,
-            e.step_props);
+            e.step_props, dead_time);
     fflush(e.file_timesteps);
 
     /* Print information to the SFH logger */

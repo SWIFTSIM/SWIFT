@@ -55,6 +55,7 @@ struct mpicollectgroup1 {
   float tasks_per_cell_max;
   struct star_formation_history sfh;
   float runtime;
+  double deadtime;
 #ifdef WITH_CSDS
   float csds_file_size_gb;
 #endif
@@ -131,6 +132,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
   star_formation_logger_add_to_accumulator(&e->sfh, &grp1->sfh);
 
   e->runtime = grp1->runtime;
+  e->global_deadtime = grp1->deadtime;
 }
 
 /**
@@ -191,6 +193,7 @@ void collectgroup1_apply(const struct collectgroup1 *grp1, struct engine *e) {
  * @param tasks_per_cell the used number of tasks per cell.
  * @param sfh The star formation history logger
  * @param runtime The runtime of rank in hours.
+ * @param deadtime The deadtime of rank.
  * @param csds_file_size_gb The current size of the CSDS.
  */
 void collectgroup1_init(
@@ -204,7 +207,7 @@ void collectgroup1_init(
     integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,
     integertime_t ti_black_holes_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh, float runtime,
+    const struct star_formation_history sfh, float runtime, double deadtime,
     float csds_file_size_gb) {
 
   grp1->updated = updated;
@@ -233,6 +236,7 @@ void collectgroup1_init(
   grp1->tasks_per_cell_max = tasks_per_cell;
   grp1->sfh = sfh;
   grp1->runtime = runtime;
+  grp1->deadtime = deadtime;
 #ifdef WITH_CSDS
   grp1->csds_file_size_gb = csds_file_size_gb;
 #endif
@@ -278,6 +282,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.tasks_per_cell_max = grp1->tasks_per_cell_max;
   mpigrp11.sfh = grp1->sfh;
   mpigrp11.runtime = grp1->runtime;
+  mpigrp11.deadtime = grp1->deadtime;
 #ifdef WITH_CSDS
   mpigrp11.csds_file_size_gb = grp1->csds_file_size_gb;
 #endif
@@ -314,6 +319,7 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->tasks_per_cell_max = mpigrp12.tasks_per_cell_max;
   grp1->sfh = mpigrp12.sfh;
   grp1->runtime = mpigrp12.runtime;
+  grp1->deadtime = mpigrp12.deadtime;
 #ifdef WITH_CSDS
   grp1->csds_file_size_gb = mpigrp12.csds_file_size_gb;
 #endif
@@ -387,6 +393,9 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
 
   /* Use the maximum runtime as the global runtime. */
   mpigrp11->runtime = max(mpigrp11->runtime, mpigrp12->runtime);
+
+  /* Sum the deadtime. */
+  mpigrp11->deadtime += mpigrp12->deadtime;
 
 #ifdef WITH_CSDS
   mpigrp11->csds_file_size_gb += mpigrp12->csds_file_size_gb;
