@@ -308,11 +308,12 @@ void engine_repartition_trigger(struct engine *e) {
       memuse_use(&size, &resident, &shared, &text, &data, &library, &dirty);
 
       /* Gather it together with the CPU times used by the tasks in the last
-       * step. */
-      double timemem[3] = {e->usertime_last_step, e->systime_last_step,
-                           (double)resident};
-      double timemems[e->nr_nodes * 3];
-      MPI_Gather(&timemem, 3, MPI_DOUBLE, timemems, 3, MPI_DOUBLE, 0,
+       * step (and the deadtime fraction, for output). */
+      double timemem[4] = {
+          e->usertime_last_step, e->systime_last_step, (double)resident,
+          e->local_deadtime / (e->nr_threads * e->wallclock_time)};
+      double timemems[e->nr_nodes * 4];
+      MPI_Gather(&timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
                  MPI_COMM_WORLD);
       if (e->nodeID == 0) {
 
@@ -335,7 +336,7 @@ void engine_repartition_trigger(struct engine *e) {
 
         double msum = timemems[2];
 
-        for (int k = 3; k < e->nr_nodes * 3; k += 3) {
+        for (int k = 4; k < e->nr_nodes * 4; k += 4) {
           if (timemems[k] > umaxtime) umaxtime = timemems[k];
           if (timemems[k] < umintime) umintime = timemems[k];
 
@@ -401,7 +402,7 @@ void engine_repartition_trigger(struct engine *e) {
           timelog = fopen("rank_cpu_balance.log", "w");
           if (timelog == NULL)
             error("Could not create file 'rank_cpu_balance.log'.");
-          fprintf(timelog, "# step rank user sys sum\n");
+          fprintf(timelog, "# step rank user sys sum deadfrac\n");
 
           memlog = fopen("rank_memory_balance.log", "w");
           if (memlog == NULL)
@@ -418,12 +419,13 @@ void engine_repartition_trigger(struct engine *e) {
             error("Could not open file 'rank_memory_balance.log' for writing.");
         }
 
-        for (int k = 0; k < e->nr_nodes * 3; k += 3) {
+        for (int k = 0; k < e->nr_nodes * 4; k += 4) {
 
-          fprintf(timelog, "%d %d %f %f %f\n", e->step, k / 3, timemems[k],
-                  timemems[k + 1], timemems[k] + timemems[k + 1]);
+          fprintf(timelog, "%d %d %f %f %f %f\n", e->step, k / 4, timemems[k],
+                  timemems[k + 1], timemems[k] + timemems[k + 1],
+                  timemems[k + 3]);
 
-          fprintf(memlog, "%d %d %ld\n", e->step, k / 3, (long)timemems[k + 2]);
+          fprintf(memlog, "%d %d %ld\n", e->step, k / 4, (long)timemems[k + 2]);
         }
 
         fprintf(timelog, "# %d mean times: %f %f %f\n", e->step, umean, smean,
@@ -1663,6 +1665,11 @@ void engine_launch(struct engine *e, const char *call) {
   space_reset_task_counters(e->s);
 #endif
 
+  /* reset the active time counters for the runners */
+  for (int i = 0; i < e->nr_threads; ++i) {
+    runner_reset_active_time(&e->runners[i]);
+  }
+
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
 
@@ -1683,6 +1690,14 @@ void engine_launch(struct engine *e, const char *call) {
 
   /* Store the wallclock time */
   e->sched.total_ticks += getticks() - tic;
+
+  /* accumulate active counts for all runners */
+  ticks active_time = 0;
+  for (int i = 0; i < e->nr_threads; ++i) {
+    active_time += runner_get_active_time(&e->runners[i]);
+  }
+  e->sched.deadtime.active_ticks += active_time;
+  e->sched.deadtime.waiting_ticks += getticks() - tic;
 
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
@@ -1741,6 +1756,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
+
+  /* reset the deadtime information in the scheduler */
+  e->sched.deadtime.active_ticks = 0;
+  e->sched.deadtime.waiting_ticks = 0;
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
@@ -1940,6 +1959,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_check_swallow(e->s);
 #endif
 
+  /* Compute the local accumulated deadtime. */
+  const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
+                          e->sched.deadtime.active_ticks;
+  e->local_deadtime = clocks_from_ticks(deadticks);
+
   /* Recover the (integer) end of the next time-step */
   engine_collect_end_of_step(e, 1);
 
@@ -2082,6 +2106,10 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+  /* reset the deadtime information in the scheduler */
+  e->sched.deadtime.active_ticks = 0;
+  e->sched.deadtime.waiting_ticks = 0;
+
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
   /* We may want to compare times across ranks, so make sure all steps start
    * at the same time, just different ticks. */
@@ -2091,16 +2119,18 @@ void engine_step(struct engine *e) {
 
   if (e->nodeID == 0) {
 
+    const double dead_time = e->global_deadtime / (e->nr_nodes * e->nr_threads);
+
     const ticks tic_files = getticks();
 
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
-        "%12lld %12lld %21.3f %6d\n",
+        "%12lld %12lld %21.3f %6d %21.3f\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
-        e->step_props);
+        e->step_props, dead_time);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
@@ -2123,11 +2153,11 @@ void engine_step(struct engine *e) {
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-          "%12lld %21.3f %6d\n",
+          "%12lld %21.3f %6d %21.3f\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
-          e->step_props);
+          e->step_props, dead_time);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
 #endif
@@ -2420,6 +2450,11 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_end_of_step(e, e->verbose);
 #endif
+
+  /* Compute the local accumulated deadtime. */
+  const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
+                          e->sched.deadtime.active_ticks;
+  e->local_deadtime = clocks_from_ticks(deadticks);
 
   /* Collect information about the next time-step */
   engine_collect_end_of_step(e, 1);

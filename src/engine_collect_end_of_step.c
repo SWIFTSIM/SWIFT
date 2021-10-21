@@ -45,6 +45,7 @@ struct end_of_step_data {
   struct engine *e;
   struct star_formation_history sfh;
   float runtime;
+  double deadtime;
   float csds_file_size_gb;
 };
 
@@ -508,6 +509,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   /* Need to use a consistent check of the hours since we started. */
   data.runtime = clocks_get_hours_since_start();
 
+  data.deadtime = e->local_deadtime;
+
   /* Initialize the total SFH of the simulation to zero */
   star_formation_logger_init(&data.sfh);
 
@@ -534,7 +537,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       data.ti_sinks_end_min, data.ti_sinks_beg_max, data.ti_black_holes_end_min,
       data.ti_black_holes_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
-      data.sfh, data.runtime, data.csds_file_size_gb);
+      data.sfh, data.runtime, data.deadtime, data.csds_file_size_gb);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
