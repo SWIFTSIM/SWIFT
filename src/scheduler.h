@@ -112,6 +112,14 @@ struct scheduler {
   /* Total ticks spent running the tasks */
   ticks total_ticks;
 
+  struct {
+    /* Total ticks spent waiting for runners to come home. */
+    ticks waiting_ticks;
+
+    /* Total ticks spent by runners running tasks. */
+    ticks active_ticks;
+  } deadtime;
+
   /* Frequency of the dependency graph dumping. */
   int frequency_dependency;
 

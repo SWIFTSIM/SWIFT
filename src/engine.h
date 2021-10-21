@@ -532,6 +532,12 @@ struct engine {
   /* The globally agreed runtime, in hours. */
   float runtime;
 
+  /* The locally accumulated deadtime. */
+  double local_deadtime;
+
+  /* The globally accumulated deadtime. */
+  double global_deadtime;
+
   /* Time-integration mesh kick to apply to the particle velocities for
    * snapshots */
   float dt_kick_grav_mesh_for_io;
