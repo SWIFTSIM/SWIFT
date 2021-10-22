@@ -1197,13 +1197,18 @@ int main(int argc, char *argv[]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
-    for (size_t k = 0; k < Ngpart; ++k)
-      if (!dry_run && with_sidm && dmparts[k].id_or_neg_offset == 0)
-        error("SWIFT does not allow the ID 0.");
-      if (!dry_run && !with_sidm && gparts[k].id_or_neg_offset == 0 &&
-          (gparts[k].type == swift_type_dark_matter ||
-           gparts[k].type == swift_type_dark_matter_background))
-        error("SWIFT does not allow the ID 0.");
+    if (!with_sidm && !dry_run) {
+      for (size_t k = 0; k < Ngpart; ++k)
+        if (gparts[k].id_or_neg_offset == 0 &&
+            (gparts[k].type == swift_type_dark_matter ||
+             gparts[k].type == swift_type_dark_matter_background))
+          error("SWIFT does not allow the ID 0.");
+    }
+    if (with_sidm && !dry_run) {
+      for (size_t k = 0; k < Ndmpart; ++k)
+        if (dmparts[k].id_or_neg_offset == 0)
+          error("SWIFT does not allow the ID 0.");
+    }
     if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_stars) error("Linking problem");
@@ -1223,8 +1228,8 @@ int main(int argc, char *argv[]) {
 
     /* Check that the other links are correctly set */
     if (!dry_run)
-      part_verify_links(parts, gparts, sinks, sparts, dmparts, bparts, Ngas, Ngpart,
-                        Nsink, Nspart, Ndmpart, Nbpart, with_sidm, 1);
+      part_verify_links(parts, gparts, sinks, sparts, dmparts, bparts, Ngas,
+                        Ngpart, Nsink, Nspart, Ndmpart, Nbpart, with_sidm, 1);
 #endif
 
     /* Get the total number of particles across all nodes. */
