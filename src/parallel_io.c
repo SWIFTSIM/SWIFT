@@ -1037,12 +1037,12 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
         break;
 
       case swift_type_dark_matter:
-        if (with_sidm) {
+        if (with_gravity && with_sidm) {
           Nparticles = Ndm;
           darkmatter_read_as_dmparticles(*dmparts, list, &num_fields);
         } else if (with_gravity) {
-            Nparticles = Ndm;
-            darkmatter_read_particles(*gparts, list, &num_fields);
+          Nparticles = Ndm;
+          darkmatter_read_particles(*gparts, list, &num_fields);
         }
         break;
 
@@ -1107,9 +1107,6 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
     H5Gclose(h_grp);
   }
 
-  /* If we are remapping ParticleIDs later, start by setting them to 1. */
-  if (remap_ids) io_set_ids_to_one(*gparts, *Ngparts);
-
   if (!dry_run && with_gravity) {
 
     /* Let's initialise a bit of thread parallelism here */
@@ -1154,6 +1151,10 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
 
     threadpool_clean(&tp);
   }
+
+  /* If we are remapping ParticleIDs later, start by setting them to 1. */
+  if (remap_ids) io_set_ids_to_one(*gparts, *Ngparts);
+
 
   /* message("Done Reading particles..."); */
 
