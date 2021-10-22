@@ -1803,6 +1803,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_bparts, &offset_bparts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
+//  MPI_Exscan(&local_nr_dmparts, &offset_dm, 1, MPI_LONG_LONG_INT, MPI_SUM,
+//             MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_dm, &offset_dm, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
 #endif

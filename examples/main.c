@@ -1241,12 +1241,9 @@ int main(int argc, char *argv[]) {
     if (with_sidm) {
         N_long[swift_type_dark_matter] = Ndmpart;
     } else {
-        N_long[swift_type_dark_matter] = with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
+        N_long[swift_type_dark_matter] = with_gravity ? Ngpart - Ngpart_background - Nbaryons- Nnupart : 0;
     }
     N_long[swift_type_count] = Ngpart;
-    N_long[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
-
     MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
@@ -1262,8 +1259,6 @@ int main(int argc, char *argv[]) {
         N_total[swift_type_dark_matter] = with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
     }
     N_total[swift_type_count] = Ngpart;
-    N_total[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
 #endif
 
     if (myrank == 0)
