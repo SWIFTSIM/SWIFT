@@ -278,7 +278,8 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_doself_branch_bh_feedback(r, ci);
           else if (t->subtype == task_subtype_rt_inject)
-            runner_doself_branch_rt_inject(r, ci, 1);
+            runner_doself_branch_rt_inject(r, ci, /*limit_h_min=*/0,
+                                           /*limit_h_max=*/0);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_doself1_branch_rt_gradient(r, ci, /*limit_h_min=*/0,
                                               /*limit_h_max=*/0);
@@ -338,7 +339,8 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
           else if (t->subtype == task_subtype_rt_inject)
-            runner_dopair_branch_rt_inject(r, ci, cj, 1);
+            runner_dopair_branch_rt_inject(r, ci, cj, /*limit_h_min=*/0,
+                                           /*limit_h_max=*/0);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dopair1_branch_rt_gradient(r, ci, cj, /*limit_h_min=*/0,
                                               /*limit_h_max=*/0);
@@ -388,7 +390,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_self_bh_feedback(r, ci, 1);
           else if (t->subtype == task_subtype_rt_inject)
-            runner_dosub_self_rt_inject(r, ci, 1);
+            runner_dosub_self_rt_inject(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dosub_self1_rt_gradient(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_rt_transport)
@@ -436,7 +438,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_inject)
-            runner_dosub_pair_rt_inject(r, ci, cj, 1);
+            runner_dosub_pair_rt_inject(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dosub_pair1_rt_gradient(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_rt_transport)
