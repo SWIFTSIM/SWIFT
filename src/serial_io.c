@@ -907,6 +907,10 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
     MPI_Barrier(comm);
   }
 
+  /* If we are remapping ParticleIDs later, start by setting them to 1. */
+  if (remap_ids) io_set_ids_to_one(*gparts, *Ngparts);
+
+
   /* Duplicate the parts for gravity */
   if (!dry_run && with_gravity) {
 
@@ -952,9 +956,6 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
 
     threadpool_clean(&tp);
   }
-
-  /* If we are remapping ParticleIDs later, start by setting them to 1. */
-  if (remap_ids) io_set_ids_to_one(*gparts, *Ngparts);
 
   /* message("Done Reading particles..."); */
 

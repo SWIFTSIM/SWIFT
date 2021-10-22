@@ -1198,7 +1198,9 @@ int main(int argc, char *argv[]) {
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check once and for all that we don't have unwanted links */
     for (size_t k = 0; k < Ngpart; ++k)
-      if (!dry_run && gparts[k].id_or_neg_offset == 0 &&
+      if (!dry_run && with_sidm && dmparts[k].id_or_neg_offset == 0)
+        error("SWIFT does not allow the ID 0.");
+      if (!dry_run && !with_sidm && gparts[k].id_or_neg_offset == 0 &&
           (gparts[k].type == swift_type_dark_matter ||
            gparts[k].type == swift_type_dark_matter_background))
         error("SWIFT does not allow the ID 0.");
