@@ -2842,7 +2842,7 @@ struct cell *FIND_SUB(const struct cell *const c,
 
 void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
                        const int *ind, const int count, struct cell *cj,
-                       const float h_max_subset, const int gettimer) {
+                       const int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -2854,8 +2854,8 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (!cell_is_active_hydro(ci, e)) return;
 
   /* Recurse? */
-  if (ci->split && cj->split &&
-      cell_can_recurse_in_subset_pair_hydro_task(ci, h_max_subset)) {
+  if (cell_can_recurse_in_pair_hydro_task(ci) &&
+      cell_can_recurse_in_pair_hydro_task(cj)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB(ci, parts, ind);
@@ -2870,33 +2870,29 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
         DOSUB_PAIR_SUBSET(r, ci->progeny[pid], parts, ind, count,
-                          cj->progeny[pjd], h_max_subset,
+                          cj->progeny[pjd],
                           /*gettimer=*/0);
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
         DOSUB_PAIR_SUBSET(r, cj->progeny[pjd], parts, ind, count,
-                          ci->progeny[pid], h_max_subset,
+                          ci->progeny[pid],
                           /*gettimer=*/0);
     }
 
-  } else if (cell_is_active_hydro(ci, e)) {
-
-    /* Otherwise, compute the pair directly. */
+  }
+  /* Otherwise, compute the pair directly. */
+  else if (cell_is_active_hydro(ci, e)) {
 
     /* Do any of the cells need to be drifted first? */
     if (!cell_are_part_drifted(cj, e)) error("Cell should be drifted!");
 
     DOPAIR_SUBSET_BRANCH(r, ci, parts, ind, count, cj);
-
-  } else {
-    error("Recursion logic");
   }
 
   if (gettimer) TIMER_TOC(timer_dosub_subset);
 }
 
 void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                       const int *ind, const int count,
-                       const float h_max_subset, const int gettimer) {
+                       const int *ind, const int count, const int gettimer) {
 
   const struct engine *e = r->e;
 
@@ -2905,18 +2901,17 @@ void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (!cell_is_active_hydro(ci, e)) return;
 
   /* Recurse? */
-  if (ci->split &&
-      cell_can_recurse_in_self_subset_hydro_task(ci, h_max_subset)) {
+  if (ci->split && cell_can_recurse_in_self_hydro_task(ci)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB(ci, parts, ind);
 
     /* Loop over all progeny. */
-    DOSUB_SELF_SUBSET(r, sub, parts, ind, count, h_max_subset, /*gettimer=*/0);
+    DOSUB_SELF_SUBSET(r, sub, parts, ind, count, /*gettimer=*/0);
     for (int j = 0; j < 8; j++)
       if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
         DOSUB_PAIR_SUBSET(r, sub, parts, ind, count, ci->progeny[j],
-                          h_max_subset, /*gettimer=*/0);
+                          /*gettimer=*/0);
   }
 
   /* Otherwise, compute self-interaction. */
