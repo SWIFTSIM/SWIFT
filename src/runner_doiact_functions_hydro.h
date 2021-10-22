@@ -1119,11 +1119,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       if (hi >= h_max) continue;
       if (hi < h_min) continue;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-      rt_debugging_count_gradient_call(pi);
-#endif
-
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
@@ -2080,10 +2075,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
         const float hj = pj->h;
         const float hjg2 = hj * hj * kernel_gamma2;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-        rt_debugging_count_gradient_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2273,11 +2264,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
-
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-    rt_debugging_count_transport_call(pi);
-#endif
 
     /* Get the particle position and (square of) search radius. */
     const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
