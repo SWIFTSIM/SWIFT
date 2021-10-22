@@ -1337,6 +1337,15 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
+  /* Have the cells been sorted? */
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells (ci).");
+
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells (cj).");
+
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
@@ -1926,6 +1935,15 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells (ci).");
+
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells (cj).");
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS
   DOPAIR2_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
