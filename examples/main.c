@@ -1204,11 +1204,6 @@ int main(int argc, char *argv[]) {
              gparts[k].type == swift_type_dark_matter_background))
           error("SWIFT does not allow the ID 0.");
     }
-    if (with_sidm && !dry_run) {
-      for (size_t k = 0; k < Ndmpart; ++k)
-        if (dmparts[k].id_or_neg_offset == 0)
-          error("SWIFT does not allow the ID 0.");
-    }
     if (!with_stars && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_stars) error("Linking problem");
