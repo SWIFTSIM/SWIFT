@@ -184,8 +184,8 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, const struct cell *restrict ci,
   }
 
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
@@ -303,8 +303,8 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
       (cj->nodeID == e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   if (do_ci_stars) {
 

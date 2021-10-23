@@ -68,8 +68,8 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
 #endif
 
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -204,8 +204,8 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1077,8 +1077,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   /* Get some other useful values. */
   const double hi_max =
@@ -1406,8 +1406,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   /* Get some other useful values. */
   const double hi_max = ci->hydro.h_max;

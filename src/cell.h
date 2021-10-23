@@ -424,6 +424,14 @@ struct cell {
   /*! Minimum dimension, i.e. smallest edge of this cell (min(width)). */
   float dmin;
 
+  /*! When walking the tree and running loops at different level, this is
+   * the minimal h that can be processed at this level */
+  float h_min_allowed;
+
+  /*! When walking the tree and running loops at different level, this is
+   * the maximal h that can be processed at this level */
+  float h_max_allowed;
+
   /*! ID of the previous owner, e.g. runner. */
   int owner;
 
