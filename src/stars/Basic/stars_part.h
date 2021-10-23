@@ -81,6 +81,9 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   /*! Star formation struct */
   struct star_formation_spart_data sf_data;
 
