@@ -482,6 +482,8 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (part_is_active(&parts[k], e))
         h_max_active = max(h_max_active, parts[k].h);
 
+      cell_set_part_h_depth(&parts[k], c);
+
       /* Collect SFR from the particles after rebuilt */
       star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                               &c->stars.sfh);
@@ -535,6 +537,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       if (spart_is_active(&sparts[k], e))
         stars_h_max_active = max(stars_h_max_active, sparts[k].h);
+
+      cell_set_spart_h_depth(&sparts[k], c);
 
       /* Reset x_diff */
       sparts[k].x_diff[0] = 0.f;

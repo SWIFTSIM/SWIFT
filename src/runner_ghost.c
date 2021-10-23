@@ -373,6 +373,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* We now have a particle whose smoothing length has converged */
 
+        cell_set_spart_h_depth(sp, c);
+
         /* Check if h_max has increased */
         h_max = max(h_max, sp->h);
         h_max_active = max(h_max_active, sp->h);
@@ -1349,6 +1351,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* We now have a particle whose smoothing length has converged */
+
+        cell_set_part_h_depth(p, c);
 
         /* Check if h_max has increased */
         h_max = max(h_max, p->h);

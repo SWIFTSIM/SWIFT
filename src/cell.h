@@ -640,6 +640,44 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
 
+static INLINE void cell_set_part_h_depth(struct part *p,
+                                         const struct cell *leaf_cell) {
+
+  const float h = p->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  while (c->parent != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      p->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+}
+
+static INLINE void cell_set_spart_h_depth(struct spart *sp,
+                                          const struct cell *leaf_cell) {
+
+  const float h = sp->h;
+  const struct cell *c = leaf_cell;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (leaf_cell->split) error("Running on an unsplit cell!");
+#endif
+
+  while (c->parent != NULL) {
+    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+      sp->depth_h = c->depth;
+      return;
+    }
+    c = c->parent;
+  }
+}
+
 /**
  * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size
