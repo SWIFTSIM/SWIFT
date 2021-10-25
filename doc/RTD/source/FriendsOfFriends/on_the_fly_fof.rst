@@ -13,6 +13,9 @@ based on physical considerations.
 **In this mode, no group catalogue is written to the disk. The resulting list
 of haloes is only used internally by SWIFT.**
 
+Note that a catalogue can nevertheless be written after every seeding call by
+setting the optional parameter ``dump_catalogue_when_seeding``.
+
 Once the haloes have been identified by the FOF code, SWIFT will iterate
 over the list of groups and will check whether each halo obeys the
 following criteria:
@@ -44,3 +47,14 @@ minimal group length of order 500 is beneficial over the more traditional
 value of 32 as it will reduce the number of haloes to consider by about a
 factor 10 (assuming a normal cosmology) whilst still being far enough from
 the actual user-defined mass limit to be safe.
+
+On-the-fly Friends-Of-Friends for snapshot output
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It may be desirable to include FOF group membership information for each
+particle in the output snapshots even when black hole seeding is not in use.
+This can be achieved by setting the ``invoke_fof`` parameter in the 
+``Snapshots`` section of the parameter file.
+
+FOF will be run just before each snapshot is written and the snapshot will
+include a dataset which specifies which FOF group each particle belongs to.

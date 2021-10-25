@@ -113,7 +113,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
@@ -342,6 +342,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   /* Cell properties */
   cell->split = 0;
   cell->hydro.h_max = h_max;
+  cell->hydro.h_max_active = h_max;
   cell->hydro.count = count;
   cell->grav.count = 0;
   cell->hydro.dx_max_part = 0.;
@@ -355,7 +356,6 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
-  cell->hydro.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
   // shuffle_particles(cell->hydro.parts, cell->hydro.count);
@@ -401,9 +401,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2], main_cell->hydro.parts[pid].h,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||   \
-    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || \
-    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
+#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
+    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) ||            \
+    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
+    defined(GASOLINE_SPH)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
@@ -426,7 +427,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].force.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
-#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || \
+    defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
             main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else
@@ -500,7 +502,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:p:")) != -1) {
     switch (c) {
       case 'h':
@@ -835,11 +837,16 @@ int main(int argc, char *argv[]) {
 
   ticks self_time = timings[26];
 
-  message("Corner calculations took:     %15lli ticks.", corner_time / runs);
-  message("Edge calculations took:       %15lli ticks.", edge_time / runs);
-  message("Face calculations took:       %15lli ticks.", face_time / runs);
-  message("Self calculations took:       %15lli ticks.", self_time / runs);
-  message("SWIFT calculation took:       %15lli ticks.", time / runs);
+  message("Corner calculations took:     %.3f %s.",
+          clocks_from_ticks(corner_time / runs), clocks_getunit());
+  message("Edge calculations took:       %.3f %s.",
+          clocks_from_ticks(edge_time / runs), clocks_getunit());
+  message("Face calculations took:       %.3f %s.",
+          clocks_from_ticks(face_time / runs), clocks_getunit());
+  message("Self calculations took:       %.3f %s.",
+          clocks_from_ticks(self_time / runs), clocks_getunit());
+  message("SWIFT calculation took:       %.3f %s.",
+          clocks_from_ticks(time / runs), clocks_getunit());
 
   for (int j = 0; j < 125; ++j)
     reset_particles(cells[j], &space.hs, vel, press, size, rho);
@@ -962,7 +969,8 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Output timing */
-  message("Brute force calculation took: %15lli ticks.", toc - tic);
+  message("Brute force calculation took : %.3f %s.",
+          clocks_from_ticks(toc - tic), clocks_getunit());
 
   sprintf(outputFileName, "brute_force_125_%.150s.dat",
           outputFileNameExtension);

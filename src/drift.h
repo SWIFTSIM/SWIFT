@@ -51,6 +51,10 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
     const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created) {
+    error("Found an extra gpart in the drift");
+  }
+
   if (gp->ti_drift != ti_old)
     error(
         "g-particle has not been drifted to the current time "
@@ -151,9 +155,9 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
   /* Predict velocities (for gravity terms) */
   if (p->gpart != NULL) {
-    p->v[0] += (p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0]) * dt_kick_grav;
-    p->v[1] += (p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1]) * dt_kick_grav;
-    p->v[2] += (p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2]) * dt_kick_grav;
+    p->v[0] += xp->a_grav[0] * dt_kick_grav;
+    p->v[1] += xp->a_grav[1] * dt_kick_grav;
+    p->v[2] += xp->a_grav[2] * dt_kick_grav;
   }
 
   /* Predict the values of the extra fields */

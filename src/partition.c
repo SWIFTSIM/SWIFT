@@ -1402,7 +1402,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_logger || t->implicit || t->ci == NULL)
+        t->type == task_type_csds || t->implicit || t->ci == NULL)
       continue;
 
     /* Get weight for this task. Either based on fixed costs or task timings. */
@@ -2322,7 +2322,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
 
     /* Skip un-interesting tasks. */
     if (t->type == task_type_send || t->type == task_type_recv ||
-        t->type == task_type_logger || t->implicit || t->ci == NULL)
+        t->type == task_type_csds || t->implicit || t->ci == NULL)
       continue;
 
     /* Get weight for this task. Either based on fixed costs or task timings. */

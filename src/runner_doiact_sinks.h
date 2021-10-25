@@ -28,7 +28,7 @@
 #define DOSELF1_SINKS _DOSELF1_SINKS(FUNCTION)
 
 #define _DO_SYM_PAIR1_SINKS(f) PASTE(runner_do_sym_pair_sinks, f)
-#define DO_SYM_PAIR1_SINK _DO_SYM_PAIR1_SINKS(FUNCTION)
+#define DO_SYM_PAIR1_SINKS _DO_SYM_PAIR1_SINKS(FUNCTION)
 
 #define _DO_NONSYM_PAIR1_SINKS_NAIVE(f) \
   PASTE(runner_do_nonsym_pair_sinks_naive, f)

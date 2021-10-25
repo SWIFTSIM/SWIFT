@@ -40,10 +40,10 @@ struct eos_parameters {};
 /**
  * @brief Returns the internal energy given density and entropy
  *
- * Computes \f$u = \frac{S\rho^{\gamma-1} }{\gamma - 1}\f$.
+ * Computes \f$u = \frac{A\rho^{\gamma-1} }{\gamma - 1}\f$.
  *
  * @param density The density \f$\rho\f$.
- * @param entropy The entropy \f$S\f$.
+ * @param entropy The entropy \f$A\f$.
  */
 __attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_entropy(float density, float entropy) {
@@ -55,10 +55,10 @@ gas_internal_energy_from_entropy(float density, float entropy) {
 /**
  * @brief Returns the pressure given density and entropy
  *
- * Computes \f$P = S\rho^\gamma\f$.
+ * Computes \f$P = A\rho^\gamma\f$.
  *
  * @param density The density \f$\rho\f$.
- * @param entropy The entropy \f$S\f$.
+ * @param entropy The entropy \f$A\f$.
  */
 __attribute__((always_inline, const)) INLINE static float
 gas_pressure_from_entropy(float density, float entropy) {
@@ -69,7 +69,7 @@ gas_pressure_from_entropy(float density, float entropy) {
 /**
  * @brief Returns the entropy given density and pressure.
  *
- * Computes \f$A = \frac{P}{\rho^\gamma}\f$.
+ * Computes \f$A = \frac{P}{\rho^-\gamma}\f$.
  *
  * @param density The density \f$\rho\f$.
  * @param pressure The pressure \f$P\f$.
@@ -84,10 +84,10 @@ gas_entropy_from_pressure(float density, float pressure) {
 /**
  * @brief Returns the sound speed given density and entropy
  *
- * Computes \f$c = \sqrt{\gamma S \rho^{\gamma-1}}\f$.
+ * Computes \f$c = \sqrt{\gamma A \rho^{\gamma-1}}\f$.
  *
  * @param density The density \f$\rho\f$.
- * @param entropy The entropy \f$S\f$.
+ * @param entropy The entropy \f$A\f$.
  */
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_entropy(float density, float entropy) {
@@ -98,7 +98,7 @@ gas_soundspeed_from_entropy(float density, float entropy) {
 /**
  * @brief Returns the entropy given density and internal energy
  *
- * Computes \f$S = \frac{(\gamma - 1)u}{\rho^{\gamma-1}}\f$.
+ * Computes \f$A = \frac{(\gamma - 1)u}{\rho^{\gamma-1}}\f$.
  *
  * @param density The density \f$\rho\f$
  * @param u The internal energy \f$u\f$
@@ -134,6 +134,7 @@ gas_pressure_from_internal_energy(float density, float u) {
  */
 __attribute__((always_inline, const)) INLINE static float
 gas_internal_energy_from_pressure(float density, float pressure) {
+
   return hydro_one_over_gamma_minus_one * pressure / density;
 }
 
@@ -162,8 +163,7 @@ gas_soundspeed_from_internal_energy(float density, float u) {
 __attribute__((always_inline, const)) INLINE static float
 gas_soundspeed_from_pressure(float density, float P) {
 
-  const float density_inv = 1.f / density;
-  return sqrtf(hydro_gamma * P * density_inv);
+  return sqrtf(hydro_gamma * P / density);
 }
 
 /**

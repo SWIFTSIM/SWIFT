@@ -34,11 +34,10 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_density(const float r2, const float *dx,
+runner_iact_nonsym_stars_density(const float r2, const float dx[3],
                                  const float hi, const float hj,
-                                 struct spart *restrict si,
-                                 const struct part *restrict pj, const float a,
-                                 const float H) {
+                                 struct spart *si, const struct part *pj,
+                                 const float a, const float H) {
 
   float wi, wi_dx;
 
@@ -54,6 +53,12 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
   si->density.wcount += wi;
   si->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+  si->rho += pj->mass * wi;
+  si->n += wi;
+  si->N_density++;
+#endif
+
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */
   if (si->num_ngb_density < MAX_NUM_OF_NEIGHBOURS_STARS)
@@ -61,6 +66,18 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
   ++si->num_ngb_density;
 #endif
 }
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_prep1(const float r2, const float dx[3],
+                               const float hi, const float hj, struct spart *si,
+                               const struct part *pj, const float a,
+                               const float H) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_stars_prep2(const float r2, const float dx[3],
+                               const float hi, const float hj, struct spart *si,
+                               const struct part *pj, const float a,
+                               const float H) {}
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
@@ -76,11 +93,10 @@ runner_iact_nonsym_stars_density(const float r2, const float *dx,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_stars_feedback(const float r2, const float *dx,
+runner_iact_nonsym_stars_feedback(const float r2, const float dx[3],
                                   const float hi, const float hj,
-                                  const struct spart *restrict si,
-                                  struct part *restrict pj, const float a,
-                                  const float H) {
+                                  const struct spart *si, struct part *pj,
+                                  const float a, const float H) {
 
 #ifdef DEBUG_INTERACTIONS_STARS
   /* Update ngb counters */

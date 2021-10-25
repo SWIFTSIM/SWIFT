@@ -27,6 +27,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "feedback.h"
+#include "rt.h"
 #include "runner.h"
 #include "space_getsid.h"
 #include "stars.h"
@@ -45,3 +46,21 @@
 #include "runner_doiact_functions_stars.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
+
+#ifdef EXTRA_STAR_LOOPS
+
+/* Import the stars prepare1 loop functions. */
+#define FUNCTION prep1
+#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP1
+#include "runner_doiact_functions_stars.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
+
+/* Import the stars prepare2 loop functions. */
+#define FUNCTION prep2
+#define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP2
+#include "runner_doiact_functions_stars.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION
+
+#endif /* EXTRA_STAR_LOOPS */

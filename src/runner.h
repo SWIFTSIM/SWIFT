@@ -42,6 +42,13 @@ struct task;
 #define TASK_LOOP_FEEDBACK 4
 #define TASK_LOOP_SWALLOW 5
 #define TASK_LOOP_SINK_FORMATION 6
+#define TASK_LOOP_SINK_MERGER 7
+#define TASK_LOOP_SINK_ACCRETION 8
+#define TASK_LOOP_STARS_PREP1 9
+#define TASK_LOOP_STARS_PREP2 10
+#define TASK_LOOP_RT_GRADIENT 11
+#define TASK_LOOP_RT_TRANSPORT 12
+#define TASK_LOOP_RT_INJECT 13
 
 /**
  * @brief A struct representing a runner's thread and its data.
@@ -65,6 +72,9 @@ struct runner {
 
   /*! The particle gravity_cache of cell cj. */
   struct gravity_cache cj_gravity_cache;
+
+  /*! Time this runner was active during the last engine_launch. */
+  ticks active_time;
 
 #ifdef WITH_VECTORIZATION
 
@@ -113,11 +123,13 @@ void runner_do_sync(struct runner *r, struct cell *c, int force, int timer);
 void runner_do_grav_mesh(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_external(struct runner *r, struct cell *c, int timer);
 void runner_do_grav_fft(struct runner *r, int timer);
-void runner_do_logger(struct runner *r, struct cell *c, int timer);
+void runner_do_csds(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_self(struct runner *r, struct cell *c, int timer);
 void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
                         int timer);
 void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer);
+void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer);
+void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer);
 void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer);
 void runner_do_bh_swallow_self(struct runner *r, struct cell *c, int timer);
 void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
@@ -125,6 +137,7 @@ void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
 void runner_do_bh_swallow_pair(struct runner *r, struct cell *ci,
                                struct cell *cj, int timer);
 void runner_do_star_formation(struct runner *r, struct cell *c, int timer);
+void runner_do_star_formation_sink(struct runner *r, struct cell *c, int timer);
 void runner_do_sink_formation(struct runner *r, struct cell *c);
 void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer);
 
@@ -135,6 +148,14 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
                           int timer);
 void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
                           int timer);
+void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
+                            const int timer);
+void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
+                              const int timer);
+void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
+
+ticks runner_get_active_time(const struct runner *restrict r);
+void runner_reset_active_time(struct runner *restrict r);
 
 #endif /* SWIFT_RUNNER_H */

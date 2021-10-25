@@ -425,6 +425,17 @@ void stellar_evolution_read_elements(struct stellar_model* sm,
   strcpy(
       sm->elements_name + (GEAR_CHEMISTRY_ELEMENT_COUNT - 1) * GEAR_LABELS_SIZE,
       "Metals");
+
+  /* Check the elements */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    for (int j = i + 1; j < GEAR_CHEMISTRY_ELEMENT_COUNT; j++) {
+      const char* el_i = stellar_evolution_get_element_name(sm, i);
+      const char* el_j = stellar_evolution_get_element_name(sm, j);
+      if (strcmp(el_i, el_j) == 0) {
+        error("You need to provide each element only once (%s).", el_i);
+      }
+    }
+  }
 }
 
 /**

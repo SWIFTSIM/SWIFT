@@ -33,6 +33,8 @@
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_lloyd.h"
+#include "hydro_parameters.h"
+#include "hydro_properties.h"
 #include "hydro_setters.h"
 #include "hydro_space.h"
 #include "hydro_velocities.h"
@@ -747,8 +749,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
  *
  * @param p The particle.
  * @param xp The extended particle data.
+ * @param time The simulation time.
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
-    const struct part* p, const struct xpart* xp) {}
+    const struct part* p, const struct xpart* xp, const double time) {}
 
 #endif /* SWIFT_GIZMO_HYDRO_H */

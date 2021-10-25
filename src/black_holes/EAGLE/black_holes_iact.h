@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2021 Edo Altamura (edoardo.altamura@manchester.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,9 +22,12 @@
 
 /* Local includes */
 #include "black_holes_parameters.h"
+#include "entropy_floor.h"
+#include "equation_of_state.h"
 #include "gravity.h"
 #include "hydro.h"
 #include "random.h"
+#include "rays.h"
 #include "space.h"
 #include "timestep_sync_part.h"
 #include "tracers.h"
@@ -51,16 +55,15 @@ runner_iact_nonsym_bh_gas_density(
     struct bpart *bi, const struct part *pj, const struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
-    const struct black_holes_props *bh_props, const integertime_t ti_current,
-    const double time) {
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
 
   float wi, wi_dx;
 
-  /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
-
-  /* Compute the kernel function */
+  /* Compute the kernel function; note that r cannot be optimised
+   * to r2 / sqrtf(r2) because of 1 / 0 behaviour. */
+  const float r = sqrtf(r2);
   const float hi_inv = 1.0f / hi;
   const float ui = r * hi_inv;
   kernel_deval(ui, &wi, &wi_dx);
@@ -82,7 +85,20 @@ runner_iact_nonsym_bh_gas_density(
   bi->ngb_mass += mj;
 
   /* Contribution to the smoothed sound speed */
-  const float cj = hydro_get_comoving_soundspeed(pj);
+  float cj = hydro_get_comoving_soundspeed(pj);
+  if (bh_props->with_fixed_T_near_EoS) {
+
+    /* Check whether we are close to the entropy floor. If we are, we
+     * re-calculate the sound speed using the fixed internal energy */
+    const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
+                        bh_props->temp_to_u_factor;
+    const float u = hydro_get_drifted_comoving_internal_energy(pj);
+    if (u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
+        u > bh_props->fixed_u_for_soundspeed) {
+      cj = gas_soundspeed_from_internal_energy(
+          pj->rho, bh_props->fixed_u_for_soundspeed);
+    }
+  }
   bi->sound_speed_gas += mj * wi * cj;
 
   /* Neighbour internal energy */
@@ -108,7 +124,7 @@ runner_iact_nonsym_bh_gas_density(
   bi->circular_velocity_gas[1] += mj * wi * (dx[2] * dv[0] - dx[0] * dv[2]);
   bi->circular_velocity_gas[2] += mj * wi * (dx[0] * dv[1] - dx[1] * dv[0]);
 
-  if (bh_props->multi_phase_bondi) {
+  if (bh_props->use_multi_phase_bondi) {
     /* Contribution to BH accretion rate
      *
      * i) Calculate denominator in Bondi formula */
@@ -149,6 +165,89 @@ runner_iact_nonsym_bh_gas_density(
   /* Update ngb counters */
   ++si->num_ngb_density;
 #endif
+
+  /* Gas particle id */
+  const long long gas_id = pj->id;
+
+  /* Choose AGN feedback model */
+  switch (bh_props->feedback_model) {
+    case AGN_isotropic_model: {
+      /* Compute arc lengths in AGN isotropic feedback and collect
+       * relevant data for later use in the feedback_apply loop */
+
+      /* Loop over rays */
+      for (int i = 0; i < eagle_blackhole_number_of_rays; i++) {
+
+        /* We generate two random numbers that we use
+        to randomly select the direction of the ith ray */
+
+        /* Random number in [0, 1[ */
+        const double rand_theta = random_unit_interval_part_ID_and_ray_idx(
+            bi->id, i, ti_current,
+            random_number_isotropic_AGN_feedback_ray_theta);
+
+        /* Random number in [0, 1[ */
+        const double rand_phi = random_unit_interval_part_ID_and_ray_idx(
+            bi->id, i, ti_current,
+            random_number_isotropic_AGN_feedback_ray_phi);
+
+        /* Compute arc length */
+        ray_minimise_arclength(dx, r, bi->rays + i,
+                               /*ray_type=*/ray_feedback_thermal, gas_id,
+                               rand_theta, rand_phi, mj, /*ray_ext=*/NULL,
+                               /*v=*/NULL);
+      }
+      break;
+    }
+    case AGN_minimum_distance_model: {
+      /* Compute the size of the array that we want to sort. If the current
+       * function is called for the first time (at this time-step for this BH),
+       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
+       * maximum size of the sorted array cannot be larger then the maximum
+       * number of rays. */
+      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
+
+      /* Minimise separation between the gas particles and the BH. The rays
+       * structs with smaller ids in the ray array will refer to the particles
+       * with smaller distances to the BH. */
+      ray_minimise_distance(r, bi->rays, arr_size, gas_id, mj);
+      break;
+    }
+    case AGN_minimum_density_model: {
+      /* Compute the size of the array that we want to sort. If the current
+       * function is called for the first time (at this time-step for this BH),
+       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
+       * maximum size of the sorted array cannot be larger then the maximum
+       * number of rays. */
+      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
+
+      /* Minimise separation between the gas particles and the BH. The rays
+       * structs with smaller ids in the ray array will refer to the particles
+       * with smaller distances to the BH. */
+      ray_minimise_distance(pj->rho, bi->rays, arr_size, gas_id, mj);
+      break;
+    }
+    case AGN_random_ngb_model: {
+      /* Compute the size of the array that we want to sort. If the current
+       * function is called for the first time (at this time-step for this BH),
+       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
+       * maximum size of the sorted array cannot be larger then the maximum
+       * number of rays. */
+      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
+
+      /* To mimic a random draw among all the particles in the kernel, we
+       * draw random distances in [0,1) and then pick the particle(s) with
+       * the smallest of these 'fake' distances */
+      const float dist = random_unit_interval_two_IDs(
+          bi->id, pj->id, ti_current, random_number_BH_feedback);
+
+      /* Minimise separation between the gas particles and the BH. The rays
+       * structs with smaller ids in the ray array will refer to the particles
+       * with smaller 'fake' distances to the BH. */
+      ray_minimise_distance(dist, bi->rays, arr_size, gas_id, mj);
+      break;
+    }
+  }
 }
 
 /**
@@ -172,23 +271,20 @@ runner_iact_nonsym_bh_gas_density(
  * @param time Current physical time in the simulation.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  struct bpart *bi, struct part *pj,
-                                  struct xpart *xpj, const int with_cosmology,
-                                  const struct cosmology *cosmo,
-                                  const struct gravity_props *grav_props,
-                                  const struct black_holes_props *bh_props,
-                                  const integertime_t ti_current,
-                                  const double time) {
+runner_iact_nonsym_bh_gas_swallow(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct bpart *bi, struct part *pj, struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
 
   float wi;
 
-  /* Get r and 1/r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
-
-  /* Compute the kernel function */
+  /* Compute the kernel function; note that r cannot be optimised
+   * to r2 / sqrtf(r2) because of 1 / 0 behaviour. */
+  const float r = sqrtf(r2);
   const float hi_inv = 1.0f / hi;
   const float hi_inv_dim = pow_dimension(hi_inv);
   const float ui = r * hi_inv;
@@ -224,7 +320,8 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
       /* Compute the maximum allowed velocity */
       float v2_max = bh_props->max_reposition_velocity_ratio *
                      bh_props->max_reposition_velocity_ratio *
-                     bi->sound_speed_gas * bi->sound_speed_gas;
+                     bi->sound_speed_gas * bi->sound_speed_gas *
+                     cosmo->a_factor_sound_speed * cosmo->a_factor_sound_speed;
 
       /* If desired, limit the value of the threshold (v2_max) to be no
        * smaller than a user-defined value */
@@ -286,6 +383,11 @@ runner_iact_nonsym_bh_gas_swallow(const float r2, const float *dx,
       new_gas_mass = bh_props->min_gas_mass_for_nibbling;
       nibble_mass = (pj_mass_orig - bh_props->min_gas_mass_for_nibbling) /
                     excess_fraction;
+    }
+
+    /* Correct for nibbling the particle mass that is stored in rays */
+    for (int i = 0; i < eagle_blackhole_number_of_rays; i++) {
+      if (bi->rays[i].id_min_length == pj->id) bi->rays[i].mass = new_gas_mass;
     }
 
     /* Transfer (dynamical) mass from the gas particle to the BH */
@@ -410,7 +512,8 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
       /* Compute the maximum allowed velocity */
       float v2_max = bh_props->max_reposition_velocity_ratio *
                      bh_props->max_reposition_velocity_ratio *
-                     bi->sound_speed_gas * bi->sound_speed_gas;
+                     bi->sound_speed_gas * bi->sound_speed_gas *
+                     cosmo->a_factor_sound_speed * cosmo->a_factor_sound_speed;
 
       /* If desired, limit the value of the threshold (v2_max) to be no
        * smaller than a user-defined value */
@@ -541,32 +644,46 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  * @param time current physical time in the simulation
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
-                                   const float hi, const float hj,
-                                   const struct bpart *bi, struct part *pj,
-                                   struct xpart *xpj, const int with_cosmology,
-                                   const struct cosmology *cosmo,
-                                   const struct gravity_props *grav_props,
-                                   const struct black_holes_props *bh_props,
-                                   const integertime_t ti_current,
-                                   const double time) {
+runner_iact_nonsym_bh_gas_feedback(
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct bpart *bi, struct part *pj, struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
 
-  /* Get the heating probability */
-  const float prob = bi->to_distribute.AGN_heating_probability;
+  /* Number of energy injections per BH per time-step */
+  const int num_energy_injections_per_BH =
+      bi->to_distribute.AGN_number_of_energy_injections;
 
   /* Are we doing some feedback? */
-  if (prob > 0.f) {
+  if (num_energy_injections_per_BH > 0) {
 
-    /* Draw a random number (Note mixing both IDs) */
-    const float rand = random_unit_interval(bi->id + pj->id, ti_current,
-                                            random_number_BH_feedback);
+    /* Number of energy injections that have reached this gas particle */
+    int num_of_energy_inj_received_by_gas = 0;
 
-    /* Are we lucky? */
-    if (rand < prob) {
+    /* Find out how many rays (= energy injections) this gas particle
+     * has received */
+    for (int i = 0; i < num_energy_injections_per_BH; i++) {
+      if (pj->id == bi->rays[i].id_min_length)
+        num_of_energy_inj_received_by_gas++;
+    }
 
-      /* Compute new energy per unit mass of this particle */
+    /* If the number of received rays is non-zero, inject
+     * AGN energy in thermal form */
+    if (num_of_energy_inj_received_by_gas > 0) {
+
+      /* Save gas density and entropy before feedback */
+      tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
+
+      /* Compute new energy per unit mass of this particle
+       * The energy the particle receives is proportional to the number of rays
+       * (num_of_energy_inj_received_by_gas) to which the particle was found to
+       * be closest. */
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
-      const float delta_u = bi->to_distribute.AGN_delta_u;
+      const float delta_u = bi->to_distribute.AGN_delta_u *
+                            (float)num_of_energy_inj_received_by_gas;
       const double u_new = u_init + delta_u;
 
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
@@ -577,13 +694,13 @@ runner_iact_nonsym_bh_gas_feedback(const float r2, const float *dx,
 
       /* Store the feedback energy */
       const double delta_energy = delta_u * hydro_get_mass(pj);
-      tracers_after_black_holes_feedback(xpj, with_cosmology, cosmo->a, time,
-                                         delta_energy);
+      tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
+                                         time, delta_energy);
 
       /* message( */
       /*     "We did some AGN heating! id %llu BH id %llu probability " */
       /*     " %.5e  random_num %.5e du %.5e du/ini %.5e", */
-      /*     pj->id, bi->id, prob, rand, delta_u, delta_u / u_init); */
+      /*     pj->id, bi->id, 0.f, 0.f, delta_u, delta_u / u_init); */
 
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);

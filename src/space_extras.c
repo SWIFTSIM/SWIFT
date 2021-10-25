@@ -117,15 +117,25 @@ void space_allocate_extras(struct space *s, int verbose) {
   }
 
   if (expected_num_extra_parts < s->nr_extra_parts)
-    error("Reduction in top-level cells number not handled.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
   if (expected_num_extra_gparts < s->nr_extra_gparts)
-    error("Reduction in top-level cells number not handled.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
   if (expected_num_extra_sparts < s->nr_extra_sparts)
-    error("Reduction in top-level cells number not handled.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
   if (expected_num_extra_bparts < s->nr_extra_bparts)
-    error("Reduction in top-level cells number not handled.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
   if (expected_num_extra_sinks < s->nr_extra_sinks)
-    error("Reduction in top-level cells number not handled.");
+    error(
+        "Reduction in top-level cells number not handled. Please set a lower "
+        "h_max or reduce the number of top level cells.");
 
   /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
    * ? */
@@ -148,7 +158,6 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
                          sizeof(struct gpart) * size_gparts) != 0)
         error("Failed to allocate new gpart data");
-      const ptrdiff_t delta = gparts_new - s->gparts;
       memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->size_gparts);
       swift_free("gparts", s->gparts);
       s->gparts = gparts_new;
@@ -156,19 +165,10 @@ void space_allocate_extras(struct space *s, int verbose) {
       /* Update the counter */
       s->size_gparts = size_gparts;
 
-      /* We now need to reset all the part and spart pointers */
-      for (size_t i = 0; i < nr_parts; ++i) {
-        if (s->parts[i].time_bin != time_bin_not_created)
-          s->parts[i].gpart += delta;
-      }
-      for (size_t i = 0; i < nr_sparts; ++i) {
-        if (s->sparts[i].time_bin != time_bin_not_created)
-          s->sparts[i].gpart += delta;
-      }
-      for (size_t i = 0; i < nr_bparts; ++i) {
-        if (s->bparts[i].time_bin != time_bin_not_created)
-          s->bparts[i].gpart += delta;
-      }
+      /* We now need to correct all the pointers of the other particle arrays */
+      part_relink_all_parts_to_gparts(gparts_new, s->nr_gparts, s->parts,
+                                      s->sinks, s->sparts, s->bparts,
+                                      &s->e->threadpool);
     }
 
     /* Turn some of the allocated spares into particles we can use */

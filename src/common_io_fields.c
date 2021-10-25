@@ -25,21 +25,9 @@
 
 /* Local includes. */
 #include "error.h"
+#include "io_properties.h"
+#include "output_options.h"
 #include "units.h"
-
-/* I/O functions of each sub-module */
-#include "black_holes_io.h"
-#include "chemistry_io.h"
-#include "cooling_io.h"
-#include "fof_io.h"
-#include "gravity_io.h"
-#include "hydro_io.h"
-#include "rt_io.h"
-#include "sink_io.h"
-#include "star_formation_io.h"
-#include "stars_io.h"
-#include "tracers_io.h"
-#include "velociraptor_io.h"
 
 /* Some standard headers. */
 #include <string.h>
@@ -90,58 +78,33 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
   switch (ptype) {
 
     case swift_type_gas:
-      hydro_write_particles(NULL, NULL, list, &num_fields);
-      num_fields += chemistry_write_particles(NULL, NULL, list + num_fields,
-                                              with_cosmology);
-      num_fields +=
-          cooling_write_particles(NULL, NULL, list + num_fields, NULL);
-      num_fields += tracers_write_particles(NULL, NULL, list + num_fields,
-                                            with_cosmology);
-      num_fields +=
-          star_formation_write_particles(NULL, NULL, list + num_fields);
-      if (with_fof)
-        num_fields += fof_write_parts(NULL, NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_parts(NULL, NULL, list + num_fields);
-      num_fields += rt_write_particles(NULL, list + num_fields);
+      io_select_hydro_fields(NULL, NULL, with_cosmology, /*with_cooling=*/1,
+                             /*with_temperature=*/1, with_fof, with_stf,
+                             /*with_rt=*/1, /*e=*/NULL, &num_fields, list);
       break;
 
     case swift_type_dark_matter:
-      darkmatter_write_particles(NULL, list, &num_fields);
-      if (with_fof) num_fields += fof_write_gparts(NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
-      break;
-
     case swift_type_dark_matter_background:
-      darkmatter_write_particles(NULL, list, &num_fields);
-      if (with_fof) num_fields += fof_write_gparts(NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_gparts(NULL, list + num_fields);
+      io_select_dm_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
+                          &num_fields, list);
       break;
-
+    case swift_type_neutrino:
+      io_select_neutrino_fields(NULL, NULL, with_fof, with_stf, /*e=*/NULL,
+                                &num_fields, list);
+      break;
     case swift_type_stars:
-      stars_write_particles(NULL, list, &num_fields, with_cosmology);
-      num_fields += chemistry_write_sparticles(NULL, list + num_fields);
-      num_fields +=
-          tracers_write_sparticles(NULL, list + num_fields, with_cosmology);
-      num_fields += star_formation_write_sparticles(NULL, list + num_fields);
-      if (with_fof) num_fields += fof_write_sparts(NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_sparts(NULL, list + num_fields);
-      num_fields += rt_write_stars(NULL, list + num_fields);
+      io_select_star_fields(NULL, with_cosmology, with_fof, with_stf,
+                            /*with_rt=*/1, /*e=*/NULL, &num_fields, list);
       break;
 
     case swift_type_sink:
-      sink_write_particles(NULL, list, &num_fields, with_cosmology);
+      io_select_sink_fields(NULL, with_cosmology, with_fof, with_stf,
+                            /*e=*/NULL, &num_fields, list);
       break;
 
     case swift_type_black_hole:
-      black_holes_write_particles(NULL, list, &num_fields, with_cosmology);
-      num_fields += chemistry_write_bparticles(NULL, list + num_fields);
-      if (with_fof) num_fields += fof_write_bparts(NULL, list + num_fields);
-      if (with_stf)
-        num_fields += velociraptor_write_bparts(NULL, list + num_fields);
+      io_select_bh_fields(NULL, with_cosmology, with_fof, with_stf, /*e=*/NULL,
+                          &num_fields, list);
       break;
 
     default:
@@ -159,10 +122,11 @@ int io_get_ptype_fields(const int ptype, struct io_props* list,
  * @param with_cosmology Ran with cosmology?
  * @param with_fof Are we running with on-the-fly Fof?
  * @param with_stf Are we running with on-the-fly structure finder?
+ * @param verbose The verbose level
  */
 void io_prepare_output_fields(struct output_options* output_options,
                               const int with_cosmology, const int with_fof,
-                              const int with_stf) {
+                              const int with_stf, int verbose) {
 
   const int MAX_NUM_PTYPE_FIELDS = 100;
 
@@ -193,10 +157,24 @@ void io_prepare_output_fields(struct output_options* output_options,
       have_default = 1;
 
     /* How many fields should each ptype write by default? */
-    int ptype_num_fields_to_write[swift_type_count];
+    int ptype_num_fields_to_write[swift_type_count] = {0};
 
     /* What is the default writing status for each ptype (on/off)? */
-    int ptype_default_write_status[swift_type_count];
+    int ptype_default_write_status[swift_type_count] = {0};
+
+    /* Default snapshot basename for this output selection */
+    char basename[FILENAME_BUFFER_SIZE] = select_output_default_basename;
+
+    /* Default snapshot subdir name for this output selection */
+    char subdir_name[FILENAME_BUFFER_SIZE] = select_output_default_subdir_name;
+
+    int subsample[swift_type_count];
+    for (int i = 0; i < swift_type_count; ++i)
+      subsample[i] = select_output_default_subsample;
+
+    float subsample_fraction[swift_type_count];
+    for (int i = 0; i < swift_type_count; ++i)
+      subsample_fraction[i] = select_output_default_subsample_fraction;
 
     /* Initialise section-specific writing counters for each particle type.
      * If default is 'write', then we start from the total to deduct any fields
@@ -206,8 +184,8 @@ void io_prepare_output_fields(struct output_options* output_options,
 
       /* Internally also verifies that the default level is allowed */
       const enum lossy_compression_schemes compression_level_current_default =
-          output_options_get_ptype_default_compression(params, section_name,
-                                                       (enum part_type)ptype);
+          output_options_get_ptype_default_compression(
+              params, section_name, (enum part_type)ptype, verbose);
 
       if (compression_level_current_default == compression_do_not_write) {
         ptype_default_write_status[ptype] = 0;
@@ -237,6 +215,32 @@ void io_prepare_output_fields(struct output_options* output_options,
        * 'Standard' parameter */
       if (strstr(param_name, section_name) == NULL) continue;
       if (strstr(param_name, ":Standard_") != NULL) continue;
+
+      /* Deal with a possible non-standard snapshot basename */
+      if (strstr(param_name, ":basename") != NULL) {
+        parser_get_param_string(params, param_name, basename);
+        continue;
+      }
+
+      /* Deal with a possible non-standard snapshot subdir name */
+      if (strstr(param_name, ":subdir") != NULL) {
+        parser_get_param_string(params, param_name, subdir_name);
+        continue;
+      }
+
+      /* Deal with a possible non-standard subsampling option */
+      if (strstr(param_name, ":subsample") != NULL) {
+        parser_get_param_int_array(params, param_name, swift_type_count,
+                                   subsample);
+        continue;
+      }
+
+      /* Deal with a possible non-standard subsampling fraction */
+      if (strstr(param_name, ":subsample_fraction") != NULL) {
+        parser_get_param_float_array(params, param_name, swift_type_count,
+                                     subsample_fraction);
+        continue;
+      }
 
       /* Get the particle type for current parameter
        * (raises an error if it could not determine it) */
@@ -314,14 +318,34 @@ void io_prepare_output_fields(struct output_options* output_options,
       output_options->num_fields_to_write[section_id][ptype] =
           ptype_num_fields_to_write[ptype];
     }
+
+    /* Also copy the output names */
+    strcpy(output_options->basenames[section_id], basename);
+    strcpy(output_options->subdir_names[section_id], subdir_name);
+    memcpy(output_options->subsample[section_id], subsample,
+           swift_type_count * sizeof(int));
+    memcpy(output_options->subsample_fractions[section_id], subsample_fraction,
+           swift_type_count * sizeof(float));
+
   } /* Ends loop over sections, for different output classes */
 
   /* Add field numbers for (possible) implicit `Default` output class */
   if (!have_default) {
     const int default_id = output_options->select_output->sectionCount;
-    for (int ptype = 0; ptype < swift_type_count; ptype++)
+    for (int ptype = 0; ptype < swift_type_count; ptype++) {
       output_options->num_fields_to_write[default_id][ptype] =
           ptype_num_fields_total[ptype];
+    }
+    sprintf(output_options->basenames[default_id], "%s",
+            select_output_default_basename);
+    sprintf(output_options->subdir_names[default_id], "%s",
+            select_output_default_subdir_name);
+    for (int i = 0; i < swift_type_count; ++i)
+      output_options->subsample[default_id][i] =
+          select_output_default_subsample;
+    for (int i = 0; i < swift_type_count; ++i)
+      output_options->subsample_fractions[default_id][i] =
+          select_output_default_subsample_fraction;
   }
 }
 
@@ -330,8 +354,11 @@ void io_prepare_output_fields(struct output_options* output_options,
  *
  * @param filename The file to write.
  * @param with_cosmology Use cosmological name variant?
+ * @param with_fof Use fof?
+ * @param with_stf Using Velociraptor STF?
  */
-void io_write_output_field_parameter(const char* filename, int with_cosmology) {
+void io_write_output_field_parameter(const char* filename, int with_cosmology,
+                                     int with_fof, int with_stf) {
 
   FILE* file = fopen(filename, "w");
   if (file == NULL) error("Error opening file '%s'", filename);
@@ -345,8 +372,8 @@ void io_write_output_field_parameter(const char* filename, int with_cosmology) {
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
     struct io_props list[100];
-    int num_fields = io_get_ptype_fields(ptype, list, with_cosmology,
-                                         /*with_fof=*/1, /*with_stf=*/1);
+    int num_fields =
+        io_get_ptype_fields(ptype, list, with_cosmology, with_fof, with_stf);
 
     if (num_fields == 0) continue;
 

@@ -493,6 +493,8 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
         s->parts[-gparts[i + 1].id_or_neg_offset].gpart++;
       } else if (gparts[i + 1].type == swift_type_stars) {
         s->sparts[-gparts[i + 1].id_or_neg_offset].gpart++;
+      } else if (gparts[i + 1].type == swift_type_sink) {
+        s->sinks[-gparts[i + 1].id_or_neg_offset].gpart++;
       } else if (gparts[i + 1].type == swift_type_black_hole) {
         s->bparts[-gparts[i + 1].id_or_neg_offset].gpart++;
       }
@@ -695,6 +697,44 @@ void cell_remove_bpart(const struct engine *e, struct cell *c,
 }
 
 /**
+ * @brief "Remove" a sink particle from the calculation.
+ *
+ * The particle is inhibited and will officially be removed at the next
+ * rebuild.
+ *
+ * @param e The #engine running on this node.
+ * @param c The #cell from which to remove the particle.
+ * @param sp The #sink to remove.
+ */
+void cell_remove_sink(const struct engine *e, struct cell *c,
+                      struct sink *sink) {
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't remove a particle in a foreign cell.");
+
+  /* Don't remove a particle twice */
+  if (sink->time_bin == time_bin_inhibited) return;
+
+  /* Mark the particle as inhibited and stand-alone */
+  sink->time_bin = time_bin_inhibited;
+  if (sink->gpart) {
+    sink->gpart->time_bin = time_bin_inhibited;
+    sink->gpart->id_or_neg_offset = sink->id;
+    sink->gpart->type = swift_type_dark_matter;
+  }
+
+  /* Update the space-wide counters */
+  const size_t one = 1;
+  atomic_add(&e->s->nr_inhibited_sinks, one);
+  if (sink->gpart) {
+    atomic_add(&e->s->nr_inhibited_gparts, one);
+  }
+
+  /* Un-link the sink */
+  sink->gpart = NULL;
+}
+
+/**
  * @brief "Remove" a gas particle from the calculation and convert its gpart
  * friend to a dark matter particle.
  *
@@ -860,7 +900,7 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
 #endif
 
   /* Set a smoothing length */
-  sp->h = max(c->stars.h_max, c->hydro.h_max);
+  sp->h = p->h;
 
   /* Here comes the Sun! */
   return sp;
@@ -875,8 +915,8 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
  * @param p The #part to remove (must be inside c).
  * @param xp The extended data of the #part.
  *
- * @return A fresh #spart with the same ID, position, velocity and
- * time-bin as the original #part.
+ * @return A fresh #spart with a different ID, but same position,
+ * velocity and time-bin as the original #part.
  */
 struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,
                                              const struct part *p,
@@ -986,7 +1026,7 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
   struct gpart *gp = cell_convert_part_to_gpart(e, c, p, xp);
 
   /* Assign the ID back */
-  sp->id = gp->id_or_neg_offset;
+  sp->id = p->id;
   gp->type = swift_type_sink;
 
   /* Re-link things */
@@ -1014,5 +1054,81 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
   sp->r_cut = e->sink_properties->cut_off_radius;
 
   /* Here comes the Sink! */
+  return sp;
+}
+
+/**
+ * @brief Spawn a new #spart along with its related #gpart from a #sink.
+ * The sink is not changed.
+ *
+ * @param e The #engine.
+ * @param c The #cell from which to remove the #part.
+ * @param s The #sink particle that spawns the #spart.
+ *
+ * @return A fresh #spart with a different ID, but same position,
+ * velocity and time-bin as the original #sink.
+ */
+struct spart *cell_spawn_new_spart_from_sink(struct engine *e, struct cell *c,
+                                             const struct sink *s) {
+  /* Quick cross-check */
+  if (c->nodeID != e->nodeID)
+    error("Can't spawn a particle in a foreign cell.");
+
+  if (s->gpart == NULL)
+    error("Trying to create a new spart from a part without gpart friend!");
+
+  /* Create a fresh (empty) spart */
+  struct spart *sp = cell_add_spart(e, c);
+
+  /* Did we run out of free spart slots? */
+  if (sp == NULL) return NULL;
+
+  /* Copy over the distance since rebuild */
+  sp->x_diff[0] = s->x_diff[0];
+  sp->x_diff[1] = s->x_diff[1];
+  sp->x_diff[2] = s->x_diff[2];
+
+  /* Create a new gpart */
+  struct gpart *gp = cell_add_gpart(e, c);
+
+  /* Did we run out of free gpart slots? */
+  if (gp == NULL) {
+    /* Remove the particle created */
+    cell_remove_spart(e, c, sp);
+    return NULL;
+  }
+
+  /* Copy the gpart */
+  *gp = *s->gpart;
+
+  /* Assign the ID. */
+  sp->id = space_get_new_unique_id(e->s);
+  gp->type = swift_type_stars;
+
+  /* Re-link things */
+  sp->gpart = gp;
+  gp->id_or_neg_offset = -(sp - e->s->sparts);
+
+  /* Synchronize clocks */
+  gp->time_bin = sp->time_bin;
+
+  /* Synchronize masses, positions and velocities */
+  sp->mass = s->mass;
+  sp->x[0] = s->x[0];
+  sp->x[1] = s->x[1];
+  sp->x[2] = s->x[2];
+  sp->v[0] = s->v[0];
+  sp->v[1] = s->v[1];
+  sp->v[2] = s->v[2];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->ti_kick = s->ti_kick;
+  sp->ti_drift = s->ti_drift;
+#endif
+
+  /* Set a smoothing length */
+  sp->h = s->r_cut;
+
+  /* Here comes the Sun! */
   return sp;
 }

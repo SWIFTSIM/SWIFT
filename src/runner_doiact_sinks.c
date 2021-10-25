@@ -36,3 +36,9 @@
 #include "runner_doiact_functions_sinks.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
+
+#define FUNCTION accretion
+#define FUNCTION_TASK_LOOP TASK_LOOP_ACCRETION
+#include "runner_doiact_functions_sinks.h"
+#undef FUNCTION_TASK_LOOP
+#undef FUNCTION

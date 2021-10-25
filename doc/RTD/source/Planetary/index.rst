@@ -15,8 +15,8 @@ simulations, so please let us know if you are interested in using SWIFT
 or have any implementation requests. 
 
 You can find an example simulation in ``swiftsim/examples/Planetary/``
-under ``EarthImpact/``.
-The tabulated equation of state files can be downloaded using 
+under ``EarthImpact/``, as well as some hydro tests for comparison with other 
+schemes. The tabulated equation of state files can be downloaded using 
 ``EoSTables/get_eos_tables.sh``.
 
 Planetary simulations are currently intended to be run with 
@@ -26,9 +26,10 @@ These allow for multiple materials to be used,
 chosen from the several available equations of state.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: More information:
    
    Hydro Scheme <hydro_scheme>
    Equations of State <equations_of_state>
    Initial Conditions <initial_conditions>
+   Removed Particles <removed_particles>

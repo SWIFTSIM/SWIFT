@@ -32,10 +32,7 @@ import argparse
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Match MPI reports")
 
-parser.add_argument("input",
-                    nargs="+",
-                    metavar="mpi-reports",
-                    help="MPI reports")
+parser.add_argument("input", nargs="+", metavar="mpi-reports", help="MPI reports")
 parser.add_argument(
     "-v",
     "--verbose",
@@ -73,29 +70,41 @@ recvs = {}
 #  Note size of completion recv is negative.
 for f in infiles:
     if args.verbose:
-        print "Processing: " + f
+        print("Processing: " + f)
     with open(f, "r") as fp:
         for line in fp:
-            if line[0] == '#':
+            if line[0] == "#":
                 continue
             words = line.split()
             if words[activationcol] == "1" and words[typecol] == "send":
-                key = words[otherrankcol] + "/" + \
-                      words[rankcol] + "/" + \
-                      words[subtypecol] + "/" + \
-                      words[tagcol] + "/" + \
-                      words[sizecol]
+                key = (
+                    words[otherrankcol]
+                    + "/"
+                    + words[rankcol]
+                    + "/"
+                    + words[subtypecol]
+                    + "/"
+                    + words[tagcol]
+                    + "/"
+                    + words[sizecol]
+                )
                 if not key in sends:
                     sends[key] = [line[:-1]]
                 else:
                     sends[key].append(line[:-1])
 
             elif words[activationcol] == "0" and words[typecol] == "recv":
-                key = words[rankcol] + "/" + \
-                      words[otherrankcol] + "/" + \
-                      words[subtypecol] + "/" + \
-                      words[tagcol] + "/" + \
-                      words[sizecol][1:]
+                key = (
+                    words[rankcol]
+                    + "/"
+                    + words[otherrankcol]
+                    + "/"
+                    + words[subtypecol]
+                    + "/"
+                    + words[tagcol]
+                    + "/"
+                    + words[sizecol].replace("-", "")
+                )
 
                 if not key in recvs:
                     recvs[key] = [line[:-1]]
@@ -112,11 +121,19 @@ print "# send_stic send_etic send_dtic send_step send_rank send_otherrank " + \
 for key in sends:
     if key in recvs:
         if len(sends[key]) == 1 and len(recvs[key]) == 1:
-            print sends[key][0], recvs[key][0]
+            print(sends[key][0], recvs[key][0])
         else:
-            print "# ERROR: found ", len(sends[key]), "/", len(recvs[key]), " matches for key: ", key, " should be 1/1"
+            print(
+                "# ERROR: found ",
+                len(sends[key]),
+                "/",
+                len(recvs[key]),
+                " matches for key: ",
+                key,
+                " should be 1/1",
+            )
     else:
-        print "# ERROR: missing recv key: ", key
+        print("# ERROR: missing recv key: ", key)
 
 
 sys.exit(0)

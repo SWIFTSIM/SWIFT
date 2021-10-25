@@ -31,6 +31,7 @@
 #include "error.h"
 #include "memuse.h"
 
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,8 +55,11 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
   /* Hook up the alloc, so that we can clean it up later. */
   if (m->allocs_count == m->allocs_size) {
     m->allocs_size *= 2;
+
     void **new_allocs =
         (void **)swift_malloc("hashmap", sizeof(void *) * m->allocs_size);
+    if (new_allocs == NULL) error("Unable to allocate new chunks.");
+
     memcpy(new_allocs, m->allocs, sizeof(void *) * m->allocs_count);
     swift_free("hashmap", m->allocs);
     m->allocs = new_allocs;
@@ -222,6 +226,9 @@ hashmap_element_t *hashmap_find(hashmap_t *m, hashmap_key_t key, int create_new,
 
       /* Set the key. */
       chunk->data[offset_in_chunk].key = key;
+      chunk->data[offset_in_chunk].value.value_array2_dbl[0] = -FLT_MAX;
+      chunk->data[offset_in_chunk].value.value_array2_dbl[1] = -FLT_MAX;
+      chunk->data[offset_in_chunk].value.value_array2_dbl[2] = -FLT_MAX;
 
       /* Return a pointer to the new element. */
       return &chunk->data[offset_in_chunk];

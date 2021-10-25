@@ -24,7 +24,7 @@
  * @brief Minimal conservative implementation of SPH (i/o routines)
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
+ * viscosity term with the Balsara (1995) switch. No thermal conduction
  * term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
@@ -96,6 +96,11 @@ INLINE static void convert_part_pos(const struct engine* e,
     ret[0] = p->x[0];
     ret[1] = p->x[1];
     ret[2] = p->x[2];
+  }
+  if (e->snapshot_use_delta_from_edge) {
+    ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);
+    ret[1] = min(ret[1], s->dim[1] - e->snapshot_delta_from_edge);
+    ret[2] = min(ret[2], s->dim[2] - e->snapshot_delta_from_edge);
   }
 }
 
@@ -225,8 +230,9 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
   /* Viscosity and thermal conduction */
   /* Nothing in this minimal model... */
   io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
-  io_write_attribute_s(h_grpsph, "Viscosity Model",
-                       "Minimal treatment as in Monaghan (1992)");
+  io_write_attribute_s(
+      h_grpsph, "Viscosity Model",
+      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
 }
 
 /**

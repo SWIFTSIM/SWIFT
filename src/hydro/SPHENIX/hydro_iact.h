@@ -43,8 +43,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
   float dv[3], curlvr[3];
@@ -78,7 +79,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
   /* Now we need to compute the div terms */
-  const float r_inv = 1.f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
 
@@ -104,6 +105,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rot_v[0] += facj * curlvr[0];
   pj->density.rot_v[1] += facj * curlvr[1];
   pj->density.rot_v[2] += facj * curlvr[2];
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
+  pj->n_density += wj;
+  pi->N_density++;
+  pj->N_density++;
+#endif
 }
 
 /**
@@ -119,8 +127,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    const struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
   float dv[3], curlvr[3];
@@ -141,7 +150,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
-  const float r_inv = 1.f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
 
   /* Compute dv dot r */
@@ -160,6 +169,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[0] += faci * curlvr[0];
   pi->density.rot_v[1] += faci * curlvr[1];
   pi->density.rot_v[2] += faci * curlvr[2];
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_density += wi;
+  pi->N_density++;
+#endif
 }
 
 /**
@@ -179,14 +193,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
@@ -232,6 +247,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float alpha_j = pj->viscosity.alpha;
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
   pj->force.alpha_visc_max_ngb = max(pj->force.alpha_visc_max_ngb, alpha_i);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_gradient += wi;
+  pj->n_gradient += wj;
+  pi->N_gradient++;
+  pj->N_gradient++;
+#endif
 }
 
 /**
@@ -252,14 +274,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
 
@@ -299,6 +322,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
    * (this is used to limit the diffusion in hydro_prepare_force) */
   const float alpha_j = pj->viscosity.alpha;
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_gradient += wi;
+  pi->N_gradient++;
+#endif
 }
 
 /**
@@ -314,15 +342,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mj = pj->mass;
@@ -438,11 +467,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
-  /* Update if we need to; this should be guaranteed by the gradient loop but
-   * due to some possible synchronisation problems this is here as a _quick
-   * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
-  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
-  pj->viscosity.v_sig = max(pj->viscosity.v_sig, v_sig);
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pj->n_force += wi + wj;
+  pi->N_force++;
+  pj->N_force++;
+#endif
 }
 
 /**
@@ -458,15 +488,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    const struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
+    const float H) {
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mi = pi->mass;
@@ -574,10 +605,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 
-  /* Update if we need to; this should be guaranteed by the gradient loop but
-   * due to some possible synchronisation problems this is here as a _quick
-   * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
-  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  pi->n_force += wi + wj;
+  pi->N_force++;
+#endif
 }
 
 #endif /* SWIFT_SPHENIX_HYDRO_IACT_H */

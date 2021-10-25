@@ -43,6 +43,27 @@ __attribute__((always_inline)) INLINE static float stars_compute_timestep(
 }
 
 /**
+ * @brief Returns the age of a star in internal units
+ *
+ * @param sp The star particle.
+ * @param cosmo The cosmological model.
+ * @param time The current time (in internal units).
+ * @param with_cosmology Are we running with cosmological integration?
+ */
+__attribute__((always_inline)) INLINE static float stars_compute_age(
+    const struct spart* sp, const struct cosmology* cosmo, double time,
+    const int with_cosmology) {
+
+  if (with_cosmology) {
+    const double birth = sp->birth_scale_factor;
+    return cosmology_get_delta_time_from_scale_factors(
+        cosmo, min(birth, cosmo->a), cosmo->a);
+  } else {
+    return time - (double)sp->birth_time;
+  }
+}
+
+/**
  * @brief Prepares a s-particle for its interactions
  *
  * @param sp The particle to act upon

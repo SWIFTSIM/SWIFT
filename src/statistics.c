@@ -48,7 +48,7 @@
 /**
  * @brief Information required to compute the statistics in the mapper
  */
-struct index_data {
+struct space_index_data {
   /*! The space we play with */
   const struct space *s;
 
@@ -78,6 +78,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->sink_mass += b->sink_mass;
   a->star_mass += b->star_mass;
   a->bh_mass += b->bh_mass;
+  a->bh_subgrid_mass += b->bh_subgrid_mass;
   a->gas_Z_mass += b->gas_Z_mass;
   a->star_Z_mass += b->star_Z_mass;
   a->bh_Z_mass += b->bh_Z_mass;
@@ -92,6 +93,10 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->centre_of_mass[0] += b->centre_of_mass[0];
   a->centre_of_mass[1] += b->centre_of_mass[1];
   a->centre_of_mass[2] += b->centre_of_mass[2];
+  a->gas_H_mass += b->gas_H_mass;
+  a->gas_H2_mass += b->gas_H2_mass;
+  a->gas_HI_mass += b->gas_HI_mass;
+  a->gas_He_mass += b->gas_He_mass;
 }
 
 /**
@@ -118,7 +123,7 @@ void stats_init(struct statistics *s) {
 void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -170,6 +175,38 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     /* Collect metal mass */
     stats.gas_Z_mass += chemistry_get_total_metal_mass_for_stats(p);
 
+#if defined(CHEMISTRY_EAGLE) || defined(CHEMISTRY_COLIBRE)
+#if defined(COOLING_EAGLE) || defined(COOLING_COLIBRE) || \
+    defined(COOLING_CHIMES) || defined(COOLING_CHIMES_HYBRID)
+
+    const struct unit_system *us = e->internal_units;
+    const struct hydro_props *hydro_props = e->hydro_properties;
+    const struct entropy_floor_properties *floor_props = e->entropy_floor;
+    const struct cooling_function_data *cooling = e->cooling_func;
+
+    /* Collect H and He species */
+    const float H_mass_frac =
+        p->chemistry_data.metal_mass_fraction[chemistry_element_H];
+    const float He_mass_frac =
+        p->chemistry_data.metal_mass_fraction[chemistry_element_He];
+    const float H_mass = m * H_mass_frac;
+    const float He_mass = m * He_mass_frac;
+    const float HI_frac = cooling_get_particle_subgrid_HI_fraction(
+        us, phys_const, cosmo, hydro_props, floor_props, cooling, p, xp);
+    const float H2_frac = cooling_get_particle_subgrid_H2_fraction(
+        us, phys_const, cosmo, hydro_props, floor_props, cooling, p, xp);
+
+    const float HI_mass = H_mass * HI_frac;
+    const float H2_mass = H_mass * H2_frac * 2.;
+
+    stats.gas_H_mass += H_mass;
+    stats.gas_HI_mass += HI_mass;
+    stats.gas_H2_mass += H2_mass;
+    stats.gas_He_mass += He_mass;
+
+#endif
+#endif
+
     /* Collect centre of mass */
     stats.centre_of_mass[0] += m * x[0];
     stats.centre_of_mass[1] += m * x[1];
@@ -209,14 +246,14 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
  * @brief The #threadpool mapper function used to collect statistics for #spart.
  *
  * @param map_data Pointer to the particles.
- * @param nr_parts The number of particles in this chunk
+ * @param nr_sparts The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
 void stats_collect_spart_mapper(void *map_data, int nr_sparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -298,13 +335,13 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
  * @brief The #threadpool mapper function used to collect statistics for #sink.
  *
  * @param map_data Pointer to the particles.
- * @param nr_parts The number of particles in this chunk
+ * @param nr_sinks The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
 void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -383,14 +420,14 @@ void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
  * @brief The #threadpool mapper function used to collect statistics for #bpart.
  *
  * @param map_data Pointer to the particles.
- * @param nr_parts The number of particles in this chunk
+ * @param nr_bparts The number of particles in this chunk
  * @param extra_data The #statistics aggregator.
  */
 void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -434,6 +471,9 @@ void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
 
     /* Collect mass */
     stats.bh_mass += m;
+
+    /* Collect subgrid mass */
+    stats.bh_subgrid_mass += black_holes_get_subgrid_mass(bp);
 
     /* Collect metal mass */
     stats.bh_Z_mass += chemistry_get_bh_total_metal_mass_for_stats(bp);
@@ -483,7 +523,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -511,7 +551,8 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
     /* Get the particle */
     const struct gpart *gp = &gparts[k];
 
-    /* Ignore the hydro particles as they are already computed */
+    /* Ignore the hydro particles as they are already computed and skip
+     * neutrinos */
     if (gp->type != swift_type_dark_matter &&
         gp->type != swift_type_dark_matter_background)
       continue;
@@ -571,7 +612,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
 void stats_collect(const struct space *s, struct statistics *stats) {
 
   /* Prepare the data */
-  struct index_data extra_data;
+  struct space_index_data extra_data;
   extra_data.s = s;
   extra_data.stats = stats;
 
@@ -695,9 +736,9 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   fprintf(file, "#      Unit = %e erg\n",
           units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
   fprintf(file, "# (17) Total gas entropy (physical). \n");
-  fprintf(file, "#      Unit = %e erg * gram**(%.3f) * cm**(%.3f)\n",
-          units_cgs_conversion_factor(us, UNIT_CONV_ENTROPY),
-          hydro_gamma_minus_one, -3.f * hydro_gamma_minus_one);
+  fprintf(file, "#      Unit = %e gram**(%.3f) * cm**(%.3f) * s**(%.3f)\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ENTROPY), 2.f - hydro_gamma,
+          3.f * hydro_gamma - 1.f, -2.f);
   fprintf(
       file,
       "# (18) Comoving centre of mass of the simulation (x coordinate). \n");
@@ -756,28 +797,52 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           "current BHs). \n");
   fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file, "# (29)  Total black hole subgrid mass in the simulation. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (30) Total Hydrogen (all species) mass in the gas phase of the "
+          "simulation. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (31) Total Molecular Hydrogen mass in the gas phase of the "
+          "simulation. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (32) Total Atomic Hydrogen mass in the gas phase of the "
+          "simulation. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (33) Total Helium (all species) mass in the gas phase of the "
+          "simulation. \n");
+  fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
+  fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
 
   fprintf(file, "#\n");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s\n",
+      "%14s %14s %14s %14s %14s %14s\n",
       "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
       "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
       "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)",
-      "(28)");
+      "(28)", "(29)", "(30)", "(31)", "(32)", "(33)");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s\n",
+      "%14s %14s %14s %14s %14s %14s\n",
       "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
       "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
       "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
       "Gas Entropy", "CoM x", "CoM y", "CoM z", "Mom. x", "Mom. y", "Mom. z",
       "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
-      "BH acc. mass");
+      "BH acc. mass", "BH sub. mass", "Gas H mass", "Gas H2 mass",
+      "Gas HI mass", "Gas He mass");
 
   fflush(file);
 }
@@ -796,18 +861,24 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
                          const double time, const double a, const double z,
                          const int step) {
 
+  /* Compute the total potential */
+  double E_pot = stats->E_pot_ext + stats->E_pot_self;
+
+  /* Write to the file */
   fprintf(
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
       "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-      "%14e %14e\n",
+      "%14e %14e %14e %14e %14e %14e %14e\n",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
-      stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int,
-      stats->E_pot, stats->E_rad, stats->entropy, stats->centre_of_mass[0],
+      stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int, E_pot,
+      stats->E_rad, stats->entropy, stats->centre_of_mass[0],
       stats->centre_of_mass[1], stats->centre_of_mass[2], stats->mom[0],
       stats->mom[1], stats->mom[2], stats->ang_mom[0], stats->ang_mom[1],
-      stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass);
+      stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,
+      stats->bh_subgrid_mass, stats->gas_H_mass, stats->gas_H2_mass,
+      stats->gas_HI_mass, stats->gas_He_mass);
 
   fflush(file);
 }

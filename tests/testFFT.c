@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
   struct space space;
   double dim[3] = {1., 1., 1.};
   space_init(&space, params, &cosmo, dim, NULL, gparts, NULL, 0, nr_gparts, 0,
-             1, 1, 0, 1, 1, 0);
+             1, 1, 0, 0, 1, 1, 0);
 
   struct engine engine;
   engine.s = &space;

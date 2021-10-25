@@ -292,12 +292,11 @@ Adding your task to the analysis tools
 --------------------------------------
 
 To produce the task graphs, the analysis scripts need to know about
-the new task. You will need to edit the python script in the
-``tools/task_plots`` directory. At the start of each of
-``analyse_tasks.py``, ``plot_tasks.py`` and ``iplot_tasks.py`` you
-will find a long list of task names. You will need to add the name of
-the new task to that list. *The order of this list needs to be the
-same as the enum type in the task.h file!*
+the new task. You will need to edit the python file that contains the
+hardcoded data of swift: ``tools/task_plots/swift_hardcoded_data.py``. 
+You will need to add the name of the new task to the lists in there. 
+*The order of this list needs to be the same as the enum type in the 
+task.h file!*
 
 
 Finalizing your Task

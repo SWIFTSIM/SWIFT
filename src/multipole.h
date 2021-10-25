@@ -102,7 +102,7 @@ __attribute__((nonnull)) INLINE static void gravity_drift(
               m->m_pole.vel[2] - m->m_pole.min_delta_vel[2]);
 
   const float max_delta_vel =
-      sqrt(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+      sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
   const float x_diff = max_delta_vel * dt;
 
   /* Conservative change in maximal radius containing all gpart */
@@ -890,7 +890,7 @@ __attribute__((nonnull)) INLINE static void gravity_multipole_compute_power(
   // power[1] += m->M_100 * m->M_100;
 
   // m->power[1] = sqrt(power[1]);
-  m->power[1] = 0.;
+  m->power[1] = 0.f;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
   /* 2nd order terms */
@@ -999,6 +999,10 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
 #ifdef SWIFT_DEBUG_CHECKS
     if (gparts[k].time_bin == time_bin_inhibited)
       error("Inhibited particle in P2M. Should have been removed earlier.");
+
+    if (gparts[k].time_bin == time_bin_not_created) {
+      error("Extra particle in P2M.");
+    }
 #endif
 
     epsilon_max = max(epsilon_max, epsilon);
@@ -2109,6 +2113,10 @@ __attribute__((nonnull)) INLINE static void gravity_P2L(
    * we must use atomics here as the long-range task may update this
    * counter in a lock-free section of code. */
   accumulate_inc_ll(&l_b->num_interacted);
+
+  if (ga->time_bin == time_bin_not_created) {
+    error("Extra particle in P2L.");
+  }
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2868,6 +2876,10 @@ __attribute__((nonnull)) INLINE static void gravity_L2P(
     const struct grav_tensor *lb, const double loc[3], struct gpart *gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created) {
+    error("Extra particle in L2P.");
+  }
+
   if (lb->num_interacted == 0) error("Interacting with empty field tensor");
 
   accumulate_add_ll(&gp->num_interacted, lb->num_interacted);

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Usage:
     analyse_tasks.py [options] input.dat
@@ -36,6 +36,9 @@ import matplotlib.ticker as plticker
 import pylab as pl
 import sys
 import argparse
+
+# import hardcoded data
+from swift_hardcoded_data import TASKTYPES, SUBTYPES, SIDS
 
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Analyse task dumps")

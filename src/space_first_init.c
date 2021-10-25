@@ -30,6 +30,8 @@
 #include "chemistry.h"
 #include "engine.h"
 #include "gravity.h"
+#include "neutrino.h"
+#include "particle_splitting.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "sink.h"
@@ -110,8 +112,8 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     p[k].limiter_data.wakeup = time_bin_not_awake;
     p[k].limiter_data.to_be_synchronized = 0;
 
-#ifdef WITH_LOGGER
-    logger_part_data_init(&xp[k].logger_data);
+#ifdef WITH_CSDS
+    csds_part_data_init(&xp[k].csds_data);
 #endif
 
     /* Also initialise the chemistry */
@@ -134,6 +136,9 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
 
     /* And the black hole markers */
     black_holes_mark_part_as_not_swallowed(&p[k].black_holes_data);
+
+    /* Also initialise the splitting data */
+    particle_splitting_mark_part_as_not_split(&xp[k].split_data, p[k].id);
 
     /* And the radiative transfer */
     rt_first_init_part(&p[k]);
@@ -202,8 +207,11 @@ void space_first_init_gparts_mapper(void *restrict map_data, int count,
 
     gravity_first_init_gpart(&gp[k], grav_props);
 
-#ifdef WITH_LOGGER
-    logger_part_data_init(&gp[k].logger_data);
+    if (gp[k].type == swift_type_neutrino)
+      gravity_first_init_neutrino(&gp[k], s->e);
+
+#ifdef WITH_CSDS
+    csds_part_data_init(&gp[k].csds_data);
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -291,12 +299,15 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
     stars_first_init_spart(&sp[k], stars_properties, with_cosmology, cosmo->a,
                            e->time);
 
-#ifdef WITH_LOGGER
-    logger_part_data_init(&sp[k].logger_data);
+#ifdef WITH_CSDS
+    csds_part_data_init(&sp[k].csds_data);
 #endif
 
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);
+
+    /* Also initialise the splitting data */
+    particle_splitting_mark_part_as_not_split(&sp[k].split_data, sp[k].id);
 
     /* And radiative transfer data */
     rt_first_init_spart(&sp[k]);
@@ -380,6 +391,9 @@ void space_first_init_bparts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     black_holes_first_init_bpart(&bp[k], props);
+
+    /* And the splitting data */
+    particle_splitting_mark_part_as_not_split(&bp[k].split_data, bp[k].id);
 
     /* And the black hole merger markers */
     black_holes_mark_bpart_as_not_swallowed(&bp[k].merger_data);

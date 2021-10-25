@@ -26,17 +26,13 @@
 #include "space.h"
 
 /* Local headers. */
+#include "active.h"
 #include "cell.h"
 #include "debug.h"
 #include "engine.h"
 #include "multipole.h"
 #include "star_formation_logger.h"
 #include "threadpool.h"
-
-/*! Counter for cell IDs (when debugging) */
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-extern int last_cell_id;
-#endif
 
 /**
  * @brief Recursively split a cell.
@@ -70,9 +66,13 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
-  float sinks_h_max = 0.f;
+  float h_max_active = 0.0f;
   float stars_h_max = 0.f;
+  float stars_h_max_active = 0.f;
   float black_holes_h_max = 0.f;
+  float black_holes_h_max_active = 0.f;
+  float sinks_h_max = 0.f;
+  float sinks_h_max_active = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
@@ -229,14 +229,18 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->depth = c->depth + 1;
       cp->split = 0;
       cp->hydro.h_max = 0.f;
+      cp->hydro.h_max_active = 0.f;
       cp->hydro.dx_max_part = 0.f;
       cp->hydro.dx_max_sort = 0.f;
       cp->stars.h_max = 0.f;
+      cp->stars.h_max_active = 0.f;
       cp->stars.dx_max_part = 0.f;
       cp->stars.dx_max_sort = 0.f;
       cp->sinks.r_cut_max = 0.f;
+      cp->sinks.r_cut_max_active = 0.f;
       cp->sinks.dx_max_part = 0.f;
       cp->black_holes.h_max = 0.f;
+      cp->black_holes.h_max_active = 0.f;
       cp->black_holes.dx_max_part = 0.f;
       cp->nodeID = c->nodeID;
       cp->parent = c;
@@ -250,7 +254,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-      cp->cellID = last_cell_id++;
+      cell_assign_cell_index(cp, c);
 #endif
     }
 
@@ -291,26 +295,26 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Update the cell-wide properties */
         h_max = max(h_max, cp->hydro.h_max);
+        h_max_active = max(h_max_active, cp->hydro.h_max_active);
         stars_h_max = max(stars_h_max, cp->stars.h_max);
+        stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
         black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
+        black_holes_h_max_active =
+            max(black_holes_h_max_active, cp->black_holes.h_max_active);
         sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
+        sinks_h_max_active =
+            max(sinks_h_max_active, cp->sinks.r_cut_max_active);
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-        ti_hydro_end_max = max(ti_hydro_end_max, cp->hydro.ti_end_max);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
         ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-        ti_gravity_end_max = max(ti_gravity_end_max, cp->grav.ti_end_max);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-        ti_stars_end_max = max(ti_stars_end_max, cp->stars.ti_end_max);
         ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
         ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-        ti_sinks_end_max = max(ti_sinks_end_max, cp->sinks.ti_end_max);
         ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
         ti_black_holes_end_min =
             min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-        ti_black_holes_end_max =
-            max(ti_black_holes_end_max, cp->black_holes.ti_end_max);
         ti_black_holes_beg_max =
             max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
 
@@ -473,6 +477,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       h_max = max(h_max, parts[k].h);
 
+      if (part_is_active(&parts[k], e))
+        h_max_active = max(h_max_active, parts[k].h);
+
       /* Collect SFR from the particles after rebuilt */
       star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
                                               &c->stars.sfh);
@@ -524,6 +531,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       stars_h_max = max(stars_h_max, sparts[k].h);
 
+      if (spart_is_active(&sparts[k], e))
+        stars_h_max_active = max(stars_h_max_active, sparts[k].h);
+
       /* Reset x_diff */
       sparts[k].x_diff[0] = 0.f;
       sparts[k].x_diff[1] = 0.f;
@@ -550,6 +560,9 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       sinks_h_max = max(sinks_h_max, sinks[k].r_cut);
 
+      if (sink_is_active(&sinks[k], e))
+        sinks_h_max_active = max(sinks_h_max_active, sinks[k].r_cut);
+
       /* Reset x_diff */
       sinks[k].x_diff[0] = 0.f;
       sinks[k].x_diff[1] = 0.f;
@@ -575,6 +588,9 @@ void space_split_recursive(struct space *s, struct cell *c,
       ti_black_holes_beg_max = max(ti_black_holes_beg_max, ti_beg);
 
       black_holes_h_max = max(black_holes_h_max, bparts[k].h);
+
+      if (bpart_is_active(&bparts[k], e))
+        black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
 
       /* Reset x_diff */
       bparts[k].x_diff[0] = 0.f;
@@ -616,24 +632,23 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Set the values for this cell. */
   c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
   c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_end_max = ti_hydro_end_max;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
   c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_end_max = ti_gravity_end_max;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_end_max = ti_stars_end_max;
   c->stars.ti_beg_max = ti_stars_beg_max;
   c->stars.h_max = stars_h_max;
+  c->stars.h_max_active = stars_h_max_active;
   c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_end_max = ti_sinks_end_max;
   c->sinks.ti_beg_max = ti_sinks_beg_max;
   c->sinks.r_cut_max = sinks_h_max;
+  c->sinks.r_cut_max_active = sinks_h_max_active;
   c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_end_max = ti_black_holes_end_max;
   c->black_holes.ti_beg_max = ti_black_holes_beg_max;
   c->black_holes.h_max = black_holes_h_max;
+  c->black_holes.h_max_active = black_holes_h_max_active;
   c->maxdepth = maxdepth;
 
   /* Set ownership according to the start of the parts array. */

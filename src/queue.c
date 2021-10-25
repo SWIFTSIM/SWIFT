@@ -270,8 +270,13 @@ struct task *queue_gettask(struct scheduler *s, struct queue *q,
 #endif
 
     /* Should we de-prioritize this task? */
-    if ((1ULL << qtasks[entries[ind].tid].type) &
-        queue_lock_fail_reweight_mask) {
+
+    // MATTHIEU: We now have more than 64 tasks so the bit-wise
+    // operation here is problematic.
+    // However, the mask was such that this condition is always true anyway.
+    if (1 /* (1ULL << qtasks[entries[ind].tid].type) & */
+        /* queue_lock_fail_reweight_mask */) {
+
       /* Scale the task's weight. */
       entries[ind].weight *= queue_lock_fail_reweight_factor;
 
@@ -347,7 +352,6 @@ void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
 #else
     fprintf(file, "%d %d %d %s %s %.2f\n", nodeID, index, k,
             taskID_names[t->type], subtaskID_names[t->subtype], t->weight);
-#endif
   }
 
   /* Release the task lock. */

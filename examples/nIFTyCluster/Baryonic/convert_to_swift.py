@@ -63,9 +63,7 @@ def read_dm_quantity(name, unit, parttype):
     The DM particles are in three sets because of their different masses.
     In SWIFT we have to combine these.
     """
-    out = np.concatenate(
-        [readsnap(filename, name, p) for p in parttype]
-    ) * unit
+    out = np.concatenate([readsnap(filename, name, p) for p in parttype]) * unit
     return out
 
 

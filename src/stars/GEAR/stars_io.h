@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_STARS_IO_H
 
 #include "io_properties.h"
+#include "kick.h"
 #include "stars_part.h"
 
 /**
@@ -64,34 +65,41 @@ INLINE static void convert_spart_pos(const struct engine *e,
     ret[1] = sp->x[1];
     ret[2] = sp->x[2];
   }
+  if (e->snapshot_use_delta_from_edge) {
+    ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);
+    ret[1] = min(ret[1], s->dim[1] - e->snapshot_delta_from_edge);
+    ret[2] = min(ret[2], s->dim[2] - e->snapshot_delta_from_edge);
+  }
 }
 
 INLINE static void convert_spart_vel(const struct engine *e,
                                      const struct spart *sp, float *ret) {
-
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct cosmology *cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
+  const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
 
   const integertime_t ti_beg = get_integer_time_begin(ti_current, sp->time_bin);
   const integertime_t ti_end = get_integer_time_end(ti_current, sp->time_bin);
 
   /* Get time-step since the last kick */
-  float dt_kick_grav;
-  if (with_cosmology) {
-    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
-    dt_kick_grav -=
-        cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-  } else {
-    dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-  }
+  const float dt_kick_grav =
+      kick_get_grav_kick_dt(ti_beg, ti_current, time_base, with_cosmology,
+                            cosmo) -
+      kick_get_grav_kick_dt(ti_beg, (ti_beg + ti_end) / 2, time_base,
+                            with_cosmology, cosmo);
 
   /* Extrapolate the velocites to the current time */
   const struct gpart *gp = sp->gpart;
   ret[0] = gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
   ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+
+  /* Extrapolate the velocites to the current time (mesh forces) */
+  ret[0] += gp->a_grav_mesh[0] * dt_kick_grav_mesh;
+  ret[1] += gp->a_grav_mesh[1] * dt_kick_grav_mesh;
+  ret[2] += gp->a_grav_mesh[2] * dt_kick_grav_mesh;
 
   /* Conversion from internal units to peculiar velocities */
   ret[0] *= cosmo->a_inv;
@@ -235,6 +243,7 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
 
 #if defined(HAVE_HDF5)
 INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
+                                              hid_t h_grp_columns,
                                               const struct stars_props *sp) {
 
   io_write_attribute_s(h_grpstars, "Kernel function", kernel_name);
@@ -252,6 +261,15 @@ INLINE static void stars_props_print_snapshot(hid_t h_grpstars,
                        sp->max_smoothing_iterations);
 }
 #endif
+
+/**
+ * @brief Free the memory allocated for the stellar properties.
+ *
+ * Nothing to do here.
+ *
+ * @param sp The #stars_props structure.
+ */
+INLINE static void stars_props_clean(struct stars_props *sp) {}
 
 /**
  * @brief Write a #stars_props struct to the given FILE as a stream of bytes.

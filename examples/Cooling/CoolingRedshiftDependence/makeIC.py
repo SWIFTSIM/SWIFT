@@ -54,7 +54,8 @@ def generate_ics(redshift: float, filename: str, glass_filename: str) -> None:
     # Leave in physical units; handled by boxsize change.
     writer.gas.internal_energy = (
         np.ones(number_of_particles, dtype=float)
-        * 3.0 / 2.0
+        * 3.0
+        / 2.0
         * (temperature * kb)
         / (mu_hydrogen * mh)
     )

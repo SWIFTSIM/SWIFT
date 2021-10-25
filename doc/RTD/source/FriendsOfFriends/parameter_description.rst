@@ -32,8 +32,14 @@ minimal halo mass (see below).
 ------------------------
 
 In the case of black holes seeding, we run the FOF module on-the-fly during
-a cosmological simulation. The time of the first FOF call is controlled by
-the following two options:
+a cosmological simulation. Black hole seeding is enabled with the following
+parameter:
+
+  * Enable seeding of black holes in FOF groups: ``seed_black_holes_enabled``
+
+This should be set to 1 to enable or 0 to disable black hole seeding. The
+time of the first FOF call for seeding is controlled by the following two
+options:
 
   * Time of the first FOF call (non-cosmological runs): ``time_first``,
   * Scale-factor of the first FOF call (cosmological runs):
@@ -51,9 +57,20 @@ halo (group) mass considered for seeding black holes. This is specified by
 the parameter ``black_hole_seed_halo_mass_Msun`` which is expressed in
 solar masses.
 
+There are two ways to invoke FOF on the fly for purposes other than black hole
+seeding:
+
+Firstly, one can switch on the ``invoke_fof`` parameter in the
+``Snapshots`` section of the parameter file. This will produce a catalogue every
+time the code writes a snapshot.
+
+The second option is to set ``dump_catalogue_when_seeding`` in the ``FOF``
+section. This will force the code to write a catalogue every time the BH seeding
+code is run. 
+
 ------------------------
 
-In the case of the stand-alone module, the four seeding parameters
+In the case of the stand-alone module, the five seeding parameters
 described above are ignored but an additional one needs to be
 specified. This is the name of the file in which the catalogue of groups will
 be written. This is specified by the parameter ``fof_output``. The linking
@@ -83,6 +100,7 @@ A full FOF section of the YAML parameter file looks like:
        min_group_size:                  256         # The minimum no. of particles required for a group.
        linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
        black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
+       dump_catalogue_when_seeding:     0           # (Optional) Write a FOF catalogue when seeding black holes. Defaults to 0 if unspecified.
        absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units).
        group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size.
        group_id_offset:                 1           # (Optional) Sets the offset of group ID labelling. Defaults to 1 if unspecified.

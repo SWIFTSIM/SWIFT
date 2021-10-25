@@ -619,6 +619,7 @@ gr_float cooling_new_energy(
   gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo) +
                     dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
+  energy = max(energy, hydro_props->minimal_internal_energy);
 
   /* initialize density */
   data.density = &density;
@@ -691,6 +692,7 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
   /* general particle data */
   gr_float density = hydro_get_physical_density(p, cosmo);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
+  energy = max(energy, hydro_props->minimal_internal_energy);
 
   /* initialize density */
   data.density = &density;
@@ -711,8 +713,7 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
 
   /* Compute cooling time */
   gr_float cooling_time;
-  chemistry_data_storage chemistry_rates = grackle_rates;
-  if (local_calculate_cooling_time(&chemistry_grackle, &chemistry_rates, &units,
+  if (local_calculate_cooling_time(&chemistry_grackle, &grackle_rates, &units,
                                    &data, &cooling_time) == 0) {
     error("Error in calculate_cooling_time.");
   }
@@ -838,6 +839,30 @@ float cooling_get_temperature(
     return T_over_mu * mu_neutral;
   else
     return T_transition;
+}
+
+/**
+ * @brief Compute the y-Compton contribution of a #part based on the cooling
+ * function.
+ *
+ * Does not exist in this model. We return 0.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+double Cooling_get_ycompton(const struct phys_const* phys_const,
+                            const struct hydro_props* hydro_props,
+                            const struct unit_system* us,
+                            const struct cosmology* cosmo,
+                            const struct cooling_function_data* cooling,
+                            const struct part* p, const struct xpart* xp) {
+
+  return 0.;
 }
 
 /**

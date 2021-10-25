@@ -177,7 +177,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
-  cell->hydro.ti_end_max = 8;
   cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->hydro.parts, cell->hydro.count);
@@ -405,7 +404,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:a:")) != -1) {
     switch (c) {
       case 'h':

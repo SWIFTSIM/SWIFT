@@ -77,11 +77,11 @@ struct cell_grav {
   /*! The task to end the force calculation */
   struct task *end_force;
 
+  /*! Task for weighting neutrino particles */
+  struct task *neutrino_weight;
+
   /*! Minimum end of (integer) time step in this cell for gravity tasks. */
   integertime_t ti_end_min;
-
-  /*! Maximum end of (integer) time step in this cell for gravity tasks. */
-  integertime_t ti_end_max;
 
   /*! Maximum beginning of (integer) time step in this cell for gravity tasks.
    */
