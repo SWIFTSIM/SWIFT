@@ -225,8 +225,8 @@ void queue_init(struct queue *q, struct task *tasks) {
  * @param prev The previous #task extracted from this #queue.
  * @param blocking Block until access to the queue is granted.
  */
-struct task *queue_gettask(struct scheduler *s, struct queue *q,
-      	                   const struct task *prev, int blocking) {
+struct task *queue_gettask(struct queue *q, const struct task *prev,
+                           int blocking) {
 
   swift_lock_type *qlock = &q->lock;
   struct task *res = NULL;
@@ -257,7 +257,7 @@ struct task *queue_gettask(struct scheduler *s, struct queue *q,
   for (ind = 0; ind < old_qcount; ind++) {
 
     /* Try to lock the next task. */
-    if (task_lock(s, &qtasks[entries[ind].tid])) break;
+    if (task_lock(&qtasks[entries[ind].tid])) break;
 
     /* Should we de-prioritize this task? */
 
@@ -335,14 +335,9 @@ void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
   /* Loop over the queue entries. */
   for (int k = 0; k < q->count; k++) {
     struct task *t = &q->tasks[q->entries[k].tid];
-#ifdef WITH_MPI
-    fprintf(file, "%d %d %d %s %s %.2f %lld %zd\n", nodeID, index, k,
-            taskID_names[t->type], subtaskID_names[t->subtype], t->weight,
-            t->flags, t->size);
-#else
+
     fprintf(file, "%d %d %d %s %s %.2f\n", nodeID, index, k,
             taskID_names[t->type], subtaskID_names[t->subtype], t->weight);
-#endif
   }
 
   /* Release the task lock. */

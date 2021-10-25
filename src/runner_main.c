@@ -212,6 +212,7 @@ void *runner_main(void *data) {
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;
+
       /* And recover the pair direction */
       if (t->type == task_type_pair || t->type == task_type_sub_pair) {
         struct cell *ci_temp = ci;
