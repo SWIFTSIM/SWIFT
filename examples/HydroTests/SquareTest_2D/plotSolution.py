@@ -95,11 +95,11 @@ ax = ax.flatten()
 
 # These are stored in priority order
 plot = dict(
-    internal_energy="Internal Energy ($u$)",
-    density=r"Density ($\rho$)",
-    pressure="Pressure ($P$)",
-    entropy="Entropy ($A$)",
-    diffusion=r"Diffusion ($\alpha$)",
+    internal_energies="Internal Energy ($u$)",
+    densities=r"Density ($\rho$)",
+    pressures="Pressure ($P$)",
+    entropies="Entropy ($A$)",
+    conduction_parameters=r"Diffusion ($\alpha$)",
 )
 
 current_axis = 0

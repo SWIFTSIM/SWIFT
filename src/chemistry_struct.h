@@ -32,6 +32,8 @@
 #include "./chemistry/none/chemistry_struct.h"
 #elif defined(CHEMISTRY_GEAR)
 #include "./chemistry/GEAR/chemistry_struct.h"
+#elif defined(CHEMISTRY_GEAR_DIFFUSION)
+#include "./chemistry/GEAR_DIFFUSION/chemistry_struct.h"
 #elif defined(CHEMISTRY_QLA)
 #include "./chemistry/QLA/chemistry_struct.h"
 #elif defined(CHEMISTRY_EAGLE)

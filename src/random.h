@@ -42,8 +42,6 @@
  * generator.
  * In case new numbers need to be added other possible
  * numbers could be:
- * 59969537
- * 65610001
  * 126247697
  * 193877777
  * 303595777
@@ -56,9 +54,16 @@ enum random_number_type {
   random_number_sink_formation = 5947309451LL,
   random_number_stellar_feedback_1 = 3947008991LL,
   random_number_stellar_feedback_2 = 6977309513LL,
+  random_number_stellar_feedback_3 = 9762399103LL,
+  random_number_isotropic_SNII_feedback_ray_theta = 3298327511LL,
+  random_number_isotropic_SNII_feedback_ray_phi = 6311114273LL,
+  random_number_isotropic_AGN_feedback_ray_theta = 8899891613LL,
+  random_number_isotropic_AGN_feedback_ray_phi = 10594523341LL,
   random_number_stellar_enrichment = 2936881973LL,
   random_number_BH_feedback = 1640531371LL,
-  random_number_BH_swallow = 4947009007LL
+  random_number_BH_swallow = 4947009007LL,
+  random_number_BH_reposition = 59969537LL,
+  random_number_snapshot_sampling = 6561001LL,
 };
 
 #ifndef __APPLE__
@@ -182,6 +187,60 @@ INLINE static double random_unit_interval(int64_t id,
 
   /* Generate one final value, this is our output. */
   return inl_erand48(seed48);
+}
+
+/**
+ * @brief Returns a pseudo-random number in the range [0, 1[.
+ *
+ * We generate numbers that are always reproducible for a given pair of particle
+ * IDs and simulation time (on the integer time-line). If more than one number
+ * per time-step per particle is needed, additional randomness can be obtained
+ * by using the type argument.
+ *
+ * @param id_star The ID of the first particle for which to generate a number.
+ * @param id_gas The ID of the second particle for which to generate a number.
+ * @param ti_current The time (on the time-line) for which to generate a number.
+ * @param type The #random_number_type to generate.
+ * @return a random number in the interval [0, 1.[.
+ */
+INLINE static double random_unit_interval_two_IDs(
+    int64_t id_star, int64_t id_gas, const integertime_t ti_current,
+    const enum random_number_type type) {
+
+  /* We need to combine the gas and star IDs such that we do not get correlation
+   * for same id_star + id_gas pairs, because of this we combine everything
+   * nonlinearly */
+  int64_t input_id = (id_star * id_gas + id_star * ti_current +
+                      id_gas * ti_current * ti_current) %
+                     INT64_MAX;
+
+  return random_unit_interval(input_id, ti_current, type);
+}
+
+/**
+ * @brief Returns a pseudo-random number in the range [0, 1[.
+ *
+ * We generate numbers that are always reproducible for a given stellar particle
+ * ID, ray index and simulation time (on the integer time-line). If more than
+ * one number per time-step per particle is needed, additional randomness can be
+ * obtained by using the type argument.
+ *
+ * @param id_star The ID of the (stellar) particle for which to generate a
+ * number.
+ * @param ray_idx The index of the ray used in the isotropic feedback
+ * @param ti_current The time (on the time-line) for which to generate a number.
+ * @param type The #random_number_type to generate.
+ * @return a random number in the interval [0, 1.[.
+ */
+INLINE static double random_unit_interval_part_ID_and_ray_idx(
+    int64_t id_star, const int ray_idx, const integertime_t ti_current,
+    const enum random_number_type type) {
+
+  /* For better mixing, we apply a non-linear transformation y=1+x^3 */
+  const long long ray_idx_3 = ray_idx * ray_idx * ray_idx;
+  const long long ray_idx_3_one = ray_idx_3 + 1LL;
+
+  return random_unit_interval_two_IDs(id_star, ray_idx_3_one, ti_current, type);
 }
 
 #endif /* SWIFT_RANDOM_H */

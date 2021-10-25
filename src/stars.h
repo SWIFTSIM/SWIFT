@@ -24,8 +24,11 @@
 
 /* Select the correct star model */
 #if defined(STARS_NONE)
-#include "./stars/Default/stars.h"
-#include "./stars/Default/stars_iact.h"
+#include "./stars/None/stars.h"
+#include "./stars/None/stars_iact.h"
+#elif defined(STARS_BASIC)
+#include "./stars/Basic/stars.h"
+#include "./stars/Basic/stars_iact.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars.h"
 #include "./stars/EAGLE/stars_iact.h"
@@ -35,5 +38,12 @@
 #else
 #error "Invalid choice of star model"
 #endif
+
+struct engine;
+struct space;
+
+void stars_exact_density_compute(struct space *s, const struct engine *e);
+void stars_exact_density_check(struct space *s, const struct engine *e,
+                               const double rel_tol);
 
 #endif /* SWIFT_STARS_H */

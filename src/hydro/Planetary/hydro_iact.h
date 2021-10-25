@@ -51,14 +51,22 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
-  /* Get r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
+
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Get the masses. */
   const float mi = pi->mass;
@@ -83,6 +91,33 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
   pj->density.wcount += wj;
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
+
+  /* Compute dv dot r */
+  float dv[3], curlvr[3];
+
+  const float faci = mj * wi_dx * r_inv;
+  const float facj = mi * wj_dx * r_inv;
+
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+  pi->density.div_v -= faci * dvdr;
+  pj->density.div_v -= facj * dvdr;
+
+  /* Compute dv cross r */
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  pi->density.rot_v[0] += faci * curlvr[0];
+  pi->density.rot_v[1] += faci * curlvr[1];
+  pi->density.rot_v[2] += faci * curlvr[2];
+
+  pj->density.rot_v[0] += facj * curlvr[0];
+  pj->density.rot_v[1] += facj * curlvr[1];
+  pj->density.rot_v[2] += facj * curlvr[2];
 }
 
 /**
@@ -98,17 +133,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
 
   /* Get the masses. */
   const float mj = pj->mass;
 
-  /* Get r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
@@ -118,6 +161,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
+
+  /* Compute dv dot r */
+  float dv[3], curlvr[3];
+
+  const float faci = mj * wi_dx * r_inv;
+
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float dvdr = dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2];
+
+  pi->density.div_v -= faci * dvdr;
+
+  /* Compute dv cross r */
+  curlvr[0] = dv[1] * dx[2] - dv[2] * dx[1];
+  curlvr[1] = dv[2] * dx[0] - dv[0] * dx[2];
+  curlvr[2] = dv[0] * dx[1] - dv[1] * dx[0];
+
+  pi->density.rot_v[0] += faci * curlvr[0];
+  pi->density.rot_v[1] += faci * curlvr[1];
+  pi->density.rot_v[2] += faci * curlvr[2];
 }
 
 /**
@@ -133,16 +197,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
-  /* Get r and r inverse. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mi = pi->mass;
@@ -168,9 +240,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -195,7 +271,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
-  const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
+  const float visc_acc_term =
+      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
 
   /* SPH acceleration term */
   const float sph_acc_term =
@@ -250,19 +327,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (pi->time_bin >= time_bin_inhibited)
+    error("Inhibited pi in interaction function!");
+  if (pj->time_bin >= time_bin_inhibited)
+    error("Inhibited pj in interaction function!");
+#endif
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
-  /* Get r and r inverse. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
-  // const float mi = pi->mass;
+  const float mi = pi->mass;
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -285,9 +370,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+
   /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * pi->force.f;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * pj->force.f;
+  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
+  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -314,7 +403,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) / rho_ij;
 
   /* Convolve with the kernel */
-  const float visc_acc_term = 0.5f * visc * (wi_dr + wj_dr) * r_inv;
+  const float visc_acc_term =
+      0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
 
   /* SPH acceleration term */
   const float sph_acc_term =

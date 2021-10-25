@@ -114,19 +114,64 @@ INLINE static void convert_part_sub_species_frac(const struct engine* e,
   ret[2] /= sum;
 }
 
+INLINE static void convert_part_HI_mass(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  const float X_H =
+      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
+
+  const float HI_frac = cooling_get_particle_subgrid_HI_fraction(
+      e->internal_units, e->physical_constants, e->cosmology,
+      e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
+
+  *ret = hydro_get_mass(p) * X_H * HI_frac;
+}
+
+INLINE static void convert_part_H2_mass(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  const float X_H =
+      chemistry_get_metal_mass_fraction_for_cooling(p)[chemistry_element_H];
+
+  const float H2_frac = cooling_get_particle_subgrid_H2_fraction(
+      e->internal_units, e->physical_constants, e->cosmology,
+      e->hydro_properties, e->entropy_floor, e->cooling_func, p, xp);
+
+  *ret = hydro_get_mass(p) * X_H * H2_frac * 2.f;
+}
+
+INLINE static void convert_part_e_density(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, double* ret) {
+
+  *ret = cooling_get_electron_density(e->physical_constants,
+                                      e->hydro_properties, e->internal_units,
+                                      e->cosmology, e->cooling_func, p, xp);
+}
+
+INLINE static void convert_part_y_compton(const struct engine* e,
+                                          const struct part* p,
+                                          const struct xpart* xp, double* ret) {
+
+  *ret = cooling_get_ycompton(e->physical_constants, e->hydro_properties,
+                              e->internal_units, e->cosmology, e->cooling_func,
+                              p, xp);
+}
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
  * @param xparts The extended data particle array.
  * @param list The list of i/o properties to write.
- * @param cooling The #cooling_function_data
  *
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int cooling_write_particles(
-    const struct part* parts, const struct xpart* xparts, struct io_props* list,
-    const struct cooling_function_data* cooling) {
+    const struct part* parts, const struct xpart* xparts,
+    struct io_props* list) {
 
   list[0] = io_make_output_field_convert_part(
       "Temperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, parts, xparts,
@@ -161,7 +206,35 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "above deltaT of the entropy floor, the normal hydro quantities are "
       "used.");
 
-  return 4;
+  list[4] = io_make_output_field_convert_part(
+      "AtomicHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+      convert_part_HI_mass,
+      "Atomic hydrogen masses containted in the particles. This quantity is "
+      "obtained from the cooling tables and, if the particle is on the entropy "
+      "floor, by extrapolating to the equilibrium curve assuming constant "
+      "pressure.");
+
+  list[5] = io_make_output_field_convert_part(
+      "MolecularHydrogenMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts, xparts,
+      convert_part_H2_mass,
+      "Molecular hydrogen masses containted in the particles. This quantity is "
+      "obtained from the cooling tables and, if the particle is on the entropy "
+      "floor, by extrapolating to the equilibrium curve assuming constant "
+      "pressure.");
+
+  list[6] = io_make_output_field_convert_part(
+      "ElectronNumberDensities", DOUBLE, 1, UNIT_CONV_NUMBER_DENSITY, 0.f,
+      parts, xparts, convert_part_e_density,
+      "Electron number densities in the physical frame computed based on the "
+      "cooling tables. This is 0 for star-forming particles.");
+
+  list[7] = io_make_output_field_convert_part(
+      "ComptonYParameters", DOUBLE, 1, UNIT_CONV_AREA, 0.f, parts, xparts,
+      convert_part_y_compton,
+      "Compton y parameters in the physical frame computed based on the "
+      "cooling tables. This is 0 for star-forming particles.");
+
+  return 8;
 }
 
 #endif /* SWIFT_COOLING_COLIBRE_IO_H */

@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "cooling.h"
 #include "debug.h"
+#include "rt.h"
 #include "timeline.h"
 
 /**
@@ -88,6 +89,12 @@ make_integer_timestep(const float new_dt, const timebin_t old_bin,
  */
 __attribute__((always_inline)) INLINE static integertime_t get_gpart_timestep(
     const struct gpart *restrict gp, const struct engine *restrict e) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created) {
+    error("Trying to compute time step for an extra particle.");
+  }
+#endif
 
   float new_dt_self = FLT_MAX, new_dt_ext = FLT_MAX;
 
@@ -165,9 +172,13 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units,
                          e->hydro_properties, e->chemistry, p);
 
-  /* Final time-step is minimum of hydro, gravity and subgrid */
-  float new_dt =
-      min4(new_dt_hydro, new_dt_cooling, new_dt_grav, new_dt_chemistry);
+  /* Get the RT timestep */
+  float new_dt_radiation = FLT_MAX;
+  if (e->policy & engine_policy_rt)
+    new_dt_radiation = rt_compute_timestep(p, e->rt_props, e->cosmology);
+
+  float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav,
+                      new_dt_chemistry, new_dt_radiation);
 
   /* Limit change in smoothing length */
   const float dt_h_change =

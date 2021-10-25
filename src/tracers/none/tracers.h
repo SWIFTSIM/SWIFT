@@ -118,11 +118,26 @@ static INLINE void tracers_first_init_xpart(
 static INLINE void tracers_after_feedback(struct xpart *xp) {}
 
 /**
+ * @brief Update the particles' tracer data with values before an AGN feedback
+ * event. Note: this function is called in `black_holes_iact.h` before the
+ * particle data are updated.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the basic particle data.
+ * @param xp The extended particle data.
+ * (internal physical units)
+ */
+static INLINE void tracers_before_black_holes_feedback(
+    const struct part *p, struct xpart *xp, const float scale_factor) {}
+
+/**
  * @brief Update the particles' tracer data after an AGN feedback
  * event.
  *
  * Nothing to do here.
  *
+ * @param p The particle data.
  * @param xp The extended particle data.
  * @param with_cosmology Are we running with cosmology?
  * @param scale_factor The current scale-factor (if running with cosmo)
@@ -131,8 +146,8 @@ static INLINE void tracers_after_feedback(struct xpart *xp) {}
  * units)
  */
 static INLINE void tracers_after_black_holes_feedback(
-    struct xpart *xp, const int with_cosmology, const float scale_factor,
-    const double time, const double delta_energy) {}
+    const struct part *p, struct xpart *xp, const int with_cosmology,
+    const float scale_factor, const double time, const double delta_energy) {}
 
 /**
  * @brief Split the tracer content of a particle into n pieces

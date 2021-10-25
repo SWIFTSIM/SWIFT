@@ -22,7 +22,7 @@ params = {
     "figure.subplot.wspace": 0.14,
     "figure.subplot.hspace": 0.14,
     "lines.markersize": 6,
-    "lines.linewidth": 3.0
+    "lines.linewidth": 3.0,
 }
 plt.rcParams.update(params)
 plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})

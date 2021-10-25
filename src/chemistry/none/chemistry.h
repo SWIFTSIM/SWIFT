@@ -101,11 +101,17 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
 /**
  * @brief Updates to the chemistry data after the hydro force loop.
  *
+ * Nothing to do here.
+ *
  * @param p The particle to act upon.
  * @param cosmo The current cosmological model.
+ * @param with_cosmology Are we running with the cosmology?
+ * @param time Current time of the simulation.
+ * @param dt Time step (in physical units).
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
-    struct part* restrict p, const struct cosmology* cosmo) {}
+    struct part* restrict p, const struct cosmology* cosmo,
+    const int with_cosmology, const double time, const double dt) {}
 
 /**
  * @brief Computes the chemistry-related time-step constraint.
@@ -372,7 +378,7 @@ chemistry_get_metal_mass_fraction_for_star_formation(
 }
 
 /**
- * @brief Returns the total metallicity (metal mass fraction) of the
+ * @brief Returns the total metal mass of the
  * gas particle to be used in the stats related routines.
  *
  * No metallicity treatment here -> return 0.
@@ -386,7 +392,7 @@ chemistry_get_total_metal_mass_for_stats(const struct part* restrict p) {
 }
 
 /**
- * @brief Returns the total metallicity (metal mass fraction) of the
+ * @brief Returns the total metal mass of the
  * star particle to be used in the stats related routines.
  *
  * No metallicity treatment here -> return 0.
@@ -400,7 +406,7 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
 }
 
 /**
- * @brief Returns the total metallicity (metal mass fraction) of the
+ * @brief Returns the total metal mass of the
  * black hole particle to be used in the stats related routines.
  *
  * No metallicity treatment here -> return 0.
@@ -409,6 +415,21 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart* restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart* restrict bp) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * star particle to be used in the luminosity calculations.
+ *
+ * No metallicity treatment here -> return 0.
+ *
+ * @param sp Pointer to the star particle data.
+ */
+__attribute__((always_inline)) INLINE static float
+chemistry_get_star_total_metal_mass_fraction_for_luminosity(
+    const struct spart* restrict sp) {
 
   return 0.f;
 }

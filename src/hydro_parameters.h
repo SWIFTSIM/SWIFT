@@ -32,7 +32,9 @@
 #include "parser.h"
 
 /* Import the right hydro header */
-#if defined(MINIMAL_SPH)
+#if defined(NONE_SPH)
+#include "./hydro/None/hydro_parameters.h"
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_parameters.h"
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_parameters.h"
@@ -52,6 +54,8 @@
 #include "./hydro/Planetary/hydro_parameters.h"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_parameters.h"
+#elif defined(GASOLINE_SPH)
+#include "./hydro/Gasoline/hydro_parameters.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_parameters.h"
 #else

@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
   message("SWIFT random seed = %d", SWIFT_RANDOM_SEED_XOR);
 
   /* Time-step size */
-  const int time_bin = 30;
+  const int time_bin = 33;
 
   /* Try a few different values for the ID */
   for (int i = 0; i < 10; ++i) {

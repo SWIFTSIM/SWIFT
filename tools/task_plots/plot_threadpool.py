@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Usage:
     plot_threadpool.py [options] input.dat output.png
@@ -182,7 +182,7 @@ if args.verbose:
     print("CPU frequency:", CPU_CLOCK * 1000.0)
 
 #  Read input.
-data = pl.genfromtxt(infile, dtype=None, delimiter=" ")
+data = pl.genfromtxt(infile, dtype=None, delimiter=" ", encoding=None)
 
 #  Mixed types, so need to separate.
 tics = []

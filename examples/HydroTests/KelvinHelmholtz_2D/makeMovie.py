@@ -46,7 +46,7 @@ def make_plot(filename, array, nx, ny, dx, dy):
 
     array.set_array(mesh)
 
-    return array,
+    return (array,)
 
 
 def frame(n, *args):
@@ -63,6 +63,7 @@ def frame(n, *args):
 
 if __name__ == "__main__":
     import matplotlib
+
     matplotlib.use("Agg")
 
     from tqdm import tqdm
@@ -74,7 +75,6 @@ if __name__ == "__main__":
     filename = "kelvinHelmholtz"
     dpi = 512
 
-
     # Look for the number of files in the directory.
     i = 0
     while True:
@@ -84,8 +84,7 @@ if __name__ == "__main__":
             break
 
         if i > 10000:
-            raise FileNotFoundError(
-                "Could not find the snapshots in the directory")
+            raise FileNotFoundError("Could not find the snapshots in the directory")
 
     frames = tqdm(np.arange(0, i))
 
@@ -100,7 +99,7 @@ if __name__ == "__main__":
     xv, yv = np.meshgrid(x, y)
 
     mesh = si.griddata((data_x, data_y), density, (xv, yv), method="nearest")
-    
+
     # Global variable for set_array
     plot = ax.imshow(mesh, extent=[0, 1, 0, 1], animated=True, interpolation="none")
 

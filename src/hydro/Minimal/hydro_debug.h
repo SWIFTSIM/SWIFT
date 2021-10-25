@@ -24,7 +24,7 @@
  * @brief Minimal conservative implementation of SPH (Debugging routines)
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
+ * viscosity term with the Balsara (1995) switch. No thermal conduction
  * term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with

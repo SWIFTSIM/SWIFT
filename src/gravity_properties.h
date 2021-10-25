@@ -52,6 +52,12 @@ struct gravity_props {
    * a constant fraction of the mean inter-particle separation at that mass. */
   float epsilon_background_fac;
 
+  /* -------------- Softening for the neutrino DM ---------------------- */
+
+  /*! Co-moving softening length for neutrino DM particles at the current
+   * redshift.  */
+  float epsilon_nu_cur;
+
   /* -------------- Properties of the FFM gravity ---------------------- */
 
   /*! What MAC are we currently using? */
@@ -88,6 +94,13 @@ struct gravity_props {
    * baryon particles */
   float epsilon_baryon_max_physical;
 
+  /*! Co-moving softening length for for neutrino DM particles */
+  float epsilon_nu_comoving;
+
+  /*! Maximal softening length in physical coordinates for the neutrino
+   * DM particles */
+  float epsilon_nu_max_physical;
+
   /*! Fraction of the mean inter particle separation corresponding to the
    * co-moving softening length of the low-res. particles (DM + baryons) */
   float mean_inter_particle_fraction_high_res;
@@ -104,6 +117,9 @@ struct gravity_props {
 
   /*! Periodic long-range mesh side-length */
   int mesh_size;
+
+  /*! Whether mesh is distributed between MPI ranks when we use MPI  */
+  int distributed_mesh;
 
   /*! Mesh smoothing scale in units of top-level cell size */
   float a_smooth;
@@ -135,8 +151,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const struct cosmology *cosmo, const int with_cosmology,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
-                        const int is_zoom_simulation, const int periodic,
-                        const double dim[3]);
+                        const int has_neutrinos, const int is_zoom_simulation,
+                        const int periodic, const double dim[3]);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
 void gravity_props_update_MAC_choice(struct gravity_props *p);

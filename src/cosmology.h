@@ -135,8 +135,8 @@ struct cosmology {
   /*! Hubble time 1/H0 */
   double Hubble_time;
 
-  /*! Matter density parameter */
-  double Omega_m;
+  /*! Cold Dark Matter density parameter */
+  double Omega_cdm;
 
   /*! Baryon density parameter */
   double Omega_b;
@@ -144,11 +144,20 @@ struct cosmology {
   /*! Cosmological constant density parameter */
   double Omega_lambda;
 
-  /*! Radiation constant density parameter */
+  /*! Total radiation density parameter (photons and other relics) */
   double Omega_r;
 
-  /*! Neutrino density parameter */
+  /*! CMB radiation density parameter (Omega_gamma) */
+  double Omega_g;
+
+  /*! Massive neutrino density parameter */
   double Omega_nu;
+
+  /*! Massive neutrino density parameter at z=0 */
+  double Omega_nu_0;
+
+  /*! Ultra-relativistic species (e.g. massless neutrinos) density parameter */
+  double Omega_ur;
 
   /*! Curvature density parameter */
   double Omega_k;
@@ -159,11 +168,44 @@ struct cosmology {
   /*! Dark-energy evolution parameter */
   double w_a;
 
-  /*! CMB temperature at z = 0 derived from Omega_r (internal units) */
+  /*! CMB temperature at z = 0 implied by cosmology (internal units) */
   double T_CMB_0;
 
-  /*! CMB temperature at z = 0 derived from Omega_r (Kelvins) */
+  /*! CMB temperature at z = 0 implied by cosmology (Kelvins) */
   double T_CMB_0_K;
+
+  /*! Neutrino temperature at z = 0 (internal units) */
+  double T_nu_0;
+
+  /* Neutrino temperature at z = 0 (electron-volts) */
+  double T_nu_0_eV;
+
+  /*! Number of massive neutrino species */
+  int N_nu;
+
+  /*! Number of ultra-relativistic species (excluding massive neutrinos) */
+  double N_ur;
+
+  /*! Effective number of relativistic species (including massive neutrinos) */
+  double N_eff;
+
+  /*! Mass of each massive neutrino species in electron-volts */
+  double *M_nu_eV;
+
+  /*! Degeneracy of each massive neutrino species */
+  double *deg_nu;
+
+  /*! Sum of massive neutrino degeneracies */
+  double deg_nu_tot;
+
+  /*! Log of starting expansion factor for neutrino interpolation tables */
+  double log_a_long_begin;
+
+  /*! Log of midpoint expansion factor for neutrino interpolation tables */
+  double log_a_long_mid;
+
+  /*! Log of ending expansion factor for neutrino interpolation tables */
+  double log_a_long_end;
 
   /*! Log of starting expansion factor */
   double log_a_begin;
@@ -189,8 +231,17 @@ struct cosmology {
   /*! Scale factor interpolation table */
   double *scale_factor_interp_table;
 
+  /*! Massive neutrino density interpolation table at early times */
+  double *neutrino_density_early_table;
+
+  /*! Massive neutrino density interpolation table at late times */
+  double *neutrino_density_late_table;
+
   /*! Time between Big Bang and first entry in the table */
   double time_interp_table_offset;
+
+  /*! Time between Big Bang and last entry in the table */
+  double time_interp_table_max;
 
   /*! Time at the present-day (a=1) */
   double universe_age_at_present_day;
@@ -217,6 +268,7 @@ double cosmology_get_corr_kick_factor(const struct cosmology *cosmo,
 double cosmology_get_delta_time(const struct cosmology *c,
                                 const integertime_t ti_start,
                                 const integertime_t ti_end);
+double cosmology_get_neutrino_density(const struct cosmology *c, double a);
 
 double cosmology_get_delta_time_from_scale_factors(const struct cosmology *c,
                                                    const double a_start,

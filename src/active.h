@@ -25,6 +25,7 @@
 /* Local includes. */
 #include "cell.h"
 #include "engine.h"
+#include "feedback.h"
 #include "part.h"
 #include "timeline.h"
 
@@ -168,27 +169,6 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
 }
 
 /**
- * @brief Are *all* particles in a cell finishing their time-step now ?
- *
- * @param c The #cell.
- * @param e The #engine containing information about the current time.
- * @return 1 if all particles in a #cell are active, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int cell_is_all_active_hydro(
-    const struct cell *c, const struct engine *e) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->hydro.count > 0 && c->hydro.ti_end_max < e->ti_current)
-    error(
-        "cell in an impossible time-zone! c->ti_end_max=%lld "
-        "e->ti_current=%lld",
-        c->hydro.ti_end_max, e->ti_current);
-#endif
-
-  return (c->hydro.ti_end_max == e->ti_current);
-}
-
-/**
  * @brief Does a cell contain any g-particle finishing their time-step now ?
  *
  * @param c The #cell.
@@ -221,27 +201,6 @@ __attribute__((always_inline)) INLINE static int cell_is_active_gravity_mm(
     const struct cell *c, const struct engine *e) {
 
   return (c->grav.ti_end_min == e->ti_current);
-}
-
-/**
- * @brief Are *all* g-particles in a cell finishing their time-step now ?
- *
- * @param c The #cell.
- * @param e The #engine containing information about the current time.
- * @return 1 if all particles in a #cell are active, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int cell_is_all_active_gravity(
-    const struct cell *c, const struct engine *e) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (c->grav.count > 0 && c->grav.ti_end_max < e->ti_current)
-    error(
-        "cell in an impossible time-zone! c->ti_end_max=%lld "
-        "e->ti_current=%lld",
-        c->grav.ti_end_max, e->ti_current);
-#endif
-
-  return (c->grav.ti_end_max == e->ti_current);
 }
 
 /**
@@ -286,6 +245,26 @@ __attribute__((always_inline)) INLINE static int cell_is_active_sinks(
 #endif
 
   return (c->sinks.ti_end_min == e->ti_current);
+}
+
+/**
+ * @brief Does a cell contain any s-particle finishing their time-step now ?
+ *
+ * This also considers additional physics modules interacting with stars.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_need_activating_stars(
+    const struct cell *c, const struct engine *e, const int with_star_formation,
+    const int with_star_formation_sink) {
+
+  return cell_is_active_stars(c, e) ||
+         (feedback_use_newborn_stars && with_star_formation &&
+          cell_is_active_hydro(c, e)) ||
+         (with_star_formation_sink &&
+          (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e)));
 }
 
 /**

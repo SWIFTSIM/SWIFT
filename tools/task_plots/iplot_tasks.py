@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Interactive plot of a task dump.
 
@@ -36,16 +36,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import matplotlib
-matplotlib.use('TkAgg')
+
+matplotlib.use("TkAgg")
 import numpy as np
 import matplotlib.backends.backend_tkagg as tkagg
 from matplotlib.figure import Figure
-import Tkinter as tk
+import tkinter as tk
 import matplotlib.collections as collections
 import matplotlib.ticker as plticker
 import pylab as pl
 import sys
 import argparse
+
+# import hardcoded data
+from swift_hardcoded_data import TASKTYPES, SUBTYPES
 
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Plot task graphs")
@@ -123,104 +127,6 @@ PLOT_PARAMS = {
 }
 pl.rcParams.update(PLOT_PARAMS)
 
-#  Tasks and subtypes. Indexed as in tasks.h.
-TASKTYPES = [
-    "none",
-    "sort",
-    "self",
-    "pair",
-    "sub_self",
-    "sub_pair",
-    "init_grav",
-    "init_grav_out",
-    "ghost_in",
-    "ghost",
-    "ghost_out",
-    "extra_ghost",
-    "drift_part",
-    "drift_spart",
-    "drift_sink",
-    "drift_bpart",
-    "drift_gpart",
-    "drift_gpart_out",
-    "hydro_end_force",
-    "kick1",
-    "kick2",
-    "timestep",
-    "timestep_limiter",
-    "timestep_sync",
-    "send",
-    "recv",
-    "grav_long_range",
-    "grav_mm",
-    "grav_down_in",
-    "grav_down",
-    "grav_end_force",
-    "cooling",
-    "cooling_in",
-    "cooling_out",
-    "star_formation",
-    "star_formation_in",
-    "star_formation_out",
-    "logger",
-    "stars_in",
-    "stars_out",
-    "stars_ghost_in",
-    "stars_ghost",
-    "stars_ghost_out",
-    "stars_sort",
-    "stars_resort",
-    "bh_in",
-    "bh_out",
-    "bh_ghost",
-    "bh_swallow_ghost1",
-    "bh_swallow_ghost2",
-    "bh_swallow_ghost3",
-    "fof_self",
-    "fof_pair",
-    "rt_in",
-    "rt_out",
-    "sink_formation",
-    "rt_ghost1",
-    "count",
-]
-
-SUBTYPES = [
-    "none",
-    "density",
-    "gradient",
-    "force",
-    "limiter",
-    "grav",
-    "external_grav",
-    "tend_part",
-    "tend_gpart",
-    "tend_spart",
-    "tend_sink",
-    "tend_bpart",
-    "xv",
-    "rho",
-    "part_swallow",
-    "bpart_merger",
-    "gpart",
-    "multipole",
-    "spart",
-    "stars_density",
-    "stars_feedback",
-    "sf_counts",
-    "bpart_rho",
-    "bpart_swallow",
-    "bpart_feedback",
-    "bh_density",
-    "bh_swallow",
-    "do_swallow",
-    "bh_feedback",
-    "sink",
-    "rt_inject",
-    "sink_compute_formation",
-    "count",
-]
-
 #  Task/subtypes of interest.
 FULLTYPES = [
     "self/limiter",
@@ -261,10 +167,22 @@ FULLTYPES = [
     "recv/sf_counts",
     "recv/bpart",
     "send/bpart",
+    "recv/limiter",
+    "send/limiter",
+    "pack/limiter",
+    "unpack/limiter",
     "self/stars_density",
     "pair/stars_density",
     "sub_self/stars_density",
     "sub_pair/stars_density",
+    "self/stars_prep1",
+    "pair/stars_prep1",
+    "sub_self/stars_prep1",
+    "sub_pair/stars_prep1",
+    "self/stars_prep2",
+    "pair/stars_prep2",
+    "sub_self/stars_prep2",
+    "sub_pair/stars_prep2",
     "self/stars_feedback",
     "pair/stars_feedback",
     "sub_self/stars_feedback",
@@ -352,9 +270,9 @@ for task in SUBTYPES:
 if args.verbose:
     print("#Selected colours:")
     for task in sorted(TASKCOLOURS.keys()):
-        print(("# " + task + ": " + TASKCOLOURS[task]))
+        print("# " + task + ": " + TASKCOLOURS[task])
     for task in sorted(SUBCOLOURS.keys()):
-        print(("# " + task + ": " + SUBCOLOURS[task]))
+        print("# " + task + ": " + SUBCOLOURS[task])
 
 #  Read input.
 data = pl.loadtxt(infile)
@@ -365,7 +283,7 @@ if full_step.size == 13:
     print("# MPI mode")
     mpimode = True
     ranks = list(range(int(max(data[:, 0])) + 1))
-    print(("# Number of ranks:", len(ranks)))
+    print("# Number of ranks:", len(ranks))
     rankcol = 0
     threadscol = 1
     taskcol = 2
@@ -385,10 +303,10 @@ else:
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-1]) / 1000.0
 if args.verbose:
-    print(("# CPU frequency:", CPU_CLOCK * 1000.0))
+    print("# CPU frequency:", CPU_CLOCK * 1000.0)
 
 nthread = int(max(data[:, threadscol])) + 1
-print(("# Number of threads:", nthread))
+print("# Number of threads:", nthread)
 
 # Avoid start and end times of zero.
 sdata = data[data[:, ticcol] != 0]
@@ -406,7 +324,7 @@ if delta_t == 0:
     dt = toc_step - tic_step
     if dt > delta_t:
         delta_t = dt
-    print(("# Data range: ", delta_t / CPU_CLOCK, "ms"))
+    print("# Data range: ", delta_t / CPU_CLOCK, "ms")
 
 # Once more doing the real gather and plots this time.
 if mpimode:
@@ -414,12 +332,12 @@ if mpimode:
     full_step = data[0, :]
 tic_step = int(full_step[ticcol])
 toc_step = int(full_step[toccol])
-print(("# Min tic = ", tic_step))
+print("# Min tic = ", tic_step)
 data = data[1:, :]
 
 # Exit if no data.
 if data.size == 0:
-    print(("# Rank ", rank, " has no tasks"))
+    print("# Rank ", rank, " has no tasks")
     sys.exit(1)
 
 start_t = float(tic_step)
@@ -447,7 +365,12 @@ for line in range(num_lines):
     tasks[thread][-1]["toc"] = toc
     if "fof" in tasktype:
         tasks[thread][-1]["colour"] = TASKCOLOURS[tasktype]
-    elif ("self" in tasktype) or ("pair" in tasktype) or ("recv" in tasktype) or ("send" in tasktype):
+    elif (
+        ("self" in tasktype)
+        or ("pair" in tasktype)
+        or ("recv" in tasktype)
+        or ("send" in tasktype)
+    ):
         fulltype = tasktype + "/" + subtype
         if fulltype in SUBCOLOURS:
             tasks[thread][-1]["colour"] = SUBCOLOURS[fulltype]
@@ -501,8 +424,9 @@ loc = plticker.MultipleLocator(base=1)
 ax.yaxis.set_major_locator(loc)
 ax.grid(True, which="major", axis="y", linestyle="-")
 
+
 class Container:
-    def __init__(self,  window, figure, motion, nthread, ltics, ltocs, llabels):
+    def __init__(self, window, figure, motion, nthread, ltics, ltocs, llabels):
         self.window = window
         self.figure = figure
         self.motion = motion
@@ -517,10 +441,12 @@ class Container:
         wcanvas.config(width=1000, height=300)
         wcanvas.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
-        toolbar = tkagg.NavigationToolbar2TkAgg(canvas, self.window)
+        toolbar = tkagg.NavigationToolbar2Tk(canvas, self.window)
         toolbar.update()
         self.output = tk.StringVar()
-        label = tk.Label(self.window, textvariable=self.output, bg="white", fg="red", bd=2)
+        label = tk.Label(
+            self.window, textvariable=self.output, bg="white", fg="red", bd=2
+        )
         label.pack(side=tk.RIGHT, expand=True, fill=tk.X)
         wcanvas.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
@@ -528,9 +454,9 @@ class Container:
 
         # Print task type using mouse clicks or motion.
         if self.motion:
-            fig.canvas.mpl_connect('motion_notify_event', self.onclick)
+            fig.canvas.mpl_connect("motion_notify_event", self.onclick)
         else:
-            fig.canvas.mpl_connect('button_press_event', self.onclick)
+            fig.canvas.mpl_connect("button_press_event", self.onclick)
 
     def onclick(self, event):
         # Find thread, then scan for bounded task.
@@ -544,7 +470,14 @@ class Container:
                     if event.xdata > tics[i] and event.xdata < tocs[i]:
                         tic = "{0:.3f}".format(tics[i])
                         toc = "{0:.3f}".format(tocs[i])
-                        outstr = "task =  " + labels[i] + ",  tic/toc =  " + tic + " / " + toc
+                        outstr = (
+                            "task =  "
+                            + labels[i]
+                            + ",  tic/toc =  "
+                            + tic
+                            + " / "
+                            + toc
+                        )
                         self.output.set(outstr)
                         break
         except TypeError:
@@ -553,6 +486,7 @@ class Container:
 
     def quit(self):
         self.window.destroy()
+
 
 window = tk.Tk()
 window.protocol("WM_DELETE_WINDOW", window.quit)

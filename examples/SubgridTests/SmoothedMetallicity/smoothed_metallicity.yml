@@ -33,3 +33,7 @@ InitialConditions:
   file_name:  ./smoothed_metallicity.hdf5          # The file to read
   periodic:   1
 
+GEARChemistry:
+  scale_initial_metallicity: 0 # Scale the initial metallicity with solar abundances
+  initial_metallicity: -1 # Read from the snapshot
+  diffusion_coefficient: 1e-3 # Coefficient for the diffusion (see Shen et al. 2010)

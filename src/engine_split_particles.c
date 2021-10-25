@@ -29,7 +29,9 @@
 #include "chemistry.h"
 #include "cooling.h"
 #include "hydro.h"
+#include "particle_splitting.h"
 #include "random.h"
+#include "rt.h"
 #include "star_formation.h"
 #include "tracers.h"
 
@@ -170,6 +172,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
         memcpy(&global_gparts[k_gparts], gp, sizeof(struct gpart));
       }
 
+      /* Update splitting tree */
+      particle_splitting_update_binary_tree(&global_xparts[k_parts].split_data,
+                                            &xp->split_data);
+
       /* Update the IDs. */
       if (generate_random_ids) {
         /* The gas IDs are always odd, so we multiply by two here to
@@ -243,6 +249,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       tracers_split_part(p, xp, particle_split_factor);
       tracers_split_part(&global_parts[k_parts], &global_xparts[k_parts],
                          particle_split_factor);
+
+      /* Split the RT fields */
+      rt_split_part(p, particle_split_factor);
+      rt_split_part(&global_parts[k_parts], particle_split_factor);
 
       /* Mark the particles as not having been swallowed */
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);

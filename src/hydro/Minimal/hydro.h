@@ -25,7 +25,7 @@
  * equations)
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
+ * viscosity term with the Balsara (1995) switch. No thermal conduction
  * term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
@@ -376,6 +376,31 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+}
+
+/**
+ * @brief Correct the signal velocity of the particle partaking in
+ * supernova (kinetic) feedback based on the velocity kick the particle receives
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param dv_phys The velocity kick received by the particle expressed in
+ * physical units (note that dv_phys must be positive or equal to zero)
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_v_sig_based_on_velocity_kick(struct part *p,
+                                       const struct cosmology *cosmo,
+                                       const float dv_phys) {
+
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* Sound speed */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Update the signal velocity */
+  p->force.v_sig =
+      max(2.f * soundspeed, p->force.v_sig + const_viscosity_beta * dv);
 }
 
 /**
@@ -879,8 +904,9 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
  *
  * @param p The particle.
  * @param xp The extended particle data.
+ * @param time The simulation time.
  */
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
-    const struct part *p, const struct xpart *xp) {}
+    const struct part *p, const struct xpart *xp, const double time) {}
 
 #endif /* SWIFT_MINIMAL_HYDRO_H */

@@ -66,7 +66,7 @@ struct cosmoinfo {
   /*! Radiation density parameter (cosmology.Omega_r) */
   double Omega_r;
 
-  /*! Neutrino density parameter (0 in SWIFT) */
+  /*! Neutrino density parameter at z = 0 (cosmology.Omega_nu_0) */
   double Omega_nu;
 
   /*! Neutrino density parameter (cosmology.Omega_k) */
@@ -78,7 +78,7 @@ struct cosmoinfo {
   /*! Radiation constant density parameter (cosmology.Omega_lambda) */
   double Omega_Lambda;
 
-  /*! Dark matter density parameter (cosmology.Omega_m - cosmology.Omega_b) */
+  /*! Dark matter density parameter (cosmology.Omega_cdm) */
   double Omega_cdm;
 
   /*! Dark-energy equation of state at the current time (cosmology.w)*/
@@ -334,15 +334,8 @@ void velociraptor_convert_particles_mapper(void *map_data, int nr_gparts,
       } break;
 
       case swift_type_dark_matter:
-
-        convert_gpart_pos(e, &(gparts[i]), swift_parts[i].x);
-        convert_gpart_vel(e, &(gparts[i]), swift_parts[i].v);
-        swift_parts[i].id = gparts[i].id_or_neg_offset;
-        swift_parts[i].u = 0.f;
-        swift_parts[i].T = 0.f;
-        break;
-
       case swift_type_dark_matter_background:
+      case swift_type_neutrino:
 
         convert_gpart_pos(e, &(gparts[i]), swift_parts[i].x);
         convert_gpart_vel(e, &(gparts[i]), swift_parts[i].v);
@@ -592,12 +585,9 @@ void velociraptor_dump_orphan_particles(struct engine *e,
           convert_bpart_vel(e, bp, &vel[3 * offset]);
           ids[offset] = bparts[-gparts[i].id_or_neg_offset].id;
         } break;
-        case swift_type_dark_matter: {
-          convert_gpart_pos(e, &gparts[i], &pos[3 * offset]);
-          convert_gpart_vel(e, &gparts[i], &vel[3 * offset]);
-          ids[offset] = gparts[i].id_or_neg_offset;
-        } break;
-        case swift_type_dark_matter_background: {
+        case swift_type_dark_matter:
+        case swift_type_dark_matter_background:
+        case swift_type_neutrino: {
           convert_gpart_pos(e, &gparts[i], &pos[3 * offset]);
           convert_gpart_vel(e, &gparts[i], &vel[3 * offset]);
           ids[offset] = gparts[i].id_or_neg_offset;
@@ -748,12 +738,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   const int nr_cells = s->nr_cells;
   const struct cell *cells_top = s->cells_top;
 
-  /* Start by freeing some of the unnecessary memory to give VR some breathing
-     space */
-#ifdef WITH_MPI
-  space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
-#endif
-
   /* Allow thread to run on any core for the duration of the call to
    * VELOCIraptor so that  when OpenMP threads are spawned
    * they can run on any core on the processor. */
@@ -770,13 +754,13 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
   struct cosmoinfo cosmo_info;
   cosmo_info.atime = e->cosmology->a;
   cosmo_info.littleh = e->cosmology->h;
-  cosmo_info.Omega_m = e->cosmology->Omega_m;
+  cosmo_info.Omega_m = e->cosmology->Omega_cdm + e->cosmology->Omega_b;
   cosmo_info.Omega_b = e->cosmology->Omega_b;
   cosmo_info.Omega_r = e->cosmology->Omega_r;
   cosmo_info.Omega_k = e->cosmology->Omega_k;
-  cosmo_info.Omega_nu = 0.;
+  cosmo_info.Omega_nu = e->cosmology->Omega_nu_0;
   cosmo_info.Omega_Lambda = e->cosmology->Omega_lambda;
-  cosmo_info.Omega_cdm = e->cosmology->Omega_m - e->cosmology->Omega_b;
+  cosmo_info.Omega_cdm = e->cosmology->Omega_cdm;
   cosmo_info.w_de = e->cosmology->w;
 
   /* Report the cosmo info we use */
@@ -787,6 +771,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
     message("VELOCIraptor conf: Omega_b: %e", cosmo_info.Omega_b);
     message("VELOCIraptor conf: Omega_Lambda: %e", cosmo_info.Omega_Lambda);
     message("VELOCIraptor conf: Omega_cdm: %e", cosmo_info.Omega_cdm);
+    message("VELOCIraptor conf: Omega_nu: %e", cosmo_info.Omega_nu);
     message("VELOCIraptor conf: w_de: %e", cosmo_info.w_de);
   }
 
@@ -833,8 +818,9 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
                   MPI_COMM_WORLD);
 #endif
 
-    const double Omega_m = e->cosmology->Omega_m;
+    const double Omega_cdm = e->cosmology->Omega_cdm;
     const double Omega_b = e->cosmology->Omega_b;
+    const double Omega_m = Omega_cdm + Omega_b;
     const double critical_density_0 = e->cosmology->critical_density_0;
 
     /* Linking length based on the mean DM inter-particle separation
@@ -842,7 +828,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
      * is used in the zoom region. */
     double mean_matter_density;
     if (s->with_hydro)
-      mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
+      mean_matter_density = Omega_cdm * critical_density_0;
     else
       mean_matter_density = Omega_m * critical_density_0;
 
@@ -1115,12 +1101,6 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
 
   /* Record we have ran stf this timestep */
   e->stf_this_timestep = 1;
-
-  /* Reallocate the memory that was freed earlier */
-#ifdef WITH_MPI
-
-  engine_allocate_foreign_particles(e);
-#endif
 
 #else
   error("SWIFT not configured to run with VELOCIraptor.");

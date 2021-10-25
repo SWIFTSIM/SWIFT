@@ -35,12 +35,12 @@ void read_ic_single(const char* fileName,
                     struct part** parts, struct gpart** gparts,
                     struct sink** sinks, struct spart** sparts,
                     struct bpart** bparts, size_t* Ngas, size_t* Ndm,
-                    size_t* Ndm_background, size_t* Nsinks, size_t* Nstars,
-                    size_t* Nblackholes, int* flag_entropy, int with_hydro,
-                    int with_gravity, int with_sinks, int with_stars,
-                    int with_black_holes, int with_cosmology, int cleanup_h,
-                    int cleanup_sqrt_a, double h, double a, int nr_threads,
-                    int dry_run, int remap_ids);
+                    size_t* Ndm_background, size_t* Nnuparts, size_t* Nsinks,
+                    size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+                    int with_hydro, int with_gravity, int with_sinks,
+                    int with_stars, int with_black_holes, int with_cosmology,
+                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
+                    int nr_threads, int dry_run, int remap_ids);
 
 void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,

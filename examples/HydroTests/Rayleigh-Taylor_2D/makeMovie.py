@@ -45,6 +45,7 @@ class Metadata(object):
     """
     Copy the useful data in order to decrease the memory usage
     """
+
     def __init__(self, data):
         metadata = data.metadata
         self.t = metadata.t
@@ -91,7 +92,7 @@ def load_and_make_image(filename, res, property):
     border = int(0.2 * m_res)
 
     # first part of the image
-    ylim = np.array([0., 1.])
+    ylim = np.array([0.0, 1.0])
 
     data = load(filename)
     image[:m_res, :m_res] = project(data, m_res, property, ylim)
@@ -144,27 +145,36 @@ def create_movie(filename, start, stop, resolution, property, output_filename):
 
     norm = LogNorm(vmin=vmin, vmax=vmax, clip="black")
 
-    image = ax.imshow(np.zeros_like(frames[0]), origin="lower",
-                      norm=norm)
+    image = ax.imshow(np.zeros_like(frames[0]), origin="lower", norm=norm)
 
     description_text = ax.text(
-        0.5, 0.5,
+        0.5,
+        0.5,
         get_simulation_information(metadata[0]),
-        va="center", ha="center",
-        **text_args, transform=ax.transAxes,
+        va="center",
+        ha="center",
+        **text_args,
+        transform=ax.transAxes,
     )
 
     time_text = ax.text(
-        (1 - 0.025 * 0.25), 0.975,
+        (1 - 0.025 * 0.25),
+        0.975,
         time_formatter(metadata[0]),
         **text_args,
-        va="top", ha="right",
+        va="top",
+        ha="right",
         transform=ax.transAxes,
     )
 
     ax.text(
-        0.025 * 0.25, 0.975, name, **text_args, va="top", ha="left",
-        transform=ax.transAxes
+        0.025 * 0.25,
+        0.975,
+        name,
+        **text_args,
+        va="top",
+        ha="left",
+        transform=ax.transAxes,
     )
 
     def frame(n):
@@ -174,19 +184,19 @@ def create_movie(filename, start, stop, resolution, property, output_filename):
             time_text.set_text(time_formatter(metadata[n]))
 
         if generate_png:
-            name = filename + "_{:04d}".format(n+info_frames)
+            name = filename + "_{:04d}".format(n + info_frames)
             fig.savefig(name + ".png")
 
         else:
             return (image,)
 
     if generate_png:
-        for i in range(-info_frames, stop-start):
+        for i in range(-info_frames, stop - start):
             frame(i)
     else:
-        animation = FuncAnimation(fig, frame,
-                                  range(-info_frames, stop-start),
-                                  interval=40)
+        animation = FuncAnimation(
+            fig, frame, range(-info_frames, stop - start), interval=40
+        )
         animation.save(output_filename)
 
 
@@ -232,13 +242,11 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-i", "--initial", help="Initial snapshot. Default: 0",
-        type=int, default=0
+        "-i", "--initial", help="Initial snapshot. Default: 0", type=int, default=0
     )
 
     parser.add_argument(
-        "-f", "--final", help="Final snapshot. Default: 40",
-        type=int, default=40
+        "-f", "--final", help="Final snapshot. Default: 40", type=int, default=40
     )
 
     parser.add_argument(

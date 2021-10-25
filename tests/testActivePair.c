@@ -113,7 +113,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->entropy = 1.f;
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
@@ -151,7 +151,6 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
-  cell->hydro.ti_end_max = 10;
   cell->nodeID = NODE_ID;
 
   shuffle_particles(cell->hydro.parts, cell->hydro.count);
@@ -197,7 +196,8 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
     p->density.rot_v[2] = 0.f;
     p->density.div_v = 0.f;
 #endif /* GADGET-2 */
-#if defined(MINIMAL_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+#if defined(MINIMAL_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || \
+    defined(GASOLINE_SPH)
     p->rho = 1.f;
     p->density.rho_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
@@ -502,7 +502,6 @@ int main(int argc, char *argv[]) {
   struct cosmology cosmo;
   struct hydro_props hydro_props;
   struct runner *runner;
-  char c;
   static long long partId = 0;
   char outputFileNameExtension[100] = "";
   char swiftOutputFileName[200] = "";
@@ -520,6 +519,7 @@ int main(int argc, char *argv[]) {
   /* Generate a RNG seed from time. */
   unsigned int seed = time(NULL);
 
+  int c;
   while ((c = getopt(argc, argv, "h:p:n:r:t:d:s:f:")) != -1) {
     switch (c) {
       case 'h':

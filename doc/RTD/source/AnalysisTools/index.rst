@@ -1,6 +1,7 @@
 .. AnalysisTools
    Loic Hausammann 20th March 2019
    Peter W. Draper 28th March 2019
+   Mladen Ivkovic 18th March 2021
 
 .. _Analysis_Tools:
 
@@ -10,11 +11,31 @@ Analysis Tools
 Task dependencies
 -----------------
 
-At the beginning of each simulation the file ``dependency_graph.csv`` is generated and can be transformed into a ``dot`` and a ``png`` file with the script ``tools/plot_task_dependencies.py``.
+At the beginning of each simulation the file ``dependency_graph_0.csv`` is generated and can be transformed into a ``dot`` and a ``png`` file with the script ``tools/plot_task_dependencies.py``.
 It requires the ``dot`` package that is available in the library graphviz.
 This script has also the possibility to generate a list of function calls for each task with the option ``--with-calls`` (this list may be incomplete) and to describe at which level each task are run ``--with-levels`` (a larger simulation will provide more accurate levels).
 You can convert the ``dot`` file into a ``png`` with the following command
 ``dot -Tpng dependency_graph.dot -o dependency_graph.png`` or directly read it with the python module ``xdot`` with ``python -m xdot dependency_graph.dot``.
+If you wish to have more dependency graphs, you can use the parameter ``Scheduler:dependency_graph_frequency``. It defines how many steps are done in between two graphs.
+While the initial graph is showing all the tasks/dependencies, the next ones are only showing the active tasks/dependencies.
+
+
+
+Task levels
+-----------------
+
+At the beginning of each simulation the file ``task_level_0.txt`` is generated. 
+It contains the counts of all tasks at all levels (depths) in the tree.
+The depths and counts of the tasks can be plotted with the script ``tools/plot_task_levels.py``.
+It will display the individual tasks at the x-axis, the number of each task at a given level on the y-axis, and the level is shown as the colour of the plotted point.
+Additionally, the script can write out in brackets next to each tasks's name on the x-axis on how many different levels the task exists using the ``--count`` flag.
+Finally, in some cases the counts for different levels of a task may be very close to each other and overlap on the plot, making them barely visible.
+This can be alleviated by using the ``--displace`` flag: 
+It will displace the plot points w.r.t. the y-axis in an attempt to make them better visible, however the counts won't be exact in that case.
+If you wish to have more task level plots, you can use the parameter ``Scheduler:task_level_output_frequency``. 
+It defines how many steps are done in between two task level output dumps.
+
+
 
 
 Cell graph
@@ -113,3 +134,54 @@ suitable for matching between ranks. The unique keys to associate records
 between ranks (so that the MPI_Isend and MPI_Irecv pairs can be identified)
 are "otherrank/rank/subtype/tag/size" and "rank/otherrank/subtype/tag/size"
 for send and recv respectively. When matching ignore step0.
+
+
+
+
+Task and Threadpool Plots and Analysis Tools
+--------------------------------------------
+
+A variety of plotting tools for tasks and threadpools is available in ``tools/task_plots/``.
+To be able to use the task analysis tools, you need to compile swift with ``--enable-task-debugging``
+and then run swift with ``-y <interval>``, where ``<interval>`` is the interval between time steps
+on which the additional task data will be dumped. Swift will then create ``thread_stats-step<nr>.dat``
+and ``thread_info-step<nr>.dat`` files. Similarly, for threadpool related tools, you need to compile
+swift with ``--enable-threadpool-debugging`` and then run it with ``-Y <interval>``.
+
+For the analysis and plotting scripts listed below, you need to provide the **\*info-step<nr>.dat** 
+files as a cmdline argument, not the ``*stats-step<nr>.dat`` files.
+
+A short summary of the scripts in ``tools/task_plots/``:
+
+- ``analyse_tasks.py``: 
+    The output is an analysis of the task timings, including deadtime per thread
+    and step, total amount of time spent for each task type, for the whole step
+    and per thread and the minimum and maximum times spent per task type.
+- ``analyse_threadpool_tasks.py``: 
+    The output is an analysis of the threadpool task timings, including 
+    deadtime per thread and step, total amount of time spent for each task type, for the
+    whole step and per thread and the minimum and maximum times spent per task type.
+- ``iplot_tasks.py``: 
+    An interactive task plot, showing what thread was doing what task and for 
+    how long for a step.  **Needs python2 and the tkinter module**.
+- ``plot_tasks.py``: 
+    Creates a task plot image, showing what thread was doing what task and for how long. 
+- ``plot_threadpool.py``: 
+    Creates a threadpool plot image, showing what thread was doing what threadpool call and for
+    how long. 
+
+
+For more details on the scripts as well as further options, look at the documentation at the top
+of the individual scripts and call them with the ``-h`` flag.
+
+Task data is also dumped when using MPI and the tasks above can be used on
+that as well, some offer the ability to process all ranks, and others to
+select individual ranks. 
+
+It is also possible to process a complete run of task data from all the
+available steps using the ``process_plot_tasks`` and
+``process_plot_tasks_MPI`` scripts, as appropriate, these have two arguments,
+the number of concurrent processes to use and a time limit. Concurrent
+processes are useful to speed up the analysis of a lot of task data and a
+consistent time limit so that comparisons across plots is easy. The results
+can be viewed in a single HTML document. 

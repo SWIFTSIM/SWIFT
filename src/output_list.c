@@ -58,6 +58,7 @@ void output_list_read_file(struct output_list *output_list,
   /* Return to start of file and initialize time array */
   fseek(file, 0, SEEK_SET);
   output_list->times = (double *)malloc(sizeof(double) * output_list->size);
+  output_list->snapshot_labels = (int *)malloc(sizeof(int) * output_list->size);
   output_list->select_output_indices =
       (int *)malloc(sizeof(int) * output_list->size);
 
@@ -79,6 +80,7 @@ void output_list_read_file(struct output_list *output_list,
   int type = -1;
   output_list->select_output_on = 0;
   output_list->select_output_number_of_names = 0;
+  output_list->alternative_labels_on = 0;
 
   trim_trailing(line);
 
@@ -97,6 +99,18 @@ void output_list_read_file(struct output_list *output_list,
   } else if (strcasecmp(line, "# Scale Factor, Select Output") == 0) {
     type = OUTPUT_LIST_SCALE_FACTOR;
     output_list->select_output_on = 1;
+  } else if (strcasecmp(line, "# Redshift, Select Output, Label") == 0) {
+    type = OUTPUT_LIST_REDSHIFT;
+    output_list->select_output_on = 1;
+    output_list->alternative_labels_on = 1;
+  } else if (strcasecmp(line, "# Time, Select Output, Label") == 0) {
+    type = OUTPUT_LIST_AGE;
+    output_list->select_output_on = 1;
+    output_list->alternative_labels_on = 1;
+  } else if (strcasecmp(line, "# Scale Factor, Select Output, Label") == 0) {
+    type = OUTPUT_LIST_SCALE_FACTOR;
+    output_list->select_output_on = 1;
+    output_list->alternative_labels_on = 1;
   } else {
     error("Unable to interpret the header (%s) in file '%s'", line, filename);
   }
@@ -108,6 +122,11 @@ void output_list_read_file(struct output_list *output_list,
         "Please change the header in '%s'",
         filename);
 
+  if (!output_list->select_output_on && output_list->alternative_labels_on)
+    error(
+        "Found an output list with alternative labels but not individual "
+        "output selections");
+
   /* Read file */
   size_t ind = 0;
   int read_successfully = 0;
@@ -115,9 +134,15 @@ void output_list_read_file(struct output_list *output_list,
   char select_output_buffer[FIELD_BUFFER_SIZE] =
       select_output_header_default_name;
   while (getline(&line, &len, file) != -1) {
+
     double *time = &output_list->times[ind];
+    int *label = &output_list->snapshot_labels[ind];
+
     /* Write data to output_list */
-    if (output_list->select_output_on) {
+    if (output_list->select_output_on && output_list->alternative_labels_on) {
+      read_successfully = sscanf(line, "%lf, %[^,], %d", time,
+                                 select_output_buffer, label) == 3;
+    } else if (output_list->select_output_on) {
       read_successfully =
           sscanf(line, "%lf, %s", time, select_output_buffer) == 2;
     } else {
@@ -141,16 +166,16 @@ void output_list_read_file(struct output_list *output_list,
      * in the select_output_names array that corresponds to this select output
      * name. */
     found_select_output = 0;
-    for (int select_output_index = 0;
-         select_output_index < output_list->select_output_number_of_names;
-         select_output_index++) {
-      if (!strcmp(select_output_buffer,
-                  output_list->select_output_names[select_output_index])) {
+    for (int i = 0; i < output_list->select_output_number_of_names; i++) {
+
+      if (strcmp(select_output_buffer, output_list->select_output_names[i]) ==
+          0) {
         /* We already have this select output list string in the buffer! */
-        output_list->select_output_indices[ind] = select_output_index;
+        output_list->select_output_indices[ind] = i;
         found_select_output = 1;
       }
     }
+
     /* If we did not assign it above, we haven't encountered this name before
      * and we need to create this name in the array */
     if (!found_select_output) {
@@ -305,26 +330,26 @@ void output_list_get_current_select_output(struct output_list *t,
 /**
  * @brief initialize an output list
  *
- * @param list The output list to initialize
- * @param e The #engine
- * @param name The name of the section in params
- * @param delta_time updated to the initial delta time
- * @param time_first updated to the time of first output (scale factor or
- * cosmic time)
+ * @param list The output list to initialize.
+ * @param e The #engine.
+ * @param name The name of the section in the param file.
+ * @param delta_time (return) The delta between the first two outputs
  */
 void output_list_init(struct output_list **list, const struct engine *e,
-                      const char *name, double *delta_time,
-                      double *time_first) {
+                      const char *name, double *const delta_time) {
+
   struct swift_params *params = e->parameter_file;
 
-  /* get cosmo */
+  if (*list != NULL) error("Output list already allocated!");
+
+  /* Get cosmo */
   struct cosmology *cosmo = NULL;
   if (e->policy & engine_policy_cosmology) cosmo = e->cosmology;
 
   /* Read output on/off */
   char param_name[PARSER_MAX_LINE_SIZE];
   sprintf(param_name, "%s:output_list_on", name);
-  int output_list_on = parser_get_opt_param_int(params, param_name, 0);
+  const int output_list_on = parser_get_opt_param_int(params, param_name, 0);
 
   /* Check if read output_list */
   if (!output_list_on) return;
@@ -343,15 +368,44 @@ void output_list_init(struct output_list **list, const struct engine *e,
   output_list_read_file(*list, filename, cosmo);
 
   if ((*list)->size < 2)
-    error("You need to provide more snapshots in '%s'", filename);
+    error("You need to provide more entries in '%s'", filename);
+
+  if (strcmp(name, "Snapshots") == 0) {
+    if ((*list)->select_output_on &&
+        e->output_options->select_output->paramCount == 0)
+      error(
+          "Cannot use an output list with individual output selection entries "
+          "if 'Snapshots:select_output_on' is set to 0.");
+  }
 
   /* Set data for later checks */
   if (cosmo) {
     *delta_time = (*list)->times[1] / (*list)->times[0];
-    *time_first = (*list)->times[0];
   } else {
     *delta_time = (*list)->times[1] - (*list)->times[0];
-    *time_first = (*list)->times[0];
+  }
+}
+
+/**
+ * @brief Verify that a given output list only contains output selections
+ * that have actually been read in.
+ *
+ * @param list the #output_list.
+ * @param output_options The #output_options we read in earlier.
+ */
+void output_list_check_selection(const struct output_list *list,
+                                 const struct output_options *output_options) {
+
+  for (size_t i = 0; i < list->size; ++i) {
+
+    const int list_id = list->select_output_indices[i];
+
+    const int selection_id = parser_get_section_id(
+        output_options->select_output, list->select_output_names[list_id]);
+
+    if (selection_id < 0)
+      error("Invalid output selection found in output list: '%s'",
+            list->select_output_names[list_id]);
   }
 }
 
@@ -388,6 +442,7 @@ void output_list_print(const struct output_list *output_list) {
 void output_list_clean(struct output_list **output_list) {
   if (*output_list) {
     free((*output_list)->times);
+    free((*output_list)->snapshot_labels);
     free((*output_list)->select_output_indices);
     free(*output_list);
     *output_list = NULL;
@@ -406,6 +461,9 @@ void output_list_struct_dump(struct output_list *list, FILE *stream) {
 
   restart_write_blocks(list->select_output_indices, list->size, sizeof(int),
                        stream, "output_list", "select_output_indices");
+
+  restart_write_blocks(list->snapshot_labels, list->size, sizeof(int), stream,
+                       "output_list", "snapshot_labels");
 }
 
 /**
@@ -422,4 +480,8 @@ void output_list_struct_restore(struct output_list *list, FILE *stream) {
   list->select_output_indices = (int *)malloc(sizeof(int) * list->size);
   restart_read_blocks(list->select_output_indices, list->size, sizeof(int),
                       stream, NULL, "select_output_indices");
+
+  list->snapshot_labels = (int *)malloc(sizeof(int) * list->size);
+  restart_read_blocks(list->snapshot_labels, list->size, sizeof(int), stream,
+                      NULL, "snapshot_labels");
 }

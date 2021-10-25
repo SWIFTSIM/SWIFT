@@ -75,6 +75,27 @@ float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct cooling_function_data *cooling,
                               const struct part *p, const struct xpart *xp);
 
+double cooling_get_electron_density(const struct phys_const *phys_const,
+                                    const struct hydro_props *hydro_props,
+                                    const struct unit_system *us,
+                                    const struct cosmology *cosmo,
+                                    const struct cooling_function_data *cooling,
+                                    const struct part *p,
+                                    const struct xpart *xp);
+
+double cooling_get_electron_pressure(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
+
+double cooling_get_ycompton(const struct phys_const *phys_const,
+                            const struct hydro_props *hydro_props,
+                            const struct unit_system *us,
+                            const struct cosmology *cosmo,
+                            const struct cooling_function_data *cooling,
+                            const struct part *p, const struct xpart *xp);
+
 float cooling_get_particle_subgrid_HI_fraction(
     const struct unit_system *us, const struct phys_const *phys_const,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
@@ -130,9 +151,14 @@ double compute_subgrid_property(
     const struct entropy_floor_properties *floor_props,
     const struct cosmology *cosmo, const float rho_phys, const float logZZsol,
     const float XH, const float P_phys, const float log10_T,
-    const float log10_T_EOS_max, const int HII_region,
+    const float log10_u_EOS_max_cgs, const int HII_region,
     const float abundance_ratio[colibre_cooling_N_elementtypes],
     const double log_u_cgs, const enum cooling_subgrid_properties isub);
+
+float cooling_get_subgrid_temperature(const struct part *p,
+                                      const struct xpart *xp);
+
+float cooling_get_subgrid_density(const struct part *p, const struct xpart *xp);
 
 float cooling_get_radiated_energy(const struct xpart *xp);
 

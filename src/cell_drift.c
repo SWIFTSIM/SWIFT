@@ -31,6 +31,7 @@
 #include "feedback.h"
 #include "gravity.h"
 #include "multipole.h"
+#include "neutrino.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "star_formation.h"
@@ -57,6 +58,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
+  float cell_h_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_drift));
@@ -97,11 +99,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         dx_max = max(dx_max, cp->hydro.dx_max_part);
         dx_max_sort = max(dx_max_sort, cp->hydro.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->hydro.h_max);
+        cell_h_max_active = max(cell_h_max_active, cp->hydro.h_max_active);
       }
     }
 
     /* Store the values */
     c->hydro.h_max = cell_h_max;
+    c->hydro.h_max_active = cell_h_max_active;
     c->hydro.dx_max_part = dx_max;
     c->hydro.dx_max_sort = dx_max_sort;
 
@@ -179,16 +183,16 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!part_is_inhibited(p, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               /* Log the particle one last time. */
-              logger_log_part(e->logger, p, xp, e, /* log_all */ 1,
-                              logger_flag_delete, /* data */ 0);
+              csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
+                            csds_flag_delete, /* data */ 0);
             }
 #endif
 
             /* One last action before death? */
-            hydro_remove_part(p, xp);
+            hydro_remove_part(p, xp, e->time);
 
             /* Remove the particle entirely */
             cell_remove_part(e, c, p, xp);
@@ -221,6 +225,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
       /* Mark the particle has not being swallowed */
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
 
+      /* Reset the gas particle-carried feedback fields */
+      feedback_reset_part(p, xp);
+
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
@@ -232,7 +239,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
         rt_init_part(p);
-        rt_reset_part(p);
+
+        /* Update the maximal active smoothing length in the cell */
+        cell_h_max_active = max(cell_h_max_active, p->h);
       }
     }
 
@@ -242,6 +251,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->hydro.h_max = cell_h_max;
+    c->hydro.h_max_active = cell_h_max_active;
     c->hydro.dx_max_part = dx_max;
     c->hydro.dx_max_sort = dx_max_sort;
 
@@ -268,6 +278,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
   const integertime_t ti_current = e->ti_current;
   struct gpart *const gparts = c->grav.parts;
   const struct gravity_props *grav_props = e->gravity_properties;
+  const double a = e->cosmology->a;
+  const double c_vel = e->physical_constants->const_speed_light_c;
+  const int with_neutrinos = e->s->with_neutrinos;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_grav_drift));
@@ -328,14 +341,20 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
       /* Ignore inhibited particles */
       if (gpart_is_inhibited(gp, e)) continue;
 
+      /* Relativistic drift correction for neutrinos */
+      double dt_drift_k = dt_drift;
+      if (with_neutrinos && gp->type == swift_type_neutrino) {
+        dt_drift_k *= relativistic_drift_factor(gp->v_full, a, c_vel);
+      }
+
       /* Drift... */
-      drift_gpart(gp, dt_drift, ti_old_gpart, ti_current, grav_props, e);
+      drift_gpart(gp, dt_drift_k, ti_old_gpart, ti_current, grav_props, e);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
-      if (fabs(gp->v_full[0] * dt_drift) > e->s->dim[0] ||
-          fabs(gp->v_full[1] * dt_drift) > e->s->dim[1] ||
-          fabs(gp->v_full[2] * dt_drift) > e->s->dim[2]) {
+      if (fabs(gp->v_full[0] * dt_drift_k) > e->s->dim[0] ||
+          fabs(gp->v_full[1] * dt_drift_k) > e->s->dim[1] ||
+          fabs(gp->v_full[2] * dt_drift_k) > e->s->dim[2]) {
         error(
             "Particle drifts by more than a box length! gp->v_full %.5e %.5e "
             "%.5e",
@@ -360,11 +379,11 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
             /* Remove the particle entirely */
             if (gp->type == swift_type_dark_matter) {
 
-#ifdef WITH_LOGGER
-              if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+              if (e->policy & engine_policy_csds) {
                 /* Log the particle one last time. */
-                logger_log_gpart(e->logger, gp, e, /* log_all */ 1,
-                                 logger_flag_delete, /* data */ 0);
+                csds_log_gpart(e->csds, gp, e, /* log_all */ 1,
+                               csds_flag_delete, /* data */ 0);
               }
 #endif
 
@@ -414,6 +433,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
   float dx_max = 0.f, dx2_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
+  float cell_h_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_stars_drift));
@@ -454,11 +474,13 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
         dx_max = max(dx_max, cp->stars.dx_max_part);
         dx_max_sort = max(dx_max_sort, cp->stars.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->stars.h_max);
+        cell_h_max_active = max(cell_h_max_active, cp->stars.h_max_active);
       }
     }
 
     /* Store the values */
     c->stars.h_max = cell_h_max;
+    c->stars.h_max_active = cell_h_max_active;
     c->stars.dx_max_part = dx_max;
     c->stars.dx_max_sort = dx_max_sort;
 
@@ -510,11 +532,11 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!spart_is_inhibited(sp, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               /* Log the particle one last time. */
-              logger_log_spart(e->logger, sp, e, /* log_all */ 1,
-                               logger_flag_delete, /* data */ 0);
+              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_delete,
+                             /* data */ 0);
             }
 #endif
 
@@ -553,6 +575,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
         stars_init_spart(sp);
         feedback_init_spart(sp);
         rt_init_spart(sp);
+
+        /* Update the maximal active smoothing length in the cell */
+        cell_h_max_active = max(cell_h_max_active, sp->h);
       }
     }
 
@@ -562,6 +587,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->stars.h_max = cell_h_max;
+    c->stars.h_max_active = cell_h_max_active;
     c->stars.dx_max_part = dx_max;
     c->stars.dx_max_sort = dx_max_sort;
 
@@ -593,6 +619,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_h_max = 0.f;
+  float cell_h_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_bh_drift));
@@ -633,11 +660,14 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
         /* Update */
         dx_max = max(dx_max, cp->black_holes.dx_max_part);
         cell_h_max = max(cell_h_max, cp->black_holes.h_max);
+        cell_h_max_active =
+            max(cell_h_max_active, cp->black_holes.h_max_active);
       }
     }
 
     /* Store the values */
     c->black_holes.h_max = cell_h_max;
+    c->black_holes.h_max_active = cell_h_max_active;
     c->black_holes.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -690,8 +720,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!bpart_is_inhibited(bp, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               error("Logging of black hole particles is not yet implemented.");
             }
 #endif
@@ -726,6 +756,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
       /* Get ready for a density calculation */
       if (bpart_is_active(bp, e)) {
         black_holes_init_bpart(bp);
+
+        /* Update the maximal active smoothing length in the cell */
+        cell_h_max_active = max(cell_h_max_active, bp->h);
       }
     }
 
@@ -734,6 +767,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->black_holes.h_max = cell_h_max;
+    c->black_holes.h_max_active = cell_h_max_active;
     c->black_holes.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -762,6 +796,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
   float dx_max = 0.f, dx2_max = 0.f;
   float cell_r_max = 0.f;
+  float cell_r_max_active = 0.f;
 
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_sink_drift));
@@ -802,11 +837,13 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
         /* Update */
         dx_max = max(dx_max, cp->sinks.dx_max_part);
         cell_r_max = max(cell_r_max, cp->sinks.r_cut_max);
+        cell_r_max_active = max(cell_r_max_active, cp->sinks.r_cut_max_active);
       }
     }
 
     /* Store the values */
     c->sinks.r_cut_max = cell_r_max;
+    c->sinks.r_cut_max_active = cell_r_max_active;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */
@@ -859,15 +896,14 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
            * by another thread before we do the deed. */
           if (!sink_is_inhibited(sink, e)) {
 
-#ifdef WITH_LOGGER
-            if (e->policy & engine_policy_logger) {
+#ifdef WITH_CSDS
+            if (e->policy & engine_policy_csds) {
               error("Logging of sink particles is not yet implemented.");
             }
 #endif
 
             /* Remove the particle entirely */
-            // cell_remove_sink(e, c, bp);
-            error("TODO: loic implement cell_remove_sink");
+            cell_remove_sink(e, c, sink);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -891,6 +927,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       /* Get ready for a density calculation */
       if (sink_is_active(sink, e)) {
         sink_init_sink(sink);
+
+        cell_r_max_active = max(cell_r_max_active, sink->r_cut);
       }
     }
 
@@ -899,6 +937,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
     /* Store the values */
     c->sinks.r_cut_max = cell_r_max;
+    c->sinks.r_cut_max_active = cell_r_max_active;
     c->sinks.dx_max_part = dx_max;
 
     /* Update the time of the last drift */

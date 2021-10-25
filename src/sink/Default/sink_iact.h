@@ -48,4 +48,66 @@ runner_iact_nonsym_sinks_compute_formation(const float r2, const float *dx,
 #endif
 }
 
+/**
+ * @brief Compute the sink merger interaction.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param rj Comoving cut off radius of particle j.
+ * @param si First sink particle.
+ * @param sj Second sink particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ *
+ * @param Which particle should be removed?
+ * Possible value: (sink_merger_remove_none/first/second)
+ */
+__attribute__((always_inline)) INLINE static enum sink_merger_remove
+runner_iact_sym_sinks_merger(const float r2, const float *dx, const float hi,
+                             const float hj, struct sink *restrict si,
+                             struct sink *restrict sj, const float a,
+                             const float H) {
+
+#ifdef DEBUG_INTERACTIONS_SINKS
+  /* Update ngb counters */
+  if (si->num_ngb_merger < MAX_NUM_OF_NEIGHBOURS_SINKS)
+    si->ids_ngbs_merger[si->num_ngb_merger] = sj->id;
+
+  /* Update ngb counters */
+  ++si->num_ngb_merger;
+#endif
+
+  return sink_merger_remove_none;
+}
+
+/**
+ * @brief Accretion interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sink particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_sinks_accretion(const float r2, const float *dx,
+                                   const float hi, const float hj,
+                                   struct sink *restrict si,
+                                   const struct part *restrict pj,
+                                   const float a, const float H) {
+
+#ifdef DEBUG_INTERACTIONS_SINKS
+  /* Update ngb counters */
+  if (si->num_ngb_accretion < MAX_NUM_OF_NEIGHBOURS_SINKS)
+    si->ids_ngbs_accretion[si->num_ngb_accretion] = pj->id;
+
+  /* Update ngb counters */
+  ++si->num_ngb_accretion;
+#endif
+}
+
 #endif

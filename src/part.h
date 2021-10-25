@@ -46,7 +46,10 @@ struct threadpool;
 #define sink_align 128
 
 /* Import the right hydro particle definition */
-#if defined(MINIMAL_SPH)
+#if defined(NONE_SPH)
+#include "./hydro/None/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #elif defined(GADGET2_SPH)
@@ -80,6 +83,10 @@ struct threadpool;
 #include "./hydro/SPHENIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
+#elif defined(GASOLINE_SPH)
+#include "./hydro/Gasoline/hydro_part.h"
+#define hydro_need_extra_init_loop 0
+#define EXTRA_HYDRO_LOOP
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_part.h"
 #define hydro_need_extra_init_loop 0
@@ -98,10 +105,10 @@ struct threadpool;
 #endif
 
 /* Import the right star particle definition */
-#if defined(FEEDBACK_CONST)
-#include "./stars/const/stars_part.h"
-#elif defined(STARS_NONE)
-#include "./stars/Default/stars_part.h"
+#if defined(STARS_NONE)
+#include "./stars/None/stars_part.h"
+#elif defined(STARS_BASIC)
+#include "./stars/Basic/stars_part.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_part.h"
 #elif defined(STARS_GEAR)
@@ -122,6 +129,8 @@ struct threadpool;
 /* Import the right sink particle definition */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink_part.h"
+#elif defined(SINK_GEAR)
+#include "./sink/GEAR/sink_part.h"
 #else
 #error "Invalid choice of sink particle"
 #endif

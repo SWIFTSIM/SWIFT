@@ -515,7 +515,9 @@ void cell_sanitize(struct cell *c, int treated) {
   struct part *parts = c->hydro.parts;
   struct spart *sparts = c->stars.parts;
   float h_max = 0.f;
+  float h_max_active = 0.f;
   float stars_h_max = 0.f;
+  float stars_h_max_active = 0.f;
 
   /* Treat cells will <1000 particles */
   if (count < 1000 && !treated) {
@@ -542,19 +544,28 @@ void cell_sanitize(struct cell *c, int treated) {
 
         /* And collect */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);
+        h_max_active = max(h_max_active, c->progeny[k]->hydro.h_max_active);
         stars_h_max = max(stars_h_max, c->progeny[k]->stars.h_max);
+        stars_h_max_active =
+            max(stars_h_max_active, c->progeny[k]->stars.h_max_active);
       }
     }
   } else {
-    /* Get the new value of h_max */
+    /* Get the new value of h_max (note all particles are active) */
     for (int i = 0; i < count; ++i) h_max = max(h_max, parts[i].h);
+    for (int i = 0; i < count; ++i)
+      h_max_active = max(h_max_active, parts[i].h);
     for (int i = 0; i < scount; ++i)
       stars_h_max = max(stars_h_max, sparts[i].h);
+    for (int i = 0; i < scount; ++i)
+      stars_h_max_active = max(stars_h_max_active, sparts[i].h);
   }
 
   /* Record the change */
   c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
   c->stars.h_max = stars_h_max;
+  c->stars.h_max_active = stars_h_max_active;
 }
 
 /**
@@ -569,10 +580,17 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
   c->hydro.rt_inject = NULL;
+  c->hydro.rt_gradient = NULL;
+  c->hydro.rt_transport = NULL;
   c->grav.grav = NULL;
   c->grav.mm = NULL;
   c->stars.density = NULL;
+  c->stars.prepare1 = NULL;
+  c->stars.prepare2 = NULL;
   c->stars.feedback = NULL;
+  c->sinks.compute_formation = NULL;
+  c->sinks.merger = NULL;
+  c->sinks.accretion = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
   c->black_holes.do_gas_swallow = NULL;
@@ -1263,7 +1281,6 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
   if (ti_current == 0) return;
 
   integertime_t ti_end_min = max_nr_timesteps;
-  integertime_t ti_end_max = 0;
   integertime_t ti_beg_max = 0;
 
   int count = 0;
@@ -1288,7 +1305,6 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
     }
 
     ti_end_min = min(ti_end, ti_end_min);
-    ti_end_max = max(ti_end, ti_end_max);
     ti_beg_max = max(ti_beg, ti_beg_max);
   }
 
@@ -1313,12 +1329,6 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
             "depth=%d",
             c->hydro.ti_end_min, ti_end_min, ti_current, c->depth);
     }
-
-    if (ti_end_max > c->hydro.ti_end_max)
-      error(
-          "Non-matching ti_end_max. Cell=%lld true=%lld ti_current=%lld "
-          "depth=%d",
-          c->hydro.ti_end_max, ti_end_max, ti_current, c->depth);
 
     if (ti_beg_max != c->hydro.ti_beg_max)
       error(
@@ -1386,12 +1396,14 @@ void cell_check_sort_flags(const struct cell *c) {
   const int do_stars_sub_sort = cell_get_flag(c, cell_flag_do_stars_sub_sort);
 
   if (do_hydro_sub_sort)
-    error("cell %d has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
-          c->cellID, c->nodeID, c->depth, c->maxdepth);
+    error(
+        "cell %lld has a hydro sub_sort flag set. Node=%d depth=%d maxdepth=%d",
+        c->cellID, c->nodeID, c->depth, c->maxdepth);
 
   if (do_stars_sub_sort)
-    error("cell %d has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d",
-          c->cellID, c->nodeID, c->depth, c->maxdepth);
+    error(
+        "cell %lld has a stars sub_sort flag set. Node=%d depth=%d maxdepth=%d",
+        c->cellID, c->nodeID, c->depth, c->maxdepth);
 
   if (c->split) {
     for (int k = 0; k < 8; ++k) {

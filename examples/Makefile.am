@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Common flags
-MYFLAGS = 
+MYFLAGS =
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
 AM_CFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/argparse $(HDF5_CPPFLAGS) \
@@ -30,8 +30,8 @@ EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) \
 	$(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
 
 # MPI libraries.
-MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
-MPI_FLAGS = -DWITH_MPI $(PARMETIS_INCS) $(METIS_INCS)
+MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS) $(FFTW_MPI_LIBS)
+MPI_FLAGS = -DWITH_MPI $(PARMETIS_INCS) $(METIS_INCS) $(FFTW_MPI_INCS)
 
 # Programs.
 bin_PROGRAMS = swift
@@ -39,6 +39,13 @@ bin_PROGRAMS = swift
 # Also build the FOF tool?
 if HAVESTANDALONEFOF
 bin_PROGRAMS += fof
+endif
+
+# Do we have the CSDS?
+if HAVECSDS
+LD_CSDS = ../csds/src/.libs/libcsds_writer.a
+else
+LD_CSDS =
 endif
 
 # Build MPI versions as well?
@@ -59,22 +66,22 @@ endif
 # Sources for swift
 swift_SOURCES = main.c
 swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS)
+swift_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS) $(LD_CSDS)
 
 # Sources for swift_mpi, do we need an affinity policy for MPI?
 swift_mpi_SOURCES = main.c
 swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS)
+swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
 
 # Sources for fof
 fof_SOURCES = main_fof.c
 fof_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-fof_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS)
+fof_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS) $(LD_CSDS)
 
 # Sources for fof_mpi, do we need an affinity policy for MPI?
 fof_mpi_SOURCES = main_fof.c
 fof_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-fof_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS)
+fof_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
 
 # Scripts to generate ICs
 EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py Cooling/CoolingBox/makeIC.py Cooling/CoolingBox/run.sh Cooling/CoolingBox/getGlass.sh \
@@ -125,7 +132,8 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
              PMillennium/PMillennium-768/p-mill-768.yml \
              PMillennium/PMillennium-1536/p-mill-1536.yml \
 	     SantaBarbara/SantaBarbara-256/README SantaBarbara/SantaBarbara-256/getIC.sh SantaBarbara/SantaBarbara-256/santa_barbara.yml SantaBarbara/SantaBarbara-256/run.sh \
-	     SantaBarbara/SantaBarbara-128/README SantaBarbara/SantaBarbara-128/getIC.sh SantaBarbara/SantaBarbara-128/santa_barbara.yml SantaBarbara/SantaBarbara-128/run.sh
+	     SantaBarbara/SantaBarbara-128/README SantaBarbara/SantaBarbara-128/getIC.sh SantaBarbara/SantaBarbara-128/santa_barbara.yml SantaBarbara/SantaBarbara-128/run.sh \
+	     QuickLymanAlpha/getWiersmaTable.sh QuickLymanAlpha/getPloeckingerTable.sh QuickLymanAlpha/L050N0752/qla_50.yml QuickLymanAlpha/L050N0752/output_list.txt QuickLymanAlpha/L050N0752/getIC.sh QuickLymanAlpha/L050N0752/run.sh
 
 # Default parameter file
 EXTRA_DIST += parameter_example.yml

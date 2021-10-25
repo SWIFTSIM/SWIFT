@@ -24,7 +24,7 @@
  * @brief Minimal conservative implementation of SPH (Neighbour loop equations)
  *
  * The thermal variable is the internal energy (u). Simple constant
- * viscosity term without switches is implemented. No thermal conduction
+ * viscosity term with the Balsara (1995) switch. No thermal conduction
  * term is implemented.
  *
  * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
@@ -49,8 +49,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -61,9 +62,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     error("Inhibited pj in interaction function!");
 #endif
 
-  /* Get r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Get the masses. */
   const float mi = pi->mass;
@@ -130,8 +131,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
 
@@ -145,9 +147,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   /* Get the masses. */
   const float mj = pj->mass;
 
-  /* Get r. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
@@ -193,8 +195,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -207,9 +210,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
-  /* Get r and r inverse. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mi = pi->mass;
@@ -325,8 +328,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (pi->time_bin >= time_bin_inhibited)
@@ -339,9 +343,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
-  /* Get r and r inverse. */
-  const float r_inv = 1.0f / sqrtf(r2);
-  const float r = r2 * r_inv;
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mi = pi->mass;

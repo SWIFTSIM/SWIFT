@@ -34,8 +34,9 @@
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
+#include "csds.h"
 #include "feedback_struct.h"
-#include "logger.h"
+#include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
 #include "rt_struct.h"
 #include "star_formation_struct.h"
@@ -54,8 +55,14 @@ struct xpart {
   /* Velocity at the last full step. */
   float v_full[3];
 
+  /*! Gravitational acceleration at the end of the last step */
+  float a_grav[3];
+
   /* Entropy at the last full step. */
   float entropy_full;
+
+  /*! Additional data used to record particle splits */
+  struct particle_splitting_data split_data;
 
   /* Additional data used to record cooling information */
   struct cooling_xpart_data cooling_data;
@@ -67,11 +74,11 @@ struct xpart {
   struct star_formation_xpart_data sf_data;
 
   /* Additional data used by the feedback */
-  struct feedback_part_data feedback_data;
+  struct feedback_xpart_data feedback_data;
 
-#ifdef WITH_LOGGER
-  /* Additional data for the particle logger */
-  struct logger_part_data logger_data;
+#ifdef WITH_CSDS
+  /* Additional data for the particle csds */
+  struct csds_part_data csds_data;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
@@ -159,13 +166,16 @@ struct part {
   /*! Cooling information */
   struct cooling_part_data cooling_data;
 
+  /*! Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
+
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
   /*! Additional data used by the pressure floor */
   struct pressure_floor_part_data pressure_floor_data;
 
-  /* Additional Radiative Transfer Data */
+  /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
 
   /*! Time-step length */

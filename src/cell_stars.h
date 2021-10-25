@@ -34,105 +34,129 @@
  */
 struct cell_stars {
 
-  /*! Pointer to the #spart data. */
-  struct spart *parts;
+  /* If we are not using stars, compact as much of the unecessary variables
+     into an anonymous union to save memory in the cell structure. */
+#ifdef STARS_NONE
+  union {
+#endif
 
-  /*! Pointer to the #spart data at rebuild time. */
-  struct spart *parts_rebuild;
+    /*! Pointer to the #spart data. */
+    struct spart *parts;
 
-  /*! The star ghost task itself */
-  struct task *ghost;
+    /*! Pointer to the #spart data at rebuild time. */
+    struct spart *parts_rebuild;
 
-  /*! Linked list of the tasks computing this cell's star density. */
-  struct link *density;
+    /*! The star ghost task itself */
+    struct task *density_ghost;
 
-  /*! Linked list of the tasks computing this cell's star feedback. */
-  struct link *feedback;
+    /*! The first star ghost task related to kinetic feedback */
+    struct task *prep1_ghost;
 
-  /*! The task computing this cell's sorts before the density. */
-  struct task *sorts;
+    /*! The second star ghost task related to kinetic feedback */
+    struct task *prep2_ghost;
 
-  /*! The drift task for sparts */
-  struct task *drift;
+    /*! Linked list of the tasks computing this cell's star density. */
+    struct link *density;
 
-  /*! Implicit tasks marking the entry of the stellar physics block of tasks
-   */
-  struct task *stars_in;
+    /*! Linked list of the tasks computing this cell's star 1st prep for kinetic
+     * feedback. */
+    struct link *prepare1;
 
-  /*! Implicit tasks marking the exit of the stellar physics block of tasks */
-  struct task *stars_out;
+    /*! Linked list of the tasks computing this cell's star 2nd prep for kinetic
+     * feedback. */
+    struct link *prepare2;
 
-  /*! Last (integer) time the cell's spart were drifted forward in time. */
-  integertime_t ti_old_part;
+    /*! Linked list of the tasks computing this cell's star feedback. */
+    struct link *feedback;
 
-  /*! Spin lock for various uses (#spart case). */
-  swift_lock_type lock;
+    /*! The task computing this cell's sorts before the density. */
+    struct task *sorts;
 
-  /*! Spin lock for star formation use. */
-  swift_lock_type star_formation_lock;
+    /*! The drift task for sparts */
+    struct task *drift;
 
-  /*! Nr of #spart in this cell. */
-  int count;
+    /*! Implicit tasks marking the entry of the stellar physics block of tasks
+     */
+    struct task *stars_in;
 
-  /*! Nr of #spart this cell can hold after addition of new #spart. */
-  int count_total;
+    /*! Implicit tasks marking the exit of the stellar physics block of tasks */
+    struct task *stars_out;
 
-  /*! Max smoothing length in this cell. */
-  float h_max;
+    /*! Pointer for the sorted indices. */
+    struct sort_entry *sort;
 
-  /*! Values of h_max before the drifts, used for sub-cell tasks. */
-  float h_max_old;
+    /*! Last (integer) time the cell's spart were drifted forward in time. */
+    integertime_t ti_old_part;
 
-  /*! Maximum part movement in this cell since last construction. */
-  float dx_max_part;
+    /*! Spin lock for star formation use. */
+    swift_lock_type star_formation_lock;
 
-  /*! Values of dx_max before the drifts, used for sub-cell tasks. */
-  float dx_max_part_old;
+    /*! Nr of #spart this cell can hold after addition of new #spart. */
+    int count_total;
 
-  /*! Maximum particle movement in this cell since the last sort. */
-  float dx_max_sort;
+    /*! Max smoothing length of active particles in this cell. */
+    float h_max_active;
 
-  /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
-  float dx_max_sort_old;
+    /*! Values of h_max before the drifts, used for sub-cell tasks. */
+    float h_max_old;
 
-  /*! Pointer for the sorted indices. */
-  struct sort_entry *sort;
+    /*! Maximum part movement in this cell since last construction. */
+    float dx_max_part;
 
-  /*! Bit mask of sort directions that will be needed in the next timestep. */
-  uint16_t requires_sorts;
+    /*! Values of dx_max before the drifts, used for sub-cell tasks. */
+    float dx_max_part_old;
 
-  /*! Bit-mask indicating the sorted directions */
-  uint16_t sorted;
+    /*! Maximum particle movement in this cell since the last sort. */
+    float dx_max_sort;
 
-  /*! Bit-mask indicating the sorted directions */
-  uint16_t sort_allocated;
+    /*! Values of dx_max_sort before the drifts, used for sub-cell tasks. */
+    float dx_max_sort_old;
 
-  /*! Bit mask of sorts that need to be computed for this cell. */
-  uint16_t do_sort;
+    /*! Bit mask of sort directions that will be needed in the next timestep. */
+    uint16_t requires_sorts;
+
+    /*! Bit-mask indicating the sorted directions */
+    uint16_t sorted;
+
+    /*! Bit-mask indicating the sorted directions */
+    uint16_t sort_allocated;
+
+    /*! Bit mask of sorts that need to be computed for this cell. */
+    uint16_t do_sort;
+
+    /*! Star formation history struct */
+    struct star_formation_history sfh;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /*! Last (integer) time the cell's sort arrays were updated. */
+    integertime_t ti_sort;
+#endif
+
+#ifdef STARS_NONE
+  };
+#endif
 
   /*! Maximum end of (integer) time step in this cell for star tasks. */
   integertime_t ti_end_min;
-
-  /*! Maximum end of (integer) time step in this cell for star tasks. */
-  integertime_t ti_end_max;
 
   /*! Maximum beginning of (integer) time step in this cell for star tasks.
    */
   integertime_t ti_beg_max;
 
+  /*! Spin lock for various uses (#spart case). */
+  swift_lock_type lock;
+
+  /*! Max smoothing length in this cell. */
+  float h_max;
+
   /*! Number of #spart updated in this cell. */
   int updated;
 
+  /*! Nr of #spart in this cell. */
+  int count;
+
   /*! Is the #spart data of this cell being used in a sub-cell? */
   int hold;
-
-  /*! Star formation history struct */
-  struct star_formation_history sfh;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /*! Last (integer) time the cell's sort arrays were updated. */
-  integertime_t ti_sort;
-#endif
 };
 
 #endif /* SWIFT_CELL_STARS_H */

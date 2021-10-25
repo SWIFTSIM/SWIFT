@@ -35,7 +35,8 @@ extern int space_expected_max_nr_strays;
 
 /*! Counter for cell IDs (when debugging) */
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-extern int last_cell_id;
+extern unsigned long long last_cell_id;
+extern unsigned long long last_leaf_cell_id;
 #endif
 
 /**
@@ -56,15 +57,15 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Reset the cell counter */
-  last_cell_id = 1;
+  last_cell_id = 1ULL;
+  last_leaf_cell_id = 1ULL;
 #endif
 
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
   /* Allocate extra space for particles that will be created */
-  if (s->with_star_formation || s->e->policy & engine_policy_sinks)
-    space_allocate_extras(s, verbose);
+  if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
@@ -429,7 +430,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         } else if (s->gparts[k].type == swift_type_stars) {
           s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         } else if (s->gparts[k].type == swift_type_sink) {
-          s->sparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
+          s->sinks[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         } else if (s->gparts[k].type == swift_type_black_hole) {
           s->bparts[-s->gparts[k].id_or_neg_offset].gpart = &s->gparts[k];
         }
@@ -441,7 +442,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
           s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
               &s->gparts[nr_gparts];
         } else if (s->gparts[nr_gparts].type == swift_type_sink) {
-          s->sparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
+          s->sinks[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
               &s->gparts[nr_gparts];
         } else if (s->gparts[nr_gparts].type == swift_type_black_hole) {
           s->bparts[-s->gparts[nr_gparts].id_or_neg_offset].gpart =
@@ -911,8 +912,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->black_holes.ti_old_part = ti_current;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-    c->cellID = -last_cell_id;
-    last_cell_id++;
+    cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
 #endif
 
     const int is_local = (c->nodeID == engine_rank);
@@ -968,8 +968,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
-  if (s->with_star_formation || s->e->policy & engine_policy_sinks)
-    space_reorder_extras(s, verbose);
+  if (s->with_star_formation || s->with_sink) space_reorder_extras(s, verbose);
 
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */

@@ -29,7 +29,11 @@
 #include "part.h"
 
 /* Import the right functions */
-#if defined(MINIMAL_SPH)
+#if defined(NONE_SPH)
+#include "./hydro/None/hydro.h"
+#include "./hydro/None/hydro_iact.h"
+#define SPH_IMPLEMENTATION "No hydro scheme"
+#elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro.h"
 #include "./hydro/Minimal/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Minimal version of SPH (e.g. Price 2010)"
@@ -71,6 +75,10 @@
 #include "./hydro/SPHENIX/hydro.h"
 #include "./hydro/SPHENIX/hydro_iact.h"
 #define SPH_IMPLEMENTATION "SPHENIX (Borrow+ 2020)"
+#elif defined(GASOLINE_SPH)
+#include "./hydro/Gasoline/hydro.h"
+#include "./hydro/Gasoline/hydro_iact.h"
+#define SPH_IMPLEMENTATION "Gasoline-2 (Wadsley+ 2017)"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro.h"
 #include "./hydro/AnarchyPU/hydro_iact.h"
@@ -79,5 +87,21 @@
 #else
 #error "Invalid choice of SPH variant"
 #endif
+
+/* Check whether this scheme implements the density checks */
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+#if !defined(SPHENIX_SPH)
+#error \
+    "Can only use the hydro brute-force density checks with the SPHENIX hydro scheme."
+#endif
+#endif
+
+struct engine;
+struct space;
+
+void hydro_exact_density_compute(struct space *s, const struct engine *e,
+                                 const int check_force);
+void hydro_exact_density_check(struct space *s, const struct engine *e,
+                               const float rel_tol, const int check_force);
 
 #endif /* SWIFT_HYDRO_H */

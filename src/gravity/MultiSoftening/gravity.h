@@ -313,6 +313,9 @@ __attribute__((always_inline)) INLINE static void gravity_predict_extra(
     case swift_type_dark_matter_background:
       gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass);
       break;
+    case swift_type_neutrino:
+      gp->epsilon = grav_props->epsilon_nu_cur;
+      break;
     default:
 #ifdef SWIFT_DEBUG_CHECKS
       error("Invalid gpart type!");
@@ -375,6 +378,9 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
       break;
     case swift_type_dark_matter_background:
       gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass);
+      break;
+    case swift_type_neutrino:
+      gp->epsilon = grav_props->epsilon_nu_cur;
       break;
     default:
 #ifdef SWIFT_DEBUG_CHECKS

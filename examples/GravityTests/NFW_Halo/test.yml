@@ -37,5 +37,6 @@ NFWPotential:
   position:           [0.0,0.0,0.0]      # Location of centre of potential with respect to centre of the box (internal units)
   concentration:      8.
   M_200:              2.0e+12  # Virial mass (internal units)
-  critical_density:   140      # Critical density (internal units)
+  epsilon:            0.8
+  h:                  0.7
   timestep_mult:      0.01     # Dimensionless pre-factor for the time-step condition

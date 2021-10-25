@@ -20,14 +20,12 @@
 #define SWIFT_STARS_IO_H
 
 #include "../config.h"
-#include "./const.h"
 
 /* Load the correct star type */
-#if defined(FEEDBACK_CONST)
-#include "./stars/const/stars_io.h"
-#elif defined(STARS_NONE)
-#include "./stars/Default/stars_io.h"
-#include "./stars/Default/stars_logger.h"
+#if defined(STARS_NONE)
+#include "./stars/None/stars_io.h"
+#elif defined(STARS_BASIC)
+#include "./stars/Basic/stars_io.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_io.h"
 #elif defined(STARS_GEAR)
