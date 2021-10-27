@@ -24,8 +24,8 @@
 #include "../config.h"
 
 /* Some standard headers. */
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 /* Includes. */
 #include "parser.h"

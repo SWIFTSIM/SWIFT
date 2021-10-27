@@ -30,8 +30,8 @@
 #endif
 
 /* Includes. */
-#include "part.h"
 #include "ic_info.h"
+#include "part.h"
 
 struct engine;
 struct unit_system;
@@ -47,7 +47,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
                     double h, double a, int mpi_rank, int mpi_size,
                     MPI_Comm comm, MPI_Info info, int n_threads, int dry_run,
-                    int remap_ids, struct ic_info *ics_metadata);
+                    int remap_ids, struct ic_info* ics_metadata);
 
 void write_output_serial(struct engine* e,
                          const struct unit_system* internal_units,
