@@ -96,6 +96,8 @@ int main(int argc, char *argv[]) {
   struct spart *sparts = NULL;
   struct bpart *bparts = NULL;
   struct sink *sinks = NULL;
+  struct ic_info ics_metadata;
+  strcpy(ics_metadata.group_name, "NoSUCH");
 
   /* parse parameters */
   message("Reading parameters.");
@@ -130,7 +132,7 @@ int main(int argc, char *argv[]) {
                  /*cleanup_h=*/0,
                  /*cleanup_sqrt_a=*/0,
                  /*h=*/1., /*a=*/1., /*n_threads=*/1, /*dry_run=*/0,
-                 /*remap_ids=*/0);
+                 /*remap_ids=*/0, &ics_metadata);
 
   /* pseudo initialization of the space */
   message("Initialization of the space.");
