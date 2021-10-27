@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
   struct sink *sinks = NULL;
   struct bpart *bparts = NULL;
   struct unit_system us;
+  struct ic_info ics_metadata;
 
   int nr_nodes = 1, myrank = 0;
 
@@ -457,6 +458,9 @@ int main(int argc, char *argv[]) {
   size_t Nsink = 0, Nspart = 0, Nbpart = 0;
   double dim[3] = {0., 0., 0.};
 
+  /* Prepare struct to store metadata from ICs */
+  ic_info_init(&ics_metadata, params);
+
   if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
@@ -467,7 +471,7 @@ int main(int argc, char *argv[]) {
                    /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   /*dry_run=*/0, /*remap_ids=*/0);
+                   /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
 #else
   read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                  &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart, &Nsink,
@@ -475,7 +479,7 @@ int main(int argc, char *argv[]) {
                  /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
                  with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                  myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                 /*dry_run=*/0, /*remap_ids=*/0);
+                 /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
 #endif
 #else
   read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
@@ -483,7 +487,7 @@ int main(int argc, char *argv[]) {
                  &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
                  /*with_grav=*/1, with_sinks, with_stars, with_black_holes,
                  with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                 nr_threads, /*dry_run=*/0, /*remap_ids=*/0);
+                 nr_threads, /*dry_run=*/0, /*remap_ids=*/0, &ics_metadata);
 #endif
 #endif
   if (myrank == 0) {
@@ -645,7 +649,7 @@ int main(int argc, char *argv[]) {
       /*feedback_properties=*/NULL, /*rt_properties=*/NULL, &mesh,
       /*potential=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
-      &fof_properties, /*los_properties=*/NULL);
+      &fof_properties, /*los_properties=*/NULL, &ics_metadata);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
                 nr_threads, nr_threads, with_aff, talking, NULL);
 
