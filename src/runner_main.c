@@ -731,8 +731,6 @@ void *runner_main(void *data) {
               }
             }
 
-          } else if (t->subtype == task_subtype_spart) {
-            runner_do_recv_spart(r, ci, 1);
           } else if (t->subtype == task_subtype_spart_density) {
             runner_do_recv_spart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_part_prep1) {

@@ -55,7 +55,6 @@
 #define scheduler_flag_none 0
 #define scheduler_flag_steal (1 << 1)
 
-<<<<<<< HEAD
 /* Constants for one-sided RDMA work. Flags for controlling access. */
 #define scheduler_rdma_locked -2
 
@@ -84,8 +83,6 @@
 #define scheduler_rdma_tobytes(nr_blocks) \
   (nr_blocks * scheduler_rdma_bytesinblock)
 
-=======
->>>>>>> master
 /* Data of a scheduler. */
 struct scheduler {
   /* Scheduler flags. */

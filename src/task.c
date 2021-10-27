@@ -736,7 +736,6 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
   switch (type) {
 
     /* Communication task? */
-    case task_type_recv:
     case task_type_send:
       {
 

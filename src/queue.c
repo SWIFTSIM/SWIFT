@@ -352,6 +352,7 @@ void queue_dump(int nodeID, int index, FILE *file, struct queue *q) {
 #else
     fprintf(file, "%d %d %d %s %s %.2f\n", nodeID, index, k,
             taskID_names[t->type], subtaskID_names[t->subtype], t->weight);
+#endif
   }
 
   /* Release the task lock. */

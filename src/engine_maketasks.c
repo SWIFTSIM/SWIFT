@@ -408,10 +408,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       cell_ensure_tagged(ci);
 
       /* Create the tasks and their dependencies? */
-      t_feedback = scheduler_addtask(s, task_type_send, task_subtype_spart,
-                                     ci->mpi.tag, 0, ci, cj);
-      scheduler_cache_mpitask(s->send_mpicache, cj->nodeID, t_feedback);
-
       t_density =
           scheduler_addtask(s, task_type_send, task_subtype_spart_density,
                             ci->mpi.tag, 0, ci, cj);
@@ -843,10 +839,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #endif  // SWIFT_DEBUG_CHECKS
 
     /* Create the tasks. */
-    t_feedback = scheduler_addtask(s, task_type_recv, task_subtype_spart,
-                                   c->mpi.tag, 0, c, NULL);
-    scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_feedback);
-
     t_density = scheduler_addtask(s, task_type_recv, task_subtype_spart_density,
                                   c->mpi.tag, 0, c, NULL);
     scheduler_cache_mpitask(s->recv_mpicache, c->nodeID, t_density);
