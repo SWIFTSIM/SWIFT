@@ -418,6 +418,8 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
  * @param a The current value of the scale-factor.
  * @prarm n_threads The number of threads to use for the temporary threadpool.
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
+ * @param remap_ids Are we ignoring the ICs' IDs and remapping them to [1, N[ ?
+ * @param ics_metadata Will store metadata group copied from the ICs file
  *
  * Opens the HDF5 file fileName and reads the particles contained
  * in the parts array. N is the returned number of particles found
@@ -434,7 +436,8 @@ void read_ic_single(
     size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
     int with_hydro, int with_gravity, int with_sink, int with_stars,
     int with_black_holes, int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
-    double h, double a, int n_threads, int dry_run, int remap_ids) {
+    double h, double a, int n_threads, int dry_run, int remap_ids,
+    struct ic_info *ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -562,6 +565,9 @@ void read_ic_single(
     message("(internal) Unit system: U_T = %e K.",
             internal_units->UnitTemperature_in_cgs);
   }
+
+  /* Read metadata from ICs file */
+  ic_info_read_hdf5(ics_metadata, h_file);
 
   /* Convert the dimensions of the box */
   for (int j = 0; j < 3; j++)
@@ -1056,6 +1062,9 @@ void write_output_single(struct engine* e,
 
   /* Close header */
   H5Gclose(h_grp);
+
+  /* Copy metadata from ICs to the file */
+  ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
   io_write_meta_data(h_file, e, internal_units, snapshot_units);
