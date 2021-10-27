@@ -47,6 +47,7 @@
 #include "gravity_properties.h"
 #include "hydro_io.h"
 #include "hydro_properties.h"
+#include "ic_info.h"
 #include "io_properties.h"
 #include "memuse.h"
 #include "output_list.h"
@@ -750,6 +751,8 @@ void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
  * @param info The MPI information object
  * @param n_threads The number of threads to use for local operations.
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
+ * @param remap_ids Are we ignoring the ICs' IDs and remapping them to [1, N[ ?
+ * @param ics_metadata Will store metadata group copied from the ICs file
  *
  */
 void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
@@ -763,7 +766,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
                       double h, double a, int mpi_rank, int mpi_size,
                       MPI_Comm comm, MPI_Info info, int n_threads, int dry_run,
-                      int remap_ids) {
+                      int remap_ids, struct ic_info *ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -904,6 +907,9 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
               internal_units->UnitTemperature_in_cgs);
     }
   }
+
+  /* Read metadata from ICs file */
+  ic_info_read_hdf5(ics_metadata, h_file);
 
   /* Convert the dimensions of the box */
   for (int j = 0; j < 3; j++)
@@ -1270,6 +1276,9 @@ void prepare_file(struct engine* e, const char* fileName,
 
   /* Close header */
   H5Gclose(h_grp);
+
+  /* Copy metadata from ICs to the file */
+  ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
   io_write_meta_data(h_file, e, internal_units, snapshot_units);

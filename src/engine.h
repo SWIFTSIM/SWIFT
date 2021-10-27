@@ -36,6 +36,7 @@
 #include "barrier.h"
 #include "clocks.h"
 #include "collectgroup.h"
+#include "ic_info.h"
 #include "mesh_gravity.h"
 #include "output_options.h"
 #include "parser.h"
@@ -331,6 +332,9 @@ struct engine {
   double snapshot_delta_from_edge;
   int snapshot_output_count;
 
+  /* Metadata from the ICs */
+  struct ic_info *ics_metadata;
+
   /* Structure finding information */
   double a_first_stf_output;
   double time_first_stf_output;
@@ -613,7 +617,8 @@ void engine_init(
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
-    struct fof_props *fof_properties, struct los_props *los_properties);
+    struct fof_props *fof_properties, struct los_props *los_properties,
+    struct ic_info *ics_metadata);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,

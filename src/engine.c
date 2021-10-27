@@ -2755,6 +2755,7 @@ void engine_unpin(void) {
  * @param chemistry The chemistry information.
  * @param fof_properties The #fof_props of this run.
  * @param los_properties the #los_props of this run.
+ * @param ics_metadata metadata read from the simulation ICs
  */
 void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
@@ -2773,7 +2774,8 @@ void engine_init(
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
-    struct fof_props *fof_properties, struct los_props *los_properties) {
+    struct fof_props *fof_properties, struct los_props *los_properties,
+    struct ic_info *ics_metadata) {
 
   struct clocks_time tic, toc;
   if (engine_rank == 0) clocks_gettime(&tic);
@@ -2890,6 +2892,7 @@ void engine_init(
   e->output_options = output_options;
   e->stf_this_timestep = 0;
   e->los_properties = los_properties;
+  e->ics_metadata = ics_metadata;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;
   e->systime_last_step = 0.0;
@@ -3260,6 +3263,8 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
 
   output_options_clean(e->output_options);
 
+  ic_info_clean(e->ics_metadata);
+
   swift_free("links", e->links);
 #if defined(WITH_CSDS)
   if (e->policy & engine_policy_csds) {
@@ -3322,6 +3327,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->fof_properties);
 #endif
     free((void *)e->los_properties);
+    free((void *)e->ics_metadata);
 #ifdef WITH_MPI
     free((void *)e->reparttype);
 #endif
@@ -3381,6 +3387,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+  ic_info_struct_dump(e->ics_metadata, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
 
@@ -3527,6 +3534,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct los_props *)malloc(sizeof(struct los_props));
   los_struct_restore(los_properties, stream);
   e->los_properties = los_properties;
+
+  struct ic_info *ics_metadata =
+    (struct ic_info *)malloc(sizeof(struct ic_info));
+  ic_info_struct_restore(ics_metadata, stream);
+  e->ics_metadata = ics_metadata;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));
