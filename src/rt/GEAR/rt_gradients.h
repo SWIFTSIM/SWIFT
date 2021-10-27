@@ -27,7 +27,7 @@
 
 #include "hydro.h" /* needed for hydro_part_geometry_well_behaved() */
 #include "rt_getters.h"
-/* #include "rt_slope_limiters_cell.h" */ /* skipped for now. */
+/* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
 #include "rt_slope_limiters_face.h"
 #include "rt_unphysical.h"
 
@@ -402,7 +402,8 @@ __attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, float Ui[4],
-    float Uj[4], int group, const float *dx, float r, const float xij_i[3]) {
+    float Uj[4], int group, const float *dx, const float r,
+    const float xij_i[3]) {
 
   rt_part_get_density_vector(pi, group, Ui);
   rt_check_unphysical_density(Ui, &Ui[1], 0);
@@ -433,7 +434,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
   dUj[3] = rt_gradients_extrapolate(dFz_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-  rt_slope_limit_face(dUi, dUj);
+  rt_slope_limit_face(Ui, Uj, dUi, dUj, dx, r, xij_i, xij_j);
 
   Ui[0] += dUi[0];
   Ui[1] += dUi[1];
