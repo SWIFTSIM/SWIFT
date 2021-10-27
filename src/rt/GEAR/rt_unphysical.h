@@ -54,7 +54,7 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
     return;
   }
 
-  /* Check for too high fluxes */
+  /*   [> Check for too high fluxes <] */
   /*   const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * */
   /*   flux[2]; */
   /*   const float flux_norm = sqrtf(flux2); */
@@ -62,9 +62,10 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
   /*   if (flux_norm > flux_max) { */
   /*     const float correct = flux_max / flux_norm; */
   /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*     message("Correcting max fluxes case%d %.6e | %.6e %.6e %.6e | %.6e", c,
-   * *energy, */
-  /*             flux[0], flux[1], flux[2], correct); */
+  /*     if (correct < 0.99 && c != 1) */
+  /*       message("Correcting max fluxes case%d %.6e | %.6e %.6e %.6e | %.6e",
+   */
+  /*               c, *energy, flux[0], flux[1], flux[2], correct); */
   /* #endif */
   /*     flux[0] *= correct; */
   /*     flux[1] *= correct; */
@@ -91,6 +92,7 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
   if (isinf(*energy) || isnan(*energy))
     error("Got inf/nan radiation energy %.6e | %.6e %.6e %.6e", *energy,
           flux[0], flux[1], flux[2]);
+
   if (*energy <= 0.f) {
     *energy = 0.f;
     flux[0] = 0.f;
@@ -100,21 +102,15 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
   }
 
   /* Check for too high fluxes */
-  /*   const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * */
-  /*   flux[2]; */
-  /*   const float flux_norm = sqrtf(flux2); */
-  /*   const float flux_max = rt_params.reduced_speed_of_light * *energy; */
-  /*   if (flux_norm > flux_max) { */
-  /*     const float correct = flux_max / flux_norm; */
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*     message("Correcting max fluxes %.6e | %.6e %.6e %.6e | %.6e", *energy,
-   * flux[0], */
-  /*             flux[1], flux[2], correct); */
-  /* #endif */
-  /*     flux[0] *= correct; */
-  /*     flux[1] *= correct; */
-  /*     flux[2] *= correct; */
-  /*   } */
+  const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
+  const float flux_norm = sqrtf(flux2);
+  const float flux_max = rt_params.reduced_speed_of_light * *energy;
+  if (flux_norm > flux_max) {
+    const float correct = flux_max / flux_norm;
+    flux[0] *= correct;
+    flux[1] *= correct;
+    flux[2] *= correct;
+  }
 }
 
 /**

@@ -1913,10 +1913,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   TIMER_TOC2(timer_runners);
 
   /* Initialise additional RT data now that time bins are set */
-  if ((e->policy & engine_policy_rt) &&
-      !e->rt_props->hydro_controlled_injection) {
-    space_convert_rt_quantities(e->s, e->verbose);
-  }
+  if (e->policy & engine_policy_rt)
+    space_convert_rt_quantities_after_zeroth_step(e->s, e->verbose);
 
   /* Since the time-steps may have changed because of the limiter's
    * action, we need to communicate the new time-step sizes */

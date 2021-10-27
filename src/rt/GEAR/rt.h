@@ -23,7 +23,7 @@
 #include "rt_flux.h"
 #include "rt_gradients.h"
 #include "rt_properties.h"
-/* #include "rt_slope_limiters_cell.h" */ /* skipped for now. */
+/* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
 #include "rt_stellar_emission_rate.h"
 #include "rt_thermochemistry.h"
 
@@ -124,8 +124,9 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
  * @brief Reset of the RT star particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
  * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_spart is made in space_convert_rt_quantities() after
- * the zeroth time step is finished.
+ * extra call to rt_reset_spart is made in
+ * space_convert_rt_quantities_after_zeroth_step() after the zeroth time
+ * step is finished.
  *
  * @param sp star particle to work on
  */
@@ -205,6 +206,50 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     sp->rt_data.emission_this_step[g] = 0.f;
   }
   message("WARNING: found star without neighbours");
+};
+
+/**
+ * @brief Do checks/conversions on particles on startup.
+ *
+ * @param p The particle to work on
+ * @param rtp The RT properties struct
+ */
+__attribute__((always_inline)) INLINE static void rt_convert_quantities(
+    struct part* p, const struct rt_props* rtp) {
+
+  /* If we're reducing the speed of light, then we may encounter
+   * photon fluxes which are way too high than the physically
+   * allowable limit. This can lead to catastrophic problems for
+   * the propagation of photons, as the pressure tensor assumes
+   * the upper limit to be respected. So check this and correct
+   * it if necessary.
+   * We only read in conserved quantities, so only check those. */
+
+  struct rt_part_data* rtd = &p->rt_data;
+  for (int g = 0; g < RT_NGROUPS; g++) {
+
+    if (rtd->conserved[g].energy <= 0.f) {
+      rtd->conserved[g].energy = 0.f;
+      rtd->conserved[g].flux[0] = 0.f;
+      rtd->conserved[g].flux[1] = 0.f;
+      rtd->conserved[g].flux[2] = 0.f;
+      continue;
+    }
+
+    /* Check for too high fluxes */
+    const float flux2 = rtd->conserved[g].flux[0] * rtd->conserved[g].flux[0] +
+                        rtd->conserved[g].flux[1] * rtd->conserved[g].flux[1] +
+                        rtd->conserved[g].flux[2] * rtd->conserved[g].flux[2];
+    const float flux_norm = sqrtf(flux2);
+    const float flux_max =
+        rt_params.reduced_speed_of_light * rtd->conserved[g].energy;
+    if (flux_norm > flux_max) {
+      const float correct = flux_max / flux_norm;
+      rtd->conserved[g].flux[0] *= correct;
+      rtd->conserved[g].flux[1] *= correct;
+      rtd->conserved[g].flux[2] *= correct;
+    }
+  }
 };
 
 /**

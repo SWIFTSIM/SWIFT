@@ -151,6 +151,15 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     struct spart* sp){};
 
 /**
+ * @brief Do checks/conversions on particles on startup.
+ *
+ * @param p The particle to work on
+ * @param rtp The RT properties struct
+ */
+__attribute__((always_inline)) INLINE static void rt_convert_quantities(
+    struct part* p, const struct rt_props* rtp){};
+
+/**
  * @brief Computes the next radiative transfer time step size
  * of a given particle (during timestep tasks)
  *

@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_quantity(
     const float gradtrue_inv = 1.0f / gradtrue;
     const float gradmax = valmax - value;
     const float gradmin = valmin - value;
-    const float beta = 0.5f; /* TODO: test for best value here. For now, take
+    const float beta = 1.0f; /* TODO: test for best value here. For now, take
                                 stability over diffusivity. */
     const float min_temp =
         min(gradmax * gradtrue_inv, gradmin * gradtrue_inv) * beta;
