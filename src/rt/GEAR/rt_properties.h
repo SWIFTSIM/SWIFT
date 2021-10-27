@@ -36,6 +36,11 @@ struct rt_props {
    * This is added to avoid #ifdef macros as far as possible */
   int hydro_controlled_injection;
 
+  /* Do we need to run a conversion after the zeroth
+   * step, but before the first step? */
+  int convert_stars_after_zeroth_step;
+  int convert_parts_after_zeroth_step;
+
   /* Are we using constant stellar emission rates? */
   int use_const_emission_rates;
 
@@ -151,6 +156,16 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->hydro_controlled_injection = 1;
 #else
   rtp->hydro_controlled_injection = 0;
+#endif
+
+  /* Make sure we reset debugging counters correctly after
+   * zeroth step. */
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  rtp->convert_parts_after_zeroth_step = 1;
+  rtp->convert_stars_after_zeroth_step = 1;
+#else
+  rtp->convert_parts_after_zeroth_step = 0;
+  rtp->convert_stars_after_zeroth_step = rtp->hydro_controlled_injection;
 #endif
 
   if (RT_NGROUPS <= 0) {

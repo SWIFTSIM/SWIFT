@@ -74,13 +74,11 @@ __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
              hyperFluxR[3][2] * n_unit[2];
 
   const float c_red = rt_params.reduced_speed_of_light;
-  float cdU[4] = {c_red * (UR[0] - UL[0]), c_red * (UR[1] - UL[1]),
-                  c_red * (UR[2] - UL[2]), c_red * (UR[3] - UL[3])};
 
-  flux_half[0] = 0.5f * (fluxL[0] + fluxR[0] - cdU[0]);
-  flux_half[1] = 0.5f * (fluxL[1] + fluxR[1] - cdU[1]);
-  flux_half[2] = 0.5f * (fluxL[2] + fluxR[2] - cdU[2]);
-  flux_half[3] = 0.5f * (fluxL[3] + fluxR[3] - cdU[3]);
+  flux_half[0] = 0.5f * (fluxL[0] + fluxR[0] - c_red * (UR[0] - UL[0]));
+  flux_half[1] = 0.5f * (fluxL[1] + fluxR[1] - c_red * (UR[1] - UL[1]));
+  flux_half[2] = 0.5f * (fluxL[2] + fluxR[2] - c_red * (UR[2] - UL[2]));
+  flux_half[3] = 0.5f * (fluxL[3] + fluxR[3] - c_red * (UR[3] - UL[3]));
 }
 
 #endif /* SWIFT_GEAR_RT_RIEMANN_GLF_H */

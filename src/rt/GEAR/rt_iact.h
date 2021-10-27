@@ -380,6 +380,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float Ui[4], Uj[4];
     rt_gradients_predict(pi, pj, Ui, Uj, g, dx, r, xij_i);
 
+    /* For first order method, skip the gradients */
+    /* float Ui[4], Uj[4]; */
+    /* rt_part_get_density_vector(pi, g, Ui); */
+    /* rt_part_get_density_vector(pj, g, Uj); */
+
     float totflux[4];
 
     rt_compute_flux(Ui, Uj, n_unit, Anorm, totflux);

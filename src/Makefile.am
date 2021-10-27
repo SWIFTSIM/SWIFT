@@ -278,6 +278,7 @@ nobase_noinst_HEADERS += rt/GEAR/rt_parameters.h
 nobase_noinst_HEADERS += rt/GEAR/rt_properties.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_riemann_GLF.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_riemann_HLL.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_riemann_HLL_eigenvalues.h 
 # nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_cell.h
 nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_face.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_stellar_emission_rate.h 

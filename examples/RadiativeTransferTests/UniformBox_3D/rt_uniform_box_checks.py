@@ -131,22 +131,6 @@ def check_all_hydro_is_equal(snapdata):
             if break_on_diff:
                 quit()
 
-        # Gradient Loop Calls
-        fishy = ref.gas.RTCallsIactGradient != compare.gas.RTCallsIactGradient
-        if fishy.any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            account_for_sml_diff = np.count_nonzero(
-                np.logical_and(fishy, sml_outside_tolerance)
-            )
-            print(
-                "--- Calls to iact gradient loop: count differ: {0:8d} / {1:8d};".format(
-                    np.count_nonzero(fishy), npart
-                ),
-                "After removing ones with acceptable h differences: {0:8d}".format(
-                    account_for_sml_diff
-                ),
-            )
-
         # Gradient Loop Interaction Calls
         fishy = (
             ref.gas.RTCallsIactGradientInteraction
@@ -184,22 +168,6 @@ def check_all_hydro_is_equal(snapdata):
 
                 if break_on_diff:
                     quit()
-
-        # Transport Loop Calls
-        fishy = ref.gas.RTCallsIactTransport != compare.gas.RTCallsIactTransport
-        if fishy.any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            account_for_sml_diff = np.count_nonzero(
-                np.logical_and(fishy, sml_outside_tolerance)
-            )
-            print(
-                "--- Calls to iact transport: count differ: {0:8d} / {1:8d}; ".format(
-                    np.count_nonzero(fishy), npart
-                ),
-                "After removing ones with acceptable h differences: {0:8d}".format(
-                    account_for_sml_diff
-                ),
-            )
 
         # Transport Loop Interaction Calls
         fishy = (
