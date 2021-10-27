@@ -111,6 +111,7 @@ int main(int argc, char *argv[]) {
   struct sink *sinks = NULL;
   struct unit_system us;
   struct los_props los_properties;
+  struct ic_info ics_metadata;
 
   int nr_nodes = 1, myrank = 0;
 
@@ -1140,6 +1141,9 @@ int main(int argc, char *argv[]) {
     size_t Nspart = 0, Nbpart = 0, Nsink = 0;
     double dim[3] = {0., 0., 0.};
 
+    /* Prepare struct to store metadata from ICs */
+    ic_info_init(&ics_metadata, params);
+
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
@@ -1150,7 +1154,7 @@ int main(int argc, char *argv[]) {
                      with_gravity, with_sink, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
-                     nr_threads, dry_run, remap_ids);
+                     nr_threads, dry_run, remap_ids, &ics_metadata);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
@@ -1158,7 +1162,7 @@ int main(int argc, char *argv[]) {
                    with_gravity, with_sink, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run, remap_ids);
+                   dry_run, remap_ids, &ics_metadata);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
@@ -1166,7 +1170,7 @@ int main(int argc, char *argv[]) {
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
                    with_gravity, with_sink, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   nr_threads, dry_run, remap_ids);
+                   nr_threads, dry_run, remap_ids, &ics_metadata);
 #endif
 #endif
 
@@ -1424,7 +1428,7 @@ int main(int argc, char *argv[]) {
                 &black_holes_properties, &sink_properties, &neutrino_properties,
                 &feedback_properties, &rt_properties, &mesh, &potential,
                 &cooling_func, &starform, &chemistry, &fof_properties,
-                &los_properties);
+                &los_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 

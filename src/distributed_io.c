@@ -594,6 +594,9 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   /* Close header */
   H5Gclose(h_grp);
 
+  /* Copy metadata from ICs to the file */
+  ic_info_write_hdf5(e->ics_metadata, h_file);
+
   /* Write all the meta-data */
   io_write_meta_data(h_file, e, internal_units, snapshot_units);
 
@@ -1056,6 +1059,9 @@ void write_output_distributed(struct engine* e,
 
   /* Close header */
   H5Gclose(h_grp);
+
+  /* Copy metadata from ICs to the file */
+  ic_info_write_hdf5(e->ics_metadata, h_file);
 
   /* Write all the meta-data */
   io_write_meta_data(h_file, e, internal_units, snapshot_units);
