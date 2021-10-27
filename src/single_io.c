@@ -428,16 +428,18 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
  * @warning Can not read snapshot distributed over more than 1 file !!!
  * @todo Read snapshots distributed in more than one file.
  */
-void read_ic_single(
-    const char* fileName, const struct unit_system* internal_units,
-    double dim[3], struct part** parts, struct gpart** gparts,
-    struct sink** sinks, struct spart** sparts, struct bpart** bparts,
-    size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background, size_t* Nnuparts,
-    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
-    int with_hydro, int with_gravity, int with_sink, int with_stars,
-    int with_black_holes, int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
-    double h, double a, int n_threads, int dry_run, int remap_ids,
-    struct ic_info *ics_metadata) {
+void read_ic_single(const char* fileName,
+                    const struct unit_system* internal_units, double dim[3],
+                    struct part** parts, struct gpart** gparts,
+                    struct sink** sinks, struct spart** sparts,
+                    struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
+                    size_t* Ngparts_background, size_t* Nnuparts,
+                    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
+                    int* flag_entropy, int with_hydro, int with_gravity,
+                    int with_sink, int with_stars, int with_black_holes,
+                    int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
+                    double h, double a, int n_threads, int dry_run,
+                    int remap_ids, struct ic_info* ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */

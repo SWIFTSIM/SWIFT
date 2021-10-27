@@ -3534,7 +3534,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   e->los_properties = los_properties;
 
   struct ic_info *ics_metadata =
-    (struct ic_info *)malloc(sizeof(struct ic_info));
+      (struct ic_info *)malloc(sizeof(struct ic_info));
   ic_info_struct_restore(ics_metadata, stream);
   e->ics_metadata = ics_metadata;
 
