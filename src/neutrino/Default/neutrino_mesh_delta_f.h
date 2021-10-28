@@ -32,7 +32,7 @@
 /**
  * @brief Shared information for delta-f neutrino weighting of a cell.
  */
-struct neutrino_data {
+struct neutrino_consts {
   char use_mesh_delta_f;
   double *m_eV_array;
   int N_nu;
@@ -40,8 +40,9 @@ struct neutrino_data {
   long long neutrino_seed;
 };
 
-void gather_neutrino_data(const struct space *s, struct neutrino_data *nu_data);
+void gather_neutrino_consts(const struct space *s, struct neutrino_consts *ncs);
 void gpart_neutrino_weight(const struct gpart *gp,
-                           const struct neutrino_data *nu_data, double *weight);
-
+                           const struct neutrino_consts *ncs, double *weight);
+double gpart_neutrino_weight2(const struct gpart *gp,
+                              const struct neutrino_consts *ncs);
 #endif /* SWIFT_DEFAULT_NEUTRINO_MESH_DELTA_F_H */

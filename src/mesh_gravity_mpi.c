@@ -55,13 +55,13 @@
  * @param c The #cell containing the particles.
  * @param map The hashmap in which to store the results
  * @param lock A lock used to prevent concurrent access to map
- * @param nu_data Struct with neutrino constants
+ * @param nu_consts Struct with neutrino constants
  *
  */
 void accumulate_cell_to_local_patch(const int N, const double fac,
                                     const double *dim, const struct cell *cell,
                                     struct pm_mesh_patch *patch,
-                                    const struct neutrino_data *nu_data) {
+                                    const struct neutrino_consts *nu_consts) {
 
   /* If the cell is empty, then there's nothing to do
      (and the code to find the extent of the cell would fail) */
@@ -102,15 +102,15 @@ void accumulate_cell_to_local_patch(const int N, const double fac,
     const int jj = j - patch->mesh_min[1];
     const int kk = k - patch->mesh_min[2];
 
-    /* Statistical weight for this #gpart (for neutrino delta-f weighting) */
+    /* Compute weight (for neutrino delta-f weighting) */
     double weight = 1.0;
-    if (nu_data->use_mesh_delta_f && gp->type == swift_type_neutrino)
-      gpart_neutrino_weight(gp, nu_data, &weight);
+    if (nu_consts->use_mesh_delta_f && gp->type == swift_type_neutrino)
+      gpart_neutrino_weight(gp, nu_consts, &weight);
 
     /* Accumulate contributions to the local mesh patch */
     const double mass = gp->mass;
-    pm_mesh_patch_CIC_set(patch, ii, jj, kk, tx, ty, tz, dx, dy, dz,
-                          mass * weight);
+    const double value = mass * weight;
+    pm_mesh_patch_CIC_set(patch, ii, jj, kk, tx, ty, tz, dx, dy, dz, value);
   }
 }
 
@@ -125,7 +125,7 @@ struct accumulate_mapper_data {
   int N;
   double fac;
   double dim[3];
-  struct neutrino_data *nu_data;
+  struct neutrino_consts *nu_consts;
 };
 
 /**
@@ -145,7 +145,7 @@ void accumulate_cell_to_local_patches_mapper(void *map_data, int num,
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
-  const struct neutrino_data *nu_data = data->nu_data;
+  const struct neutrino_consts *nu_consts = data->nu_consts;
 
   /* Pointer to the chunk to be processed */
   int *local_cells = (int *)map_data;
@@ -161,7 +161,8 @@ void accumulate_cell_to_local_patches_mapper(void *map_data, int num,
     const struct cell *c = &cells[local_cells[i]];
 
     /* Assign this cell's content to the mesh */
-    accumulate_cell_to_local_patch(N, fac, dim, c, &local_patches[i], nu_data);
+    accumulate_cell_to_local_patch(N, fac, dim, c, &local_patches[i],
+                                   nu_consts);
   }
 }
 
@@ -188,10 +189,10 @@ void mpi_mesh_accumulate_gparts_to_local_patches(
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Gather some neutrino constants if using delta-f weighting on the mesh */
-  struct neutrino_data nu_data;
-  bzero(&nu_data, sizeof(struct neutrino_data));
+  struct neutrino_consts nu_consts;
+  bzero(&nu_consts, sizeof(struct neutrino_consts));
   if (s->e->neutrino_properties->use_delta_f_mesh_only)
-    gather_neutrino_data(s, &nu_data);
+    gather_neutrino_consts(s, &nu_consts);
 
   /* Use the threadpool to parallelize over cells */
   struct accumulate_mapper_data data;
@@ -203,7 +204,7 @@ void mpi_mesh_accumulate_gparts_to_local_patches(
   data.dim[0] = dim[0];
   data.dim[1] = dim[1];
   data.dim[2] = dim[2];
-  data.nu_data = &nu_data;
+  data.nu_consts = &nu_consts;
   threadpool_map(tp, accumulate_cell_to_local_patches_mapper,
                  (void *)local_cells, nr_local_cells, sizeof(int),
                  threadpool_auto_chunk_size, (void *)&data);
