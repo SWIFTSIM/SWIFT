@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct fof_props fof_properties;
+  struct neutrino_props neutrino_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
@@ -554,6 +555,9 @@ int main(int argc, char *argv[]) {
   /* Do we have neutrino DM particles? */
   const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
+  /* Zero out neutrino properties to avoid running neutrino tasks */
+  bzero(&neutrino_properties, sizeof(struct neutrino_props));
+  
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
@@ -645,7 +649,7 @@ int main(int argc, char *argv[]) {
       engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
       /*hydro_properties=*/NULL, /*entropy_floor=*/NULL, &gravity_properties,
       /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
-      /*sink_properties=*/NULL, /*neutrino_properties=*/NULL,
+      /*sink_properties=*/NULL, &neutrino_properties,
       /*feedback_properties=*/NULL, /*rt_properties=*/NULL, &mesh,
       /*potential=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
