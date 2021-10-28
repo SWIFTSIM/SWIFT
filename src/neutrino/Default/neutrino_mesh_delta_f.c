@@ -35,32 +35,38 @@ INLINE static double neutrino_momentum(const float v[3], const double m_eV,
   return p;
 }
 
-void gather_neutrino_data(const struct space *s,
-                          struct neutrino_data *nu_data) {
-  nu_data->use_mesh_delta_f = 1;
-  nu_data->m_eV_array = s->e->cosmology->M_nu_eV;
-  nu_data->N_nu = s->e->cosmology->N_nu;
-  nu_data->fac = 1.0 / (s->e->physical_constants->const_speed_light_c *
-                        s->e->cosmology->T_nu_0_eV);
-  nu_data->neutrino_seed = s->e->neutrino_properties->neutrino_seed;
+/**
+ * @brief Gather neutrino constants
+ *
+ * @param s The #space for this run.
+ * @param ncs Struct with neutrino constants
+ */
+void gather_neutrino_consts(const struct space *s,
+                            struct neutrino_consts *ncs) {
+  ncs->use_mesh_delta_f = s->e->neutrino_properties->use_delta_f_mesh_only;
+  ncs->m_eV_array = s->e->cosmology->M_nu_eV;
+  ncs->N_nu = s->e->cosmology->N_nu;
+  ncs->fac = 1.0 / (s->e->physical_constants->const_speed_light_c *
+                    s->e->cosmology->T_nu_0_eV);
+  ncs->neutrino_seed = s->e->neutrino_properties->neutrino_seed;
 }
 
 /**
  * @brief Compute delta-f weight of a neutrino particle
  *
  * @param gp The #gpart.
- * @param nu_data Properties of the neutrino model
+ * @param nu_consts Properties of the neutrino model
  * @param weight The resulting weight (output)
  */
 void gpart_neutrino_weight(const struct gpart *gp,
-                           const struct neutrino_data *nu_data,
+                           const struct neutrino_consts *nu_consts,
                            double *weight) {
 
   /* Unpack neutrino model properties */
-  const double *m_eV_array = nu_data->m_eV_array;
-  const int N_nu = nu_data->N_nu;
-  const double fac = nu_data->fac;
-  const long long neutrino_seed = nu_data->neutrino_seed;
+  const double *m_eV_array = nu_consts->m_eV_array;
+  const int N_nu = nu_consts->N_nu;
+  const double fac = nu_consts->fac;
+  const long long neutrino_seed = nu_consts->neutrino_seed;
 
   /* Use a particle id dependent seed */
   const long long seed = gp->id_or_neg_offset + neutrino_seed;
