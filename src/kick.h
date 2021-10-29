@@ -338,9 +338,11 @@ __attribute__((always_inline)) INLINE static void kick_spart(
  * @param ti_end The ending (integer) time of the kick (for debugging checks).
  */
 __attribute__((always_inline)) INLINE static void kick_dmpart(
-    struct dmpart *restrict dmp, double dt_kick_grav,
-    integertime_t ti_start, integertime_t ti_end) {
-    
+    struct dmpart *restrict dmp, const double dt_kick_grav,
+    const integertime_t ti_start, const integertime_t ti_end,
+    const double dt_kick_mesh_grav, const integertime_t ti_start_mesh,
+    const integertime_t ti_end_mesh) {
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (dmp->ti_kick != ti_start)
         message(
@@ -349,19 +351,32 @@ __attribute__((always_inline)) INLINE static void kick_dmpart(
               dmp->ti_kick, ti_start, ti_end, dmp->id_or_neg_offset);
     
     dmp->ti_kick = ti_end;
+
+    if (ti_start_mesh == -1 && dt_kick_mesh_grav != 0.)
+      error("Incorrect dt_kick for the mesh! %e (should be 0)",
+            dt_kick_mesh_grav);
+
+    if (ti_start_mesh != -1 && dt_kick_mesh_grav == 0.)
+      error("Incorrect dt_kick for the mesh! %e (should not be 0)",
+            dt_kick_mesh_grav);
 #endif
     
     /* Kick particles in momentum space */
     dmp->v_full[0] += dmp->gpart->a_grav[0] * dt_kick_grav;
     dmp->v_full[1] += dmp->gpart->a_grav[1] * dt_kick_grav;
     dmp->v_full[2] += dmp->gpart->a_grav[2] * dt_kick_grav;
+
+    /* Kick particles in momentum space (mesh forces) */
+    dmp->v_full[0] += dmp->gpart->a_grav_mesh[0] * dt_kick_mesh_grav;
+    dmp->v_full[1] += dmp->gpart->a_grav_mesh[1] * dt_kick_mesh_grav;
+    dmp->v_full[2] += dmp->gpart->a_grav_mesh[2] * dt_kick_mesh_grav;
     
     /* Give the gpart friend the same velocity */
     dmp->gpart->v_full[0] = dmp->v_full[0];
     dmp->gpart->v_full[1] = dmp->v_full[1];
     dmp->gpart->v_full[2] = dmp->v_full[2];
 
-    /* Kick aditional variables and complete SIDM kick */
+    /* Kick aditional variables and complete SIDM kick ?*/
     /*dark_matter_kick_extra(dmp, dt_kick_grav);*/
 }
 

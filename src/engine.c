@@ -846,19 +846,19 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       error("Failed to allocate foreign bpart data.");
   }
 
-  if (e->verbose) {
-    /* Allocate space for the foreign particles we will receive */
-    if (count_dmparts_in > s->size_dmparts_foreign) {
-        if (s->dmparts_foreign != NULL)
-            swift_free("dmparts_foreign", s->dmparts_foreign);
-        s->size_dmparts_foreign = engine_foreign_alloc_margin * count_dmparts_in;
-        if (swift_memalign("dmparts_foreign", (void **)&s->dmparts_foreign,
-                           dmpart_align,
-                           sizeof(struct dmpart) * s->size_dmparts_foreign) != 0)
-            error("Failed to allocate foreign dmpart data.");
-    }
+  size_t old_size_dmparts_foreign = s->size_dmparts_foreign;
+  /* Allocate space for the foreign particles we will receive */
+  if (count_dmparts_in > s->size_dmparts_foreign) {
+    if (s->dmparts_foreign != NULL)
+      swift_free("dmparts_foreign", s->dmparts_foreign);
+    s->size_dmparts_foreign = engine_foreign_alloc_margin * count_dmparts_in;
+    if (swift_memalign("dmparts_foreign", (void **)&s->dmparts_foreign,
+                       dmpart_align,
+                       sizeof(struct dmpart) * s->size_dmparts_foreign) != 0)
+      error("Failed to allocate foreign dmpart data.");
+  }
 
-  if (e->verbose)
+  if (e->verbose) {
     message(
         "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/dmpart/bpart "
         "(%zd/%zd/%zd/%zd/%zd MB)",
@@ -873,14 +873,16 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
         (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
-        (s->size_bparts_foreign - old_size_bparts_foreign) > 0) {
+        (s->size_bparts_foreign - old_size_bparts_foreign) > 0 ||
+        (s->size_dmparts_foreign - old_size_dmparts_foreign) > 0) {
       message(
-          "Re-allocations %zd/%zd/%zd/%zd part/gpart/spart/bpart "
-          "(%zd/%zd/%zd/%zd MB)",
+          "Re-allocations %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/dmpart "
+          "(%zd/%zd/%zd/%zd/%zd MB)",
           (s->size_parts_foreign - old_size_parts_foreign),
           (s->size_gparts_foreign - old_size_gparts_foreign),
           (s->size_sparts_foreign - old_size_sparts_foreign),
           (s->size_bparts_foreign - old_size_bparts_foreign),
+          (s->size_dmparts_foreign - old_size_dmparts_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
           (s->size_gparts_foreign - old_size_gparts_foreign) *
@@ -888,7 +890,9 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
           (s->size_sparts_foreign - old_size_sparts_foreign) *
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
-              sizeof(struct bpart) / (1024 * 1024));
+              sizeof(struct bpart) / (1024 * 1024)),
+          (s->size_dmparts_foreign - old_size_dmparts_foreign) *
+              sizeof(struct dmpart) / (1024 * 1024));
     }
   }
 

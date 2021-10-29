@@ -254,6 +254,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
               const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
               const integertime_t ti_begin =
               get_integer_time_begin(ti_current + 1, dmp->time_bin);
+              const intergetime_t ti_end = ti_begin + ti_step / 2;
               
 #ifdef SWIFT_DEBUG_CHECKS
               const integertime_t ti_end =
@@ -265,18 +266,14 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
                         "ti_step=%lld time_bin=%d ti_current=%lld",
                         ti_end, ti_begin, ti_step, dmp->time_bin, ti_current);
 #endif
-              
-              /* Time interval for this half-kick */
-              double dt_kick_grav;
-              if (with_cosmology) {
-                  dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_begin,
-                                                                ti_begin + ti_step / 2);
-              } else {
-                  dt_kick_grav = (ti_step / 2) * time_base;
-              }
+
+              /* Time interval for this gravity half-kick */
+              const double dt_kick_grav = kick_get_grav_kick_dt(
+                  ti_begin, ti_end, time_base, with_cosmology, cosmo);
               
               /* do the kick */
-              kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_begin + ti_step / 2);
+              kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                          ti_begin_mesh, ti_end_mesh);
               
         }
       }
@@ -567,25 +564,21 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
           if (dmpart_is_active(dmp, e)) {
               
               const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
-              const integertime_t ti_begin = get_integer_time_begin(ti_current, dmp->time_bin);
+              const integertime_t ti_begin = get_integer_time_begin(ti_current, dmp->time_bin) + ti_step / 2;
+              const integertime_t ti_end = ti_begin + ti_step / 2;
               
 #ifdef SWIFT_DEBUG_CHECKS
-              if (ti_begin + ti_step != ti_current)
+              if (ti_end != ti_current)
                   error("Particle in wrong time-bin");
 #endif
-              
-              /* Time interval for this half-kick */
-              double dt_kick_grav;
-              if (with_cosmology) {
-                  dt_kick_grav = cosmology_get_grav_kick_factor(
-                                                                cosmo, ti_begin + ti_step / 2, ti_begin + ti_step);
-              } else {
-                  dt_kick_grav = (ti_step / 2) * time_base;
-              }
-              
+
+              /* Time interval for this gravity half-kick */
+              const double dt_kick_grav = kick_get_grav_kick_dt(
+                  ti_begin, ti_end, time_base, with_cosmology, cosmo);
+
               /* Finish the time-step with a second half-kick */
-              kick_dmpart(dmp, dt_kick_grav, ti_begin + ti_step / 2,
-                         ti_begin + ti_step);
+              kick_dmpart(dmp, dt_kick_grav, ti_begin, ti_end, dt_kick_mesh_grav,
+                          ti_begin_mesh, ti_end_mesh);
               
 #ifdef SWIFT_DEBUG_CHECKS
               /* Check that kick and the drift are synchronized */
