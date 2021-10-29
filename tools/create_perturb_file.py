@@ -66,7 +66,7 @@ model.compute()
 
 #Extract wavenumbers and prepare redshifts
 k = model.get_transfer(0)["k (h/Mpc)"] * h
-a = np.exp(np.arange(0, np.log(amin), -0.01))
+a = np.exp(np.arange(0, np.log(amin), -0.01))[::-1]
 z = 1.0 / a - 1.0
 nk = len(k)
 nz = len(z)
