@@ -134,7 +134,7 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
   if (c->N_nu > 1)
     error(
         "Non-degenerate neutrino mass spectra not supported with the linear "
-        "response methid.");
+        "response method.");
 
 #ifdef HAVE_LIBGSL
 
@@ -241,7 +241,7 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
     h_err = H5Aread(h_attr, H5T_NATIVE_DOUBLE, &UnitLengthCGS);
     H5Aclose(h_attr);
 
-    /* Close the Units grou */
+    /* Close the Units group */
     H5Gclose(h_grp);
   } else {
     /* Assume the internal unit system */
@@ -486,10 +486,12 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
                                  u_a * ((1.0 - u_k) * T12 + u_k * T22);
         double correction = 1.0 + pt_ratio_interp * bg_density_ratio;
 
+#ifdef SWIFT_DEBUG_CHECKS
         if (u_k < 0 || u_a < 0 || u_k > 1 || u_a > 1 ||
             k_index > wavenumber_length || a_index > timestep_length)
           error("Interpolation out of bounds error: %g %g %g %g %llu %llu\n",
                 u_k, u_a, sqrt(k2), pt_ratio_interp, k_index, a_index);
+#endif
 
         /* Apply to the mesh */
         const int index =
@@ -570,7 +572,7 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   data.bg_density_ratio = bg_density_ratio;
   data.pt_density_ratio = numesh->pt_density_ratio;
 
-  /* Parallelize the neutrino linear respones application using the
+  /* Parallelize the neutrino linear response application using the threadpool
      to split the x-axis loop over the threads. The array is N x N x (N/2).
      We use the thread to each deal with a range [i_min, i_max[ x N x (N/2) */
   threadpool_map(tp, neutrino_mesh_apply_neutrino_response_mapper, frho,

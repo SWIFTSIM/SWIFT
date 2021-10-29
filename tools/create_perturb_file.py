@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 # Utility to create an HDF5 file with cosmological transfer functions using
-# CLASS (requires python packages classy and h5py).
+# CLASS (python package classy)
 
 import numpy as np
 import h5py
 from classy import Class
 
-#Filename of the perturbations file to be create
+#Name of the perturbations file to be create
 fname = "perturbations.hdf5"
 
 #Open the file
