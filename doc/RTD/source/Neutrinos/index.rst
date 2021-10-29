@@ -110,12 +110,19 @@ functions. The file must contain a vector with redshifts of length :math:`N_z`,
 a vector with wavenumbers :math:`N_k`, and three arrays with dimensions
 :math:`N_z \times N_k` of density transfer functions for cdm, baryons, and
 neutrinos respectively. It is recommended to store the units of the wavenumbers
-as an attribute at "Units/Unit length in cgs (U_L)". The `fixed_bg_density`
+as an attribute at "Units/Unit length in cgs (U_L)". The ``fixed_bg_density``
 flag determines whether the linear response scales as :math:`\Omega_\nu(a)`
 or the present-day value :math:`\Omega_{\nu,0}`, either of which may be
-appropriate depending on the initial conditions.
+appropriate depending on the particle initial conditions.
 
 The linear response mode currently only supports degenerate mass models
 with a single neutrino transfer function.
+
+Background Neutrinos Only
+-------------------------
+
+It is also possible to run without neutrino perturbations, even when
+specifying neutrinos in the background cosmology. This mode can be
+activated with ``Neutrino:use_model_none``.
 
 .. [#f1] Currently, it is not guaranteed that a particle ID is unique.
