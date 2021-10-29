@@ -339,7 +339,7 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
                       xp->x_diff[2] * xp->x_diff[2];
 
     h_max = max(h_max, p->h);
-    dx_max = max(dx_max, sqrt(dx2));
+    dx_max = max(dx_max, sqrtf(dx2));
   }
 
   const size_t nr_sparts = c->stars.count;
@@ -366,7 +366,7 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
                       sp->x_diff[2] * sp->x_diff[2];
 
     stars_h_max = max(stars_h_max, sp->h);
-    stars_dx_max = max(stars_dx_max, sqrt(dx2));
+    stars_dx_max = max(stars_dx_max, sqrtf(dx2));
   }
 
   const size_t nr_sinks = c->sinks.count;
@@ -393,7 +393,7 @@ int checkCellhdxmax(const struct cell *c, int *depth) {
                       sp->x_diff[2] * sp->x_diff[2];
 
     sinks_h_max = max(sinks_h_max, sp->r_cut);
-    sinks_dx_max = max(sinks_dx_max, sqrt(dx2));
+    sinks_dx_max = max(sinks_dx_max, sqrtf(dx2));
   }
 
   if (c->split) {

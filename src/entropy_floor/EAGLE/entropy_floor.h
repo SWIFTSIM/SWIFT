@@ -89,10 +89,6 @@ struct entropy_floor_properties {
 /**
  * @brief Compute the pressure from the entropy floor at a given density
  *
- * This is the pressure exactly corresponding to the imposed EoS shape.
- * It only matches the entropy returned by the entropy_floor() function
- * for a neutral gas with primoridal abundance.
- *
  * @param rho_phys The physical density (internal units).
  * @param rho_com The comoving density (internal units).
  * @param cosmo The cosmological model.

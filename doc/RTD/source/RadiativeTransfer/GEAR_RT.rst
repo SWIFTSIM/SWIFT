@@ -19,11 +19,11 @@ Compiling for GEAR RT
     ``--with-rt=GEAR_N`` where ``N`` is the integer number of photon groups that 
     you intend to use in your simulation.
 
--   You need to choose a Riemann solver for the RT equations. Currently only the
-    ``--with-rt-riemann-solver=GLF`` works, the ``HLL`` will be added later.
-    The ``GLF`` solver is more diffusive, but the ``HLL`` solver produces less 
-    spherically symmetric radiation from stars. See 
-    `Rosdahl et al 2013 <https://ui.adsabs.harvard.edu/abs/2013MNRAS.436.2188R/abstract>`_
+-   You need to choose a Riemann solver for the RT equations. You can choose
+    between the ``GLF`` and ``HLL`` solver. For the time being, I recommend 
+    sticking to the ``GLF`` solver as the ``HLL`` solver is more expensive,
+    but seemingly offers no advantage, although this remains to be comfirmed
+    in further testing.
 
 -   GEAR RT is only compatible with the Meshless Finite Volume scheme. You'll
     need to compile using ``--with-hydro=gizmo-mfv``, which will also require

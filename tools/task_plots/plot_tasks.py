@@ -515,6 +515,7 @@ for rank in ranks:
     else:
         outpng = outbase + ".png"
     pl.savefig(outpng, bbox_inches="tight")
+    pl.close()
     print("Graphics done, output written to", outpng)
 
 sys.exit(0)

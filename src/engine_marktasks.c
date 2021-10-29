@@ -464,6 +464,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Set the correct sorting flags */
         if (t_type == task_type_pair) {
 
+          /* Add stars_in dependencies for each cell that is part of
+           * a pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->stars.stars_in);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->stars.stars_in);
+
           /* Do ci */
           if (ci_active_stars) {
 
@@ -512,6 +519,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_stars_density) {
+
+          /* Add stars_in dependencies for each cell that is part of
+           * a pair/sub_pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->stars.stars_in);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->stars.stars_in);
+
           cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
                                             with_star_formation_sink,
                                             with_timestep_sync);
@@ -593,6 +608,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           scheduler_activate(s, t);
         }
+
+        if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+          /* Add stars_out dependencies for each cell that is part of
+           * a pair/sub_pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->stars.stars_out);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->stars.stars_out);
+        }
       }
 
       /* Black_Holes density */
@@ -613,6 +637,23 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
           if (cj_nodeID == nodeID) cell_activate_drift_bpart(cj, s);
+
+          /* Activate bh_in for each cell that is part of
+           * a pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->black_holes.black_holes_in);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->black_holes.black_holes_in);
+        }
+
+        if ((t_type == task_type_pair || t_type == task_type_sub_pair) &&
+            t_subtype == task_subtype_bh_feedback) {
+          /* Add bh_out dependencies for each cell that is part of
+           * a pair/sub_pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->black_holes.black_holes_out);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->black_holes.black_holes_out);
         }
 
         /* Store current values of dx_max and h_max. */
@@ -620,6 +661,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                  t_subtype == task_subtype_bh_density) {
           cell_activate_subcell_black_holes_tasks(ci, cj, s,
                                                   with_timestep_sync);
+          /* Activate bh_in for each cell that is part of
+           * a sub_pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->black_holes.black_holes_in);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->black_holes.black_holes_in);
         }
       }
 
@@ -660,12 +707,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (ci_nodeID == nodeID) {
             cell_activate_drift_sink(ci, s);
             cell_activate_sink_formation_tasks(ci->top, s);
+            /* Activate all sink_in tasks for each cell involved
+             * in pair type tasks */
+            scheduler_activate(s, ci->hydro.super->sinks.sink_in);
           }
+
           if (cj_nodeID == nodeID) {
             cell_activate_drift_sink(cj, s);
             if (ci->top != cj->top) {
               cell_activate_sink_formation_tasks(cj->top, s);
             }
+            /* Activate all sink_in tasks for each cell involved
+             * in pair type tasks */
+            scheduler_activate(s, cj->hydro.super->sinks.sink_in);
           }
 
           /* Do ci */
@@ -702,10 +756,27 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
         }
 
-        /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_sink_compute_formation) {
+          /* Activate all sink_in tasks for each cell involved
+           * in sub_pair type tasks */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->sinks.sink_in);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->sinks.sink_in);
+
+          /* Store current values of dx_max and h_max. */
           cell_activate_subcell_sinks_tasks(ci, cj, s, with_timestep_sync);
+        }
+
+        else if ((t_type == task_type_pair || t_type == task_type_sub_pair) &&
+                 t_subtype == task_subtype_sink_accretion) {
+          /* Activate sinks_out for each cell that is part of
+           * a pair/sub_pair task as to not miss any dependencies */
+          if (ci_nodeID == nodeID)
+            scheduler_activate(s, ci->hydro.super->sinks.sink_out);
+          if (cj_nodeID == nodeID)
+            scheduler_activate(s, cj->hydro.super->sinks.sink_out);
         }
       }
 
@@ -721,6 +792,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Set the correct sorting flags */
           if (t_type == task_type_pair) {
+
+            /* Add rt_in dependencies for each cell that is part of
+             * a pair task as to not miss any dependencies */
+            if (ci_nodeID == nodeID)
+              scheduler_activate(s, ci->hydro.super->hydro.rt_in);
+            if (cj_nodeID == nodeID)
+              scheduler_activate(s, cj->hydro.super->hydro.rt_in);
+
+            /* For the same reason, catch the dependencies with the RT ghost1 */
+            if (ci_nodeID == nodeID)
+              scheduler_activate(s, ci->hydro.super->hydro.rt_ghost1);
+            if (cj_nodeID == nodeID)
+              scheduler_activate(s, cj->hydro.super->hydro.rt_ghost1);
 
             /* Do ci */
             if (ci_active_rt) {
@@ -766,13 +850,25 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Store current values of dx_max and h_max. */
           else if (t_type == task_type_sub_pair) {
             cell_activate_subcell_rt_tasks(ci, cj, s);
+
+            /* Add rt_in dependencies for each cell that is part of
+             * a sub_pair task as to not miss any dependencies */
+            if (ci_nodeID == nodeID)
+              scheduler_activate(s, ci->hydro.super->hydro.rt_in);
+            if (cj_nodeID == nodeID)
+              scheduler_activate(s, cj->hydro.super->hydro.rt_in);
+
+            /* For the same reason, catch the dependencies with the RT ghost1 */
+            if (ci_nodeID == nodeID)
+              scheduler_activate(s, ci->hydro.super->hydro.rt_ghost1);
+            if (cj_nodeID == nodeID)
+              scheduler_activate(s, cj->hydro.super->hydro.rt_ghost1);
           }
         }
       }
 
       /* RT gradient and transport tasks */
-      else if (t_subtype == task_subtype_rt_gradient ||
-               t_subtype == task_subtype_rt_transport) {
+      else if (t_subtype == task_subtype_rt_gradient) {
         /* We only want to activate the task if the cell is active and is
            going to update some gas on the *local* node */
         if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
@@ -781,6 +877,36 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            * Therefore all the (subcell) sorts and drifts should already have
            * been activated properly in the hydro part of the activation. */
           scheduler_activate(s, t);
+
+          if (t_type == task_type_pair || t_type == task_type_sub_pair) {
+            /* Activate rt_ghost1 dependencies for each cell that is part of
+             * a pair/sub_pair task as to not miss any dependencies */
+            if (ci_nodeID == nodeID)
+              scheduler_activate(s, ci->hydro.super->hydro.rt_ghost1);
+            if (cj_nodeID == nodeID)
+              scheduler_activate(s, cj->hydro.super->hydro.rt_ghost1);
+          }
+        }
+      }
+
+      else if (t_subtype == task_subtype_rt_transport) {
+        /* We only want to activate the task if the cell is active and is
+           going to update some gas on the *local* node */
+        if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+            (ci_active_hydro || cj_active_hydro)) {
+          /* The gradient and transport task subtypes mirror the hydro tasks.
+           * Therefore all the (subcell) sorts and drifts should already have
+           * been activated properly in the hydro part of the activation. */
+          scheduler_activate(s, t);
+
+          if (t_type == task_type_pair || t_type == task_type_sub_pair) {
+            /* Activate transport_out for each cell that is part of
+             * a pair/sub_pair task as to not miss any dependencies */
+            if (ci_nodeID == nodeID)
+              scheduler_activate(s, ci->hydro.super->hydro.rt_transport_out);
+            if (cj_nodeID == nodeID)
+              scheduler_activate(s, cj->hydro.super->hydro.rt_transport_out);
+          }
         }
       }
 

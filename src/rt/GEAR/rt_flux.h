@@ -28,6 +28,8 @@
 #error "No valid choice of RT Riemann solver has been selected"
 #endif
 
+#include "rt_unphysical.h"
+
 /**
  * @file src/rt/GEAR/rt_flux.h
  * @brief Functions related to compute the interparticle flux term of the
@@ -52,8 +54,8 @@ __attribute__((always_inline)) INLINE static void rt_part_reset_fluxes(
 }
 
 /**
- * @brief Compute the flux between a left state Qleft and a right
- * state Qright along the direction of the unit vector n_unit
+ * @brief Compute the flux between a left state UL and a right
+ * state UR along the direction of the unit vector n_unit
  * through a surface of size Anorm.
  *
  * @param UL left state
