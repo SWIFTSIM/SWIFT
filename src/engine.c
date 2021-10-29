@@ -2194,12 +2194,6 @@ void engine_step(struct engine *e) {
        ((double)e->total_nr_gparts) * e->gravity_properties->rebuild_frequency))
     e->forcerebuild = 1;
 
-  /* Trigger a tree-rebuild whenever we re-compute the mesh forces */
-  if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
-      e->gravity_properties->rebuild_on_mesh_steps &&
-      e->mesh->ti_end_mesh_next == e->ti_current)
-    e->forcerebuild = 1;
-
   /* Trigger a FOF black hole seeding? */
   if (e->policy & engine_policy_fof) {
     if (e->ti_end_min > e->ti_next_fof && e->ti_next_fof > 0) {
