@@ -557,7 +557,7 @@ int main(int argc, char *argv[]) {
 
   /* Zero out neutrino properties to avoid running neutrino tasks */
   bzero(&neutrino_properties, sizeof(struct neutrino_props));
-  
+
   /* Initialize the space with these data. */
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
