@@ -1,0 +1,50 @@
+MetaData:
+  run_name: "stromgrenSphere-2D"
+
+# Define the system of units to use internally. 
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.
+  UnitLength_in_cgs:   1.
+  UnitVelocity_in_cgs: 1.
+  UnitCurrent_in_cgs:  1.
+  UnitTemp_in_cgs:     1.
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   0.001 # end time: radiation reaches edge of box
+  dt_min:     1.e-12 # The minimal time-step size of the simulation (in internal units).
+  dt_max:     2.e-04  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            output # Common part of the name of output files
+  time_first:          0.     # Time of the first output (in internal units)
+  delta_time:          0.0001 # Time between snapshots
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  time_first:          0.
+  delta_time:          5e-4 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.6      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./stromgrenSphere-2D.hdf5     # The file to read
+  periodic:   1                             # peridioc ICs. Keep them periodic so we don't loose photon energy. TODO: CHANGE LATER WHEN YOU ACTUALLY DO GAS INTERACTIONS
+
+Scheduler:
+  max_top_level_cells: 64
+
+GEARRT:
+    f_reduce_c: 1.        # reduce the speed of light for the RT solver by multiplying c with this factor
+    CFL_condition: 0.99
+    photon_groups_Hz: []  # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N).
+    use_const_emission_rates: 1         # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_LSol parameter
+    star_emission_rates_LSol: [1e-28]   # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set.
+

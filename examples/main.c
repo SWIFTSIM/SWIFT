@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
   struct sink *sinks = NULL;
   struct unit_system us;
   struct los_props los_properties;
+  struct ic_info ics_metadata;
 
   int nr_nodes = 1, myrank = 0;
 
@@ -1141,6 +1142,9 @@ int main(int argc, char *argv[]) {
     size_t Nspart = 0, Nbpart = 0, Nsink = 0;
     double dim[3] = {0., 0., 0.};
 
+    /* Prepare struct to store metadata from ICs */
+    ic_info_init(&ics_metadata, params);
+
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
@@ -1151,7 +1155,7 @@ int main(int argc, char *argv[]) {
                      with_gravity, with_sink, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
-                     nr_threads, dry_run, remap_ids);
+                     nr_threads, dry_run, remap_ids, &ics_metadata);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
@@ -1159,7 +1163,7 @@ int main(int argc, char *argv[]) {
                    with_gravity, with_sink, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run, remap_ids);
+                   dry_run, remap_ids, &ics_metadata);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
@@ -1167,7 +1171,7 @@ int main(int argc, char *argv[]) {
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
                    with_gravity, with_sink, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   nr_threads, dry_run, remap_ids);
+                   nr_threads, dry_run, remap_ids, &ics_metadata);
 #endif
 #endif
 
@@ -1431,7 +1435,7 @@ int main(int argc, char *argv[]) {
                 &black_holes_properties, &sink_properties, &neutrino_properties,
                 &neutrino_mesh, &feedback_properties, &rt_properties, &mesh,
                 &potential, &cooling_func, &starform, &chemistry,
-                &fof_properties, &los_properties);
+                &fof_properties, &los_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 
@@ -1529,10 +1533,11 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
     printf(
         "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s [%s] "
-        "%6s\n",
+        "%6s %s [%s] \n",
         "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
         "Updates", "g-Updates", "s-Updates", "sink-Updates", "b-Updates",
-        "Wall-clock time", clocks_getunit(), "Props");
+        "Wall-clock time", clocks_getunit(), "Props", "Dead time",
+        clocks_getunit());
     fflush(stdout);
   }
 
@@ -1674,23 +1679,25 @@ int main(int argc, char *argv[]) {
   /* Write final time information */
   if (myrank == 0) {
 
+    const double dead_time = e.global_deadtime / (nr_nodes * e.nr_threads);
+
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
         "%12lld"
-        " %21.3f %6d\n",
+        " %21.3f %6d %21.3f\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.sink_updates, e.b_updates, e.wallclock_time, e.step_props);
+        e.sink_updates, e.b_updates, e.wallclock_time, e.step_props, dead_time);
     fflush(stdout);
 
     fprintf(e.file_timesteps,
             "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
-            " %12lld %21.3f %6d\n",
+            " %12lld %21.3f %6d %21.3f\n",
             e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
             e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
             e.s_updates, e.sink_updates, e.b_updates, e.wallclock_time,
-            e.step_props);
+            e.step_props, dead_time);
     fflush(e.file_timesteps);
 
     /* Print information to the SFH logger */

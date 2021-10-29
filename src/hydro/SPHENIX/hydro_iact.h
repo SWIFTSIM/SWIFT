@@ -467,12 +467,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
   pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 
-  /* Update if we need to; this should be guaranteed by the gradient loop but
-   * due to some possible synchronisation problems this is here as a _quick
-   * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
-  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
-  pj->viscosity.v_sig = max(pj->viscosity.v_sig, v_sig);
-
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;
   pj->n_force += wi + wj;
@@ -610,11 +604,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
-
-  /* Update if we need to; this should be guaranteed by the gradient loop but
-   * due to some possible synchronisation problems this is here as a _quick
-   * fix_. Added: 14th August 2019. To be removed by 1st Jan 2020. (JB) */
-  pi->viscosity.v_sig = max(pi->viscosity.v_sig, v_sig);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_force += wi + wj;

@@ -515,6 +515,7 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
  * @param n_threads The number of threads to use for local operations.
  * @param dry_run If 1, don't read the particle. Only allocates the arrays.
  * @param remap_ids Are we ignoring the ICs' IDs and remapping them to [1, N[ ?
+ * @param ics_metadata Will store metadata group copied from the ICs file
  *
  * Opens the HDF5 file fileName and reads the particles contained
  * in the parts array. N is the returned number of particles found
@@ -535,7 +536,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
                     int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
                     double h, double a, int mpi_rank, int mpi_size,
                     MPI_Comm comm, MPI_Info info, int n_threads, int dry_run,
-                    int remap_ids) {
+                    int remap_ids, struct ic_info* ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -672,6 +673,9 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
               internal_units->UnitTemperature_in_cgs);
     }
 
+    /* Read metadata from ICs file */
+    ic_info_read_hdf5(ics_metadata, h_file);
+
     /* Close file */
     H5Fclose(h_file);
   }
@@ -686,6 +690,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, 0, comm);
   MPI_Bcast(dim, 3, MPI_DOUBLE, 0, comm);
   MPI_Bcast(ic_units, sizeof(struct unit_system), MPI_BYTE, 0, comm);
+  ic_info_struct_broadcast(ics_metadata, 0);
 
   /* Divide the particles among the tasks. */
   for (int ptype = 0; ptype < swift_type_count; ++ptype) {
@@ -1225,6 +1230,9 @@ void write_output_serial(struct engine* e,
 
     /* Close header */
     H5Gclose(h_grp);
+
+    /* Copy metadata from ICs to the file */
+    ic_info_write_hdf5(e->ics_metadata, h_file);
 
     /* Write all the meta-data */
     io_write_meta_data(h_file, e, internal_units, snapshot_units);

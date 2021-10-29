@@ -107,6 +107,8 @@ __attribute__((always_inline)) INLINE static int rt_should_iact_cell(
 __attribute__((always_inline)) INLINE static int rt_should_iact_cell_pair(
     const struct cell *ci, const struct cell *cj, const struct engine *e) {
 
+  if (cj == NULL) return 0;
+
 #ifdef RT_HYDRO_CONTROLLED_INJECTION
   return (cell_is_active_hydro(cj, e) && (cj->hydro.count > 0) &&
           (ci->stars.count > 0));

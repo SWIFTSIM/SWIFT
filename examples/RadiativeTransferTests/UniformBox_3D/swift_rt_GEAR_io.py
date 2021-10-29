@@ -195,9 +195,14 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
 
         if len(rundata.const_emission_rates) != rundata.ngroups:
             print("Got number of emission rates different from number of groups?")
-            print(rundata.const_emission_rates)
-            print(rundata.ngroups)
-            quit()
+            print(rundata.const_emission_rates, "vs", rundata.ngroups)
+            if len(rundata.const_emission_rates) > rundata.ngroups:
+                print("Only using first", rundata.ngroups, "emission rates")
+                rundata.const_emission_rates = rundata.const_emission_rates[
+                    : rundata.ngroups
+                ]
+            else:
+                quit()
 
     if "hydro controlled" in scheme:
         rundata.hydro_controlled_injection = True
