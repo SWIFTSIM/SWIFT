@@ -281,27 +281,32 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_dmpart
         while (ti_beg_old + k * dti_new <= ti_current) k++;
         
         const integertime_t ti_beg_new = ti_beg_old + (k - 1) * dti_new;
+
+        /* End of the old half step */
+        const integertime_t ti_end_half_old = ti_beg_old + dti_old / 2;
+
+        /* End of the new half step */
+        const integertime_t ti_end_half_new = ti_beg_new + dti_new / 2;
         
         double dt_kick_grav = 0.;
         
         /* Now we need to reverse the kick1... (the dt are negative here) */
-        if (with_cosmology) {
-            dt_kick_grav = -cosmology_get_grav_kick_factor(cosmo, ti_beg_old, ti_beg_old + dti_old / 2);
-        } else {
-            dt_kick_grav = -(dti_old / 2) * time_base;
-        }
+        dt_kick_grav = -kick_get_grav_kick_dt(ti_beg_old, ti_end_half_old, time_base,
+                                             with_cosmology, cosmo);
+
+        /* Note that there is no need to change the mesh integration as we
+         * can't go back more than one global step */
+        kick_dmpart(p, dt_kick_grav, ti_end_half_old, ti_beg_old,
+                    /*dt_kick_mesh_grav=*/0.,/*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
         
-        kick_dmpart(p, dt_kick_grav, ti_beg_old + dti_old / 2, ti_beg_old);
-        
-        /* ...and apply the new one (dt is positive).
-         * This brings us to the current time. */
-        if (with_cosmology) {
-            dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg_new, ti_beg_new + dti_new / 2);
-        } else {
-            dt_kick_grav = (ti_beg_new - ti_beg_old) * time_base;
-        }
-        
-        kick_dmpart(p, dt_kick_grav, ti_beg_old, ti_beg_new);
+        /* ...and apply the new one (dt is positive). This brings us to the current time. */
+        dt_kick_grav = kick_get_grav_kick_dt(ti_beg_old, ti_beg_new,
+                                             time_base, with_cosmology, cosmo);
+
+        /* Note that there is no need to change the mesh integration as we
+         * can't go back more than one global step */
+        kick_dmpart(p, dt_kick_grav, ti_beg_old, ti_beg_new,
+                    /*dt_kick_mesh_grav=*/0.,/*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
         
         /* The particle has now been kicked to the current time */
         
@@ -316,14 +321,12 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_dmpart
         if (new_bin > e->max_active_bin) {
             
             /* Apply the missing kick1 */
+            dt_kick_grav = kick_get_grav_kick_dt(ti_beg_new, ti_end_half_new,
+                                                 time_base, with_cosmology, cosmo);
+
             
-            if (with_cosmology) {
-                dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg_new, ti_beg_new + dti_new / 2);
-            } else {
-                dt_kick_grav = (dti_new / 2) * time_base;
-            }
-            
-            kick_dmpart(p, dt_kick_grav, ti_beg_new, ti_beg_new + dti_new / 2);
+            kick_dmpart(p, dt_kick_grav, ti_beg_new, ti_beg_half_new,
+                        /*dt_kick_mesh_grav=*/0.,/*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
             
             /* Return the new end-of-step for this particle */
             return ti_beg_new + dti_new;
