@@ -2318,9 +2318,6 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     const double ri_max = multi_i->r_max;
     const double rj_max = multi_j->r_max;
 
-    message("cell_i type: %d r_max_i: %f  cell_j type:%d r_max_j: %f", 
-    		ci->tl_cell_type, ri_max, cj->tl_cell_type, rj_max);
-
     /* Split the larger of the two cells and start over again */
     if (ri_max > rj_max) {
 
