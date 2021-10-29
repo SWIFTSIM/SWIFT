@@ -132,11 +132,12 @@ __attribute__((always_inline)) INLINE static void CIC_set(
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
- * @param weight A multiplicative weight for the #gpart
+ * @param nu_consts Struct with neutrino constants
  */
 INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
                                      const int N, const double fac,
-                                     const double dim[3], const double weight) {
+                                     const double dim[3],
+                                     const struct neutrino_consts* nu_consts) {
 
   /* Box wrap the multipole's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -168,6 +169,11 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
   if (k < 0 || k >= N) error("Invalid gpart position in z");
 #endif
 
+  /* Compute weight (for neutrino delta-f weighting) */
+  double weight = 1.0;
+  if (nu_consts->use_mesh_delta_f && gp->type == swift_type_neutrino)
+    gpart_neutrino_weight(gp, nu_consts, &weight);
+
   const double mass = gp->mass;
   const double value = mass * weight;
 
@@ -192,19 +198,11 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
 
   const int gcount = c->grav.count;
   const struct gpart* gparts = c->grav.parts;
-  const char apply_neutrino_weights = nu_consts->use_mesh_delta_f;
 
   /* Assign all the gpart of that cell to the mesh */
   for (int i = 0; i < gcount; ++i) {
     if (gparts[i].time_bin == time_bin_inhibited) continue;
-
-    /* Compute weight (for neutrino delta-f weighting) */
-    double weight = 1.0;
-    if (apply_neutrino_weights && gparts[i].type == swift_type_neutrino)
-      gpart_neutrino_weight(&gparts[i], nu_consts, &weight);
-
-    /* CIC */
-    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, weight);
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, nu_consts);
   }
 }
 
@@ -231,21 +229,13 @@ void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
   const struct neutrino_consts* nu_consts = data->nu_consts;
-  const char apply_neutrino_weights = nu_consts->use_mesh_delta_f;
 
   /* Pointer to the chunk to be processed */
   const struct gpart* gparts = (const struct gpart*)map_data;
 
   for (int i = 0; i < num; ++i) {
     if (gparts[i].time_bin == time_bin_inhibited) continue;
-
-    /* Compute weight (for neutrino delta-f weighting) */
-    double weight = 1.0;
-    if (apply_neutrino_weights && gparts[i].type == swift_type_neutrino)
-      gpart_neutrino_weight(&gparts[i], nu_consts, &weight);
-
-    /* CIC */
-    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, weight);
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, nu_consts);
   }
 }
 
