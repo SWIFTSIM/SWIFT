@@ -254,7 +254,7 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
               const integertime_t ti_step = get_integer_timestep(dmp->time_bin);
               const integertime_t ti_begin =
               get_integer_time_begin(ti_current + 1, dmp->time_bin);
-              const intergetime_t ti_end = ti_begin + ti_step / 2;
+              const integertime_t ti_end = ti_begin + ti_step / 2;
               
 #ifdef SWIFT_DEBUG_CHECKS
               const integertime_t ti_end =
