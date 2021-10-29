@@ -32,7 +32,8 @@ neutrino mass specified in the cosmology and generate new velocities
 based on the homogeneous (unperturbed) Fermi-Dirac distribution. In
 this case, placeholder neutrino particles should be provided in the
 initial conditions with arbitrary masses and velocities, distributed
-uniformly in the box.
+uniformly in the box. Placeholders can be spawned with the python
+script ``tools/spawn_neutrinos.py``.
 
 Relativistic Drift
 ------------------
@@ -113,7 +114,8 @@ neutrinos respectively. It is recommended to store the units of the wavenumbers
 as an attribute at "Units/Unit length in cgs (U_L)". The ``fixed_bg_density``
 flag determines whether the linear response scales as :math:`\Omega_\nu(a)`
 or the present-day value :math:`\Omega_{\nu,0}`, either of which may be
-appropriate depending on the particle initial conditions.
+appropriate depending on the particle initial conditions. An HDF5 file
+can be generated using classy with the script ``tools/create_perturb_file.py``.
 
 The linear response mode currently only supports degenerate mass models
 with a single neutrino transfer function.
