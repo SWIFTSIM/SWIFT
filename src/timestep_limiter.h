@@ -325,7 +325,7 @@ __attribute__((always_inline)) INLINE static integertime_t timestep_limit_dmpart
                                                  time_base, with_cosmology, cosmo);
 
             
-            kick_dmpart(p, dt_kick_grav, ti_beg_new, ti_beg_half_new,
+            kick_dmpart(p, dt_kick_grav, ti_beg_new, ti_end_half_new,
                         /*dt_kick_mesh_grav=*/0.,/*ti_start_mesh=*/-1, /*ti_end_mesh=*/-1);
             
             /* Return the new end-of-step for this particle */
