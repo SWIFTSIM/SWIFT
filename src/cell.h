@@ -656,7 +656,14 @@ __attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
   if (leaf_cell->split) error("Running on an unsplit cell!");
 #endif
 
-  while (c->parent != NULL) {
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    p->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
     if (h >= c->h_min_allowed && h < c->h_max_allowed) {
       p->depth_h = c->depth;
       return;
@@ -685,7 +692,14 @@ __attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
   if (leaf_cell->split) error("Running on an unsplit cell!");
 #endif
 
-  while (c->parent != NULL) {
+  /* Case where h is much smaller than the leaf cell itself */
+  if (h < c->h_min_allowed) {
+    sp->depth_h = c->depth;
+    return;
+  }
+
+  /* Climb the tree to find the correct level */
+  while (c != NULL) {
     if (h >= c->h_min_allowed && h < c->h_max_allowed) {
       sp->depth_h = c->depth;
       return;

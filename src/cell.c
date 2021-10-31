@@ -631,7 +631,7 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
   for (int i = 0; i < c->hydro.count; ++i) {
     const struct part *p = &c->hydro.parts[i];
     if (p->depth_h == c->depth) {
-      if (!(p->h >= c->h_min_allowed && p->h < c->h_max_allowed)) {
+      if (!(p->h >= c->h_min_allowed && p->h < c->h_max_allowed) && c->split) {
         error(
             "depth_h set incorrectly! c->depth=%d p->depth_h=%d h=%e h_min=%e "
             "h_max=%e",
@@ -753,7 +753,8 @@ void cell_check_spart_drift_point(struct cell *c, void *data) {
   for (int i = 0; i < c->stars.count; ++i) {
     const struct spart *sp = &c->stars.parts[i];
     if (sp->depth_h == c->depth) {
-      if (!(sp->h >= c->h_min_allowed && sp->h < c->h_max_allowed)) {
+      if (!(sp->h >= c->h_min_allowed && sp->h < c->h_max_allowed) &&
+          c->split) {
         error(
             "depth_h set incorrectly! c->depth=%d sp->depth_h=%d h=%e h_min=%e "
             "h_max=%e",
