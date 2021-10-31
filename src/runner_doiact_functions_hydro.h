@@ -1161,8 +1161,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
   const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 #endif
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   /* Get some other useful values. */
   const double hi_max =
