@@ -627,6 +627,18 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
         c->hydro.parts[i].time_bin != time_bin_inhibited)
       error("part in an incorrect time-zone! p->ti_drift=%lld ti_drift=%lld",
             c->hydro.parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->hydro.count; ++i) {
+    const struct part *p = &c->hydro.parts[i];
+    if (p->depth_h == c->depth) {
+      if (!(p->h >= c->h_min_allowed && p->h < c->h_max_allowed)) {
+        error(
+            "depth_h set incorrectly! c->depth=%d p->depth_h=%d h=%e h_min=%e "
+            "h_max=%e",
+            c->depth, p->depth_h, p->h, c->h_min_allowed, c->h_max_allowed);
+      }
+    }
+  }
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
@@ -737,6 +749,18 @@ void cell_check_spart_drift_point(struct cell *c, void *data) {
         c->stars.parts[i].time_bin != time_bin_inhibited)
       error("g-part in an incorrect time-zone! gp->ti_drift=%lld ti_drift=%lld",
             c->stars.parts[i].ti_drift, ti_drift);
+
+  for (int i = 0; i < c->stars.count; ++i) {
+    const struct spart *sp = &c->stars.parts[i];
+    if (sp->depth_h == c->depth) {
+      if (!(sp->h >= c->h_min_allowed && sp->h < c->h_max_allowed)) {
+        error(
+            "depth_h set incorrectly! c->depth=%d sp->depth_h=%d h=%e h_min=%e "
+            "h_max=%e",
+            c->depth, sp->depth_h, sp->h, c->h_min_allowed, c->h_max_allowed);
+      }
+    }
+  }
 #else
   error("Calling debugging code without debugging flag activated.");
 #endif
