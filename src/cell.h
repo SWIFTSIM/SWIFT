@@ -640,8 +640,14 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
 
-static INLINE void cell_set_part_h_depth(struct part *p,
-                                         const struct cell *leaf_cell) {
+/**
+ * @brief Set the depth_h field of a #part.
+ *
+ * @param p The #part.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
+    struct part *p, const struct cell *leaf_cell) {
 
   const float h = p->h;
   const struct cell *c = leaf_cell;
@@ -657,10 +663,20 @@ static INLINE void cell_set_part_h_depth(struct part *p,
     }
     c = c->parent;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
 }
 
-static INLINE void cell_set_spart_h_depth(struct spart *sp,
-                                          const struct cell *leaf_cell) {
+/**
+ * @brief Set the depth_h field of a #spart.
+ *
+ * @param sp The #spart.
+ * @param leaf_cell The leaf cell where the particle is located.
+ */
+__attribute__((always_inline)) static INLINE void cell_set_spart_h_depth(
+    struct spart *sp, const struct cell *leaf_cell) {
 
   const float h = sp->h;
   const struct cell *c = leaf_cell;
@@ -676,6 +692,9 @@ static INLINE void cell_set_spart_h_depth(struct spart *sp,
     }
     c = c->parent;
   }
+#ifdef SWIFT_DEBUG_CHECKS
+  error("Could not find an appropriate depth!");
+#endif
 }
 
 /**
