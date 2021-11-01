@@ -50,7 +50,7 @@ void gpart_neutrino_weight(const struct gpart *gp,
                            const struct neutrino_model *nm, double *weight);
 void gpart_neutrino_mass(const struct gpart *gp,
                          const struct neutrino_model *nm, double *mass);
-                           
+
 /* Compute the ratio of macro particle mass in internal mass units to
  * the mass of one microscopic neutrino in eV.
  *

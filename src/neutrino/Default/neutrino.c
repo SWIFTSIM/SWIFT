@@ -97,7 +97,7 @@ void gpart_neutrino_mass_weight(const struct gpart *gp,
 
   /* Use a particle id dependent seed */
   const long long seed = gp->id_or_neg_offset + nm->neutrino_seed;
-  
+
   /* Compute the initial dimensionless momentum from the seed */
   const double pi = neutrino_seed_to_fermi_dirac(seed);
 
@@ -105,7 +105,7 @@ void gpart_neutrino_mass_weight(const struct gpart *gp,
   const double m_eV = neutrino_seed_to_mass(nm->N_nu, nm->M_nu_eV, seed);
   const double deg = neutrino_seed_to_degeneracy(nm->N_nu, nm->deg_nu, seed);
   *mass = deg * m_eV * nm->inv_mass_factor;
-    
+
   /* Compute the current dimensionless momentum */
   const double p = neutrino_momentum(gp->v_full, m_eV, nm->fac);
 
