@@ -130,7 +130,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     struct gpart *gparts = c->grav.parts;
     const int gcount = c->grav.count;
     const struct grav_tensor *pot = &c->grav.multipole->pot;
-    const float CoM[3] = {c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
+    const double CoM[3] = {c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
                            c->grav.multipole->CoM[2]};
 
     /* Apply accelerations to the particles */
