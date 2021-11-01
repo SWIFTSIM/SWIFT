@@ -80,22 +80,22 @@ __attribute__((const)) INLINE static float gravity_f_MAC_inverse(
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const struct gravity_props *props, const struct gravity_tensors *restrict A,
-    const struct gravity_tensors *restrict B, const double r2,
+    const struct gravity_tensors *restrict B, const float r2,
     const int use_rebuild_sizes, const int periodic) {
 
   /* Order of the expansion */
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
 
   /* Sizes of the multipoles */
-  const double rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
-  const double rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
+  const float rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
+  const float rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
 
   /* Get the softening */
-  const double max_softening =
+  const float max_softening =
       max(A->m_pole.max_softening, B->m_pole.max_softening);
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
-  double E_BA_term = 0.f;
+  float E_BA_term = 0.f;
   for (int n = 0; n <= p; ++n) {
     E_BA_term +=
         binomial(p, n) * B->m_pole.power[n] * integer_powf(rho_A, p - n);
@@ -108,12 +108,12 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
 
   /* Compute r^p */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
-  const double r_to_p = integer_powf(sqrtf(r2), p);
+  const float r_to_p = integer_powf(sqrtf(r2), p);
 #else
-  const double r_to_p = integer_powf(r2, (p / 2));
+  const float r_to_p = integer_powf(r2, (p / 2));
 #endif
 
-  double f_MAC_inv;
+  float f_MAC_inv;
   if (props->consider_truncation_in_MAC) {
     f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s_inv, r2);
   } else {
@@ -121,17 +121,17 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   }
 
   /* Get the mimimal acceleration in A */
-  const double min_a_grav = A->m_pole.min_old_a_grav_norm;
+  const float min_a_grav = A->m_pole.min_old_a_grav_norm;
 
   /* Get the relative tolerance */
-  const double eps = props->adaptive_tolerance;
+  const float eps = props->adaptive_tolerance;
 
   /* Get the basic geometric critical angle */
-  const double theta_crit = props->theta_crit;
-  const double theta_crit2 = theta_crit * theta_crit;
+  const float theta_crit = props->theta_crit;
+  const float theta_crit2 = theta_crit * theta_crit;
 
   /* Get the sum of the multipole sizes */
-  const double rho_sum = rho_A + rho_B;
+  const float rho_sum = rho_A + rho_B;
 
   if (props->use_advanced_MAC) {
 
