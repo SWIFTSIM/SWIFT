@@ -31,8 +31,8 @@ struct neutrino_model {
 };
 
 INLINE static void gather_neutrino_consts(const struct space *s,
-                                          struct neutrino_model *nm) {                                              
-  bzero(nm, sizeof(struct neutrino_model)); 
+                                          struct neutrino_model *nm) {
+  bzero(nm, sizeof(struct neutrino_model));
 }
 
 INLINE static void gpart_neutrino_weight(const struct gpart *gp,
@@ -60,12 +60,11 @@ INLINE static float relativistic_drift_factor(float v[3], float a, float c) {
   return 1.0;
 }
 
-INLINE static void neutrino_check_cosmology(const struct space *s,
-                              const struct cosmology *cosmo,
-                              const struct phys_const *physical_constants,
-                              struct swift_params *params,
-                              const struct neutrino_props *neutrino_props,
-                              const int rank, const int verbose) { }
+INLINE static void neutrino_check_cosmology(
+    const struct space *s, const struct cosmology *cosmo,
+    const struct phys_const *physical_constants, struct swift_params *params,
+    const struct neutrino_props *neutrino_props, const int rank,
+    const int verbose) {}
 
 /**
  * @brief Initialises the neutrino g-particles for the first time. This is done
@@ -78,7 +77,6 @@ INLINE static void neutrino_check_cosmology(const struct space *s,
  * @param engine The engine of the run
  */
 __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
-    struct gpart *gp, const struct engine *e) {
-}
+    struct gpart *gp, const struct engine *e) {}
 
 #endif /* SWIFT_NONE_NEUTRINO_H */
