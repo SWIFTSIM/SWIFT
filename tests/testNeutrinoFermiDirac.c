@@ -23,7 +23,7 @@
 
 /* Includes. */
 #include "../config.h"
-#include "neutrino/Default/fermi_dirac.h"
+#include "neutrino.h"
 #include "swift.h"
 
 /* Riemann function zeta(3) and zeta(5) */
@@ -31,6 +31,8 @@
 #define M_ZETA_5 1.0369277551433699263314
 
 int main(int argc, char *argv[]) {
+
+#if defined(NEUTRINO_DEFAULT)
   /* Exact integrals of x^n / (exp(x) + 1) on (0, infinity) */
   double integral2 = M_ZETA_3 * 1.5;
   double integral3 = M_PI * M_PI * M_PI * M_PI * 7.0 / 120.0;
@@ -124,6 +126,7 @@ int main(int argc, char *argv[]) {
   free(histogram1);
 
   message("Success.");
+#endif
 
   return 0;
 }
