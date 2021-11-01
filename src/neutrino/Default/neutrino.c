@@ -271,15 +271,22 @@ void neutrino_check_cosmology(const struct space *s,
   int use_linres = neutrino_props->use_linear_response;
   int use_none = neutrino_props->use_model_none;
   int genics = neutrino_props->generate_ics;
+  int with_neutrinos = s->with_neutrinos;
 
-  if ((use_df || use_df_mesh || genics) && !s->with_neutrinos) {
+  if ((use_df || use_df_mesh || genics) && !with_neutrinos) {
     error(
         "Running without neutrino particles, but specified a neutrino "
         "model that requires them.");
-  } else if ((use_linres || use_none) && s->with_neutrinos) {
+  } else if ((use_linres || use_none) && with_neutrinos) {
     error(
         "Running with neutrino particles, but specified a neutrino "
         "model that is incompatible with particles.");
+  } else if (cosmo->Omega_nu_0 > 0. && !(use_linres || use_none) &&
+             !with_neutrinos) {
+    error(
+        "Running without neutrino particles, but specified neutrinos "
+        "in the background cosmology and not using a neutrino model that does "
+        "not use particles.");
   }
 
   /* We are done if the delta-f method is not used, since the total mass
