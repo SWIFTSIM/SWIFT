@@ -120,12 +120,13 @@ void read_transfer_function(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
  * @param gp The #gravity_props used for this run.
  * @param verbose Are we talkative ?
  */
-void neutrino_mesh_init(struct neutrino_mesh *numesh,
-                        struct swift_params *params,
-                        const struct unit_system *us, const double dim[3],
-                        const struct cosmology *c,
-                        const struct neutrino_props *np,
-                        const struct gravity_props *gp, int rank, int verbose) {
+void neutrino_response_init(struct neutrino_response *numesh,
+                            struct swift_params *params,
+                            const struct unit_system *us, const double dim[3],
+                            const struct cosmology *c,
+                            const struct neutrino_props *np,
+                            const struct gravity_props *gp, int rank,
+                            int verbose) {
 
   /* Do we need to do anything? */
   if (!np->use_linear_response) return;
@@ -392,14 +393,14 @@ void neutrino_mesh_init(struct neutrino_mesh *numesh,
 #endif
 }
 
-void neutrino_mesh_clean(struct neutrino_mesh *numesh) {
+void neutrino_response_clean(struct neutrino_response *numesh) {
   swift_free("numesh.pt_density_ratio", numesh->pt_density_ratio);
 }
 
 /**
  * @brief Shared information about the neutrino mesh used by the threads.
  */
-struct neutrino_mesh_tp_data {
+struct neutrino_response_tp_data {
 
   /* Mesh properties */
   int N;
@@ -426,10 +427,12 @@ struct neutrino_mesh_tp_data {
  * @param num The number of elements to iterate on (along the x-axis).
  * @param extra The properties of the neutrino mesh.
  */
-void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
-                                                  void *extra) {
+void neutrino_response_apply_neutrino_response_mapper(void *map_data,
+                                                      const int num,
+                                                      void *extra) {
 
-  struct neutrino_mesh_tp_data *data = (struct neutrino_mesh_tp_data *)extra;
+  struct neutrino_response_tp_data *data =
+      (struct neutrino_response_tp_data *)extra;
 
   /* Unpack the mesh properties */
   fftw_complex *const frho = data->frho;
@@ -517,14 +520,14 @@ void neutrino_mesh_apply_neutrino_response_mapper(void *map_data, const int num,
  * @param slice_width The width of the local slice on this MPI rank
  * @param verbose Are we talkative?
  */
-void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
-                           struct threadpool *tp, fftw_complex *frho,
-                           const int slice_offset, const int slice_width,
-                           int verbose) {
+void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
+                               struct threadpool *tp, fftw_complex *frho,
+                               const int slice_offset, const int slice_width,
+                               int verbose) {
 #ifdef HAVE_FFTW
 
   const struct cosmology *c = s->e->cosmology;
-  struct neutrino_mesh *numesh = s->e->neutrino_mesh;
+  struct neutrino_response *numesh = s->e->neutrino_response;
 
   /* Grid size */
   const int N = mesh->N;
@@ -559,7 +562,7 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   }
 
   /* Some common factors */
-  struct neutrino_mesh_tp_data data;
+  struct neutrino_response_tp_data data;
   data.frho = frho;
   data.N = N;
   data.boxlen = boxlen;
@@ -575,7 +578,7 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
   /* Parallelize the neutrino linear response application using the threadpool
      to split the x-axis loop over the threads. The array is N x N x (N/2).
      We use the thread to each deal with a range [i_min, i_max[ x N x (N/2) */
-  threadpool_map(tp, neutrino_mesh_apply_neutrino_response_mapper, frho,
+  threadpool_map(tp, neutrino_response_apply_neutrino_response_mapper, frho,
                  slice_width, sizeof(fftw_complex), threadpool_auto_chunk_size,
                  &data);
 
@@ -596,10 +599,10 @@ void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
-                               FILE *stream) {
-  restart_write_blocks((void *)numesh, sizeof(struct neutrino_mesh), 1, stream,
-                       "numesh", "neutrino mesh");
+void neutrino_response_struct_dump(const struct neutrino_response *numesh,
+                                   FILE *stream) {
+  restart_write_blocks((void *)numesh, sizeof(struct neutrino_response), 1,
+                       stream, "numesh", "neutrino mesh");
 
   /* Store the perturbation data */
   if (numesh->tf_size > 0) {
@@ -616,9 +619,10 @@ void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
  * @param numesh the struct
  * @param stream the file stream
  */
-void neutrino_mesh_struct_restore(struct neutrino_mesh *numesh, FILE *stream) {
-  restart_read_blocks((void *)numesh, sizeof(struct neutrino_mesh), 1, stream,
-                      NULL, "neutrino mesh");
+void neutrino_response_struct_restore(struct neutrino_response *numesh,
+                                      FILE *stream) {
+  restart_read_blocks((void *)numesh, sizeof(struct neutrino_response), 1,
+                      stream, NULL, "neutrino mesh");
 
   /* Restore the perturbation data */
   if (numesh->tf_size > 0) {

@@ -17,8 +17,8 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_DEFAULT_NEUTRINO_MESH_LINRES_H
-#define SWIFT_DEFAULT_NEUTRINO_MESH_LINRES_H
+#ifndef SWIFT_DEFAULT_NEUTRINO_RESPONSE_H
+#define SWIFT_DEFAULT_NEUTRINO_RESPONSE_H
 
 #ifdef HAVE_FFTW
 #include <fftw3.h>
@@ -32,7 +32,7 @@
 /**
  * @brief Structure for handling the linear neutrino response on the mesh
  */
-struct neutrino_mesh {
+struct neutrino_response {
 
   /*! Logarithm of minimum scale factor for which we have transfer functions */
   double log_a_min;
@@ -62,19 +62,21 @@ struct neutrino_mesh {
   char fixed_bg_density;
 };
 
-void neutrino_mesh_init(struct neutrino_mesh *numesh,
-                        struct swift_params *params,
-                        const struct unit_system *us, const double dim[3],
-                        const struct cosmology *c,
-                        const struct neutrino_props *np,
-                        const struct gravity_props *gp, int rank, int verbose);
-void neutrino_mesh_clean(struct neutrino_mesh *numesh);
-void neutrino_mesh_compute(const struct space *s, struct pm_mesh *mesh,
-                           struct threadpool *tp, fftw_complex *frho,
-                           const int slice_offset, const int slice_width,
-                           int verbose);
-void neutrino_mesh_struct_dump(const struct neutrino_mesh *numesh,
-                               FILE *stream);
-void neutrino_mesh_struct_restore(struct neutrino_mesh *numesh, FILE *stream);
+void neutrino_response_init(struct neutrino_response *numesh,
+                            struct swift_params *params,
+                            const struct unit_system *us, const double dim[3],
+                            const struct cosmology *c,
+                            const struct neutrino_props *np,
+                            const struct gravity_props *gp, int rank,
+                            int verbose);
+void neutrino_response_clean(struct neutrino_response *numesh);
+void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
+                               struct threadpool *tp, fftw_complex *frho,
+                               const int slice_offset, const int slice_width,
+                               int verbose);
+void neutrino_response_struct_dump(const struct neutrino_response *numesh,
+                                   FILE *stream);
+void neutrino_response_struct_restore(struct neutrino_response *numesh,
+                                      FILE *stream);
 
-#endif /* SWIFT_DEFAULT_NEUTRINO_MESH_LINRES_H */
+#endif /* SWIFT_DEFAULT_NEUTRINO_RESPONSE_H */
