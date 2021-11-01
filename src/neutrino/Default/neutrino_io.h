@@ -123,12 +123,12 @@ INLINE static void convert_gpart_weight(const struct engine* e,
       e->neutrino_properties->use_delta_f_mesh_only) {
 
     /* Gather neutrino constants */
-    struct neutrino_consts nu_consts;
-    gather_neutrino_consts(e->s, &nu_consts);
+    struct neutrino_model nu_model;
+    gather_neutrino_consts(e->s, &nu_model);
 
     /* Compute the weight */
     double weight;
-    gpart_neutrino_weight(gp, &nu_consts, &weight);
+    gpart_neutrino_weight(gp, &nu_model, &weight);
 
     ret[0] = weight;
   } else {

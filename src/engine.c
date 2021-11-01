@@ -2766,7 +2766,8 @@ void engine_init(
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos, struct neutrino_mesh *neutrino_mesh,
+    const struct neutrino_props *neutrinos,
+    struct neutrino_response *neutrino_response,
     struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
@@ -2878,7 +2879,7 @@ void engine_init(
   e->black_holes_properties = black_holes;
   e->sink_properties = sinks;
   e->neutrino_properties = neutrinos;
-  e->neutrino_mesh = neutrino_mesh;
+  e->neutrino_response = neutrino_response;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
@@ -3381,7 +3382,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
   neutrino_struct_dump(e->neutrino_properties, stream);
-  neutrino_mesh_struct_dump(e->neutrino_mesh, stream);
+  neutrino_response_struct_dump(e->neutrino_response, stream);
   chemistry_struct_dump(e->chemistry, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
@@ -3517,10 +3518,10 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   neutrino_struct_restore(neutrino_properties, stream);
   e->neutrino_properties = neutrino_properties;
 
-  struct neutrino_mesh *neutrino_mesh =
-      (struct neutrino_mesh *)malloc(sizeof(struct neutrino_mesh));
-  neutrino_mesh_struct_restore(neutrino_mesh, stream);
-  e->neutrino_mesh = neutrino_mesh;
+  struct neutrino_response *neutrino_response =
+      (struct neutrino_response *)malloc(sizeof(struct neutrino_response));
+  neutrino_response_struct_restore(neutrino_response, stream);
+  e->neutrino_response = neutrino_response;
 
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(
