@@ -52,9 +52,9 @@
  *
  * @param N The size of the mesh
  * @param fac Inverse of the cell size
- * @param c The #cell containing the particles.
- * @param map The hashmap in which to store the results
- * @param lock A lock used to prevent concurrent access to map
+ * @param dim The dimensions of the simulation box.
+ * @param cell The #cell containing the particles.
+ * @param patch The local mesh patch
  * @param nu_consts Struct with neutrino constants
  *
  */
