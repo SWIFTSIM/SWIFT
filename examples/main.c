@@ -1304,7 +1304,7 @@ int main(int argc, char *argv[]) {
           with_external_gravity, with_baryon_particles, with_DM_particles,
           with_neutrinos, with_DM_background_particles, periodic, s.dim);
 
-    /* Initialize the neutrino mesh if used */
+    /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));
     if (neutrino_properties.use_linear_response)
       neutrino_response_init(&neutrino_response, params, &us, s.dim, &cosmo,

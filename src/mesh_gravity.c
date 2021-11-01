@@ -172,7 +172,7 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
   /* Compute weight (for neutrino delta-f weighting) */
   double weight = 1.0;
   if (gp->type == swift_type_neutrino)
-    gpart_neutrino_weight_mesh(gp, nu_model, &weight);
+    gpart_neutrino_weight_mesh_only(gp, nu_model, &weight);
 
   const double mass = gp->mass;
   const double value = mass * weight;

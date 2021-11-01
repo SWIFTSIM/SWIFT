@@ -398,7 +398,7 @@ void neutrino_response_clean(struct neutrino_response *numesh) {
 }
 
 /**
- * @brief Shared information about the neutrino mesh used by the threads.
+ * @brief Shared information about the neutrino response used by the threads.
  */
 struct neutrino_response_tp_data {
 
