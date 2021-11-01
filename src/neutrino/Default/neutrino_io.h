@@ -38,7 +38,8 @@ INLINE static void convert_gpart_vi(const struct engine* e,
                                     const struct gpart* gp, float* ret) {
 
   /* When we are running with the delta-f method, resample the momentum */
-  if (e->neutrino_properties->use_delta_f) {
+  if (e->neutrino_properties->use_delta_f ||
+      e->neutrino_properties->use_delta_f_mesh_only) {
     /* Retrieve physical constants, including the neutrino mass array */
     const double a_scale = e->cosmology->a;
     const double N_nu = e->cosmology->N_nu;
