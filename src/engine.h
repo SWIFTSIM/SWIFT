@@ -472,7 +472,7 @@ struct engine {
   /* Properties of the neutrino model */
   const struct neutrino_props *neutrino_properties;
 
-  /* The neutrino mesh */
+  /* The linear neutrino response */
   struct neutrino_response *neutrino_response;
 
   /* Properties of the self-gravity scheme */
