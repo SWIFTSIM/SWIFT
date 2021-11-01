@@ -64,7 +64,7 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
 
   if (np->use_delta_f || np->use_delta_f_mesh_only || generate_ics ||
       np->use_linear_response || with_neutrinos)
-    error("Not compiled with neutrinos.");
+    error("Not compiled with neutrinos. Configure with with-neutrinos flag.");
 }
 
 /**
