@@ -33,9 +33,7 @@ INLINE static void gather_neutrino_consts(const struct space *s,
 
 INLINE static void gpart_neutrino_weight_mesh(const struct gpart *gp,
                                               const struct neutrino_model *nm,
-                                              double *weight) {
-  *weight = 1.0;
-}
+                                              double *weight) {}
 
 INLINE static void gpart_neutrino_mass_weight(const struct gpart *gp,
                                               const struct neutrino_model *nm,
