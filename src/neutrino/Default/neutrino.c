@@ -56,14 +56,19 @@ void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm) {
 }
 
 /**
- * @brief Compute delta-f weight of a neutrino particle
+ * @brief Compute delta-f weight of a neutrino particle, but *only* when using
+ * the delta-f method exclusively on the mesh (otherwise the mass is already
+ * weighted).
  *
  * @param gp The #gpart.
  * @param nm Properties of the neutrino model
  * @param weight The resulting weight (output)
  */
-void gpart_neutrino_weight(const struct gpart *gp,
-                           const struct neutrino_model *nm, double *weight) {
+void gpart_neutrino_weight_mesh(const struct gpart *gp,
+                                const struct neutrino_model *nm,
+                                double *weight) {
+  /* Anything to do? */
+  if (!nm->use_delta_f_mesh_only) return;
 
   /* Use a particle id dependent seed */
   const long long seed = gp->id_or_neg_offset + nm->neutrino_seed;
@@ -84,7 +89,7 @@ void gpart_neutrino_weight(const struct gpart *gp,
 }
 
 /**
- * @brief Computethe mass and delta-f weight of a neutrino particle
+ * @brief Compute the mass and delta-f weight of a neutrino particle
  *
  * @param gp The #gpart.
  * @param nm Properties of the neutrino model
@@ -278,8 +283,7 @@ void neutrino_check_cosmology(const struct space *s,
   }
 
   /* We are done if the delta-f method is not used, since the total mass
-   * has already been checked in space_check_cosmology if we use no special
-   * neutrino model and the mass is zero if we use the linear response model. */
+   * has otherwise already been checked in space_check_cosmology. */
   if (!use_df && !use_df_mesh) return;
 
   /* Compute neutrino diagnostics, including the total mass */

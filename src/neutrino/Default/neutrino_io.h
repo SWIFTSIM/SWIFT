@@ -127,8 +127,8 @@ INLINE static void convert_gpart_weight(const struct engine* e,
     gather_neutrino_consts(e->s, &nu_model);
 
     /* Compute the weight */
-    double weight;
-    gpart_neutrino_weight(gp, &nu_model, &weight);
+    double mass, weight;
+    gpart_neutrino_mass_weight(gp, &nu_model, &mass, &weight);
 
     ret[0] = weight;
   } else {

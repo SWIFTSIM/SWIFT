@@ -2279,18 +2279,18 @@ esac
 
 # Neutrino model.
 AC_ARG_WITH([neutrinos],
-   [AS_HELP_STRING([--neutrinos=<model>],
-      [Neutrino model to use @<:@default, none@:>@]
+   [AS_HELP_STRING([--with-neutrinos=<model>],
+      [Neutrino model to use @<:@none, multiple, default, none@:>@]
    )],
    [with_neutrinos="$withval"],
-   [with_neutrinos="default"]
+   [with_neutrinos="none"]
 )
 
 case "$with_neutrinos" in
    none)
       AC_DEFINE([NEUTRINO_NONE], [1], [No neutrino model])
    ;;
-   default)
+   multiple)
       AC_DEFINE([NEUTRINO_DEFAULT], [1], [Default neutrino model])
    ;;
    *)
@@ -2615,6 +2615,9 @@ AM_CONDITIONAL([HAVE_STAR_FORMATION_GEAR], [test "$with_star_formation" = "GEAR"
 
 # check if using multi softening gravity
 AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-multi-softening"])
+
+# Check if using neutrino models
+AM_CONDITIONAL([HAVENEUTRINOS], [test "$with_neutrinos" = "multiple"])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
