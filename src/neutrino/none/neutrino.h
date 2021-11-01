@@ -58,7 +58,11 @@ INLINE static void neutrino_check_cosmology(
     const struct space *s, const struct cosmology *cosmo,
     const struct phys_const *physical_constants, struct swift_params *params,
     const struct neutrino_props *neutrino_props, const int rank,
-    const int verbose) {}
+    const int verbose) {
+
+  if (cosmo->Omega_nu_0 > 0.)
+    error("Not compiled with neutrinos. Configure with with-neutrinos flag.");
+}
 
 __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
     struct gpart *gp, const struct engine *e) {}
