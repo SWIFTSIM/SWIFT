@@ -32,6 +32,11 @@ struct rt_props {
   /* Are we running with hydro or star controlled injection?
    * This is added to avoid #ifdef macros as far as possible */
   int hydro_controlled_injection;
+
+  /* Do we need to run a conversion after the zeroth
+   * step, but before the first step? */
+  int convert_stars_after_zeroth_step;
+  int convert_parts_after_zeroth_step;
 };
 
 /**
@@ -67,6 +72,9 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 #else
   rtp->hydro_controlled_injection = 0;
 #endif
+
+  rtp->convert_parts_after_zeroth_step = 0;
+  rtp->convert_stars_after_zeroth_step = 0;
 
   /* After initialisation, print params to screen */
   rt_props_print(rtp);

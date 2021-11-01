@@ -66,6 +66,7 @@ include_HEADERS += rays.h rays_struct.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += chemistry_csds.h star_formation_csds.h
 include_HEADERS += mesh_gravity.h mesh_gravity_mpi.h mesh_gravity_patch.h mesh_gravity_sort.h row_major_id.h
+include_HEADERS += hdf5_object_to_blob.h ic_info.h
 
 # source files for QLA (Ploeckinger+20) cooling
 QLA_COOLING_SOURCES =
@@ -147,6 +148,7 @@ AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravit
 AM_SOURCES += runner_neutrino.c
 AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c
 AM_SOURCES += rt_parameters.c
+AM_SOURCES += hdf5_object_to_blob.c ic_info.c
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
@@ -278,6 +280,7 @@ nobase_noinst_HEADERS += rt/GEAR/rt_parameters.h
 nobase_noinst_HEADERS += rt/GEAR/rt_properties.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_riemann_GLF.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_riemann_HLL.h 
+nobase_noinst_HEADERS += rt/GEAR/rt_riemann_HLL_eigenvalues.h 
 # nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_cell.h
 nobase_noinst_HEADERS += rt/GEAR/rt_slope_limiters_face.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_stellar_emission_rate.h 

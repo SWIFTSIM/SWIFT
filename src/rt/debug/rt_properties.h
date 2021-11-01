@@ -28,13 +28,18 @@
  * @brief Properties of the debug radiative transfer model
  */
 struct rt_props {
-  /* Do extended tests where we assume that all parts
-   * have spart neighbours? */
-  int debug_do_all_parts_have_stars_checks;
-
   /* Are we running with hydro or star controlled injection?
    * This is added to avoid #ifdef macros as far as possible */
   int hydro_controlled_injection;
+
+  /* Do we need to run a conversion after the zeroth
+   * step, but before the first step? */
+  int convert_stars_after_zeroth_step;
+  int convert_parts_after_zeroth_step;
+
+  /* Do extended tests where we assume that all parts
+   * have spart neighbours? */
+  int debug_do_all_parts_have_stars_checks;
 
   /* radiation emitted by stars this step. This is not really a property,
    * but a placeholder to sum up a global variable */
@@ -111,6 +116,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 #else
   rtp->hydro_controlled_injection = 0;
 #endif
+
+  /* Make sure we reset debugging counters correctly. */
+  rtp->convert_parts_after_zeroth_step = 1;
+  rtp->convert_stars_after_zeroth_step = 1;
 
   rtp->debug_radiation_emitted_tot = 0ULL;
   rtp->debug_radiation_absorbed_tot = 0ULL;
