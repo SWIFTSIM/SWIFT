@@ -36,7 +36,7 @@
  * @param phi_mid0 Extrapolated value of the quantity at the interface position.
  * @param xij_norm Distance between the particle position and the interface
  * position.
- * @param r Distance between the particle and its neighbour.
+ * @param r_inv Inverse distance between the particle and its neighbour.
  * @return The slope limited difference between the quantity at the particle
  * position and the quantity at the interface position.
  */
@@ -89,7 +89,7 @@ __attribute__((always_inline)) INLINE static float rt_slope_limit_face_quantity(
 __attribute__((always_inline)) INLINE static void rt_limiter_minmod(
     float* dQi, float* dQj) {
 
-  if (*dQi * *dQj > 0) {
+  if (*dQi * *dQj > 0.f) {
     if (fabsf(*dQi) < fabsf(*dQj)) {
       *dQj = *dQi;
     } else {
@@ -106,6 +106,7 @@ __attribute__((always_inline)) INLINE static void rt_limiter_minmod(
  *
  * @param dQi left slope
  * @param dQj right slope
+ * @return factor to slope limit the slope dQi
  */
 __attribute__((always_inline)) INLINE static float rt_limiter_mc(
     const float dQi, const float dQj) {
@@ -120,6 +121,7 @@ __attribute__((always_inline)) INLINE static float rt_limiter_mc(
  *
  * @param dQi left slope
  * @param dQj right slope
+ * @return factor to slope limit the slope dQi
  */
 __attribute__((always_inline)) INLINE static float rt_limiter_vanLeer(
     const float dQi, const float dQj) {
@@ -133,6 +135,7 @@ __attribute__((always_inline)) INLINE static float rt_limiter_vanLeer(
  *
  * @param dQi left slope
  * @param dQj right slope
+ * @return factor to slope limit the slope dQi
  */
 __attribute__((always_inline)) INLINE static float rt_limiter_superbee(
     const float dQi, const float dQj) {
@@ -145,24 +148,67 @@ __attribute__((always_inline)) INLINE static float rt_limiter_superbee(
 /**
  * @brief Slope limit the slopes at the interface between two particles
  *
+ * @param Qi RT quantities of particle i (energy + fluxes in 3 dim)
+ * @param Qj RT quantities of particle j (energy + fluxes in 3 dim)
  * @param dQi Difference between the RT quantities of particle i at the
  * position of particle i and at the interface position.
  * @param dQj Difference between the RT quantities of particle j at the
  * position of particle j and at the interface position.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param r Comoving distance between particle i and particle j.
+ * @param xij_i Position of the "interface" w.r.t. position of particle i
+ * @param xij_j Position of the "interface" w.r.t. position of particle j
  */
 __attribute__((always_inline)) INLINE static void rt_slope_limit_face(
-    float dQi[4], float dQj[4]) {
+    const float Qi[4], const float Qj[4], float dQi[4], float dQj[4],
+    const float* dx, const float r, const float xij_i[3],
+    const float xij_j[3]) {
+
+  /* In 1D advection tests, any limiter works with the
+   * GLF solver. If you also activate (uncomment) the
+   * cell slope limiting, you should avoid the superbee
+   * and MC limiters. The Gizmo-style clever limiter
+   * that is used for hydro leads to a more diffusive
+   * behaviour.
+   * For the HLL solver, avoid superbee and MC limiters,
+   * as they lead to unstable results.
+   */
+
+  /* const float xij_i_norm = */
+  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
+   */
+  /*  */
+  /* const float xij_j_norm = */
+  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
+   */
+  /*  */
+  /* const float r_inv = 1.f / r; */
 
   for (int i = 0; i < 4; i++) {
-    /* Minmod and monotinized central difference limiters
-     * give stable results in advection tests, superbee
-     * and vanLeer limiters are unstable. */
 
     rt_limiter_minmod(&dQi[i], &dQj[i]);
 
-    /* const float alpha = rt_limiter_mc(dQi[i], dQj[i]); */
-    /* dQi[i] *= alpha; */
-    /* dQj[i] *= alpha; */
+    /* const float alphai = rt_limiter_mc(dQi[i], dQj[i]); */
+    /* const float alphaj = rt_limiter_mc(dQj[i], dQi[i]); */
+    /* dQi[i] *= alphai; */
+    /* dQj[i] *= alphaj; */
+
+    /* const float alphai = rt_limiter_superbee(dQi[i], dQj[i]); */
+    /* const float alphaj = rt_limiter_superbee(dQj[i], dQi[i]); */
+    /* dQi[i] *= alphai; */
+    /* dQj[i] *= alphaj; */
+
+    /* const float alphai = rt_limiter_vanLeer(dQi[i], dQj[i]); */
+    /* const float alphaj = rt_limiter_vanLeer(dQj[i], dQi[i]); */
+    /* dQi[i] *= alphai; */
+    /* dQj[i] *= alphaj; */
+
+    /* dQi[i] = rt_slope_limit_face_quantity(Qi[i], Qj[i], Qi[i] + dQi[i], */
+    /*                                          xij_i_norm, r_inv); */
+    /*  */
+    /* dQj[i] = rt_slope_limit_face_quantity(Qj[i], Qi[i], Qj[i] + dQj[i], */
+    /*                                        xij_j_norm, r_inv); */
   }
 }
 
