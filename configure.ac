@@ -2280,7 +2280,7 @@ esac
 # Neutrino model.
 AC_ARG_WITH([neutrinos],
    [AS_HELP_STRING([--with-neutrinos=<model>],
-      [Neutrino model to use @<:@none, multiple, default, none@:>@]
+      [With neutrino models @<:@none, yes, default, none@:>@]
    )],
    [with_neutrinos="$withval"],
    [with_neutrinos="none"]
@@ -2290,7 +2290,7 @@ case "$with_neutrinos" in
    none)
       AC_DEFINE([NEUTRINO_NONE], [1], [No neutrino model])
    ;;
-   multiple)
+   yes)
       AC_DEFINE([NEUTRINO_DEFAULT], [1], [Default neutrino model])
    ;;
    *)
@@ -2617,7 +2617,7 @@ AM_CONDITIONAL([HAVE_STAR_FORMATION_GEAR], [test "$with_star_formation" = "GEAR"
 AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-multi-softening"])
 
 # Check if using neutrino models
-AM_CONDITIONAL([HAVENEUTRINOS], [test "$with_neutrinos" = "multiple"])
+AM_CONDITIONAL([HAVENEUTRINOS], [test "$with_neutrinos" = "yes"])
 
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
@@ -2703,7 +2703,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
-   Neutrino model       : $with_neutrinos
+   Neutrino models      : $with_neutrinos
    Radiative transfer   : $with_rt$rt_extra_msg
 
    Atomic operations in tasks  : $enable_atomics_within_tasks
