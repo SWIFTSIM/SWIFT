@@ -23,12 +23,6 @@
 #include "../config.h"
 
 /* Select the correct neutrino model */
-#if defined(NEUTRINO_NONE)
-#include "./neutrino/none/neutrino_io.h"
-#elif defined(NEUTRINO_DEFAULT)
 #include "./neutrino/Default/neutrino_io.h"
-#else
-#error "Invalid choice of neutrino model"
-#endif
 
 #endif /* SWIFT_NEUTRINO_PROPERTIES_H */
