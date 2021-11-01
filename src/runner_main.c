@@ -689,7 +689,7 @@ void *runner_main(void *data) {
                                       (struct black_holes_bpart_data *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
-            runner_do_recv_part(r, ci, 0, 1);
+            /* Nothing to do here. Unpacking done in a separate task */
 
           } else if (t->subtype == task_subtype_dogpart) {
             /* Handle complete data movement. */
