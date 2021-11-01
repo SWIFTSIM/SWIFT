@@ -80,15 +80,15 @@ __attribute__((const)) INLINE static float gravity_f_MAC_inverse(
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const struct gravity_props *props, const struct gravity_tensors *restrict A,
-    const struct gravity_tensors *restrict B, const float r2,
+    const struct gravity_tensors *restrict B, const double r2,
     const int use_rebuild_sizes, const int periodic) {
 
   /* Order of the expansion */
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
 
   /* Sizes of the multipoles */
-  const float rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
-  const float rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
+  const double rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
+  const double rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
 
   /* Get the softening */
   const float max_softening =
