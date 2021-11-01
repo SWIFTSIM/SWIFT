@@ -1272,7 +1272,7 @@ int main(int argc, char *argv[]) {
     /* Do we have neutrino DM particles? */
     const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
-    /* Initialise the neutrino properties if we have neutrino particles */
+    /* Initialise the neutrino properties */
     bzero(&neutrino_properties, sizeof(struct neutrino_props));
     neutrino_props_init(&neutrino_properties, &prog_const, &us, params, &cosmo,
                         with_neutrinos);
