@@ -130,7 +130,7 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     struct gpart *gparts = c->grav.parts;
     const int gcount = c->grav.count;
     const struct grav_tensor *pot = &c->grav.multipole->pot;
-    const double CoM[3] = {c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
+    const float CoM[3] = {c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
                            c->grav.multipole->CoM[2]};
 
     /* Apply accelerations to the particles */
@@ -230,7 +230,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     /* Now, we can start the interactions for that particle */
 
     /* Distance to the Multipole */
-    const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+    const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
     const float dx_multi = CoM_j[0] - x_i;
     const float dy_multi = CoM_j[1] - y_i;
     const float dz_multi = CoM_j[2] - z_i;
@@ -422,7 +422,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     /* Now, we can start the interactions for that particle */
 
     /* Distance to the Multipole */
-    const double CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+    const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
     float dx_multi = CoM_j[0] - x_i;
     float dy_multi = CoM_j[1] - y_i;
     float dz_multi = CoM_j[2] - z_i;
@@ -908,7 +908,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
  */
 static INLINE void runner_dopair_grav_pm_full(
     struct gravity_cache *ci_cache, const int gcount_padded_i,
-    const double CoM_j[3], const struct multipole *restrict multi_j,
+    const float CoM_j[3], const struct multipole *restrict multi_j,
     const int periodic, const float dim[3], const struct engine *restrict e,
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct cell *restrict cj) {
@@ -1054,7 +1054,7 @@ static INLINE void runner_dopair_grav_pm_full(
  */
 static INLINE void runner_dopair_grav_pm_truncated(
     struct gravity_cache *ci_cache, const int gcount_padded_i,
-    const double CoM_j[3], const struct multipole *restrict multi_j,
+    const float CoM_j[3], const struct multipole *restrict multi_j,
     const float dim[3], const float r_s_inv, const struct engine *restrict e,
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct cell *restrict cj) {
@@ -2147,7 +2147,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
     /* Recover the multipole info and the CoM locations */
     const struct multipole *multi_j = &cj->grav.multipole->m_pole;
-    const double CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
+    const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0]),
                             (float)(cj->grav.multipole->CoM[1]),
                             (float)(cj->grav.multipole->CoM[2])};
 
