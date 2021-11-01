@@ -64,9 +64,9 @@ void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm) {
  * @param nm Properties of the neutrino model
  * @param weight The resulting weight (output)
  */
-void gpart_neutrino_weight_mesh(const struct gpart *gp,
-                                const struct neutrino_model *nm,
-                                double *weight) {
+void gpart_neutrino_weight_mesh_only(const struct gpart *gp,
+                                     const struct neutrino_model *nm,
+                                     double *weight) {
   /* Anything to do? */
   if (!nm->use_delta_f_mesh_only) return;
 

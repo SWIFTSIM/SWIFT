@@ -46,9 +46,9 @@ struct neutrino_model {
 };
 
 void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm);
-void gpart_neutrino_weight_mesh(const struct gpart *gp,
-                                const struct neutrino_model *nm,
-                                double *weight);
+void gpart_neutrino_weight_mesh_only(const struct gpart *gp,
+                                     const struct neutrino_model *nm,
+                                     double *weight);
 void gpart_neutrino_mass_weight(const struct gpart *gp,
                                 const struct neutrino_model *nm, double *mass,
                                 double *weight);
