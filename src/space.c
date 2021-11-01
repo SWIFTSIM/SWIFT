@@ -49,7 +49,6 @@
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "minmax.h"
-#include "neutrino/Default/fermi_dirac.h"
 #include "proxy.h"
 #include "restart.h"
 #include "rt.h"

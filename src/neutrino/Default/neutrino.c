@@ -47,9 +47,11 @@ INLINE static double neutrino_momentum(const float v[3], const double m_eV,
 void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm) {
   nm->use_delta_f_mesh_only = s->e->neutrino_properties->use_delta_f_mesh_only;
   nm->M_nu_eV = s->e->cosmology->M_nu_eV;
+  nm->deg_nu = s->e->cosmology->deg_nu;
   nm->N_nu = s->e->cosmology->N_nu;
   nm->fac = 1.0 / (s->e->physical_constants->const_speed_light_c *
                    s->e->cosmology->T_nu_0_eV);
+  nm->inv_mass_factor = 1. / s->e->neutrino_mass_conversion_factor;
   nm->neutrino_seed = s->e->neutrino_properties->neutrino_seed;
 }
 
@@ -78,6 +80,38 @@ void gpart_neutrino_weight(const struct gpart *gp,
   /* Compute the initial and current background phase-space density */
   double fi = fermi_dirac_density(pi);
   double f = fermi_dirac_density(p);
+  *weight = 1.0 - f / fi;
+}
+
+/**
+ * @brief Computethe mass and delta-f weight of a neutrino particle
+ *
+ * @param gp The #gpart.
+ * @param nm Properties of the neutrino model
+ * @param mass The mass (output)
+ * @param weight The resulting weight (output)
+ */
+void gpart_neutrino_mass_weight(const struct gpart *gp,
+                                const struct neutrino_model *nm, double *mass,
+                                double *weight) {
+
+  /* Use a particle id dependent seed */
+  const long long seed = gp->id_or_neg_offset + nm->neutrino_seed;
+  
+  /* Compute the initial dimensionless momentum from the seed */
+  const double pi = neutrino_seed_to_fermi_dirac(seed);
+
+  /* The neutrino mass and degeneracy (we cycle based on the seed) */
+  const double m_eV = neutrino_seed_to_mass(nm->N_nu, nm->M_nu_eV, seed);
+  const double deg = neutrino_seed_to_degeneracy(nm->N_nu, nm->deg_nu, seed);
+  *mass = deg * m_eV * nm->inv_mass_factor;
+    
+  /* Compute the current dimensionless momentum */
+  const double p = neutrino_momentum(gp->v_full, m_eV, nm->fac);
+
+  /* Compute the initial and current background phase-space density */
+  const double fi = fermi_dirac_density(pi);
+  const double f = fermi_dirac_density(p);
   *weight = 1.0 - f / fi;
 }
 
