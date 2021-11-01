@@ -108,8 +108,8 @@ void read_transfer_function(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
 }
 
 /**
- * @brief Initialize the #neutrino_mesh object by reading an HDF5 file with
- * transfer functions and pre-computing a transfer function ratio.
+ * @brief Initialize the #neutrino_response object by reading an HDF5 file
+ * with transfer functions and pre-computing a transfer function ratio.
  *
  * @param numesh The #neutrino_mesh to be initialized
  * @param params The parsed parameter file.
@@ -533,7 +533,7 @@ void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
   const int N = mesh->N;
   const double boxlen = mesh->dim[0];
 
-  /* Calculate the background neutrino density at the present time */
+  /* Calculate the background neutrino density */
   const double a = numesh->fixed_bg_density ? 1.0 : c->a;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_m = c->Omega_cdm + c->Omega_b;  // does not include nu's
@@ -552,7 +552,7 @@ void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
   hsize_t a_index = (hsize_t)log_a_steps;
   double u_a = log_a_steps - a_index;
 
-  /* Perform bounds checks */
+  /* Perform bounds checks for a */
   if (log_a_steps < 0) {
     a_index = 0;
     u_a = 0;
@@ -594,7 +594,8 @@ void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
 }
 
 /**
- * @brief Write a neutrino mesh struct to the given FILE as a stream of bytes.
+ * @brief Write a neutrino response struct to the given FILE as a stream of
+ * bytes.
  *
  * @param numesh the struct
  * @param stream the file stream
@@ -613,8 +614,8 @@ void neutrino_response_struct_dump(const struct neutrino_response *numesh,
 }
 
 /**
- * @brief Restore a neutrino mesh struct from the given FILE as a stream of
- * bytes.
+ * @brief Restore a neutrino response struct from the given FILE as a stream
+ * of bytes.
  *
  * @param numesh the struct
  * @param stream the file stream

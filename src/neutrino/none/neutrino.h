@@ -60,16 +60,6 @@ INLINE static void neutrino_check_cosmology(
     const struct neutrino_props *neutrino_props, const int rank,
     const int verbose) {}
 
-/**
- * @brief Initialises the neutrino g-particles for the first time. This is done
- * in addition to gravity_first_init_gpart().
- *
- * This function is called only once just after the ICs have been read in
- * and after IDs have been remapped (if used) by space_remap_ids().
- *
- * @param gp The particle to act upon
- * @param engine The engine of the run
- */
 __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
     struct gpart *gp, const struct engine *e) {}
 
