@@ -1246,10 +1246,10 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const double rmax_j = cj->grav.multipole->r_max;
   const struct multipole *multi_i = &ci->grav.multipole->m_pole;
   const struct multipole *multi_j = &cj->grav.multipole->m_pole;
-  const double CoM_i[3] = {(float)(ci->grav.multipole->CoM[0] - shift_i[0]),
+  const float CoM_i[3] = {(float)(ci->grav.multipole->CoM[0] - shift_i[0]),
                           (float)(ci->grav.multipole->CoM[1] - shift_i[1]),
                           (float)(ci->grav.multipole->CoM[2] - shift_i[2])};
-  const double CoM_j[3] = {(float)(cj->grav.multipole->CoM[0] - shift_j[0]),
+  const float CoM_j[3] = {(float)(cj->grav.multipole->CoM[0] - shift_j[0]),
                           (float)(cj->grav.multipole->CoM[1] - shift_j[1]),
                           (float)(cj->grav.multipole->CoM[2] - shift_j[2])};
 

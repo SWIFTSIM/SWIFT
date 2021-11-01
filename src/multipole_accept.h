@@ -131,7 +131,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   const float theta_crit2 = theta_crit * theta_crit;
 
   /* Get the sum of the multipole sizes */
-  const float rho_sum = rho_A + rho_B;
+  const double rho_sum = rho_A + rho_B;
 
   if (props->use_advanced_MAC) {
 
