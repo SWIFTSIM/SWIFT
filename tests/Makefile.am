@@ -34,7 +34,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
 	testCbrt testCosmology testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology testNeutrinoFermiDirac \
+        testAtomic testGravitySpeed testNeutrinoCosmology \
 	testLog testDistance
 
 # List of test programs to compile
@@ -49,7 +49,12 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
                  testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog
+		 testLog
+
+if HAVENEUTRINOS
+TESTS += testNeutrinoFermiDirac
+check_PROGRAMS += testNeutrinoFermiDirac
+endif
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a

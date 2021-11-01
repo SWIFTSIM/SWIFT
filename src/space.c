@@ -1942,6 +1942,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
  * @param cosmo The current cosmology model.
  * @param with_hydro Are we running with hydro switched on?
  * @param rank The MPI rank of this #space.
+ * @param check_neutrinos Should neutrino masses be checked?
  */
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
                            const int with_hydro, const int rank,

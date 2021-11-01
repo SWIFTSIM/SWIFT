@@ -32,15 +32,6 @@ struct neutrino_props {
   /* Whether to run with the delta-f method on the mesh only */
   char use_delta_f_mesh_only;
 
-  /* Whether to run without any neutrino perturbations */
-  char use_model_none;
-
-  /* Whether to generate random neutrino velocities in the initial conditions */
-  char generate_ics;
-
-  /* Random seed for the neutrino weighting task */
-  long long neutrino_seed;
-
   /* Whether to use the linear respose method */
   char use_linear_response;
 };
@@ -65,20 +56,14 @@ INLINE static void neutrino_props_init(struct neutrino_props *np,
   np->use_delta_f = parser_get_opt_param_int(params, "Neutrino:use_delta_f", 0);
   np->use_delta_f_mesh_only =
       parser_get_opt_param_int(params, "Neutrino:use_delta_f_mesh_only", 0);
-  np->use_model_none =
-      parser_get_opt_param_int(params, "Neutrino:use_model_none", 0);
-  np->generate_ics =
-      parser_get_opt_param_int(params, "Neutrino:generate_ics", 0);
   np->use_linear_response =
       parser_get_opt_param_int(params, "Neutrino:use_linear_response", 0);
 
-  int number_of_models = 0;
-  number_of_models += np->use_delta_f;
-  number_of_models += np->use_delta_f_mesh_only;
-  number_of_models += np->use_model_none;
-  number_of_models += np->use_linear_response;
+  char generate_ics =
+      parser_get_opt_param_int(params, "Neutrino:generate_ics", 0);
 
-  if (with_neutrinos || number_of_models > 0 || np->generate_ics)
+  if (np->use_delta_f || np->use_delta_f_mesh_only || generate_ics ||
+      np->use_linear_response || with_neutrinos)
     error("Not compiled with neutrinos.");
 }
 

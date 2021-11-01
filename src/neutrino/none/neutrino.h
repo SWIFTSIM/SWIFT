@@ -26,18 +26,14 @@
 #include "../../engine.h"
 #include "neutrino_response.h"
 
-struct neutrino_model {
-  char use_delta_f_mesh_only;
-};
+struct neutrino_model {};
 
 INLINE static void gather_neutrino_consts(const struct space *s,
-                                          struct neutrino_model *nm) {
-  bzero(nm, sizeof(struct neutrino_model));
-}
+                                          struct neutrino_model *nm) {}
 
-INLINE static void gpart_neutrino_weight(const struct gpart *gp,
-                                         const struct neutrino_model *nm,
-                                         double *weight) {
+INLINE static void gpart_neutrino_weight_mesh(const struct gpart *gp,
+                                              const struct neutrino_model *nm,
+                                              double *weight) {
   *weight = 1.0;
 }
 

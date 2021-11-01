@@ -114,6 +114,12 @@ GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedbac
 	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
+# source files for neutrinos
+NEUTRINO_SOURCES = 
+if HAVENEUTRINOS
+NEUTRINO_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c
+endif
+
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
@@ -146,7 +152,7 @@ AM_SOURCES += fof.c fof_catalogue_io.c
 AM_SOURCES += hashmap.c pressure_floor.c
 AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c
 AM_SOURCES += runner_neutrino.c
-AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c
+AM_SOURCES += $(NEUTRINO_SOURCES)
 AM_SOURCES += rt_parameters.c
 AM_SOURCES += hdf5_object_to_blob.c ic_info.c
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
@@ -396,6 +402,7 @@ nobase_noinst_HEADERS += neutrino.h neutrino_properties.h neutrino_io.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino.h neutrino/Default/relativity.h neutrino/Default/fermi_dirac.h neutrino/Default/fermi_dirac.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino_properties.h neutrino/Default/neutrino_io.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino_response.h
+nobase_noinst_HEADERS += neutrino/none/neutrino.h neutrino/none/neutrino_io.h neutrino/none/neutrino_properties.h
 
 # Sources and special flags for the gravity library
 libgrav_la_SOURCES = runner_doiact_grav.c

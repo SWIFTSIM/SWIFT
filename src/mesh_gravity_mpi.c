@@ -104,8 +104,8 @@ void accumulate_cell_to_local_patch(const int N, const double fac,
 
     /* Compute weight (for neutrino delta-f weighting) */
     double weight = 1.0;
-    if (nu_model->use_delta_f_mesh_only && gp->type == swift_type_neutrino)
-      gpart_neutrino_weight(gp, nu_model, &weight);
+    if (gp->type == swift_type_neutrino)
+      gpart_neutrino_weight_mesh(gp, nu_model, &weight);
 
     /* Accumulate contributions to the local mesh patch */
     const double mass = gp->mass;
