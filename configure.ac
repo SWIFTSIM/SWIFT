@@ -2277,6 +2277,27 @@ case "$with_sink" in
    ;;
 esac
 
+# Neutrino model.
+AC_ARG_WITH([neutrinos],
+   [AS_HELP_STRING([--neutrinos=<model>],
+      [Neutrino model to use @<:@default, none@:>@]
+   )],
+   [with_neutrinos="$withval"],
+   [with_neutrinos="default"]
+)
+
+case "$with_neutrinos" in
+   none)
+      AC_DEFINE([NEUTRINO_NONE], [1], [No neutrino model])
+   ;;
+   default)
+      AC_DEFINE([NEUTRINO_DEFAULT], [1], [Default neutrino model])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown neutrino model: $with_neutrinos])
+   ;;
+esac
+
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
@@ -2679,6 +2700,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
+   Neutrino model       : $with_neutrinos
    Radiative transfer   : $with_rt$rt_extra_msg
 
    Atomic operations in tasks  : $enable_atomics_within_tasks

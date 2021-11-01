@@ -23,6 +23,12 @@
 #include "../config.h"
 
 /* Select the correct neutrino model */
+#if defined(NEUTRINO_NONE)
+#include "./neutrino/none/neutrino.h"
+#elif defined(NEUTRINO_DEFAULT)
 #include "./neutrino/Default/neutrino.h"
+#else
+#error "Invalid choice of neutrino model"
+#endif
 
 #endif
