@@ -71,15 +71,22 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
   const int with_rt = 0;
 #endif
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? c->depth : 0;
+  const char max_depth = limit_min_h ? c->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+#endif
 
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *si = &sparts[sid];
+    const char depth_i = si->depth_h;
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
@@ -94,8 +101,8 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
     if (!si_active_feedback && !with_rt) continue;
 
     /* Skip particles not in the range of h we care about */
-    if (hi >= h_max) continue;
-    if (hi < h_min) continue;
+    if (depth_i > max_depth) continue;
+    if (depth_i < min_depth) continue;
 
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
@@ -128,6 +135,11 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
 #endif
 
       if (r2 < hig2 && si_active_feedback) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
+
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
@@ -202,6 +214,20 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
   const int with_rt = 0;
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->dmin != cj->dmin) error("Cells of different size!");
+#endif
+
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+#endif
+
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
   for (int k = 0; k < 3; k++) {
@@ -211,15 +237,12 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
       shift[k] = -e->s->dim[k];
   }
 
-  /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
-
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
 
     /* Get a hold of the ith spart in ci. */
-    struct spart *restrict si = &sparts_i[sid];
+    struct spart *si = &sparts_i[sid];
+    const char depth_i = si->depth_h;
 
     /* Skip inhibited particles */
     if (spart_is_inhibited(si, e)) continue;
@@ -243,8 +266,8 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 #endif
 
     /* Skip particles not in the range of h we care about */
-    if (hi >= h_max) continue;
-    if (hi < h_min) continue;
+    if (depth_i > max_depth) continue;
+    if (depth_i < min_depth) continue;
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -273,6 +296,11 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 #endif
 
       if (r2 < hig2 && si_active_feedback) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
+
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -349,9 +377,19 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
   const int with_rt = 0;
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->dmin != cj->dmin) error("Cells of different size!");
+#endif
+
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
   const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
   const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+#endif
 
   if (do_ci_stars) {
 
@@ -391,7 +429,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
       /* Get a hold of the ith part in ci. */
-      struct spart *restrict spi = &sparts_i[sort_i[pid].i];
+      struct spart *spi = &sparts_i[sort_i[pid].i];
+      const char depth_i = spi->depth_h;
       const float hi = spi->h;
 
       /* Skip inhibited particles */
@@ -410,8 +449,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 #endif
 
       /* Skip particles not in the range of h we care about */
-      if (hi >= h_max) continue;
-      if (hi < h_min) continue;
+      if (depth_i > max_depth) continue;
+      if (depth_i < min_depth) continue;
 
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
