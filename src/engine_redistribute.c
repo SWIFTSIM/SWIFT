@@ -964,7 +964,7 @@ void engine_redistribute(struct engine *e) {
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
-      error("gpart not sorted into the right top-level cell!");
+      error("gpart not sorted into the right top-level cell! (cellid: %d, cell_type: %d)", new_cid, c->tl_cell_type);
   }
 #endif
 

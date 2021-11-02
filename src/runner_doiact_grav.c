@@ -2515,7 +2515,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0)) {
 
-      /* Call the PM interaction fucntion on the active sub-cells of ci */
+      /* Call the PM interaction function on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
       // runner_dopair_recursive_grav_pm(r, ci, cj);
 

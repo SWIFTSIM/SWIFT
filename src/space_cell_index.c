@@ -137,7 +137,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= s->nr_cells)
+
+	  if (index < 0 || index >= s->nr_cells)
+
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
 
@@ -260,8 +262,8 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     /* Get its cell index */
 #ifdef WITH_ZOOM_REGION
     const int index = cell_getid_zoom(cdim, pos_x, pos_y, pos_z, s,
-                              (int)(pos_x * ih_x), (int)(pos_y * ih_y),
-                              (int)(pos_z * ih_z));
+                            (int)(pos_x * ih_x), (int)(pos_y * ih_y),
+                            (int)(pos_z * ih_z));
 #else  
     const int index = cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
 #endif
