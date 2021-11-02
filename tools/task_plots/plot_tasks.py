@@ -50,7 +50,7 @@ import sys
 import argparse
 
 # import hardcoded data
-from swift_hardcoded_data import TASKTYPES, SUBTYPES
+from swift_hardcoded_data import TASKTYPES, SUBTYPES, COLOURS
 
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Plot task graphs")
@@ -150,109 +150,6 @@ PLOT_PARAMS = {
 }
 pl.rcParams.update(PLOT_PARAMS)
 
-#  Tasks and subtypes. Indexed as in tasks.h.
-TASKTYPES = [
-    "none",
-    "sort",
-    "self",
-    "pair",
-    "sub_self",
-    "sub_pair",
-    "init_grav",
-    "init_grav_out",
-    "ghost_in",
-    "ghost",
-    "ghost_out",
-    "extra_ghost",
-    "drift_part",
-    "drift_spart",
-    "drift_sink",
-    "drift_bpart",
-    "drift_gpart",
-    "drift_gpart_out",
-    "hydro_end_force",
-    "kick1",
-    "kick2",
-    "timestep",
-    "timestep_limiter",
-    "timestep_sync",
-    "send",
-    "recv",
-    "grav_long_range",
-    "grav_mm",
-    "grav_down_in",
-    "grav_down",
-    "grav_end_force",
-    "cooling",
-    "cooling_in",
-    "cooling_out",
-    "star_formation",
-    "star_formation_in",
-    "star_formation_out",
-    "logger",
-    "stars_in",
-    "stars_out",
-    "stars_ghost_in",
-    "stars_ghost",
-    "stars_ghost_out",
-    "stars_sort",
-    "stars_resort",
-    "bh_in",
-    "bh_out",
-    "bh_ghost",
-    "bh_swallow_ghost1",
-    "bh_swallow_ghost2",
-    "bh_swallow_ghost3",
-    "fof_self",
-    "fof_pair",
-    "rt_in",
-    "rt_out",
-    "sink_formation",
-    "rt_ghost1",
-    "count",
-]
-
-SUBTYPES = [
-    "none",
-    "density",
-    "gradient",
-    "force",
-    "limiter",
-    "grav",
-    "external_grav",
-    "tend_part",
-    "tend_gpart",
-    "tend_spart",
-    "tend_sink",
-    "tend_bpart",
-    "xv",
-    "doxv",
-    "subxv",
-    "rho",
-    "part_swallow",
-    "bpart_merger",
-    "gpart",
-    "dogpart",
-    "subgpart",
-    "multipole",
-    "spart",
-    "stars_density",
-    "stars_feedback",
-    "sf_counts",
-    "bpart_rho",
-    "bpart_swallow",
-    "bpart_feedback",
-    "bh_density",
-    "bh_swallow",
-    "do_gas_swallow",
-    "do_bh_swallow",
-    "bh_feedback",
-    "sink",
-    "rt_inject",
-    "sink_compute_formation",
-    "count",
-]
-
 #  Task/subtypes of interest.
 FULLTYPES = [
     "self/limiter",
@@ -331,65 +228,23 @@ FULLTYPES = [
     "sub_pair/bh_feedback",
 ]
 
-#  A number of colours for the various types. Recycled when there are
-#  more task types than colours...
-colours = [
-    "cyan",
-    "lightgray",
-    "darkblue",
-    "yellow",
-    "tan",
-    "dodgerblue",
-    "sienna",
-    "aquamarine",
-    "bisque",
-    "blue",
-    "green",
-    "lightgreen",
-    "brown",
-    "purple",
-    "moccasin",
-    "olivedrab",
-    "chartreuse",
-    "olive",
-    "darkgreen",
-    "green",
-    "mediumseagreen",
-    "mediumaquamarine",
-    "darkslategrey",
-    "mediumturquoise",
-    "black",
-    "cadetblue",
-    "skyblue",
-    "red",
-    "slategray",
-    "gold",
-    "slateblue",
-    "blueviolet",
-    "mediumorchid",
-    "firebrick",
-    "magenta",
-    "hotpink",
-    "pink",
-    "orange",
-    "lightgreen",
-]
-maxcolours = len(colours)
+#  Colours
+maxcolours = len(COLOURS)
 
 #  Set colours of task/subtype.
 TASKCOLOURS = {}
 ncolours = 0
 for task in TASKTYPES:
-    TASKCOLOURS[task] = colours[ncolours]
+    TASKCOLOURS[task] = COLOURS[ncolours]
     ncolours = (ncolours + 1) % maxcolours
 
 SUBCOLOURS = {}
 for task in FULLTYPES:
-    SUBCOLOURS[task] = colours[ncolours]
+    SUBCOLOURS[task] = COLOURS[ncolours]
     ncolours = (ncolours + 1) % maxcolours
 
 for task in SUBTYPES:
-    SUBCOLOURS[task] = colours[ncolours]
+    SUBCOLOURS[task] = COLOURS[ncolours]
     ncolours = (ncolours + 1) % maxcolours
 
 #  For fiddling with colours...
