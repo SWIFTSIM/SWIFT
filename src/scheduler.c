@@ -2084,6 +2084,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             t->subtype == task_subtype_sf_counts ||
             t->subtype == task_subtype_multipole) {
           t->buff = malloc(t->win_size);
+
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
@@ -2093,15 +2094,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_limiter) {
 
-          /* XXX WTF, must be wrong..  */
           void *buff = NULL;
-          size_t size = t->ci->hydro.count * sizeof(timebin_t);
-          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, size) != 0)
+          if (posix_memalign((void **)&buff, SWIFT_CACHE_ALIGNMENT, t->win_size) != 0)
             error("Error allocating timebin recv buffer");
           t->buff = buff;
           task_get_unique_dependent(t)->buff = buff;
-
-          t->buff = t->ci->hydro.parts;
 
         } else if (t->subtype == task_subtype_doxv) {
 
@@ -2126,7 +2123,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {
 
-          /* XXX wrong */
           t->buff = t->ci->stars.parts;
 
         } else if (t->subtype == task_subtype_bpart_rho ||
@@ -2134,12 +2130,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
                    t->subtype == task_subtype_bpart_feedback) {
 
           t->buff = t->ci->black_holes.parts;
-
-        } else if (t->subtype == task_subtype_multipole) {
-
-          /* XXX very wrong. */
-          size_t size = t->win_size;
-          t->buff = malloc(size);
 
         } else if (t->subtype == task_subtype_sf_counts) {
 
@@ -2207,8 +2197,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           t->buff = t->ci->hydro.parts;
 
         } else if (t->subtype == task_subtype_limiter) {
-          /* XXX very wrong. */
 
+          /* Nothing to do, unpacked elsewhere. */
 
         } else if (t->subtype == task_subtype_doxv) {
 
@@ -2228,7 +2218,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_spart_density ||
                    t->subtype == task_subtype_spart_prep2) {
-               /* XXX wrong */
 
           t->buff = t->ci->stars.parts;
 
@@ -2797,10 +2786,14 @@ size_t scheduler_mpi_size(struct task *t) {
   } else if (t->subtype == task_subtype_bpart_merger) {
     size = sizeof(struct black_holes_bpart_data) * t->ci->black_holes.count;
 
-  } else if (t->subtype == task_subtype_xv || t->subtype == task_subtype_rho ||
+  } else if (t->subtype == task_subtype_xv ||
+             t->subtype == task_subtype_rho ||
              t->subtype == task_subtype_gradient ||
-             t->subtype == task_subtype_limiter) {
+             t->subtype == task_subtype_part_prep1) {
     size = t->ci->hydro.count * sizeof(struct part);
+
+  } else if (t->subtype == task_subtype_limiter) {
+    size = t->ci->hydro.count * sizeof(timebin_t);
 
   } else if (t->subtype == task_subtype_subxv||
              t->subtype == task_subtype_doxv) {
@@ -2822,7 +2815,6 @@ size_t scheduler_mpi_size(struct task *t) {
 
   } else if (t->subtype == task_subtype_spart_density||
              t->subtype == task_subtype_spart_prep2) {
-    /* XXX wrong? */
     size = t->ci->stars.count * sizeof(struct spart);
 
   } else if (t->subtype == task_subtype_bpart_rho ||
