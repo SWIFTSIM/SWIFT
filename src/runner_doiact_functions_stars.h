@@ -388,8 +388,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
   const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 #endif
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   if (do_ci_stars) {
 
@@ -519,6 +519,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2 && spi_active_feedback) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+#endif
+
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -581,6 +587,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 
       /* Get a hold of the jth part in cj. */
       struct spart *spj = &sparts_j[sort_j[pjd].i];
+      const char depth_j = spj->depth_h;
       const float hj = spj->h;
 
       /* Skip inhibited particles */
@@ -590,7 +597,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
       if (!spart_is_active(spj, e)) continue;
 
       /* Skip inactive particles */
-      int spj_active_feedback = feedback_is_active(spj, e);
+      const int spj_active_feedback = feedback_is_active(spj, e);
       if (!spj_active_feedback && !with_rt) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -599,8 +606,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 #endif
 
       /* Skip particles not in the range of h we care about */
-      if (hj >= h_max) continue;
-      if (hj < h_min) continue;
+      if (depth_j > max_depth) continue;
+      if (depth_j < min_depth) continue;
 
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
@@ -669,6 +676,11 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hjg2 && spj_active_feedback) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
