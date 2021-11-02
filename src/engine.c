@@ -1867,11 +1867,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
-//#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-//  /* Run the brute-force gravity calculation for some gparts */
-//  if (e->policy & engine_policy_self_gravity)
-//    gravity_exact_force_compute(e->s, e);
-//#endif
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+  /* Run the brute-force gravity calculation for some gparts */
+  if (e->policy & engine_policy_self_gravity)
+    gravity_exact_force_compute(e->s, e);
+#endif
 
   scheduler_write_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
