@@ -235,7 +235,12 @@ void *runner_main(void *data) {
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
-          if (t->subtype == task_subtype_density)
+          if (t->subtype == task_subtype_grav)
+            runner_doself_recursive_grav(r, ci, 1);
+          else if (t->subtype == task_subtype_external_grav)
+            runner_do_grav_external(r, ci, 1);
+#ifndef ONLY_SUBTASKS
+          else if (t->subtype == task_subtype_density)
             runner_doself1_branch_density(r, ci, /*limit_h_min=*/0,
                                           /*limit_h_max=*/0);
 #ifdef EXTRA_HYDRO_LOOP
@@ -249,10 +254,6 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_doself1_branch_limiter(r, ci, /*limit_h_min=*/0,
                                           /*limit_h_max=*/0);
-          else if (t->subtype == task_subtype_grav)
-            runner_doself_recursive_grav(r, ci, 1);
-          else if (t->subtype == task_subtype_external_grav)
-            runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_doself_branch_stars_density(r, ci, /*limit_h_min=*/0,
                                                /*limit_h_max=*/0);
@@ -292,13 +293,17 @@ void *runner_main(void *data) {
             runner_doself_branch_sinks_accretion(r, ci);
           else if (t->subtype == task_subtype_sink_merger)
             runner_doself_sinks_merger(r, ci);
+#endif
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
           break;
 
         case task_type_pair:
-          if (t->subtype == task_subtype_density)
+          if (t->subtype == task_subtype_grav)
+            runner_dopair_recursive_grav(r, ci, cj, 1);
+#ifndef ONLY_SUBTASKS
+          else if (t->subtype == task_subtype_density)
             runner_dopair1_branch_density(r, ci, cj, /*limit_h_min=*/0,
                                           /*limit_h_max=*/0);
 #ifdef EXTRA_HYDRO_LOOP
@@ -312,8 +317,6 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_dopair1_branch_limiter(r, ci, cj, /*limit_h_min=*/0,
                                           /*limit_h_max=*/0);
-          else if (t->subtype == task_subtype_grav)
-            runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dopair_branch_stars_density(r, ci, cj, /*limit_h_min=*/0,
                                                /*limit_h_max=*/0);
@@ -353,6 +356,7 @@ void *runner_main(void *data) {
             runner_dopair_branch_sinks_accretion(r, ci, cj);
           else if (t->subtype == task_subtype_sink_merger)
             runner_do_sym_pair_sinks_merger(r, ci, cj);
+#endif
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
