@@ -60,15 +60,22 @@ void DOSELF1_RT(struct runner *r, const struct cell *c, const int limit_min_h,
   struct spart *restrict sparts = c->stars.parts;
   struct part *restrict parts = c->hydro.parts;
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? c->depth : 0;
+  const char max_depth = limit_min_h ? c->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+#endif
 
   /* Loop over the sparts in cell */
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith spart in c. */
     struct spart *si = &sparts[sid];
+    const char depth_i = si->depth_h;
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
@@ -79,8 +86,8 @@ void DOSELF1_RT(struct runner *r, const struct cell *c, const int limit_min_h,
     if (!rt_is_spart_active_in_loop(si, e)) continue;
 
     /* Skip particles not in the range of h we care about */
-    if (hi >= h_max) continue;
-    if (hi < h_min) continue;
+    if (depth_i > max_depth) continue;
+    if (depth_i < min_depth) continue;
 
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
@@ -103,7 +110,7 @@ void DOSELF1_RT(struct runner *r, const struct cell *c, const int limit_min_h,
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                             (float)(pj->x[1] - c->loc[1]),
                             (float)(pj->x[2] - c->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -138,6 +145,11 @@ void DOSELF1_RT(struct runner *r, const struct cell *c, const int limit_min_h,
 #endif
 
       if (r2 < hig2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
+
         IACT_RT(r2, dx, hi, hj, si, pj, a, H);
       }
     } /* loop over the parts in ci. */
@@ -174,6 +186,20 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, const struct cell *restrict ci,
   struct spart *restrict sparts_i = ci->stars.parts;
   struct part *restrict parts_j = cj->hydro.parts;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->dmin != cj->dmin) error("Cells of different size!");
+#endif
+
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+#endif
+
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
   for (int k = 0; k < 3; k++) {
@@ -183,15 +209,12 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, const struct cell *restrict ci,
       shift[k] = -e->s->dim[k];
   }
 
-  /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
-
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
+    const char depth_i = si->depth_h;
 
     /* Skip inhibited particles. */
     if (spart_is_inhibited(si, e)) continue;
@@ -211,8 +234,8 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, const struct cell *restrict ci,
 #endif
 
     /* Skip particles not in the range of h we care about */
-    if (hi >= h_max) continue;
-    if (hi < h_min) continue;
+    if (depth_i > max_depth) continue;
+    if (depth_i < min_depth) continue;
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -231,7 +254,7 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, const struct cell *restrict ci,
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                             (float)(pj->x[1] - cj->loc[1]),
                             (float)(pj->x[2] - cj->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef RT_DEBUG
@@ -262,6 +285,11 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, const struct cell *restrict ci,
 #endif
 
       if (r2 < hig2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
+
         IACT_RT(r2, dx, hi, hj, si, pj, a, H);
       }
 
@@ -302,8 +330,18 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
   const int do_cj_stars =
       (cj->nodeID == e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->dmin != cj->dmin) error("Cells of different size!");
+#endif
+
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
   const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+#endif
   const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   if (do_ci_stars) {
@@ -344,6 +382,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
 
       /* Get a hold of the ith spart in ci. */
       struct spart *restrict spi = &sparts_i[sort_i[pid].i];
+      const char depth_i = spi->depth_h;
       const float hi = spi->h;
 
       /* Skip inhibited particles */
@@ -358,8 +397,8 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
 #endif
 
       /* Skip particles not in the range of h we care about */
-      if (hi >= h_max) continue;
-      if (hi < h_min) continue;
+      if (depth_i > max_depth) continue;
+      if (depth_i < min_depth) continue;
 
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -389,7 +428,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
         const float pjz = pj->x[2] - cj->loc[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -455,6 +494,12 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+#endif
+
           IACT_RT(r2, dx, hi, hj, spi, pj, a, H);
         }
       } /* loop over the parts in cj. */
@@ -496,6 +541,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
 
       /* Get a hold of the jth spart in cj. */
       struct spart *spj = &sparts_j[sort_j[pjd].i];
+      const char depth_j = spj->depth_h;
       const float hj = spj->h;
 
       /* Skip inhibited particles */
@@ -510,8 +556,8 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
 #endif
 
       /* Skip particles not in the range of h we care about */
-      if (hj >= h_max) continue;
-      if (hj < h_min) continue;
+      if (depth_j > max_depth) continue;
+      if (depth_j < min_depth) continue;
 
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
@@ -541,7 +587,7 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
         const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -606,6 +652,12 @@ void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
+
           IACT_RT(r2, dx, hj, hi, spj, pi, a, H);
         }
       } /* loop over the parts in ci. */

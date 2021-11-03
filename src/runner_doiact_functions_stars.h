@@ -97,7 +97,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
     if (!spart_is_active(si, e)) continue;
 
     /* Skip inactive particles */
-    int si_active_feedback = feedback_is_active(si, e);
+    const int si_active_feedback = feedback_is_active(si, e);
     if (!si_active_feedback && !with_rt) continue;
 
     /* Skip particles not in the range of h we care about */
@@ -125,7 +125,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                             (float)(pj->x[1] - c->loc[1]),
                             (float)(pj->x[2] - c->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -251,7 +251,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
     if (!spart_is_active(si, e)) continue;
 
     /* Skip inactive particles */
-    int si_active_feedback = feedback_is_active(si, e);
+    const int si_active_feedback = feedback_is_active(si, e);
     if (!si_active_feedback && !with_rt) continue;
 
     const float hi = si->h;
@@ -286,7 +286,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                             (float)(pj->x[1] - cj->loc[1]),
                             (float)(pj->x[2] - cj->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
