@@ -240,7 +240,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->width[1] = s->width[1];
             c->width[2] = s->width[2];
             if (s->with_self_gravity)
-              c->grav.multipole = &s->multipoles_top[cid];
+              c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
             c->tl_cell_type = tl_cell;
             c->dmin = dmin;
           } else {
