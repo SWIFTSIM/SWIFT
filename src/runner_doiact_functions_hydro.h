@@ -1512,6 +1512,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 #endif
 
   /* Get some other useful values. */
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
   const double hi_max = ci->hydro.h_max;
   const double hj_max = cj->hydro.h_max;
   const int count_i = ci->hydro.count;
@@ -1549,7 +1551,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
       const struct part *p = &parts_i[sort_i[k].i];
       const char depth = p->depth_h;
 
-      if (part_is_active(p, e) && (depth >= min_depth) &&
+      if (part_is_active(p, e) && local_i && (depth >= min_depth) &&
           (depth <= max_depth)) {
         sort_active_i[count_active_i] = sort_i[k];
         count_active_i++;
@@ -1567,7 +1569,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
       const struct part *p = &parts_j[sort_j[k].i];
       const char depth = p->depth_h;
 
-      if (part_is_active(p, e) && (depth >= min_depth) &&
+      if (part_is_active(p, e) && local_j && (depth >= min_depth) &&
           (depth <= max_depth)) {
         sort_active_j[count_active_j] = sort_j[k];
         count_active_j++;
@@ -1601,8 +1603,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     const float piy = pi->x[1] - shift_i[1];
     const float piz = pi->x[2] - shift_i[2];
 
-    const int update_i = part_is_active(pi, e) && (depth_i >= min_depth) &&
-                         (depth_i <= max_depth);
+    const int update_i = part_is_active(pi, e) && local_i &&
+                         (depth_i >= min_depth) && (depth_i <= max_depth);
 
     /* Do we need to only check active parts in cj
        (i.e. pi does not need updating) ? */
@@ -1754,8 +1756,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
 
-          const int doj = part_is_active(pj, e) && (depth_j >= min_depth) &&
-                          (depth_j <= max_depth);
+          const int doj = part_is_active(pj, e) && local_j &&
+                          (depth_j >= min_depth) && (depth_j <= max_depth);
 
           /* Does pj need to be updated too? */
           if (doj) {
@@ -1828,8 +1830,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     const float pjy = pj->x[1] - shift_j[1];
     const float pjz = pj->x[2] - shift_j[2];
 
-    const int update_j = part_is_active(pj, e) && (depth_j >= min_depth) &&
-                         (depth_j <= max_depth);
+    const int update_j = part_is_active(pj, e) && local_j &&
+                         (depth_j >= min_depth) && (depth_j <= max_depth);
 
     /* Do we need to only check active parts in ci
        (i.e. pj does not need updating) ? */
@@ -1982,8 +1984,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
            (note that we must avoid the r2 < hig2 cases we already processed) */
         if (r2 < hjg2 && r2 >= hig2) {
 
-          const int doi = part_is_active(pi, e) && (depth_i >= min_depth) &&
-                          (depth_i <= max_depth);
+          const int doi = part_is_active(pi, e) && local_i &&
+                          (depth_i >= min_depth) && (depth_i <= max_depth);
 
           /* Does pi need to be updated too? */
           if (doi) {
