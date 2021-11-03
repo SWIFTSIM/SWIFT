@@ -406,10 +406,10 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
     const float xij_i[3]) {
 
   rt_part_get_density_vector(pi, group, Ui);
-  rt_check_unphysical_density(Ui, &Ui[1], 0);
-
   rt_part_get_density_vector(pj, group, Uj);
-  rt_check_unphysical_density(Uj, &Uj[1], 0);
+  /* No need to check unphysical density here:
+   * the densities haven't been touched since
+   * the rt_injection_update_photon_density */
 
   float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
   float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
@@ -446,6 +446,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
   Uj[2] += dUj[2];
   Uj[3] += dUj[3];
 
+  /* Check and correct unphysical extrapolated densities */
   rt_check_unphysical_density(Ui, &Ui[1], 1);
   rt_check_unphysical_density(Uj, &Uj[1], 1);
 }

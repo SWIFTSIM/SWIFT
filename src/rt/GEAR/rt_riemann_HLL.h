@@ -106,22 +106,19 @@ rt_riemann_interpolate_eigenvals(float f, float theta, float *lambda_min,
  *
  * @param UL left state
  * @param UR right state
+ * @param FLnorm the norm of the radiation flux of the left state
+ * @param FRnorm the norm of the radiation flux of the left state
+ * @param hyperFluxL the flux of the hyperbolic conservation law of the left
+ * state
+ * @param hyperFluxR the flux of the hyperbolic conservation law of the right
+ * state
  * @param flux_half the resulting flux at the interface
  * @param n_unit the unit vector perpendicular to the "intercell" surface.
  */
 __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
-    const float UL[4], const float UR[4], float flux_half[4],
-    const float n_unit[3]) {
-
-  float hyperFluxL[4][3];
-  rt_get_hyperbolic_flux(UL, hyperFluxL);
-  float hyperFluxR[4][3];
-  rt_get_hyperbolic_flux(UR, hyperFluxR);
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  rt_check_unphysical_hyperbolic_flux(hyperFluxL);
-  rt_check_unphysical_hyperbolic_flux(hyperFluxR);
-#endif
+    const float UL[4], const float UR[4], const float FLnorm,
+    const float FRnorm, const float hyperFluxL[4][3],
+    const float hyperFluxR[4][3], float flux_half[4], const float n_unit[3]) {
 
   /* Compute reduced fluxes and angles between surface and flux.
    * These are based on physical fluxes, not hyperbolic fluxes. */
@@ -130,7 +127,6 @@ __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
 
   float fL = 0.f;
   float thetaL = 0.f;
-  const float FLnorm = sqrtf(UL[1] * UL[1] + UL[2] * UL[2] + UL[3] * UL[3]);
 
   if (UL[0] > 0.f) {
     fL = FLnorm / UL[0] * c_red_inv;
@@ -148,7 +144,6 @@ __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
 
   float fR = 0.f;
   float thetaR = 0.f;
-  const float FRnorm = sqrtf(UR[1] * UR[1] + UR[2] * UR[2] + UR[3] * UR[3]);
 
   if (UR[0] > 0.f) {
     fR = FRnorm / UR[0] * c_red_inv;

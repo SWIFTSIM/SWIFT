@@ -68,10 +68,25 @@ __attribute__((always_inline)) INLINE static void rt_compute_flux(
     float UL[4], float UR[4], const float n_unit[3], const float Anorm,
     float fluxes[4]) {
 
-  rt_check_unphysical_density(&UL[0], &UL[1], 2);
-  rt_check_unphysical_density(&UR[0], &UR[1], 2);
+  /* Unphysical density check not necessary here.
+   * It's done in gradients predict as well. */
 
-  rt_riemann_solve_for_flux(UL, UR, fluxes, n_unit);
+  const float FLnorm = sqrtf(UL[1] * UL[1] + UL[2] * UL[2] + UL[3] * UL[3]);
+  const float FRnorm = sqrtf(UR[1] * UR[1] + UR[2] * UR[2] + UR[3] * UR[3]);
+
+  /* Get the fluxes in the hyperbolic conservation law sense. */
+  float hyperFluxL[4][3];
+  rt_get_hyperbolic_flux(UL, FLnorm, hyperFluxL);
+  float hyperFluxR[4][3];
+  rt_get_hyperbolic_flux(UR, FRnorm, hyperFluxR);
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  rt_check_unphysical_hyperbolic_flux(hyperFluxL);
+  rt_check_unphysical_hyperbolic_flux(hyperFluxR);
+#endif
+
+  rt_riemann_solve_for_flux(UL, UR, FLnorm, FRnorm, hyperFluxL, hyperFluxR,
+                            fluxes, n_unit);
 
   /* get the actual flux */
   fluxes[0] *= Anorm;

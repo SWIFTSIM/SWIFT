@@ -79,19 +79,18 @@ __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
 /**
  * @brief compute the pressure tensor for a given state U
  *
- * @param U the state (photon energy, photon energy flux) to use
+ * @param U the state (radiation energy, radiation energy flux) to use
+ * @param Fnorm the norm of the radiation flux
  * @param pressure_tensor 3x3 array to write resulting Eddington pressure tensor
  * into
  */
 __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
-    const float U[4], float pressure_tensor[3][3]) {
-
-  const float normF = sqrtf(U[1] * U[1] + U[2] * U[2] + U[3] * U[3]);
+    const float U[4], const float Fnorm, float pressure_tensor[3][3]) {
 
   /* We may encounter zero flux even with nonzero energy.
    * Also even with nonzero flux, the norm may round down
    * to exactly zero, so exit early if that is the case. */
-  if ((U[1] == 0.f && U[2] == 0.f && U[3] == 0.f) || normF == 0.f) {
+  if (Fnorm == 0.f) {
     const float diagonal_element = U[0] / 3.f;
     pressure_tensor[0][0] = diagonal_element;
     pressure_tensor[0][1] = 0.f;
@@ -105,16 +104,16 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
     return;
   }
 
-  const float f = rt_params.reduced_speed_of_light_inverse * normF / U[0];
+  const float f = rt_params.reduced_speed_of_light_inverse * Fnorm / U[0];
   /* f^2 mustn't be > 1. This may happen since we use the reduced speed of
    * light. */
-  const float f2 = (f >= 1.f) ? 1.f : f * f;
+  const float f2 = min(1.f, f * f);
   const float rootterm = 4.f - 3.f * f2;
   const float chi = (3.f + 4.f * f2) / (5.f + 2.f * sqrtf(rootterm));
 
   /* get unit vector n */
-  const float normF_inv = 1.f / normF;
-  const float n[3] = {U[1] * normF_inv, U[2] * normF_inv, U[3] * normF_inv};
+  const float Fnorm_inv = 1.f / Fnorm;
+  const float n[3] = {U[1] * Fnorm_inv, U[2] * Fnorm_inv, U[3] * Fnorm_inv};
 
   const float temp = 0.5f * (3.f * chi - 1.f);
   for (int i = 0; i < 3; i++) {
@@ -141,7 +140,7 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
         " |F| %.3e f %.3e f^2 %.3e root %.3e chi %.3e |"
         " n %.3e %.3e %.3e | U %.3e %.3e %.3e |"
         " temp %.3e %.3e",
-        rt_params.reduced_speed_of_light_inverse, normF, f, f2, rootterm, chi,
+        rt_params.reduced_speed_of_light_inverse, Fnorm, f, f2, rootterm, chi,
         n[0], n[1], n[2], U[1], U[2], U[3], temp, temp2);
   }
 #endif
@@ -151,45 +150,46 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
  * @brief compute the flux of the hyperbolic conservation law for a given
  * state U
  *
- * @param U the state (photon energy, photon energy flux) to use
- * @param flux the resulting flux F(U) of the hyperbolic conservation law
+ * @param U the state (radiation energy, radiation energy flux) to use
+ * @param Fnorm the norm of the radiation flux
+ * @param hypflux the resulting flux F(U) of the hyperbolic conservation law
  */
 __attribute__((always_inline)) INLINE static void rt_get_hyperbolic_flux(
-    const float U[4], float flux[4][3]) {
+    const float U[4], const float Fnorm, float hypflux[4][3]) {
 
   if (U[0] == 0.f) {
-    /* At this point, the state is be corrected to not contain
+    /* At this point, the state U has been corrected to not contain
      * unphysical values. If we encounter this situation, it means
      * that the fluxes are zero as well, meaning that when we compute
      * 1/|F| we get infinities. So skip this. The pressure tensor is
      * P_ij = D_ij * E_i anyway. */
 
     for (int i = 0; i < 4; i++) {
-      flux[i][0] = 0.f;
-      flux[i][1] = 0.f;
-      flux[i][2] = 0.f;
+      hypflux[i][0] = 0.f;
+      hypflux[i][1] = 0.f;
+      hypflux[i][2] = 0.f;
     }
     return;
   }
 
-  flux[0][0] = U[1];
-  flux[0][1] = U[2];
-  flux[0][2] = U[3];
+  hypflux[0][0] = U[1];
+  hypflux[0][1] = U[2];
+  hypflux[0][2] = U[3];
 
   float pressure_tensor[3][3];
-  rt_get_pressure_tensor(U, pressure_tensor);
+  rt_get_pressure_tensor(U, Fnorm, pressure_tensor);
 
   const float c_red = rt_params.reduced_speed_of_light;
   const float c2 = c_red * c_red;
-  flux[1][0] = pressure_tensor[0][0] * c2;
-  flux[1][1] = pressure_tensor[0][1] * c2;
-  flux[1][2] = pressure_tensor[0][2] * c2;
-  flux[2][0] = pressure_tensor[1][0] * c2;
-  flux[2][1] = pressure_tensor[1][1] * c2;
-  flux[2][2] = pressure_tensor[1][2] * c2;
-  flux[3][0] = pressure_tensor[2][0] * c2;
-  flux[3][1] = pressure_tensor[2][1] * c2;
-  flux[3][2] = pressure_tensor[2][2] * c2;
+  hypflux[1][0] = pressure_tensor[0][0] * c2;
+  hypflux[1][1] = pressure_tensor[0][1] * c2;
+  hypflux[1][2] = pressure_tensor[0][2] * c2;
+  hypflux[2][0] = pressure_tensor[1][0] * c2;
+  hypflux[2][1] = pressure_tensor[1][1] * c2;
+  hypflux[2][2] = pressure_tensor[1][2] * c2;
+  hypflux[3][0] = pressure_tensor[2][0] * c2;
+  hypflux[3][1] = pressure_tensor[2][1] * c2;
+  hypflux[3][2] = pressure_tensor[2][2] * c2;
 }
 
 #endif
