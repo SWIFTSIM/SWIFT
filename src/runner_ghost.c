@@ -472,13 +472,20 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self)
+            if (l->t->type == task_type_self) {
+#ifdef ONLY_SUBTASKS
+              error("Found some self tasks!");
+#else
               runner_doself_subset_branch_stars_density(r, finger, sparts, sid,
                                                         scount);
+#endif
+	    }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
-
+#ifdef ONLY_SUBTASKS
+              error("Found some pair tasks!");
+#else
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dopair_subset_branch_stars_density(
@@ -486,6 +493,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               else
                 runner_dopair_subset_branch_stars_density(
                     r, finger, sparts, sid, scount, l->t->ci);
+#endif
             }
 
             /* Otherwise, sub-self interaction? */
@@ -802,13 +810,21 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self)
+            if (l->t->type == task_type_self){
+#ifdef ONLY_SUBTASKS
+              error("Found some self tasks!");
+#else
               runner_doself_subset_branch_bh_density(r, finger, bparts, sid,
                                                      bcount);
+#endif
+	    }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
 
+#ifdef ONLY_SUBTASKS
+              error("Found some pair tasks!");
+#else
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
@@ -816,6 +832,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               else
                 runner_dopair_subset_branch_bh_density(r, finger, bparts, sid,
                                                        bcount, l->t->ci);
+#endif
             }
 
             /* Otherwise, sub-self interaction? */
