@@ -2216,7 +2216,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #ifdef ONLY_SUBTASKS
       error("Found some self tasks!");
 #else
-      
+
       const int bcount_i = ci->black_holes.count;
 
       /* Make the self-density tasks depend on the drift only. */
@@ -2472,16 +2472,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             ci->hydro.super->hydro.rt_transport_out);
       }
 #endif
-      
+
     }
 
     /* Otherwise, pair interaction? */
     else if (t_type == task_type_pair && t_subtype == task_subtype_density) {
 
 #ifdef ONLY_SUBTASKS
-              error("Found some self tasks!");
+      error("Found some self tasks!");
 #else
-	      
+
       const int bcount_i = ci->black_holes.count;
       const int bcount_j = cj->black_holes.count;
 
@@ -3007,7 +3007,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               cj->hydro.super->black_holes.swallow_ghost_0);
         }
       }
-#endif     
+#endif
     }
 
     /* Otherwise, sub-self interaction? */

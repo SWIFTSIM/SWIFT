@@ -479,7 +479,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               runner_doself_subset_branch_stars_density(r, finger, sparts, sid,
                                                         scount);
 #endif
-	    }
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {
@@ -810,14 +810,14 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 #endif
 
             /* Self-interaction? */
-            if (l->t->type == task_type_self){
+            if (l->t->type == task_type_self) {
 #ifdef ONLY_SUBTASKS
               error("Found some self tasks!");
 #else
               runner_doself_subset_branch_bh_density(r, finger, bparts, sid,
                                                      bcount);
 #endif
-	    }
+            }
 
             /* Otherwise, pair interaction? */
             else if (l->t->type == task_type_pair) {

@@ -1588,7 +1588,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Activate hydro drift */
       if (t->type == task_type_self) {
 #ifdef ONLY_SUBTASKS
-              error("Found some self tasks!");
+        error("Found some self tasks!");
 #else
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         if (ci_nodeID == nodeID && with_timestep_limiter)
@@ -1599,7 +1599,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       /* Set the correct sorting flags and activate hydro drifts */
       else if (t->type == task_type_pair) {
 #ifdef ONLY_SUBTASKS
-	error("Found some self tasks!");
+        error("Found some self tasks!");
 #else
         /* Store some values. */
         atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
@@ -2064,7 +2064,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
       if (t->type == task_type_pair) {
 #ifdef ONLY_SUBTASKS
-	error("Found some self tasks!");
+        error("Found some self tasks!");
 #else
         /* Activate stars_in for each cell that is part of
          * a pair task as to not miss any dependencies */
@@ -2499,9 +2499,9 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       /* Activate the drifts */
       if (t->type == task_type_self) {
 #ifdef ONLY_SUBTASKS
-	error("Found some self tasks!");
+        error("Found some self tasks!");
 #else
-	cell_activate_drift_part(ci, s);
+        cell_activate_drift_part(ci, s);
         cell_activate_drift_bpart(ci, s);
 #endif
       }
@@ -2509,7 +2509,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       /* Activate the drifts */
       else if (t->type == task_type_pair) {
 #ifdef ONLY_SUBTASKS
-	error("Found some self tasks!");
+        error("Found some self tasks!");
 #else
         /* Activate the drift tasks. */
         if (ci_nodeID == nodeID) cell_activate_drift_bpart(ci, s);
