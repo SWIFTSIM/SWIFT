@@ -322,8 +322,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
   const char min_depth = limit_max_h ? ci->depth : 0;
   const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
 
+  /* Get the limits in h (if any). Note ci and cj are the same size */
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Get the limits in h (if any) */
   const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
 #endif
   const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
@@ -393,7 +393,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
         const float pjz = pj->x[2] - cj->loc[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -492,7 +492,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
         const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -923,10 +923,6 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
                              /*clock=*/0);
       }
 
-      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
-       */
-      /* 	      cj->hydro.count); */
-
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
       DOPAIR1_BRANCH(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
@@ -988,8 +984,6 @@ void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
     /* If some particles are larger than the daughter cells, we must
        process them at this level before going deeper */
     if (recurse_below_h_max) {
-
-      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
          with all their neighbours */
