@@ -4216,18 +4216,8 @@ void engine_maketasks(struct engine *e) {
 
   /* Construct the first hydro loop over neighbours */
   if (e->policy & engine_policy_hydro) {
-#ifdef WITH_ZOOM_REGION
-	  if (s->with_zoom_region) {
-    	    threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper_with_zoom, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
-    } else {
-    	    threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
-    }
-#else
 	  threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
 	                 s->nr_cells, 1, threadpool_auto_chunk_size, e);
-#endif
   }
 
   if (e->verbose)
