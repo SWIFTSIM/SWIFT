@@ -78,6 +78,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_limiter(
     const float H) {
 
   /* Nothing to do here if both particles are active */
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  float wi, wj;
+  const float r = sqrtf(r2);
+
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  kernel_eval(ui, &wi);
+
+  const float hj_inv = 1.f / hj;
+  const float uj = r * hj_inv;
+  kernel_eval(uj, &wj);
+
+  pi->limiter_data.n_limiter += wi;
+  pj->limiter_data.n_limiter += wj;
+  pi->limiter_data.N_limiter++;
+  pj->limiter_data.N_limiter++;
+#endif
 }
 
 /**
@@ -85,7 +104,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_limiter(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
     const float r2, const float dx[3], const float hi, const float hj,
-    const struct part *restrict pi, struct part *restrict pj, const float a,
+    struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
   /* Wake up the neighbour? */
@@ -94,6 +113,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
     /* Store the smallest time bin that woke up this particle */
     accumulate_max_c(&pj->limiter_data.wakeup, -pi->time_bin);
   }
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  float wi;
+
+  const float r = sqrtf(r2);
+  const float hi_inv = 1.f / hi;
+  const float ui = r * hi_inv;
+  kernel_eval(ui, &wi);
+
+  pi->limiter_data.n_limiter += wi;
+  pi->limiter_data.N_limiter++;
+#endif
 }
 
 #endif /* SWIFT_TIMESTEP_LIMITER_IACT_H */

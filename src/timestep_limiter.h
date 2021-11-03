@@ -49,6 +49,11 @@ __attribute__((always_inline)) INLINE static void timestep_limiter_end_force(
   if (p->limiter_data.min_ngb_time_bin == 0)
     error("Minimal time-bin of neighbours is 0");
 #endif
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  p->limiter_data.n_limiter = 0.f;
+  p->limiter_data.N_limiter = 0;
+#endif
 }
 
 /**

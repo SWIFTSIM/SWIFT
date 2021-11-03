@@ -1175,6 +1175,16 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+      /* Finish the limiter loop by adding a (fake) self-contribution */
+      p->limiter_data.N_limiter++;
+
+      const float h_inv_dim = pow_dimension(1. / p->h); /* 1/h^d */
+      p->limiter_data.n_limiter += kernel_root;
+      p->limiter_data.n_limiter *= h_inv_dim;
+#endif
+
       /* Avoid inhibited particles */
       if (part_is_inhibited(p, e)) continue;
 

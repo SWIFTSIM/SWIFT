@@ -176,15 +176,14 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
       pi->N_density_exact = N_density_exact;
       pi->N_gradient_exact = N_gradient_exact;
       pi->N_force_exact = N_force_exact;
-      /* pi->limiter_data.N_limiter_exact = N_limiter_exact; */
+      pi->limiter_data.N_limiter_exact = N_limiter_exact;
 
       pi->rho_exact = rho_exact * pow_dimension(hi_inv);
       pi->n_density_exact = n_density_exact * pow_dimension(hi_inv);
       pi->n_gradient_exact = n_gradient_exact;
       pi->n_force_exact = n_force_exact;
-      /* pi->limiter_data.n_limiter_exact = */
-      /*     n_limiter_exact * pow_dimension(hi_inv); */
-      /* pi->limiter_data.n_limiter *= pow_dimension(hi_inv); */
+      pi->limiter_data.n_limiter_exact =
+          n_limiter_exact * pow_dimension(hi_inv);
 
       counter++;
     }
@@ -250,7 +249,10 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   const struct part *parts = s->parts;
   const size_t nr_parts = s->nr_parts;
 
+  const int with_limiter = e->policy & engine_policy_timestep_limiter;
   const double eta = e->hydro_properties->eta_neighbours;
+  const float h_max = e->hydro_properties->h_max;
+  const float h_min = e->hydro_properties->h_min;
   const double N_ngb_target =
       (4. / 3.) * M_PI * pow_dimension(kernel_gamma * eta);
   const double N_ngb_max =
@@ -267,6 +269,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Hydro accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
+  fprintf(file_swift, "# h_max= %e\n", h_max);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
   fprintf(file_swift, "# N_ngb_target= %f +/- %f\n", N_ngb_target,
           e->hydro_properties->delta_neighbours);
@@ -294,7 +297,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
               "%16.8e %16.8e %16.8e\n",
               id, pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density,
               pi->N_gradient, pi->N_force, pi->rho, pi->n_gradient, pi->n_force,
-              /* pi->limiter_data.n_limiter, */ 0., N_ngb);
+              pi->limiter_data.n_limiter, N_ngb);
     }
   }
 
@@ -313,6 +316,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   if (file_exact == NULL) error("Could not create file '%s'.", file_name_exact);
   fprintf(file_exact, "# Hydro accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
+  fprintf(file_exact, "# h_max= %e\n", h_max);
   fprintf(file_exact, "# periodic= %d\n", s->periodic);
   fprintf(file_exact, "# N_ngb_target= %f +/- %f\n", N_ngb_target,
           e->hydro_properties->delta_neighbours);
@@ -337,6 +341,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     const struct part *pi = &parts[i];
     const long long id = pi->id;
     const int found_inhibited = pi->inhibited_exact;
+    const int h_max_limited = pi->h >= 0.99 * h_max;
+    const int h_min_limited = pi->h <= 1.01 * h_min;
     if (pi->limited_part) continue;
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
@@ -353,19 +359,21 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
               id, pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density_exact,
               pi->N_gradient_exact, pi->N_force_exact, pi->rho_exact,
               pi->n_gradient_exact, pi->n_force_exact,
-              /* pi->limiter_data.n_limiter_exact, */ 0., N_ngb);
+              pi->limiter_data.n_limiter_exact, N_ngb);
 
       /* Check that we did not go above the threshold.
-       * Note that we ignore particles that saw an inhibted particle as a
+       * Note that we ignore particles that saw an inhibited particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not. */
       if (!found_inhibited && pi->N_density != pi->N_density_exact &&
           (fabsf(pi->rho / pi->rho_exact - 1.f) > rel_tol ||
            fabsf(pi->rho_exact / pi->rho - 1.f) > rel_tol)) {
-        message("RHO: id=%lld swift=%e exact=%e N=%d N_exact=%d", id, pi->rho,
-                pi->rho_exact, pi->N_density, pi->N_density_exact);
+        message("RHO: id=%lld swift=%e exact=%e N=%d N_exact=%d h_max=%d", id,
+                pi->rho, pi->rho_exact, pi->N_density, pi->N_density_exact,
+                h_max_limited);
         wrong_rho++;
       }
+#if defined(SPHENIX_SPH)
       if (check_force && !found_inhibited &&
           (fabsf(pi->n_gradient / pi->n_gradient_exact - 1.f) > rel_tol ||
            fabsf(pi->n_gradient_exact / pi->n_gradient - 1.f) > rel_tol)) {
@@ -373,6 +381,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                 pi->n_gradient_exact);
         wrong_gradient++;
       }
+#endif
       if (check_force && !found_inhibited &&
           (fabsf(pi->n_force / pi->n_force_exact - 1.f) > 10. * rel_tol ||
            fabsf(pi->n_force_exact / pi->n_force - 1.f) > 10. * rel_tol)) {
@@ -380,27 +389,28 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                 pi->n_force_exact);
         wrong_n_force++;
       }
-      /* if (check_force && !found_inhibited && */
-      /*     (fabsf(pi->limiter_data.n_limiter /
-       * pi->limiter_data.n_limiter_exact - */
-      /*            1.f) > rel_tol || */
-      /*      fabsf(pi->limiter_data.n_limiter_exact /
-       * pi->limiter_data.n_limiter - */
-      /*            1.f) > rel_tol)) { */
-      /*   message( */
-      /*       "LIMITER: id=%lld swift=%e exact=%e N_limiter=%d " */
-      /*       "N_limiter_exact=%d", */
-      /*       id, pi->limiter_data.n_limiter, pi->limiter_data.n_limiter_exact,
-       */
-      /*       pi->limiter_data.N_limiter, pi->limiter_data.N_limiter_exact); */
-      /*   wrong_limiter++; */
-      /* } */
+      if (with_limiter && check_force && !found_inhibited && !h_max_limited &&
+          !h_min_limited &&
+          (fabsf(pi->limiter_data.n_limiter / pi->limiter_data.n_limiter_exact -
+                 1.f) > rel_tol ||
+           fabsf(pi->limiter_data.n_limiter_exact / pi->limiter_data.n_limiter -
+                 1.f) > rel_tol)) {
+        message(
+            "LIMITER: id=%lld swift=%e exact=%e N_limiter=%d "
+            "N_limiter_exact=%d",
+            id, pi->limiter_data.n_limiter, pi->limiter_data.n_limiter_exact,
+            pi->limiter_data.N_limiter, pi->limiter_data.N_limiter_exact);
+        wrong_limiter++;
+      }
 
-      if (!found_inhibited && (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
+      if (!found_inhibited && !h_max_limited && !h_min_limited &&
+          (N_ngb > N_ngb_max || N_ngb < N_ngb_min)) {
 
-        message("N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d",
-                id, N_ngb, N_ngb_target, N_ngb_max - N_ngb_target,
-                pi->N_density_exact, pi->N_density);
+        message(
+            "N_NGB: id=%lld exact=%f expected=%f/%f N_true=%d N_swift=%d h=%e "
+            "time_bin=%d",
+            id, N_ngb, N_ngb_target, N_ngb_max - N_ngb_target,
+            pi->N_density_exact, pi->N_density, pi->h, pi->time_bin);
 
         wrong_n_ngb++;
       }
@@ -416,7 +426,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   if (wrong_n_ngb)
     error(
         "N_ngb difference larger than the allowed tolerance for %d "
-        "star particles! (out of %d particles)",
+        "gas particles! (out of %d particles)",
         wrong_n_ngb, counter);
   else
     message("Verified %d gas particles", counter);
@@ -446,7 +456,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
         wrong_limiter, counter);
 
   if (e->verbose)
-    message("Writting brute-force density files took %.3f %s. ",
+    message("Writing brute-force density files took %.3f %s. ",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #else
