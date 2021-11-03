@@ -40,7 +40,7 @@
  */
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
+runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
                                      const float hi, const float hj,
                                      struct spart *si, const struct part *pj,
                                      const struct cosmology *cosmo,
@@ -59,8 +59,9 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
-    const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {}
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *restrict si, struct part *restrict pj, const float a,
+    const float H) {}
 
 /**
  * @brief Flux calculation between particle i and particle j
@@ -76,8 +77,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
 
 /**
  * @brief Flux calculation between particle i and particle j: non-symmetric
@@ -94,9 +96,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
-                                struct part *restrict pi,
-                                struct part *restrict pj, float a, float H) {}
+runner_iact_nonsym_rt_transport(float r2, const float dx[3], const float hi,
+                                const float hj, struct part *restrict pi,
+                                struct part *restrict pj, const float a,
+                                const float H) {}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j
@@ -112,8 +115,9 @@ runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
 
 /**
  * @brief Calculate the gradient interaction between particle i and particle j:
@@ -130,8 +134,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
-                               struct part *restrict pi,
-                               struct part *restrict pj, float a, float H) {}
+runner_iact_nonsym_rt_gradient(float r2, const float dx[3], const float hi,
+                               const float hj, struct part *restrict pi,
+                               struct part *restrict pj, const float a,
+                               const float H) {}
 
 #endif /* SWIFT_RT_IACT_NONE_H */
