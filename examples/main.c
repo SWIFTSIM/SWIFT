@@ -152,6 +152,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) greetings(/*fof=*/0);
 
   int with_aff = 0;
+  int with_interleave = 0;
   int dry_run = 0;
   int dump_tasks = 0;
   int dump_cells = 0;
@@ -275,6 +276,8 @@ int main(int argc, char *argv[]) {
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "interleave", &with_interleave,
+                  "Interleave memory allocations across NUMA regions.", NULL, 0, 0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
                   "Dry run. Read the parameter file, allocates memory but does "
                   "not read the particles from ICs. Exits before the start of "
@@ -393,6 +396,12 @@ int main(int argc, char *argv[]) {
 #if !defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
   if (with_aff) {
     printf("Error: no NUMA support for thread affinity\n");
+    return 1;
+  }
+#endif
+#if !defined(HAVE_LIBNUMA)
+  if (with_interleave) {
+    printf("Error: no NUMA support for interleaving memory\n");
     return 1;
   }
 #endif
@@ -616,6 +625,12 @@ int main(int argc, char *argv[]) {
   if (with_aff &&
       ((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
     engine_pin();
+#endif
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+
+  /* Set the NUMA memory policy to interleave. */
+  if (with_interleave) engine_numa_policies(myrank, verbose);
 #endif
 
   /* Genesis 1.1: And then, there was time ! */
