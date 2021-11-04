@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct sink_props sink_properties;
   struct neutrino_props neutrino_properties;
+  struct neutrino_response neutrino_response;
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
@@ -1286,11 +1287,10 @@ int main(int argc, char *argv[]) {
     /* Do we have neutrino DM particles? */
     const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
-    /* Initialise the neutrino properties if we have neutrino particles */
+    /* Initialise the neutrino properties */
     bzero(&neutrino_properties, sizeof(struct neutrino_props));
-    if (with_neutrinos)
-      neutrino_props_init(&neutrino_properties, &prog_const, &us, params,
-                          &cosmo);
+    neutrino_props_init(&neutrino_properties, &prog_const, &us, params, &cosmo,
+                        with_neutrinos);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -1318,6 +1318,13 @@ int main(int argc, char *argv[]) {
           &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
           with_external_gravity, with_baryon_particles, with_DM_particles,
           with_neutrinos, with_DM_background_particles, periodic, s.dim);
+
+    /* Initialize the neutrino response if used */
+    bzero(&neutrino_response, sizeof(struct neutrino_response));
+    if (neutrino_properties.use_linear_response)
+      neutrino_response_init(&neutrino_response, params, &us, s.dim, &cosmo,
+                             &neutrino_properties, &gravity_properties, myrank,
+                             verbose);
 
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));
@@ -1441,9 +1448,9 @@ int main(int argc, char *argv[]) {
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &neutrino_properties,
-                &feedback_properties, &rt_properties, &mesh, &potential,
-                &cooling_func, &starform, &chemistry, &fof_properties,
-                &los_properties, &ics_metadata);
+                &neutrino_response, &feedback_properties, &rt_properties, &mesh,
+                &potential, &cooling_func, &starform, &chemistry,
+                &fof_properties, &los_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 
@@ -1503,7 +1510,10 @@ int main(int argc, char *argv[]) {
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
     if (with_cosmology && with_self_gravity && !dry_run) {
-      const int check_neutrinos = !neutrino_properties.use_delta_f;
+      /* Only check neutrino particle masses if we have neutrino particles
+       * and if the masses are stored unweighted. */
+      const int check_neutrinos =
+          s.with_neutrinos && !neutrino_properties.use_delta_f;
       space_check_cosmology(&s, &cosmo, with_hydro, myrank, check_neutrinos);
       neutrino_check_cosmology(&s, &cosmo, &prog_const, params,
                                &neutrino_properties, myrank, verbose);
@@ -1793,6 +1803,8 @@ int main(int argc, char *argv[]) {
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
+  if (e.neutrino_properties->use_linear_response)
+    neutrino_response_clean(e.neutrino_response);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
