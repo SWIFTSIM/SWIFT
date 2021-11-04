@@ -384,6 +384,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     /* float Ui[4], Uj[4]; */
     /* rt_part_get_density_vector(pi, g, Ui); */
     /* rt_part_get_density_vector(pj, g, Uj); */
+    /* No need to check for unphysical densities, they
+     * haven't been touched since
+     * rt_injection_update_photon_densities */
 
     float totflux[4];
 
