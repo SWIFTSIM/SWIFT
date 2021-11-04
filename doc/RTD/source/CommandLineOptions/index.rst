@@ -65,6 +65,7 @@ can be found by typing ``./swift -h``:
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.
+    --interleave                      Interleave memory allocations over NUMA regions.
     -d, --dry-run                     Dry run. Read the parameter file, allocates
                                       memory but does not read the particles
                                       from ICs. Exits before the start of time
