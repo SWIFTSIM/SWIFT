@@ -308,14 +308,14 @@ rt_injection_update_photon_density(struct part* restrict p,
                                    struct rt_props* props) {
 
   const float V = p->geometry.volume;
-  const float Vinv = 1. / V;
+  const float Vinv = 1.f / V;
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.density[g].energy = p->rt_data.conserved[g].energy * Vinv;
     p->rt_data.density[g].flux[0] = p->rt_data.conserved[g].flux[0] * Vinv;
     p->rt_data.density[g].flux[1] = p->rt_data.conserved[g].flux[1] * Vinv;
     p->rt_data.density[g].flux[2] = p->rt_data.conserved[g].flux[2] * Vinv;
     rt_check_unphysical_density(&p->rt_data.flux[g].energy,
-                                p->rt_data.flux[g].flux, 3);
+                                p->rt_data.flux[g].flux, 0);
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
