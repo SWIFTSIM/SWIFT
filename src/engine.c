@@ -2715,7 +2715,7 @@ void engine_unpin(void) {
 #endif
 }
 
-/** 
+/**
  * @brief Define a NUMA memory placement policy of interleave across the
  * available NUMA nodes rather than having memory in the local node, which
  * means we have a lot of memory associated with the main thread NUMA node, so
@@ -2761,7 +2761,7 @@ void engine_numa_policies(int rank, int verbose) {
   }
 
   /* And set. */
-  set_mempolicy(MPOL_INTERLEAVE, nodemask->maskp, nodemask->size+1);
+  set_mempolicy(MPOL_INTERLEAVE, nodemask->maskp, nodemask->size + 1);
   numa_free_nodemask(nodemask);
 
 #endif

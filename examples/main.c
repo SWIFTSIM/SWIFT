@@ -278,7 +278,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
       OPT_BOOLEAN(0, "interleave", &with_interleave,
-                  "Interleave memory allocations across NUMA regions.", NULL, 0, 0),
+                  "Interleave memory allocations across NUMA regions.", NULL, 0,
+                  0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
                   "Dry run. Read the parameter file, allocates memory but does "
                   "not read the particles from ICs. Exits before the start of "
