@@ -646,11 +646,21 @@ EAGLEAGN:
   merger_max_distance_ratio:          3.0        # Maximal distance over which two BHs can merge, in units of the softening length.
   minimum_timestep_Myr:               1.0        # Minimum time-step size for BHs in Mega-years. The time-step size is computed based on the accretion rate and this serves as a minimum. Defaults to FLT_MAX.
 
-# Parameters related to the neutrino particles ----------------------------------
+# Parameters related to the neutrinos --------------------------------------------
 Neutrino:
   use_delta_f:                        1          # Use the delta-f method for shot noise reduction
+  use_delta_f_mesh_only:              0          # Use the delta-f method, but only in the mesh gravity calculation and outputs
   generate_ics:                       0          # Automatically generate neutrino velocities at the start of the run
-  neutrino_seed:                      1234       # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
+  neutrino_seed:                      0          # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
+  use_linear_response: 0                         # Option to use the linear response method
+  transfer_functions_filename: perturb.hdf5      # For linear response neutrinos, path to an hdf5 file with transfer functions, redshifts, and wavenumbers
+  dataset_redshifts: Redshifts                   # For linear response neutrinos, name of the dataset with the redshifts (a vector of length N_z)
+  dataset_wavenumbers: Wavenumbers               # For linear response neutrinos, name of the dataset with the wavenumbers (a vector of length N_k)
+  dataset_delta_cdm: Functions/d_cdm             # For linear response neutrinos, name of the dataset with the cdm density transfer function (N_z x N_k)
+  dataset_delta_baryon: Functions/d_b            # For linear response neutrinos, name of the dataset with the baryon density transfer function (N_z x N_k)
+  dataset_delta_nu: Functions/d_ncdm[0]          # For linear response neutrinos, name of the dataset with the neutrino density transfer function (N_z x N_k)
+  fixed_bg_density: 1                            # For linear response neutrinos, whether to use a fixed present-day background density
+  use_model_none: 0                              # Option to use no neutrino model
 
 # Parameters related to the sink particles ---------------------------------------
 

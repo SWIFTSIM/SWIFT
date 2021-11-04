@@ -32,7 +32,8 @@ neutrino mass specified in the cosmology and generate new velocities
 based on the homogeneous (unperturbed) Fermi-Dirac distribution. In
 this case, placeholder neutrino particles should be provided in the
 initial conditions with arbitrary masses and velocities, distributed
-uniformly in the box.
+uniformly in the box. Placeholders can be spawned with the python
+script ``tools/spawn_neutrinos.py``.
 
 Relativistic Drift
 ------------------
@@ -78,5 +79,52 @@ to species :math:`i = \ell\; \% \;N_\nu\in[0,N_\nu-1]`.
 
 The sampled Fermi-Dirac speeds and neutrino masses are written into the
 snapshot files as ``SampledSpeeds`` and ``MicroscopicMasses``.
+
+Mesh Neutrinos
+--------------
+
+There are two additional implementations of neutrino physics. The first
+is an option to only apply the delta-f weighting scheme on the mesh. In
+this case, particle neutrinos participate like dark matter in the remaining
+gravity calculations. This mode can be activated with
+``Neutrino:use_delta_f_mesh_only``.
+
+The second option is an implementation of the linear response method,
+once again on the mesh only, which requires a separate data file with
+transfer functions. Example settings in the paramter file for this mode
+are:
+
+.. code:: YAML
+
+  Neutrino:
+    use_linear_response: 1                         # Option to use the linear response method
+    transfer_functions_filename: perturb.hdf5      # For linear response neutrinos, path to an hdf5 file with transfer functions, redshifts, and wavenumbers
+    dataset_redshifts: Redshifts                   # For linear response neutrinos, name of the dataset with the redshifts (a vector of length N_z)
+    dataset_wavenumbers: Wavenumbers               # For linear response neutrinos, name of the dataset with the wavenumbers (a vector of length N_k)
+    dataset_delta_cdm: Functions/d_cdm             # For linear response neutrinos, name of the dataset with the cdm density transfer function (N_z x N_k)
+    dataset_delta_baryon: Functions/d_b            # For linear response neutrinos, name of the dataset with the baryon density transfer function (N_z x N_k)
+    dataset_delta_nu: Functions/d_ncdm[0]          # For linear response neutrinos, name of the dataset with the neutrino density transfer function (N_z x N_k)
+    fixed_bg_density: 1                            # For linear response neutrinos, whether to use a fixed present-day background density
+
+In this example, the code reads an HDF5 file "perturb.hdf5" with transfer
+functions. The file must contain a vector with redshifts of length :math:`N_z`,
+a vector with wavenumbers :math:`N_k`, and three arrays with dimensions
+:math:`N_z \times N_k` of density transfer functions for cdm, baryons, and
+neutrinos respectively. It is recommended to store the units of the wavenumbers
+as an attribute at "Units/Unit length in cgs (U_L)". The ``fixed_bg_density``
+flag determines whether the linear response scales as :math:`\Omega_\nu(a)`
+or the present-day value :math:`\Omega_{\nu,0}`, either of which may be
+appropriate depending on the particle initial conditions. An HDF5 file
+can be generated using classy with the script ``tools/create_perturb_file.py``.
+
+The linear response mode currently only supports degenerate mass models
+with a single neutrino transfer function.
+
+Background Neutrinos Only
+-------------------------
+
+It is also possible to run without neutrino perturbations, even when
+specifying neutrinos in the background cosmology. This mode can be
+activated with ``Neutrino:use_model_none``.
 
 .. [#f1] Currently, it is not guaranteed that a particle ID is unique.

@@ -23,6 +23,103 @@
 /* Standard headers */
 #include <math.h>
 
+/* Compute the dimensionless neutrino momentum (units of kb*T).
+ *
+ * @param v The internal 3-velocity
+ * @param m_eV The neutrino mass in electron-volts
+ * @param fac Conversion factor = 1. / (speed_of_light * T_nu_eV)
+ */
+INLINE static double neutrino_momentum(const float v[3], const double m_eV,
+                                       const double fac) {
+
+  float v2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+  float vmag = sqrtf(v2);
+  double p = vmag * fac * m_eV;
+  return p;
+}
+
+/**
+ * @brief Gather neutrino constants
+ *
+ * @param s The #space for this run.
+ * @param nm Struct with neutrino constants
+ */
+void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm) {
+  nm->use_delta_f_mesh_only = s->e->neutrino_properties->use_delta_f_mesh_only;
+  nm->M_nu_eV = s->e->cosmology->M_nu_eV;
+  nm->deg_nu = s->e->cosmology->deg_nu;
+  nm->N_nu = s->e->cosmology->N_nu;
+  nm->fac = 1.0 / (s->e->physical_constants->const_speed_light_c *
+                   s->e->cosmology->T_nu_0_eV);
+  nm->inv_mass_factor = 1. / s->e->neutrino_mass_conversion_factor;
+  nm->neutrino_seed = s->e->neutrino_properties->neutrino_seed;
+}
+
+/**
+ * @brief Compute delta-f weight of a neutrino particle, but *only* when using
+ * the delta-f method exclusively on the mesh (otherwise the mass is already
+ * weighted).
+ *
+ * @param gp The #gpart.
+ * @param nm Properties of the neutrino model
+ * @param weight The resulting weight (output)
+ */
+void gpart_neutrino_weight_mesh_only(const struct gpart *gp,
+                                     const struct neutrino_model *nm,
+                                     double *weight) {
+  /* Anything to do? */
+  if (!nm->use_delta_f_mesh_only) return;
+
+  /* Use a particle id dependent seed */
+  const long long seed = gp->id_or_neg_offset + nm->neutrino_seed;
+
+  /* Compute the initial dimensionless momentum from the seed */
+  const double pi = neutrino_seed_to_fermi_dirac(seed);
+
+  /* The neutrino mass and degeneracy (we cycle based on the seed) */
+  const double m_eV = neutrino_seed_to_mass(nm->N_nu, nm->M_nu_eV, seed);
+
+  /* Compute the current dimensionless momentum */
+  double p = neutrino_momentum(gp->v_full, m_eV, nm->fac);
+
+  /* Compute the initial and current background phase-space density */
+  double fi = fermi_dirac_density(pi);
+  double f = fermi_dirac_density(p);
+  *weight = 1.0 - f / fi;
+}
+
+/**
+ * @brief Compute the mass and delta-f weight of a neutrino particle
+ *
+ * @param gp The #gpart.
+ * @param nm Properties of the neutrino model
+ * @param mass The mass (output)
+ * @param weight The resulting weight (output)
+ */
+void gpart_neutrino_mass_weight(const struct gpart *gp,
+                                const struct neutrino_model *nm, double *mass,
+                                double *weight) {
+
+  /* Use a particle id dependent seed */
+  const long long seed = gp->id_or_neg_offset + nm->neutrino_seed;
+
+  /* Compute the initial dimensionless momentum from the seed */
+  const double pi = neutrino_seed_to_fermi_dirac(seed);
+
+  /* The neutrino mass and degeneracy (we cycle based on the seed) */
+  const double m_eV = neutrino_seed_to_mass(nm->N_nu, nm->M_nu_eV, seed);
+  const double deg = neutrino_seed_to_degeneracy(nm->N_nu, nm->deg_nu, seed);
+  *mass = deg * m_eV * nm->inv_mass_factor;
+
+  /* Compute the current dimensionless momentum */
+  const double p = neutrino_momentum(gp->v_full, m_eV, nm->fac);
+
+  /* Compute the initial and current background phase-space density */
+  const double fi = fermi_dirac_density(pi);
+  const double f = fermi_dirac_density(p);
+  *weight = 1.0 - f / fi;
+}
+
 /**
  * @brief Compute diagnostics for the neutrino delta-f method, including
  * the mean squared weight.
@@ -42,7 +139,10 @@ void compute_neutrino_diagnostics(
     const struct neutrino_props *neutrino_properties, const int rank, double *r,
     double *I_df, double *mass_tot) {
 
-  if (!neutrino_properties->use_delta_f) {
+  int use_df = neutrino_properties->use_delta_f;
+  int use_df_mesh = neutrino_properties->use_delta_f_mesh_only;
+
+  if (!use_df && !use_df_mesh) {
     error("Neutrino diagnostics only defined when using the delta-f method.");
   }
 
@@ -165,19 +265,33 @@ void neutrino_check_cosmology(const struct space *s,
                               const struct neutrino_props *neutrino_props,
                               const int rank, const int verbose) {
 
-  /* Check that we are not missing any neutrino particles */
-  if (!s->with_neutrinos) {
-    int use_df = parser_get_opt_param_int(params, "Neutrino:use_delta_f", 0);
-    int genics = parser_get_opt_param_int(params, "Neutrino:generate_ics", 0);
-    if (use_df || genics)
-      error(
-          "Running without neutrino particles, but specified a neutrino "
-          "model in the parameter file.");
+  /* Check that we have neutrino particles if and only if we need them */
+  int use_df = neutrino_props->use_delta_f;
+  int use_df_mesh = neutrino_props->use_delta_f_mesh_only;
+  int use_linres = neutrino_props->use_linear_response;
+  int use_none = neutrino_props->use_model_none;
+  int genics = neutrino_props->generate_ics;
+  int with_neutrinos = s->with_neutrinos;
+
+  if ((use_df || use_df_mesh || genics) && !with_neutrinos) {
+    error(
+        "Running without neutrino particles, but specified a neutrino "
+        "model that requires them.");
+  } else if ((use_linres || use_none) && with_neutrinos) {
+    error(
+        "Running with neutrino particles, but specified a neutrino "
+        "model that is incompatible with particles.");
+  } else if (cosmo->Omega_nu_0 > 0. && !(use_linres || use_none) &&
+             !with_neutrinos) {
+    error(
+        "Running without neutrino particles, but specified neutrinos "
+        "in the background cosmology and not using a neutrino model that does "
+        "not use particles.");
   }
 
-  /* We are done if the delta-f method is not used, since in that case the
-   * total mass has already been checked in space_check_cosmology. */
-  if (!neutrino_props->use_delta_f) return;
+  /* We are done if the delta-f method is not used, since the total mass
+   * has otherwise already been checked in space_check_cosmology. */
+  if (!use_df && !use_df_mesh) return;
 
   /* Compute neutrino diagnostics, including the total mass */
   double r, I_df, total_mass;

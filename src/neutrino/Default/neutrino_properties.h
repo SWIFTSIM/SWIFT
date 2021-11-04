@@ -29,11 +29,20 @@ struct neutrino_props {
   /* Whether to run with the delta-f method for neutrino weighting */
   char use_delta_f;
 
+  /* Whether to run with the delta-f method on the mesh only */
+  char use_delta_f_mesh_only;
+
+  /* Whether to run without any neutrino perturbations */
+  char use_model_none;
+
   /* Whether to generate random neutrino velocities in the initial conditions */
   char generate_ics;
 
   /* Random seed for the neutrino weighting task */
   long long neutrino_seed;
+
+  /* Whether to use the linear respose method */
+  char use_linear_response;
 };
 
 /**
@@ -44,17 +53,35 @@ struct neutrino_props {
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
+ * @param with_neutrinos Are we running with neutrino particles?
  */
 INLINE static void neutrino_props_init(struct neutrino_props *np,
                                        const struct phys_const *phys_const,
                                        const struct unit_system *us,
                                        struct swift_params *params,
-                                       const struct cosmology *cosmo) {
+                                       const struct cosmology *cosmo,
+                                       const int with_neutrinos) {
 
-  np->use_delta_f = parser_get_param_int(params, "Neutrino:use_delta_f");
-  np->generate_ics = parser_get_param_int(params, "Neutrino:generate_ics");
+  np->use_delta_f = parser_get_opt_param_int(params, "Neutrino:use_delta_f", 0);
+  np->use_delta_f_mesh_only =
+      parser_get_opt_param_int(params, "Neutrino:use_delta_f_mesh_only", 0);
+  np->use_model_none =
+      parser_get_opt_param_int(params, "Neutrino:use_model_none", 0);
+  np->generate_ics =
+      parser_get_opt_param_int(params, "Neutrino:generate_ics", 0);
   np->neutrino_seed =
       parser_get_opt_param_longlong(params, "Neutrino:neutrino_seed", 0);
+  np->use_linear_response =
+      parser_get_opt_param_int(params, "Neutrino:use_linear_response", 0);
+
+  int number_of_models = 0;
+  number_of_models += np->use_delta_f;
+  number_of_models += np->use_delta_f_mesh_only;
+  number_of_models += np->use_model_none;
+  number_of_models += np->use_linear_response;
+
+  if (number_of_models > 1)
+    error("Cannot use multiple neutrino implementations concurrently.");
 }
 
 /**
