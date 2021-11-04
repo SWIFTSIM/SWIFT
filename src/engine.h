@@ -668,6 +668,7 @@ void engine_split_gas_particles(struct engine *e);
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);
 #endif
+void engine_numa_policies(int rank, int verbose);
 
 /* Struct dump/restore support. */
 void engine_struct_dump(struct engine *e, FILE *stream);
