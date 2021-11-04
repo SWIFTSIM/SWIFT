@@ -261,6 +261,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->width[1] = c->width[1] / 2;
       temp->width[2] = c->width[2] / 2;
       temp->dmin = c->dmin / 2;
+      temp->h_min_allowed = cp->dmin * 0.5 * (1. / kernel_gamma);
+      temp->h_max_allowed = cp->dmin * (1. / kernel_gamma);
       if (k & 4) temp->loc[0] += temp->width[0];
       if (k & 2) temp->loc[1] += temp->width[1];
       if (k & 1) temp->loc[2] += temp->width[2];

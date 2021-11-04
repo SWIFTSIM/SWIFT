@@ -1551,7 +1551,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
       const struct part *p = &parts_i[sort_i[k].i];
       const char depth = p->depth_h;
 
-      if (part_is_active(p, e) && local_i && (depth >= min_depth) &&
+      if (part_is_active(p, e) && (depth >= min_depth) &&
           (depth <= max_depth)) {
         sort_active_i[count_active_i] = sort_i[k];
         count_active_i++;
@@ -1569,7 +1569,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
       const struct part *p = &parts_j[sort_j[k].i];
       const char depth = p->depth_h;
 
-      if (part_is_active(p, e) && local_j && (depth >= min_depth) &&
+      if (part_is_active(p, e) && (depth >= min_depth) &&
           (depth <= max_depth)) {
         sort_active_j[count_active_j] = sort_j[k];
         count_active_j++;
