@@ -101,7 +101,9 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
   /* Check that we can write outputs by testing if the output
    * directory exists and is searchable and writable. */
-  const char *dirp = dirname(props->base_name);
+  char directory[PARSER_MAX_LINE_SIZE] = {0};
+  sprintf(directory, "%s", props->base_name);
+  const char *dirp = dirname(directory);
   if (access(dirp, W_OK | X_OK) != 0) {
     error("Cannot write FOF outputs in directory %s (%s)", dirp,
           strerror(errno));
