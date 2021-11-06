@@ -555,6 +555,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                              c, NULL);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->mpi.tag,
                               0, c, NULL);
+
+    scheduler_addunlock(s, t_xv, t_rho);
+
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    c->mpi.tag, 0, c, NULL);
