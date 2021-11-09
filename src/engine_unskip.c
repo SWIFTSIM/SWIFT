@@ -425,7 +425,8 @@ void engine_unskip(struct engine *e) {
     }
 
     /* Make sure the top-level dt collection task is always run */
-    scheduler_activate(&e->sched, c->timestep_collect);
+    if (c->nodeID == e->nodeID)
+      scheduler_activate(&e->sched, c->timestep_collect);
   }
 
   /* What kind of tasks do we have? */
