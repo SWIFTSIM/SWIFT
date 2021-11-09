@@ -1419,6 +1419,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       scheduler_activate(s, t);
     }
 
+    else if ((t_type == task_type_send && t_subtype == task_subtype_tend) ||
+             (t_type == task_type_recv && t_subtype == task_subtype_tend)) {
+      scheduler_activate(s, t);
+    }
+
     /* Subgrid tasks: cooling */
     else if (t_type == task_type_cooling || t_type == task_type_cooling_in ||
              t_type == task_type_cooling_out) {

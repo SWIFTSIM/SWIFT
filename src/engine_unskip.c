@@ -502,6 +502,19 @@ void engine_unskip(struct engine *e) {
     free(local_active_cells);
   }
 
+  /* BAD, MATTHIEU, BAD !!! */
+  const int nr_tasks = e->sched.nr_tasks;
+  struct task *tasks = e->sched.tasks;
+  for (int k = 0; k < nr_tasks; ++k) {
+
+    struct task *t = &tasks[k];
+
+    if ((t->type == task_type_send && t->subtype == task_subtype_tend) ||
+        (t->type == task_type_recv && t->subtype == task_subtype_tend)) {
+      scheduler_activate(&e->sched, t);
+    }
+  }
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
