@@ -226,8 +226,8 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
-                 s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
-                 sizeof(int), threadpool_auto_chunk_size, &data);
+                 s->local_cells_top, s->nr_local_cells, sizeof(int),
+                 threadpool_auto_chunk_size, &data);
 
   /* Get the number of inhibited particles from the space-wide counters
    * since these have been updated atomically during the time-steps. */
