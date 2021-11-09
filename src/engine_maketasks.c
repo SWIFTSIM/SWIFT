@@ -587,7 +587,6 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
     }
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_gradient, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
     }
 #else
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
@@ -750,7 +749,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     /* Start updating local gas only after sparts have been received */
     for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_prep2, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
     }
 #else
     /* Start updating local gas only after sparts have been received */
@@ -3940,6 +3938,14 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
 
+#ifdef WITH_MPI
+    /* Add the timestep exchange task */
+    struct task *tend = scheduler_addtask(
+        &e->sched, task_type_send, task_subtype_tend, ci->mpi.tag, 0, ci, cj);
+    scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
+    engine_addlink(e, &ci->mpi.send, tend);
+#endif
+
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
@@ -3994,6 +4000,13 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
     const int type = cell_type_pairs[k].type;
+
+#ifdef WITH_MPI
+    /* Add the timestep exchange task */
+    struct task *tend = scheduler_addtask(
+        &e->sched, task_type_recv, task_subtype_tend, ci->mpi.tag, 0, ci, NULL);
+    engine_addlink(e, &ci->mpi.send, tend);
+#endif
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
