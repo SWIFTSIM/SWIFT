@@ -99,21 +99,15 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
       t_grav = scheduler_addtask(s, task_type_send, task_subtype_gpart,
                                  ci->mpi.tag, 0, ci, cj);
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_gpart,
-                               ci->mpi.tag, 0, ci, cj);
-
       /* The sends should unlock the down pass. */
       scheduler_addunlock(s, t_grav, ci->grav.super->grav.down);
 
       /* Drift before you send */
       scheduler_addunlock(s, ci->grav.super->grav.drift, t_grav);
-
-      scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_grav);
-    engine_addlink(e, &ci->mpi.send, t_ti);
   }
 
   /* Recurse? */

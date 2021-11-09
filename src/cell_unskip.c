@@ -1814,11 +1814,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0;
 
-#ifdef WITH_MPI
-  const int with_timestep_sync = e->policy & engine_policy_timestep_sync;
-  const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
-#endif
-
   /* Un-skip the gravity tasks involved with this cell. */
   for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
