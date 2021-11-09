@@ -1715,32 +1715,28 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
         }
 
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active && (!with_timestep_limiter && !with_timestep_sync))
+        /* Is the foreign cell active and will need stuff from us? */
+        if (cj_active) {
 
-          /* Is the foreign cell active and will need stuff from us? */
-          if (cj_active) {
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
 
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
+          if (with_timestep_limiter) cell_activate_limiter(ci, s);
+
+          /* If the local cell is also active, more stuff will be needed. */
+          if (ci_active) {
+
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
                                     cj_nodeID);
 
-            /* Drift the cell which will be sent; note that not all sent
-               particles will be drifted, only those that are needed. */
-            cell_activate_drift_part(ci, s);
-            if (with_timestep_limiter) cell_activate_limiter(ci, s);
-
-            /* If the local cell is also active, more stuff will be needed. */
-            if (ci_active) {
-
-              scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
-                                      cj_nodeID);
-
 #ifdef EXTRA_HYDRO_LOOP
-              scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
-                                      cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
+                                    cj_nodeID);
 #endif
-            }
           }
+        }
 
         /* If the local cell is active, send its particles for the limiting. */
         if (ci_active && with_timestep_limiter) {
