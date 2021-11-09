@@ -2042,7 +2042,12 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to accept elements */
 
-        if (t->subtype == task_subtype_part_swallow) {
+        if (t->subtype == task_subtype_tend) {
+
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
+          buff = t->buff = malloc(count);
+
+        } else if (t->subtype == task_subtype_part_swallow) {
 
           count = size =
               t->ci->hydro.count * sizeof(struct black_holes_part_data);
@@ -2136,7 +2141,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         size_t count = 0;             /* Number of elements to send */
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
-        if (t->subtype == task_subtype_part_swallow) {
+
+        if (t->subtype == task_subtype_tend) {
+
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
+          buff = t->buff = malloc(size);
+          cell_pack_end_step(t->ci, (struct pcell_step *)buff);
+
+        } else if (t->subtype == task_subtype_part_swallow) {
 
           size = count =
               t->ci->hydro.count * sizeof(struct black_holes_part_data);

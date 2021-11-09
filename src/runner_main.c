@@ -512,7 +512,9 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
-          if (t->subtype == task_subtype_sf_counts) {
+          if (t->subtype == task_subtype_tend) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
           } else if (t->subtype == task_subtype_part_swallow) {
             free(t->buff);
@@ -523,7 +525,10 @@ void *runner_main(void *data) {
           }
           break;
         case task_type_recv:
-          if (t->subtype == task_subtype_sf_counts) {
+          if (t->subtype == task_subtype_tend) {
+            cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
+            free(t->buff);
+          } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
