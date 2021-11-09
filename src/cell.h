@@ -416,6 +416,9 @@ struct cell {
    * feedback */
   struct task *timestep_sync;
 
+  /*! The task to recursively collect time-steps */
+  struct task *timestep_collect;
+
 #ifdef WITH_CSDS
   /*! The csds task */
   struct task *csds;

@@ -34,6 +34,7 @@ TASKTYPES = [
     "timestep",
     "timestep_limiter",
     "timestep_sync",
+    "collect",
     "send",
     "recv",
     "pack",

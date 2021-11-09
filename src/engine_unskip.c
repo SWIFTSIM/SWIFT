@@ -423,6 +423,9 @@ void engine_unskip(struct engine *e) {
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
     }
+
+    /* Make sure the top-level dt collection task is always run */
+    scheduler_activate(&e->sched, c->timestep_collect);
   }
 
   /* What kind of tasks do we have? */
