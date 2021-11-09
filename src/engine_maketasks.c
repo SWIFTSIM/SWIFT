@@ -182,9 +182,6 @@ void engine_addtasks_send_hydro(
                                      ci->mpi.tag, 0, ci, cj);
 #endif
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_part,
-                               ci->mpi.tag, 0, ci, cj);
-
       if (with_limiter) {
         t_limiter = scheduler_addtask(s, task_type_send, task_subtype_limiter,
                                       ci->mpi.tag, 0, ci, cj);
@@ -234,7 +231,6 @@ void engine_addtasks_send_hydro(
       /* Drift before you send */
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
 
-      scheduler_addunlock(s, ci->super->timestep, t_ti);
       if (with_limiter)
         scheduler_addunlock(s, ci->super->timestep, t_pack_limiter);
 
@@ -254,7 +250,6 @@ void engine_addtasks_send_hydro(
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &ci->mpi.send, t_gradient);
 #endif
-    engine_addlink(e, &ci->mpi.send, t_ti);
     if (with_limiter) {
       engine_addlink(e, &ci->mpi.send, t_limiter);
       engine_addlink(e, &ci->mpi.pack, t_pack_limiter);
@@ -346,9 +341,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
                                   ci->mpi.tag, 0, ci, cj);
 #endif
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_spart,
-                               ci->mpi.tag, 0, ci, cj);
-
 #ifdef EXTRA_STAR_LOOPS
       /* The first send_stars task should unlock prep1 ghost */
       scheduler_addunlock(s, t_density, ci->hydro.super->stars.prep1_ghost);
@@ -371,9 +363,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* Drift before first send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_density);
 
-      /* Send new time-steps after timestep tasks */
-      scheduler_addunlock(s, ci->super->timestep, t_ti);
-
       if (with_star_formation && ci->hydro.count > 0) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
@@ -386,7 +375,6 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &ci->mpi.send, t_prep2);
 #endif
-    engine_addlink(e, &ci->mpi.send, t_ti);
     if (with_star_formation && ci->hydro.count > 0) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
@@ -461,9 +449,6 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
           scheduler_addtask(s, task_type_send, task_subtype_bpart_feedback,
                             ci->mpi.tag, 0, ci, cj);
 
-      t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_bpart,
-                               ci->mpi.tag, 0, ci, cj);
-
       /* The send_black_holes task should unlock the super_cell's BH exit point
        * task. */
       scheduler_addunlock(s, t_feedback,
@@ -487,15 +472,12 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
                           t_gas_swallow);
       scheduler_addunlock(s, t_gas_swallow,
                           ci->hydro.super->black_holes.swallow_ghost_1);
-
-      scheduler_addunlock(s, ci->super->timestep, t_ti);
     }
 
     engine_addlink(e, &ci->mpi.send, t_rho);
     engine_addlink(e, &ci->mpi.send, t_bh_merger);
     engine_addlink(e, &ci->mpi.send, t_gas_swallow);
     engine_addlink(e, &ci->mpi.send, t_feedback);
-    engine_addlink(e, &ci->mpi.send, t_ti);
   }
 
   /* Recurse? */
@@ -563,9 +545,6 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                                    c->mpi.tag, 0, c, NULL);
 #endif
 
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_part,
-                             c->mpi.tag, 0, c, NULL);
-
     if (with_limiter) {
       t_limiter = scheduler_addtask(s, task_type_recv, task_subtype_limiter,
                                     c->mpi.tag, 0, c, NULL);
@@ -589,7 +568,6 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 #ifdef EXTRA_HYDRO_LOOP
     engine_addlink(e, &c->mpi.recv, t_gradient);
 #endif
-    engine_addlink(e, &c->mpi.recv, t_ti);
     if (with_limiter) {
       engine_addlink(e, &c->mpi.recv, t_limiter);
       engine_addlink(e, &c->mpi.unpack, t_unpack_limiter);
@@ -620,13 +598,11 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
 #else
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_rho, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
     }
 #endif
 
     if (with_limiter) {
       for (struct link *l = c->hydro.limiter; l != NULL; l = l->next) {
-        scheduler_addunlock(s, t_ti, l->t);
         scheduler_addunlock(s, t_unpack_limiter, l->t);
       }
     }
@@ -730,9 +706,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_prep2 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep2,
                                 c->mpi.tag, 0, c, NULL);
 #endif
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_spart,
-                             c->mpi.tag, 0, c, NULL);
-
     if (with_star_formation && c->hydro.count > 0) {
 
       /* Receive the stars only once the counts have been received */
@@ -749,7 +722,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &c->mpi.recv, t_prep2);
 #endif
-    engine_addlink(e, &c->mpi.recv, t_ti);
     if (with_star_formation && c->hydro.count > 0) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
@@ -790,7 +762,6 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     /* Start updating local gas only after sparts have been received */
     for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_density, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
     }
 #endif
   }
@@ -852,9 +823,6 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
 
     t_feedback = scheduler_addtask(
         s, task_type_recv, task_subtype_bpart_feedback, c->mpi.tag, 0, c, NULL);
-
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_bpart,
-                             c->mpi.tag, 0, c, NULL);
   }
 
   if (t_rho != NULL) {
@@ -862,7 +830,6 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_bh_merger);
     engine_addlink(e, &c->mpi.recv, t_gas_swallow);
     engine_addlink(e, &c->mpi.recv, t_feedback);
-    engine_addlink(e, &c->mpi.recv, t_ti);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->nodeID == e->nodeID) error("Local cell!");
@@ -892,7 +859,6 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     }
     for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_feedback, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
     }
   }
 
@@ -936,19 +902,14 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
     /* Create the tasks. */
     t_grav = scheduler_addtask(s, task_type_recv, task_subtype_gpart,
                                c->mpi.tag, 0, c, NULL);
-
-    t_ti = scheduler_addtask(s, task_type_recv, task_subtype_tend_gpart,
-                             c->mpi.tag, 0, c, NULL);
   }
 
   /* If we have tasks, link them. */
   if (t_grav != NULL) {
     engine_addlink(e, &c->mpi.recv, t_grav);
-    engine_addlink(e, &c->mpi.recv, t_ti);
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
-      scheduler_addunlock(s, l->t, t_ti);
     }
   }
 

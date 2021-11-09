@@ -512,15 +512,7 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
-          if (t->subtype == task_subtype_tend_part) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_gpart) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_spart) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_bpart) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_sf_counts) {
+          if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
           } else if (t->subtype == task_subtype_part_swallow) {
             free(t->buff);
@@ -531,20 +523,7 @@ void *runner_main(void *data) {
           }
           break;
         case task_type_recv:
-          if (t->subtype == task_subtype_tend_part) {
-            cell_unpack_end_step_hydro(ci, (struct pcell_step_hydro *)t->buff);
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_gpart) {
-            cell_unpack_end_step_grav(ci, (struct pcell_step_grav *)t->buff);
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_spart) {
-            cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_bpart) {
-            cell_unpack_end_step_black_holes(
-                ci, (struct pcell_step_black_holes *)t->buff);
-            free(t->buff);
-          } else if (t->subtype == task_subtype_sf_counts) {
+          if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
             cell_clear_stars_sort_flags(ci, /*clear_unused_flags=*/0);
             free(t->buff);
