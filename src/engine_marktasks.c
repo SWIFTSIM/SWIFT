@@ -938,11 +938,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
           }
 
-          /* If the foreign cell is active, we want its ti_end values. */
-          if (ci_active_hydro &&
-              (!with_timestep_limiter && !with_timestep_sync))
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_part);
-
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_hydro) {
             struct link *l = scheduler_activate_send(
@@ -974,23 +969,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                     ci_nodeID);
           }
 
-          /* If the local cell is active, send its ti_end values. */
-          if (cj_active_hydro &&
-              (!with_timestep_limiter && !with_timestep_sync))
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_part,
-                                    ci_nodeID);
-
           /* Propagating new star counts? */
           if (with_star_formation_sink) error("TODO");
           if (with_star_formation && with_feedback) {
             if (ci_active_hydro && ci->hydro.count > 0) {
               scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
-              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
             }
             if (cj_active_hydro && cj->hydro.count > 0) {
               scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
-                                      ci_nodeID);
-              scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
                                       ci_nodeID);
             }
           }
@@ -1015,11 +1001,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
             scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
           }
-
-          /* If the foreign cell is active, we want its ti_end values. */
-          if (cj_active_hydro &&
-              (!with_timestep_limiter && !with_timestep_sync))
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_part);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_hydro) {
@@ -1054,23 +1035,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                     cj_nodeID);
           }
 
-          /* If the local cell is active, send its ti_end values. */
-          if (ci_active_hydro &&
-              (!with_timestep_limiter && !with_timestep_sync))
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_part,
-                                    cj_nodeID);
-
           /* Propagating new star counts? */
           if (with_star_formation_sink) error("TODO");
           if (with_star_formation && with_feedback) {
             if (cj_active_hydro && cj->hydro.count > 0) {
               scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
-              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
             }
             if (ci_active_hydro && ci->hydro.count > 0) {
               scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
-                                      cj_nodeID);
-              scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
                                       cj_nodeID);
             }
           }
@@ -1104,10 +1076,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                     ci_nodeID);
 #endif
             cell_activate_drift_spart(cj, s);
-
-            /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
-                                    ci_nodeID);
           }
 
           if (ci_active_stars) {
@@ -1116,9 +1084,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #ifdef EXTRA_STAR_LOOPS
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep2);
 #endif
-
-            /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
 
             /* Is the foreign cell active and will need stuff from us? */
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
@@ -1153,10 +1118,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                     cj_nodeID);
 #endif
             cell_activate_drift_spart(ci, s);
-
-            /* If the local cell is active, send its ti_end values. */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
-                                    cj_nodeID);
           }
 
           if (cj_active_stars) {
@@ -1165,9 +1126,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #ifdef EXTRA_STAR_LOOPS
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep2);
 #endif
-
-            /* If the foreign cell is active, we want its ti_end values. */
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
 
             /* Is the foreign cell active and will need stuff from us? */
             scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
@@ -1229,17 +1187,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Drift before you send */
           cell_activate_drift_bpart(cj, s);
 
-          /* Send the new BH time-steps */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
-                                  ci_nodeID);
-
           /* Receive the foreign BHs to tag particles to swallow and for
            * feedback */
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback);
-
-          /* Receive the foreign BH time-steps */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_bpart);
 
           /* Send the local part information */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
@@ -1270,17 +1221,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Drift before you send */
           cell_activate_drift_bpart(ci, s);
 
-          /* Send the new BH time-steps */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
-                                  cj_nodeID);
-
           /* Receive the foreign BHs to tag particles to swallow and for
            * feedback */
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback);
-
-          /* Receive the foreign BH time-steps */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
 
           /* Send the local part information */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
@@ -1307,11 +1251,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_gravity)
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
 
-          /* If the foreign cell is active, we want its ti_end values. */
-          if (ci_active_gravity &&
-              (!with_timestep_limiter && !with_timestep_sync))
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_gpart);
-
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_gravity) {
 
@@ -1324,22 +1263,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cell_activate_drift_gpart(l->t->ci, s);
           }
 
-          /* If the local cell is active, send its ti_end values. */
-          if (cj_active_gravity &&
-              (!with_timestep_limiter && !with_timestep_sync))
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_gpart,
-                                    ci_nodeID);
-
         } else if (cj_nodeID != nodeID) {
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_gravity)
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
-
-          /* If the foreign cell is active, we want its ti_end values. */
-          if (cj_active_gravity &&
-              (!with_timestep_limiter && !with_timestep_sync))
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_gpart);
 
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_gravity) {
@@ -1352,12 +1280,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                itself. */
             cell_activate_drift_gpart(l->t->ci, s);
           }
-
-          /* If the local cell is active, send its ti_end values. */
-          if (ci_active_gravity &&
-              (!with_timestep_limiter && !with_timestep_sync))
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_gpart,
-                                    cj_nodeID);
         }
 #endif
       } /* Only interested in RT tasks as of here. */
