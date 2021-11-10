@@ -4005,7 +4005,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the timestep exchange task */
     struct task *tend = scheduler_addtask(
         &e->sched, task_type_recv, task_subtype_tend, ci->mpi.tag, 0, ci, NULL);
-    engine_addlink(e, &ci->mpi.send, tend);
+    engine_addlink(e, &ci->mpi.recv, tend);
 #endif
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
