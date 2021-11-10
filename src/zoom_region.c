@@ -758,8 +758,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 
           int proxy_type = 0;
 
-          /* In the hydro case, only care about direct neighbours */
-          if (with_hydro) {
+          /* In the hydro case, only care about direct neighbours
+           * NOTE: Hydro is only performed on the zoom cells */
+          if (with_hydro && cid < bkg_cell_offset) {
 
             // MATTHIEU: to do: Write a better expression for the
             // non-periodic case.
