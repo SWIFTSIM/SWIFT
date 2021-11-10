@@ -427,6 +427,13 @@ void engine_unskip(struct engine *e) {
     /* Make sure the top-level dt collection task is always run */
     if (c->nodeID == e->nodeID)
       scheduler_activate(&e->sched, c->timestep_collect);
+
+    /* Activate the top-level timestep exchange */
+#ifdef WITH_MPI
+    if (c->nodeID == e->nodeID)
+      scheduler_activate_all_send(&e->sched, c->mpi.send, task_subtype_tend);
+    scheduler_activate_recv(&e->sched, c->mpi.recv, task_subtype_tend);
+#endif
   }
 
   /* What kind of tasks do we have? */
@@ -500,19 +507,6 @@ void engine_unskip(struct engine *e) {
   /* Free stuff? */
   if (multiplier > 1) {
     free(local_active_cells);
-  }
-
-  /* BAD, MATTHIEU, BAD !!! */
-  const int nr_tasks = e->sched.nr_tasks;
-  struct task *tasks = e->sched.tasks;
-  for (int k = 0; k < nr_tasks; ++k) {
-
-    struct task *t = &tasks[k];
-
-    if ((t->type == task_type_send && t->subtype == task_subtype_tend) ||
-        (t->type == task_type_recv && t->subtype == task_subtype_tend)) {
-      scheduler_activate(&e->sched, t);
-    }
   }
 
   if (e->verbose)
