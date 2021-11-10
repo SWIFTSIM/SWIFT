@@ -143,6 +143,16 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
   }
 }
 
+__attribute__((always_inline)) INLINE static void
+scheduler_activate_all_send(struct scheduler *s, struct link *link,
+			    const enum task_subtypes subtype) {
+
+  for (struct link *l = link; l != NULL; l = l->next) {
+    if (l->t->subtype == subtype)
+    scheduler_activate(s, l->t);
+  }
+}
+
 /**
  * @brief Search and add an MPI send task to the list of active tasks.
  *
@@ -156,7 +166,7 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
  */
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_send(struct scheduler *s, struct link *link,
-                        enum task_subtypes subtype, int nodeID) {
+                        const enum task_subtypes subtype, const int nodeID) {
   struct link *l = NULL;
   for (l = link;
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
@@ -181,7 +191,7 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
  */
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_recv(struct scheduler *s, struct link *link,
-                        enum task_subtypes subtype) {
+                        const enum task_subtypes subtype) {
   struct link *l = NULL;
   for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
     ;
