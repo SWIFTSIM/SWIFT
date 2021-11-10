@@ -1609,7 +1609,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_compute_formation ||
         t->subtype == task_subtype_sink_merger ||
         t->subtype == task_subtype_sink_accretion ||
-        t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||

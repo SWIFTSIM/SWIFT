@@ -3976,7 +3976,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_send_gravity(e, ci, cj, NULL, NULL);
+      engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL, /*t_ti=*/NULL);
   }
 }
 
