@@ -33,7 +33,8 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_STARS(struct runner *r, struct cell *c, int timer,
+                   const int offset, const int increment) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != engine_rank) error("Should be run on a different node");
@@ -69,7 +70,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #endif
 
   /* Loop over the sparts in ci. */
-  for (int sid = 0; sid < scount; sid++) {
+  for (int sid = offset; sid < scount; sid += increment) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts[sid];
@@ -150,7 +151,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
  * @param cj The second #cell
  */
 void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
-                                 struct cell *restrict cj) {
+                                 struct cell *restrict cj, const int offset,
+                                 const int increment) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -197,7 +199,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   }
 
   /* Loop over the sparts in ci. */
-  for (int sid = 0; sid < scount_i; sid++) {
+  for (int sid = offset; sid < scount_i; sid += increment) {
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
@@ -629,9 +631,9 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const int do_cj_stars = ci->nodeID == r->e->nodeID;
 #endif
   if (do_ci_stars && ci->stars.count != 0 && cj->hydro.count != 0)
-    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj);
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, 0, 1);
   if (do_cj_stars && cj->stars.count != 0 && ci->hydro.count != 0)
-    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci);
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, 0, 1);
 
   TIMER_TOC(TIMER_DOPAIR_STARS);
 }
@@ -1140,7 +1142,8 @@ void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
  * @param c #cell c
  *
  */
-void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
+void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c, const int offset,
+                          const int increment) {
 
   const struct engine *restrict e = r->e;
 
@@ -1154,7 +1157,7 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c) {
   if (c->stars.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
-  DOSELF1_STARS(r, c, 1);
+  DOSELF1_STARS(r, c, 1, offset, increment);
 }
 
 #define RUNNER_CHECK_SORT(TYPE, PART, cj, ci, sid)                          \
@@ -1385,7 +1388,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
+void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer,
+                       const int offset, const int increment) {
 
   TIMER_TIC;
 
@@ -1405,10 +1409,14 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
     /* Loop over all progeny. */
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL) {
-        DOSUB_SELF1_STARS(r, ci->progeny[k], 0);
+        DOSUB_SELF1_STARS(r, ci->progeny[k], 0, offset, increment);
         for (int j = k + 1; j < 8; j++)
-          if (ci->progeny[j] != NULL)
-            DOSUB_PAIR1_STARS(r, ci->progeny[k], ci->progeny[j], 0);
+          if (ci->progeny[j] != NULL) {
+            DO_NONSYM_PAIR1_STARS_NAIVE(r, ci->progeny[k], ci->progeny[j],
+                                        offset, increment);
+            DO_NONSYM_PAIR1_STARS_NAIVE(r, ci->progeny[j], ci->progeny[k],
+                                        offset, increment);
+          }
       }
   }
 
@@ -1418,7 +1426,7 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
     /* Drift the cell to the current timestep if needed. */
     if (!cell_are_spart_drifted(ci, r->e)) error("Interacting undrifted cell.");
 
-    DOSELF1_BRANCH_STARS(r, ci);
+    DOSELF1_BRANCH_STARS(r, ci, offset, increment);
   }
 
   TIMER_TOC(TIMER_DOSUB_SELF_STARS);

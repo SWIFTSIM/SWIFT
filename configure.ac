@@ -2157,6 +2157,26 @@ case "$with_stars" in
    ;;
 esac
 
+#  Number of stars density ghost tasks per cell
+AC_ARG_WITH([stars-ghost-ntask],
+   [AS_HELP_STRING([--with-stars-ghost-ntask=<ntask>],
+      [number of stars density ghost tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_stars_ghost_ntask="$withval"],
+   [with_stars_ghost_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([STARS_GHOST_NTASK], [$with_stars_ghost_ntask], [Number of stars density ghost tasks per cell])
+
+#  Number of stars density self tasks per cell
+AC_ARG_WITH([stars-self-ntask],
+   [AS_HELP_STRING([--with-stars-self-ntask=<ntask>],
+      [number of stars density self tasks to use per cell @<:@ default: 1@:>@]
+   )],
+   [with_stars_self_ntask="$withval"],
+   [with_stars_self_ntask="1"]
+)
+AC_DEFINE_UNQUOTED([STARS_SELF_NTASK], [$with_stars_self_ntask], [Number of stars density self tasks per cell])
+
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
@@ -2676,6 +2696,8 @@ AC_MSG_RESULT([
    Tracers              : $with_tracers
    Stellar model        : $with_stars
    Star formation model : $with_star_formation
+   Stars ghost ntask    : $with_stars_ghost_ntask
+   Stars self ntask     : $with_stars_self_ntask
    Star feedback model  : $with_feedback
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes

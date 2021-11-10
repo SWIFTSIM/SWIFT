@@ -2379,8 +2379,11 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (cell_need_activating_stars(c, e, with_star_formation,
                                    with_star_formation_sink)) {
 
-      if (c->stars.density_ghost != NULL)
-        scheduler_activate(s, c->stars.density_ghost);
+      if (c->stars.density_ghost[0] != NULL) {
+        for (int i = 0; i < STARS_GHOST_NTASK; i++) {
+          scheduler_activate(s, c->stars.density_ghost[i]);
+        }
+      }
       if (c->stars.prep1_ghost != NULL)
         scheduler_activate(s, c->stars.prep1_ghost);
       if (c->hydro.prep1_ghost != NULL)
@@ -2500,7 +2503,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
         scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);
 
-        /* Send the local BHs to tag the particles to swallow and to do feedback
+        /* Send the local BHs to tag the particles to swallow and to do
+         * feedback
          */
         scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_rho,
                                 ci_nodeID);
@@ -2514,7 +2518,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
                                 ci_nodeID);
 
-        /* Receive the foreign BHs to tag particles to swallow and for feedback
+        /* Receive the foreign BHs to tag particles to swallow and for
+         * feedback
          */
         scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
         scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback);
@@ -2538,7 +2543,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
         scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);
 
-        /* Send the local BHs to tag the particles to swallow and to do feedback
+        /* Send the local BHs to tag the particles to swallow and to do
+         * feedback
          */
         scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_rho,
                                 cj_nodeID);
@@ -2552,7 +2558,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
                                 cj_nodeID);
 
-        /* Receive the foreign BHs to tag particles to swallow and for feedback
+        /* Receive the foreign BHs to tag particles to swallow and for
+         * feedback
          */
         scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
         scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback);

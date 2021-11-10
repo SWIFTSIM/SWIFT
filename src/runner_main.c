@@ -250,15 +250,16 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_doself_branch_stars_density(r, ci);
+            runner_doself_branch_stars_density(r, ci, t->flags,
+                                               STARS_SELF_NTASK);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_doself_branch_stars_prep1(r, ci);
+            runner_doself_branch_stars_prep1(r, ci, 0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_doself_branch_stars_prep2(r, ci);
+            runner_doself_branch_stars_prep2(r, ci, 0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_doself_branch_stars_feedback(r, ci);
+            runner_doself_branch_stars_feedback(r, ci, 0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_doself_branch_bh_density(r, ci);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -348,15 +349,16 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_self_stars_density(r, ci, 1);
+            runner_dosub_self_stars_density(r, ci, 1, t->flags,
+                                            STARS_SELF_NTASK);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_dosub_self_stars_prep1(r, ci, 1);
+            runner_dosub_self_stars_prep1(r, ci, 1, 0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_dosub_self_stars_prep2(r, ci, 1);
+            runner_dosub_self_stars_prep2(r, ci, 1, 0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_self_stars_feedback(r, ci, 1);
+            runner_dosub_self_stars_feedback(r, ci, 1, 0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -460,7 +462,7 @@ void *runner_main(void *data) {
           break;
 #endif
         case task_type_stars_ghost:
-          runner_do_stars_ghost(r, ci, 1);
+          runner_do_stars_ghost(r, ci, t->flags, 1);
           break;
         case task_type_bh_density_ghost:
           runner_do_black_holes_density_ghost(r, ci, 1);
