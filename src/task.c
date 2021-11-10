@@ -728,10 +728,6 @@ int task_lock(struct scheduler *s, struct task *t, int rid) {
   const enum task_types type = t->type;
   const enum task_subtypes subtype = t->subtype;
   struct cell *ci = t->ci, *cj = t->cj;
-#ifdef WITH_MPI
-  int res = 0, err = 0;
-  MPI_Status stat;
-#endif
 
   switch (type) {
 
