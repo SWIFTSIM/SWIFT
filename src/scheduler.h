@@ -143,13 +143,21 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
   }
 }
 
+/**
+ * @brief Search a given linked list of task for a given subtype and activate
+ * it.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ */
 __attribute__((always_inline)) INLINE static void
-scheduler_activate_all_send(struct scheduler *s, struct link *link,
-			    const enum task_subtypes subtype) {
+scheduler_activate_all_subtype(struct scheduler *s, struct link *link,
+                               const enum task_subtypes subtype) {
 
   for (struct link *l = link; l != NULL; l = l->next) {
-    if (l->t->subtype == subtype)
-    scheduler_activate(s, l->t);
+    if (l->t->subtype == subtype) scheduler_activate(s, l->t);
   }
 }
 
