@@ -428,11 +428,10 @@ void engine_unskip(struct engine *e) {
     if (c->nodeID == e->nodeID)
       scheduler_activate(&e->sched, c->timestep_collect);
 
-    /* Activate the top-level timestep exchange */
+      /* Activate the top-level timestep exchange */
 #ifdef WITH_MPI
-    if (c->nodeID == e->nodeID)
-      scheduler_activate_all_send(&e->sched, c->mpi.send, task_subtype_tend);
-    scheduler_activate_recv(&e->sched, c->mpi.recv, task_subtype_tend);
+    scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
+    scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
 #endif
   }
 
