@@ -563,7 +563,7 @@ void task_unlock(struct task *t) {
 
     case task_type_stars_sort:
     case task_type_stars_resort:
-      cell_sunlocktree(ci, -1);
+      cell_sunlocktree(ci, 0);
       break;
 
     case task_type_self:
@@ -584,9 +584,9 @@ void task_unlock(struct task *t) {
         cell_sink_unlocktree(ci);
         cell_gunlocktree(ci);
       } else if ((subtype == task_subtype_stars_density)) {
-        cell_sunlocktree(ci, 0);
+        cell_sunlocktree(ci, 1);
       } else if ((subtype == task_subtype_stars_prep2)) {
-        cell_sunlocktree(ci, -1);
+        cell_sunlocktree(ci, 0);
       } else if ((subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_feedback)) {
         cell_unlocktree(ci);
@@ -600,7 +600,7 @@ void task_unlock(struct task *t) {
         cell_bunlocktree(ci);
       } else if (subtype == task_subtype_rt_inject) {
         cell_unlocktree(ci);
-        cell_sunlocktree(ci, -1);
+        cell_sunlocktree(ci, 0);
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_unlocktree(ci);
@@ -640,8 +640,8 @@ void task_unlock(struct task *t) {
                  (subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_prep2) ||
                  (subtype == task_subtype_stars_feedback)) {
-        cell_sunlocktree(ci, -1);
-        cell_sunlocktree(cj, -1);
+        cell_sunlocktree(ci, 0);
+        cell_sunlocktree(cj, 0);
         cell_unlocktree(ci);
         cell_unlocktree(cj);
       } else if ((subtype == task_subtype_bh_density) ||
@@ -656,8 +656,8 @@ void task_unlock(struct task *t) {
         cell_bunlocktree(ci);
         cell_bunlocktree(cj);
       } else if (subtype == task_subtype_rt_inject) {
-        cell_sunlocktree(ci, -1);
-        cell_sunlocktree(cj, -1);
+        cell_sunlocktree(ci, 0);
+        cell_sunlocktree(cj, 0);
         cell_unlocktree(ci);
         cell_unlocktree(cj);
       } else if (subtype == task_subtype_limiter) {
@@ -693,13 +693,13 @@ void task_unlock(struct task *t) {
 
     case task_type_star_formation:
       cell_unlocktree(ci);
-      cell_sunlocktree(ci, -1);
+      cell_sunlocktree(ci, 0);
       cell_gunlocktree(ci);
       break;
 
     case task_type_star_formation_sink:
       cell_sink_unlocktree(ci);
-      cell_sunlocktree(ci, -1);
+      cell_sunlocktree(ci, 0);
       cell_gunlocktree(ci);
       break;
 
@@ -786,7 +786,7 @@ int task_lock(struct task *t) {
     case task_type_stars_sort:
     case task_type_stars_resort:
       if (ci->stars.hold) return 0;
-      if (cell_slocktree(ci, -1) != 0) return 0;
+      if (cell_slocktree(ci, 0) != 0) return 0;
       break;
 
     case task_type_drift_gpart:
@@ -845,10 +845,10 @@ int task_lock(struct task *t) {
         }
       } else if ((subtype == task_subtype_stars_density)) {
         if (ci->stars.hold) return 0;
-        if (cell_slocktree(ci, 0) != 0) return 0;
+        if (cell_slocktree(ci, 1) != 0) return 0;
       } else if ((subtype == task_subtype_stars_prep2)) {
         if (ci->stars.hold) return 0;
-        if (cell_slocktree(ci, -1) != 0) return 0;
+        if (cell_slocktree(ci, 0) != 0) return 0;
       } else if ((subtype == task_subtype_stars_prep1) ||
                  (subtype == task_subtype_stars_feedback)) {
         if (ci->hydro.hold) return 0;
@@ -875,9 +875,9 @@ int task_lock(struct task *t) {
       } else if (subtype == task_subtype_rt_inject) {
         if (ci->stars.hold) return 0;
         if (ci->hydro.hold) return 0;
-        if (cell_slocktree(ci, -1) != 0) return 0;
+        if (cell_slocktree(ci, 0) != 0) return 0;
         if (cell_locktree(ci) != 0) {
-          cell_sunlocktree(ci, -1);
+          cell_sunlocktree(ci, 0);
           return 0;
         }
       } else { /* subtype == hydro */
@@ -990,19 +990,19 @@ int task_lock(struct task *t) {
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
         if (ci->hydro.hold || cj->hydro.hold) return 0;
-        if (cell_slocktree(ci, -1) != 0) return 0;
-        if (cell_slocktree(cj, -1) != 0) {
-          cell_sunlocktree(ci, -1);
+        if (cell_slocktree(ci, 0) != 0) return 0;
+        if (cell_slocktree(cj, 0) != 0) {
+          cell_sunlocktree(ci, 0);
           return 0;
         }
         if (cell_locktree(ci) != 0) {
-          cell_sunlocktree(ci, -1);
-          cell_sunlocktree(cj, -1);
+          cell_sunlocktree(ci, 0);
+          cell_sunlocktree(cj, 0);
           return 0;
         }
         if (cell_locktree(cj) != 0) {
-          cell_sunlocktree(ci, -1);
-          cell_sunlocktree(cj, -1);
+          cell_sunlocktree(ci, 0);
+          cell_sunlocktree(cj, 0);
           cell_unlocktree(ci);
           return 0;
         }
@@ -1040,19 +1040,19 @@ int task_lock(struct task *t) {
         /* Lock the stars and the gas particles in both cells */
         if (ci->stars.hold || cj->stars.hold) return 0;
         if (ci->hydro.hold || cj->hydro.hold) return 0;
-        if (cell_slocktree(ci, -1) != 0) return 0;
-        if (cell_slocktree(cj, -1) != 0) {
-          cell_sunlocktree(ci, -1);
+        if (cell_slocktree(ci, 0) != 0) return 0;
+        if (cell_slocktree(cj, 0) != 0) {
+          cell_sunlocktree(ci, 0);
           return 0;
         }
         if (cell_locktree(ci) != 0) {
-          cell_sunlocktree(ci, -1);
-          cell_sunlocktree(cj, -1);
+          cell_sunlocktree(ci, 0);
+          cell_sunlocktree(cj, 0);
           return 0;
         }
         if (cell_locktree(cj) != 0) {
-          cell_sunlocktree(ci, -1);
-          cell_sunlocktree(cj, -1);
+          cell_sunlocktree(ci, 0);
+          cell_sunlocktree(cj, 0);
           cell_unlocktree(ci);
           return 0;
         }
@@ -1113,13 +1113,13 @@ int task_lock(struct task *t) {
       /* Lock the gas, gravity and star particles */
       if (ci->hydro.hold || ci->stars.hold || ci->grav.phold) return 0;
       if (cell_locktree(ci) != 0) return 0;
-      if (cell_slocktree(ci, -1) != 0) {
+      if (cell_slocktree(ci, 0) != 0) {
         cell_unlocktree(ci);
         return 0;
       }
       if (cell_glocktree(ci) != 0) {
         cell_unlocktree(ci);
-        cell_sunlocktree(ci, -1);
+        cell_sunlocktree(ci, 0);
         return 0;
       }
       break;
@@ -1128,13 +1128,13 @@ int task_lock(struct task *t) {
       /* Lock the gas, gravity and star particles */
       if (ci->sinks.hold || ci->stars.hold || ci->grav.phold) return 0;
       if (cell_sink_locktree(ci) != 0) return 0;
-      if (cell_slocktree(ci, -1) != 0) {
+      if (cell_slocktree(ci, 0) != 0) {
         cell_sink_unlocktree(ci);
         return 0;
       }
       if (cell_glocktree(ci) != 0) {
         cell_sink_unlocktree(ci);
-        cell_sunlocktree(ci, -1);
+        cell_sunlocktree(ci, 0);
         return 0;
       }
       break;
