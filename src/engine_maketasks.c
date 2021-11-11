@@ -500,7 +500,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 void engine_addtasks_recv_hydro(
     struct engine *e, struct cell *c, struct task *t_xv, struct task *t_rho,
     struct task *t_gradient, struct task *t_prep1, struct task *t_limiter,
-    struct task *t_unpack_limiter, const int with_feedback,
+    struct task *t_unpack_limiter, struct task *tend, const int with_feedback,
     const int with_black_holes, const int with_limiter, const int with_sync) {
 
 #ifdef WITH_MPI
@@ -626,7 +626,7 @@ void engine_addtasks_recv_hydro(
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_hydro(e, c->progeny[k], t_xv, t_rho, t_gradient,
-                                   t_prep1, t_limiter, t_unpack_limiter,
+                                   t_prep1, t_limiter, t_unpack_limiter, tend,
                                    with_feedback, with_black_holes,
                                    with_limiter, with_sync);
 
@@ -647,7 +647,7 @@ void engine_addtasks_recv_hydro(
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_density, struct task *t_prep2,
-                                struct task *t_sf_counts,
+                                struct task *t_sf_counts, struct task *tend,
                                 const int with_star_formation) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
@@ -744,6 +744,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     /* Start updating local gas only after sparts have been received */
     for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_density, l->t);
+      scheduler_addunlock(s, l->t, tend);
     }
 #endif
   }
@@ -753,7 +754,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_stars(e, c->progeny[k], t_density, t_prep2,
-                                   t_sf_counts, with_star_formation);
+                                   t_sf_counts, tend, with_star_formation);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -775,7 +776,8 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
                                       struct task *t_rho,
                                       struct task *t_bh_merger,
                                       struct task *t_gas_swallow,
-                                      struct task *t_feedback) {
+                                      struct task *t_feedback,
+                                      struct task *tend) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -839,6 +841,7 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     }
     for (struct link *l = c->black_holes.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_feedback, l->t);
+      scheduler_addunlock(s, l->t, tend);
     }
   }
 
@@ -847,7 +850,7 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_black_holes(e, c->progeny[k], t_rho, t_bh_merger,
-                                         t_gas_swallow, t_feedback);
+                                         t_gas_swallow, t_feedback, tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -862,7 +865,7 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
  * @param t_grav The recv_gpart #task, if it has already been created.
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
-                                  struct task *t_grav) {
+                                  struct task *t_grav, struct task *tend) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -889,6 +892,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
 
     for (struct link *l = c->grav.grav; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_grav, l->t);
+      scheduler_addunlock(s, l->t, tend);
     }
   }
 
@@ -896,7 +900,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav);
+        engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, tend);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -3986,11 +3990,12 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
     struct cell *ci = cell_type_pairs[k].ci;
     const int type = cell_type_pairs[k].type;
+    struct task *tend = NULL;
 
 #ifdef WITH_MPI
     /* Add the timestep exchange task */
-    struct task *tend = scheduler_addtask(
-        &e->sched, task_type_recv, task_subtype_tend, ci->mpi.tag, 0, ci, NULL);
+    tend = scheduler_addtask(&e->sched, task_type_recv, task_subtype_tend,
+                             ci->mpi.tag, 0, ci, NULL);
     engine_addlink(e, &ci->mpi.recv, tend);
 #endif
 
@@ -4001,14 +4006,15 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                  /*t_gradient=*/NULL,
                                  /*t_prep1=*/NULL,
                                  /*t_limiter=*/NULL, /*t_unpack_limiter=*/NULL,
-                                 with_feedback, with_black_holes, with_limiter,
-                                 with_sync);
+                                 tend, with_feedback, with_black_holes,
+                                 with_limiter, with_sync);
 
     /* Add the recv tasks for the cells in the proxy that have a stars
      * connection. */
     if ((e->policy & engine_policy_feedback) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_stars(e, ci, /*t_density=*/NULL, /*t_prep2=*/NULL,
-                                 /*t_sf_counts=*/NULL, with_star_formation);
+                                 /*t_sf_counts=*/NULL, tend,
+                                 with_star_formation);
 
     /* Add the recv tasks for the cells in the proxy that have a black holes
      * connection. */
@@ -4017,13 +4023,13 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
       engine_addtasks_recv_black_holes(e, ci, /*t_rho=*/NULL,
                                        /*t_swallow=*/NULL,
                                        /*t_gas_swallow=*/NULL,
-                                       /*t_feedback=*/NULL);
+                                       /*t_feedback=*/NULL, tend);
 
     /* Add the recv tasks for the cells in the proxy that have a gravity
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL);
+      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
   }
 }
 
