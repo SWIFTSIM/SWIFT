@@ -273,6 +273,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->black_holes.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
+      temp->top = c->top;
       c->progeny[k] = temp;
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s, with_gravity);
