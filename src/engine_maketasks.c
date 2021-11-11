@@ -578,10 +578,12 @@ void engine_addtasks_recv_hydro(
     }
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_gradient, l->t);
+      scheduler_addunlock(s, l->t, tend);
     }
 #else
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_rho, l->t);
+      scheduler_addunlock(s, l->t, tend);
     }
 #endif
 
@@ -739,6 +741,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     /* Start updating local gas only after sparts have been received */
     for (struct link *l = c->stars.feedback; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_prep2, l->t);
+      scheduler_addunlock(s, l->t, tend);
     }
 #else
     /* Start updating local gas only after sparts have been received */
