@@ -239,14 +239,32 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->width[0] = s->width[0];
             c->width[1] = s->width[1];
             c->width[2] = s->width[2];
-            if (s->with_self_gravity)
-              c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
             c->tl_cell_type = tl_cell;
             c->dmin = dmin;
           } else {
-          	/* On the second loop we need to assign zoom cell information to natural cells. */
+          	/* First we must create the zoom cell and it's multipoles */
+            c = &s->cells_top[cid];
+                        c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
+            c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
+            c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
+            c->parent_tl_cid = cell_getid(cdim, (int)(c->loc[0] * s->iwidth[0]),
+            		(int)(c->loc[1] * s->iwidth[1]), (int)(c->loc[2] * s->iwidth[2]));
+            c->width[0] = s->zoom_props->width[0];
+            c->width[1] = s->zoom_props->width[1];
+            c->width[2] = s->zoom_props->width[2];
+            if (s->with_self_gravity)
+              c->grav.multipole = &s->multipoles_top[cid];
+            c->tl_cell_type = zoom_tl_cell;
+            c->dmin = dmin_zoom;
+            c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+
+          	/* On the second loop we also need to assign zoom cell information to natural cells. */
             c = &s->cells_top[cid + bkg_cell_offset];
             c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+
+            /* We can't create the multipoles without first creating the zoom multipoles */
+            if (s->with_self_gravity)
+              c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
 
             /* We need to update the cell types after increasing the zoom region size in the first interation */
 				    if (c->loc[0] > zoom_region_bounds[0] && c->loc[0] < zoom_region_bounds[1] &&
@@ -266,21 +284,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 			        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[2]) * s->zoom_props->iwidth[2];
 			      }
 
-            /* Zoom region top level cells. */
+            /* Now switch back to the zoom cells to assign the universal attributes */
             c = &s->cells_top[cid];
-            c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
-            c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
-            c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
-            c->parent_tl_cid = cell_getid(cdim, (int)(c->loc[0] * s->iwidth[0]),
-            		(int)(c->loc[1] * s->iwidth[1]), (int)(c->loc[2] * s->iwidth[2]));
-            c->width[0] = s->zoom_props->width[0];
-            c->width[1] = s->zoom_props->width[1];
-            c->width[2] = s->zoom_props->width[2];
-            if (s->with_self_gravity)
-              c->grav.multipole = &s->multipoles_top[cid];
-            c->tl_cell_type = zoom_tl_cell;
-            c->dmin = dmin_zoom;
-            c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
           }
           c->depth = 0;
           c->split = 0;
