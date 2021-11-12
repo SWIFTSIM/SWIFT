@@ -448,22 +448,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
 
-  // Debug
-  /*if (p->id == 1526793){
-  const float R_earth = 6371000.f;
-  FILE *fp;
-  fp = fopen("./picle_history_1526793.txt", "a");
-  fprintf(fp,
-      "%lld, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g, %.7g, %d, "
-      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g\n",
-      p->id, p->x[0]/R_earth, p->x[1]/R_earth, p->v[0]/R_earth, p->v[1]/R_earth, p->mass,
-      p->u, p->force.pressure, p->rho, p->h, p->mat_id,
-      dt_cfl, p->force.v_sig, p->u_dt, p->f_gdf,
-      p->weighted_wcount, p->weighted_neighbour_wcount);
-  fclose(fp);
-  }*/
-
   return dt_cfl;
 }
 
@@ -506,7 +490,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->T = 0.f;
 #endif
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
   p->N_force = 0;
   p->N_density_exact = 0;
@@ -751,14 +735,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
             p->T = T_min;
 	  } else {
             p->rho = rho_new;
-            p->P = P_new;
-            p->T = T_new;
+            p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+            p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
 	  }
   } else { 
     const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
     const float T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
-    /*printf("Exception: %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g\n",
-           p->sum_wij_exp, p->sum_wij_exp_P, p->sum_wij_exp_T, p->rho, p->u, P, T);*/
     p->P = P;
     p->T = T;
   }
@@ -990,7 +972,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  p->force.h_dt *= p->h * hydro_dimension_inv;
+    p->force.h_dt *= p->h * hydro_dimension_inv;
 }
 
 /**

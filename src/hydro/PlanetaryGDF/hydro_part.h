@@ -133,7 +133,6 @@ struct part {
   /* Correction factors for kernel gradients. f = weighted_wcount/(rho*weighted_neighbour_wcount) */
   float f_gdf;
 
-
   /* Store density/force specific stuff. */
   union {
 

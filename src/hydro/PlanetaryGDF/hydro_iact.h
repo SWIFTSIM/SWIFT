@@ -436,20 +436,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float sph_acc_term =
       (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
 
-  // Debug
-  /*if (pi->id == 1526793){ 
-  FILE *fp;
-  fp = fopen("./picle_history_iact_1526793.txt", "a");
-  fprintf(fp,
-      "%lld, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g\n",
-      pj->id, pressurei, pressurej, r_inv, kernel_gradient,
-      pi->rho, pj->rho, mj*sph_acc_term*dx[0], mj*sph_acc_term*dx[1], mj, dx[0], dx[1],
-      pi->f_gdf, pj->f_gdf, wi_dr, wj_dr);
-  fclose(fp);
-  }*/
-
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
 
@@ -467,18 +453,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       pressurei * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
   const float sph_du_term_j =
       pressurej * dvdr * r_inv * kernel_gradient / (pi->rho * pj->rho);
-
-  /*if (abs(sph_du_term_i*mj) > 1E+05 && pi->mat_id == 100){
-  printf(
-    "du_term_i: %.7g\n"
-    "dvdr, r_inv, kernel: %.7g, %.7g, %.7g\n"
-    "u_i, P_i, rho_i, mat_id_i, u_j, P_j, rho_j, mat_id_j:\n"
-    "%.7g, %.7g, %.7g %d, %.7g, %.7g, %.7g, %d\n",
-    sph_du_term_i*mj, dvdr, r_inv, kernel_gradient,
-    pi->u, pressurei, rhoi, pi->mat_id,
-    pj->u, pressurej, rhoj, pj->mat_id);
-
-  }*/
 
   /* Viscosity term */
   const float visc_du_term = 0.5f * visc_acc_term * dvdr;
@@ -561,7 +535,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
-
+  
   /* Variable smoothing length term */
   const float kernel_gradient = 0.5f * (wi_dr * pi->f_gdf + wj_dr * pj->f_gdf);
 
@@ -595,20 +569,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* SPH acceleration term */
   const float sph_acc_term =
       (pressurei + pressurej) * r_inv * kernel_gradient / (pi->rho * pj->rho);
-
-  // Debug
-  /*if (pi->id == 1526793){ 
-  FILE *fp;
-  fp = fopen("./picle_history_iact_1526793.txt", "a");
-  fprintf(fp,
-      "%lld, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g\n",
-      pj->id, pressurei, pressurej, r_inv, kernel_gradient,
-      pi->rho, pj->rho, mj*sph_acc_term*dx[0], mj*sph_acc_term*dx[1], mj, dx[0], dx[1],
-      pi->f_gdf, pj->f_gdf, wi_dr, wj_dr);
-  fclose(fp);
-  }*/
 
   /* Assemble the acceleration */
   const float acc = sph_acc_term + visc_acc_term;
