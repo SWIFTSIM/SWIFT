@@ -1412,10 +1412,17 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer,
         DOSUB_SELF1_STARS(r, ci->progeny[k], 0, offset, increment);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL) {
-            DO_NONSYM_PAIR1_STARS_NAIVE(r, ci->progeny[k], ci->progeny[j],
-                                        offset, increment);
-            DO_NONSYM_PAIR1_STARS_NAIVE(r, ci->progeny[j], ci->progeny[k],
-                                        offset, increment);
+            if (increment == 1) {
+              DOSUB_PAIR1_STARS(r, ci->progeny[k], ci->progeny[j], 0);
+            } else {
+              /* there is (currently) no clever way to split symmetric pair
+                 tasks, so we cannot recurse any further and have to do a naive
+                 non-symmetric interaction that can be properly split */
+              DO_NONSYM_PAIR1_STARS_NAIVE(r, ci->progeny[k], ci->progeny[j],
+                                          offset, increment);
+              DO_NONSYM_PAIR1_STARS_NAIVE(r, ci->progeny[j], ci->progeny[k],
+                                          offset, increment);
+            }
           }
       }
   }
