@@ -521,25 +521,29 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int offset,
     free(right);
     free(sid);
     free(h_0);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Update h_max at this level so that the check can work for this ghost */
+    atomic_max_f(&c->stars.h_max, h_max);
+    atomic_max_f(&c->stars.h_max_active, h_max_active);
+    for (int i = offset; i < c->stars.count; i += 5) {
+      const struct spart *sp = &c->stars.parts[i];
+      const float h = c->stars.parts[i].h;
+      if (spart_is_inhibited(sp, e)) continue;
+
+      if (h > c->stars.h_max)
+        error("Particle has h (%g) larger than h_max (%g) (id=%lld)", h,
+              c->stars.h_max, sp->id);
+      if (spart_is_active(sp, e) && h > c->stars.h_max_active)
+        error("Active particle has h larger than h_max_active (id=%lld)",
+              sp->id);
+    }
+#endif
   }
 
   /* Update h_max */
   atomic_max_f(&c->stars.h_max, h_max);
   atomic_max_f(&c->stars.h_max_active, h_max_active);
-
-#ifdef SWIFT_DEBUG_CHECKS
-/*  for (int i = offset; i < c->stars.count; i+=5) {
-    const struct spart *sp = &c->stars.parts[i];
-    const float h = c->stars.parts[i].h;
-    if (spart_is_inhibited(sp, e)) continue;
-
-    if (h > c->stars.h_max)
-      error("Particle has h (%g) larger than h_max (%g) (id=%lld)", h,
-  c->stars.h_max, sp->id); if (spart_is_active(sp, e) && h >
-  c->stars.h_max_active) error("Active particle has h larger than h_max_active
-  (id=%lld)", sp->id);
-  }*/
-#endif
 
   /* The ghost may not always be at the top level.
    * Therefore we need to update h_max between the super- and top-levels */
