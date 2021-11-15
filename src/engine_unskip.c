@@ -424,11 +424,7 @@ void engine_unskip(struct engine *e) {
       num_active_cells += 1;
     }
 
-    /* Make sure the top-level dt collection task is always run */
-    if (c->nodeID == e->nodeID)
-      scheduler_activate(&e->sched, c->timestep_collect);
-
-      /* Activate the top-level timestep exchange */
+    /* Activate the top-level timestep exchange */
 #ifdef WITH_MPI
     scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
     scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
