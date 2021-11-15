@@ -360,6 +360,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->timestep_sync");
 #endif
     scheduler_activate(s, c->timestep_sync);
+    scheduler_activate(s, c->top->timestep_collect);
     scheduler_activate(s, c->kick1);
   } else {
     for (struct cell *parent = c->parent;
@@ -374,6 +375,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->timestep_sync");
 #endif
         scheduler_activate(s, parent->timestep_sync);
+        scheduler_activate(s, parent->top->timestep_collect);
         scheduler_activate(s, parent->kick1);
         break;
       }
@@ -554,6 +556,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->timestep_limiter");
 #endif
     scheduler_activate(s, c->timestep_limiter);
+    scheduler_activate(s, c->top->timestep_collect);
     scheduler_activate(s, c->kick1);
   } else {
     for (struct cell *parent = c->parent;
@@ -569,6 +572,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->timestep_limiter");
 #endif
         scheduler_activate(s, parent->timestep_limiter);
+        scheduler_activate(s, parent->top->timestep_collect);
         scheduler_activate(s, parent->kick1);
         break;
       }
