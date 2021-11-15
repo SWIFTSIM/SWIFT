@@ -1401,8 +1401,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_black_holes(t->ci, e)) scheduler_activate(s, t);
     }
 
-    /* Time-step? */
-    else if (t_type == task_type_timestep) {
+    /* Time-step or time-step collection? */
+    else if (t_type == task_type_timestep || t_type == task_type_collect) {
       t->ci->hydro.updated = 0;
       t->ci->grav.updated = 0;
       t->ci->stars.updated = 0;
@@ -1412,11 +1412,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_is_active_stars(t->ci, e) || cell_is_active_sinks(t->ci, e) ||
           cell_is_active_black_holes(t->ci, e))
         scheduler_activate(s, t);
-    }
-
-    /* Time-step collection? */
-    else if (t_type == task_type_collect) {
-      scheduler_activate(s, t);
     }
 
     else if ((t_type == task_type_send && t_subtype == task_subtype_tend) ||
