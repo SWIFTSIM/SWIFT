@@ -1531,7 +1531,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom(void *map_data, int num_ele
 										if ((ci->tl_cell_type <= 2 && cj_zoom->tl_cell_type <= 2) ||
 										(ci->tl_cell_type == zoom_tl_cell && cj_zoom->tl_cell_type == zoom_tl_cell)) {
 											error("Cell %d and cell %d are the same cell type! (ci=%d, cj=%d)",
-														cid, cj_zoom, ci->tl_cell_type, cj_zoom->tl_cell_type);
+														cid, cjd_zoom, ci->tl_cell_type, cj_zoom->tl_cell_type);
 										}
 		#ifdef WITH_MPI
 
