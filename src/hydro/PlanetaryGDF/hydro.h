@@ -447,6 +447,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* CFL condition */
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
+    
+
 
   // Debug
   /*if (p->id == 1526793){
@@ -628,10 +630,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  
   for(i=0;i<3;i++)
       determinant += (p->Dinv[0][i]*(p->Dinv[1][(i+1)%3]*p->Dinv[2][(i+2)%3] - p->Dinv[1][(i+2)%3]*p->Dinv[2][(i+1)%3]));
- 
+    
+    
    for(i=0;i<3;i++){
-      for(j=0;j<3;j++) 
+      for(j=0;j<3;j++){ 
           p->D[i][j] = ((p->Dinv[(i+1)%3][(j+1)%3] * p->Dinv[(i+2)%3][(j+2)%3]) - (p->Dinv[(i+1)%3][(j+2)%3]*p->Dinv[(i+2)%3][(j+1)%3]))/ determinant;
+          if (isnan(p->D[i][j]) || isinf(p->D[i][j])){
+              p->D[i][j] = 0.f;
+              //printf("D error");
+              //exit(0);
+          }
+      }
    }
     
     
@@ -654,9 +663,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
       for (j = 0; j < 3; ++j) {
          for (k = 0; k < 3; ++k) {
             p->dv_aux[i][j] += p->D[i][k] * p->E_v[j][k];
+                         
          }
       }
    }
+    
+    
+    
+    
 }
 
 /**
@@ -720,16 +734,24 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->sum_wij_exp_P = 0.f;
   p->sum_wij_exp = 0.f;
 
-  /* Compute the pressure */
+  
+  
+  //Compute the pressure 
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
       
-  /* Compute the temperature */
+   //Compute the temperature 
   const float temperature =
       gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
 
   p->P = pressure;
   p->T = temperature;
+    
+   // p->imbalance_flag = 0;
+    //if (p->h < 0.999f * hydro_props->h_max){
+    //      p->imbalance_flag = 1;
+    //}
+  
 #endif
     
           
@@ -803,9 +825,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
-  const float P_min = gas_pressure_from_internal_energy(rho_min, p->u, p->mat_id);
-  const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
+ // const float P_min = gas_pressure_from_internal_energy(rho_min, p->u, p->mat_id);
+ // const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
  
+    //Added this to see if it fixes issue:
+    //if (p->imbalance_flag == 1) {
+    
   /* Bullet proof */
   if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->sum_wij_exp_T > 0.f){
 	  /* End computation */
@@ -816,31 +841,73 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 	  float P_new = 0.f;
 	  P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
 
-          if (P_new < P_min){
-            P_new = P_min;
-          }
+         // if (P_new < P_min){
+           // P_new = P_min;
+         // }
 
 	  /* Compute new T */
 	  float T_new = 0.f;
 	  T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
           
-          if (T_new < T_min){
-            T_new = T_min;
-          }
+         // if (T_new < T_min){
+           // T_new = T_min;
+          //}
+      
 
 	  /* Compute new density */
 	  float rho_new =
 	      gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
-	 
+      
+      
+      /*
+      if(p->id==10152953){
+          
+                                      printf("P_new");
+    printf("\n");
+    printf("%f",P_new);
+    printf("\n");
+          
+                                      printf("p->P");
+    printf("\n");
+    printf("%f",p->P);
+    printf("\n");
+          
+                                      printf("T_new");
+    printf("\n");
+    printf("%f",T_new);
+    printf("\n");
+          
+                                      printf("p->T");
+    printf("\n");
+    printf("%f",p->T);
+    printf("\n");
+          
+                                                         printf("p->rho");
+    printf("\n");
+    printf("%f",p->rho);
+    printf("\n");
+          
+                                                printf("rho_new");
+    printf("\n");
+    printf("%f",rho_new);
+    printf("\n");
+                                                         printf("p->u");
+    printf("\n");
+    printf("%f",p->u);
+    printf("\n");
+          
+      }
+      */
+   
 	  /* Ensure new density is not lower than minimum SPH density */
 	  if (rho_new < rho_min){
 	    p->rho = rho_min;
-            p->P = P_min;
-            p->T = T_min;
+            p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);//P_min;
+            p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);//T_min;
 	  } else {
             p->rho = rho_new;
-            p->P = P_new;
-            p->T = T_new;
+            p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);//P_new;
+            p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);//T_new;
 	  }
   } else {
     const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
@@ -849,51 +916,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     p->T = T;
   }
 
+    //}
+    
 #endif
     
-        
-  /* matrix inverse */
-  int i,j,k,l;
-  float determinant=0.f;
- 
- 
-  for(i=0;i<3;i++)
-      determinant += (p->Cinv[0][i]*(p->Cinv[1][(i+1)%3]*p->Cinv[2][(i+2)%3] - p->Cinv[1][(i+2)%3]*p->Cinv[2][(i+1)%3]));
- 
-   for(i=0;i<3;i++){
-      for(j=0;j<3;j++) 
-          p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ determinant;
-   }
-    
-    
-    
-   for (i = 0; i < 3; ++i) {
-      for (j = 0; j < 3; ++j) {
-         p->C_dv[i][j] = 0.f;
-         for (k = 0; k < 3; ++k) {
-            p->C_ddv[i][j][k] = 0.f;
-         }
-      }
-   }
-    
-    
-    
-    
-    
-
-    for (i = 0; i < 3; ++i) {      
-      for (j = 0; j < 3; ++j) {
-         for (k = 0; k < 3; ++k) {
-                       
-             p->C_dv[i][j] += p->C[i][k] * p->dv[j][k];
-             for (l = 0; l < 3; ++l) {
-             
-                p->C_ddv[i][j][k] += p->C[i][l] * p->ddv[j][k][l];
-             }
-         }
-      }
-   }
- 
+     
 }
 
 
@@ -985,6 +1012,69 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 #endif
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+    
+    
+    
+    
+       
+  /* matrix inverse */
+  int i,j,k,l;
+    
+   for (i = 0; i < 3; ++i) {
+          for (j = 0; j < 3; ++j) {
+             p->C_dv[i][j] = 0.f;
+             for (k = 0; k < 3; ++k) {
+                p->C_ddv[i][j][k] = 0.f;
+             }
+          }
+       }
+    
+        // need this for when particle hits h_max since m/rho stops correponding to volume element so matix inversion method doesn't work
+    if (p->h < 0.999f * hydro_props->h_max){
+        
+      p->force.matrix_flag = 1;
+    
+      float determinant=0.f;
+
+
+      for(i=0;i<3;i++)
+          determinant += (p->Cinv[0][i]*(p->Cinv[1][(i+1)%3]*p->Cinv[2][(i+2)%3] - p->Cinv[1][(i+2)%3]*p->Cinv[2][(i+1)%3]));
+
+           for(i=0;i<3;i++){
+              for(j=0;j<3;j++){ 
+                  p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ determinant;
+                  if (isnan(p->C[i][j]) || isinf(p->C[i][j])){
+                      p->C[i][j] = 0.f;
+                      //printf("C error");
+                      //exit(0);
+                  }
+              }
+       }
+
+
+        for (i = 0; i < 3; ++i) {      
+          for (j = 0; j < 3; ++j) {
+             for (k = 0; k < 3; ++k) {
+
+                 p->C_dv[i][j] += p->C[i][k] * p->dv[j][k];
+                 for (l = 0; l < 3; ++l) {
+
+                    p->C_ddv[i][j][k] += p->C[i][l] * p->ddv[j][k][l];
+                 }
+             }
+          }
+       }
+        
+    }else{
+         
+         p->force.matrix_flag = 0;
+        
+         for(i=0;i<3;i++){
+              for(j=0;j<3;j++) 
+                  p->C[i][j] = 0.f;
+       }
+   }
+
 }
 
 /**

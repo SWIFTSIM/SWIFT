@@ -156,6 +156,9 @@ struct part {
   /*! Number of particles in grad loop*/
   float N_grad;
     
+  /*! Imbalance method flag */
+  //int imbalance_flag;
+    
 
 
   /* Store density/force specific stuff. */
@@ -213,6 +216,9 @@ struct part {
 
       /*! Balsara switch */
       float balsara;
+        
+      /*! Inverse matrix method flag */
+      int matrix_flag;
 
     } force;
   };

@@ -536,6 +536,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
          }
       }
    }
+  
     
     pi->N_grad+=1.f;
   
@@ -583,15 +584,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
+  const float wj_dr = hjd_inv * wj_dx;
+
     
     
     
@@ -604,106 +610,130 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     for(k=0;k<3;k++){
         Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi;//wi_dr * dx[k] * r_inv;//
         Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj;//wj_dr * dx[k] * r_inv;//
+        
+        if(pi->force.matrix_flag == 0 || pj->force.matrix_flag == 0){
+            Gi[k] = wi_dr * dx[k] * r_inv;//
+            Gj[k] = wj_dr * dx[k] * r_inv;//
+        }
     }
-    
-    
-        float phi_i_v, phi_j_v;
-    float eta_ab = min(r * hi_inv, r * hj_inv);  //note: 2 from our h being their h/2
-
-    
-    int i, j;
-        // A numerators and denominators
-    float A_i_v = 0.f;
-    float A_j_v = 0.f;
-
-    for (i = 0; i < 3; ++i) {
-      for (j = 0; j < 3; ++j) {
-            A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
-            A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
-          
-      }
-    }
-    
-    
-    
-        //for 3D            
-    float eta_crit = 2.172975 / cbrt((pi->N_grad + pj->N_grad)*0.5);
-    
-    #if defined(HYDRO_DIMENSION_2D)
-    
-    //for 2D
-    eta_crit = 2.754572 / sqrtf((pi->N_grad + pj->N_grad)*0.5);
-
-    #endif
-
-
-   
-    phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
-    phi_i_v = max(0.f, phi_i_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-    
-    
-    phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
-    phi_j_v = max(0.f, phi_j_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-    
-
-    if(eta_ab>eta_crit){
-        phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
-        phi_i_v = max(0.f, phi_i_v);
-            
-        phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
-        phi_j_v = max(0.f, phi_j_v);
-    }
-    
-    
-    if(isnan(phi_i_v)){phi_i_v = 0.f;}
-    if(isnan(phi_j_v)){phi_j_v = 0.f;}
-
-    
-    
-
-    
-    // terms in square brackets in rosswog 2020 eq 17
-    float v_quad_i[3] = {0};
-    float v_quad_j[3] = {0};
-
-    
-
-    for (i = 0; i < 3; ++i) {
-        
-        v_quad_i[0] -= 0.5 * pi->C_dv[i][0] * dx[i];
-        v_quad_i[1] -= 0.5 * pi->C_dv[i][1] * dx[i];
-        v_quad_i[2] -= 0.5 * pi->C_dv[i][2] * dx[i];
-        
-        v_quad_j[0] += 0.5 * pj->C_dv[i][0] * dx[i];
-        v_quad_j[1] += 0.5 * pj->C_dv[i][1] * dx[i];
-        v_quad_j[2] += 0.5 * pj->C_dv[i][2] * dx[i];
-        
-        
-      for (j = 0; j < 3; ++j) {
-
-          v_quad_i[0] += 0.125 * pi->C_ddv[i][0][j] * dx[i] * dx[j];
-          v_quad_i[1] += 0.125 * pi->C_ddv[i][1][j] * dx[i] * dx[j];
-          v_quad_i[2] += 0.125 * pi->C_ddv[i][2][j] * dx[i] * dx[j];
-          
-          v_quad_j[0] += 0.125 * pj->C_ddv[i][0][j] * dx[i] * dx[j];
-          v_quad_j[1] += 0.125 * pj->C_ddv[i][1][j] * dx[i] * dx[j];
-          v_quad_j[2] += 0.125 * pj->C_ddv[i][2][j] * dx[i] * dx[j];
-
-      }
-   }
-    
-    
-    
     
     float vtilde_i[3], vtilde_j[3];
-    vtilde_i[0] = pi->v[0] + phi_i_v * v_quad_i[0];
-    vtilde_i[1] = pi->v[1] + phi_i_v * v_quad_i[1];
-    vtilde_i[2] = pi->v[2] + phi_i_v * v_quad_i[2];
-        
-    vtilde_j[0] = pj->v[0] + phi_j_v * v_quad_j[0];
-    vtilde_j[1] = pj->v[1] + phi_j_v * v_quad_j[1];
-    vtilde_j[2] = pj->v[2] + phi_j_v * v_quad_j[2];
     
+    //temp for print
+     float phi_i_v, phi_j_v;
+    
+    if(pi->force.matrix_flag == 1 && pj->force.matrix_flag == 1){
+            //float phi_i_v, phi_j_v;
+        float eta_ab = min(r * hi_inv, r * hj_inv);  //note: 2 from our h being their h/2
+
+
+        int i, j;
+            // A numerators and denominators
+        float A_i_v = 0.f;
+        float A_j_v = 0.f;
+
+        for (i = 0; i < 3; ++i) {
+          for (j = 0; j < 3; ++j) {
+                A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
+                A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
+
+          }
+        }
+
+
+
+            //for 3D            
+        float eta_crit = 2.172975 / cbrt((pi->N_grad + pj->N_grad)*0.5);
+
+        #if defined(HYDRO_DIMENSION_2D)
+
+        //for 2D
+        eta_crit = 2.754572 / sqrtf((pi->N_grad + pj->N_grad)*0.5);
+
+        #endif
+
+
+
+        phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+        phi_i_v = max(0.f, phi_i_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
+
+
+        phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+        phi_j_v = max(0.f, phi_j_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
+
+
+        if(eta_ab>eta_crit){
+            phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+            phi_i_v = max(0.f, phi_i_v);
+
+            phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+            phi_j_v = max(0.f, phi_j_v);
+        }
+
+
+        if(isnan(phi_i_v) || isinf(phi_i_v)){phi_i_v = 0.f;}
+        if(isnan(phi_j_v) || isinf(phi_j_v)){phi_j_v = 0.f;}
+
+
+
+
+
+        // terms in square brackets in rosswog 2020 eq 17
+        float v_quad_i[3] = {0};
+        float v_quad_j[3] = {0};
+
+
+
+        for (i = 0; i < 3; ++i) {
+
+            v_quad_i[0] -= 0.5 * pi->C_dv[i][0] * dx[i];
+            v_quad_i[1] -= 0.5 * pi->C_dv[i][1] * dx[i];
+            v_quad_i[2] -= 0.5 * pi->C_dv[i][2] * dx[i];
+
+            v_quad_j[0] += 0.5 * pj->C_dv[i][0] * dx[i];
+            v_quad_j[1] += 0.5 * pj->C_dv[i][1] * dx[i];
+            v_quad_j[2] += 0.5 * pj->C_dv[i][2] * dx[i];
+
+
+          for (j = 0; j < 3; ++j) {
+
+              v_quad_i[0] += 0.125 * pi->C_ddv[i][0][j] * dx[i] * dx[j];
+              v_quad_i[1] += 0.125 * pi->C_ddv[i][1][j] * dx[i] * dx[j];
+              v_quad_i[2] += 0.125 * pi->C_ddv[i][2][j] * dx[i] * dx[j];
+
+              v_quad_j[0] += 0.125 * pj->C_ddv[i][0][j] * dx[i] * dx[j];
+              v_quad_j[1] += 0.125 * pj->C_ddv[i][1][j] * dx[i] * dx[j];
+              v_quad_j[2] += 0.125 * pj->C_ddv[i][2][j] * dx[i] * dx[j];
+
+          }
+       }
+
+
+
+
+       
+        vtilde_i[0] = pi->v[0] + phi_i_v * v_quad_i[0];
+        vtilde_i[1] = pi->v[1] + phi_i_v * v_quad_i[1];
+        vtilde_i[2] = pi->v[2] + phi_i_v * v_quad_i[2];
+
+        vtilde_j[0] = pj->v[0] + phi_j_v * v_quad_j[0];
+        vtilde_j[1] = pj->v[1] + phi_j_v * v_quad_j[1];
+        vtilde_j[2] = pj->v[2] + phi_j_v * v_quad_j[2];
+        
+        
+       
+            
+    } else {
+         
+        vtilde_i[0] = pi->v[0];
+        vtilde_i[1] = pi->v[1];
+        vtilde_i[2] = pi->v[2];
+
+        vtilde_j[0] = pj->v[0];
+        vtilde_j[1] = pj->v[1];
+        vtilde_j[2] = pj->v[2];
+        
+    }
     
     
     // hard coded in for now
@@ -753,14 +783,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     
     
               // Compute dv dot G. 
-    const float dvdGi = (pi->v[0] - pj->v[0]) * Gi[0] +
-                    (pi->v[1] - pj->v[1]) * Gi[1] +
-                    (pi->v[2] - pj->v[2]) * Gi[2];
+   // const float dvdGi = (pi->v[0] - pj->v[0]) * Gi[0] +
+     //               (pi->v[1] - pj->v[1]) * Gi[1] +
+      //              (pi->v[2] - pj->v[2]) * Gi[2];
       
     
-    const float dvdGj = (pj->v[0] - pi->v[0]) * Gj[0] +
-                     (pj->v[1] - pi->v[1]) * Gj[1] +
-                    (pj->v[2] - pi->v[2]) * Gj[2];
+  //  const float dvdGj = (pj->v[0] - pi->v[0]) * Gj[0] +
+     //                (pj->v[1] - pi->v[1]) * Gj[1] +
+       //             (pj->v[2] - pi->v[2]) * Gj[2];
     
     
         const float dvdGij = (pi->v[0] - pj->v[0]) * kernel_gradient[0] +
@@ -811,9 +841,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdGi / rhoj;
-  pj->force.h_dt -= -mi * dvdGj / rhoi;
-
+  pi->force.h_dt -= mj * dvdGij / rhoj;//mj * dvdGi / rhoj;
+  pj->force.h_dt -= mi * dvdGij / rhoi;//-mi * dvdGj / rhoi;
+    
+ 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
@@ -824,6 +855,228 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->N_force++;
   pj->N_force++;
 #endif
+    
+    
+if(isinf(pi->a_hydro[0]) || isnan(pi->a_hydro[0])){
+    
+                printf("pi->id");
+    printf("\n");
+    printf("%llu",pi->id);
+    printf("\n");
+    
+    printf("pi->C[0][0]");
+    printf("\n");
+    printf("%f",pj->C[0][0]);
+    printf("\n");
+    
+    printf("pi->C[0][1]");
+    printf("\n");
+    printf("%f",pj->C[0][1]);
+    printf("\n");
+    
+    printf("pi->C[0][2]");
+    printf("\n");
+    printf("%f",pj->C[0][2]);
+    printf("\n");
+    
+    printf("pi->Cinv[0][0]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][0]);
+    printf("\n");
+    
+    printf("pi->Cinv[0][1]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][1]);
+    printf("\n");
+    
+    printf("pi->Cinv[0][2]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][2]);
+    printf("\n");
+    
+    printf("pi->h");
+    printf("\n");
+    printf("%f",pi->h);
+    printf("\n");
+    
+    printf("pi->N_grad");
+    printf("\n");
+    printf("%f",pi->N_grad);
+    printf("\n");
+    
+        printf("pi->force.matrix_flag");
+    printf("\n");
+    printf("%d",pi->force.matrix_flag);
+    printf("\n");
+    
+            printf("pj->force.matrix_flag");
+    printf("\n");
+    printf("%d",pj->force.matrix_flag);
+    printf("\n");
+    
+               printf("Gi[0]");
+    printf("\n");
+    printf("%f",Gi[0]);
+    printf("\n");
+    
+                printf("Gj[0]");
+    printf("\n");
+    printf("%f",Gj[0]);
+    printf("\n");
+    
+                printf("kernel_gradient[0]");
+    printf("\n");
+    printf("%f",kernel_gradient[0]);
+    printf("\n");
+    
+                printf("acc");
+    printf("\n");
+    printf("%f",acc);
+    printf("\n");
+    
+                        printf("Q_i");
+    printf("\n");
+    printf("%f",Q_i);
+    printf("\n");
+    
+                    printf("Q_j");
+    printf("\n");
+    printf("%f",Q_j);
+    printf("\n");
+    
+    printf("mu_i");
+    printf("\n");
+    printf("%f",mu_i);
+    printf("\n");
+    
+    
+    printf("(eta_i_2 + epsilon * epsilon))");
+    printf("\n");
+    printf("%f",(eta_i_2 + epsilon * epsilon));
+    printf("\n");
+    
+    printf("(vtilde_i[0] - vtilde_j[0]) * dx[0] + (vtilde_i[1] - vtilde_j[1]) * dx[1] + (vtilde_i[2] - vtilde_j[2]) * dx[2]) * hi_inv");
+    printf("\n");
+    printf("%f",((vtilde_i[0] - vtilde_j[0]) * dx[0] + (vtilde_i[1] - vtilde_j[1]) * dx[1] + (vtilde_i[2] - vtilde_j[2]) * dx[2]) * hi_inv);
+    printf("\n");
+    
+    printf("phi_j_v");
+    printf("\n");
+    printf("%f",phi_j_v);
+    printf("\n");
+    
+
+    
+    
+                                printf("pi->rho");
+    printf("\n");
+    printf("%f",pi->rho);
+    printf("\n");
+    
+                        printf("pj->rho");
+    printf("\n");
+    printf("%f",pj->rho);
+    printf("\n");
+    
+    
+    
+                        printf("pressurei");
+    printf("\n");
+    printf("%f",pressurei);
+    printf("\n");
+    
+                            printf("pressurej");
+    printf("\n");
+    printf("%f",pressurej);
+    printf("\n");
+    
+    
+    exit(0);
+}
+    
+if(isinf(pj->a_hydro[0]) || isnan(pj->a_hydro[0])){
+    
+                printf("pj->id");
+    printf("\n");
+    printf("%llu",pj->id);
+    printf("\n");
+    
+    printf("pj->C[0][0]");
+    printf("\n");
+    printf("%f",pj->C[0][0]);
+    printf("\n");
+    
+    printf("pj->C[0][1]");
+    printf("\n");
+    printf("%f",pj->C[0][1]);
+    printf("\n");
+    
+    printf("pj->C[0][2]");
+    printf("\n");
+    printf("%f",pj->C[0][2]);
+    printf("\n");
+    
+    printf("pj->Cinv[0][0]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][0]);
+    printf("\n");
+    
+    printf("pj->Cinv[0][1]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][1]);
+    printf("\n");
+    
+    printf("pj->Cinv[0][2]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][2]);
+    printf("\n");
+    
+    printf("pj->h");
+    printf("\n");
+    printf("%f",pj->h);
+    printf("\n");
+    
+    printf("pj->N_grad");
+    printf("\n");
+    printf("%f",pj->N_grad);
+    printf("\n");
+    
+        printf("pi->force.matrix_flag");
+    printf("\n");
+    printf("%d",pi->force.matrix_flag);
+    printf("\n");
+    
+            printf("pj->force.matrix_flag");
+    printf("\n");
+    printf("%d",pj->force.matrix_flag);
+    printf("\n");
+    
+                            printf("pi->rho");
+    printf("\n");
+    printf("%f",pi->rho);
+    printf("\n");
+    
+                        printf("pj->rho");
+    printf("\n");
+    printf("%f",pj->rho);
+    printf("\n");
+    
+  
+                            printf("pressurei");
+    printf("\n");
+    printf("%f",pressurei);
+    printf("\n");
+    
+                            printf("pressurej");
+    printf("\n");
+    printf("%f",pressurej);
+    printf("\n");
+    
+    exit(0);
+}
+
+
+    
 }
 
 /**
@@ -867,15 +1120,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
   const float xi = r * hi_inv;
   float wi, wi_dx;
   kernel_deval(xi, &wi, &wi_dx);
+  const float wi_dr = hid_inv * wi_dx;
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
+  const float wj_dr = hjd_inv * wj_dx;
+
 
     
     //const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -887,105 +1145,133 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     for(k=0;k<3;k++){
         Gi[k] = -(pi->C[k][0] * dx[0] + pi->C[k][1] * dx[1] + pi->C[k][2] * dx[2]) * wi;//wi_dr * dx[k] * r_inv;//
         Gj[k] = -(pj->C[k][0] * dx[0] + pj->C[k][1] * dx[1] + pj->C[k][2] * dx[2]) * wj;//wj_dr * dx[k] * r_inv;//
+        
+        if(pi->force.matrix_flag == 0 || pj->force.matrix_flag == 0){
+            Gi[k] = wi_dr * dx[k] * r_inv;//
+            Gj[k] = wj_dr * dx[k] * r_inv;//
+        }
     }
 
-            float phi_i_v, phi_j_v;
-    float eta_ab = min(r * hi_inv, r * hj_inv);  //note: 2 from our h being their h/2
-
-    
-    int i, j;
-        // A numerators and denominators
-    float A_i_v = 0.f;
-    float A_j_v = 0.f;
-
-    for (i = 0; i < 3; ++i) {
-      for (j = 0; j < 3; ++j) {
-            A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
-            A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
-          
-      }
-    }
-    
-    
-    
-        //for 3D            
-    float eta_crit = 2.172975 / cbrt((pi->N_grad + pj->N_grad)*0.5);
-    
-    #if defined(HYDRO_DIMENSION_2D)
-    
-    //for 2D
-    eta_crit = 2.754572 / sqrtf((pi->N_grad + pj->N_grad)*0.5);
-
-    #endif
-
-
-   
-    phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
-    phi_i_v = max(0.f, phi_i_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-    
-    
-    phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
-    phi_j_v = max(0.f, phi_j_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
-    
-
-    if(eta_ab>eta_crit){
-        phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
-        phi_i_v = max(0.f, phi_i_v);
-            
-        phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
-        phi_j_v = max(0.f, phi_j_v);
-    }
-    
-    
-    if(isnan(phi_i_v)){phi_i_v = 0.f;}
-    if(isnan(phi_j_v)){phi_j_v = 0.f;}
-
-    
-    
-
-    
-    // terms in square brackets in rosswog 2020 eq 17
-    float v_quad_i[3] = {0};
-    float v_quad_j[3] = {0};
-
-    
-
-    for (i = 0; i < 3; ++i) {
-        
-        v_quad_i[0] -= 0.5 * pi->C_dv[i][0] * dx[i];
-        v_quad_i[1] -= 0.5 * pi->C_dv[i][1] * dx[i];
-        v_quad_i[2] -= 0.5 * pi->C_dv[i][2] * dx[i];
-        
-        v_quad_j[0] += 0.5 * pj->C_dv[i][0] * dx[i];
-        v_quad_j[1] += 0.5 * pj->C_dv[i][1] * dx[i];
-        v_quad_j[2] += 0.5 * pj->C_dv[i][2] * dx[i];
-        
-        
-      for (j = 0; j < 3; ++j) {
-
-          v_quad_i[0] += 0.125 * pi->C_ddv[i][0][j] * dx[i] * dx[j];
-          v_quad_i[1] += 0.125 * pi->C_ddv[i][1][j] * dx[i] * dx[j];
-          v_quad_i[2] += 0.125 * pi->C_ddv[i][2][j] * dx[i] * dx[j];
-          
-          v_quad_j[0] += 0.125 * pj->C_ddv[i][0][j] * dx[i] * dx[j];
-          v_quad_j[1] += 0.125 * pj->C_ddv[i][1][j] * dx[i] * dx[j];
-          v_quad_j[2] += 0.125 * pj->C_ddv[i][2][j] * dx[i] * dx[j];
-
-      }
-   }
-    
-    
-    
     
     float vtilde_i[3], vtilde_j[3];
-    vtilde_i[0] = pi->v[0] + phi_i_v * v_quad_i[0];
-    vtilde_i[1] = pi->v[1] + phi_i_v * v_quad_i[1];
-    vtilde_i[2] = pi->v[2] + phi_i_v * v_quad_i[2];
-        
-    vtilde_j[0] = pj->v[0] + phi_j_v * v_quad_j[0];
-    vtilde_j[1] = pj->v[1] + phi_j_v * v_quad_j[1];
-    vtilde_j[2] = pj->v[2] + phi_j_v * v_quad_j[2];
     
+    //temp for print
+     float phi_i_v, phi_j_v;
+    
+    if(pi->force.matrix_flag == 1 && pj->force.matrix_flag == 1){
+        //float phi_i_v, phi_j_v;
+        float eta_ab = min(r * hi_inv, r * hj_inv);  //note: 2 from our h being their h/2
+
+
+        int i, j;
+            // A numerators and denominators
+        float A_i_v = 0.f;
+        float A_j_v = 0.f;
+
+        for (i = 0; i < 3; ++i) {
+          for (j = 0; j < 3; ++j) {
+                A_i_v += pi->C_dv[i][j] * dx[i] * dx[j];
+                A_j_v += pj->C_dv[i][j] * dx[i] * dx[j];
+
+          }
+        }
+
+
+
+            //for 3D            
+        float eta_crit = 2.172975 / cbrt((pi->N_grad + pj->N_grad)*0.5);
+
+        #if defined(HYDRO_DIMENSION_2D)
+
+        //for 2D
+        eta_crit = 2.754572 / sqrtf((pi->N_grad + pj->N_grad)*0.5);
+
+        #endif
+
+
+
+        phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+        phi_i_v = max(0.f, phi_i_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
+
+
+        phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+        phi_j_v = max(0.f, phi_j_v) * exp(-(eta_ab - eta_crit) * (eta_ab - eta_crit) * 25);
+
+
+        if(eta_ab>eta_crit){
+            phi_i_v = min(1.f, 4 * A_i_v / A_j_v / (1 + A_i_v / A_j_v) / (1 + A_i_v / A_j_v));
+            phi_i_v = max(0.f, phi_i_v);
+
+            phi_j_v = min(1.f, 4 * A_j_v / A_i_v / (1 + A_j_v / A_i_v) / (1 + A_j_v / A_i_v));
+            phi_j_v = max(0.f, phi_j_v);
+        }
+
+
+        if(isnan(phi_i_v) || isinf(phi_i_v)){phi_i_v = 0.f;}
+        if(isnan(phi_j_v) || isinf(phi_j_v)){phi_j_v = 0.f;}
+
+
+
+
+
+
+        // terms in square brackets in rosswog 2020 eq 17
+        float v_quad_i[3] = {0};
+        float v_quad_j[3] = {0};
+
+
+
+        for (i = 0; i < 3; ++i) {
+
+            v_quad_i[0] -= 0.5 * pi->C_dv[i][0] * dx[i];
+            v_quad_i[1] -= 0.5 * pi->C_dv[i][1] * dx[i];
+            v_quad_i[2] -= 0.5 * pi->C_dv[i][2] * dx[i];
+
+            v_quad_j[0] += 0.5 * pj->C_dv[i][0] * dx[i];
+            v_quad_j[1] += 0.5 * pj->C_dv[i][1] * dx[i];
+            v_quad_j[2] += 0.5 * pj->C_dv[i][2] * dx[i];
+
+
+          for (j = 0; j < 3; ++j) {
+
+              v_quad_i[0] += 0.125 * pi->C_ddv[i][0][j] * dx[i] * dx[j];
+              v_quad_i[1] += 0.125 * pi->C_ddv[i][1][j] * dx[i] * dx[j];
+              v_quad_i[2] += 0.125 * pi->C_ddv[i][2][j] * dx[i] * dx[j];
+
+              v_quad_j[0] += 0.125 * pj->C_ddv[i][0][j] * dx[i] * dx[j];
+              v_quad_j[1] += 0.125 * pj->C_ddv[i][1][j] * dx[i] * dx[j];
+              v_quad_j[2] += 0.125 * pj->C_ddv[i][2][j] * dx[i] * dx[j];
+
+          }
+       }
+
+
+
+
+        
+        vtilde_i[0] = pi->v[0] + phi_i_v * v_quad_i[0];
+        vtilde_i[1] = pi->v[1] + phi_i_v * v_quad_i[1];
+        vtilde_i[2] = pi->v[2] + phi_i_v * v_quad_i[2];
+
+        vtilde_j[0] = pj->v[0] + phi_j_v * v_quad_j[0];
+        vtilde_j[1] = pj->v[1] + phi_j_v * v_quad_j[1];
+        vtilde_j[2] = pj->v[2] + phi_j_v * v_quad_j[2];
+        
+        
+                
+  
+        
+    } else {
+         
+        vtilde_i[0] = pi->v[0];
+        vtilde_i[1] = pi->v[1];
+        vtilde_i[2] = pi->v[2];
+
+        vtilde_j[0] = pj->v[0];
+        vtilde_j[1] = pj->v[1];
+        vtilde_j[2] = pj->v[2];
+        
+    }
     
     
     // hard coded in for now
@@ -1032,9 +1318,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     kernel_gradient[2] = 0.5f * (Gi[2]  + Gj[2]);//0.5f * (Gi[2] * pi->f_gdf + Gj[2] * pj->f_gdf);//
     
                   // Compute dv dot G. 
-    const float dvdGi = (pi->v[0] - pj->v[0]) * Gi[0] +
-                    (pi->v[1] - pj->v[1]) * Gi[1] +
-                    (pi->v[2] - pj->v[2]) * Gi[2];
+   // const float dvdGi = (pi->v[0] - pj->v[0]) * Gi[0] +
+      //              (pi->v[1] - pj->v[1]) * Gi[1] +
+       //             (pi->v[2] - pj->v[2]) * Gi[2];
       
     
     
@@ -1066,8 +1352,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-      pi->force.h_dt -= mj * dvdGi / rhoj;
-
+      pi->force.h_dt -= mj * dvdGij / rhoj;//mj * dvdGi / rhoj;
+    
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
@@ -1075,6 +1361,144 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->n_force += wi + wj;
   pi->N_force++;
 #endif
+    
+    
+    
+if(isinf(pi->a_hydro[0]) || isnan(pi->a_hydro[0])){
+    
+                printf("pi->id");
+    printf("\n");
+    printf("%llu",pi->id);
+    printf("\n");
+    
+    printf("pi->C[0][0]");
+    printf("\n");
+    printf("%f",pj->C[0][0]);
+    printf("\n");
+    
+    printf("pi->C[0][1]");
+    printf("\n");
+    printf("%f",pj->C[0][1]);
+    printf("\n");
+    
+    printf("pi->C[0][2]");
+    printf("\n");
+    printf("%f",pj->C[0][2]);
+    printf("\n");
+    
+    printf("pi->Cinv[0][0]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][0]);
+    printf("\n");
+    
+    printf("pi->Cinv[0][1]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][1]);
+    printf("\n");
+    
+    printf("pi->Cinv[0][2]");
+    printf("\n");
+    printf("%f",pj->Cinv[0][2]);
+    printf("\n");
+    
+    printf("pi->h");
+    printf("\n");
+    printf("%f",pi->h);
+    printf("\n");
+    
+    printf("pi->N_grad");
+    printf("\n");
+    printf("%f",pi->N_grad);
+    printf("\n");
+    
+        printf("pi->force.matrix_flag");
+    printf("\n");
+    printf("%d",pi->force.matrix_flag);
+    printf("\n");
+    
+            printf("pj->force.matrix_flag");
+    printf("\n");
+    printf("%d",pj->force.matrix_flag);
+    printf("\n");
+    
+               printf("Gi[0]");
+    printf("\n");
+    printf("%f",Gi[0]);
+    printf("\n");
+    
+                printf("Gj[0]");
+    printf("\n");
+    printf("%f",Gj[0]);
+    printf("\n");
+    
+                printf("kernel_gradient[0]");
+    printf("\n");
+    printf("%f",kernel_gradient[0]);
+    printf("\n");
+    
+                printf("acc");
+    printf("\n");
+    printf("%f",acc);
+    printf("\n");
+    
+                    printf("Q_i");
+    printf("\n");
+    printf("%f",Q_i);
+    printf("\n");
+    
+                    printf("Q_j");
+    printf("\n");
+    printf("%f",Q_j);
+    printf("\n");
+    
+    printf("mu_i");
+    printf("\n");
+    printf("%f",mu_i);
+    printf("\n");
+    
+    
+    printf("(eta_i_2 + epsilon * epsilon))");
+    printf("\n");
+    printf("%f",(eta_i_2 + epsilon * epsilon));
+    printf("\n");
+    
+    printf("(vtilde_i[0] - vtilde_j[0]) * dx[0] + (vtilde_i[1] - vtilde_j[1]) * dx[1] + (vtilde_i[2] - vtilde_j[2]) * dx[2]) * hi_inv");
+    printf("\n");
+    printf("%f",((vtilde_i[0] - vtilde_j[0]) * dx[0] + (vtilde_i[1] - vtilde_j[1]) * dx[1] + (vtilde_i[2] - vtilde_j[2]) * dx[2]) * hi_inv);
+    printf("\n");
+    
+    printf("phi_j_v");
+    printf("\n");
+    printf("%f",phi_j_v);
+    printf("\n");
+    
+    
+                        printf("pi->rho");
+    printf("\n");
+    printf("%f",pi->rho);
+    printf("\n");
+    
+                        printf("pj->rho");
+    printf("\n");
+    printf("%f",pj->rho);
+    printf("\n");
+    
+   
+                            printf("pressurei");
+    printf("\n");
+    printf("%f",pressurei);
+    printf("\n");
+    
+                            printf("pressurej");
+    printf("\n");
+    printf("%f",pressurej);
+    printf("\n");
+    
+    exit(0);
+}
+    
+    
+    
 }
 
 #endif /* SWIFT_PLANETARY_HYDRO_IACT_H */
