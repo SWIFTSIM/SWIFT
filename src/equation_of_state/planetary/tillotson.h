@@ -66,7 +66,7 @@ INLINE static void set_Til_iron(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
-  mat->P_min = 0.0f;
+  mat->P_min = 0.01f;
   mat->CV = 449.f;
   mat->rho_min_A1_u_cold = 100.f;
   mat->rho_max_A1_u_cold = 100000.f;
@@ -88,7 +88,7 @@ INLINE static void set_Til_granite(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
-  mat->P_min = 0.0f;
+  mat->P_min = 0.01f;
   mat->CV = 790.f;
   mat->rho_min_A1_u_cold = 100.f;
   mat->rho_max_A1_u_cold = 100000.f;
@@ -110,7 +110,7 @@ INLINE static void set_Til_basalt(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.0f;
   mat->eta_zero = 0.0f;
-  mat->P_min = 0.0f;
+  mat->P_min = 0.01f;
   mat->CV = 790.f;
   mat->rho_min_A1_u_cold = 100.f;
   mat->rho_max_A1_u_cold = 100000.f;
@@ -132,8 +132,30 @@ INLINE static void set_Til_water(struct Til_params *mat,
   mat->beta = 5.0f;
   mat->eta_min = 0.925f;
   mat->eta_zero = 0.875f;
-  mat->P_min = 0.0f;
+  mat->P_min = 0.01f;
   mat->CV = 4186.f;
+  mat->rho_min_A1_u_cold = 100.f;
+  mat->rho_max_A1_u_cold = 100000.f;
+  mat->rho_min = 1.f;
+  mat->rho_max = 100000.f;
+}
+INLINE static void set_Til_ice(struct Til_params *mat,
+                                 enum eos_planetary_material_id mat_id) {
+  mat->mat_id = mat_id;
+  mat->rho_0 = 1293.0f;
+  mat->a = 0.3f;
+  mat->b = 0.1f;
+  mat->A = 1.07e10f;
+  mat->B = 6.5e10f;
+  mat->u_0 = 1.0e7f;
+  mat->u_iv = 7.73e5f;
+  mat->u_cv = 3.04e6f;
+  mat->alpha = 10.0f;
+  mat->beta = 5.0f;
+  mat->eta_min = 0.925f;
+  mat->eta_zero = 0.875f;
+  mat->P_min = 0.0f;
+  mat->CV = 2093.f;
   mat->rho_min_A1_u_cold = 100.f;
   mat->rho_max_A1_u_cold = 100000.f;
   mat->rho_min = 1.f;
@@ -146,7 +168,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
 
   struct unit_system si;
   units_init_si(&si);
-
+  
   int N = 10000;
 
   // SI to cgs
@@ -157,7 +179,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->u_iv *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->u_cv *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->P_min *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
-
+  
   for (int i = 0; i < N; i++) {
     mat->A1_u_cold[i] *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   }
@@ -169,7 +191,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->rho_max_A1_u_cold *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->rho_min *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
   mat->rho_max *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
-
+  
 
   // cgs to internal
   mat->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
@@ -179,7 +201,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->u_iv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->u_cv /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->P_min /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-
+  
   for (int i = 0; i < N; i++) {
     mat->A1_u_cold[i] /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   }
@@ -191,7 +213,7 @@ INLINE static void convert_units_Til(struct Til_params *mat,
   mat->rho_max_A1_u_cold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->rho_min /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
   mat->rho_max /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-
+  
 }
 
 // gas_internal_energy_from_entropy
@@ -448,6 +470,20 @@ INLINE static float Til_temperature_from_internal_energy(
     
     T = (u - u_cold)/(mat->CV);
     
+    if(T < 0.f){T = 0.f;}
+    /*
+		const float M = 5.9724e24;
+    const float L = 6.371e6;
+
+    printf("\n check %d, %.6g, %.6g, %.6g, %.6g, %.6g \n",
+    mat->mat_id,
+    density*M/(L*L*L),
+    u*L*L,
+    u_cold*L*L,
+    T,
+    mat->CV*L*L
+    );*/
+    
     return T;
     
 }
@@ -489,7 +525,11 @@ INLINE static float Til_density_from_pressure_and_temperature(
     P_mid = Til_pressure_from_temperature(rho_mid, T, mat);
     P_max = Til_pressure_from_temperature(rho_max, T, mat);
     
-    // Bisection method
+    // quick fix?
+    if (P_des < P_min){
+        P_des = P_min;
+    }
+    
     if (P_des >= P_min && P_des <= P_max){
         while ((rho_max - rho_min) > tolerance && counter < max_counter){
         
@@ -510,26 +550,64 @@ INLINE static float Til_density_from_pressure_and_temperature(
             counter += 1;
         }
     
+    //} else if (round(P_des * 10000) == round(P_min * 10000)){
+       
+      //  rho_mid = rho_min;
+               
     } else {
-	// Print in case something goes wrong
-	printf(
-      	"## Til_density_from_pressure_and_temperature: \n"
-      	"mat_id, P, P_des, T\n"
-      	"rho_min, P_min, rho_max, P_max\n"
-      	"%d, %.7g, %.7g, %.7g,\n"
-      	"%.7g, %.7g, %.7g, %.7g\n",
-      	mat->mat_id, P, P_des, T, rho_min, P_min, rho_max, P_max);
-
-	// Try avoid crash
-	if (P_des < P_min){
-	  return rho_min;
-	} else if (P_des > P_max){
-	  return rho_max;
-	} else {
-          error("Error in Til_density_from_pressure_and_temperature");
-          return 0.f;
-    	}
+        printf("P_min");
+        printf("\n");
+        printf("%.50f",P_min);
+        printf("\n");
+        
+                printf("P_mid");
+        printf("\n");
+        printf("%.50f",P_mid);
+        printf("\n");
+        
+                printf("P_max");
+        printf("\n");
+        printf("%.50f",P_max);
+        printf("\n");
+        
+                printf("P_des");
+        printf("\n");
+        printf("%.50f",P_des);
+        printf("\n");
+        
+                        printf("P");
+        printf("\n");
+        printf("%.50f",P);
+        printf("\n");
+        
+                                printf(" mat->P_min");
+        printf("\n");
+        printf("%.50f", mat->P_min);
+        printf("\n");
+        
+                                       printf(" T");
+        printf("\n");
+        printf("%.50f",T);
+        printf("\n");
+        
+        
+        
+        
+        error("Error in Til_density_from_pressure_and_temperature");
+        return 0.f;
     }
+    
+    /*
+    const float M = 5.9724e24;
+    const float L = 6.371e6;
+
+    printf("\n check %d, %.6g, %.6g, %.6g \n",
+    mat->mat_id,
+    P*M/L,
+    T,
+    rho_mid*M/L/L/L    
+    );
+    */
     return rho_mid;
 }
 
