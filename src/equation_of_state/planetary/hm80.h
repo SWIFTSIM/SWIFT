@@ -309,7 +309,7 @@ INLINE static float HM80_soundspeed_from_pressure(
   return 0.f;
 }
 
-// gas_temperature_from_internal_energy
+// gas_entropy_from_internal_energy
 INLINE static float HM80_temperature_from_internal_energy(
     float density, float u, const struct HM80_params *mat) {
 
