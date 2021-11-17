@@ -631,14 +631,31 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   for(i=0;i<3;i++)
       determinant += (p->Dinv[0][i]*(p->Dinv[1][(i+1)%3]*p->Dinv[2][(i+2)%3] - p->Dinv[1][(i+2)%3]*p->Dinv[2][(i+1)%3]));
     
+  float mean_D = (p->Dinv[0][0] + p->Dinv[0][1] + p->Dinv[0][2] + p->Dinv[1][0] + p->Dinv[1][1] + p->Dinv[1][2] + p->Dinv[2][0] + p->Dinv[2][1] + p->Dinv[2][2])/9.f;
+        
+        p->Dinv[0][0] = p->Dinv[0][0] / mean_D;
+        p->Dinv[0][1] = p->Dinv[0][1] / mean_D;
+        p->Dinv[0][2] = p->Dinv[0][2] / mean_D;
+        p->Dinv[1][0] = p->Dinv[1][0] / mean_D;
+        p->Dinv[1][1] = p->Dinv[1][1] / mean_D;
+        p->Dinv[1][2] = p->Dinv[1][2] / mean_D;
+        p->Dinv[2][0] = p->Dinv[2][0] / mean_D;
+        p->Dinv[2][1] = p->Dinv[2][1] / mean_D;
+        p->Dinv[2][2] = p->Dinv[2][2] / mean_D;
+        
+    
+ 
+  for(i=0;i<3;i++)
+      determinant += (p->Dinv[0][i]*(p->Dinv[1][(i+1)%3]*p->Dinv[2][(i+2)%3] - p->Dinv[1][(i+2)%3]*p->Dinv[2][(i+1)%3]));
+    
     
    for(i=0;i<3;i++){
       for(j=0;j<3;j++){ 
-          p->D[i][j] = ((p->Dinv[(i+1)%3][(j+1)%3] * p->Dinv[(i+2)%3][(j+2)%3]) - (p->Dinv[(i+1)%3][(j+2)%3]*p->Dinv[(i+2)%3][(j+1)%3]))/ determinant;
+          p->D[i][j] = ((p->Dinv[(i+1)%3][(j+1)%3] * p->Dinv[(i+2)%3][(j+2)%3]) - (p->Dinv[(i+1)%3][(j+2)%3]*p->Dinv[(i+2)%3][(j+1)%3]))/ (determinant * mean_D);
           if (isnan(p->D[i][j]) || isinf(p->D[i][j])){
               p->D[i][j] = 0.f;
-              //printf("D error");
-              //exit(0);
+              printf("D error");
+              exit(0);
           }
       }
    }
@@ -1035,19 +1052,38 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       p->force.matrix_flag = 1;
     
       float determinant=0.f;
-
+      float mean_C = (p->Cinv[0][0] + p->Cinv[0][1] + p->Cinv[0][2] + p->Cinv[1][0] + p->Cinv[1][1] + p->Cinv[1][2] + p->Cinv[2][0] + p->Cinv[2][1] + p->Cinv[2][2])/9.f;
+        
+        p->Cinv[0][0] = p->Cinv[0][0] / mean_C;
+        p->Cinv[0][1] = p->Cinv[0][1] / mean_C;
+        p->Cinv[0][2] = p->Cinv[0][2] / mean_C;
+        p->Cinv[1][0] = p->Cinv[1][0] / mean_C;
+        p->Cinv[1][1] = p->Cinv[1][1] / mean_C;
+        p->Cinv[1][2] = p->Cinv[1][2] / mean_C;
+        p->Cinv[2][0] = p->Cinv[2][0] / mean_C;
+        p->Cinv[2][1] = p->Cinv[2][1] / mean_C;
+        p->Cinv[2][2] = p->Cinv[2][2] / mean_C;
+        
+        
+        
+        
 
       for(i=0;i<3;i++)
           determinant += (p->Cinv[0][i]*(p->Cinv[1][(i+1)%3]*p->Cinv[2][(i+2)%3] - p->Cinv[1][(i+2)%3]*p->Cinv[2][(i+1)%3]));
 
            for(i=0;i<3;i++){
               for(j=0;j<3;j++){ 
-                  p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ determinant;
+                  p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ (determinant * mean_C);
                   if (isnan(p->C[i][j]) || isinf(p->C[i][j])){
                       p->C[i][j] = 0.f;
-                      //printf("C error");
-                      //exit(0);
+                      printf("C error");
+                      printf("\n");
+                      
+                      
+                      exit(0);
                   }
+                  
+                 
               }
        }
 
