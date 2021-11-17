@@ -204,7 +204,7 @@ INLINE static float idg_temperature_from_internal_energy(float density, float u,
 INLINE static float idg_density_from_pressure_and_temperature(float P, float T,
                                                  const struct idg_params *mat) {
 
-  return mat->one_over_gamma_minus_one * mat->CV * P / T;
+  return mat->one_over_gamma_minus_one * P / (T * mat->CV);
 }
 
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */
