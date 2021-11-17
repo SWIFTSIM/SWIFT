@@ -966,17 +966,17 @@ int cell_activate_subcell_stars_pair(struct cell *ci, struct cell *cj,
   if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
       cell_can_recurse_in_pair_stars_task(cj, ci)) {
 
-    int active_progeny = 0;
     const struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
-      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        active_progeny |= cell_activate_subcell_stars_pair(
-            ci->progeny[pid], cj->progeny[pjd], s, with_star_formation,
-            with_star_formation_sink, with_timestep_sync);
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL &&
+          cell_activate_subcell_stars_pair(
+              ci->progeny[pid], cj->progeny[pjd], s, with_star_formation,
+              with_star_formation_sink, with_timestep_sync))
+        return 1;
     }
-    return active_progeny;
+    return 0;
   } else {
     return ci_active || cj_active;
   }
