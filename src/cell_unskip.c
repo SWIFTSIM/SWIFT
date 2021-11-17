@@ -931,6 +931,57 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   } /* Otherwise, pair interation */
 }
 
+int cell_activate_subcell_stars_pair(struct cell *ci, struct cell *cj,
+                                     struct scheduler *s,
+                                     const int with_star_formation,
+                                     const int with_star_formation_sink,
+                                     const int with_timestep_sync) {
+
+  const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values. */
+  ci->stars.dx_max_part_old = ci->stars.dx_max_part;
+  ci->stars.h_max_old = ci->stars.h_max;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
+
+  cj->stars.dx_max_part_old = cj->stars.dx_max_part;
+  cj->stars.h_max_old = cj->stars.h_max;
+  cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+  cj->hydro.h_max_old = cj->hydro.h_max;
+
+  /* Get the orientation of the pair. */
+  double shift[3];
+  const int sid = space_getsid(s->space, &ci, &cj, shift);
+
+  const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                   with_star_formation_sink);
+  const int cj_active = cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+  /* Should we even bother? */
+  if (!ci_active && !cj_active) return 0;
+
+  /* recurse? */
+  if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
+      cell_can_recurse_in_pair_stars_task(cj, ci)) {
+
+    int active_progeny = 0;
+    const struct cell_split_pair *csp = &cell_split_pairs[sid];
+    for (int k = 0; k < csp->count; k++) {
+      const int pid = csp->pairs[k].pid;
+      const int pjd = csp->pairs[k].pjd;
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
+        active_progeny |= cell_activate_subcell_stars_pair(
+            ci->progeny[pid], cj->progeny[pjd], s, with_star_formation,
+            with_star_formation_sink, with_timestep_sync);
+    }
+    return active_progeny;
+  } else {
+    return ci_active || cj_active;
+  }
+}
+
 /**
  * @brief Traverse a sub-cell task and activate the black_holes drift tasks that
  * are required by a black_holes task

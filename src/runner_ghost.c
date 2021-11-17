@@ -465,7 +465,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-            if (l->t->ti_run < r->e->ti_current)
+            if (!l->t->skip && l->t->ti_run < r->e->ti_current)
               error("Density task should have been run.");
 #endif
 
