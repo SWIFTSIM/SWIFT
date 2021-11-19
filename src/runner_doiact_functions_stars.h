@@ -624,7 +624,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 }
 
 void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
-                         struct cell *restrict cj, int timer) {
+                         struct cell *restrict cj, int timer, const int offset,
+                         const int increment) {
 
   TIMER_TIC;
 
@@ -638,9 +639,9 @@ void DOPAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const int do_cj_stars = ci->nodeID == r->e->nodeID;
 #endif
   if (do_ci_stars && ci->stars.count != 0 && cj->hydro.count != 0)
-    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, 0, 1);
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, offset, increment);
   if (do_cj_stars && cj->stars.count != 0 && ci->hydro.count != 0)
-    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, 0, 1);
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, offset, increment);
 
   TIMER_TOC(TIMER_DOPAIR_STARS);
 }
@@ -1207,7 +1208,8 @@ void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c, const int offset,
  * @param cj #cell cj
  *
  */
-void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
+void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int offset, const int increment) {
 
   const struct engine *restrict e = r->e;
 
@@ -1276,9 +1278,9 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 #endif /* SWIFT_DEBUG_CHECKS */
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
-  DOPAIR1_STARS_NAIVE(r, ci, cj, 1);
+  DOPAIR1_STARS_NAIVE(r, ci, cj, 1, offset, increment);
 #else
-  DO_SYM_PAIR1_STARS(r, ci, cj, sid, shift, 0, 1);
+  DO_SYM_PAIR1_STARS(r, ci, cj, sid, shift, offset, increment);
 #endif
 }
 
@@ -1294,7 +1296,7 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
  * redundant computations to find the sid on-the-fly.
  */
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
-                       int gettimer) {
+                       int gettimer, const int offset, const int increment) {
 
   TIMER_TIC;
 
@@ -1320,7 +1322,8 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1_STARS(r, ci->progeny[pid], cj->progeny[pjd], 0);
+        DOSUB_PAIR1_STARS(r, ci->progeny[pid], cj->progeny[pjd], 0, offset,
+                          increment);
     }
   }
 
@@ -1382,7 +1385,7 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       }
     }
 
-    if (do_ci || do_cj) DOPAIR1_BRANCH_STARS(r, ci, cj);
+    if (do_ci || do_cj) DOPAIR1_BRANCH_STARS(r, ci, cj, offset, increment);
   }
 
   TIMER_TOC(TIMER_DOSUB_PAIR_STARS);
@@ -1419,21 +1422,8 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer,
         DOSUB_SELF1_STARS(r, ci->progeny[k], 0, offset, increment);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL) {
-            if (increment == 1) {
-              DOSUB_PAIR1_STARS(r, ci->progeny[k], ci->progeny[j], 0);
-            } else {
-
-              struct cell *pci = ci->progeny[k];
-              struct cell *pcj = ci->progeny[j];
-
-              double shift[3] = {0.0, 0.0, 0.0};
-              const int sid = space_getsid(r->e->s, &pci, &pcj, shift);
-
-              /* there is (currently) no clever way to split symmetric pair
-                 tasks, so we cannot recurse any further and have to do a naive
-                 non-symmetric interaction that can be properly split */
-              DO_SYM_PAIR1_STARS(r, pci, pcj, sid, shift, offset, increment);
-            }
+            DOSUB_PAIR1_STARS(r, ci->progeny[k], ci->progeny[j], 0, offset,
+                              increment);
           }
       }
   }

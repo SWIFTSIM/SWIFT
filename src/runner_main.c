@@ -301,15 +301,15 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dopair_branch_stars_density(r, ci, cj);
+            runner_dopair_branch_stars_density(r, ci, cj, 0, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_dopair_branch_stars_prep1(r, ci, cj);
+            runner_dopair_branch_stars_prep1(r, ci, cj, 0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_dopair_branch_stars_prep2(r, ci, cj);
+            runner_dopair_branch_stars_prep2(r, ci, cj, 0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dopair_branch_stars_feedback(r, ci, cj);
+            runner_dopair_branch_stars_feedback(r, ci, cj, 0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dopair_branch_bh_density(r, ci, cj);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -398,15 +398,15 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, 1);
           else if (t->subtype == task_subtype_stars_density)
-            runner_dosub_pair_stars_density(r, ci, cj, 1);
+            runner_dosub_pair_stars_density(r, ci, cj, 1, 0, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
-            runner_dosub_pair_stars_prep1(r, ci, cj, 1);
+            runner_dosub_pair_stars_prep1(r, ci, cj, 1, 0, 1);
           else if (t->subtype == task_subtype_stars_prep2)
-            runner_dosub_pair_stars_prep2(r, ci, cj, 1);
+            runner_dosub_pair_stars_prep2(r, ci, cj, 1, 0, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_pair_stars_feedback(r, ci, cj, 1);
+            runner_dosub_pair_stars_feedback(r, ci, cj, 1, 0, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)

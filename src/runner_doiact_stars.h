@@ -88,12 +88,13 @@
 
 void DOSELF1_BRANCH_STARS(struct runner *r, struct cell *c, const int offset,
                           const int increment);
-void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj);
+void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int offset, const int increment);
 
 void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer,
                        const int offset, const int increment);
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
-                       int gettimer);
+                       int gettimer, const int offset, const int increment);
 
 void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
                                  struct spart *restrict sparts,
