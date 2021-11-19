@@ -281,7 +281,8 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
-                        const int sid, const double *shift) {
+                        const int sid, const double *shift, const int offset,
+                        const int increment) {
 
   TIMER_TIC;
 
@@ -354,6 +355,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     /* Loop over the sparts in ci. */
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+
+      /* skip particles not handled by this split task */
+      if ((sort_i[pid].i - offset) % increment != 0) continue;
 
       /* Get a hold of the ith part in ci. */
       struct spart *restrict spi = &sparts_i[sort_i[pid].i];
@@ -500,6 +504,9 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
+
+      /* skip particles not handled by this split task */
+      if ((sort_j[pjd].i - offset) % increment != 0) continue;
 
       /* Get a hold of the jth part in cj. */
       struct spart *spj = &sparts_j[sort_j[pjd].i];
@@ -1271,7 +1278,7 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj) {
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
   DOPAIR1_STARS_NAIVE(r, ci, cj, 1);
 #else
-  DO_SYM_PAIR1_STARS(r, ci, cj, sid, shift);
+  DO_SYM_PAIR1_STARS(r, ci, cj, sid, shift, 0, 1);
 #endif
 }
 
@@ -1415,13 +1422,17 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer,
             if (increment == 1) {
               DOSUB_PAIR1_STARS(r, ci->progeny[k], ci->progeny[j], 0);
             } else {
+
+              struct cell *pci = ci->progeny[k];
+              struct cell *pcj = ci->progeny[j];
+
+              double shift[3] = {0.0, 0.0, 0.0};
+              const int sid = space_getsid(r->e->s, &pci, &pcj, shift);
+
               /* there is (currently) no clever way to split symmetric pair
                  tasks, so we cannot recurse any further and have to do a naive
                  non-symmetric interaction that can be properly split */
-              DO_NONSYM_PAIR1_STARS_NAIVE(r, ci->progeny[k], ci->progeny[j],
-                                          offset, increment);
-              DO_NONSYM_PAIR1_STARS_NAIVE(r, ci->progeny[j], ci->progeny[k],
-                                          offset, increment);
+              DO_SYM_PAIR1_STARS(r, pci, pcj, sid, shift, offset, increment);
             }
           }
       }
