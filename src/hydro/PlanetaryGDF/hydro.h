@@ -565,8 +565,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
 #ifdef PLANETARY_IMBALANCE
   /* Final operation on sum_wij (add self-contribution) */
-  //p->sum_wij += sqrtf(kernel_root)*p->mass; // sqrt variation
-  p->sum_wij += kernel_root*p->mass; // nosqrt variation
+  p->sum_wij += kernel_root*p->mass; 
 
   /* Compute norm sum_rij */
   float sum_rij_norm = 0.f;
@@ -575,9 +574,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   sum_rij_norm += p->sum_rij[2] * p->sum_rij[2] * h_inv * h_inv / p->sum_wij / p->sum_wij;
   p->I = sqrtf(sum_rij_norm);
    
-  /* Define alpha depending on kernel and eta=1.2348 */ // nosqrt variation
+  /* Define alpha depending on kernel and eta=1.2348 */ 
 #ifdef CUBIC_SPLINE_KERNEL
-  const float alpha = 7.5f;
+  const float alpha = 7.5f; // eta=1.2348
 #endif
 #ifdef WENDLAND_C6_KERNEL
   //const float alpha = 7.1f; // eta=1.2348

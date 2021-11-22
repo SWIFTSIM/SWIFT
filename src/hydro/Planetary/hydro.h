@@ -495,6 +495,14 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->inhibited_exact = 0;
   p->limited_part = 0;
 #endif
+
+  // imb2
+  p->I[0] = 0.f;
+  p->I[1] = 0.f;
+  p->I[2] = 0.f;
+  p->grad_rho[0] = 0.f;
+  p->grad_rho[1] = 0.f;
+  p->grad_rho[2] = 0.f;
 }
 
 /**
@@ -546,6 +554,17 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->n_density += kernel_root;
   p->n_density *= h_inv_dim;
 #endif
+
+// imb2
+  p->I[0] *= h_inv_dim*rho_inv; 
+  p->I[1] *= h_inv_dim*rho_inv; 
+  p->I[2] *= h_inv_dim*rho_inv; 
+
+  p->grad_rho[0] *= h_inv_dim_plus_one;
+  p->grad_rho[1] *= h_inv_dim_plus_one;
+  p->grad_rho[2] *= h_inv_dim_plus_one;
+
+  p->rho += p->I[0] * p->grad_rho[0] + p->I[1] * p->grad_rho[1] + p->I[2] * p->grad_rho[2];
 }
 
 /**
