@@ -2092,7 +2092,12 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
       /* do not automatically activate sub_pair tasks */
-      if (activate_stars_pair) scheduler_activate(s, t);
+      if (activate_stars_pair) {
+        atomic_cas(&t->skip, 2, 1);
+        scheduler_activate(s, t);
+      } else {
+        atomic_cas(&t->skip, 1, 2);
+      }
 
       if (t->type == task_type_pair) {
         /* Activate stars_in for each cell that is part of

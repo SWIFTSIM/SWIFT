@@ -528,20 +528,31 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
         /* Store current values of dx_max and h_max. */
-        else if (t_type == task_type_sub_pair && activate_stars_pair) {
+        else if (t_type == task_type_sub_pair) {
 
-          scheduler_activate(s, t);
+          if (!activate_stars_pair) {
+            /* explicitly skip the task, so that the ghost knows not to run it.
+               The task cannot be activated using scheduler_activate after
+               this, since that expects t->skip==1. */
+            atomic_cas(&t->skip, 1, 2);
+          } else {
+            /* reset the task to a normal skipped task, if it was explicitly
+               skipped before. Now scheduler_activate_will work again. */
+            atomic_cas(&t->skip, 2, 1);
 
-          /* Add stars_in dependencies for each cell that is part of
-           * a pair/sub_pair task as to not miss any dependencies */
-          if (ci_nodeID == nodeID)
-            scheduler_activate(s, ci->hydro.super->stars.stars_in);
-          if (cj_nodeID == nodeID)
-            scheduler_activate(s, cj->hydro.super->stars.stars_in);
+            scheduler_activate(s, t);
 
-          cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
-                                            with_star_formation_sink,
-                                            with_timestep_sync);
+            /* Add stars_in dependencies for each cell that is part of
+             * a pair/sub_pair task as to not miss any dependencies */
+            if (ci_nodeID == nodeID)
+              scheduler_activate(s, ci->hydro.super->stars.stars_in);
+            if (cj_nodeID == nodeID)
+              scheduler_activate(s, cj->hydro.super->stars.stars_in);
+
+            cell_activate_subcell_stars_tasks(ci, cj, s, with_star_formation,
+                                              with_star_formation_sink,
+                                              with_timestep_sync);
+          }
         }
       }
 

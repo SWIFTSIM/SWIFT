@@ -464,10 +464,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           /* Run through this cell's density interactions. */
           for (struct link *l = finger->stars.density; l != NULL; l = l->next) {
 
-            /* skip pair tasks that were not activated */
-            if (l->t->type == task_type_sub_pair &&
-                l->t->ti_run < r->e->ti_current)
-              continue;
+            /* skip pair tasks that were explicitly not activated */
+            if (l->t->skip == 2) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
