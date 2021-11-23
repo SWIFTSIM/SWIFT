@@ -25,6 +25,7 @@
 #include "cooling.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "exp10.h"
 #include "gravity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
