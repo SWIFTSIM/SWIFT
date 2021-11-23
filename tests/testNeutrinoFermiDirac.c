@@ -17,12 +17,14 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Some standard headers */
 #include <fenv.h>
 #include <math.h>
 
 /* Includes. */
-#include "../config.h"
 #include "neutrino/Default/fermi_dirac.h"
 #include "swift.h"
 
