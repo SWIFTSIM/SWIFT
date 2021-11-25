@@ -579,6 +579,9 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
+int cell_activate_subcell_black_holes_pair(struct cell *ci, struct cell *cj,
+                                           struct scheduler *s,
+                                           const int with_timestep_sync);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,

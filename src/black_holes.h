@@ -33,4 +33,11 @@
 #error "Invalid choice of black hole model"
 #endif
 
+struct engine;
+struct space;
+
+void black_holes_exact_density_compute(struct space *s, const struct engine *e);
+void black_holes_exact_density_check(struct space *s, const struct engine *e,
+                                     const double rel_tol);
+
 #endif
