@@ -48,7 +48,7 @@ struct exact_density_data {
  * counters.
  */
 void black_holes_exact_density_compute_mapper(void *map_data, int nr_bparts,
-                                        void *extra_data) {
+                                              void *extra_data) {
 #ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
 
   /* Unpack the data */
@@ -66,8 +66,8 @@ void black_holes_exact_density_compute_mapper(void *map_data, int nr_bparts,
     const long long id = bpi->id;
 
     /* Is the particle active and part of the subset to be tested ? */
-    if (id % SWIFT_BLACK_HOLES_DENSITY_CHECKS == 0 && bpart_is_starting(bpi, e) &&
-        (bpi->has_done_feedback || e->step <= 0)) {
+    if (id % SWIFT_BLACK_HOLES_DENSITY_CHECKS == 0 &&
+        bpart_is_starting(bpi, e) && (bpi->has_done_feedback || e->step <= 0)) {
 
       /* Get some information about the particle */
       const double pix[3] = {bpi->x[0], bpi->x[1], bpi->x[2]};
@@ -152,7 +152,8 @@ void black_holes_exact_density_compute_mapper(void *map_data, int nr_bparts,
  * @param s The #space.
  * @param e The #engine.
  */
-void black_holes_exact_density_compute(struct space *s, const struct engine *e) {
+void black_holes_exact_density_compute(struct space *s,
+                                       const struct engine *e) {
 
 #ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
 
@@ -176,15 +177,15 @@ void black_holes_exact_density_compute(struct space *s, const struct engine *e) 
 }
 
 /**
- * @brief Check the black hole particles' density and force calculations against the
- * values obtained via the brute-force summation.
+ * @brief Check the black hole particles' density and force calculations against
+ * the values obtained via the brute-force summation.
  *
  * @param s The #space.
  * @param e The #engine.
  * @param rel_tol Relative tolerance for the checks
  */
 void black_holes_exact_density_check(struct space *s, const struct engine *e,
-                               const double rel_tol) {
+                                     const double rel_tol) {
 
 #ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
 
@@ -228,8 +229,8 @@ void black_holes_exact_density_check(struct space *s, const struct engine *e,
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
                          kernel_gamma * bpi->h * bpi->h * bpi->h * bpi->n;
 
-    if (id % SWIFT_BLACK_HOLES_DENSITY_CHECKS == 0 && bpart_is_starting(bpi, e) &&
-        (bpi->has_done_feedback || e->step <= 0)) {
+    if (id % SWIFT_BLACK_HOLES_DENSITY_CHECKS == 0 &&
+        bpart_is_starting(bpi, e) && (bpi->has_done_feedback || e->step <= 0)) {
 
       fprintf(
           file_swift,
@@ -277,8 +278,8 @@ void black_holes_exact_density_check(struct space *s, const struct engine *e,
     const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
                          kernel_gamma * bpi->h * bpi->h * bpi->h * bpi->n_exact;
 
-    if (id % SWIFT_BLACK_HOLES_DENSITY_CHECKS == 0 && bpart_is_starting(bpi, e) &&
-        (bpi->has_done_feedback || e->step <= 0)) {
+    if (id % SWIFT_BLACK_HOLES_DENSITY_CHECKS == 0 &&
+        bpart_is_starting(bpi, e) && (bpi->has_done_feedback || e->step <= 0)) {
 
       counter++;
 

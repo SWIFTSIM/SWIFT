@@ -465,6 +465,7 @@ int cell_pack_end_step_stars(struct cell *restrict c,
   /* Pack this cell's data. */
   pcells[0].ti_end_min = c->stars.ti_end_min;
   pcells[0].dx_max_part = c->stars.dx_max_part;
+  pcells[0].h_max = c->stars.h_max;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -497,6 +498,7 @@ int cell_unpack_end_step_stars(struct cell *restrict c,
   /* Unpack this cell's data. */
   c->stars.ti_end_min = pcells[0].ti_end_min;
   c->stars.dx_max_part = pcells[0].dx_max_part;
+  c->stars.h_max = pcells[0].h_max;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
