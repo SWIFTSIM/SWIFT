@@ -258,6 +258,9 @@ struct pcell_step_black_holes {
 
   /*! Maximal distance any #part has travelled since last rebuild */
   float dx_max_part;
+
+  /*! Maximal smoothing length in the cell */
+  float h_max;
 };
 
 /**

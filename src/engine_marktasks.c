@@ -422,6 +422,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                              with_star_formation_sink,
                                              with_timestep_sync)));
 
+      const int activate_bh_pair =
+          (t_subtype == task_subtype_bh_density ||
+           t_subtype == task_subtype_bh_swallow ||
+           t_subtype == task_subtype_do_gas_swallow ||
+           t_subtype == task_subtype_do_bh_swallow ||
+           t_subtype == task_subtype_bh_feedback) &&
+          (t_type == task_type_pair || (t_type == task_type_sub_pair &&
+                                        cell_activate_subcell_black_holes_pair(
+                                            ci, cj, s, with_timestep_sync)));
+
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||
            t_subtype == task_subtype_gradient ||
@@ -652,7 +662,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                (ci_active_black_holes || cj_active_black_holes) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
-        scheduler_activate(s, t);
+        if (activate_bh_pair) {
+          atomic_cas(&t->skip, 2, 1);
+          scheduler_activate(s, t);
+        } else {
+          atomic_cas(&t->skip, 1, 2);
+        }
 
         /* Set the correct drifting flags */
         if (t_type == task_type_pair && t_subtype == task_subtype_bh_density) {
@@ -683,8 +698,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Store current values of dx_max and h_max. */
         else if (t_type == task_type_sub_pair &&
                  t_subtype == task_subtype_bh_density) {
-          cell_activate_subcell_black_holes_tasks(ci, cj, s,
-                                                  with_timestep_sync);
+
+          if (activate_bh_pair) {
+            cell_activate_subcell_black_holes_tasks(ci, cj, s,
+                                                    with_timestep_sync);
+          }
+
           /* Activate bh_in for each cell that is part of
            * a sub_pair task as to not miss any dependencies */
           if (ci_nodeID == nodeID)
@@ -1249,89 +1268,99 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         scheduler_activate(s, cj->hydro.super->black_holes.swallow_ghost_0);
 
 #ifdef WITH_MPI
-        /* Activate the send/recv tasks. */
         if (ci_nodeID != nodeID) {
-
-          /* Receive the foreign parts to compute BH accretion rates and do the
-           * swallowing */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_merger);
-
-          /* Send the local BHs to tag the particles to swallow and to do
-           * feedback */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_rho,
-                                  ci_nodeID);
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_feedback,
-                                  ci_nodeID);
-
-          /* Drift before you send */
-          cell_activate_drift_bpart(cj, s);
 
           /* Send the new BH time-steps */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
                                   ci_nodeID);
 
-          /* Receive the foreign BHs to tag particles to swallow and for
-           * feedback */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback);
-
           /* Receive the foreign BH time-steps */
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_bpart);
 
-          /* Send the local part information */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_part_swallow,
-                                  ci_nodeID);
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_merger,
-                                  ci_nodeID);
-
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          cell_activate_drift_part(cj, s);
-
         } else if (cj_nodeID != nodeID) {
-
-          /* Receive the foreign parts to compute BH accretion rates and do the
-           * swallowing */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_merger);
-
-          /* Send the local BHs to tag the particles to swallow and to do
-           * feedback */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_rho,
-                                  cj_nodeID);
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_feedback,
-                                  cj_nodeID);
-
-          /* Drift before you send */
-          cell_activate_drift_bpart(ci, s);
 
           /* Send the new BH time-steps */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
                                   cj_nodeID);
 
-          /* Receive the foreign BHs to tag particles to swallow and for
-           * feedback */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback);
-
           /* Receive the foreign BH time-steps */
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
-
-          /* Send the local part information */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_part_swallow,
-                                  cj_nodeID);
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_merger,
-                                  cj_nodeID);
-
-          /* Drift the cell which will be sent; note that not all sent
-             particles will be drifted, only those that are needed. */
-          cell_activate_drift_part(ci, s);
         }
+        if (activate_bh_pair) {
+          /* Activate the send/recv tasks. */
+          if (ci_nodeID != nodeID) {
+
+            /* Receive the foreign parts to compute BH accretion rates and do
+             * the swallowing */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_swallow);
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_merger);
+
+            /* Send the local BHs to tag the particles to swallow and to do
+             * feedback */
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_rho,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send,
+                                    task_subtype_bpart_feedback, ci_nodeID);
+
+            /* Drift before you send */
+            cell_activate_drift_bpart(cj, s);
+
+            /* Receive the foreign BHs to tag particles to swallow and for
+             * feedback */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
+            scheduler_activate_recv(s, ci->mpi.recv,
+                                    task_subtype_bpart_feedback);
+
+            /* Send the local part information */
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_part_swallow,
+                                    ci_nodeID);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_bpart_merger,
+                                    ci_nodeID);
+
+            /* Drift the cell which will be sent; note that not all sent
+               particles will be drifted, only those that are needed. */
+            cell_activate_drift_part(cj, s);
+
+          } else if (cj_nodeID != nodeID) {
+
+            /* Receive the foreign parts to compute BH accretion rates and do
+             * the swallowing */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_swallow);
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_merger);
+
+            /* Send the local BHs to tag the particles to swallow and to do
+             * feedback */
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_rho,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send,
+                                    task_subtype_bpart_feedback, cj_nodeID);
+
+            /* Drift before you send */
+            cell_activate_drift_bpart(ci, s);
+
+            /* Receive the foreign BHs to tag particles to swallow and for
+             * feedback */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
+            scheduler_activate_recv(s, cj->mpi.recv,
+                                    task_subtype_bpart_feedback);
+
+            /* Send the local part information */
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_part_swallow,
+                                    cj_nodeID);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_bpart_merger,
+                                    cj_nodeID);
+
+            /* Drift the cell which will be sent; note that not all sent
+               particles will be drifted, only those that are needed. */
+            cell_activate_drift_part(ci, s);
+          }
+        } /* activate_bh_pair */
 #endif
       }
 

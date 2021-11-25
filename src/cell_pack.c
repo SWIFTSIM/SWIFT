@@ -532,6 +532,7 @@ int cell_pack_end_step_black_holes(
   /* Pack this cell's data. */
   pcells[0].ti_end_min = c->black_holes.ti_end_min;
   pcells[0].dx_max_part = c->black_holes.dx_max_part;
+  pcells[0].h_max = c->black_holes.h_max;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
@@ -565,6 +566,7 @@ int cell_unpack_end_step_black_holes(
   /* Unpack this cell's data. */
   c->black_holes.ti_end_min = pcells[0].ti_end_min;
   c->black_holes.dx_max_part = pcells[0].dx_max_part;
+  c->black_holes.h_max = pcells[0].h_max;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;

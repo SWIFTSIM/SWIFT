@@ -797,6 +797,8 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           for (struct link *l = finger->black_holes.density; l != NULL;
                l = l->next) {
 
+            if (l->t->skip == 2) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
               error("Density task should have been run.");
