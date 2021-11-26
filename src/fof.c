@@ -105,7 +105,7 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   char directory[PARSER_MAX_LINE_SIZE] = {0};
   sprintf(directory, "%s", props->base_name);
   const char *dirp = dirname(directory);
-  safe_checkdir(dirp, /*create=*/1);
+  if (engine_rank == 0) safe_checkdir(dirp, /*create=*/1);
 
   /* Read the minimum group size. */
   props->min_group_size = parser_get_param_int(params, "FOF:min_group_size");
