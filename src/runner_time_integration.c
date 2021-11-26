@@ -1123,7 +1123,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
     if (cp != NULL) {
 
       /* Recurse */
-      runner_do_timestep_collect(r, c, 0);
+      runner_do_timestep_collect(r, cp, 0);
 
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
