@@ -19,22 +19,6 @@
 AC_INIT([SWIFT],[0.9.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
-#  We want to stop when given unrecognised options. No subdirs so this is safe.
-enable_option_checking=${enable_option_checking:-fatal}
-if test -n "$ac_unrecognized_opts"; then
-    case $enable_option_checking in
-        no)
-        ;;
-        fatal)
-            { $as_echo "$as_me: error: unrecognized options: $ac_unrecognized_opts" >&2
-              { (exit 1); exit 1; }; }
-        ;;
-        *)
-            $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2
-        ;;
-    esac
-fi
-
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
@@ -2714,3 +2698,10 @@ AC_MSG_RESULT([
 
  ------------------------]
 )
+
+#  Report any unrecognised options loudly.
+if test "$ac_unrecognized_opts" != ""; then
+AC_MSG_RESULT([
+  *** WARNING: unrecognized options: $ac_unrecognized_opts ***
+])
+fi

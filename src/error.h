@@ -132,6 +132,28 @@ extern int engine_rank;
 #endif
 
 /**
+ * @brief Macro to print a localized warning message with variable arguments.
+ *
+ * Same as message(), but this version prints to the standard error and is
+ * flushed immediately.
+ *
+ */
+#ifdef WITH_MPI
+extern int engine_rank;
+#define warning(s, ...)                                                \
+  ({                                                                   \
+    fprintf(stderr, "[%04i] %s %s: WARNING: " s "\n", engine_rank,     \
+            clocks_get_timesincestart(), __FUNCTION__, ##__VA_ARGS__); \
+  })
+#else
+#define warning(s, ...)                                                     \
+  ({                                                                        \
+    fprintf(stderr, "%s %s: WARNING: " s "\n", clocks_get_timesincestart(), \
+            __FUNCTION__, ##__VA_ARGS__);                                   \
+  })
+#endif
+
+/**
  * @brief Assertion macro compatible with MPI
  *
  */
