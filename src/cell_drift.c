@@ -243,6 +243,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         /* Update the maximal active smoothing length in the cell */
         cell_h_max_active = max(cell_h_max_active, p->h);
       }
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+      p->limiter_data.n_limiter = 0.f;
+      p->limiter_data.N_limiter = 0;
+#endif
     }
 
     /* Now, get the maximal particle motion from its square */
