@@ -939,8 +939,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
 
-    c->timestep_collect = scheduler_addtask(s, task_type_collect,
-                                            task_subtype_none, 0, 0, c, NULL);
+    if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
+        c->black_holes.count > 0 || c->sinks.count > 0) {
+      c->timestep_collect = scheduler_addtask(s, task_type_collect,
+                                              task_subtype_none, 0, 0, c, NULL);
+    }
 
     if (with_star_formation && c->hydro.count > 0) {
       c->hydro.star_formation = scheduler_addtask(
