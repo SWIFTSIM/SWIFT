@@ -108,12 +108,7 @@ __attribute__((always_inline)) INLINE static void dark_matter_first_init_dmpart(
 
       dmp->sidm_data.sigma = sidm_props->sigma;
 
-    } else {
-
-      dmp->sidm_data.sigma = 0.;
-
     }
-
 }
 
 /**
@@ -217,6 +212,8 @@ __attribute__((always_inline)) INLINE static void dark_matter_part_has_no_neighb
     dmp->velocity_ngb[1] = FLT_MAX;
     dmp->velocity_ngb[2] = FLT_MAX;
     dmp->velocity_dispersion = FLT_MAX;
+
+    dmp->sidm_data.sigma = 0.f;
 }
 
 
