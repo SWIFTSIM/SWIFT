@@ -1,0 +1,7 @@
+SodShock BCC 3D
+---------------
+
+This example is the exact same as the SodShock_3D, but instead
+of using a glass file, it uses a 'fake glass' that is generated
+as an exact body centered cubic lattice with the makeGlass.py
+script.
