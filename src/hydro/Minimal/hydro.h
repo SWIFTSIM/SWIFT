@@ -831,9 +831,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
   
   /* Do not decrease the magnetic flux density by more than a factor of 2*/
-  xp->B_full[0] = max(xp->B_full[0] + delta_Bx, 0.5f * xp->B_full[0]);
-  xp->B_full[1] = max(xp->B_full[1] + delta_By, 0.5f * xp->B_full[1]);
-  xp->B_full[2] = max(xp->B_full[2] + delta_Bz, 0.5f * xp->B_full[2]);
+  xp->B_full[0] = xp->B_full[0] + delta_Bx;
+  xp->B_full[1] = xp->B_full[1] + delta_By;
+  xp->B_full[2] = xp->B_full[2] + delta_Bz;
 
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);

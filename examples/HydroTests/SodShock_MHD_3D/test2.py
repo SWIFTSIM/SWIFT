@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 attrnum = 15
-snapnum = 10
+snapnum = 8
 file_prefix = "sodShock_000"
 
-break_ptcle_id = 1984
+break_ptcle_id = 517709
 
 attrev = np.zeros((attrnum,snapnum))
 
@@ -26,7 +26,7 @@ for ii in range(snapnum):
 		val = prop[idx].value
 		#print(val)
 		if val.ndim > 0: 
-			attrev[jj,ii] = val[2]
+			attrev[jj,ii] = val[1]
 		else:
 			attrev[jj,ii] = val
 
@@ -44,7 +44,7 @@ for ii in range(3):
 
 		count += 1
 
-plt.tight_layout()
+#plt.tight_layout()
 plt.show() 
 
 quit()
