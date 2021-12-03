@@ -65,6 +65,9 @@ struct xpart {
 
   /*! Internal energy at the last full step. */
   float u_full;
+  
+  /*! Magnetic flux density at the full step. */
+  float B_full[3];
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -121,7 +124,17 @@ struct part {
 
   /*! Particle density. */
   float rho;
+  
+  /*! Particle density squared. */
+  float rhosq;
+  
+  /*! Particle magnetic flux density. */
+  float B[3];
+  
+  /*! Time derivative of the magnetic field. */
+  float B_dt[3];
 
+  
   /* Store density/force specific stuff. */
   union {
 

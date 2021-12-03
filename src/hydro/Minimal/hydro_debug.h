@@ -38,12 +38,18 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
   printf(
       "\n "
       "x=[%.6g, %.6g, %.6g], v=[%.3g, %.3g, %.3g], \n "
-      "v_full=[%.3g, %.3g, %.3g], a=[%.3g, %.3g, %.3g], \n "
+      "v_full=[%.3g, %.3g, %.3g], a=[%.12g, %.12g, %.12g], \n "
+      "rho_squared=%.12g, \n "
+      "B=[%.12g, %.12g, %.12g], dB/dt=[%.12g, %.12g, %.12g], \n "
+      "B_full=[%.12g, .%.12g, %.12g], \n "
       "m=%.3g, u=%.3g, du/dt=%.3g, P=%.3g, c_s=%.3g, \n "
       "v_sig=%.3g, h=%.3g, dh/dt=%.3g, wcount=%.3g, rho=%.3g, \n "
       "dh_drho=%.3g, time_bin=%d wakeup=%d \n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
+      p->rhosq,
+      p->B[0], p->B[1], p->B[2], p->B_dt[0], p->B_dt[1], p->B_dt[2],
+      xp->B_full[0], xp->B_full[1], xp->B_full[2],
       p->mass, p->u, p->u_dt, hydro_get_comoving_pressure(p),
       p->force.soundspeed, p->force.v_sig, p->h, p->force.h_dt,
       p->density.wcount, p->rho, p->density.rho_dh, p->time_bin,

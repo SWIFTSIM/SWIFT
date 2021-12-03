@@ -50,7 +50,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
-  *num_fields = 8;
+  *num_fields = 9;
 
   /* List what we want to read */
   list[0] = io_make_input_field("Coordinates", DOUBLE, 3, COMPULSORY,
@@ -69,6 +69,8 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_ACCELERATION, parts, a_hydro);
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
+  list[8] = io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
+                                UNIT_CONV_MAGNETIC_FIELD, parts, B);
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
@@ -179,7 +181,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 9;
+  *num_fields = 12;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -219,6 +221,18 @@ INLINE static void hydro_write_particles(const struct part* parts,
   list[8] = io_make_output_field_convert_part(
       "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
       xparts, convert_P, "Co-moving pressures of the particles");
+
+  list[9] = io_make_output_field("DensitiesSquared", FLOAT, 1, UNIT_CONV_DENSITY_SQUARED, -3.f,
+                                 parts, rhosq,
+                                 "Co-moving mass densities squared of the particles");
+
+  list[10] = io_make_output_field(
+      "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
+      B, "Magnetic flux density of the particles");
+
+  list[11] = io_make_output_field(
+      "Acceleration", FLOAT, 3, UNIT_CONV_ACCELERATION, 1.f, parts,
+      a_hydro, "Acceleration of the particles");
 }
 
 /**

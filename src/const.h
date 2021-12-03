@@ -81,6 +81,8 @@
    gradient matrix and use SPH gradients instead. */
 #define const_gizmo_min_wcorr 0.5f
 
+#define const_vacuum_permeability 0.1256637062
+
 /* Types of gradients to use for SHADOWFAX_SPH */
 /* If no option is chosen, no gradients are used (first order scheme) */
 #define SHADOWFAX_GRADIENTS

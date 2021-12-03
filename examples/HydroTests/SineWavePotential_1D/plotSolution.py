@@ -36,7 +36,7 @@ cs2 = 2.*uconst/3.
 A = 10.
 
 if len(sys.argv) < 2:
-  print "Need to provide a filename argument!"
+  print("Need to provide a filename argument!")
   exit()
 
 fileName = sys.argv[1]
@@ -57,7 +57,7 @@ a = A * np.sin(2. * np.pi * x)
 
 apart = A * np.sin(2. * np.pi * coords[:,0])
 tkin = -0.5 * np.dot(apart, coords[:,0])
-print tkin, 0.5 * np.dot(m, vs[:,0]**2)
+print(tkin, 0.5 * np.dot(m, vs[:,0]**2))
 
 ids_reverse = np.argsort(ids)
 

@@ -267,6 +267,11 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_LENGTH] = -3.f;
       break;
 
+    case UNIT_CONV_DENSITY_SQUARED:
+      baseUnitsExp[UNIT_MASS] = 2.f;
+      baseUnitsExp[UNIT_LENGTH] = -6.f;
+      break;
+
     case UNIT_CONV_SPEED:
     case UNIT_CONV_VELOCITY:
       baseUnitsExp[UNIT_LENGTH] = 1.f;

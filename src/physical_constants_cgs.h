@@ -94,6 +94,9 @@ const double const_year_cgs = 3.15569251e7;
 /*! Astronomical unit [cm] */
 const double const_astronomical_unit_cgs = 1.49597870700e13;
 
+/*! Vacuum permeability [g cm s^-2 A^-2] */
+const double const_vacuum_perm_cgs = 1.256637062e-1;
+
 #ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
 
 /*! Parsec [cm] */

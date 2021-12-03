@@ -57,12 +57,11 @@ params = {'axes.labelsize': 10,
 'figure.subplot.wspace'  : 0.15,
 'figure.subplot.hspace'  : 0.12,
 'lines.markersize' : 6,
-'lines.linewidth' : 3.,
-'text.latex.unicode': True
+'lines.linewidth' : 3.
+#'text.latex.unicode': True
 }
 rcParams.update(params)
 rc('font',**{'family':'sans-serif','sans-serif':['Times']})
-
 
 snap = int(sys.argv[1])
 
