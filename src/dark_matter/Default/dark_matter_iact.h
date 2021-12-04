@@ -520,12 +520,12 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         w *= units_cgs_conversion_factor(us, UNIT_CONV_TIME); /* physical but internal units now */
         double w2 = w * w;
         const float a = v * v / w2;
-        const float a2 = a * a;
-        const float dx = u / ( 2.f * ( a + 1.f )) - 1.f / ( 2.f * a );
-        const float x = ( 1.f / dx ) / a2 + 2.f / a + 1.f;
+        const float dx = u * a / (1.f + a) - 1.f;
+        const float cos_theta = ( 1.f / dx + 1.f) * (2.f / a) + 1.f;
+        const float sin_theta = sqrt(1.f - cos_theta * cos_theta);
         
         /* Calculate theta from prob. distribution */
-        const float theta = acos(x);
+        /* const float theta = acos(x); */
         
         /* Random number for other angle */
         const float rand_phi = random_unit_interval(pj->id_or_neg_offset, ti_current, random_number_SIDM_phi);
@@ -534,9 +534,12 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         const float phi = 2.f * M_PI * rand_phi;
         
         /* Not so randomly oriented unit vector */
-        e[0] = sin(theta) * cos(phi);
+        /* e[0] = sin(theta) * cos(phi);
         e[1] = sin(theta) * sin(phi);
-        e[2] = cos(theta);
+        e[2] = cos(theta);*/
+        e[0] = sin_theta * cos(phi);
+        e[1] = sin_theta * sin(phi);
+        e[2] = cos_theta;
     }
     
     /*double energy_before, energy_after;
