@@ -800,7 +800,14 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
           }
         }
 
-      } /* Cell is split */
+      } /* Task is splittable */
+
+      else {
+
+#ifdef ONLY_SUBTASKS
+        t->type = task_type_sub_self;
+#endif
+      }
 
     } /* Self interaction */
 
@@ -893,8 +900,10 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
         }
 
         /* Otherwise, break it up if it is too large? */
-      } else if (scheduler_doforcesplit && ci->split && cj->split &&
-                 (ci->hydro.count > space_maxsize / cj->hydro.count)) {
+      } /* Task is splittable */
+
+      else if (scheduler_doforcesplit && ci->split && cj->split &&
+               (ci->hydro.count > space_maxsize / cj->hydro.count)) {
         // message( "force splitting pair with %i and %i parts." ,
         // ci->hydro.count , cj->hydro.count );
 
@@ -911,6 +920,13 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
                 scheduler_splittask_hydro(tl, s);
                 tl->flags = space_getsid(s->space, &t->ci, &t->cj, shift);
               }
+      }
+
+      else {
+
+#ifdef ONLY_SUBTASKS
+        t->type = task_type_sub_pair;
+#endif
       }
     } /* pair interaction? */
   }   /* iterate over the current task. */

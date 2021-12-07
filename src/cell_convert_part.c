@@ -268,6 +268,9 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   const size_t one = 1;
   atomic_sub(&e->s->nr_extra_sparts, one);
 
+  /* Give the new particle the correct depth */
+  cell_set_spart_h_depth(sp, c);
+
   return sp;
 }
 

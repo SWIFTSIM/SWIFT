@@ -107,6 +107,9 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

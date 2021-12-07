@@ -197,7 +197,7 @@ RUNNER_CHECK_SORTS(stars)
  *      for recursive calls.
  */
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
-                          int cleanup, int clock) {
+                          int cleanup, const int lock, const int clock) {
 
   struct sort_entry *fingers[8];
   const int count = c->hydro.count;
@@ -211,6 +211,9 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
 
+  /* Should we lock the cell once more? */
+  if (lock) lock_lock(&c->hydro.extra_sort_lock);
+
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->hydro.do_sort;
   if (cleanup) {
@@ -218,7 +221,11 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   } else {
     flags &= ~c->hydro.sorted;
   }
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) {
+    if (lock && lock_unlock(&c->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock the cell!");
+    return;
+  }
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_part_drifted(c, r->e))
@@ -259,7 +266,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
               r, c->progeny[k], flags,
               cleanup && (c->progeny[k]->hydro.dx_max_sort_old >
                           space_maxreldx * c->progeny[k]->dmin),
-              0);
+              /*lock=*/lock, /*clock=*/0);
           dx_max_sort = max(dx_max_sort, c->progeny[k]->hydro.dx_max_sort);
           dx_max_sort_old =
               max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);
@@ -417,6 +424,10 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   c->hydro.do_sort = 0;
   cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
   c->hydro.requires_sorts = 0;
+
+  /* Make sure we unlock if necessary */
+  if (lock && lock_unlock(&c->hydro.extra_sort_lock) != 0)
+    error("Impossible to unlock the cell!");
 
   if (clock) TIMER_TOC(timer_dosort);
 }
@@ -673,7 +684,7 @@ void runner_do_all_hydro_sort(struct runner *r, struct cell *c) {
   if (c->hydro.super == c) {
 
     /* Sort everything */
-    runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /*timer=*/0);
+    runner_do_hydro_sort(r, c, 0x1FFF, /*cleanup=*/0, /*lock=*/0, /*timer=*/0);
 
   } else {
 

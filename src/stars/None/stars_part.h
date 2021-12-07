@@ -58,6 +58,9 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   /*! Splitting structure */
   struct particle_splitting_data split_data;
 

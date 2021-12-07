@@ -92,8 +92,14 @@
 #define _DOSUB_PAIR2(f) PASTE(runner_dosub_pair2, f)
 #define DOSUB_PAIR2 _DOSUB_PAIR2(FUNCTION)
 
-#define _DOSUB_SUBSET(f) PASTE(runner_dosub_subset, f)
-#define DOSUB_SUBSET _DOSUB_SUBSET(FUNCTION)
+#define _DOSUB_SELF_SUBSET(f) PASTE(runner_dosub_self_subset, f)
+#define DOSUB_SELF_SUBSET _DOSUB_SELF_SUBSET(FUNCTION)
+
+#define _DOSUB_PAIR_SUBSET(f) PASTE(runner_dosub_pair_subset, f)
+#define DOSUB_PAIR_SUBSET _DOSUB_PAIR_SUBSET(FUNCTION)
+
+#define _FIND_SUB(f) PASTE(runner_find_sub, f)
+#define FIND_SUB _FIND_SUB(FUNCTION)
 
 #define _IACT_NONSYM(f) PASTE(runner_iact_nonsym, f)
 #define IACT_NONSYM _IACT_NONSYM(FUNCTION)
@@ -125,27 +131,37 @@
 #define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset, f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
-void DOSELF1_BRANCH(struct runner *r, struct cell *c);
-void DOSELF2_BRANCH(struct runner *r, struct cell *c);
+void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
+                    const int limit_min_h, const int limit_max_h);
+void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
+                    const int limit_min_h, const int limit_max_h);
 
-void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj);
-void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj);
+void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
+                    const int limit_min_h, const int limit_max_h);
+void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
+                    const int limit_min_h, const int limit_max_h);
 
-void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer);
-void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer);
+void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
+                 const int gettimer);
+void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
+                 const int gettimer);
 
 void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
-                 int gettimer);
+                 int recurse_below_h_max, const int gettimer);
 void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
-                 int gettimer);
+                 int recurse_below_h_max, const int gettimer);
 
-void DOSELF_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts, int *restrict ind,
-                          int count);
+void DOSELF_SUBSET_BRANCH(struct runner *r, const struct cell *ci,
+                          struct part *restrict parts, const int *ind,
+                          const int count);
 
-void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
-                          struct part *restrict parts_i, int *restrict ind,
-                          int count, struct cell *restrict cj);
+void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
+                          struct part *restrict parts_i, const int *ind,
+                          const int count, struct cell *restrict cj);
 
-void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                  int *ind, int count, struct cell *cj, int gettimer);
+void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
+                       const int *ind, const int count, struct cell *cj,
+                       const int gettimer);
+
+void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
+                       const int *ind, const int count, const int gettimer);

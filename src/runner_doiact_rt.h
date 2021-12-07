@@ -62,10 +62,12 @@
 #define _IACT_RT(f) PASTE(runner_iact_rt, f)
 #define IACT_RT _IACT_RT(FUNCTION)
 
-void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer);
+void DOSELF1_BRANCH_RT(struct runner *r, const struct cell *c,
+                       const int limit_min_h, const int limit_max_h);
 void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj,
-                       int timer);
+                       const int limit_min_h, const int limit_max_h);
 
-void DOSUB_SELF1_RT(struct runner *r, struct cell *ci, int timer);
+void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int recurse_below_h_max,
+                    const int timer);
 void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
-                    int timer);
+                    int recurse_below_h_max, const int timer);
