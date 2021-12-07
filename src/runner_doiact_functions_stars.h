@@ -152,6 +152,7 @@ void DOSELF1_STARS(struct runner *r, const struct cell *c,
                                           ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                          e->hydro_properties,
                                           e->feedback_props, ti_current);
       }
       if (r2 < hig2 && with_rt) {
@@ -314,6 +315,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
                                           ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                          e->hydro_properties,
                                           e->feedback_props, ti_current);
       }
       if (r2 < hig2 && with_rt) {
@@ -539,6 +541,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
                                             cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
+                                            e->hydro_properties,
                                             e->feedback_props, ti_current);
         }
         if (r2 < hig2 && with_rt) {
@@ -696,6 +699,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
                                             cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
+                                            e->hydro_properties,
                                             e->feedback_props, ti_current);
         }
         if (r2 < hjg2 && with_rt) {
