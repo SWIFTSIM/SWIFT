@@ -302,6 +302,12 @@ void engine_check_for_dumps(struct engine *e) {
     /* Drift everyone */
     engine_drift_all(e, /*drift_mpole=*/0);
 
+#ifdef WITH_MPI
+    /* Make sure new cell variables are communicated after the drift. */
+    engine_unskip_timestep_communications(e);
+    engine_launch(e, "timesteps");
+#endif
+
     /* Write some form of output */
     switch (type) {
 
