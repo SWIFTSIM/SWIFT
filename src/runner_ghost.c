@@ -169,11 +169,6 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
 
         if (sp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
 
-          warning(
-              "Star particle with ID %lld treated as having no neighbours (h: "
-              "%g, wcount: %g).",
-              sp->id, sp->h, sp->density.wcount);
-
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
 
@@ -658,11 +653,6 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
         int has_no_neighbours = 0;
 
         if (bp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
-
-          warning(
-              "BH particle with ID %lld treated as having no neighbours (h: "
-              "%g, wcount: %g).",
-              bp->id, bp->h, bp->density.wcount);
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
