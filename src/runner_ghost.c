@@ -167,7 +167,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         float h_new;
         int has_no_neighbours = 0;
 
-        if (sp->density.wcount == 0.f) { /* No neighbours case */
+        if (sp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -511,6 +511,15 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     if (scount) {
+      warning(
+          "Smoothing length failed to converge for the following star "
+          "particles:");
+      for (int i = 0; i < scount; i++) {
+        struct spart *sp = &sparts[sid[i]];
+        warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->h,
+                sp->density.wcount);
+      }
+
       error("Smoothing length failed to converge on %i particles.", scount);
     }
 
@@ -646,7 +655,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
         float h_new;
         int has_no_neighbours = 0;
 
-        if (bp->density.wcount == 0.f) { /* No neighbours case */
+        if (bp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -797,6 +806,8 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
           for (struct link *l = finger->black_holes.density; l != NULL;
                l = l->next) {
 
+            if (l->t->skip == 2) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
             if (l->t->ti_run < r->e->ti_current)
               error("Density task should have been run.");
@@ -841,6 +852,15 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
     }
 
     if (bcount) {
+      warning(
+          "Smoothing length failed to converge for the following BH "
+          "particles:");
+      for (int i = 0; i < bcount; i++) {
+        struct bpart *bp = &bparts[sid[i]];
+        warning("ID: %lld, h: %g, wcount: %g", bp->id, bp->h,
+                bp->density.wcount);
+      }
+
       error("Smoothing length failed to converge on %i particles.", bcount);
     }
 
@@ -1136,7 +1156,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         float h_new;
         int has_no_neighbours = 0;
 
-        if (p->density.wcount == 0.f) { /* No neighbours case */
+        if (p->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -1464,6 +1484,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     if (count) {
+      warning(
+          "Smoothing length failed to converge for the following gas "
+          "particles:");
+      for (int i = 0; i < count; i++) {
+        struct part *p = &parts[pid[i]];
+        warning("ID: %lld, h: %g, wcount: %g", p->id, p->h, p->density.wcount);
+      }
+
       error("Smoothing length failed to converge on %i particles.", count);
     }
 

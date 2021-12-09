@@ -1013,6 +1013,17 @@ void engine_print_task_counts(const struct engine *e) {
   message("nr_sparts = %zu.", e->s->nr_sparts);
   message("nr_bparts = %zu.", e->s->nr_bparts);
 
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+  /* check that the global number of sends matches the global number of
+     recvs */
+  int global_counts[2] = {counts[task_type_send], counts[task_type_recv]};
+  MPI_Allreduce(MPI_IN_PLACE, global_counts, 2, MPI_INT, MPI_SUM,
+                MPI_COMM_WORLD);
+  if (global_counts[0] != global_counts[1])
+    error("Missing communications (%i sends, %i recvs)!", global_counts[0],
+          global_counts[1]);
+#endif
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
@@ -1934,6 +1945,16 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
+#ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
+  /* Run the brute-force black holes calculation for some parts */
+  if (e->policy & engine_policy_black_holes)
+    black_holes_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the black holes calculation */
+  if (e->policy & engine_policy_black_holes)
+    black_holes_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
@@ -2389,6 +2410,16 @@ void engine_step(struct engine *e) {
   /* Check the accuracy of the stars calculation */
   if (e->policy & engine_policy_stars)
     stars_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
+#endif
+
+#ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
+  /* Run the brute-force black holes calculation for some parts */
+  if (e->policy & engine_policy_black_holes)
+    black_holes_exact_density_compute(e->s, e);
+
+  /* Check the accuracy of the black holes calculation */
+  if (e->policy & engine_policy_black_holes)
+    black_holes_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

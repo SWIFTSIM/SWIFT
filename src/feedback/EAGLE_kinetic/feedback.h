@@ -20,6 +20,7 @@
 #define SWIFT_FEEDBACK_EAGLE_KINETIC_H
 
 #include "cosmology.h"
+#include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"

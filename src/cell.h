@@ -233,6 +233,9 @@ struct pcell_step {
 
     /*! Maximal distance any #part has travelled since last rebuild */
     float dx_max_part;
+
+    /*! Maximal smoothing length in the cell */
+    float h_max;
   } hydro;
 
   struct {
@@ -248,6 +251,9 @@ struct pcell_step {
 
     /*! Maximal distance any #part has travelled since last rebuild */
     float dx_max_part;
+
+    /*! Maximal smoothing length in the cell */
+    float h_max;
   } stars;
 
   struct {
@@ -257,6 +263,9 @@ struct pcell_step {
 
     /*! Maximal distance any #part has travelled since last rebuild */
     float dx_max_part;
+
+    /*! Maximal smoothing length in the cell */
+    float h_max;
   } black_holes;
 };
 
@@ -577,6 +586,9 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
+int cell_activate_subcell_black_holes_pair(struct cell *ci, struct cell *cj,
+                                           struct scheduler *s,
+                                           const int with_timestep_sync);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,

@@ -25,6 +25,7 @@
 #include "cooling.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "exp10.h"
 #include "gravity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
@@ -184,6 +185,17 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
 
   /* Reset the rays carried by this BH */
   ray_init(bp->rays, eagle_blackhole_number_of_rays);
+
+#ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
+  bp->N_density = 0;
+  bp->N_density_exact = 0;
+  bp->rho = 0.f;
+  bp->rho_exact = 0.f;
+  bp->n = 0.f;
+  bp->n_exact = 0.f;
+  bp->inhibited_exact = 0;
+  bp->has_done_feedback = 0;
+#endif
 }
 
 /**
@@ -309,6 +321,11 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
 __attribute__((always_inline)) INLINE static void
 black_holes_bpart_has_no_neighbours(struct bpart* bp,
                                     const struct cosmology* cosmo) {
+
+  warning(
+      "BH particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      bp->id, bp->h, bp->density.wcount);
 
   /* Some smoothing length multiples. */
   const float h = bp->h;
@@ -1038,6 +1055,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->to_distribute.AGN_number_of_energy_injections = 0;
     bp->to_distribute.AGN_delta_u = 0.f;
   }
+
+#ifdef SWIFT_BLACK_HOLES_DENSITY_CHECKS
+  bp->has_done_feedback = 1;
+#endif
 }
 
 /**

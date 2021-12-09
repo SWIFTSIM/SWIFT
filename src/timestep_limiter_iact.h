@@ -92,10 +92,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_limiter(
   const float uj = r * hj_inv;
   kernel_eval(uj, &wj);
 
-  pi->limiter_data.n_limiter += wi;
-  pj->limiter_data.n_limiter += wj;
-  pi->limiter_data.N_limiter++;
-  pj->limiter_data.N_limiter++;
+  accumulate_add_f(&pi->limiter_data.n_limiter, wi);
+  accumulate_add_f(&pj->limiter_data.n_limiter, wj);
+  accumulate_inc_i(&pi->limiter_data.N_limiter);
+  accumulate_inc_i(&pj->limiter_data.N_limiter);
 #endif
 }
 
@@ -122,8 +122,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_limiter(
   const float ui = r * hi_inv;
   kernel_eval(ui, &wi);
 
-  pi->limiter_data.n_limiter += wi;
-  pi->limiter_data.N_limiter++;
+  accumulate_add_f(&pi->limiter_data.n_limiter, wi);
+  accumulate_inc_i(&pi->limiter_data.N_limiter);
 #endif
 }
 

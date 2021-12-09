@@ -1083,6 +1083,51 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
   } /* Otherwise, pair interation */
 }
 
+int cell_activate_subcell_black_holes_pair(struct cell *ci, struct cell *cj,
+                                           struct scheduler *s,
+                                           const int with_timestep_sync) {
+  const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values. */
+  ci->black_holes.dx_max_part_old = ci->black_holes.dx_max_part;
+  ci->black_holes.h_max_old = ci->black_holes.h_max;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
+
+  cj->black_holes.dx_max_part_old = cj->black_holes.dx_max_part;
+  cj->black_holes.h_max_old = cj->black_holes.h_max;
+  cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+  cj->hydro.h_max_old = cj->hydro.h_max;
+
+  /* Should we even bother? */
+  if (!cell_is_active_black_holes(ci, e) && !cell_is_active_black_holes(cj, e))
+    return 0;
+
+  /* Get the orientation of the pair. */
+  double shift[3];
+  const int sid = space_getsid(s->space, &ci, &cj, shift);
+
+  /* recurse? */
+  if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
+      cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
+    const struct cell_split_pair *csp = &cell_split_pairs[sid];
+    for (int k = 0; k < csp->count; k++) {
+      const int pid = csp->pairs[k].pid;
+      const int pjd = csp->pairs[k].pjd;
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL &&
+          cell_activate_subcell_black_holes_pair(
+              ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync))
+        return 1;
+    }
+    return 0;
+  } else if (cell_is_active_black_holes(ci, e) ||
+             cell_is_active_black_holes(cj, e)) {
+
+    return 1;
+  }
+  return 0;
+}
+
 /**
  * @brief Traverse a sub-cell task and activate the sinks drift tasks that
  * are required by a sinks task

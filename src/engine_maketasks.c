@@ -618,6 +618,9 @@ void engine_addtasks_recv_hydro(
      * accretion rates (depends on particles' rho). */
     if (with_black_holes) {
       for (struct link *l = c->black_holes.density; l != NULL; l = l->next) {
+        /* t_rho is not activated for cells with no active hydro, so we need
+           to add an additional dependency on t_xv for these cells */
+        scheduler_addunlock(s, t_xv, l->t);
         scheduler_addunlock(s, t_rho, l->t);
       }
     }
