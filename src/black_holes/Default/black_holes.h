@@ -134,6 +134,11 @@ __attribute__((always_inline)) INLINE static void
 black_holes_bpart_has_no_neighbours(struct bpart* restrict bp,
                                     const struct cosmology* cosmo) {
 
+  warning(
+      "BH particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      bp->id, bp->h, bp->density.wcount);
+
   /* Some smoothing length multiples. */
   const float h = bp->h;
   const float h_inv = 1.0f / h;                 /* 1/h */

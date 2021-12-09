@@ -36,7 +36,7 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float *dx,
+runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const float hi, const float hj,
                                     struct spart *si, const struct part *pj,
                                     const struct xpart *xp,
@@ -63,12 +63,10 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  const struct spart *si, struct part *pj,
-                                  struct xpart *xp,
-                                  const struct cosmology *cosmo,
-                                  const struct feedback_props *fb_props,
-                                  const integertime_t ti_current) {}
+runner_iact_nonsym_feedback_apply(
+    const float r2, const float dx[3], const float hi, const float hj,
+    const struct spart *si, struct part *pj, struct xpart *xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {}
 
 #endif /* SWIFT_NONE_FEEDBACK_IACT_H */
