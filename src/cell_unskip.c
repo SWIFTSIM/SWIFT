@@ -2532,11 +2532,21 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
+    const int activate_bh_pair =
+        (t->type != task_type_sub_pair) ||
+        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
         (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
-      scheduler_activate(s, t);
+      /* do not automatically activate sub_pair tasks */
+      if (activate_bh_pair) {
+        atomic_cas(&t->skip, 2, 1);
+        scheduler_activate(s, t);
+      } else {
+        atomic_cas(&t->skip, 1, 2);
+      }
 
       /* Activate the drifts */
       if (t->type == task_type_self) {
@@ -2562,13 +2572,14 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       }
 
       /* Store current values of dx_max and h_max. */
-      else if (t->type == task_type_sub_pair) {
+      else if (t->type == task_type_sub_pair && activate_bh_pair) {
         cell_activate_subcell_black_holes_tasks(ci, cj, s, with_timestep_sync);
       }
     }
 
     /* Only interested in pair interactions as of here. */
-    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+    if (t->type == task_type_pair ||
+        (t->type == task_type_sub_pair && activate_bh_pair)) {
 
       /* Activate bh_in for each cell that is part of
        * a pair task as to not miss any dependencies */
@@ -2668,9 +2679,13 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
+    const int activate_bh_pair =
+        (t->type != task_type_sub_pair) ||
+        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
-        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+        (ci_nodeID == nodeID || cj_nodeID == nodeID) && activate_bh_pair) {
 
       scheduler_activate(s, t);
     }
@@ -2691,9 +2706,13 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
+    const int activate_bh_pair =
+        (t->type != task_type_sub_pair) ||
+        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
-        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+        (ci_nodeID == nodeID || cj_nodeID == nodeID) && activate_bh_pair) {
 
       scheduler_activate(s, t);
     }
@@ -2714,9 +2733,13 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
+    const int activate_bh_pair =
+        (t->type != task_type_sub_pair) ||
+        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
-        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+        (ci_nodeID == nodeID || cj_nodeID == nodeID) && activate_bh_pair) {
 
       scheduler_activate(s, t);
     }
@@ -2737,9 +2760,13 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
+    const int activate_bh_pair =
+        (t->type != task_type_sub_pair) ||
+        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
-        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+        (ci_nodeID == nodeID || cj_nodeID == nodeID) && activate_bh_pair) {
 
       scheduler_activate(s, t);
 
