@@ -2271,8 +2271,14 @@ void engine_step(struct engine *e) {
 #endif
 
   /* Are we drifting everything (a la Gadget/GIZMO) ? */
-  if (e->policy & engine_policy_drift_all && !e->forcerebuild)
+  if (e->policy & engine_policy_drift_all && !e->forcerebuild) {
     engine_drift_all(e, /*drift_mpole=*/1);
+#ifdef WITH_MPI
+    /* Make sure cell variables get communicated after the drift */
+    engine_unskip_timestep_communications(e);
+    engine_launch(e, "timesteps");
+#endif
+  }
 
   /* Are we reconstructing the multipoles or drifting them ?*/
   if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild) {
