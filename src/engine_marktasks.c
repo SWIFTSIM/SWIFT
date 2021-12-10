@@ -419,8 +419,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           (t_type == task_type_pair ||
            (t_type == task_type_sub_pair &&
             cell_activate_subcell_stars_pair(ci, cj, s, with_star_formation,
-                                             with_star_formation_sink,
-                                             with_timestep_sync)));
+                                             with_star_formation_sink)));
 
       const int activate_bh_pair =
           (t_subtype == task_subtype_bh_density ||
@@ -428,9 +427,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            t_subtype == task_subtype_do_gas_swallow ||
            t_subtype == task_subtype_do_bh_swallow ||
            t_subtype == task_subtype_bh_feedback) &&
-          (t_type == task_type_pair || (t_type == task_type_sub_pair &&
-                                        cell_activate_subcell_black_holes_pair(
-                                            ci, cj, s, with_timestep_sync)));
+          (t_type == task_type_pair ||
+           (t_type == task_type_sub_pair &&
+            cell_activate_subcell_black_holes_pair(ci, cj, s)));
 
       /* Only activate tasks that involve a local active cell. */
       if ((t_subtype == task_subtype_density ||
