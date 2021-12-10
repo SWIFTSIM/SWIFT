@@ -580,8 +580,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 int cell_activate_subcell_stars_pair(struct cell *ci, struct cell *cj,
                                      struct scheduler *s,
                                      const int with_star_formation,
-                                     const int with_star_formation_sink,
-                                     const int with_timestep_sync);
+                                     const int with_star_formation_sink);
 void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_timestep_sync);
@@ -589,8 +588,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
                                              struct scheduler *s,
                                              const int with_timestep_sync);
 int cell_activate_subcell_black_holes_pair(struct cell *ci, struct cell *cj,
-                                           struct scheduler *s,
-                                           const int with_timestep_sync);
+                                           struct scheduler *s);
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,

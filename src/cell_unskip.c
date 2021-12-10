@@ -934,8 +934,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
 int cell_activate_subcell_stars_pair(struct cell *ci, struct cell *cj,
                                      struct scheduler *s,
                                      const int with_star_formation,
-                                     const int with_star_formation_sink,
-                                     const int with_timestep_sync) {
+                                     const int with_star_formation_sink) {
 
   const struct engine *e = s->space->e;
 
@@ -971,9 +970,9 @@ int cell_activate_subcell_stars_pair(struct cell *ci, struct cell *cj,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL &&
-          cell_activate_subcell_stars_pair(
-              ci->progeny[pid], cj->progeny[pjd], s, with_star_formation,
-              with_star_formation_sink, with_timestep_sync))
+          cell_activate_subcell_stars_pair(ci->progeny[pid], cj->progeny[pjd],
+                                           s, with_star_formation,
+                                           with_star_formation_sink))
         return 1;
     }
     return 0;
@@ -1080,8 +1079,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
 }
 
 int cell_activate_subcell_black_holes_pair(struct cell *ci, struct cell *cj,
-                                           struct scheduler *s,
-                                           const int with_timestep_sync) {
+                                           struct scheduler *s) {
   const struct engine *e = s->space->e;
 
   /* Store the current dx_max and h_max values. */
@@ -1111,8 +1109,8 @@ int cell_activate_subcell_black_holes_pair(struct cell *ci, struct cell *cj,
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL &&
-          cell_activate_subcell_black_holes_pair(
-              ci->progeny[pid], cj->progeny[pjd], s, with_timestep_sync))
+          cell_activate_subcell_black_holes_pair(ci->progeny[pid],
+                                                 cj->progeny[pjd], s))
         return 1;
     }
     return 0;
@@ -2122,8 +2120,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int activate_stars_pair =
         (t->type != task_type_sub_pair) ||
         cell_activate_subcell_stars_pair(ci, cj, s, with_star_formation,
-                                         with_star_formation_sink,
-                                         with_timestep_sync);
+                                         with_star_formation_sink);
 
     /* Activate the drifts */
     if (t->type == task_type_self && ci_active) {
@@ -2354,8 +2351,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int activate_stars_pair =
         (t->type != task_type_sub_pair) ||
         cell_activate_subcell_stars_pair(ci, cj, s, with_star_formation,
-                                         with_star_formation_sink,
-                                         with_timestep_sync);
+                                         with_star_formation_sink);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (with_star_formation_sink) {
@@ -2431,8 +2427,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int activate_stars_pair =
         (t->type != task_type_sub_pair) ||
         cell_activate_subcell_stars_pair(ci, cj, s, with_star_formation,
-                                         with_star_formation_sink,
-                                         with_timestep_sync);
+                                         with_star_formation_sink);
 
     if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
@@ -2484,8 +2479,7 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     const int activate_stars_pair =
         (t->type != task_type_sub_pair) ||
         cell_activate_subcell_stars_pair(ci, cj, s, with_star_formation,
-                                         with_star_formation_sink,
-                                         with_timestep_sync);
+                                         with_star_formation_sink);
 
     if (t->type == task_type_self && ci_active) {
       scheduler_activate(s, t);
@@ -2590,7 +2584,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
     const int activate_bh_pair =
         (t->type != task_type_sub_pair) ||
-        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+        cell_activate_subcell_black_holes_pair(ci, cj, s);
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -2751,7 +2745,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
     const int activate_bh_pair =
         (t->type != task_type_sub_pair) ||
-        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+        cell_activate_subcell_black_holes_pair(ci, cj, s);
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -2778,7 +2772,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
     const int activate_bh_pair =
         (t->type != task_type_sub_pair) ||
-        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+        cell_activate_subcell_black_holes_pair(ci, cj, s);
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -2805,7 +2799,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
     const int activate_bh_pair =
         (t->type != task_type_sub_pair) ||
-        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+        cell_activate_subcell_black_holes_pair(ci, cj, s);
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
@@ -2832,7 +2826,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
     const int activate_bh_pair =
         (t->type != task_type_sub_pair) ||
-        cell_activate_subcell_black_holes_pair(ci, cj, s, with_timestep_sync);
+        cell_activate_subcell_black_holes_pair(ci, cj, s);
 
     /* Only activate tasks that involve a local active cell. */
     if ((ci_active || cj_active) &&
