@@ -1571,7 +1571,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_drift_sink || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
-        t->type == task_type_timestep_sync ||
+        t->type == task_type_timestep_sync || t->type == task_type_collect ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
@@ -1609,12 +1609,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_compute_formation ||
         t->subtype == task_subtype_sink_merger ||
         t->subtype == task_subtype_sink_accretion ||
-        t->subtype == task_subtype_tend_part ||
-        t->subtype == task_subtype_tend_gpart ||
-        t->subtype == task_subtype_tend_spart ||
-        t->subtype == task_subtype_tend_sink ||
-        t->subtype == task_subtype_tend_bpart ||
-        t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||
@@ -1919,16 +1914,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Initialise additional RT data now that time bins are set */
   if (e->policy & engine_policy_rt)
     space_convert_rt_quantities_after_zeroth_step(e->s, e->verbose);
-
-  /* Since the time-steps may have changed because of the limiter's
-   * action, we need to communicate the new time-step sizes */
-  if ((e->policy & engine_policy_timestep_sync) ||
-      (e->policy & engine_policy_timestep_limiter)) {
-#ifdef WITH_MPI
-    engine_unskip_timestep_communications(e);
-    engine_launch(e, "timesteps");
-#endif
-  }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -2386,16 +2371,6 @@ void engine_step(struct engine *e) {
   e->usertime_last_step = end_usertime - start_usertime;
   e->systime_last_step = end_systime - start_systime;
 #endif
-
-  /* Since the time-steps may have changed because of the limiter's
-   * action, we need to communicate the new time-step sizes */
-  if ((e->policy & engine_policy_timestep_sync) ||
-      (e->policy & engine_policy_timestep_limiter)) {
-#ifdef WITH_MPI
-    engine_unskip_timestep_communications(e);
-    engine_launch(e, "timesteps");
-#endif
-  }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */

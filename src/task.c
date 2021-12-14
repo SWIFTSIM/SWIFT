@@ -74,6 +74,7 @@ const char *taskID_names[task_type_count] = {
     "timestep",
     "timestep_limiter",
     "timestep_sync",
+    "collect",
     "send",
     "recv",
     "pack",
@@ -131,11 +132,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",
     "grav",
     "external_grav",
-    "tend_part",
-    "tend_gpart",
-    "tend_spart",
-    "tend_sink",
-    "tend_bpart",
+    "tend",
     "xv",
     "rho",
     "part_swallow",
@@ -1777,6 +1774,7 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_kick1:
     case task_type_kick2:
     case task_type_timestep:
+    case task_type_collect:
       return task_category_time_integration;
 
     case task_type_timestep_limiter:

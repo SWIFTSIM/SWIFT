@@ -144,6 +144,24 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
 }
 
 /**
+ * @brief Search a given linked list of task for a given subtype and activate
+ * it.
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ */
+__attribute__((always_inline)) INLINE static void
+scheduler_activate_all_subtype(struct scheduler *s, struct link *link,
+                               const enum task_subtypes subtype) {
+
+  for (struct link *l = link; l != NULL; l = l->next) {
+    if (l->t->subtype == subtype) scheduler_activate(s, l->t);
+  }
+}
+
+/**
  * @brief Search and add an MPI send task to the list of active tasks.
  *
  * @param s The #scheduler.
@@ -156,7 +174,7 @@ __attribute__((always_inline)) INLINE static void scheduler_activate(
  */
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_send(struct scheduler *s, struct link *link,
-                        enum task_subtypes subtype, int nodeID) {
+                        const enum task_subtypes subtype, const int nodeID) {
   struct link *l = NULL;
   for (l = link;
        l != NULL && !(l->t->cj->nodeID == nodeID && l->t->subtype == subtype);
@@ -181,7 +199,7 @@ scheduler_activate_send(struct scheduler *s, struct link *link,
  */
 __attribute__((always_inline)) INLINE static struct link *
 scheduler_activate_recv(struct scheduler *s, struct link *link,
-                        enum task_subtypes subtype) {
+                        const enum task_subtypes subtype) {
   struct link *l = NULL;
   for (l = link; l != NULL && l->t->subtype != subtype; l = l->next)
     ;
