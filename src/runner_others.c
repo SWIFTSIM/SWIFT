@@ -1010,6 +1010,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const int count = c->hydro.count;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct rt_props *rt_props = e->rt_props;
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1059,7 +1060,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       rt_finalise_transport(p, dt);
 
       /* And finally do thermochemistry */
-      rt_tchem(p);
+      rt_tchem(p, rt_props);
     }
   }
 

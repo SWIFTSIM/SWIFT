@@ -37,7 +37,7 @@
  * @param U Pointer to the array in which the result needs to be stored
  */
 __attribute__((always_inline)) INLINE static void rt_part_get_density_vector(
-    const struct part* restrict p, int group, float U[4]) {
+    const struct part *restrict p, int group, float U[4]) {
 
   U[0] = p->rt_data.density[group].energy;
   U[1] = p->rt_data.density[group].flux[0];
@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static void rt_part_get_density_vector(
  * @param dFz Array to write flux z component gradient into
  */
 __attribute__((always_inline)) INLINE static void rt_part_get_gradients(
-    const struct part* restrict p, int group, float dE[3], float dFx[3],
+    const struct part *restrict p, int group, float dE[3], float dFx[3],
     float dFy[3], float dFz[3]) {
 
   dE[0] = p->rt_data.gradient[group].energy[0];

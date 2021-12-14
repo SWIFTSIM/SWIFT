@@ -609,6 +609,9 @@ int main(int argc, char *argv[]) {
         "Error: Cannot use radiative transfer without --feedback "
         "(even if configured --with-feedback=none)");
   }
+  if (with_rt && with_cooling) {
+    error("Error: Cannot use radiative transfer and cooling simultaneously");
+  }
 
 #ifdef WITH_MPI
   /* Temporary, this will be removed in due time */
