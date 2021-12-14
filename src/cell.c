@@ -1169,19 +1169,10 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
  */
 int cell_has_tasks(struct cell *c) {
 #ifdef WITH_MPI
-  if (c->timestep != NULL || c->mpi.recv != NULL) return 1;
+  return (c->timestep_collect != NULL || c->mpi.recv != NULL);
 #else
-  if (c->timestep != NULL) return 1;
+  return (c->timestep_collect != NULL);
 #endif
-
-  if (c->split) {
-    int count = 0;
-    for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL) count += cell_has_tasks(c->progeny[k]);
-    return count;
-  } else {
-    return 0;
-  }
 }
 
 /**
