@@ -145,7 +145,8 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  */
 void engine_addtasks_send_hydro(
     struct engine *e, struct cell *ci, struct cell *cj, struct task *t_xv,
-    struct task *t_rho, struct task *t_gradient, struct task *t_ti,
+    struct task *t_pack_xv, struct task *t_rho, struct task *t_pack_rho,
+    struct task *t_gradient, struct task *t_pack_gradient, struct task *t_ti,
     struct task *t_prep1, struct task *t_limiter, struct task *t_pack_limiter,
     const int with_feedback, const int with_limiter, const int with_sync) {
 
@@ -172,14 +173,23 @@ void engine_addtasks_send_hydro(
       /* Make sure this cell is tagged. */
       cell_ensure_tagged(ci);
 
+      t_pack_xv =
+          scheduler_addtask(s, task_type_pack, task_subtype_xv, 0, 0, ci, cj);
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
                                0, ci, cj);
+      scheduler_addunlock(s, t_pack_xv, t_xv);
+      t_pack_rho =
+          scheduler_addtask(s, task_type_pack, task_subtype_rho, 0, 0, ci, cj);
       t_rho = scheduler_addtask(s, task_type_send, task_subtype_rho,
                                 ci->mpi.tag, 0, ci, cj);
+      scheduler_addunlock(s, t_pack_rho, t_rho);
 
 #ifdef EXTRA_HYDRO_LOOP
+      t_pack_gradient = scheduler_addtask(s, task_type_pack,
+                                          task_subtype_gradient, 0, 0, ci, cj);
       t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
                                      ci->mpi.tag, 0, ci, cj);
+      scheduler_addunlock(s, t_pack_gradient, t_gradient);
 #endif
 
       t_ti = scheduler_addtask(s, task_type_send, task_subtype_tend_part,
@@ -205,6 +215,8 @@ void engine_addtasks_send_hydro(
 
       scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.end_force);
 
+      scheduler_addunlock(s, ci->hydro.super->hydro.extra_ghost,
+                          t_pack_gradient);
       scheduler_addunlock(s, ci->hydro.super->hydro.extra_ghost, t_gradient);
 
       /* The send_rho task should unlock the super_hydro-cell's extra_ghost
@@ -212,6 +224,7 @@ void engine_addtasks_send_hydro(
       scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.extra_ghost);
 
       /* The send_rho task depends on the cell's ghost task. */
+      scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_pack_rho);
       scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
 
       /* The send_xv task should unlock the super_hydro-cell's ghost task. */
@@ -222,6 +235,7 @@ void engine_addtasks_send_hydro(
       scheduler_addunlock(s, t_rho, ci->hydro.super->hydro.end_force);
 
       /* The send_rho task depends on the cell's ghost task. */
+      scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_pack_rho);
       scheduler_addunlock(s, ci->hydro.super->hydro.ghost_out, t_rho);
 
       /* The send_xv task should unlock the super_hydro-cell's ghost task. */
@@ -229,9 +243,11 @@ void engine_addtasks_send_hydro(
 
 #endif
 
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_pack_rho);
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rho);
 
       /* Drift before you send */
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_pack_xv);
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
 
       scheduler_addunlock(s, ci->super->timestep, t_ti);
@@ -249,9 +265,12 @@ void engine_addtasks_send_hydro(
     }
 
     /* Add them to the local cell. */
+    engine_addlink(e, &ci->mpi.pack, t_pack_xv);
     engine_addlink(e, &ci->mpi.send, t_xv);
+    engine_addlink(e, &ci->mpi.pack, t_pack_rho);
     engine_addlink(e, &ci->mpi.send, t_rho);
 #ifdef EXTRA_HYDRO_LOOP
+    engine_addlink(e, &ci->mpi.pack, t_pack_gradient);
     engine_addlink(e, &ci->mpi.send, t_gradient);
 #endif
     engine_addlink(e, &ci->mpi.send, t_ti);
@@ -269,8 +288,9 @@ void engine_addtasks_send_hydro(
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_hydro(
-            e, ci->progeny[k], cj, t_xv, t_rho, t_gradient, t_ti, t_prep1,
-            t_limiter, t_pack_limiter, with_feedback, with_limiter, with_sync);
+            e, ci->progeny[k], cj, t_xv, t_pack_xv, t_rho, t_pack_rho,
+            t_gradient, t_pack_gradient, t_ti, t_prep1, t_limiter,
+            t_pack_limiter, with_feedback, with_limiter, with_sync);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -3985,8 +4005,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a hydro
      * connection. */
     if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL,
-                                 /*t_rho=*/NULL, /*t_gradient=*/NULL,
+      engine_addtasks_send_hydro(e, ci, cj, /*t_xv=*/NULL, /*t_pack_xv=*/NULL,
+                                 /*t_rho=*/NULL, /*t_pack_rho=*/NULL,
+                                 /*t_gradient=*/NULL, /*t_pack_gradient=*/NULL,
                                  /*t_ti=*/NULL, /*t_prep1=*/NULL,
                                  /*t_limiter=*/NULL, /*t_pack_limiter=*/NULL,
                                  with_feedback, with_limiter, with_sync);

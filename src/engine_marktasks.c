@@ -947,6 +947,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             struct link *l = scheduler_activate_send(
                 s, cj->mpi.send, task_subtype_xv, ci_nodeID);
 
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_xv,
+                                    ci_nodeID);
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
@@ -957,8 +959,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
                                       ci_nodeID);
 
+              scheduler_activate_pack(s, cj->mpi.pack, task_subtype_rho,
+                                      ci_nodeID);
 #ifdef EXTRA_HYDRO_LOOP
               scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
+                                      ci_nodeID);
+              scheduler_activate_pack(s, cj->mpi.pack, task_subtype_gradient,
                                       ci_nodeID);
 #endif
             }
@@ -1024,6 +1030,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             struct link *l = scheduler_activate_send(
                 s, ci->mpi.send, task_subtype_xv, cj_nodeID);
 
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_xv,
+                                    cj_nodeID);
             /* Drift the cell which will be sent at the level at which it is
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
@@ -1034,9 +1042,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
               scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
                                       cj_nodeID);
+              scheduler_activate_pack(s, ci->mpi.pack, task_subtype_rho,
+                                      cj_nodeID);
 
 #ifdef EXTRA_HYDRO_LOOP
               scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
+                                      cj_nodeID);
+              scheduler_activate_pack(s, ci->mpi.pack, task_subtype_gradient,
                                       cj_nodeID);
 #endif
             }
@@ -1129,6 +1141,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* Drift the cell which will be sent; note that not all sent
                particles will be drifted, only those that are needed. */
             cell_activate_drift_part(cj, s);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_xv,
+                                    ci_nodeID);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_rho,
+                                    ci_nodeID);
           }
 
         } else if (cj_nodeID != nodeID) {
@@ -1178,6 +1194,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* Drift the cell which will be sent; note that not all sent
                particles will be drifted, only those that are needed. */
             cell_activate_drift_part(ci, s);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_xv,
+                                    cj_nodeID);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_rho,
+                                    cj_nodeID);
           }
         }
 #endif

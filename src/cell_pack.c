@@ -792,3 +792,80 @@ int cell_unpack_sf_counts(struct cell *restrict c,
   return 0;
 #endif
 }
+
+void cell_pack_xv(const struct cell *c, struct xv_message_part *data) {
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    struct xv_message_part *mp = &data[i];
+    const struct part *p = &parts[i];
+
+    hydro_pack_xv(mp, p);
+  }
+}
+
+void cell_unpack_xv(struct cell *c, const struct xv_message_part *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    const struct xv_message_part *mp = &data[i];
+    struct part *p = &parts[i];
+
+    hydro_unpack_xv(mp, p);
+  }
+}
+
+void cell_pack_rho(const struct cell *c, struct rho_message_part *data) {
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    struct rho_message_part *mp = &data[i];
+    const struct part *p = &parts[i];
+
+    hydro_pack_rho(mp, p);
+  }
+}
+
+void cell_unpack_rho(struct cell *c, const struct rho_message_part *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    const struct rho_message_part *mp = &data[i];
+    struct part *p = &parts[i];
+
+    hydro_unpack_rho(mp, p);
+  }
+}
+
+void cell_pack_gradient(const struct cell *c,
+                        struct gradient_message_part *data) {
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    struct gradient_message_part *mp = &data[i];
+    const struct part *p = &parts[i];
+
+    hydro_pack_gradient(mp, p);
+  }
+}
+
+void cell_unpack_gradient(struct cell *c,
+                          const struct gradient_message_part *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    const struct gradient_message_part *mp = &data[i];
+    struct part *p = &parts[i];
+
+    hydro_unpack_gradient(mp, p);
+  }
+}
