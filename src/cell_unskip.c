@@ -345,8 +345,12 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
   }
 }
 
+/**
+ * @brief Activate the #part sync tasks on the given cell.
+ */
 void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
-  /* If this cell is already marked for drift, quit early. */
+
+  /* If this cell is already marked for sync, quit early. */
   if (cell_get_flag(c, cell_flag_do_hydro_sync)) return;
 
   /* Mark this cell for synchronization. */
@@ -360,6 +364,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->timestep_sync");
 #endif
     scheduler_activate(s, c->timestep_sync);
+    scheduler_activate(s, c->top->timestep_collect);
     scheduler_activate(s, c->kick1);
   } else {
     for (struct cell *parent = c->parent;
@@ -374,6 +379,7 @@ void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->timestep_sync");
 #endif
         scheduler_activate(s, parent->timestep_sync);
+        scheduler_activate(s, parent->top->timestep_collect);
         scheduler_activate(s, parent->kick1);
         break;
       }
@@ -554,6 +560,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->timestep_limiter");
 #endif
     scheduler_activate(s, c->timestep_limiter);
+    scheduler_activate(s, c->top->timestep_collect);
     scheduler_activate(s, c->kick1);
   } else {
     for (struct cell *parent = c->parent;
@@ -569,6 +576,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->timestep_limiter");
 #endif
         scheduler_activate(s, parent->timestep_limiter);
+        scheduler_activate(s, parent->top->timestep_collect);
         scheduler_activate(s, parent->kick1);
         break;
       }
@@ -1653,10 +1661,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
         }
 
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active)
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_part);
-
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
@@ -1687,21 +1691,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
                                   ci_nodeID);
         }
 
-        /* If the local cell is active, send its ti_end values. */
-        if (cj_active)
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_part,
-                                  ci_nodeID);
-
         /* Propagating new star counts? */
         if (with_star_formation && with_feedback) {
           if (ci_active && ci->hydro.count > 0) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_sf_counts);
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
           }
           if (cj_active && cj->hydro.count > 0) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_sf_counts,
-                                    ci_nodeID);
-            scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
                                     ci_nodeID);
           }
         }
@@ -1725,10 +1721,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
           scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
         }
-
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active)
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_part);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -1761,21 +1753,13 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
                                   cj_nodeID);
         }
 
-        /* If the local cell is active, send its ti_end values. */
-        if (ci_active)
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_part,
-                                  cj_nodeID);
-
         /* Propagating new star counts? */
         if (with_star_formation && with_feedback) {
           if (cj_active && cj->hydro.count > 0) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_sf_counts);
-            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
           }
           if (ci_active && ci->hydro.count > 0) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_sf_counts,
-                                    cj_nodeID);
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
                                     cj_nodeID);
           }
         }
@@ -1802,6 +1786,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
     if (c->hydro.end_force != NULL) scheduler_activate(s, c->hydro.end_force);
     if (c->hydro.cooling_in != NULL) cell_activate_cooling(c, s, e);
 #ifdef WITH_CSDS
@@ -1877,10 +1863,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
         if (cj_active)
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
 
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (ci_active)
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_gpart);
-
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
@@ -1893,19 +1875,10 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_drift_gpart(cj, s);
         }
 
-        /* If the local cell is active, send its ti_end values. */
-        if (cj_active)
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_gpart,
-                                  ci_nodeID);
-
       } else if (cj_nodeID != nodeID) {
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active)
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gpart);
-
-        /* If the foreign cell is active, we want its ti_end values. */
-        if (cj_active)
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_gpart);
 
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
@@ -1918,11 +1891,6 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
              itself. */
           cell_activate_drift_gpart(ci, s);
         }
-
-        /* If the local cell is active, send its ti_end values. */
-        if (ci_active)
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_gpart,
-                                  cj_nodeID);
       }
 #endif
     }
@@ -1960,6 +1928,8 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
     if (c->grav.down != NULL) scheduler_activate(s, c->grav.down);
     if (c->grav.down_in != NULL) scheduler_activate(s, c->grav.down_in);
     if (c->grav.long_range != NULL) scheduler_activate(s, c->grav.long_range);
@@ -2130,10 +2100,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                                   ci_nodeID);
 #endif
           cell_activate_drift_spart(cj, s);
-
-          /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_spart,
-                                  ci_nodeID);
         }
 
         if (ci_active) {
@@ -2141,8 +2107,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_spart_prep2);
 #endif
-          /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_spart);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
@@ -2172,10 +2136,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                                   cj_nodeID);
 #endif
           cell_activate_drift_spart(ci, s);
-
-          /* If the local cell is active, send its ti_end values. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_spart,
-                                  cj_nodeID);
         }
 
         if (cj_active) {
@@ -2183,8 +2143,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_spart_prep2);
 #endif
-          /* If the foreign cell is active, we want its ti_end values. */
-          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_spart);
 
           /* Is the foreign cell active and will need stuff from us? */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
@@ -2394,6 +2352,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
       if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+      if (c->top->timestep_collect != NULL)
+        scheduler_activate(s, c->top->timestep_collect);
 #ifdef WITH_CSDS
       if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
@@ -2510,17 +2470,10 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
         /* Drift before you send */
         cell_activate_drift_bpart(cj, s);
 
-        /* Send the new BH time-steps */
-        scheduler_activate_send(s, cj->mpi.send, task_subtype_tend_bpart,
-                                ci_nodeID);
-
         /* Receive the foreign BHs to tag particles to swallow and for feedback
          */
         scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_rho);
         scheduler_activate_recv(s, ci->mpi.recv, task_subtype_bpart_feedback);
-
-        /* Receive the foreign BH time-steps */
-        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_tend_bpart);
 
         /* Send the local part information */
         scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
@@ -2548,17 +2501,10 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
         /* Drift before you send */
         cell_activate_drift_bpart(ci, s);
 
-        /* Send the new BH time-steps */
-        scheduler_activate_send(s, ci->mpi.send, task_subtype_tend_bpart,
-                                cj_nodeID);
-
         /* Receive the foreign BHs to tag particles to swallow and for feedback
          */
         scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_rho);
         scheduler_activate_recv(s, cj->mpi.recv, task_subtype_bpart_feedback);
-
-        /* Receive the foreign BH time-steps */
-        scheduler_activate_recv(s, cj->mpi.recv, task_subtype_tend_bpart);
 
         /* Send the local part information */
         scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
@@ -2694,6 +2640,8 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
 #ifdef WITH_CSDS
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif
@@ -2897,6 +2845,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
 #ifdef WITH_CSDS
     if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif

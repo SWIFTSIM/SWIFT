@@ -1098,6 +1098,90 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 }
 
 /**
+ * @brief Recursively collect the end-of-timestep information from the top-level
+ * to the super level.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_timestep_collect(struct runner *r, struct cell *c,
+                                const int timer) {
+
+  /* Early stop if we are at the super level.
+   * The time-step task would have set things at this level already */
+  if (c->super == c) return;
+
+  /* Counters for the different quantities. */
+  size_t h_updated = 0;
+  size_t g_updated = 0;
+  size_t s_updated = 0;
+  size_t b_updated = 0;
+  size_t si_updated = 0;
+  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_beg_max = 0;
+  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
+  integertime_t ti_black_holes_end_min = max_nr_timesteps,
+                ti_black_holes_beg_max = 0;
+  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
+
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL) {
+
+      /* Recurse */
+      runner_do_timestep_collect(r, cp, 0);
+
+      /* And update */
+      ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+      ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+      ti_grav_end_min = min(ti_grav_end_min, cp->grav.ti_end_min);
+      ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
+      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
+      ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
+      ti_black_holes_end_min =
+          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
+      ti_black_holes_beg_max =
+          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
+      ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
+      ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
+
+      h_updated += cp->hydro.updated;
+      g_updated += cp->grav.updated;
+      s_updated += cp->stars.updated;
+      b_updated += cp->black_holes.updated;
+      si_updated += cp->sinks.updated;
+
+      /* Collected, so clear for next time. */
+      cp->hydro.updated = 0;
+      cp->grav.updated = 0;
+      cp->stars.updated = 0;
+      cp->black_holes.updated = 0;
+      cp->sinks.updated = 0;
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->hydro.ti_end_min = ti_hydro_end_min;
+  c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->grav.ti_end_min = ti_grav_end_min;
+  c->grav.ti_beg_max = ti_grav_beg_max;
+  c->stars.ti_end_min = ti_stars_end_min;
+  c->stars.ti_beg_max = ti_stars_beg_max;
+  c->black_holes.ti_end_min = ti_black_holes_end_min;
+  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
+  c->sinks.ti_end_min = ti_sinks_end_min;
+  c->sinks.ti_beg_max = ti_sinks_beg_max;
+
+  c->hydro.updated = h_updated;
+  c->grav.updated = g_updated;
+  c->stars.updated = s_updated;
+  c->black_holes.updated = b_updated;
+  c->sinks.updated = si_updated;
+}
+
+/**
  * @brief Apply the time-step limiter to all awaken particles in a cell
  * hierarchy.
  *
