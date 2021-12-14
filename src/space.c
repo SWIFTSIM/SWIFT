@@ -793,10 +793,16 @@ void space_convert_rt_hydro_quantities_mapper(void *restrict map_data,
                                               void *restrict extra_data) {
 
   struct part *restrict parts = (struct part *)map_data;
+  const struct engine *restrict e = (struct engine *)extra_data;
+  const struct rt_props *restrict rt_props = e->rt_props;
+  const struct phys_const *restrict phys_const = e->physical_constants;
+  const struct unit_system *restrict iu = e->internal_units;
+  const struct cosmology *restrict cosmo = e->cosmology;
 
   for (int k = 0; k < count; k++) {
     struct part *restrict p = &parts[k];
     rt_reset_part(p);
+    rt_init_part_after_zeroth_step(p, rt_props, phys_const, iu, cosmo);
   }
 }
 
@@ -828,18 +834,11 @@ void space_convert_rt_quantities_after_zeroth_step(struct space *s,
                                                    int verbose) {
 
   const struct rt_props *rt_props = s->e->rt_props;
-
-#ifndef SWIFT_RT_DEBUG_CHECKS
-  /* We only have work to do if debugging checks are
-   * active or if we're using hydro controlled injection. */
-  if (!rt_props->hydro_controlled_injection) return;
-#endif
-
   const ticks tic = getticks();
 
   if (s->nr_parts > 0 && rt_props->convert_parts_after_zeroth_step)
     /* Particle loop. Reset hydro particle values so we don't inject too much
-     * radiation into the gas */
+     * radiation into the gas, and other initialisations after zeroth step. */
     threadpool_map(&s->e->threadpool, space_convert_rt_hydro_quantities_mapper,
                    s->parts, s->nr_parts, sizeof(struct part),
                    threadpool_auto_chunk_size, /*extra_data=*/s->e);

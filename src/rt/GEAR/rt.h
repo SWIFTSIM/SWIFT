@@ -89,10 +89,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
     struct part* restrict p) {
-
   /* Don't reset conserved quantities here! ICs will be overwritten */
   rt_init_part(p);
   rt_reset_part(p);
+
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.density[g].energy = 0.f;
     p->rt_data.density[g].flux[0] = 0.f;
@@ -103,6 +103,29 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
   p->rt_data.debug_iact_stars_inject_prep_tot = 0ULL;
 #endif
+}
+
+/**
+ * @brief Initialises particle quantities that can't be set
+ * otherwise before the zeroth step is finished. E.g. because
+ * they require the particle density to be known.
+ *
+ * @param p particle to work on
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param us unit_system struct
+ * @param cosmo cosmology struct
+ */
+__attribute__((always_inline)) INLINE static void
+rt_init_part_after_zeroth_step(struct part* restrict p,
+                               const struct rt_props* rt_props,
+                               const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo) {
+
+  /* If we're setting up ionising equilibrium initial conditions,
+   * then the particles need to have their densities known first. */
+  rt_tchem_first_init_part(p, rt_props, phys_const, us, cosmo);
 }
 
 /**
@@ -437,11 +460,12 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
  * This function wraps around rt_do_thermochemistry function.
  *
  * @param p particle to work on
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p) {
+    struct part* restrict p, const struct rt_props* rt_props) {
 
-  rt_do_thermochemistry(p);
+  rt_do_thermochemistry(p, rt_props);
 }
 
 /**

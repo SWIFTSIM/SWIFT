@@ -78,6 +78,23 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 }
 
 /**
+ * @brief Initialises particle quantities that can't be set
+ * otherwise before the zeroth step is finished. E.g. because
+ * they require the particle density to be known.
+ *
+ * @param p particle to work on
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param us unit_system struct
+ * @param cosmo cosmology struct
+ */
+__attribute__((always_inline)) INLINE static void
+rt_init_part_after_zeroth_step(struct part* restrict p,
+                               const struct rt_props* rt_props,
+                               const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo) {}
+/**
  * @brief Initialisation of the RT density loop related star particle data.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
  * are both called individually.
@@ -306,9 +323,10 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
  * This function wraps around rt_do_thermochemistry function.
  *
  * @param p particle to work on
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p) {
+    struct part* restrict p, const struct rt_props* rt_props) {
 
   rt_do_thermochemistry(p);
 }
