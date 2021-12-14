@@ -2042,27 +2042,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to accept elements */
 
-        if (t->subtype == task_subtype_tend_part) {
+        if (t->subtype == task_subtype_tend) {
 
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_tend_gpart) {
-
-          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_tend_spart) {
-
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_tend_bpart) {
-
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_part_swallow) {
@@ -2160,33 +2142,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
 
-        if (t->subtype == task_subtype_tend_part) {
+        if (t->subtype == task_subtype_tend) {
 
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
           buff = t->buff = malloc(size);
-          cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)buff);
-
-        } else if (t->subtype == task_subtype_tend_gpart) {
-
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)buff);
-
-        } else if (t->subtype == task_subtype_tend_spart) {
-
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)buff);
-
-        } else if (t->subtype == task_subtype_tend_bpart) {
-
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_black_holes(t->ci,
-                                         (struct pcell_step_black_holes *)buff);
+          cell_pack_end_step(t->ci, (struct pcell_step *)buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
