@@ -119,13 +119,75 @@ void fof6d_calc_vel_disp(struct fof_props *props, struct space *s, const size_t 
 
 }
 
+struct fof6d_props {
+    struct space *s;
+    struct gpart *pi;
+    size_t *root_i;
+    double l_v2;
+    double l_xv2;
+};
+
+void fof6d_group_search_mapper(void *map_data, int num_elements,
+                               void *extra_data) {
+
+  struct gpart **gparts = (struct gpart **)map_data;
+  struct fof6d_props * props = (struct fof6d_props *)extra_data;
+  struct space *s = props->s;
+  struct gpart *pi = props->pi;
+  size_t *root_i = props->root_i;
+  //const double l_v2 = props->l_v2;
+  //const double l_xv2 = props->l_xv2;
+  
+  const double l_x2 = s->e->fof_properties->l_x2;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  size_t *group_index = s->e->fof_properties->group_index;
+  const double pix = pi->x[0], piy = pi->x[1], piz = pi->x[2];
+  //const double vix = pi->v_full[0], viy = pi->v_full[1], viz = pi->v_full[2];
+
+  for (int k = 0; k < num_elements; k++) {
+  
+    struct gpart *pj = gparts[k];
+    const double pjx = pj->x[0], pjy = pj->x[1], pjz = pj->x[2];
+    //const double vjx = pj->v_full[0], vjy = pj->v_full[1], vjz = pj->v_full[2];
+
+    /* Find the root of pj. */
+    size_t *const group_offset_j = group_index + (ptrdiff_t)(pj - s->gparts);
+    size_t root_j = fof_find(group_offset_j[0], group_index);
+
+    /* Compute pairwise distance, remembering to account for boundary
+     * conditions. */
+    const float dx[3] = {nearest(pix - pjx, dim[0]), 
+                         nearest(piy - pjy, dim[1]), 
+                         nearest(piz - pjz, dim[2])};
+
+    /* Compute pairwise velocity difference. */
+    //const float dv[3] = {vix - vjx, viy - vjy, viz - vjz};
+    
+    float dx2 = 0.f;
+    for (int l = 0; l < 3; l++) dx2 += dx[l] * dx[l];
+
+    //float dv2 = 0.f;
+    //for (int l = 0; l < 3; l++) dv2 += dv[l] * dv[l];
+
+    /* Hit or miss? */
+    //if ((dx2 * l_v2 + dv2 * l_x2) < l_xv2) {
+    if (dx2 < l_x2) {
+   
+      /* Merge the groups */
+      fof_union(root_i, root_j, group_index);
+    }
+  }
+  message("No. of elements: %d", num_elements);
+}
+
 void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_groups, const size_t num_parts_in_groups, const double *v_disp, size_t *group_index, const size_t *group_size, const double l_x2, struct fof_props *props) {
 
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  //const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double l_v_ratio2 = props->l_v_ratio * props->l_v_ratio;
 
   /* Perform a neighbour search over each group. */ 
-  for (int i = 0; i < num_groups; i++) {
+  //for (int i = 0; i < num_groups; i++) {
+  for (int i = 10; i < 11; i++) {
   
     const double l_v2 = v_disp[i] * l_v_ratio2;
     const double l_xv2 = l_x2 * l_v2;
@@ -136,45 +198,24 @@ void fof6d_n2_search(struct fof_6d *groups, struct space *s, const int num_group
     for (size_t j = 0; j < num_parts; j++) {
        
       struct gpart *pi = groups[i].gparts[j];
-      const double pix = pi->x[0], piy = pi->x[1], piz = pi->x[2];
-      const double vix = pi->v_full[0], viy = pi->v_full[1], viz = pi->v_full[2];
+      //const double pix = pi->x[0], piy = pi->x[1], piz = pi->x[2];
+      //const double vix = pi->v_full[0], viy = pi->v_full[1], viz = pi->v_full[2];
     
       /* Find the root of pi using the global offset of the particle. */
       size_t *const group_offset = group_index + (ptrdiff_t)(pi - s->gparts);
       size_t root_i = fof_find(group_offset[0], group_index);
-      
-      for (size_t k = j + 1; k < num_parts; k++) {
-      
-        struct gpart *pj = groups[i].gparts[k];
-        const double pjx = pj->x[0], pjy = pj->x[1], pjz = pj->x[2];
-        const double vjx = pj->v_full[0], vjy = pj->v_full[1], vjz = pj->v_full[2];
 
-        /* Find the root of pj. */
-        size_t *const group_offset_j = group_index + (ptrdiff_t)(pj - s->gparts);
-        size_t root_j = fof_find(group_offset_j[0], group_index);
+      struct fof6d_props extra_data;
+      extra_data.s = s;
+      extra_data.pi = pi;
+      extra_data.root_i = &root_i;
+      extra_data.l_v2 = l_v2;
+      extra_data.l_xv2 = l_xv2;
 
-        /* Compute pairwise distance, remembering to account for boundary
-         * conditions. */
-        const float dx[3] = {nearest(pix - pjx, dim[0]), 
-                             nearest(piy - pjy, dim[1]), 
-                             nearest(piz - pjz, dim[2])};
-
-        /* Compute pairwise velocity difference. */
-        const float dv[3] = {vix - vjx, viy - vjy, viz - vjz};
-        
-        float dx2 = 0.f;
-        for (int l = 0; l < 3; l++) dx2 += dx[l] * dx[l];
-
-        float dv2 = 0.f;
-        for (int l = 0; l < 3; l++) dv2 += dv[l] * dv[l];
-
-        /* Hit or miss? */
-        if ((dx2 * l_v2 + dv2 * l_x2) < l_xv2) {
-        
-          /* Merge the groups */
-          fof_union(&root_i, root_j, group_index);
-        }
-      }
+      /* Set default group ID for all particles */
+      threadpool_map(&s->e->threadpool, fof6d_group_search_mapper, &groups[i].gparts[0],
+                 num_parts - (j + 1), sizeof(struct gpart *), threadpool_auto_chunk_size,
+                 (void *)&extra_data);
     }
   }
 }
