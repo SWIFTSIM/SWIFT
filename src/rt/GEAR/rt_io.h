@@ -52,6 +52,21 @@ INLINE static int rt_read_particles(const struct part* parts,
                                         UNIT_CONV_RADIATION_FLUX, parts,
                                         rt_data.conserved[phg].flux);
   }
+  list[count++] = io_make_input_field("MassFractionHI", FLOAT, 1, OPTIONAL,
+                                      UNIT_CONV_NO_UNITS, parts,
+                                      rt_data.tchem.mass_fraction_HI);
+  list[count++] = io_make_input_field("MassFractionHII", FLOAT, 1, OPTIONAL,
+                                      UNIT_CONV_NO_UNITS, parts,
+                                      rt_data.tchem.mass_fraction_HII);
+  list[count++] = io_make_input_field("MassFractionHeI", FLOAT, 1, OPTIONAL,
+                                      UNIT_CONV_NO_UNITS, parts,
+                                      rt_data.tchem.mass_fraction_HeI);
+  list[count++] = io_make_input_field("MassFractionHeII", FLOAT, 1, OPTIONAL,
+                                      UNIT_CONV_NO_UNITS, parts,
+                                      rt_data.tchem.mass_fraction_HeII);
+  list[count++] = io_make_input_field("MassFractionHeIII", FLOAT, 1, OPTIONAL,
+                                      UNIT_CONV_NO_UNITS, parts,
+                                      rt_data.tchem.mass_fraction_HeIII);
 
   return count;
 }
@@ -71,6 +86,7 @@ INLINE static int rt_read_stars(const struct spart* sparts,
 
 /**
  * @brief Extract photon energies of conserved struct for all photon groups
+ * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
  */
 INLINE static void rt_convert_conserved_photon_energies(
     const struct engine* engine, const struct part* part,
@@ -83,6 +99,7 @@ INLINE static void rt_convert_conserved_photon_energies(
 
 /**
  * @brief Extract photon energies of conserved struct for all photon groups
+ * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
  */
 INLINE static void rt_convert_conserved_photon_fluxes(
     const struct engine* engine, const struct part* part,
@@ -97,13 +114,29 @@ INLINE static void rt_convert_conserved_photon_fluxes(
 }
 
 /**
+ * @brief Extract mass fractions of ionizing species from tchem struct.
+ * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
+ */
+INLINE static void rt_convert_mass_fractions(const struct engine* engine,
+                                             const struct part* part,
+                                             const struct xpart* xpart,
+                                             float* ret) {
+
+  ret[0] = part->rt_data.tchem.mass_fraction_HI;
+  ret[1] = part->rt_data.tchem.mass_fraction_HII;
+  ret[2] = part->rt_data.tchem.mass_fraction_HeI;
+  ret[3] = part->rt_data.tchem.mass_fraction_HeII;
+  ret[4] = part->rt_data.tchem.mass_fraction_HeIII;
+}
+
+/**
  * @brief Creates additional output fields for the radiative
  * transfer data of hydro particles.
  */
 INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
 
-  int num_elements = 2;
+  int num_elements = 3;
 
   list[0] = io_make_output_field_convert_part(
       "PhotonEnergies", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY, 0, parts,
@@ -113,45 +146,49 @@ INLINE static int rt_write_particles(const struct part* parts,
       "PhotonFluxes", FLOAT, 3 * RT_NGROUPS, UNIT_CONV_RADIATION_FLUX, 0, parts,
       /*xparts=*/NULL, rt_convert_conserved_photon_fluxes,
       "Photon Fluxes (all groups; x, y, and z coordinates)");
+  list[2] = io_make_output_field_convert_part(
+      "IonMassFractions", FLOAT, 5, UNIT_CONV_NO_UNITS, 0, parts,
+      /*xparts=*/NULL, rt_convert_mass_fractions,
+      "Mass fractions of all ionizing species");
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   num_elements += 8;
-  list[2] =
+  list[3] =
       io_make_output_field("RTDebugInjectionDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_injection_done,
                            "How many times rt_injection_update_photon_density "
                            "has been called");
-  list[3] = io_make_output_field(
+  list[4] = io_make_output_field(
       "RTDebugCallsIactGradientInteractions", INT, 1, UNIT_CONV_NO_UNITS, 0,
       parts, rt_data.debug_calls_iact_gradient_interaction,
       "number of calls to this particle during the gradient interaction loop "
       "from the actual interaction function");
-  list[4] = io_make_output_field("RTDebugCallsIactTransportInteractions", INT,
+  list[5] = io_make_output_field("RTDebugCallsIactTransportInteractions", INT,
                                  1, UNIT_CONV_NO_UNITS, 0, parts,
                                  rt_data.debug_calls_iact_transport_interaction,
                                  "number of calls to this particle during the "
                                  "transport interaction loop from the actual "
                                  "interaction function");
-  list[5] =
+  list[6] =
       io_make_output_field("RTDebugGradientsDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_gradients_done,
                            "How many times finalise_gradients was called");
-  list[6] =
+  list[7] =
       io_make_output_field("RTDebugTransportDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_transport_done,
                            "How many times finalise_transport was called");
-  list[7] = io_make_output_field(
+  list[8] = io_make_output_field(
       "RTDebugThermochemistryDone", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_thermochem_done, "How many times rt_tchem was called");
-  list[8] = io_make_output_field(
+  list[9] = io_make_output_field(
       "RTDebugRadAbsorbedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_radiation_absorbed_tot,
       "Radiation absorbed by this part during its lifetime");
-  list[9] = io_make_output_field("RTDebugStarsInjectPrepTotCounts", ULONGLONG,
-                                 1, UNIT_CONV_NO_UNITS, 0, parts,
-                                 rt_data.debug_iact_stars_inject_prep_tot,
-                                 "Total interactions with stars during "
-                                 "injection prep during its lifetime");
+  list[10] = io_make_output_field("RTDebugStarsInjectPrepTotCounts", ULONGLONG,
+                                  1, UNIT_CONV_NO_UNITS, 0, parts,
+                                  rt_data.debug_iact_stars_inject_prep_tot,
+                                  "Total interactions with stars during "
+                                  "injection prep during its lifetime");
 #endif
 
   return num_elements;
@@ -221,13 +258,13 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Write photon group bin edges */
   /* ---------------------------- */
-  hid_t type = H5Tcopy(io_hdf5_type(FLOAT));
+  hid_t type_float = H5Tcopy(io_hdf5_type(FLOAT));
 
   hsize_t dims[1] = {RT_NGROUPS};
   hid_t space = H5Screate_simple(1, dims, NULL);
-  hid_t dset = H5Dcreate(h_grp, "PhotonGroupEdges", type, space, H5P_DEFAULT,
-                         H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, rtp->photon_groups);
+  hid_t dset = H5Dcreate(h_grp, "PhotonGroupEdges", type_float, space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset, type_float, H5S_ALL, H5S_ALL, H5P_DEFAULT, rtp->photon_groups);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
@@ -256,14 +293,14 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
       factor * pow(e->cosmology->a, 0.f));
 
   H5Dclose(dset);
-  H5Tclose(type);
+  /* H5Tclose(type_float); [> close this later <] */
 
   /* If without RT, we have nothing more to do. */
   const int with_rt = e->policy & engine_policy_rt;
   if (!with_rt) return;
 
-  /* Write photon group names now */
-  /* ---------------------------- */
+  /* Write photon group names */
+  /* -------------------------*/
 
   /* Generate Energy Group names */
   char names_energy[RT_NGROUPS * RT_LABELS_SIZE];
@@ -274,14 +311,15 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   }
 
   /* Now write them down */
-  type = H5Tcopy(H5T_C_S1);
-  H5Tset_size(type, RT_LABELS_SIZE);
+  hid_t type_string_label = H5Tcopy(H5T_C_S1);
+  H5Tset_size(type_string_label, RT_LABELS_SIZE);
 
   hsize_t dimsE[1] = {RT_NGROUPS};
   hid_t spaceE = H5Screate_simple(1, dimsE, NULL);
-  hid_t dsetE = H5Dcreate(h_grp_columns, "PhotonEnergies", type, spaceE,
-                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dsetE, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, names_energy);
+  hid_t dsetE = H5Dcreate(h_grp_columns, "PhotonEnergies", type_string_label,
+                          spaceE, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dsetE, type_string_label, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           names_energy);
   H5Dclose(dsetE);
 
   /* Generate Fluxes Group Names */
@@ -305,53 +343,85 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   /* Now write them down */
   hsize_t dimsF[1] = {3 * RT_NGROUPS};
   hid_t spaceF = H5Screate_simple(1, dimsF, NULL);
-  hid_t dsetF = H5Dcreate(h_grp_columns, "PhotonFluxes", type, spaceF,
-                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dsetF, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, names_fluxes);
+  hid_t dsetF = H5Dcreate(h_grp_columns, "PhotonFluxes", type_string_label,
+                          spaceF, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dsetF, type_string_label, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           names_fluxes);
   H5Dclose(dsetF);
 
-  H5Tclose(type);
+  /* H5Tclose(type_string_label); [> close this later <] */
 
   /* Write reduced speed of light */
   /* ---------------------------- */
-  hid_t type2 = H5Tcopy(io_hdf5_type(FLOAT));
+  /* hid_t type2 = H5Tcopy(io_hdf5_type(FLOAT)); */
 
-  hsize_t dims2[1] = {1};
-  hid_t space2 = H5Screate_simple(1, dims2, NULL);
-  hid_t dset2 = H5Dcreate(h_grp, "ReducedLightspeed", type2, space2,
-                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dset2, type2, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+  hsize_t dims_cred[1] = {1};
+  hid_t space_cred = H5Screate_simple(1, dims_cred, NULL);
+  hid_t dset_cred =
+      H5Dcreate(h_grp, "ReducedLightspeed", type_float, space_cred, H5P_DEFAULT,
+                H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset_cred, type_float, H5S_ALL, H5S_ALL, H5P_DEFAULT,
            &rt_params.reduced_speed_of_light);
 
   /* Write unit conversion factors for this data set */
-  char buffer2[FIELD_BUFFER_SIZE] = {0};
-  units_cgs_conversion_string(buffer2, snapshot_units, UNIT_CONV_VELOCITY,
+  char buffer_cred[FIELD_BUFFER_SIZE] = {0};
+  units_cgs_conversion_string(buffer_cred, snapshot_units, UNIT_CONV_VELOCITY,
                               /*scale_factor_exponent=*/0);
-  float baseUnitsExp2[5];
-  units_get_base_unit_exponents_array(baseUnitsExp2, UNIT_CONV_VELOCITY);
-  io_write_attribute_f(dset2, "U_M exponent", baseUnitsExp2[UNIT_MASS]);
-  io_write_attribute_f(dset2, "U_L exponent", baseUnitsExp2[UNIT_LENGTH]);
-  io_write_attribute_f(dset2, "U_t exponent", baseUnitsExp2[UNIT_TIME]);
-  io_write_attribute_f(dset2, "U_I exponent", baseUnitsExp2[UNIT_CURRENT]);
-  io_write_attribute_f(dset2, "U_T exponent", baseUnitsExp2[UNIT_TEMPERATURE]);
-  io_write_attribute_f(dset2, "h-scale exponent", 0.f);
-  io_write_attribute_f(dset2, "a-scale exponent", 0.f);
-  io_write_attribute_s(dset2, "Expression for physical CGS units", buffer2);
+  float baseUnitsExp_cred[5];
+  units_get_base_unit_exponents_array(baseUnitsExp_cred, UNIT_CONV_VELOCITY);
+  io_write_attribute_f(dset_cred, "U_M exponent", baseUnitsExp_cred[UNIT_MASS]);
+  io_write_attribute_f(dset_cred, "U_L exponent",
+                       baseUnitsExp_cred[UNIT_LENGTH]);
+  io_write_attribute_f(dset_cred, "U_t exponent", baseUnitsExp_cred[UNIT_TIME]);
+  io_write_attribute_f(dset_cred, "U_I exponent",
+                       baseUnitsExp_cred[UNIT_CURRENT]);
+  io_write_attribute_f(dset_cred, "U_T exponent",
+                       baseUnitsExp_cred[UNIT_TEMPERATURE]);
+  io_write_attribute_f(dset_cred, "h-scale exponent", 0.f);
+  io_write_attribute_f(dset_cred, "a-scale exponent", 0.f);
+  io_write_attribute_s(dset_cred, "Expression for physical CGS units",
+                       buffer_cred);
 
   /* Write the actual number this conversion factor corresponds to */
-  const double factor2 =
+  /* TODO Mladen: check cosmology. reduced_speed_of_light is physical only for
+   * now. */
+  const double factor_cred =
       units_cgs_conversion_factor(snapshot_units, UNIT_CONV_VELOCITY);
   io_write_attribute_d(
-      dset2,
+      dset_cred,
       "Conversion factor to CGS (not including cosmological corrections)",
-      factor2);
+      factor_cred);
   io_write_attribute_d(
-      dset2,
+      dset_cred,
       "Conversion factor to physical CGS (including cosmological corrections)",
-      factor2 * pow(e->cosmology->a, 0.f));
+      factor_cred * pow(e->cosmology->a, 0.f));
 
-  H5Dclose(dset2);
-  H5Tclose(type2);
+  H5Dclose(dset_cred);
+
+  /* Write ionizing species mass fractions */
+  /* ------------------------------------- */
+
+  char names_mf[5 * RT_LABELS_SIZE];
+  strcpy(names_mf + 0 * RT_LABELS_SIZE, "HI\0");
+  strcpy(names_mf + 1 * RT_LABELS_SIZE, "HII\0");
+  strcpy(names_mf + 2 * RT_LABELS_SIZE, "HeI\0");
+  strcpy(names_mf + 3 * RT_LABELS_SIZE, "HeII\0");
+  strcpy(names_mf + 4 * RT_LABELS_SIZE, "HeIII\0");
+
+  hsize_t dims_mf[1] = {5};
+  hid_t space_mf = H5Screate_simple(1, dims_mf, NULL);
+  hid_t dset_mf =
+      H5Dcreate(h_grp_columns, "IonMassFractions", type_string_label, space_mf,
+                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset_mf, type_string_label, H5S_ALL, H5S_ALL, H5P_DEFAULT, names_mf);
+  H5Dclose(dset_mf);
+
+  /* Clean up after yourself */
+  /* ----------------------- */
+
+  /* Close up the types */
+  H5Tclose(type_float);
+  H5Tclose(type_string_label);
 
 #endif /* HAVE_HDF5 */
 }

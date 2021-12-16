@@ -345,8 +345,12 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
   }
 }
 
+/**
+ * @brief Activate the #part sync tasks on the given cell.
+ */
 void cell_activate_sync_part(struct cell *c, struct scheduler *s) {
-  /* If this cell is already marked for drift, quit early. */
+
+  /* If this cell is already marked for sync, quit early. */
   if (cell_get_flag(c, cell_flag_do_hydro_sync)) return;
 
   /* Mark this cell for synchronization. */

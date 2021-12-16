@@ -1171,7 +1171,7 @@ int cell_has_tasks(struct cell *c) {
 #ifdef WITH_MPI
   return (c->timestep_collect != NULL || c->mpi.recv != NULL);
 #else
-  return (c->timestep != NULL);
+  return (c->timestep_collect != NULL);
 #endif
 }
 

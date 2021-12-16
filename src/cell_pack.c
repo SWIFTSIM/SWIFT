@@ -325,7 +325,16 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
 #endif
 }
 
-int cell_pack_end_step(struct cell *c, struct pcell_step *pcells) {
+/**
+ * @brief Pack the cell information about time-step sizes and displacements
+ * of a cell hierarchy.
+ *
+ * @param c The #cells to pack.
+ * @param pcells the packed cell structures to pack into.
+ *
+ * @return The number of cells that were packed.
+ */
+int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
 
 #ifdef WITH_MPI
 
@@ -360,7 +369,16 @@ int cell_pack_end_step(struct cell *c, struct pcell_step *pcells) {
 #endif
 }
 
-int cell_unpack_end_step(struct cell *c, struct pcell_step *pcells) {
+/**
+ * @brief Unpack the cell information about time-step sizes and displacements
+ * of a cell hierarchy.
+ *
+ * @param c The #cells to unpack into.
+ * @param pcells the packed cell structures to unpack from.
+ *
+ * @return The number of cells that were packed.
+ */
+int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
 
 #ifdef WITH_MPI
 

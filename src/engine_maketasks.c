@@ -492,6 +492,9 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
  * @param t_gradient The recv_gradient #task, if it has already been created.
  * @param t_prep1 The recv_prep1 #task, if it has already been created.
  * @param t_limiter The recv_limiter #task, if it has already been created.
+ * @param t_unpack_limiter The unpack_limiter #task, if it has already been
+ * created.
+ * @param tend The top-level time-step communication #task.
  * @param with_feedback Are we running with stellar feedback?
  * @param with_black_holes Are we running with black holes?
  * @param with_limiter Are we running with the time-step limiter?
@@ -500,8 +503,9 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 void engine_addtasks_recv_hydro(
     struct engine *e, struct cell *c, struct task *t_xv, struct task *t_rho,
     struct task *t_gradient, struct task *t_prep1, struct task *t_limiter,
-    struct task *t_unpack_limiter, struct task *tend, const int with_feedback,
-    const int with_black_holes, const int with_limiter, const int with_sync) {
+    struct task *t_unpack_limiter, struct task *const tend,
+    const int with_feedback, const int with_black_holes, const int with_limiter,
+    const int with_sync) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -648,11 +652,13 @@ void engine_addtasks_recv_hydro(
  * @param t_density The recv_density #task, if it has already been created.
  * @param t_prep2 The recv_prep2 #task, if it has already been created.
  * @param t_sf_counts The recv_sf_counts, if it has been created.
+ * @param tend The top-level time-step communication #task.
  * @param with_star_formation Are we running with star formation on?
  */
 void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
                                 struct task *t_density, struct task *t_prep2,
-                                struct task *t_sf_counts, struct task *tend,
+                                struct task *t_sf_counts,
+                                struct task *const tend,
                                 const int with_star_formation) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (e->policy & engine_policy_sinks && e->policy & engine_policy_stars) {
@@ -777,13 +783,14 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
  * @param t_gas_swallow The gas swallow comm. task, if it has already been
  * created.
  * @param t_feedback The recv_feed #task, if it has already been created.
+ * @param tend The top-level time-step communication #task.
  */
 void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
                                       struct task *t_rho,
                                       struct task *t_bh_merger,
                                       struct task *t_gas_swallow,
                                       struct task *t_feedback,
-                                      struct task *tend) {
+                                      struct task *const tend) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -869,9 +876,11 @@ void engine_addtasks_recv_black_holes(struct engine *e, struct cell *c,
  * @param e The #engine.
  * @param c The foreign #cell.
  * @param t_grav The recv_gpart #task, if it has already been created.
+ * @param tend The top-level time-step communication #task.
  */
 void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
-                                  struct task *t_grav, struct task *tend) {
+                                  struct task *t_grav,
+                                  struct task *const tend) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
