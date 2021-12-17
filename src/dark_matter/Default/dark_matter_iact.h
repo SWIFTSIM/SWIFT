@@ -520,8 +520,20 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         w *= units_cgs_conversion_factor(us, UNIT_CONV_TIME); /* physical but internal units now */
         double w2 = w * w;
         const float a = v * v / w2;
-        const float dx = u * a / (1.f + a) - 1.f;
-        const float cos_theta = ( 1.f / dx + 1.f) * (2.f / a) + 1.f;
+        const float u_a = u - (1.f + a ) / a;
+        float cos_theta;
+
+        if (a <= 0.f || u_a = 0.f){
+            /* If we happen to be in this bad regime, let's go with isotropic scattering */
+            cos_theta = 1.f - 2.f * u;
+
+        } else {
+            /* Otherwise let's calculate theta from prob. distribution */
+            const float dx = u * a / (1.f + a) - 1.f;
+            cos_theta = ( 1.f / dx + 1.f) * (2.f / a) + 1.f;
+
+        }
+
         const float sin_theta = sqrt(1.f - cos_theta * cos_theta);
         
         /* Calculate theta from prob. distribution */
