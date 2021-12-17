@@ -523,7 +523,7 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
         const float u_a = u - (1.f + a ) / a;
         float cos_theta;
 
-        if (a <= 0.f || u_a = 0.f){
+        if (a <= 0.f || u_a == 0.f){
             /* If we happen to be in this bad regime, let's go with isotropic scattering */
             cos_theta = 1.f - 2.f * u;
 
