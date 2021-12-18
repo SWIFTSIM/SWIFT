@@ -533,9 +533,12 @@ __attribute__((always_inline)) INLINE static void sidm_do_kick(struct dmpart *re
             cos_theta = ( 1.f / dx + 1.f) * (2.f / a) + 1.f;
 
         }
+        message("cos theta =%e", cos_theta);
 
         const float sin_theta = sqrt(1.f - cos_theta * cos_theta);
-        
+
+        message("sin theta =%e", cos_theta);
+
         /* Calculate theta from prob. distribution */
         /* const float theta = acos(x); */
         
