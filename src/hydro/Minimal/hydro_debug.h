@@ -37,14 +37,14 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
   printf(
       "\n "
-      "x=[%.6g, %.6g, %.6g], v=[%.3g, %.3g, %.3g], \n "
-      "v_full=[%.3g, %.3g, %.3g], a=[%.12g, %.12g, %.12g], \n "
+      "x=[%.6g, %.6g, %.6g], v=[%.12g, %.12g, %.12g], \n "
+      "v_full=[%.12g, %.12g, %.12g], a=[%.12g, %.12g, %.12g], \n "
       "rho_squared=%.12g, \n "
       "B=[%.12g, %.12g, %.12g], dB/dt=[%.12g, %.12g, %.12g], \n "
       "B_full=[%.12g, .%.12g, %.12g], \n "
-      "m=%.3g, u=%.3g, du/dt=%.3g, P=%.3g, c_s=%.3g, \n "
-      "v_sig=%.3g, h=%.3g, dh/dt=%.3g, wcount=%.3g, rho=%.3g, \n "
-      "dh_drho=%.3g, time_bin=%d wakeup=%d \n",
+      "m=%.12g, u=%.12g, du/dt=%.12g, P=%.12g, c_s=%.12g, \n "
+      "v_sig=%.12g, h=%.12g, dh/dt=%.12g, wcount=%.12g, rho=%.12g, \n "
+      "dh_drho=%.12g, time_bin=%d wakeup=%d \n",
       p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
       xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
       p->rhosq,
