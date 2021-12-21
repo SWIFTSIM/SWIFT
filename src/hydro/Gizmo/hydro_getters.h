@@ -151,12 +151,23 @@ hydro_get_drifted_physical_internal_energy(const struct part* restrict p,
 }
 
 /**
+ * @brief Returns the physical internal energy of a particle
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_drifted_comoving_internal_energy(const struct part* restrict p) {
+
+  return hydro_get_comoving_internal_energy(p);
+}
+
+/**
  * @brief Returns the comoving entropy of a particle
  *
  * @param p The particle of interest.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
-    const struct part* restrict p) {
+    const struct part* restrict p, const struct xpart* restrict xp) {
 
   if (p->rho > 0.0f) {
     return gas_entropy_from_pressure(p->rho, p->P);
@@ -178,7 +189,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_entropy(
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return hydro_get_comoving_entropy(p);
+  return hydro_get_comoving_entropy(p, NULL);
 }
 
 /**
@@ -193,7 +204,7 @@ hydro_get_drifted_physical_entropy(const struct part* restrict p,
 
   /* Note: no cosmological conversion required here with our choice of
    * coordinates. */
-  return hydro_get_comoving_entropy(p);
+  return hydro_get_comoving_entropy(p, NULL);
 }
 
 /**

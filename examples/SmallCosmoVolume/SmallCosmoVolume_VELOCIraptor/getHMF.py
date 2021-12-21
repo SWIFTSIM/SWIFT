@@ -23,7 +23,6 @@ import hmf
 from astropy.cosmology import FlatLambdaCDM
 
 
-
 def getHMFz(z, H0=70.3, Om0=0.276, Ob0=0.0455, Tcmb0=2.725, Mmin=1e10, Mmax=1e15):
     """ Fast function to call the HMF from hmf, this function only has 
         7 variables and will return the dn/d(log10 M) and M array.
@@ -61,5 +60,3 @@ def getHMFztinker(z, H0=70.3, Om0=0.276, Ob0=0.0455, Tcmb0=2.725, Mmin=1e10, Mma
         cosmo_model=new_model, Mmax=np.log10(Mmax), Mmin=np.log10(Mmin), z=z
     )
     return hmff.m, hmff.dndlog10m
-
-

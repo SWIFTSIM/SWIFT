@@ -231,6 +231,7 @@ void *runner_main(void *data) {
       r->t = t;
 #endif
 
+      const ticks task_beg = getticks();
       /* Different types of tasks... */
       switch (t->type) {
         case task_type_self:
@@ -506,15 +507,12 @@ void *runner_main(void *data) {
         case task_type_timestep_sync:
           runner_do_sync(r, ci, 0, 1);
           break;
+        case task_type_collect:
+          runner_do_timestep_collect(r, ci, 1);
+          break;
 #ifdef WITH_MPI
         case task_type_send:
-          if (t->subtype == task_subtype_tend_part) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_gpart) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_spart) {
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_bpart) {
+          if (t->subtype == task_subtype_tend) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
             free(t->buff);
@@ -527,18 +525,8 @@ void *runner_main(void *data) {
           }
           break;
         case task_type_recv:
-          if (t->subtype == task_subtype_tend_part) {
-            cell_unpack_end_step_hydro(ci, (struct pcell_step_hydro *)t->buff);
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_gpart) {
-            cell_unpack_end_step_grav(ci, (struct pcell_step_grav *)t->buff);
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_spart) {
-            cell_unpack_end_step_stars(ci, (struct pcell_step_stars *)t->buff);
-            free(t->buff);
-          } else if (t->subtype == task_subtype_tend_bpart) {
-            cell_unpack_end_step_black_holes(
-                ci, (struct pcell_step_black_holes *)t->buff);
+          if (t->subtype == task_subtype_tend) {
+            cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
             cell_unpack_sf_counts(ci, (struct pcell_sf *)t->buff);
@@ -635,6 +623,7 @@ void *runner_main(void *data) {
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
+      r->active_time += (getticks() - task_beg);
 
 /* Mark that we have run this task on these cells */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -661,3 +650,9 @@ void *runner_main(void *data) {
   /* Be kind, rewind. */
   return NULL;
 }
+
+ticks runner_get_active_time(const struct runner *restrict r) {
+  return r->active_time;
+}
+
+void runner_reset_active_time(struct runner *restrict r) { r->active_time = 0; }

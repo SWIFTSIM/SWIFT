@@ -27,7 +27,7 @@
 
 #include "hydro.h" /* needed for hydro_part_geometry_well_behaved() */
 #include "rt_getters.h"
-/* #include "rt_slope_limiters_cell.h" */ /* skipped for now. */
+/* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
 #include "rt_slope_limiters_face.h"
 #include "rt_unphysical.h"
 
@@ -160,7 +160,6 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
         pj->rt_data.debug_injection_done, pj->id);
 
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;
-
   pj->rt_data.debug_calls_iact_gradient_interaction += 1;
 #endif
 
@@ -403,13 +402,14 @@ __attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, float Ui[4],
-    float Uj[4], int group, const float *dx, float r, const float xij_i[3]) {
+    float Uj[4], int group, const float *dx, const float r,
+    const float xij_i[3]) {
 
   rt_part_get_density_vector(pi, group, Ui);
-  rt_check_unphysical_density(Ui, &Ui[1], 0);
-
   rt_part_get_density_vector(pj, group, Uj);
-  rt_check_unphysical_density(Uj, &Uj[1], 0);
+  /* No need to check unphysical density here:
+   * the densities haven't been touched since
+   * the rt_injection_update_photon_density */
 
   float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
   float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
@@ -434,7 +434,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
   dUj[3] = rt_gradients_extrapolate(dFz_j, xij_j);
 
   /* Apply the slope limiter at this interface */
-  rt_slope_limit_face(dUi, dUj);
+  rt_slope_limit_face(Ui, Uj, dUi, dUj, dx, r, xij_i, xij_j);
 
   Ui[0] += dUi[0];
   Ui[1] += dUi[1];
@@ -446,6 +446,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
   Uj[2] += dUj[2];
   Uj[3] += dUj[3];
 
+  /* Check and correct unphysical extrapolated densities */
   rt_check_unphysical_density(Ui, &Ui[1], 1);
   rt_check_unphysical_density(Uj, &Uj[1], 1);
 }

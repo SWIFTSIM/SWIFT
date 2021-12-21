@@ -30,6 +30,7 @@
 
 /* Local includes. */
 #include "clocks.h"
+#include "error.h"
 
 /* The timers. */
 ticks timers[timer_count];
@@ -176,6 +177,7 @@ void timers_open_file(int rank) {
   char buff[100];
   sprintf(buff, "timers_%d.txt", rank);
   timers_file = fopen(buff, "w");
+  if (timers_file == NULL) error("Could not create file '%s'.", buff);
 
   fprintf(timers_file, "# timers: \n# step |");
   for (int k = 0; k < timer_count; k++)

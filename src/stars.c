@@ -66,7 +66,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
 
     /* Is the particle active and part of the subset to be tested ? */
     if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
-        /*spi->count_since_last_enrichment == 1*/ spi->birth_time != -1.) {
+        (spi->has_done_feedback || e->step <= 0)) {
 
       /* Get some information about the particle */
       const double pix[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -206,6 +206,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
 
   /* Creare files and write header */
   FILE *file_swift = fopen(file_name_swift, "w");
+  if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Stars accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_STARS_DENSITY_CHECKS);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
@@ -227,7 +228,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
                          kernel_gamma * spi->h * spi->h * spi->h * spi->n;
 
     if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
-        /* spi->count_since_last_enrichment == 1 &&*/ spi->birth_time != -1.) {
+        (spi->has_done_feedback || e->step <= 0)) {
 
       fprintf(
           file_swift,
@@ -249,6 +250,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
 
   /* Creare files and write header */
   FILE *file_exact = fopen(file_name_exact, "w");
+  if (file_exact == NULL) error("Could not create file '%s'.", file_name_exact);
   fprintf(file_exact, "# Stars accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_STARS_DENSITY_CHECKS);
   fprintf(file_exact, "# periodic= %d\n", s->periodic);
@@ -275,7 +277,7 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
                          kernel_gamma * spi->h * spi->h * spi->h * spi->n_exact;
 
     if (id % SWIFT_STARS_DENSITY_CHECKS == 0 && spart_is_starting(spi, e) &&
-        /*spi->count_since_last_enrichment == 1 && */ spi->birth_time != -1.) {
+        (spi->has_done_feedback || e->step <= 0)) {
 
       counter++;
 

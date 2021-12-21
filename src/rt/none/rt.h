@@ -48,10 +48,28 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
 
 /**
  * @brief First initialisation of the RT hydro particle data.
+ * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
     struct part* restrict p) {}
 
+/**
+ * @brief Initialises particle quantities that can't be set
+ * otherwise before the zeroth step is finished. E.g. because
+ * they require the particle density to be known.
+ *
+ * @param p particle to work on
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param us unit_system struct
+ * @param cosmo cosmology struct
+ */
+__attribute__((always_inline)) INLINE static void
+rt_init_part_after_zeroth_step(struct part* restrict p,
+                               const struct rt_props* rt_props,
+                               const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo) {}
 /**
  * @brief Initialisation of the RT density loop related star particle data.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
@@ -100,6 +118,15 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     struct spart* sp){};
+
+/**
+ * @brief Do checks/conversions on particles on startup.
+ *
+ * @param p The particle to work on
+ * @param rtp The RT properties struct
+ */
+__attribute__((always_inline)) INLINE static void rt_convert_quantities(
+    struct part* p, const struct rt_props* rtp){};
 
 /**
  * @brief Computes the next radiative transfer time step size
@@ -188,10 +215,13 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 /**
  * @brief Do the thermochemistry on a particle.
  *
+ * This function wraps around rt_do_thermochemistry function.
+ *
  * @param p particle to work on
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p) {}
+    struct part* restrict p, const struct rt_props* rt_props) {}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.

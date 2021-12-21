@@ -25,6 +25,7 @@
 #include "cooling.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "exp10.h"
 #include "gravity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
@@ -309,6 +310,11 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
 __attribute__((always_inline)) INLINE static void
 black_holes_bpart_has_no_neighbours(struct bpart* bp,
                                     const struct cosmology* cosmo) {
+
+  warning(
+      "BH particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      bp->id, bp->h, bp->density.wcount);
 
   /* Some smoothing length multiples. */
   const float h = bp->h;

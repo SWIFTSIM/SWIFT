@@ -44,6 +44,7 @@
 #include "memuse.h"
 #include "proxy.h"
 #include "threadpool.h"
+#include "tools.h"
 
 #define fof_props_default_group_id 2147483647
 #define fof_props_default_group_id_offset 1
@@ -101,11 +102,10 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
   /* Check that we can write outputs by testing if the output
    * directory exists and is searchable and writable. */
-  const char *dirp = dirname(props->base_name);
-  if (access(dirp, W_OK | X_OK) != 0) {
-    error("Cannot write FOF outputs in directory %s (%s)", dirp,
-          strerror(errno));
-  }
+  char directory[PARSER_MAX_LINE_SIZE] = {0};
+  sprintf(directory, "%s", props->base_name);
+  const char *dirp = dirname(directory);
+  if (engine_rank == 0) safe_checkdir(dirp, /*create=*/1);
 
   /* Read the minimum group size. */
   props->min_group_size = parser_get_param_int(params, "FOF:min_group_size");
@@ -2519,6 +2519,9 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
         "took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  /* Allocate buffers to receive the gpart fof information */
+  engine_allocate_foreign_particles(e, /*fof=*/1);
+
   /* Activate the tasks exchanging all the required gparts */
   engine_activate_gpart_comms(e);
 
@@ -2551,6 +2554,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Clean up memory. */
   swift_free("fof_cell_pairs", cell_pairs);
+  space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
   if (verbose)
     message("Searching for foreign links took: %.3f %s.",

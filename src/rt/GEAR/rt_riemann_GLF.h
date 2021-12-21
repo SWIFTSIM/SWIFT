@@ -36,23 +36,19 @@
  *
  * @param UL left state
  * @param UR right state
+ * @param FLnorm the norm of the radiation flux of the left state
+ * @param FRnorm the norm of the radiation flux of the left state
+ * @param hyperFluxL the flux of the hyperbolic conservation law of the left
+ * state
+ * @param hyperFluxR the flux of the hyperbolic conservation law of the right
+ * state
  * @param flux_half the resulting flux at the interface
  * @param n_unit the unit vector perpendicular to the "intercell" surface.
  */
 __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
-    const float UL[4], const float UR[4], float flux_half[4],
-    const float n_unit[3]) {
-
-  float hyperFluxL[4][3];
-  rt_get_hyperbolic_flux(UL, hyperFluxL);
-  float hyperFluxR[4][3];
-  rt_get_hyperbolic_flux(UR, hyperFluxR);
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  rt_check_unphysical_hyperbolic_flux(hyperFluxL);
-  rt_check_unphysical_hyperbolic_flux(hyperFluxR);
-#endif
-
+    const float UL[4], const float UR[4], const float FLnorm,
+    const float FRnorm, const float hyperFluxL[4][3],
+    const float hyperFluxR[4][3], float flux_half[4], const float n_unit[3]) {
   float fluxL[4];
   fluxL[0] = hyperFluxL[0][0] * n_unit[0] + hyperFluxL[0][1] * n_unit[1] +
              hyperFluxL[0][2] * n_unit[2];
@@ -74,13 +70,11 @@ __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
              hyperFluxR[3][2] * n_unit[2];
 
   const float c_red = rt_params.reduced_speed_of_light;
-  float cdU[4] = {c_red * (UR[0] - UL[0]), c_red * (UR[1] - UL[1]),
-                  c_red * (UR[2] - UL[2]), c_red * (UR[3] - UL[3])};
 
-  flux_half[0] = 0.5f * (fluxL[0] + fluxR[0] - cdU[0]);
-  flux_half[1] = 0.5f * (fluxL[1] + fluxR[1] - cdU[1]);
-  flux_half[2] = 0.5f * (fluxL[2] + fluxR[2] - cdU[2]);
-  flux_half[3] = 0.5f * (fluxL[3] + fluxR[3] - cdU[3]);
+  flux_half[0] = 0.5f * (fluxL[0] + fluxR[0] - c_red * (UR[0] - UL[0]));
+  flux_half[1] = 0.5f * (fluxL[1] + fluxR[1] - c_red * (UR[1] - UL[1]));
+  flux_half[2] = 0.5f * (fluxL[2] + fluxR[2] - c_red * (UR[2] - UL[2]));
+  flux_half[3] = 0.5f * (fluxL[3] + fluxR[3] - c_red * (UR[3] - UL[3]));
 }
 
 #endif /* SWIFT_GEAR_RT_RIEMANN_GLF_H */

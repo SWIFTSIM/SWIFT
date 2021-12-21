@@ -23,7 +23,7 @@
 #include "rt_flux.h"
 #include "rt_gradients.h"
 #include "rt_properties.h"
-/* #include "rt_slope_limiters_cell.h" */ /* skipped for now. */
+/* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
 #include "rt_stellar_emission_rate.h"
 #include "rt_thermochemistry.h"
 
@@ -66,9 +66,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
+  p->rt_data.debug_iact_stars_inject_prep = 0;
 
-  p->rt_data.debug_calls_iact_gradient = 0;
-  p->rt_data.debug_calls_iact_transport = 0;
   /* skip this for GEAR */
   /* p->rt_data.debug_injection_check = 0; */
   p->rt_data.debug_calls_iact_gradient_interaction = 0;
@@ -90,10 +89,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
     struct part* restrict p) {
-
   /* Don't reset conserved quantities here! ICs will be overwritten */
   rt_init_part(p);
   rt_reset_part(p);
+
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.density[g].energy = 0.f;
     p->rt_data.density[g].flux[0] = 0.f;
@@ -102,7 +101,31 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   }
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
+  p->rt_data.debug_iact_stars_inject_prep_tot = 0ULL;
 #endif
+}
+
+/**
+ * @brief Initialises particle quantities that can't be set
+ * otherwise before the zeroth step is finished. E.g. because
+ * they require the particle density to be known.
+ *
+ * @param p particle to work on
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param us unit_system struct
+ * @param cosmo cosmology struct
+ */
+__attribute__((always_inline)) INLINE static void
+rt_init_part_after_zeroth_step(struct part* restrict p,
+                               const struct rt_props* rt_props,
+                               const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo) {
+
+  /* If we're setting up ionising equilibrium initial conditions,
+   * then the particles need to have their densities known first. */
+  rt_tchem_first_init_part(p, rt_props, phys_const, us, cosmo);
 }
 
 /**
@@ -113,14 +136,20 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
  * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+
+  for (int i = 0; i < 8; i++) {
+    sp->rt_data.octant_weights[i] = 0.f;
+  }
+}
 
 /**
  * @brief Reset of the RT star particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
  * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_spart is made in space_convert_rt_quantities() after
- * the zeroth time step is finished.
+ * extra call to rt_reset_spart is made in
+ * space_convert_rt_quantities_after_zeroth_step() after the zeroth time
+ * step is finished.
  *
  * @param sp star particle to work on
  */
@@ -135,6 +164,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   sp->rt_data.debug_iact_hydro_inject = 0;
+  sp->rt_data.debug_iact_hydro_inject_prep = 0;
 
   sp->rt_data.debug_emission_rate_set = 0;
   /* skip this for GEAR */
@@ -202,6 +232,50 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
 };
 
 /**
+ * @brief Do checks/conversions on particles on startup.
+ *
+ * @param p The particle to work on
+ * @param rtp The RT properties struct
+ */
+__attribute__((always_inline)) INLINE static void rt_convert_quantities(
+    struct part* p, const struct rt_props* rtp) {
+
+  /* If we're reducing the speed of light, then we may encounter
+   * photon fluxes which are way too high than the physically
+   * allowable limit. This can lead to catastrophic problems for
+   * the propagation of photons, as the pressure tensor assumes
+   * the upper limit to be respected. So check this and correct
+   * it if necessary.
+   * We only read in conserved quantities, so only check those. */
+
+  struct rt_part_data* rtd = &p->rt_data;
+  for (int g = 0; g < RT_NGROUPS; g++) {
+
+    if (rtd->conserved[g].energy <= 0.f) {
+      rtd->conserved[g].energy = 0.f;
+      rtd->conserved[g].flux[0] = 0.f;
+      rtd->conserved[g].flux[1] = 0.f;
+      rtd->conserved[g].flux[2] = 0.f;
+      continue;
+    }
+
+    /* Check for too high fluxes */
+    const float flux2 = rtd->conserved[g].flux[0] * rtd->conserved[g].flux[0] +
+                        rtd->conserved[g].flux[1] * rtd->conserved[g].flux[1] +
+                        rtd->conserved[g].flux[2] * rtd->conserved[g].flux[2];
+    const float flux_norm = sqrtf(flux2);
+    const float flux_max =
+        rt_params.reduced_speed_of_light * rtd->conserved[g].energy;
+    if (flux_norm > flux_max) {
+      const float correct = flux_max / flux_norm;
+      rtd->conserved[g].flux[0] *= correct;
+      rtd->conserved[g].flux[1] *= correct;
+      rtd->conserved[g].flux[2] *= correct;
+    }
+  }
+};
+
+/**
  * @brief Computes the next radiative transfer time step size
  * of a given particle (during timestep tasks)
  *
@@ -247,7 +321,7 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
 }
 
 /**
- * @brief  This function finalises the injection step.
+ * @brief This function finalises the injection step.
  *
  * @param p particle to work on
  * @param props struct #rt_props that contains global RT properties
@@ -257,14 +331,14 @@ rt_injection_update_photon_density(struct part* restrict p,
                                    struct rt_props* props) {
 
   const float V = p->geometry.volume;
-  const float Vinv = 1. / V;
+  const float Vinv = 1.f / V;
   for (int g = 0; g < RT_NGROUPS; g++) {
     p->rt_data.density[g].energy = p->rt_data.conserved[g].energy * Vinv;
     p->rt_data.density[g].flux[0] = p->rt_data.conserved[g].flux[0] * Vinv;
     p->rt_data.density[g].flux[1] = p->rt_data.conserved[g].flux[1] * Vinv;
     p->rt_data.density[g].flux[2] = p->rt_data.conserved[g].flux[2] * Vinv;
     rt_check_unphysical_density(&p->rt_data.flux[g].energy,
-                                p->rt_data.flux[g].flux, 3);
+                                p->rt_data.flux[g].flux, 0);
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -325,11 +399,6 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
         "where injection count = %d",
         p->rt_data.debug_injection_done);
 
-  if (p->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called finalise gradient on particle "
-        "with iact gradient count = %d",
-        p->rt_data.debug_calls_iact_gradient);
   if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
     message(
         "WARNING: Called finalise gradient on particle "
@@ -346,7 +415,7 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @brief finishes up the transport step
  *
  * @param p particle to work on
- * @param dt the current time step of the particle of the particle
+ * @param dt the current time step of the particle
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt) {
@@ -364,17 +433,6 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
         "rt_finalise_gradient count is %d",
         p->rt_data.debug_gradients_done);
 
-  if (p->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called finalise transport on particle "
-        "with iact gradient count = %d",
-        p->rt_data.debug_calls_iact_gradient);
-
-  if (p->rt_data.debug_calls_iact_transport == 0)
-    error(
-        "Called finalise transport on particle "
-        "with iact transport count = %d",
-        p->rt_data.debug_calls_iact_transport);
   if (p->rt_data.debug_calls_iact_transport_interaction == 0)
     message(
         "WARNING: Called finalise transport on particle "
@@ -402,11 +460,12 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
  * This function wraps around rt_do_thermochemistry function.
  *
  * @param p particle to work on
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p) {
+    struct part* restrict p, const struct rt_props* rt_props) {
 
-  rt_do_thermochemistry(p);
+  rt_do_thermochemistry(p, rt_props);
 }
 
 /**
@@ -415,6 +474,13 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
  * @param props the #rt_props.
  */
 __attribute__((always_inline)) INLINE static void rt_clean(
-    struct rt_props* props) {}
+    struct rt_props* props) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  fclose(props->conserved_energy_filep);
+  fclose(props->energy_density_filep);
+  fclose(props->star_emitted_energy_filep);
+#endif
+}
 
 #endif /* SWIFT_RT_GEAR_H */
