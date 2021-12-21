@@ -249,14 +249,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
-  
+
   /* Isotropic pressure */
-  const float isoPi = pressurei + 0.5f * (Bi[0]*Bi[0] + Bi[1]*Bi[1] + Bi[2]*Bi[2]) / const_vacuum_permeability;
-  const float isoPj = pressurej + 0.5f * (Bj[0]*Bj[0] + Bj[1]*Bj[1] + Bj[2]*Bj[2]) / const_vacuum_permeability;
-  
+  const float isoPi = pressurei; // + 0.5f * (Bi[0]*Bi[0] + Bi[1]*Bi[1] + Bi[2]*Bi[2]) / const_vacuum_permeability;
+  const float isoPj = pressurej; // + 0.5f * (Bj[0]*Bj[0] + Bj[1]*Bj[1] + Bj[2]*Bj[2]) / const_vacuum_permeability;
+
   /* B dot r. */
-  const float Bri = (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) / const_vacuum_permeability;
-  const float Brj = (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) / const_vacuum_permeability;
+  const float Bri = 0.0f; // (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) / const_vacuum_permeability;
+  const float Brj = 0.0f; // (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) / const_vacuum_permeability;
 
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
@@ -295,11 +295,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float sph_acc_term[3];
   sph_acc_term[0] =
       (over_rho2_i * wi_dr * (isoPi * dx[0] - Bri * Bi[0]) + over_rho2_j * wj_dr * (isoPj * dx[0] - Brj * Bj[0])) * r_inv;
-      
+
   /* SPH acceleration term in y direction */
   sph_acc_term[1] =
       (over_rho2_i * wi_dr * (isoPi * dx[1] - Bri * Bi[1]) + over_rho2_j * wj_dr * (isoPj * dx[1] - Brj * Bj[1])) * r_inv;
-      
+
   /* SPH acceleration term in z direction */
   sph_acc_term[2] =
       (over_rho2_i * wi_dr * (isoPi * dx[2] - Bri * Bi[2]) + over_rho2_j * wj_dr * (isoPj * dx[2] - Brj * Bj[2])) * r_inv;
@@ -336,31 +336,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
-  
+
   /* Update the density squared estimate */
   pi->rhosq += mj * rhoj * wi;
   pj->rhosq += mi * rhoi * wj;
-  
+
   /* */
   const float dB_dt_pref_i = over_rho2_i * rhoi * wi_dr * r_inv;
   const float dB_dt_pref_j = over_rho2_j * rhoj * wj_dr * r_inv;
-  
+
   /* */
   float dB_dt_i[3];
   dB_dt_i[0] = Bi[0] * dvdr - Bri * (pi->v[0] - pj->v[0]);
   dB_dt_i[1] = Bi[1] * dvdr - Bri * (pi->v[1] - pj->v[1]);
   dB_dt_i[2] = Bi[2] * dvdr - Bri * (pi->v[2] - pj->v[2]);
-  
+
   float dB_dt_j[3];
   dB_dt_j[0] = Bj[0] * dvdr - Brj * (pi->v[0] - pj->v[0]);
   dB_dt_j[1] = Bj[1] * dvdr - Brj * (pi->v[1] - pj->v[1]);
   dB_dt_j[2] = Bj[2] * dvdr - Brj * (pi->v[2] - pj->v[2]);
-  
+
   /* */
   pi->B_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
   pi->B_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
   pi->B_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
-  
+
   pj->B_dt[0] += mi * dB_dt_pref_j * dB_dt_j[0];
   pj->B_dt[1] += mi * dB_dt_pref_j * dB_dt_j[1];
   pj->B_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
@@ -433,7 +433,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
-  
+
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
   const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
@@ -441,14 +441,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute gradient terms */
   const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
   // const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
-  
+
   /* Isotropic pressure */
-  const float isoPi = pressurei + 0.5f * (Bi[0]*Bi[0] + Bi[1]*Bi[1] + Bi[2]*Bi[2]) / const_vacuum_permeability;
-  const float isoPj = pressurej + 0.5f * (Bj[0]*Bj[0] + Bj[1]*Bj[1] + Bj[2]*Bj[2]) / const_vacuum_permeability;
-  
+  const float isoPi = pressurei; // + 0.5f * (Bi[0]*Bi[0] + Bi[1]*Bi[1] + Bi[2]*Bi[2]) / const_vacuum_permeability;
+  const float isoPj = pressurej; // + 0.5f * (Bj[0]*Bj[0] + Bj[1]*Bj[1] + Bj[2]*Bj[2]) / const_vacuum_permeability;
+
   /* B dot r. */
-  const float Bri = (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) / const_vacuum_permeability;
-  const float Brj = (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) / const_vacuum_permeability;
+  const float Bri = 0.0f; // (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) / const_vacuum_permeability;
+  const float Brj = 0.0f; // (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) / const_vacuum_permeability;
 
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
@@ -478,16 +478,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Convolve with the kernel */
   const float visc_acc_term =
       0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
-      
+
   /* SPH acceleration term in x direction */
   float sph_acc_term[3];
   sph_acc_term[0] =
       (over_rho2_i * wi_dr * (isoPi * dx[0] - Bri * Bi[0]) + over_rho2_j * wj_dr * (isoPj * dx[0] - Brj * Bj[0])) * r_inv;
-      
+
   /* SPH acceleration term in y direction */
   sph_acc_term[1] =
       (over_rho2_i * wi_dr * (isoPi * dx[1] - Bri * Bi[1]) + over_rho2_j * wj_dr * (isoPj * dx[1] - Brj * Bj[1])) * r_inv;
-      
+
   /* SPH acceleration term in z direction */
   sph_acc_term[2] =
       (over_rho2_i * wi_dr * (isoPi * dx[2] - Bri * Bi[2]) + over_rho2_j * wj_dr * (isoPj * dx[2] - Brj * Bj[2])) * r_inv;
@@ -515,18 +515,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
-  
+
   pi->rhosq += mj*rhoj*wi;
-  
+
   /* */
   const float dB_dt_pref_i = over_rho2_i * rhoi * wi_dr * r_inv;
-  
+
   /* */
   float dB_dt_i[3];
   dB_dt_i[0] = Bi[0] * dvdr - Bri * (pi->v[0] - pj->v[0]);
   dB_dt_i[1] = Bi[1] * dvdr - Bri * (pi->v[1] - pj->v[1]);
   dB_dt_i[2] = Bi[2] * dvdr - Bri * (pi->v[2] - pj->v[2]);
-  
+
   /* */
   pi->B_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
   pi->B_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
