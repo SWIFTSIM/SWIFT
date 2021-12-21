@@ -136,7 +136,7 @@ struct part {
 
   
   /* Store density/force specific stuff. */
-  union {
+  //union {
 
     /**
      * @brief Structure for the variables only used in the density loop over
@@ -192,7 +192,7 @@ struct part {
       float balsara;
 
     } force;
-  };
+  //};
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
