@@ -222,17 +222,17 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
       xparts, convert_P, "Co-moving pressures of the particles");
 
-  list[9] = io_make_output_field("DensitiesSquared", FLOAT, 1, UNIT_CONV_DENSITY_SQUARED, -3.f,
-                                 parts, rhosq,
-                                 "Co-moving mass densities squared of the particles");
+  list[9] = io_make_output_field(
+      "DensitiesSquared", FLOAT, 1, UNIT_CONV_DENSITY_SQUARED, -3.f, parts,
+      rhosq, "Co-moving mass densities squared of the particles");
 
-  list[10] = io_make_output_field(
-      "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
-      B, "Magnetic flux density of the particles");
+  list[10] = io_make_output_field("MagneticFluxDensity", FLOAT, 3,
+                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B,
+                                  "Magnetic flux density of the particles");
 
-  list[11] = io_make_output_field(
-      "Acceleration", FLOAT, 3, UNIT_CONV_ACCELERATION, 1.f, parts,
-      a_hydro, "Acceleration of the particles");
+  list[11] = io_make_output_field("Acceleration", FLOAT, 3,
+                                  UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
+                                  "Acceleration of the particles");
 }
 
 /**

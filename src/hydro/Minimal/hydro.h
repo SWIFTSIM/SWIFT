@@ -673,9 +673,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
   p->force.v_sig = 2.f * p->force.soundspeed;
-  
+
   p->rhosq = 0.f;
-  
+
   p->B_dt[0] = 0.0f;
   p->B_dt[1] = 0.0f;
   p->B_dt[2] = 0.0f;
@@ -700,7 +700,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-set the entropy */
   p->u = xp->u_full;
-  
+
   /* Re-set the predicted magnetic flux densities */
   p->B[0] = xp->B_full[0];
   p->B[1] = xp->B_full[1];
@@ -744,7 +744,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
-  
+
   /* Predict the magnetic flux density */
   p->B[0] += p->B_dt[0] * dt_therm;
   p->B[1] += p->B_dt[1] * dt_therm;
@@ -805,11 +805,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
-    	
+
   /* Some smoothing length multiples. */
   const float h = p->h;
-  const float h_inv = 1.0f / h;                       /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); 
+  const float h_inv = 1.0f / h; /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv);
 
   p->force.h_dt *= h * hydro_dimension_inv;
   p->rhosq += p->mass * p->rho * kernel_root;
@@ -840,18 +840,18 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
-  
+
   /* Integrate the magnetic flux density forward in time */
   const float delta_Bx = p->B_dt[0] * dt_therm;
   const float delta_By = p->B_dt[1] * dt_therm;
   const float delta_Bz = p->B_dt[2] * dt_therm;
-  
+
   /* Integrate the internal energy forward in time */
   // const float delta_u = p->u_dt * dt_therm;
 
   /* Do not decrease the energy by more than a factor of 2*/
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
-  
+
   /* Do not decrease the magnetic flux density by more than a factor of 2*/
   xp->B_full[0] = xp->B_full[0] + delta_Bx;
   xp->B_full[1] = xp->B_full[1] + delta_By;

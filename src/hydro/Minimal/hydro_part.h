@@ -65,7 +65,7 @@ struct xpart {
 
   /*! Internal energy at the last full step. */
   float u_full;
-  
+
   /*! Magnetic flux density at the full step. */
   float B_full[3];
 
@@ -124,74 +124,73 @@ struct part {
 
   /*! Particle density. */
   float rho;
-  
+
   /*! Particle density squared. */
   float rhosq;
-  
+
   /*! Particle magnetic flux density. */
   float B[3];
-  
+
   /*! Time derivative of the magnetic field. */
   float B_dt[3];
 
-  
   /* Store density/force specific stuff. */
-  //union {
+  // union {
 
-    /**
-     * @brief Structure for the variables only used in the density loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the density
-     * loop over neighbours and the ghost task.
-     */
-    struct {
+  /**
+   * @brief Structure for the variables only used in the density loop over
+   * neighbours.
+   *
+   * Quantities in this sub-structure should only be accessed in the density
+   * loop over neighbours and the ghost task.
+   */
+  struct {
 
-      /*! Neighbour number count. */
-      float wcount;
+    /*! Neighbour number count. */
+    float wcount;
 
-      /*! Derivative of the neighbour number with respect to h. */
-      float wcount_dh;
+    /*! Derivative of the neighbour number with respect to h. */
+    float wcount_dh;
 
-      /*! Derivative of density with respect to h */
-      float rho_dh;
+    /*! Derivative of density with respect to h */
+    float rho_dh;
 
-      /*! Velocity divergence */
-      float div_v;
+    /*! Velocity divergence */
+    float div_v;
 
-      /*! Velocity curl */
-      float rot_v[3];
+    /*! Velocity curl */
+    float rot_v[3];
 
-    } density;
+  } density;
 
-    /**
-     * @brief Structure for the variables only used in the force loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the force
-     * loop over neighbours and the ghost, drift and kick tasks.
-     */
-    struct {
+  /**
+   * @brief Structure for the variables only used in the force loop over
+   * neighbours.
+   *
+   * Quantities in this sub-structure should only be accessed in the force
+   * loop over neighbours and the ghost, drift and kick tasks.
+   */
+  struct {
 
-      /*! "Grad h" term */
-      float f;
+    /*! "Grad h" term */
+    float f;
 
-      /*! Particle pressure. */
-      float pressure;
+    /*! Particle pressure. */
+    float pressure;
 
-      /*! Particle soundspeed. */
-      float soundspeed;
+    /*! Particle soundspeed. */
+    float soundspeed;
 
-      /*! Particle signal velocity */
-      float v_sig;
+    /*! Particle signal velocity */
+    float v_sig;
 
-      /*! Time derivative of smoothing length  */
-      float h_dt;
+    /*! Time derivative of smoothing length  */
+    float h_dt;
 
-      /*! Balsara switch */
-      float balsara;
+    /*! Balsara switch */
+    float balsara;
 
-    } force;
+  } force;
   //};
 
   /*! Chemistry information */

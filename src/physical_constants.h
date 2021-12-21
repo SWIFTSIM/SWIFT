@@ -78,7 +78,7 @@ struct phys_const {
 
   /*! Astronomical unit */
   double const_astronomical_unit;
-  
+
   /*! vacuum permeability */
   double const_vacuum_perm;
 

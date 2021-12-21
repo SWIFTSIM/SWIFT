@@ -76,7 +76,7 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_avogadro_number =
       const_avogadro_number_cgs /
       units_general_cgs_conversion_factor(us, dimension_Na);
-      
+
   const float dimension_mu0[5] = {1, 1, -2, -2, 0}; /* [g cm^2 s^-2 K^-1] */
   internal_const->const_vacuum_perm =
       const_vacuum_perm_cgs /
@@ -224,8 +224,7 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
   io_write_attribute_d(h_grp_cgs, "year", const_year_cgs);
   io_write_attribute_d(h_grp_cgs, "astronomical_unit",
                        const_astronomical_unit_cgs);
-  io_write_attribute_d(h_grp_cgs, "vacuum_permeability",
-                       const_vacuum_perm_cgs);
+  io_write_attribute_d(h_grp_cgs, "vacuum_permeability", const_vacuum_perm_cgs);
   io_write_attribute_d(h_grp_cgs, "parsec", const_parsec_cgs);
   io_write_attribute_d(h_grp_cgs, "light_year", const_light_year_cgs);
   io_write_attribute_d(h_grp_cgs, "solar_mass", const_solar_mass_cgs);
@@ -260,8 +259,7 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
   io_write_attribute_d(h_grp_int, "year", p->const_year);
   io_write_attribute_d(h_grp_int, "astronomical_unit",
                        p->const_astronomical_unit);
-  io_write_attribute_d(h_grp_int, "vacuum_permeability",
-                       p->const_vacuum_perm);
+  io_write_attribute_d(h_grp_int, "vacuum_permeability", p->const_vacuum_perm);
   io_write_attribute_d(h_grp_int, "parsec", p->const_parsec);
   io_write_attribute_d(h_grp_int, "light_year", p->const_light_year);
   io_write_attribute_d(h_grp_int, "solar_mass", p->const_solar_mass);
