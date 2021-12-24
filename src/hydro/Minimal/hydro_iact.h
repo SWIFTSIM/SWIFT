@@ -251,16 +251,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float f_ji = 1.f - pj->force.f / mi;
 
   /* Isotropic pressure */
-  const float isoPi = pressurei;  // + 0.5f * (Bi[0]*Bi[0] + Bi[1]*Bi[1] +
-                                  // Bi[2]*Bi[2]) / const_vacuum_permeability;
-  const float isoPj = pressurej;  // + 0.5f * (Bj[0]*Bj[0] + Bj[1]*Bj[1] +
-                                  // Bj[2]*Bj[2]) / const_vacuum_permeability;
+  const float isoPi = pressurei + 0.5f * (Bi[0]*Bi[0] + Bi[1]*Bi[1] +
+                                  Bi[2]*Bi[2]) / const_vacuum_permeability;
+  const float isoPj = pressurej + 0.5f * (Bj[0]*Bj[0] + Bj[1]*Bj[1] +
+                                  Bj[2]*Bj[2]) / const_vacuum_permeability;
 
   /* B dot r. */
-  const float Bri = 0.0f;  // (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) /
-                           // const_vacuum_permeability;
-  const float Brj = 0.0f;  // (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) /
-                           // const_vacuum_permeability;
+  const float Bri = (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) /
+                    const_vacuum_permeability;
+  const float Brj = (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) /
+                    const_vacuum_permeability;
 
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
@@ -441,16 +441,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float f_ji = 1.f - pj->force.f / mi;
 
   /* Isotropic pressure */
-  const float isoPi = pressurei;  // + 0.5f * (Bi[0]*Bi[0] + Bi[1]*Bi[1] +
-                                  // Bi[2]*Bi[2]) / const_vacuum_permeability;
-  const float isoPj = pressurej;  // + 0.5f * (Bj[0]*Bj[0] + Bj[1]*Bj[1] +
-                                  // Bj[2]*Bj[2]) / const_vacuum_permeability;
+  const float isoPi = pressurei + 0.5f * (Bi[0]*Bi[0] + Bi[1]*Bi[1] +
+                                  Bi[2]*Bi[2]) / const_vacuum_permeability;
+  const float isoPj = pressurej + 0.5f * (Bj[0]*Bj[0] + Bj[1]*Bj[1] +
+                                  Bj[2]*Bj[2]) / const_vacuum_permeability;
 
   /* B dot r. */
-  const float Bri = 0.0f;  // (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) /
-                           // const_vacuum_permeability;
-  const float Brj = 0.0f;  // (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) /
-                           // const_vacuum_permeability;
+  const float Bri = (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) /
+                    const_vacuum_permeability;
+  const float Brj = (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) /
+                    const_vacuum_permeability;
 
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
