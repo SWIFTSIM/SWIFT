@@ -70,10 +70,14 @@ void neutrino_response_init(struct neutrino_response *numesh,
                             const struct gravity_props *gp, int rank,
                             int verbose);
 void neutrino_response_clean(struct neutrino_response *numesh);
+
+#ifdef HAVE_FFTW
 void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
                                struct threadpool *tp, fftw_complex *frho,
                                const int slice_offset, const int slice_width,
                                int verbose);
+#endif /* HAVE_FFTW */
+
 void neutrino_response_struct_dump(const struct neutrino_response *numesh,
                                    FILE *stream);
 void neutrino_response_struct_restore(struct neutrino_response *numesh,
