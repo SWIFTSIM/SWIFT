@@ -1367,7 +1367,7 @@ if test "$have_mpi_velociraptor" == "yes" -a "$have_velociraptor" != "yes"; then
 elif test "$have_velociraptor" == "yes" -a "$have_mpi_velociraptor" != "yes"; then
    VELOCIRAPTOR_MPI_LIBS="$VELOCIRAPTOR_LIBS"
    AC_SUBST([VELOCIRAPTOR_MPI_LIBS])
-i
+fi
 
 # Check for dummy VELOCIraptor.
 AC_ARG_ENABLE([dummy-velociraptor],
