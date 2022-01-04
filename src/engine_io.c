@@ -77,7 +77,14 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       restart_remove_previous(e->restart_file);
 
       /* Drift all particles first (may have just been done). */
-      if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
+      if (!drifted_all) {
+        engine_drift_all(e, /*drift_mpole=*/1);
+#ifdef WITH_MPI
+        /* Make sure new cell variables are communicated after the drift. */
+        engine_unskip_timestep_communications(e);
+        engine_launch(e, "timesteps");
+#endif
+      }
       restart_write(e, e->restart_file);
 
 #ifdef WITH_MPI
