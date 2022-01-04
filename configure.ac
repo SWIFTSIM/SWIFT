@@ -1276,7 +1276,7 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
-# Check for VELOCIraptor.
+# Check for VELOCIraptor, non-MPI.
 have_velociraptor="no"
 AC_ARG_WITH([velociraptor],
     [AS_HELP_STRING([--with-velociraptor=PATH],
@@ -1287,7 +1287,7 @@ AC_ARG_WITH([velociraptor],
 )
 if test "x$with_velociraptor" != "xno"; then
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
-      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5"
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lstdc++ -lhdf5"
       CFLAGS="$CFLAGS -fopenmp"
    else
       VELOCIRAPTOR_LIBS=""
@@ -1299,8 +1299,8 @@ if test "x$with_velociraptor" != "xno"; then
    AC_CHECK_LIB(
       [velociraptor],
       [InitVelociraptor],
-      [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The VELOCIraptor library appears to be present.])],
-      [AC_MSG_ERROR(Cannot find VELOCIraptor library at $with_velociraptor or incompatible HDF5 library loaded.)],
+      [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The non-MPI VELOCIraptor library appears to be present.])],
+      [AC_MSG_ERROR(Cannot find non-MPI VELOCIraptor library at $with_velociraptor or incompatible HDF5 library loaded.)],
       [$VELOCIRAPTOR_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
    )
 fi
@@ -1316,6 +1316,57 @@ if test "$have_velociraptor" == "yes"; then
        [AC_MSG_RESULT(VELOCIraptor not compiled to so as to *not* store masses per particle.)],
        [$VELOCIRAPTOR_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
     )
+fi
+
+#  Check for MPI VELOCIraptor, same as above.
+have_mpi_velociraptor="no"
+AC_ARG_WITH([velociraptor-mpi],
+    [AS_HELP_STRING([--with-velociraptor-mpi=PATH],
+       [Directory where MPI version of velociraptor library exists @<:@yes/no@:>@]
+    )],
+    [with_mpi_velociraptor="$withval"],
+    [with_mpi_velociraptor="no"]
+)
+if test "x$with_mpi_velociraptor" != "xno"; then
+   if test "x$with_mpi_velociraptor" != "xyes" -a "x$with_mpi_velociraptor" != "x"; then
+      VELOCIRAPTOR_MPI_LIBS="-L$with_mpi_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5"
+      CFLAGS="$CFLAGS -fopenmp"
+   else
+      VELOCIRAPTOR_MPI_LIBS=""
+   fi
+
+   have_mpi_velociraptor="yes"
+   AS_VAR_APPEND([VELOCIRAPTOR_MPI_LIBS], ["$FCLIBS"])
+
+   AC_CHECK_LIB(
+      [velociraptor],
+      [InitVelociraptor],
+      [AC_DEFINE([HAVE_MPI_VELOCIRAPTOR],1,[The MPI VELOCIraptor library appears to be present.])],
+      [AC_MSG_ERROR(Cannot find MPI VELOCIraptor library at $with_mpi_velociraptor or incompatible HDF5 library loaded.)],
+      [$VELOCIRAPTOR_MPI_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
+   )
+fi
+AC_SUBST([VELOCIRAPTOR_MPI_LIBS])
+AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_MPI_LIBS"])
+
+# Let's check how this one was compiled.
+if test "$have_mpi_velociraptor" == "yes"; then
+    AC_CHECK_LIB(
+       [velociraptor],
+       [VR_NOMASS],
+       [AC_DEFINE([HAVE_VELOCIRAPTOR_WITH_NOMASS],1,[The MPI VELOCIraptor library has been compiled with the NOMASS option. Only useful if running a uniform box.])],
+       [AC_MSG_RESULT(VELOCIraptor not compiled to so as to *not* store masses per particle.)],
+       [$VELOCIRAPTOR_MPI_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
+    )
+fi
+
+# If we have one library, but not the other then use that for both.
+if test "$have_mpi_velociraptor" == "yes" -a "$have_velociraptor" != "yes"; then
+   VELOCIRAPTOR_LIBS="$VELOCIRAPTOR_MPI_LIBS"
+   AC_SUBST([VELOCIRAPTOR_LIBS])
+elif test "$have_velociraptor" == "yes" -a "$have_mpi_velociraptor" != "yes"; then
+   VELOCIRAPTOR_MPI_LIBS="$VELOCIRAPTOR_LIBS"
+   AC_SUBST([VELOCIRAPTOR_MPI_LIBS])
 fi
 
 # Check for dummy VELOCIraptor.
