@@ -495,9 +495,11 @@ runner_iact_nonsym_feedback_apply(
 
   /* In rare configurations the new thermal energy could become negative.
    * We must prevent that even if that implies a slight violation of the
-   * conservation of total energy. */
-  const double min_u =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+   * conservation of total energy.
+   * The minimum energy (in units of energy not energy per mass) is
+   * the total particle mass (including the mass to distribute) at the
+   * minimal internal energy per unit mass */
+  const double min_u = hydro_props->minimal_internal_energy * new_mass;
 
   new_thermal_energy = max(new_thermal_energy, min_u);
 
