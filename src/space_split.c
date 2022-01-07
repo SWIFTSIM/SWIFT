@@ -253,7 +253,8 @@ void space_split_recursive(struct space *s, struct cell *c,
 #ifdef WITH_MPI
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+#ifdef SWIFT_DEBUG_CELLIDS
+      cp->cellID = 0;
       cell_assign_cell_index(cp, c);
 #endif
     }

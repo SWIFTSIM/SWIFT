@@ -81,7 +81,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
     pc->grav.r_max_rebuild = mp->r_max_rebuild;
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_TASKS) || defined(SWIFT_DEBUG_CHECKS)
   pc->cellID = c->cellID;
 #endif
 
@@ -223,7 +223,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_TASKS) || defined(SWIFT_DEBUG_CHECKS)
   c->cellID = pc->cellID;
 #endif
 

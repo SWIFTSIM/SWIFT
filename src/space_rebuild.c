@@ -34,7 +34,7 @@
 extern int space_expected_max_nr_strays;
 
 /*! Counter for cell IDs (when debugging) */
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+#ifdef SWIFT_DEBUG_CELLIDS
 extern unsigned long long last_cell_id;
 extern unsigned long long last_leaf_cell_id;
 #endif
@@ -55,7 +55,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   if (s->e->nodeID == 0 || verbose) message("(re)building space");
   fflush(stdout);
 #endif
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+#ifdef SWIFT_DEBUG_CELLIDS
   /* Reset the cell counter */
   last_cell_id = 1ULL;
   last_leaf_cell_id = 1ULL;
@@ -911,7 +911,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->sinks.ti_old_part = ti_current;
     c->black_holes.ti_old_part = ti_current;
 
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+#ifdef SWIFT_DEBUG_CELLIDS
     cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
 #endif
 

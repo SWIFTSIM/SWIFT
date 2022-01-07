@@ -209,8 +209,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.rt_tchem = NULL;
     c->hydro.rt_out = NULL;
     star_formation_logger_init(&c->stars.sfh);
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-    c->cellID = 0;
+#ifdef SWIFT_DEBUG_CELLIDS
+   c->cellID = 0;
 #endif
     if (s->with_self_gravity)
       bzero(c->grav.multipole, sizeof(struct gravity_tensors));

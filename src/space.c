@@ -97,7 +97,7 @@ int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
 int space_expected_max_nr_strays = space_expected_max_nr_strays_default;
 
 /*! Counter for cell IDs (when debugging + max vals for unique IDs exceeded) */
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+#ifdef SWIFT_DEBUG_CELLIDS
 unsigned long long last_cell_id;
 unsigned long long last_leaf_cell_id;
 #endif
@@ -1417,7 +1417,7 @@ void space_init(struct space *s, struct swift_params *params,
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");
 
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+#ifdef SWIFT_DEBUG_CELLIDS
   last_cell_id = 1ULL;
   last_leaf_cell_id = 1ULL;
 #endif
@@ -2606,7 +2606,7 @@ void space_struct_restore(struct space *s, FILE *stream) {
  * @param c The current #cell.
  */
 void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
-#ifdef SWIFT_CELL_GRAPH
+#ifdef SWIFT_DEBUG_CELLIDS
 
   if (c == NULL) return;
 
@@ -2646,7 +2646,7 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
  */
 void space_write_cell_hierarchy(const struct space *s, int j) {
 
-#ifdef SWIFT_CELL_GRAPH
+#ifdef SWIFT_DEBUG_CELLIDS
 
   /* Open file */
   char filename[200];

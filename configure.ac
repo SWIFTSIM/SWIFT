@@ -258,6 +258,14 @@ if test "$enable_task_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_TASKS],1,[Enable task debugging])
 fi
 
+# Include define for defining cellIDs as part of the output from various
+# sources, including the task debugging.
+AH_BOTTOM([/* Do we need to handle unique cellIDs? */
+#if defined(SWIFT_DEBUG_TASKS) || defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+#define SWIFT_DEBUG_CELLIDS
+#endif]
+)
+
 # Check if threadpool debugging is on.
 AC_ARG_ENABLE([threadpool-debugging],
    [AS_HELP_STRING([--enable-threadpool-debugging],

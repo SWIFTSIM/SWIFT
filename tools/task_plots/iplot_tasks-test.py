@@ -101,10 +101,19 @@ parser.add_argument(
     default=0,
     type=int,
 )
+parser.add_argument(
+    "-c",
+    "--cellid",
+    dest="cellid",
+    help="The cellid to plot, if any",
+    default=0,
+    type=int,
+)
 
 args = parser.parse_args()
 infile = args.input
 delta_t = args.limit
+cellid = args.cellid
 rank = args.rank
 
 #  Basic plot configuration.
@@ -290,6 +299,7 @@ if full_step.size == 14:
     subtaskcol = 3
     ticcol = 5
     toccol = 6
+    cellidcol = 13
 else:
     print("# non MPI mode")
     mpimode = False
@@ -299,6 +309,7 @@ else:
     subtaskcol = 2
     ticcol = 4
     toccol = 5
+    cellidcol = 12
 
 #  Get CPU_CLOCK to convert ticks into milliseconds.
 CPU_CLOCK = float(full_step[-1]) / 1000.0
@@ -352,6 +363,13 @@ for i in range(nthread):
 
 num_lines = pl.shape(data)[0]
 for line in range(num_lines):
+
+    #  Skip tasks based on cellid if given.
+    cid = int(data[line, cellidcol])
+    if cellid != 0:
+        if cid != cellid:
+            continue
+
     thread = int(data[line, threadscol])
 
     tasks[thread].append({})
@@ -359,6 +377,7 @@ for line in range(num_lines):
     subtype = SUBTYPES[int(data[line, subtaskcol])]
     tasks[thread][-1]["type"] = tasktype
     tasks[thread][-1]["subtype"] = subtype
+    tasks[thread][-1]["cellid"] = cid
     tic = int(data[line, ticcol]) / CPU_CLOCK
     toc = int(data[line, toccol]) / CPU_CLOCK
     tasks[thread][-1]["tic"] = tic
@@ -388,6 +407,7 @@ ax.set_ylim(0.5, nthread + 1.0)
 ltics = []
 ltocs = []
 llabels = []
+lcellids = []
 for i in range(nthread):
 
     #  Collect ranges and colours into arrays. Also indexed lists for lookup tables.
@@ -396,9 +416,11 @@ for i in range(nthread):
     tics = []
     tocs = []
     labels = []
+    cellids = []
     for task in tasks[i]:
         tictocs.append((task["tic"], task["toc"] - task["tic"]))
         colours.append(task["colour"])
+        cellids.append(task["cellid"])
 
         tics.append(task["tic"])
         tocs.append(task["toc"])
@@ -407,6 +429,7 @@ for i in range(nthread):
     #  Add to look up tables.
     ltics.append(tics)
     ltocs.append(tocs)
+    lcellids.append(cellids)
     llabels.append(labels)
 
     #  Now plot.
@@ -426,7 +449,7 @@ ax.grid(True, which="major", axis="y", linestyle="-")
 
 
 class Container:
-    def __init__(self, window, figure, motion, nthread, ltics, ltocs, llabels):
+    def __init__(self, window, figure, motion, nthread, ltics, ltocs, llabels, lcellids):
         self.window = window
         self.figure = figure
         self.motion = motion
@@ -434,6 +457,7 @@ class Container:
         self.ltics = ltics
         self.ltocs = ltocs
         self.llabels = llabels
+        self.lcellids = lcellids
 
     def plot(self):
         canvas = tkagg.FigureCanvasTkAgg(self.figure, master=self.window)
@@ -465,18 +489,20 @@ class Container:
             if thread >= 0 and thread < self.nthread:
                 tics = self.ltics[thread]
                 tocs = self.ltocs[thread]
+                cellids = self.lcellids[thread]
                 labels = self.llabels[thread]
                 for i in range(len(tics)):
                     if event.xdata > tics[i] and event.xdata < tocs[i]:
                         tic = "{0:.3f}".format(tics[i])
                         toc = "{0:.3f}".format(tocs[i])
+                        cid = str(cellids[i])
                         outstr = (
                             "task =  "
                             + labels[i]
                             + ",  tic/toc =  "
                             + tic
                             + " / "
-                            + toc
+                            + toc + " (" + cid + ")"
                         )
                         self.output.set(outstr)
                         break
@@ -490,6 +516,7 @@ class Container:
 
 window = tk.Tk()
 window.protocol("WM_DELETE_WINDOW", window.quit)
-container = Container(window, fig, args.motion, nthread, ltics, ltocs, llabels)
+container = Container(window, fig, args.motion, nthread, ltics, ltocs,
+                      llabels, lcellids)
 container.plot()
 window.mainloop()
