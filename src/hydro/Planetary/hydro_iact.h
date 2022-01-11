@@ -125,31 +125,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->N_density++;
   pj->N_density++;
 #endif
-
-  // imb2
-  float k = 0.f;
-  if (pi->mat_id == pj->mat_id){
-    k = 1.f;
-  } else {
-    k = -1.f;
-  }
-
-  pi->I[0] += -k*mj*dx[0]*wi;
-  pi->I[1] += -k*mj*dx[1]*wi;
-  pi->I[2] += -k*mj*dx[2]*wi;
-  
-  pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
-  pi->grad_rho[1] += dx[1]*wi_dx*r_inv*mj;
-  pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;
-  
-  pj->I[0] += k*mi*dx[0]*wj;
-  pj->I[1] += k*mi*dx[1]*wj;
-  pj->I[2] += k*mi*dx[2]*wj;
-  
-  pj->grad_rho[0] += -dx[0]*wj_dx*r_inv*mi;
-  pj->grad_rho[1] += -dx[1]*wj_dx*r_inv*mi;
-  pj->grad_rho[2] += -dx[2]*wj_dx*r_inv*mi;
-
 }
 
 /**
@@ -219,23 +194,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->n_density += wi;
   pi->N_density++;
 #endif
-
-  // imb2
-  float k = 0.f;
-  if (pi->mat_id == pj->mat_id){
-    k = 1.f;
-  } else {
-    k = -1.f;
-  }
-
-  pi->I[0] += -k*mj*dx[0]*wi;
-  pi->I[1] += -k*mj*dx[1]*wi;
-  pi->I[2] += -k*mj*dx[2]*wi;
-  
-  pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
-  pi->grad_rho[1] += dx[1]*wi_dx*r_inv*mj;
-  pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;
- 
 }
 
 /**

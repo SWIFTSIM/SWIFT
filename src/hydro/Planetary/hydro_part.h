@@ -124,10 +124,6 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  // imb2
-  float I[3];
-  float grad_rho[3];
-
   /* Store density/force specific stuff. */
   union {
 
