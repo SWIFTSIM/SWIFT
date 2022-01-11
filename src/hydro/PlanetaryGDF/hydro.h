@@ -658,6 +658,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   p->P = pressure;
   p->T = temperature;
+
+  /* Turn Imbalance to 0 if h == h_max */
+  if (p->h > 0.999f * hydro_props->h_max){
+    p->I = 0.f;
+  }
 #endif
 }
 
@@ -711,7 +716,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
  
   /* Bullet proof */
-  if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->sum_wij_exp_T > 0.f){
+  if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->sum_wij_exp_T > 0.f && p->I > 0.f){
 	  /* End computation */
 	  p->sum_wij_exp_P /= p->sum_wij_exp;
 	  p->sum_wij_exp_T /= p->sum_wij_exp;
