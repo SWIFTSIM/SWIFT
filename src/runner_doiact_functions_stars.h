@@ -238,10 +238,6 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
       shift[k] = -e->s->dim[k];
   }
 
-  /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
-
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
 
