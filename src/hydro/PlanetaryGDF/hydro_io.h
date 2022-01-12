@@ -229,6 +229,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                            parts, I, "Imbalance statistic of the particles");
 
 #endif
+  
 }
 
 /**

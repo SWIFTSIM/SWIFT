@@ -450,22 +450,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     
 
 
-  // Debug
-  /*if (p->id == 1526793){
-  const float R_earth = 6371000.f;
-  FILE *fp;
-  fp = fopen("./picle_history_1526793.txt", "a");
-  fprintf(fp,
-      "%lld, %.7g, %.7g, %.7g, %.7g, "
-      "%.7g, %.7g, %.7g, %.7g, %.7g, %d, "
-      "%.7g, %.7g, %.7g, %.7g, %.7g, %.7g\n",
-      p->id, p->x[0]/R_earth, p->x[1]/R_earth, p->v[0]/R_earth, p->v[1]/R_earth, p->mass,
-      p->u, p->force.pressure, p->rho, p->h, p->mat_id,
-      dt_cfl, p->force.v_sig, p->u_dt, p->f_gdf,
-      p->weighted_wcount, p->weighted_neighbour_wcount);
-  fclose(fp);
-  }*/
-
   return dt_cfl;
 }
 
@@ -508,7 +492,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->T = 0.f;
 #endif
 
-#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+  #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
   p->N_force = 0;
   p->N_density_exact = 0;
@@ -609,7 +593,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float alpha = 7.5f;
 #endif
 #ifdef WENDLAND_C6_KERNEL
-  const float alpha = 5.1f;
+  //const float alpha = 7.1f; // eta=1.2348
+  const float alpha = 5.1f;  // eta=2.2
 #endif
   p->I *= alpha;
 #endif
@@ -736,6 +721,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   p->P = pressure;
   p->T = temperature;
+
+
+  /* Turn Imbalance to 0 if h == h_max */
+  if (p->h > 0.999f * hydro_props->h_max){
+    p->I = 0.f;
+  }
+
     
    // p->imbalance_flag = 0;
     //if (p->h < 0.999f * hydro_props->h_max){
@@ -761,6 +753,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     
     
     p->N_grad=0.f;
+
 #endif
 }
 
@@ -817,34 +810,20 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     //if (p->imbalance_flag == 1) {
     
   /* Bullet proof */
-  if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->sum_wij_exp_T > 0.f){
+  if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->sum_wij_exp_T > 0.f && p->I > 0.f){
 	  /* End computation */
 	  p->sum_wij_exp_P /= p->sum_wij_exp;
 	  p->sum_wij_exp_T /= p->sum_wij_exp;
 	  
 	  /* Compute new P */ 
-	  float P_new = 0.f;
-	  P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
+	  float P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
 
-         // if (P_new < P_min){
-           // P_new = P_min;
-         // }
-
-	  /* Compute new T */
-	  float T_new = 0.f;
-	  T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
+    /* Compute new T */
+	  float T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
           
-         // if (T_new < T_min){
-           // T_new = T_min;
-          //}
-      
-
 	  /* Compute new density */
 	  float rho_new =
 	      gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
-      
-      
-   
    
 	  /* Ensure new density is not lower than minimum SPH density */
 	  if (rho_new < rho_min){
@@ -853,10 +832,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
             p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);//T_min;
 	  } else {
             p->rho = rho_new;
-            p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);//P_new;
-            p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);//T_new;
+            p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+            p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
 	  }
-  } else {
+  } else { 
     const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
     const float T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
     p->P = P;
@@ -1183,7 +1162,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  p->force.h_dt *= p->h * hydro_dimension_inv;
+    p->force.h_dt *= p->h * hydro_dimension_inv;
 }
 
 /**

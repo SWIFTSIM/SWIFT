@@ -134,7 +134,6 @@ struct part {
   float f_gdf;
     
 
-
   /* Store density/force specific stuff. */
   union {
 

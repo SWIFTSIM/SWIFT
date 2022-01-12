@@ -554,7 +554,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     float eta_j_2 = r2 * hj_inv * hj_inv;
     
     /* If h=h_max don't do anything fancy. Things like using m/rho to calculate the volume stops working */
-    if(pi->matrix_flag == 1 && pj->matrix_flag == 1){
+    if(pi->matrix_flag && pj->matrix_flag){
         
         /* For loops */
         int j,k;
@@ -672,9 +672,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
        
 #endif
     
-
-
-
  /* In GDF we use average of Gi and Gj. Not actually kernel gradient if we use matrix inversion method! */
  float kernel_gradient[3];
     kernel_gradient[0] = 0.5f * (Gi[0] + Gj[0]);
@@ -692,7 +689,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* acceleration term */
   const float acc = (pressurei + Q_i + pressurej + Q_j) / (pi->rho * pj->rho);
 
-
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * acc * kernel_gradient[0];
   pi->a_hydro[1] -= mj * acc * kernel_gradient[1];
@@ -707,18 +703,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       (pressurei + Q_i) * dvdGij / (rhoi * rhoj);
   const float du_dt_j =
       (pressurej + Q_j) * dvdGij / (rhoi * rhoj);
-
-  /*if (abs(sph_du_term_i*mj) > 1E+05 && pi->mat_id == 100){
-  printf(
-    "du_term_i: %.7g\n"
-    "dvdr, r_inv, kernel: %.7g, %.7g, %.7g\n"
-    "u_i, P_i, rho_i, mat_id_i, u_j, P_j, rho_j, mat_id_j:\n"
-    "%.7g, %.7g, %.7g %d, %.7g, %.7g, %.7g, %d\n",
-    sph_du_term_i*mj, dvdr, r_inv, kernel_gradient,
-    pi->u, pressurei, rhoi, pi->mat_id,
-    pj->u, pressurej, rhoj, pj->mat_id);
-
-  }*/
 
 
   /* Internal energy time derivative */

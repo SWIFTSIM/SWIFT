@@ -469,21 +469,10 @@ INLINE static float Til_temperature_from_internal_energy(
     u_cold = compute_fast_u_cold(density, mat);
     
     T = (u - u_cold)/(mat->CV);
-    
-    if(T < 0.f){T = 0.f;}
-    /*
-		const float M = 5.9724e24;
-    const float L = 6.371e6;
+    if (T < 0.f){
+      T = 0.f;
+    }
 
-    printf("\n check %d, %.6g, %.6g, %.6g, %.6g, %.6g \n",
-    mat->mat_id,
-    density*M/(L*L*L),
-    u*L*L,
-    u_cold*L*L,
-    T,
-    mat->CV*L*L
-    );*/
-    
     return T;
     
 }
