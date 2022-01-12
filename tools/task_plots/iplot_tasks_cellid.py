@@ -47,6 +47,7 @@ import matplotlib.ticker as plticker
 import pylab as pl
 import sys
 import argparse
+import os
 
 # import hardcoded data
 from swift_hardcoded_data import TASKTYPES, SUBTYPES
@@ -288,7 +289,7 @@ data = pl.loadtxt(infile)
 
 #  Do we have an MPI file?
 full_step = data[0, :]
-if full_step.size == 17:
+if full_step.size == 21:
     print("# MPI mode")
     mpimode = True
     ranks = list(range(int(max(data[:, 0])) + 1))
@@ -365,14 +366,14 @@ num_lines = pl.shape(data)[0]
 for line in range(num_lines):
 
     #  Skip tasks based on cellid if given.
-    cid = int(data[line, cellidcol+1])
+    supercellid = int(data[line, cellidcol+1])
     if cellid != 0:
-        if cid != cellid:
+        if supercellid != cellid:
             continue
-    cid = (str(int(data[line, cellidcol])) + "/" +
-           str(int(data[line, cellidcol+1])) + "/" +
-           str(int(data[line, cellidcol+2])) + ":" +
-           str(int(data[line, cellidcol+3])))
+    cids = (str(int(data[line, cellidcol])) + "/" +
+            str(int(data[line, cellidcol+1])) + "/" +
+            str(int(data[line, cellidcol+2])) + ":" +
+            str(int(data[line, cellidcol+3])))
 
     thread = int(data[line, threadscol])
 
@@ -381,7 +382,8 @@ for line in range(num_lines):
     subtype = SUBTYPES[int(data[line, subtaskcol])]
     tasks[thread][-1]["type"] = tasktype
     tasks[thread][-1]["subtype"] = subtype
-    tasks[thread][-1]["cellid"] = cid
+    tasks[thread][-1]["supercellids"] = supercellid
+    tasks[thread][-1]["cellids"] = cids
     tic = int(data[line, ticcol]) / CPU_CLOCK
     toc = int(data[line, toccol]) / CPU_CLOCK
     tasks[thread][-1]["tic"] = tic
@@ -411,6 +413,7 @@ ax.set_ylim(0.5, nthread + 1.0)
 ltics = []
 ltocs = []
 llabels = []
+lsupercellids = []
 lcellids = []
 for i in range(nthread):
 
@@ -420,11 +423,13 @@ for i in range(nthread):
     tics = []
     tocs = []
     labels = []
+    supercellids = []
     cellids = []
     for task in tasks[i]:
         tictocs.append((task["tic"], task["toc"] - task["tic"]))
         colours.append(task["colour"])
-        cellids.append(task["cellid"])
+        supercellids.append(task["supercellids"])
+        cellids.append(task["cellids"])
 
         tics.append(task["tic"])
         tocs.append(task["toc"])
@@ -433,11 +438,12 @@ for i in range(nthread):
     #  Add to look up tables.
     ltics.append(tics)
     ltocs.append(tocs)
+    lsupercellids.append(supercellids)
     lcellids.append(cellids)
     llabels.append(labels)
 
     #  Now plot.
-    ax.broken_barh(tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0)
+    ax.broken_barh(tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=1)
 
 # Start and end of time-step
 ax.plot([0, 0], [0, nthread + 1], "k--", linewidth=1)
@@ -453,7 +459,8 @@ ax.grid(True, which="major", axis="y", linestyle="-")
 
 
 class Container:
-    def __init__(self, window, figure, motion, nthread, ltics, ltocs, llabels, lcellids):
+    def __init__(self, window, figure, motion, nthread, ltics, ltocs, llabels,
+                 cellid, lsupercellids, lcellids):
         self.window = window
         self.figure = figure
         self.motion = motion
@@ -461,6 +468,8 @@ class Container:
         self.ltics = ltics
         self.ltocs = ltocs
         self.llabels = llabels
+        self.cellid = cellid
+        self.lsupercellids = lsupercellids
         self.lcellids = lcellids
 
     def plot(self):
@@ -480,14 +489,14 @@ class Container:
 
         canvas.draw()
 
-        # Print task type using mouse clicks or motion.
+        # Print task type using mouse clicks and maybe motion.
+        fig.canvas.mpl_connect("button_press_event", self.onclick)
         if self.motion:
             fig.canvas.mpl_connect("motion_notify_event", self.onclick)
-        else:
-            fig.canvas.mpl_connect("button_press_event", self.onclick)
 
     def onclick(self, event):
         # Find thread, then scan for bounded task.
+        #print(event)
         try:
             thread = int(round(event.ydata)) - 1
             if thread >= 0 and thread < self.nthread:
@@ -508,6 +517,17 @@ class Container:
                             + toc + " (" + cellids[i] + ")"
                         )
                         self.output.set(outstr)
+                        print("Found task" + outstr)
+                        if event.button == 2:
+                            # Do the action... Don't do this if already selecting cellid.
+                            supercellid = self.lsupercellids[thread][i]
+                            if self.cellid !=  supercellid:
+                                print("Selecting: " + str(supercellid))
+                                args = sys.argv.copy()
+                                args.append("--cellid")
+                                args.append(str(supercellid))
+                                args.append("&")
+                                os.system(" ".join(args))
                         break
         except TypeError:
             #  Ignore out of bounds.
@@ -520,6 +540,6 @@ class Container:
 window = tk.Tk()
 window.protocol("WM_DELETE_WINDOW", window.quit)
 container = Container(window, fig, args.motion, nthread, ltics, ltocs,
-                      llabels, lcellids)
+                      llabels, args.cellid, lsupercellids, lcellids)
 container.plot()
 window.mainloop()
