@@ -49,7 +49,6 @@
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "minmax.h"
-#include "neutrino/Default/fermi_dirac.h"
 #include "proxy.h"
 #include "restart.h"
 #include "rt.h"
@@ -508,6 +507,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
+        lock_init(&cells[j]->hydro.extra_sort_lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
         lock_init(&cells[j]->stars.lock) != 0 ||
@@ -837,20 +837,29 @@ void space_convert_rt_hydro_quantities_mapper(void *restrict map_data,
  * @param s The #space.
  * @param verbose Are we talkative?
  */
-void space_convert_rt_quantities(struct space *s, int verbose) {
+void space_convert_rt_quantities_after_zeroth_step(struct space *s,
+                                                   int verbose) {
+
+  const struct rt_props *rt_props = s->e->rt_props;
+
+#ifndef SWIFT_RT_DEBUG_CHECKS
+  /* We only have work to do if debugging checks are
+   * active or if we're using hydro controlled injection. */
+  if (!rt_props->hydro_controlled_injection) return;
+#endif
 
   const ticks tic = getticks();
 
-  if (s->nr_parts > 0)
+  if (s->nr_parts > 0 && rt_props->convert_parts_after_zeroth_step)
     /* Particle loop. Reset hydro particle values so we don't inject too much
      * radiation into the gas */
     threadpool_map(&s->e->threadpool, space_convert_rt_hydro_quantities_mapper,
                    s->parts, s->nr_parts, sizeof(struct part),
                    threadpool_auto_chunk_size, /*extra_data=*/s->e);
 
-  if (s->nr_sparts > 0)
+  if (s->nr_sparts > 0 && rt_props->convert_stars_after_zeroth_step)
     /* Star particle loop. Hydro controlled injection requires star particles
-     * to have their emission rated computed and ready for interactions. */
+     * to have their emission rates computed and ready for interactions. */
     threadpool_map(&s->e->threadpool, space_convert_rt_star_quantities_mapper,
                    s->sparts, s->nr_sparts, sizeof(struct spart),
                    threadpool_auto_chunk_size, /*extra_data=*/s->e);
@@ -868,12 +877,16 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   struct part *restrict parts = (struct part *)map_data;
   const ptrdiff_t index = parts - s->parts;
   struct xpart *restrict xparts = s->xparts + index;
+  const int with_rt = (s->e->policy & engine_policy_rt);
+  const struct rt_props *rt_props = s->e->rt_props;
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
-  for (int k = 0; k < count; k++)
+  for (int k = 0; k < count; k++) {
     if (parts[k].time_bin <= num_time_bins)
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+    if (with_rt) rt_convert_quantities(&parts[k], rt_props);
+  }
 }
 
 /**
@@ -1968,6 +1981,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
  * @param cosmo The current cosmology model.
  * @param with_hydro Are we running with hydro switched on?
  * @param rank The MPI rank of this #space.
+ * @param check_neutrinos Should neutrino masses be checked?
  */
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
                            const int with_hydro, const int rank,

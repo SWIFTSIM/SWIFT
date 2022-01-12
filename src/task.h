@@ -307,6 +307,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
                      float dump_tasks_threshold, int header, int allranks);
 void task_dump_active(struct engine *e);
 void task_get_full_name(int type, int subtype, char *name);
+void task_create_name_files(const char *file_prefix);
 void task_get_group_name(int type, int subtype, char *cluster);
 enum task_categories task_get_category(const struct task *t);
 

@@ -67,9 +67,15 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
   if (ci->dmin != cj->dmin) error("Cells of different size!");
 #endif
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+#endif
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -86,15 +92,11 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[pid];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-    rt_debugging_count_gradient_call(pi);
-#endif
-
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
     const int pi_active = part_is_active(pi, e);
+    const char depth_i = pi->depth_h;
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -110,9 +112,10 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      const int pj_active = part_is_active(pj, e);
+      const char depth_j = pj->depth_h;
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
-      const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -121,10 +124,6 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-      rt_debugging_count_gradient_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
@@ -133,11 +132,17 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
-      const int doi = pi_active && (r2 < hig2) && (hi >= h_min) && (hi < h_max);
-      const int doj = pj_active && (r2 < hjg2) && (hj >= h_min) && (hj < h_max);
+      const int doi = pi_active && (r2 < hig2) && (depth_i >= min_depth) &&
+                      (depth_i <= max_depth);
+      const int doj = pj_active && (r2 < hjg2) && (depth_j >= min_depth) &&
+                      (depth_j <= max_depth);
 
       /* Hit or miss? */
       if (doi) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -152,6 +157,10 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
 #endif
       }
       if (doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
+#endif
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
@@ -212,9 +221,15 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+#endif
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -234,12 +249,8 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-    rt_debugging_count_transport_call(pi);
-#endif
-
     const int pi_active = part_is_active(pi, e);
+    const char depth_i = pi->depth_h;
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -256,6 +267,7 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
       if (part_is_inhibited(pj, e)) continue;
 
       const int pj_active = part_is_active(pj, e);
+      const char depth_j = pj->depth_h;
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
 
@@ -266,10 +278,6 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-      rt_debugging_count_transport_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
@@ -278,13 +286,17 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
-      const int doi = pi_active && (hi >= h_min) && (hi < h_max) &&
-                      ((r2 < hig2) || (r2 < hjg2));
-      const int doj = pj_active && (hj >= h_min) && (hj < h_max) &&
-                      ((r2 < hjg2) || (r2 < hig2));
+      const int doi = pi_active && (depth_i >= min_depth) &&
+                      (depth_i <= max_depth) && ((r2 < hig2) || (r2 < hjg2));
+      const int doj = pj_active && (depth_j >= min_depth) &&
+                      (depth_j <= max_depth) && ((r2 < hjg2) || (r2 < hig2));
 
       /* Hit or miss? */
       if (doi) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
 
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -299,6 +311,10 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
 #endif
       }
       if (doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
+#endif
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
@@ -355,9 +371,15 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
   const int count = c->hydro.count;
   struct part *parts = c->hydro.parts;
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? c->depth : 0;
+  const char max_depth = limit_min_h ? c->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+#endif
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -368,12 +390,8 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-    rt_debugging_count_gradient_call(pi);
-#endif
-
     const int pi_active = part_is_active(pi, e);
+    const char depth_i = pi->depth_h;
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -392,6 +410,7 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
       const int pj_active = part_is_active(pj, e);
+      const char depth_j = pj->depth_h;
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -400,13 +419,11 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int doi = pi_active && (r2 < hig2) && (hi >= h_min) && (hi < h_max);
-      const int doj = pj_active && (r2 < hjg2) && (hj >= h_min) && (hj < h_max);
+      const int doi = pi_active && (r2 < hig2) && (depth_i >= min_depth) &&
+                      (depth_i <= max_depth);
+      const int doj = pj_active && (r2 < hjg2) && (depth_j >= min_depth) &&
+                      (depth_j <= max_depth);
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-      rt_debugging_count_gradient_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
@@ -417,6 +434,11 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
 
       /* Hit or miss? */
       if (doi && doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+        if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
+#endif
 
         IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -431,6 +453,10 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
 #endif
       } else if (doi) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
+
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -443,6 +469,10 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology);
 #endif
       } else if (doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
+#endif
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
@@ -499,9 +529,15 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
   const int count = c->hydro.count;
   struct part *parts = c->hydro.parts;
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? c->depth : 0;
+  const char max_depth = limit_min_h ? c->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+#endif
 
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count; pid++) {
@@ -512,12 +548,8 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-    rt_debugging_count_transport_call(pi);
-#endif
-
     const int pi_active = part_is_active(pi, e);
+    const char depth_i = pi->depth_h;
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -533,9 +565,10 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
+      const int pj_active = part_is_active(pj, e);
+      const char depth_j = pj->depth_h;
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
-      const int pj_active = part_is_active(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -544,15 +577,11 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-      const int doi = pi_active && (hi >= h_min) && (hi < h_max) &&
-                      ((r2 < hig2) || (r2 < hjg2));
-      const int doj = pj_active && (hj >= h_min) && (hj < h_max) &&
-                      ((r2 < hig2) || (r2 < hjg2));
+      const int doi = pi_active && (depth_i >= min_depth) &&
+                      (depth_i <= max_depth) && ((r2 < hig2) || (r2 < hjg2));
+      const int doj = pj_active && (depth_j >= min_depth) &&
+                      (depth_j <= max_depth) && ((r2 < hig2) || (r2 < hjg2));
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-      rt_debugging_count_transport_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
@@ -563,6 +592,11 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
 
       /* Hit or miss? */
       if (doi && doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+        if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
+#endif
 
         IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -577,6 +611,10 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
 #endif
       } else if (doi) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
+
         IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -589,6 +627,10 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology);
 #endif
       } else if (doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
+#endif
 
         dx[0] = -dx[0];
         dx[1] = -dx[1];
@@ -1112,9 +1154,15 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+#endif
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
 
   /* Get some other useful values. */
   const double hi_max =
@@ -1141,6 +1189,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[sort_i[pid].i];
+      const char depth_i = pi->depth_h;
       const float hi = pi->h;
 
       /* Skip inactive particles */
@@ -1152,13 +1201,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 #endif
 
       /* Skip particles not in the range of h we care about */
-      if (hi >= h_max) continue;
-      if (hi < h_min) continue;
-
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-      rt_debugging_count_gradient_call(pi);
-#endif
+      if (depth_i < min_depth) continue;
+      if (depth_i > max_depth) continue;
 
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -1188,10 +1232,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
         const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-        rt_debugging_count_gradient_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1229,6 +1269,11 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+#endif
+
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1254,6 +1299,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
       /* Get a hold of the jth part in cj. */
       struct part *pj = &parts_j[sort_j[pjd].i];
+      const char depth_j = pj->depth_h;
       const float hj = pj->h;
 
       /* Skip inactive particles */
@@ -1264,14 +1310,9 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
         error("Particle has h larger than h_max_active");
 #endif
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-      rt_debugging_count_gradient_call(pj);
-#endif
-
       /* Skip particles not in the range of h we care about */
-      if (hj >= h_max) continue;
-      if (hj < h_min) continue;
+      if (depth_j < min_depth) continue;
+      if (depth_j > max_depth) continue;
 
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
@@ -1301,10 +1342,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
         const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-        rt_debugging_count_gradient_call(pi);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1341,6 +1378,11 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1390,6 +1432,15 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
    * Note: this may swap the ci and cj pointers!! */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells (ci).");
+
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells (cj).");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
@@ -1450,11 +1501,19 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
       2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+#endif
 
   /* Get some other useful values. */
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
   const double hi_max = ci->hydro.h_max;
   const double hj_max = cj->hydro.h_max;
   const int count_i = ci->hydro.count;
@@ -1482,12 +1541,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
   struct sort_entry *restrict sort_active_i = NULL;
   struct sort_entry *restrict sort_active_j = NULL;
 
-  // MATTHIEU: temporary disable this optimization
-  if (0 /*&& cell_is_all_active_hydro(ci, e)*/) {
-    /* If everybody is active don't bother copying */
-    sort_active_i = sort_i;
-    count_active_i = count_i;
-  } else if (cell_is_active_hydro(ci, e)) {
+  if (cell_is_active_hydro(ci, e)) {
     if (posix_memalign((void **)&sort_active_i, SWIFT_CACHE_ALIGNMENT,
                        sizeof(struct sort_entry) * count_i) != 0)
       error("Failed to allocate active sortlists.");
@@ -1495,21 +1549,17 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     /* Collect the active particles in ci */
     for (int k = 0; k < count_i; k++) {
       const struct part *p = &parts_i[sort_i[k].i];
-      const float h = p->h;
+      const char depth = p->depth_h;
 
-      if (part_is_active(p, e) && (h >= h_min) && (h < h_max)) {
+      if (part_is_active(p, e) && (depth >= min_depth) &&
+          (depth <= max_depth)) {
         sort_active_i[count_active_i] = sort_i[k];
         count_active_i++;
       }
     }
   }
 
-  // MATTHIEU: temporary disable this optimization
-  if (0 /*&& cell_is_all_active_hydro(cj, e)*/) {
-    /* If everybody is active don't bother copying */
-    sort_active_j = sort_j;
-    count_active_j = count_j;
-  } else if (cell_is_active_hydro(cj, e)) {
+  if (cell_is_active_hydro(cj, e)) {
     if (posix_memalign((void **)&sort_active_j, SWIFT_CACHE_ALIGNMENT,
                        sizeof(struct sort_entry) * count_j) != 0)
       error("Failed to allocate active sortlists.");
@@ -1517,9 +1567,10 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     /* Collect the active particles in cj */
     for (int k = 0; k < count_j; k++) {
       const struct part *p = &parts_j[sort_j[k].i];
-      const float h = p->h;
+      const char depth = p->depth_h;
 
-      if (part_is_active(p, e) && (h >= h_min) && (h < h_max)) {
+      if (part_is_active(p, e) && (depth >= min_depth) &&
+          (depth <= max_depth)) {
         sort_active_j[count_active_j] = sort_j[k];
         count_active_j++;
       }
@@ -1535,14 +1586,10 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts_i[sort_i[pid].i];
+    const char depth_i = pi->depth_h;
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
-
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-    rt_debugging_count_transport_call(pi);
-#endif
 
     const float hi = pi->h;
 
@@ -1556,7 +1603,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     const float piy = pi->x[1] - shift_i[1];
     const float piz = pi->x[2] - shift_i[2];
 
-    const int update_i = part_is_active(pi, e) && (hi >= h_min) && (hi < h_max);
+    const int update_i = part_is_active(pi, e) && local_i &&
+                         (depth_i >= min_depth) && (depth_i <= max_depth);
 
     /* Do we need to only check active parts in cj
        (i.e. pi does not need updating) ? */
@@ -1587,10 +1635,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
         const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-        rt_debugging_count_transport_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1629,6 +1673,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1652,6 +1701,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
         /* Recover pj */
         struct part *pj = &parts_j[sort_j[pjd].i];
+        const char depth_j = pj->depth_h;
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -1667,10 +1717,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
         const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-        rt_debugging_count_transport_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1710,11 +1756,18 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
 
-          const int doj =
-              part_is_active(pj, e) && (hj >= h_min) && (hj < h_max);
+          const int doj = part_is_active(pj, e) && local_j &&
+                          (depth_j >= min_depth) && (depth_j <= max_depth);
 
           /* Does pj need to be updated too? */
           if (doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (hi < h_min || hi >= h_max)
+              error("Inappropriate h for this level!");
+            if (hj < h_min || hj >= h_max)
+              error("Inappropriate h for this level!");
+#endif
 
             IACT(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1729,6 +1782,10 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 #endif
           } else {
 
+#ifdef SWIFT_DEBUG_CHECKS
+            if (hi < h_min || hi >= h_max)
+              error("Inappropriate h for this level!");
+#endif
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1756,14 +1813,10 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
     /* Get a hold of the jth part in cj. */
     struct part *pj = &parts_j[sort_j[pjd].i];
+    const char depth_j = pj->depth_h;
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pj, e)) continue;
-
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-    rt_debugging_count_transport_call(pj);
-#endif
 
     const float hj = pj->h;
 
@@ -1777,7 +1830,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     const float pjy = pj->x[1] - shift_j[1];
     const float pjz = pj->x[2] - shift_j[2];
 
-    const int update_j = part_is_active(pj, e) && (hj >= h_min) && (hj < h_max);
+    const int update_j = part_is_active(pj, e) && local_j &&
+                         (depth_j >= min_depth) && (depth_j <= max_depth);
 
     /* Do we need to only check active parts in ci
        (i.e. pj does not need updating) ? */
@@ -1809,10 +1863,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
         const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-        rt_debugging_count_transport_call(pi);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1850,6 +1900,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
         if (r2 < hjg2 && r2 >= hig2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1874,6 +1929,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
         /* Recover pi */
         struct part *pi = &parts_i[sort_i[pid].i];
+        const char depth_i = pi->depth_h;
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pi, e)) continue;
@@ -1890,10 +1946,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
         const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-        rt_debugging_count_transport_call(pi);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles are in the correct frame after the shifts */
         if (pix > shift_threshold_x || pix < -shift_threshold_x)
@@ -1932,11 +1984,18 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
            (note that we must avoid the r2 < hig2 cases we already processed) */
         if (r2 < hjg2 && r2 >= hig2) {
 
-          const int doi =
-              part_is_active(pi, e) && (hi >= h_min) && (hi < h_max);
+          const int doi = part_is_active(pi, e) && local_i &&
+                          (depth_i >= min_depth) && (depth_i <= max_depth);
 
           /* Does pi need to be updated too? */
           if (doi) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (hi < h_min || hi >= h_max)
+              error("Inappropriate h for this level!");
+            if (hj < h_min || hj >= h_max)
+              error("Inappropriate h for this level!");
+#endif
 
             IACT(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1950,6 +2009,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                   t_current, cosmo, with_cosmology);
 #endif
           } else {
+
+#ifdef SWIFT_DEBUG_CHECKS
+            if (hj < h_min || hj >= h_max)
+              error("Inappropriate h for this level!");
+#endif
 
             IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1969,11 +2033,9 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     }   /* Is pj active? */
   }     /* Loop over all cj */
 
-  /* Clean-up if necessary */  // MATTHIEU: temporary disable this optimization
-  if (cell_is_active_hydro(ci, e))  // && !cell_is_all_active_hydro(ci, e))
-    free(sort_active_i);
-  if (cell_is_active_hydro(cj, e))  // && !cell_is_all_active_hydro(cj, e))
-    free(sort_active_j);
+  /* Clean-up if necessary */
+  if (cell_is_active_hydro(ci, e)) free(sort_active_i);
+  if (cell_is_active_hydro(cj, e)) free(sort_active_j);
 
   TIMER_TOC(TIMER_DOPAIR);
 }
@@ -2006,6 +2068,15 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
+
+  /* Have the cells been sorted? */
+  if (!(ci->hydro.sorted & (1 << sid)) ||
+      ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
+    error("Interacting unsorted cells (ci).");
+
+  if (!(cj->hydro.sorted & (1 << sid)) ||
+      cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
+    error("Interacting unsorted cells (cj).");
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS
   DOPAIR2_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
@@ -2044,9 +2115,15 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
   struct part *parts = c->hydro.parts;
   const int count = c->hydro.count;
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? c->depth : 0;
+  const char max_depth = limit_min_h ? c->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+#endif
 
   /* Set up a list of the particles for which we want to compute interactions */
   int *indt = NULL;
@@ -2056,8 +2133,8 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++) {
     const struct part *p = &parts[k];
-    const float h = p->h;
-    if (part_is_active(p, e) && (h >= h_min) && (h < h_max)) {
+    const char depth = p->depth_h;
+    if (part_is_active(p, e) && (depth >= min_depth) && (depth <= max_depth)) {
       indt[countdt] = k;
       countdt += 1;
     }
@@ -2075,6 +2152,7 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
 
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
+    const char depth_i = pi->depth_h;
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
@@ -2084,13 +2162,9 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-    rt_debugging_count_gradient_call(pi);
-#endif
-
     /* Is the ith particle active and in the range of h we care about? */
-    const int update_i = part_is_active(pi, e) && (hi >= h_min) && (hi < h_max);
+    const int update_i = part_is_active(pi, e) && (depth_i >= min_depth) &&
+                         (depth_i <= max_depth);
 
     /* If false then it can only act as a neighbour of others */
     if (!update_i) {
@@ -2105,10 +2179,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
         const float hj = pj->h;
         const float hjg2 = hj * hj * kernel_gamma2;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-        rt_debugging_count_gradient_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2125,6 +2195,11 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -2156,6 +2231,7 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* Get a pointer to the jth particle (by construction pi != pj). */
         struct part *restrict pj = &parts[pjd];
+        const char depth_j = pj->depth_h;
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -2164,10 +2240,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
         const float hj = pj->h;
         const float hjg2 = hj * hj * kernel_gamma2;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT)
-        rt_debugging_count_gradient_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2192,12 +2264,18 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
          * -> Check whether it is active
          * -> Check whether it is in the right range of h
          * -> Check the distance to pi */
-        const int doj = (part_is_active(pj, e)) && (hj >= h_min) &&
-                        (hj < h_max) && (r2 < hjg2);
+        const int doj = (part_is_active(pj, e)) && (depth_j >= min_depth) &&
+                        (depth_j <= max_depth) && (r2 < hjg2);
 
         /* Hit or miss? */
         if (doi && doj) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
           /* Update both pi and pj */
 
           IACT(r2, dx, hi, hj, pi, pj, a, H);
@@ -2213,6 +2291,10 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
 #endif
         } else if (doi) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+#endif
           /* Update only pi */
 
           IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
@@ -2227,6 +2309,11 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
                                        t_current, cosmo, with_cosmology);
 #endif
         } else if (doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           /* Update only pj */
 
@@ -2323,9 +2410,15 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
   struct part *parts = c->hydro.parts;
   const int count = c->hydro.count;
 
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? c->depth : 0;
+  const char max_depth = limit_min_h ? c->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->dmin * 0.5 * (1. / kernel_gamma) : 0.;
-  const float h_max = limit_max_h ? c->dmin * (1. / kernel_gamma) : FLT_MAX;
+  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+#endif
 
   /* Set up a list of the particles for which we want to compute interactions */
   int *indt = NULL;
@@ -2335,8 +2428,8 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++) {
     const struct part *p = &parts[k];
-    const float h = p->h;
-    if (part_is_active(p, e) && (h >= h_min) && (h < h_max)) {
+    const char depth = p->depth_h;
+    if (part_is_active(p, e) && (depth >= min_depth) && (depth <= max_depth)) {
       indt[countdt] = k;
       countdt += 1;
     }
@@ -2354,14 +2447,10 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
 
     /* Get a pointer to the ith particle. */
     struct part *restrict pi = &parts[pid];
+    const char depth_i = pi->depth_h;
 
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
-
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-    rt_debugging_count_transport_call(pi);
-#endif
 
     /* Get the particle position and (square of) search radius. */
     const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
@@ -2369,7 +2458,8 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle active and in the range of h we care about? */
-    const int update_i = part_is_active(pi, e) && (hi >= h_min) && (hi < h_max);
+    const int update_i = part_is_active(pi, e) && (depth_i >= min_depth) &&
+                         (depth_i <= max_depth);
 
     /* If false then it can only act as a neighbour of others */
     if (!update_i) {
@@ -2384,10 +2474,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
         const float hj = pj->h;
         const float hjg2 = hj * hj * kernel_gamma2;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-        rt_debugging_count_transport_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2404,6 +2490,11 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hjg2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -2435,6 +2526,7 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[pjd];
+        const char depth_j = pj->depth_h;
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
@@ -2443,10 +2535,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
         const float hj = pj->h;
         const float hjg2 = hj * hj * kernel_gamma2;
 
-#if defined(SWIFT_RT_DEBUG_CHECKS) && \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-        rt_debugging_count_transport_call(pj);
-#endif
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
@@ -2471,11 +2559,18 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
          * -> Check whether it is active
          * -> Check whether it is in the right range of h
          * -> Check the distance to pi */
-        const int doj = (part_is_active(pj, e)) && (hj >= h_min) &&
-                        (hj < h_max) && ((r2 < hjg2) || (r2 < hig2));
+        const int doj = (part_is_active(pj, e)) && (depth_j >= min_depth) &&
+                        (depth_j <= max_depth) && ((r2 < hjg2) || (r2 < hig2));
 
         /* Hit or miss? */
         if (doi && doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           /* Update both pi and pj */
 
@@ -2491,6 +2586,11 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
                                 t_current, cosmo, with_cosmology);
 #endif
         } else if (doi) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+#endif
 
           /* Update only pi */
 

@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
   struct stars_props stars_properties;
   struct sink_props sink_properties;
   struct neutrino_props neutrino_properties;
+  struct neutrino_response neutrino_response;
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
@@ -111,6 +112,7 @@ int main(int argc, char *argv[]) {
   struct sink *sinks = NULL;
   struct unit_system us;
   struct los_props los_properties;
+  struct ic_info ics_metadata;
 
   int nr_nodes = 1, myrank = 0;
 
@@ -151,6 +153,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) greetings(/*fof=*/0);
 
   int with_aff = 0;
+  int with_interleave = 0;
   int dry_run = 0;
   int dump_tasks = 0;
   int dump_cells = 0;
@@ -274,6 +277,9 @@ int main(int argc, char *argv[]) {
       OPT_GROUP("  Control options:\n"),
       OPT_BOOLEAN('a', "pin", &with_aff,
                   "Pin runners using processor affinity.", NULL, 0, 0),
+      OPT_BOOLEAN(0, "interleave", &with_interleave,
+                  "Interleave memory allocations across NUMA regions.", NULL, 0,
+                  0),
       OPT_BOOLEAN('d', "dry-run", &dry_run,
                   "Dry run. Read the parameter file, allocates memory but does "
                   "not read the particles from ICs. Exits before the start of "
@@ -392,6 +398,12 @@ int main(int argc, char *argv[]) {
 #if !defined(HAVE_SETAFFINITY) || !defined(HAVE_LIBNUMA)
   if (with_aff) {
     printf("Error: no NUMA support for thread affinity\n");
+    return 1;
+  }
+#endif
+#if !defined(HAVE_LIBNUMA)
+  if (with_interleave) {
+    printf("Error: no NUMA support for interleaving memory\n");
     return 1;
   }
 #endif
@@ -615,6 +627,12 @@ int main(int argc, char *argv[]) {
   if (with_aff &&
       ((ENGINE_POLICY)&engine_policy_setaffinity) == engine_policy_setaffinity)
     engine_pin();
+#endif
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+
+  /* Set the NUMA memory policy to interleave. */
+  if (with_interleave) engine_numa_policies(myrank, verbose);
 #endif
 
   /* Genesis 1.1: And then, there was time ! */
@@ -963,6 +981,10 @@ int main(int argc, char *argv[]) {
     io_prepare_output_fields(output_options, with_cosmology, with_fof,
                              with_structure_finding, e.verbose);
 
+#if defined(SWIFT_DEBUG_TASKS)
+    task_create_name_files("task_labels");
+#endif
+
     /* Not restarting so look for the ICs. */
     /* Initialize unit system and constants */
     units_init_from_params(&us, params, "InternalUnitSystem");
@@ -1145,6 +1167,9 @@ int main(int argc, char *argv[]) {
     size_t Nspart = 0, Nbpart = 0, Nsink = 0;
     double dim[3] = {0., 0., 0.};
 
+    /* Prepare struct to store metadata from ICs */
+    ic_info_init(&ics_metadata, params);
+
     if (myrank == 0) clocks_gettime(&tic);
 #if defined(HAVE_HDF5)
 #if defined(WITH_MPI)
@@ -1155,7 +1180,7 @@ int main(int argc, char *argv[]) {
                      with_gravity, with_sink, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
-                     nr_threads, dry_run, remap_ids);
+                     nr_threads, dry_run, remap_ids, &ics_metadata);
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
@@ -1163,7 +1188,7 @@ int main(int argc, char *argv[]) {
                    with_gravity, with_sink, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
-                   dry_run, remap_ids);
+                   dry_run, remap_ids, &ics_metadata);
 #endif
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
@@ -1171,7 +1196,7 @@ int main(int argc, char *argv[]) {
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
                    with_gravity, with_sink, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
-                   nr_threads, dry_run, remap_ids);
+                   nr_threads, dry_run, remap_ids, &ics_metadata);
 #endif
 #endif
 
@@ -1224,26 +1249,27 @@ int main(int argc, char *argv[]) {
 #if defined(WITH_MPI)
     long long N_long[swift_type_count + 1] = {0};
     N_long[swift_type_gas] = Ngas;
-    N_long[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
     N_long[swift_type_dark_matter_background] = Ngpart_background;
     N_long[swift_type_sink] = Nsink;
     N_long[swift_type_stars] = Nspart;
     N_long[swift_type_black_hole] = Nbpart;
     N_long[swift_type_neutrino] = Nnupart;
     N_long[swift_type_count] = Ngpart;
+    N_long[swift_type_dark_matter] =
+        with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
+
     MPI_Allreduce(&N_long, &N_total, swift_type_count + 1, MPI_LONG_LONG_INT,
                   MPI_SUM, MPI_COMM_WORLD);
 #else
     N_total[swift_type_gas] = Ngas;
-    N_total[swift_type_dark_matter] =
-        with_gravity ? Ngpart - Ngpart_background - Nbaryons : 0;
     N_total[swift_type_dark_matter_background] = Ngpart_background;
     N_total[swift_type_sink] = Nsink;
     N_total[swift_type_stars] = Nspart;
     N_total[swift_type_black_hole] = Nbpart;
     N_total[swift_type_neutrino] = Nnupart;
     N_total[swift_type_count] = Ngpart;
+    N_total[swift_type_dark_matter] =
+        with_gravity ? Ngpart - Ngpart_background - Nbaryons - Nnupart : 0;
 #endif
 
     if (myrank == 0)
@@ -1271,11 +1297,10 @@ int main(int argc, char *argv[]) {
     /* Do we have neutrino DM particles? */
     const int with_neutrinos = N_total[swift_type_neutrino] > 0;
 
-    /* Initialise the neutrino properties if we have neutrino particles */
+    /* Initialise the neutrino properties */
     bzero(&neutrino_properties, sizeof(struct neutrino_props));
-    if (with_neutrinos)
-      neutrino_props_init(&neutrino_properties, &prog_const, &us, params,
-                          &cosmo);
+    neutrino_props_init(&neutrino_properties, &prog_const, &us, params, &cosmo,
+                        with_neutrinos);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
@@ -1303,6 +1328,13 @@ int main(int argc, char *argv[]) {
           &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
           with_external_gravity, with_baryon_particles, with_DM_particles,
           with_neutrinos, with_DM_background_particles, periodic, s.dim);
+
+    /* Initialize the neutrino response if used */
+    bzero(&neutrino_response, sizeof(struct neutrino_response));
+    if (neutrino_properties.use_linear_response)
+      neutrino_response_init(&neutrino_response, params, &us, s.dim, &cosmo,
+                             &neutrino_properties, &gravity_properties, myrank,
+                             verbose);
 
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));
@@ -1426,9 +1458,9 @@ int main(int argc, char *argv[]) {
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &neutrino_properties,
-                &feedback_properties, &rt_properties, &mesh, &potential,
-                &cooling_func, &starform, &chemistry, &fof_properties,
-                &los_properties);
+                &neutrino_response, &feedback_properties, &rt_properties, &mesh,
+                &potential, &cooling_func, &starform, &chemistry,
+                &fof_properties, &los_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 
@@ -1440,8 +1472,7 @@ int main(int argc, char *argv[]) {
     /* Get some info to the user. */
     if (myrank == 0) {
       const long long N_DM = N_total[swift_type_dark_matter] +
-                             N_total[swift_type_dark_matter_background] +
-                             N_total[swift_type_neutrino];
+                             N_total[swift_type_dark_matter_background];
       message(
           "Running on %lld gas particles, %lld sink particles, %lld stars "
           "particles %lld black hole particles, %lld neutrino particles, and "
@@ -1481,12 +1512,6 @@ int main(int argc, char *argv[]) {
 #ifdef WITH_MPI
     /* Split the space. */
     engine_split(&e, &initial_partition);
-    /* Turn off the csds to avoid writing the communications */
-    if (with_csds) e.policy &= ~engine_policy_csds;
-
-    engine_redistribute(&e);
-    /* Turn it back on */
-    if (with_csds) e.policy |= engine_policy_csds;
 #endif
 
     /* Initialise the particles */
@@ -1495,7 +1520,10 @@ int main(int argc, char *argv[]) {
     /* Check that the matter content matches the cosmology given in the
      * parameter file. */
     if (with_cosmology && with_self_gravity && !dry_run) {
-      const int check_neutrinos = !neutrino_properties.use_delta_f;
+      /* Only check neutrino particle masses if we have neutrino particles
+       * and if the masses are stored unweighted. */
+      const int check_neutrinos =
+          s.with_neutrinos && !neutrino_properties.use_delta_f;
       space_check_cosmology(&s, &cosmo, with_hydro, myrank, check_neutrinos);
       neutrino_check_cosmology(&s, &cosmo, &prog_const, params,
                                &neutrino_properties, myrank, verbose);
@@ -1504,7 +1532,7 @@ int main(int argc, char *argv[]) {
     /* Write the state of the system before starting time integration. */
 #ifdef WITH_CSDS
     if (e.policy & engine_policy_csds) {
-      csds_log_all_particles(e.csds, &e, /* first_log */ 1);
+      csds_log_all_particles(e.csds, &e, csds_flag_create);
     }
 #endif
     /* Dump initial state snapshot, if not working with an output list */
@@ -1513,7 +1541,7 @@ int main(int argc, char *argv[]) {
       /* Run FoF first, if we're adding FoF info to the snapshot */
       if (with_fof && e.snapshot_invoke_fof) {
         engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0,
-                   /*seed_black_holes=*/0);
+                   /*seed_black_holes=*/0, /*buffers allocated=*/1);
       }
 
       engine_dump_snapshot(&e);
@@ -1530,10 +1558,11 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
     printf(
         "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s [%s] "
-        "%6s\n",
+        "%6s %s [%s] \n",
         "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
         "Updates", "g-Updates", "s-Updates", "sink-Updates", "b-Updates",
-        "Wall-clock time", clocks_getunit(), "Props");
+        "Wall-clock time", clocks_getunit(), "Props", "Dead time",
+        clocks_getunit());
     fflush(stdout);
   }
 
@@ -1675,23 +1704,25 @@ int main(int argc, char *argv[]) {
   /* Write final time information */
   if (myrank == 0) {
 
+    const double dead_time = e.global_deadtime / (nr_nodes * e.nr_threads);
+
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
         "%12lld"
-        " %21.3f %6d\n",
+        " %21.3f %6d %21.3f\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
-        e.sink_updates, e.b_updates, e.wallclock_time, e.step_props);
+        e.sink_updates, e.b_updates, e.wallclock_time, e.step_props, dead_time);
     fflush(stdout);
 
     fprintf(e.file_timesteps,
             "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
-            " %12lld %21.3f %6d\n",
+            " %12lld %21.3f %6d %21.3f\n",
             e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
             e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
             e.s_updates, e.sink_updates, e.b_updates, e.wallclock_time,
-            e.step_props);
+            e.step_props, dead_time);
     fflush(e.file_timesteps);
 
     /* Print information to the SFH logger */
@@ -1722,7 +1753,7 @@ int main(int argc, char *argv[]) {
     }
 #ifdef WITH_CSDS
     if (e.policy & engine_policy_csds) {
-      csds_log_all_particles(e.csds, &e, /* first_log */ 0);
+      csds_log_all_particles(e.csds, &e, csds_flag_delete);
 
       /* Write a sentinel timestamp */
       if (e.policy & engine_policy_cosmology) {
@@ -1741,7 +1772,7 @@ int main(int argc, char *argv[]) {
 
       if (with_fof && e.snapshot_invoke_fof) {
         engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0,
-                   /*seed_black_holes=*/0);
+                   /*seed_black_holes=*/0, /*buffers allocated=*/1);
       }
 
 #ifdef HAVE_VELOCIRAPTOR
@@ -1782,6 +1813,8 @@ int main(int argc, char *argv[]) {
   /* Clean everything */
   if (with_verbose_timers) timers_close_file();
   if (with_cosmology) cosmology_clean(e.cosmology);
+  if (e.neutrino_properties->use_linear_response)
+    neutrino_response_clean(e.neutrino_response);
   if (with_self_gravity) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);

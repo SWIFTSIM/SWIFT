@@ -40,7 +40,7 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float *dx,
+runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const float hi, const float hj,
                                     struct spart *si, const struct part *pj,
                                     const struct xpart *xpj,
@@ -108,7 +108,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
         /* Compute arclength */
         ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays + i,
                                /*ray_type=*/ray_feedback_thermal, pj->id,
-                               rand_theta_SNII, rand_phi_SNII, pj->mass,
+                               rand_theta_SNII, rand_phi_SNII, mj,
                                /*ray_ext=*/NULL, /*v=*/NULL);
       }
       break;
@@ -126,7 +126,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
     case SNII_minimum_density_model: {
@@ -142,7 +142,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(rho, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
     case SNII_random_ngb_model: {
@@ -164,7 +164,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller 'fake' distances to the BH. */
       ray_minimise_distance(dist, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
   }
@@ -187,16 +187,14 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  const struct spart *si, struct part *pj,
-                                  struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const struct feedback_props *fb_props,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_feedback_apply(
+    const float r2, const float dx[3], const float hi, const float hj,
+    const struct spart *si, struct part *pj, struct xpart *xpj,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (si->count_since_last_enrichment != 0)
+  if (si->count_since_last_enrichment != 0 && engine_current_step > 0)
     error("Computing feedback from a star that should not");
 #endif
 

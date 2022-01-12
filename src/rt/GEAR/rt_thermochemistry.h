@@ -46,4 +46,4 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
 #endif
 }
 
-#endif /* SWIFT_RT_THERMOCHEMISTRY_DEBUG_H */
+#endif /* SWIFT_RT_THERMOCHEMISTRY_GEAR_H */

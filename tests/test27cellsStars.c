@@ -311,7 +311,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "s:h:p:n:N:r:t:d:f:")) != -1) {
     switch (c) {
       case 'h':
@@ -505,11 +505,18 @@ int main(int argc, char *argv[]) {
   ticks face_time = timings[4] + timings[10] + timings[12] + timings[14] +
                     timings[16] + timings[22];
 
-  message("Corner calculations took       : %15lli ticks.", corner_time / runs);
-  message("Edge calculations took         : %15lli ticks.", edge_time / runs);
-  message("Face calculations took         : %15lli ticks.", face_time / runs);
-  message("Self calculations took         : %15lli ticks.", timings[13] / runs);
-  message("SWIFT calculation took         : %15lli ticks.", time / runs);
+  ticks self_time = timings[13];
+
+  message("Corner calculations took:     %.3f %s.",
+          clocks_from_ticks(corner_time / runs), clocks_getunit());
+  message("Edge calculations took:       %.3f %s.",
+          clocks_from_ticks(edge_time / runs), clocks_getunit());
+  message("Face calculations took:       %.3f %s.",
+          clocks_from_ticks(face_time / runs), clocks_getunit());
+  message("Self calculations took:       %.3f %s.",
+          clocks_from_ticks(self_time / runs), clocks_getunit());
+  message("SWIFT calculation took:       %.3f %s.",
+          clocks_from_ticks(time / runs), clocks_getunit());
 
   /* Now perform a brute-force version for accuracy tests */
 
@@ -537,7 +544,8 @@ int main(int argc, char *argv[]) {
   dump_particle_fields(outputFileName, main_cell, cells);
 
   /* Output timing */
-  message("Brute force calculation took : %15lli ticks.", toc - tic);
+  message("Brute force calculation took : %.3f %s.",
+          clocks_from_ticks(toc - tic), clocks_getunit());
 
   /* Clean things to make the sanitizer happy ... */
   for (int i = 0; i < 27; ++i) clean_up(cells[i]);

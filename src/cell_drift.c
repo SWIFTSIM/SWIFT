@@ -156,6 +156,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
                           with_cosmology, e->cosmology, e->hydro_properties,
                           e->cooling_func, e->time);
 
+      /* Set the appropriate depth level for this particle */
+      cell_set_part_h_depth(p, c);
+
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
       if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
@@ -243,6 +246,11 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
         /* Update the maximal active smoothing length in the cell */
         cell_h_max_active = max(cell_h_max_active, p->h);
       }
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+      p->limiter_data.n_limiter = 0.f;
+      p->limiter_data.N_limiter = 0;
+#endif
     }
 
     /* Now, get the maximal particle motion from its square */
@@ -508,6 +516,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
 
       /* Drift... */
       drift_spart(sp, dt_drift, ti_old_spart, ti_current);
+
+      /* Set the appropriate depth level for this particle */
+      cell_set_spart_h_depth(sp, c);
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */

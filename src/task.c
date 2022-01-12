@@ -1308,6 +1308,26 @@ void task_get_full_name(int type, int subtype, char *name) {
     sprintf(name, "%s_%s", taskID_names[type], subtaskID_names[subtype]);
 }
 
+void task_create_name_files(const char *file_prefix) {
+  char file_name[200];
+  sprintf(file_name, "%s_task_types.txt", file_prefix);
+  FILE *file = fopen(file_name, "w");
+  if (file == NULL) error("Could not create file '%s'.", file_name);
+  fprintf(file, "# type\tname\n");
+  for (int type = 0; type < task_type_count; type++) {
+    fprintf(file, "%i\t%s\n", type, taskID_names[type]);
+  }
+  fclose(file);
+  sprintf(file_name, "%s_task_subtypes.txt", file_prefix);
+  file = fopen(file_name, "w");
+  if (file == NULL) error("Could not create file '%s'.", file_name);
+  fprintf(file, "# subtype\tname\n");
+  for (int subtype = 0; subtype < task_subtype_count; subtype++) {
+    fprintf(file, "%i\t%s\n", subtype, subtaskID_names[subtype]);
+  }
+  fclose(file);
+}
+
 #ifdef WITH_MPI
 /**
  * @brief Create global communicators for each of the subtasks.
@@ -1355,6 +1375,8 @@ void task_dump_all(struct engine *e, int step) {
   FILE *file_thread;
   if (engine_rank == 0) {
     file_thread = fopen(dumpfile, "w");
+    if (file_thread == NULL)
+      error("Could not create/erase file '%s'.", dumpfile);
     fclose(file_thread);
   }
   MPI_Barrier(MPI_COMM_WORLD);
@@ -1370,6 +1392,8 @@ void task_dump_all(struct engine *e, int step) {
 
       /* Open file and position at end. */
       file_thread = fopen(dumpfile, "a");
+      if (file_thread == NULL)
+        error("Could not open file '%s' for writing.", dumpfile);
 
       /* Add some information to help with the plots and conversion of ticks to
        * seconds. */
@@ -1412,6 +1436,7 @@ void task_dump_all(struct engine *e, int step) {
   snprintf(dumpfile, sizeof(dumpfile), "thread_info-step%d.dat", step);
   FILE *file_thread;
   file_thread = fopen(dumpfile, "w");
+  if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
 
   /* Add some information to help with the plots and conversion of ticks to
    * seconds. */
@@ -1586,6 +1611,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
 #endif
 
     FILE *dfile = fopen(dumpfile, "w");
+    if (dfile == NULL) error("Could not create file '%s'.", dumpfile);
     if (header) {
       fprintf(dfile, "/* use as src/partition_fixed_costs.h */\n");
       fprintf(dfile, "#define HAVE_FIXED_COSTS 1\n");
@@ -1663,6 +1689,7 @@ void task_dump_active(struct engine *e) {
 #endif
 
   FILE *file_thread = fopen(dumpfile, "w");
+  if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
   fprintf(file_thread,
           "# rank otherrank type subtype waits pair tic toc"
           " ci.hydro.count cj.hydro.count ci.grav.count cj.grav.count"

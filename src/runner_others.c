@@ -1009,6 +1009,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const int count = c->hydro.count;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1038,7 +1039,24 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       if (!part_is_active(p, e)) continue;
 
       /* Finish the force loop */
-      rt_finalise_transport(p);
+      const integertime_t ti_current = e->ti_current;
+      const integertime_t ti_step = get_integer_timestep(p->time_bin);
+      const integertime_t ti_begin =
+          get_integer_time_begin(ti_current + 1, p->time_bin);
+      const integertime_t ti_end = ti_begin + ti_step;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ti_begin != ti_current)
+        error(
+            "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+            "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
+            ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
+            ti_current);
+#endif
+
+      const double dt = rt_part_dt(ti_begin, ti_end, e->time_base,
+                                   with_cosmology, e->cosmology);
+      rt_finalise_transport(p, dt);
 
       /* And finally do thermochemistry */
       rt_tchem(p);

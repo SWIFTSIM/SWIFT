@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
 
 # -----------------------------------------------------------------------
 # Collection of checks for the 'debug' RT scheme in swift for the
@@ -94,24 +113,6 @@ def check_all_hydro_is_equal(snapdata):
                 if break_on_diff:
                     quit()
 
-        # Calls to star interactions
-        if (ref.gas.RTStarIact != compare.gas.RTStarIact).any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            print("--- Calls to star interactions vary")
-
-            if print_diffs:
-                for i in range(npart):
-                    if ref.gas.RTStarIact[i] != compare.gas.RTStarIact[i]:
-                        print(
-                            "-----",
-                            ref.gas.IDs[i],
-                            ref.gas.RTStarIact[i],
-                            compare.gas.RTStarIact[i],
-                        )
-
-            if break_on_diff:
-                quit()
-
         # Photon number updates
         if (ref.gas.InjectionDone != compare.gas.InjectionDone).any():
             print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
@@ -129,22 +130,6 @@ def check_all_hydro_is_equal(snapdata):
 
             if break_on_diff:
                 quit()
-
-        # Gradient Loop Calls
-        fishy = ref.gas.RTCallsIactGradient != compare.gas.RTCallsIactGradient
-        if fishy.any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            account_for_sml_diff = np.count_nonzero(
-                np.logical_and(fishy, sml_outside_tolerance)
-            )
-            print(
-                "--- Calls to iact gradient loop: count differ: {0:8d} / {1:8d};".format(
-                    np.count_nonzero(fishy), npart
-                ),
-                "After removing ones with acceptable h differences: {0:8d}".format(
-                    account_for_sml_diff
-                ),
-            )
 
         # Gradient Loop Interaction Calls
         fishy = (
@@ -183,22 +168,6 @@ def check_all_hydro_is_equal(snapdata):
 
                 if break_on_diff:
                     quit()
-
-        # Transport Loop Calls
-        fishy = ref.gas.RTCallsIactTransport != compare.gas.RTCallsIactTransport
-        if fishy.any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            account_for_sml_diff = np.count_nonzero(
-                np.logical_and(fishy, sml_outside_tolerance)
-            )
-            print(
-                "--- Calls to iact transport: count differ: {0:8d} / {1:8d}; ".format(
-                    np.count_nonzero(fishy), npart
-                ),
-                "After removing ones with acceptable h differences: {0:8d}".format(
-                    account_for_sml_diff
-                ),
-            )
 
         # Transport Loop Interaction Calls
         fishy = (
@@ -268,6 +237,9 @@ def check_all_stars_is_equal(snapdata):
     print("checking stars")
 
     for compare in snapdata[1:]:
+
+        if not compare.has_stars:
+            continue
 
         # Coordinates
         if not skip_coords:

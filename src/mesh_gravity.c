@@ -22,6 +22,9 @@
 
 #ifdef HAVE_FFTW
 #include <fftw3.h>
+#if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
+#include <fftw3-mpi.h>
+#endif
 #endif
 
 /* This object's header. */
@@ -34,30 +37,20 @@
 #include "error.h"
 #include "gravity_properties.h"
 #include "kernel_long_gravity.h"
+#include "mesh_gravity_mpi.h"
+#include "mesh_gravity_patch.h"
+#include "neutrino.h"
 #include "part.h"
 #include "restart.h"
+#include "row_major_id.h"
 #include "runner.h"
 #include "space.h"
 #include "threadpool.h"
 
+/* Standard includes */
+#include <math.h>
+
 #ifdef HAVE_FFTW
-
-/**
- * @brief Returns 1D index of a 3D NxNxN array using row-major style.
- *
- * Wraps around in the corresponding dimension if any of the 3 indices is >= N
- * or < 0.
- *
- * @param i Index along x.
- * @param j Index along y.
- * @param k Index along z.
- * @param N Size of the array along one axis.
- */
-__attribute__((always_inline, const)) INLINE static int row_major_id_periodic(
-    const int i, const int j, const int k, const int N) {
-
-  return (((i + N) % N) * N * N + ((j + N) % N) * N + ((k + N) % N));
-}
 
 /**
  * @brief Interpolate values from a the mesh using CIC.
@@ -139,10 +132,12 @@ __attribute__((always_inline)) INLINE static void CIC_set(
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
+ * @param nu_model Struct with neutrino constants
  */
 INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
                                      const int N, const double fac,
-                                     const double dim[3]) {
+                                     const double dim[3],
+                                     const struct neutrino_model* nu_model) {
 
   /* Box wrap the multipole's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -174,10 +169,16 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
   if (k < 0 || k >= N) error("Invalid gpart position in z");
 #endif
 
+  /* Compute weight (for neutrino delta-f weighting) */
+  double weight = 1.0;
+  if (gp->type == swift_type_neutrino)
+    gpart_neutrino_weight_mesh_only(gp, nu_model, &weight);
+
   const double mass = gp->mass;
+  const double value = mass * weight;
 
   /* CIC ! */
-  CIC_set(rho, N, i, j, k, tx, ty, tz, dx, dy, dz, mass);
+  CIC_set(rho, N, i, j, k, tx, ty, tz, dx, dy, dz, value);
 }
 
 /**
@@ -189,9 +190,11 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
+ * @param nu_model Struct with neutrino constants
  */
 void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
-                            const double fac, const double dim[3]) {
+                            const double fac, const double dim[3],
+                            const struct neutrino_model* nu_model) {
 
   const int gcount = c->grav.count;
   const struct gpart* gparts = c->grav.parts;
@@ -199,7 +202,7 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
   /* Assign all the gpart of that cell to the mesh */
   for (int i = 0; i < gcount; ++i) {
     if (gparts[i].time_bin == time_bin_inhibited) continue;
-    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, nu_model);
   }
 }
 
@@ -215,6 +218,7 @@ struct cic_mapper_data {
   double fac;
   double dim[3];
   float const_G;
+  struct neutrino_model* nu_model;
 };
 
 void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
@@ -224,13 +228,14 @@ void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+  const struct neutrino_model* nu_model = data->nu_model;
 
   /* Pointer to the chunk to be processed */
   const struct gpart* gparts = (const struct gpart*)map_data;
 
   for (int i = 0; i < num; ++i) {
     if (gparts[i].time_bin == time_bin_inhibited) continue;
-    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, nu_model);
   }
 }
 
@@ -250,6 +255,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+  const struct neutrino_model* nu_model = data->nu_model;
 
   /* Pointer to the chunk to be processed */
   int* local_cells = (int*)map_data;
@@ -266,7 +272,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
     const struct cell* c = &cells[local_cells[i]];
 
     /* Assign this cell's content to the mesh */
-    cell_gpart_to_mesh_CIC(c, rho, N, fac, dim);
+    cell_gpart_to_mesh_CIC(c, rho, N, fac, dim, nu_model);
   }
 }
 
@@ -482,6 +488,8 @@ struct Green_function_data {
   double green_fac;
   double a_smooth2;
   double k_fac;
+  int slice_offset;
+  int slice_width;
 };
 
 /**
@@ -506,8 +514,11 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
   const double a_smooth2 = data->a_smooth2;
   const double k_fac = data->k_fac;
 
-  /* Range handled by this call */
-  const int i_start = (fftw_complex*)map_data - frho;
+  /* Find what slice of the full mesh is stored on this MPI rank */
+  const int slice_offset = data->slice_offset;
+
+  /* Range of x coordinates in the full mesh handled by this call */
+  const int i_start = ((fftw_complex*)map_data - frho) + slice_offset;
   const int i_end = i_start + num;
 
   /* Loop over the x range corresponding to this thread */
@@ -555,7 +566,8 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
         const double total_cor = green_cor * CIC_cor4;
 
         /* Apply to the mesh */
-        const int index = N * (N_half + 1) * i + (N_half + 1) * j + k;
+        const int index =
+            N * (N_half + 1) * (i - slice_offset) + (N_half + 1) * j + k;
         frho[index][0] *= total_cor;
         frho[index][1] *= total_cor;
       }
@@ -572,11 +584,15 @@ void mesh_apply_Green_function_mapper(void* map_data, const int num,
  * @param tp The threadpool.
  * @param frho The NxNx(N/2) complex array of the Fourier transform of the
  * density field.
+ * @param slice_offset The x coordinate of the start of the slice on this MPI
+ * rank
+ * @param slice_width The width of the local slice on this MPI rank
  * @param N The dimension of the array.
  * @param r_s The Green function smoothing scale.
  * @param box_size The physical size of the simulation box.
  */
 void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
+                               const int slice_offset, const int slice_width,
                                const int N, const double r_s,
                                const double box_size) {
 
@@ -587,41 +603,229 @@ void mesh_apply_Green_function(struct threadpool* tp, fftw_complex* frho,
   data.green_fac = -1. / (M_PI * box_size);
   data.a_smooth2 = 4. * M_PI * M_PI * r_s * r_s / (box_size * box_size);
   data.k_fac = M_PI / (double)N;
+  data.slice_offset = slice_offset;
+  data.slice_width = slice_width;
 
   /* Parallelize the Green function application using the threadpool
      to split the x-axis loop over the threads.
      The array is N x N x (N/2). We use the thread to each deal with
      a range [i_min, i_max[ x N x (N/2) */
-  if (N < 32) {
-    mesh_apply_Green_function_mapper(frho, N, &data);
-  } else {
-    threadpool_map(tp, mesh_apply_Green_function_mapper, frho, N,
-                   sizeof(fftw_complex), threadpool_auto_chunk_size, &data);
-  }
+  threadpool_map(tp, mesh_apply_Green_function_mapper, frho, slice_width,
+                 sizeof(fftw_complex), threadpool_auto_chunk_size, &data);
 
   /* Correct singularity at (0,0,0) */
-  frho[0][0] = 0.;
-  frho[0][1] = 0.;
+  if (slice_offset == 0 && slice_width > 0) {
+    frho[0][0] = 0.;
+    frho[0][1] = 0.;
+  }
 }
 
 #endif
 
 /**
- * @brief Compute the potential, including periodic correction on the mesh.
+ * @brief Compute the mesh forces and potential, including periodic correction
  *
  * Interpolates the top-level multipoles on-to a mesh, move to Fourier space,
  * compute the potential including short-range correction and move back
  * to real space. We use CIC for the interpolation.
  *
- * Note that there is no multiplication by G_newton at this stage.
+ * The potential is stored as a hashmap containing the potential mesh cells
+ * which will be needed on this MPI rank. This is stored in
+ * mesh->potential_local. The FFTW MPI library is used to do the FFTs.
+ *
+ * The particles mesh accelerations and potentials are also updated.
  *
  * @param mesh The #pm_mesh used to store the potential.
  * @param s The #space containing the particles.
  * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
-void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
-                               struct threadpool* tp, const int verbose) {
+void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
+                                   struct threadpool* tp, const int verbose) {
+
+#if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
+
+  const double r_s = mesh->r_s;
+  const double box_size = s->dim[0];
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int nr_local_cells = s->nr_local_cells;
+
+  if (r_s <= 0.) error("Invalid value of a_smooth");
+  if (mesh->dim[0] != dim[0] || mesh->dim[1] != dim[1] ||
+      mesh->dim[2] != dim[2])
+    error("Domain size does not match the value stored in the space.");
+
+  /* Some useful constants */
+  const int N = mesh->N;
+  const double cell_fac = N / box_size;
+
+  ticks tic = getticks();
+
+  /* Create an array of mesh patches. One per local top-level cell. */
+  struct pm_mesh_patch* local_patches = (struct pm_mesh_patch*)malloc(
+      nr_local_cells * sizeof(struct pm_mesh_patch));
+  if (local_patches == NULL)
+    error("Could not allocate array of local mesh patches!");
+  memset(local_patches, 0, nr_local_cells * sizeof(struct pm_mesh_patch));
+
+  /* Calculate contributions to density field on this MPI rank */
+  mpi_mesh_accumulate_gparts_to_local_patches(tp, N, cell_fac, s,
+                                              local_patches);
+  if (verbose)
+    message("Accumulating mass to local patches took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Ask FFTW what slice of the density field we need to store on this task.
+     Note that fftw_mpi_local_size_3d works in terms of the size of the complex
+     output. The last dimension of the real input is padded to 2*(N/2+1). */
+  ptrdiff_t local_n0, local_0_start;
+  ptrdiff_t nalloc =
+      fftw_mpi_local_size_3d((ptrdiff_t)N, (ptrdiff_t)N, (ptrdiff_t)(N / 2 + 1),
+                             MPI_COMM_WORLD, &local_n0, &local_0_start);
+  if (verbose)
+    message("Local density field slice has thickness %d.", (int)local_n0);
+  if (verbose)
+    message("local patch size = %d, local mesh cells = %lld", nr_local_cells,
+            (long long)(local_n0 * N * N));
+  if (verbose)
+    message("Planning the FFT took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  /* Allocate storage for mesh slices.
+   *
+   * Note: nalloc is the number of *complex* values.
+   */
+  double* rho_slice = (double*)fftw_malloc(2 * nalloc * sizeof(double));
+  memset(rho_slice, 0, 2 * nalloc * sizeof(double));
+
+  tic = getticks();
+
+  /* Construct density field slices from contributions stored in the local
+   * patches.
+   * Note: This cleans up the local_patches entries. */
+  mpi_mesh_local_patches_to_slices(N, (int)local_n0, local_patches,
+                                   nr_local_cells, rho_slice, tp, verbose);
+  if (verbose)
+    message("Assembling mesh slices took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Allocate storage for the slices of the FFT of the density mesh */
+  fftw_complex* frho_slice =
+      (fftw_complex*)fftw_malloc(nalloc * sizeof(fftw_complex));
+
+  /* Carry out the MPI Fourier transform. We can save a bit of time
+   * if we allow FFTW to transpose the first two dimensions of the output.
+   *
+   * Layout of the MPI FFTW input and output:
+   *
+   * Input mesh contains N*N*N reals, padded to N*N*(2*(N/2+1)).
+   * Output Fourier transform is N*N*(N/2+1) complex values.
+   *
+   * The first two dimensions of the transform are transposed in
+   * the output. Each MPI rank has slice of thickness local_n0
+   * starting at local_0_start in the first dimension.
+   */
+  fftw_plan mpi_plan = fftw_mpi_plan_dft_r2c_3d(
+      N, N, N, rho_slice, frho_slice, MPI_COMM_WORLD,
+      FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT | FFTW_DESTROY_INPUT);
+  fftw_execute(mpi_plan);
+  fftw_destroy_plan(mpi_plan);
+  if (verbose)
+    message("MPI Forward Fourier transform took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Apply Green function to local slice of the MPI mesh */
+  mesh_apply_Green_function(tp, frho_slice, local_0_start, local_n0, N, r_s,
+                            box_size);
+  if (verbose)
+    message("Applying Green function took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* If using linear response neutrinos, apply to local slice of the MPI mesh */
+  if (s->e->neutrino_properties->use_linear_response) {
+    neutrino_response_compute(s, mesh, tp, frho_slice, local_0_start, local_n0,
+                              verbose);
+
+    if (verbose)
+      message("Applying neutrino response took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    tic = getticks();
+  }
+
+  /* Carry out the reverse MPI Fourier transform */
+  fftw_plan mpi_inverse_plan = fftw_mpi_plan_dft_c2r_3d(
+      N, N, N, frho_slice, rho_slice, MPI_COMM_WORLD,
+      FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN | FFTW_DESTROY_INPUT);
+  fftw_execute(mpi_inverse_plan);
+  fftw_destroy_plan(mpi_inverse_plan);
+
+  if (verbose)
+    message("MPI Reverse Fourier transform took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  /* We can now free the Fourier-space data */
+  fftw_free(frho_slice);
+
+  tic = getticks();
+
+  /* Fetch MPI mesh entries we need on this rank from other ranks */
+  mpi_mesh_fetch_potential(N, cell_fac, s, local_0_start, local_n0, rho_slice,
+                           local_patches, tp, verbose);
+
+  if (verbose)
+    message("Fetching local potential took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  /* Free the local slice of the potential */
+  fftw_free(rho_slice);
+
+  tic = getticks();
+
+  /* Compute accelerations and potentials for the gparts */
+  mpi_mesh_update_gparts(local_patches, s, tp, N, cell_fac);
+
+  /* Clean the local patches array */
+  for (int i = 0; i < nr_local_cells; ++i)
+    pm_mesh_patch_clean(&local_patches[i]);
+  free(local_patches);
+
+  if (verbose)
+    message("Computing mesh accelerations took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#else
+  error("No FFTW MPI library available. Cannot compute distributed mesh.");
+#endif
+}
+
+/**
+ * @brief Compute the mesh forces and potential, including periodic correction.
+ *
+ * Interpolates the top-level multipoles on-to a mesh, move to Fourier space,
+ * compute the potential including short-range correction and move back
+ * to real space. We use CIC for the interpolation.
+ *
+ * This version stores the full N*N*N mesh on each MPI rank and uses the
+ * non-MPI version of FFTW.
+ *
+ * The particles mesh accelerations and potentials are also updated.
+ *
+ * @param mesh The #pm_mesh used to store the potential.
+ * @param s The #space containing the particles.
+ * @param tp The #threadpool object used for parallelisation.
+ * @param verbose Are we talkative?
+ */
+void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
+                              struct threadpool* tp, const int verbose) {
 
 #ifdef HAVE_FFTW
 
@@ -642,7 +846,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   const double cell_fac = N / box_size;
 
   /* Use the memory allocated for the potential to temporarily store rho */
-  double* restrict rho = mesh->potential;
+  double* restrict rho = mesh->potential_global;
   if (rho == NULL) error("Error allocating memory for density mesh");
 
   /* Allocates some memory for the mesh in Fourier space */
@@ -664,6 +868,12 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   /* Zero everything */
   bzero(rho, N * N * N * sizeof(double));
 
+  /* Gather some neutrino constants if using delta-f weighting on the mesh */
+  struct neutrino_model nu_model;
+  bzero(&nu_model, sizeof(struct neutrino_model));
+  if (s->e->neutrino_properties->use_delta_f_mesh_only)
+    gather_neutrino_consts(s, &nu_model);
+
   /* Gather the mesh shared information to be used by the threads */
   struct cic_mapper_data data;
   data.cells = s->cells_top;
@@ -675,6 +885,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   data.dim[1] = dim[1];
   data.dim[2] = dim[2];
   data.const_G = 0.f;
+  data.nu_model = &nu_model;
 
   if (nr_local_cells == 0) {
 
@@ -707,7 +918,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
                 MPI_COMM_WORLD);
 
   if (verbose)
-    message("Mesh communication took %.3f %s.",
+    message("Mesh MPI-reduction took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 #endif
 
@@ -729,7 +940,8 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   tic = getticks();
 
   /* Now de-convolve the CIC kernel and apply the Green function */
-  mesh_apply_Green_function(tp, frho, N, r_s, box_size);
+  mesh_apply_Green_function(tp, frho, /*slice_offset=*/0, /*slice_width=*/N,
+                            /* mesh_size=*/N, r_s, box_size);
 
   if (verbose)
     message("Applying Green function took %.3f %s.",
@@ -737,28 +949,40 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
 
   tic = getticks();
 
+  /* If using linear response neutrinos, apply the response to the mesh */
+  if (s->e->neutrino_properties->use_linear_response) {
+    neutrino_response_compute(s, mesh, tp, frho, /*slice_offset=*/0,
+                              /*slice_width=*/N, verbose);
+
+    if (verbose)
+      message("Applying neutrino response took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    tic = getticks();
+  }
+
   /* Fourier transform to come back from magic-land */
   fftw_execute(inverse_plan);
 
   if (verbose)
-    message("Backwards Fourier transform took %.3f %s.",
+    message("Reverse Fourier transform took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* rho now contains the potential */
   /* This array is now again NxNxN real numbers */
 
   /* Let's store it in the structure */
-  mesh->potential = rho;
+  mesh->potential_global = rho;
 
   /* message("\n\n\n POTENTIAL"); */
-  /* print_array(mesh->potential, N); */
+  /* print_array(mesh->potential_global, N); */
 
   tic = getticks();
 
   /* Gather the mesh shared information to be used by the threads */
   data.cells = s->cells_top;
   data.rho = NULL;
-  data.potential = mesh->potential;
+  data.potential = mesh->potential_global;
   data.N = N;
   data.fac = cell_fac;
   data.dim[0] = dim[0];
@@ -784,7 +1008,7 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
   }
 
   if (verbose)
-    message("Gpart mesh forces took %.3f %s.",
+    message("Computing mesh accelerations took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Clean-up the mess */
@@ -799,6 +1023,30 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
 }
 
 /**
+ * @brief Compute the mesh forces and potential, including periodic correction.
+ *
+ * Interpolates the top-level multipoles on-to a mesh, move to Fourier space,
+ * compute the potential including short-range correction and move back
+ * to real space. We use CIC for the interpolation.
+ *
+ * This function calls the appropriate implementation depending on whether
+ * we're using the MPI version of FFTW.
+ *
+ * @param mesh The #pm_mesh used to store the potential.
+ * @param s The #space containing the particles.
+ * @param tp The #threadpool object used for parallelisation.
+ * @param verbose Are we talkative?
+ */
+void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
+                               struct threadpool* tp, const int verbose) {
+  if (mesh->distributed_mesh) {
+    compute_potential_distributed(mesh, s, tp, verbose);
+  } else {
+    compute_potential_global(mesh, s, tp, verbose);
+  }
+}
+
+/**
  * @brief Allocates the potential grid to be ready for an FFT calculation
  *
  * @param mesh The #pm_mesh structure.
@@ -806,16 +1054,19 @@ void pm_mesh_compute_potential(struct pm_mesh* mesh, const struct space* s,
 void pm_mesh_allocate(struct pm_mesh* mesh) {
 
 #ifdef HAVE_FFTW
-  if (mesh->potential != NULL) error("Mesh already allocated!");
 
-  const int N = mesh->N;
+  if (mesh->distributed_mesh) {
 
-  /* Allocate the memory for the combined density and potential array */
-  mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
-  if (mesh->potential == NULL)
-    error("Error allocating memory for the long-range gravity mesh.");
-  memuse_log_allocation("fftw_mesh.potential", mesh->potential, 1,
-                        sizeof(double) * N * N * N);
+  } else {
+    const int N = mesh->N;
+
+    /* Allocate the memory for the combined density and potential array */
+    mesh->potential_global = (double*)fftw_malloc(sizeof(double) * N * N * N);
+    if (mesh->potential_global == NULL)
+      error("Error allocating memory for the long-range gravity mesh.");
+    memuse_log_allocation("fftw_mesh.potential", mesh->potential_global, 1,
+                          sizeof(double) * N * N * N);
+  }
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
@@ -830,18 +1081,40 @@ void pm_mesh_free(struct pm_mesh* mesh) {
 
 #ifdef HAVE_FFTW
 
-  if (mesh->potential) {
-    memuse_log_allocation("fftw_mesh.potential", mesh->potential, 0, 0);
-    free(mesh->potential);
+  if (!mesh->distributed_mesh && mesh->potential_global) {
+    memuse_log_allocation("fftw_mesh.potential", mesh->potential_global, 0, 0);
+    free(mesh->potential_global);
+    mesh->potential_global = NULL;
   }
-  mesh->potential = NULL;
+
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
 }
 
 /**
- * @brief Initialisses the mesh used for the long-range periodic forces
+ * @brief Initialises FFTW for MPI and thread usage as necessary
+ *
+ * @param N The size of the FFT mesh
+ */
+void initialise_fftw(int N, int nr_threads) {
+
+#ifdef HAVE_THREADED_FFTW
+  /* Initialise the thread-parallel FFTW version */
+  if (N >= 64) fftw_init_threads();
+#endif
+#if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
+  /* Initialize FFTW MPI support - must be called after fftw_init_threads() */
+  fftw_mpi_init();
+#endif
+#ifdef HAVE_THREADED_FFTW
+  /* Set  number of threads to use */
+  if (N >= 64) fftw_plan_with_nthreads(nr_threads);
+#endif
+}
+
+/**
+ * @brief Initialises the mesh used for the long-range periodic forces
  *
  * @param mesh The #pm_mesh to initialise.
  * @param props The propoerties of the gravity scheme.
@@ -862,6 +1135,7 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->nr_threads = nr_threads;
   mesh->periodic = 1;
   mesh->N = N;
+  mesh->distributed_mesh = props->distributed_mesh;
   mesh->dim[0] = dim[0];
   mesh->dim[1] = dim[1];
   mesh->dim[2] = dim[2];
@@ -870,27 +1144,21 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->r_s_inv = 1. / mesh->r_s;
   mesh->r_cut_max = mesh->r_s * props->r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * props->r_cut_min_ratio;
-  mesh->potential = NULL;
+  mesh->potential_global = NULL;
   mesh->ti_beg_mesh_last = -1;
   mesh->ti_end_mesh_last = -1;
   mesh->ti_beg_mesh_next = -1;
   mesh->ti_end_mesh_next = -1;
 
-  if (mesh->N > 1290)
+  if (!mesh->distributed_mesh && mesh->N > 1290)
     error(
         "Mesh too big. The number of cells is larger than 2^31. "
-        "Use a mesh side-length <= 1290.");
+        "Use a mesh side-length <= 1290 or a distributed mesh.");
 
   if (2. * mesh->r_cut_max > box_size)
     error("Mesh too small or r_cut_max too big for this box size");
 
-#ifdef HAVE_THREADED_FFTW
-  /* Initialise the thread-parallel FFTW version */
-  if (N >= 64) {
-    fftw_init_threads();
-    fftw_plan_with_nthreads(nr_threads);
-  }
-#endif
+  initialise_fftw(N, mesh->nr_threads);
 
   pm_mesh_allocate(mesh);
 
@@ -935,6 +1203,9 @@ void pm_mesh_clean(struct pm_mesh* mesh) {
 #ifdef HAVE_THREADED_FFTW
   fftw_cleanup_threads();
 #endif
+#if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
+  fftw_mpi_cleanup();
+#endif
 
   pm_mesh_free(mesh);
 }
@@ -967,20 +1238,9 @@ void pm_mesh_struct_restore(struct pm_mesh* mesh, FILE* stream) {
 #ifdef HAVE_FFTW
     const int N = mesh->N;
 
-#ifdef HAVE_THREADED_FFTW
-    /* Initialise the thread-parallel FFTW version */
-    if (N >= 64) {
-      fftw_init_threads();
-      fftw_plan_with_nthreads(mesh->nr_threads);
-    }
-#endif
+    initialise_fftw(N, mesh->nr_threads);
+    pm_mesh_allocate(mesh);
 
-    /* Allocate the memory for the combined density and potential array */
-    mesh->potential = (double*)fftw_malloc(sizeof(double) * N * N * N);
-    if (mesh->potential == NULL)
-      error("Error allocating memory for the long-range gravity mesh.");
-    memuse_log_allocation("fftw_mesh.potential", mesh->potential, 1,
-                          sizeof(double) * N * N * N);
 #else
     error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif

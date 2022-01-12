@@ -36,39 +36,48 @@
  * @param c cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_RT(struct runner *r, const struct cell *c, const int limit_min_h,
+                const int limit_max_h) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != engine_rank) error("Should be run on a different node");
+#endif
 
   TIMER_TIC;
 
   const struct engine *e = r->e;
-
-  /* Cosmological terms */
   const struct cosmology *cosmo = e->cosmology;
-  const float a = cosmo->a;
-  const float H = cosmo->H;
 
   /* Anything to do here? */
   if (c->hydro.count == 0 || c->stars.count == 0) return;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Drift the cell to the current timestep if needed. */
-  if (!cell_are_spart_drifted(c, r->e))
-    error("Interacting undrifted cell (spart): %lld", c->cellID);
-  if (!cell_are_part_drifted(c, r->e))
-    error("Interacting undrifted cell (part): %lld", c->cellID);
-#endif
-
-  struct spart *restrict sparts = c->stars.parts;
-  struct part *restrict parts = c->hydro.parts;
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
 
   const int scount = c->stars.count;
   const int count = c->hydro.count;
+  struct spart *restrict sparts = c->stars.parts;
+  struct part *restrict parts = c->hydro.parts;
+
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? c->depth : 0;
+  const char max_depth = limit_min_h ? c->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+#endif
 
   /* Loop over the sparts in cell */
   for (int sid = 0; sid < scount; sid++) {
 
     /* Get a hold of the ith spart in c. */
-    struct spart *restrict si = &sparts[sid];
+    struct spart *si = &sparts[sid];
+    const char depth_i = si->depth_h;
+    const float hi = si->h;
+    const float hig2 = hi * hi * kernel_gamma2;
 
     /* Skip inhibited particles. */
     if (spart_is_inhibited(si, e)) continue;
@@ -76,8 +85,10 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
     /* Skip inactive particles */
     if (!rt_is_spart_active_in_loop(si, e)) continue;
 
-    const float hi = si->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    /* Skip particles not in the range of h we care about */
+    if (depth_i > max_depth) continue;
+    if (depth_i < min_depth) continue;
+
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
                           (float)(si->x[2] - c->loc[2])};
@@ -99,7 +110,7 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                             (float)(pj->x[1] - c->loc[1]),
                             (float)(pj->x[2] - c->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -134,12 +145,17 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
 #endif
 
       if (r2 < hig2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
+
         IACT_RT(r2, dx, hi, hj, si, pj, a, H);
       }
-    }
-  }
+    } /* loop over the parts in ci. */
+  }   /* loop over the sparts in ci. */
 
-  if (timer) TIMER_TOC(TIMER_DOSELF_RT);
+  TIMER_TOC(TIMER_DOSELF_RT);
 }
 
 /**
@@ -152,15 +168,16 @@ void DOSELF1_RT(struct runner *r, struct cell *c, int timer) {
  * @param ci the first cell, where we take star particles from
  * @param cj the second cell, where we take hydro particles from
  */
-void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
-                             struct cell *cj) {
+void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, const struct cell *restrict ci,
+                             const struct cell *restrict cj,
+                             const int limit_min_h, const int limit_max_h) {
 
   TIMER_TIC;
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   /* Cosmological terms */
-  const struct cosmology *cosmo = e->cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -168,6 +185,20 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
   const int count_j = cj->hydro.count;
   struct spart *restrict sparts_i = ci->stars.parts;
   struct part *restrict parts_j = cj->hydro.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->dmin != cj->dmin) error("Cells of different size!");
+#endif
+
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+#endif
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -183,6 +214,7 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
 
     /* Get a hold of the ith spart in ci. */
     struct spart *restrict si = &sparts_i[sid];
+    const char depth_i = si->depth_h;
 
     /* Skip inhibited particles. */
     if (spart_is_inhibited(si, e)) continue;
@@ -195,6 +227,15 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (hi > ci->stars.h_max_active)
+      error("Particle has h larger than h_max_active");
+#endif
+
+    /* Skip particles not in the range of h we care about */
+    if (depth_i > max_depth) continue;
+    if (depth_i < min_depth) continue;
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -213,7 +254,7 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                             (float)(pj->x[1] - cj->loc[1]),
                             (float)(pj->x[2] - cj->loc[2])};
-      float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef RT_DEBUG
@@ -244,6 +285,11 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
 #endif
 
       if (r2 < hig2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+#endif
+
         IACT_RT(r2, dx, hi, hj, si, pj, a, H);
       }
 
@@ -261,15 +307,17 @@ void DOPAIR1_NONSYM_RT_NAIVE(struct runner *r, struct cell *ci,
  * @param cj the second #cell
  * @param timer 1 if the time is to be recorded.
  */
-void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
-                     const int sid, const double *shift) {
+void DO_SYM_PAIR1_RT(struct runner *r, const struct cell *restrict ci,
+                     const struct cell *restrict cj, const int limit_min_h,
+                     const int limit_max_h, const int sid,
+                     const double shift[3]) {
 
   TIMER_TIC;
 
   const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
 
   /* Cosmological terms */
-  const struct cosmology *cosmo = e->cosmology;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -282,29 +330,59 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
   const int do_cj_stars =
       (cj->nodeID == e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->dmin != cj->dmin) error("Cells of different size!");
+#endif
+
+  /* Get the depth limits (if any) */
+  const char min_depth = limit_max_h ? ci->depth : 0;
+  const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+#endif
+  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+
   if (do_ci_stars) {
 
     /* Pick-out the sorted lists. */
     const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
     const struct sort_entry *restrict sort_i = cell_get_stars_sorts(ci, sid);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Some constants used to checks that the parts are in the right frame */
+    const float shift_threshold_x =
+        2. * ci->width[0] +
+        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+    const float shift_threshold_y =
+        2. * ci->width[1] +
+        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+    const float shift_threshold_z =
+        2. * ci->width[2] +
+        2. * max(ci->stars.dx_max_part, cj->hydro.dx_max_part);
+#endif /* SWIFT_DEBUG_CHECKS */
+
     /* Get some other useful values. */
-    const double hi_max = ci->stars.h_max * kernel_gamma - rshift;
+    const double hi_max =
+        min(h_max, ci->stars.h_max_active) * kernel_gamma - rshift;
     const int count_i = ci->stars.count;
     const int count_j = cj->hydro.count;
     struct spart *restrict sparts_i = ci->stars.parts;
     struct part *restrict parts_j = cj->hydro.parts;
     const double dj_min = sort_j[0].d;
     const float dx_max = (ci->stars.dx_max_sort + cj->hydro.dx_max_sort);
-    const float hydro_dx_max_rshift = cj->hydro.dx_max_sort - rshift;
 
     /* TODO: maybe change the order of the loops for better performance? */
-    /* Loop over the sparts in ci. */
+
+    /* Loop over the *active* sparts in ci that are within range (on the axis)
+       of any particle in cj. */
     for (int pid = count_i - 1;
          pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
 
       /* Get a hold of the ith spart in ci. */
       struct spart *restrict spi = &sparts_i[sort_i[pid].i];
+      const char depth_i = spi->depth_h;
       const float hi = spi->h;
 
       /* Skip inhibited particles */
@@ -313,13 +391,17 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
       /* Skip inactive particles */
       if (!rt_is_spart_active_in_loop(spi, e)) continue;
 
-      /* Compute distance from the other cell. */
-      const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
-      float dist = px[0] * runner_shift[sid][0] + px[1] * runner_shift[sid][1] +
-                   px[2] * runner_shift[sid][2];
+#ifdef SWIFT_DEBUG_CHECKS
+      if (hi > ci->stars.h_max_active)
+        error("Particle has h larger than h_max_active");
+#endif
+
+      /* Skip particles not in the range of h we care about */
+      if (depth_i > max_depth) continue;
+      if (depth_i < min_depth) continue;
 
       /* Is there anything we need to interact with ? */
-      const double di = dist + hi * kernel_gamma + hydro_dx_max_rshift;
+      const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
 
       /* Get some additional information about pi */
@@ -346,10 +428,36 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         const float pjz = pj->x[2] - cj->loc[2];
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
+        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
         /* Check that particles have been drifted to the current time */
         if (spi->ti_drift != e->ti_current)
           error("Particle spi not drifted to current time");
@@ -386,6 +494,12 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Hit or miss? */
         if (r2 < hig2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hi < h_min || hi >= h_max)
+            error("Inappropriate h for this level!");
+#endif
+
           IACT_RT(r2, dx, hi, hj, spi, pj, a, H);
         }
       } /* loop over the parts in cj. */
@@ -397,23 +511,37 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
     const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
     const struct sort_entry *restrict sort_j = cell_get_stars_sorts(cj, sid);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Some constants used to checks that the parts are in the right frame */
+    const float shift_threshold_x =
+        2. * ci->width[0] +
+        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+    const float shift_threshold_y =
+        2. * ci->width[1] +
+        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+    const float shift_threshold_z =
+        2. * ci->width[2] +
+        2. * max(ci->hydro.dx_max_part, cj->stars.dx_max_part);
+#endif /* SWIFT_DEBUG_CHECKS */
+
     /* Get some other useful values. */
-    const double hj_max = cj->stars.h_max * kernel_gamma;
+    const double hj_max = min(h_max, cj->stars.h_max_active) * kernel_gamma;
     const int count_i = ci->hydro.count;
     const int count_j = cj->stars.count;
     struct part *restrict parts_i = ci->hydro.parts;
     struct spart *restrict sparts_j = cj->stars.parts;
     const double di_max = sort_i[count_i - 1].d - rshift;
     const float dx_max = (ci->hydro.dx_max_sort + cj->stars.dx_max_sort);
-    const float hydro_dx_max_rshift = ci->hydro.dx_max_sort - rshift;
 
     /* TODO: maybe change the order of the loops for better performance? */
-    /* Loop over the sparts in cj. */
+    /* Loop over the *active* sparts in cj that are within range (on the axis)
+       of any particle in ci. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
          pjd++) {
 
       /* Get a hold of the jth spart in cj. */
       struct spart *spj = &sparts_j[sort_j[pjd].i];
+      const char depth_j = spj->depth_h;
       const float hj = spj->h;
 
       /* Skip inhibited particles */
@@ -422,13 +550,17 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
       /* Skip inactive particles */
       if (!rt_is_spart_active_in_loop(spj, e)) continue;
 
-      /* Compute distance from the other cell. */
-      const double px[3] = {spj->x[0], spj->x[1], spj->x[2]};
-      float dist = px[0] * runner_shift[sid][0] + px[1] * runner_shift[sid][1] +
-                   px[2] * runner_shift[sid][2];
+#ifdef SWIFT_DEBUG_CHECKS
+      if (hj > cj->stars.h_max_active)
+        error("Particle has h larger than h_max_active");
+#endif
+
+      /* Skip particles not in the range of h we care about */
+      if (depth_j > max_depth) continue;
+      if (depth_j < min_depth) continue;
 
       /* Is there anything we need to interact with ? */
-      const double dj = dist - hj * kernel_gamma - hydro_dx_max_rshift;
+      const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
       if (dj - rshift > di_max) continue;
 
       /* Get some additional information about pj */
@@ -455,10 +587,36 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
         const float piz = pi->x[2] - (cj->loc[2] + shift[2]);
 
         /* Compute the pairwise distance. */
-        float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
+        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
+        /* Check that particles are in the correct frame after the shifts */
+        if (pix > shift_threshold_x || pix < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pi (pix=%e ci->width[0]=%e)",
+              pix, ci->width[0]);
+        if (piy > shift_threshold_y || piy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pi (piy=%e ci->width[1]=%e)",
+              piy, ci->width[1]);
+        if (piz > shift_threshold_z || piz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pi (piz=%e ci->width[2]=%e)",
+              piz, ci->width[2]);
+        if (pjx > shift_threshold_x || pjx < -shift_threshold_x)
+          error(
+              "Invalid particle position in X for pj (pjx=%e ci->width[0]=%e)",
+              pjx, ci->width[0]);
+        if (pjy > shift_threshold_y || pjy < -shift_threshold_y)
+          error(
+              "Invalid particle position in Y for pj (pjy=%e ci->width[1]=%e)",
+              pjy, ci->width[1]);
+        if (pjz > shift_threshold_z || pjz < -shift_threshold_z)
+          error(
+              "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
+              pjz, ci->width[2]);
+
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -494,6 +652,12 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
 
         /* Hit or miss? */
         if (r2 < hjg2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          if (hj < h_min || hj >= h_max)
+            error("Inappropriate h for this level!");
+#endif
+
           IACT_RT(r2, dx, hj, hi, spj, pi, a, H);
         }
       } /* loop over the parts in ci. */
@@ -513,21 +677,23 @@ void DO_SYM_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
  * @param cj the second #cell
  * @param timer 1 if the time is to be recorded.
  */
-void DOPAIR1_RT_NAIVE(struct runner *r, struct cell *ci, struct cell *cj,
-                      int timer) {
+void DOPAIR1_RT_NAIVE(struct runner *r, const struct cell *restrict ci,
+                      const struct cell *restrict cj, const int limit_min_h,
+                      const int limit_max_h) {
 
   TIMER_TIC;
-  const struct engine *restrict e = r->e;
 
   const int do_stars_in_ci =
-      (cj->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
-  if (do_stars_in_ci) DOPAIR1_NONSYM_RT_NAIVE(r, ci, cj);
+      (cj->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(ci, cj, r->e);
+  if (do_stars_in_ci)
+    DOPAIR1_NONSYM_RT_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 
   const int do_stars_in_cj =
-      (ci->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
-  if (do_stars_in_cj) DOPAIR1_NONSYM_RT_NAIVE(r, cj, ci);
+      (ci->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(cj, ci, r->e);
+  if (do_stars_in_cj)
+    DOPAIR1_NONSYM_RT_NAIVE(r, cj, ci, limit_min_h, limit_max_h);
 
-  if (timer) TIMER_TOC(TIMER_DOPAIR_RT);
+  TIMER_TOC(TIMER_DOPAIR_RT);
 }
 
 /**
@@ -537,13 +703,14 @@ void DOPAIR1_RT_NAIVE(struct runner *r, struct cell *ci, struct cell *cj,
  * @param c #cell c
  * @param timer 1 if the time is to be recorded.
  */
-void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
+void DOSELF1_BRANCH_RT(struct runner *r, const struct cell *c,
+                       const int limit_min_h, const int limit_max_h) {
+
+  const struct engine *restrict e = r->e;
 
 #ifdef RT_DEBUG
   /* Before an early exit, loop over all parts and sparts in this cell
    * and mark that we checked these particles */
-
-  const struct engine *e = r->e;
 
   if (c->hydro.count > 0) {
     struct part *restrict parts = c->hydro.parts;
@@ -584,9 +751,30 @@ void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
   }
 #endif
 
-  /* early exit? */
-  if (!rt_should_iact_cell(c, r->e)) return;
-  DOSELF1_RT(r, c, timer);
+  /* Anything to do here? */
+  if (!rt_should_iact_cell(c, e)) return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Did we mess up the recursion? */
+  if (c->stars.h_max_old * kernel_gamma > c->dmin)
+    error("Cell smaller than smoothing length");
+
+  if (!limit_max_h && c->stars.h_max_active * kernel_gamma > c->dmin)
+    error("Cell smaller than smoothing length");
+
+  /* Did we mess up the recursion? */
+  if (limit_min_h && !limit_max_h)
+    error("Fundamental error in the recursion logic");
+#endif
+
+  /* Check that cells are drifted. */
+  if (!cell_are_part_drifted(c, e))
+    error("Interacting undrifted cell (hydro).");
+  if (!cell_are_spart_drifted(c, e))
+    error("Interacting undrifted cell (stars).");
+
+  DOSELF1_RT(r, c, limit_min_h, limit_max_h);
 }
 
 /**
@@ -598,7 +786,7 @@ void DOSELF1_BRANCH_RT(struct runner *r, struct cell *c, int timer) {
  * @param timer 1 if the time is to be recorded.
  */
 void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj,
-                       int timer) {
+                       const int limit_min_h, const int limit_max_h) {
 
   const struct engine *restrict e = r->e;
 
@@ -606,63 +794,46 @@ void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj,
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
-  const int do_stars_ci =
+  const int do_ci =
       (cj->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
-  const int do_stars_cj =
+  const int do_cj =
       (ci->nodeID == r->e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
 
   /* Anything to do here? */
-  if (!do_stars_ci && !do_stars_cj) return;
+  if (!do_ci && !do_cj) return;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (do_stars_ci) {
+  /* Check that cells are drifted. */
+  if (do_ci &&
+      (!cell_are_spart_drifted(ci, e) || !cell_are_part_drifted(cj, e)))
+    error("Interacting undrifted cells.");
 
-    /* Check that cells are drifted. */
-    if (!cell_are_spart_drifted(ci, e))
-      error("Interacting undrifted stars in cells i=%12lld, j=%12lld",
-            ci->cellID, cj->cellID);
-    if (!cell_are_part_drifted(cj, e))
-      error("Interacting undrifted hydro in cells i=%12lld, j=%12lld",
-            ci->cellID, cj->cellID);
+  if (do_cj &&
+      (!cell_are_part_drifted(ci, e) || !cell_are_spart_drifted(cj, e)))
+    error("Interacting undrifted cells.");
 
-    /* Have the cells been sorted? */
-    if (!(ci->stars.sorted & (1 << sid)) ||
-        ci->stars.dx_max_sort_old > space_maxreldx * ci->dmin)
-      error("Interacting unsorted cells: %lld %d", ci->cellID, sid);
-    if (!(cj->hydro.sorted & (1 << sid)) ||
-        cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
-      error("Interacting unsorted cells: %lld %lld", ci->cellID, cj->cellID);
-  }
+  /* Have the cells been sorted? */
+  if (do_ci && (!(ci->stars.sorted & (1 << sid)) ||
+                ci->stars.dx_max_sort_old > space_maxreldx * ci->dmin))
+    error("Interacting unsorted cells (ci stars).");
 
-  if (do_stars_cj) {
+  if (do_ci && (!(cj->hydro.sorted & (1 << sid)) ||
+                cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin))
+    error("Interacting unsorted cells (cj hydro).");
 
-    /* Check that cells are drifted. */
-    if (!cell_are_spart_drifted(cj, e)) {
-      error("Interacting undrifted stars in cells j=%12lld, i=%12lld",
-            cj->cellID, ci->cellID);
-    }
-    if (!cell_are_part_drifted(ci, e))
-      error("Interacting undrifted hydro in cells j=%12lld, i=%12lld",
-            cj->cellID, ci->cellID);
+  /* Have the cells been sorted? */
+  if (do_cj && (!(ci->hydro.sorted & (1 << sid)) ||
+                ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin))
+    error("Interacting unsorted cells. (ci hydro)");
 
-    /* Have the cells been sorted? */
-    if (!(ci->hydro.sorted & (1 << sid)) ||
-        ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
-      error("Interacting unsorted cells: %lld %d", cj->cellID, sid);
+  if (do_cj && (!(cj->stars.sorted & (1 << sid)) ||
+                cj->stars.dx_max_sort_old > space_maxreldx * cj->dmin))
+    error("Interacting unsorted cells. (cj stars)");
 
-    if ((!(cj->stars.sorted & (1 << sid)) ||
-         cj->stars.dx_max_sort_old > space_maxreldx * cj->dmin))
-      error("Interacting unsorted cells: %lld %lld", ci->cellID, cj->cellID);
-  }
-#endif /* SWIFT_DEBUG_CHECKS */
-
-  if (do_stars_ci || do_stars_cj) {
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_RT
-    DOPAIR1_RT_NAIVE(r, ci, cj, 1);
+  DOPAIR1_RT_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else
-    DO_SYM_PAIR1_RT(r, ci, cj, sid, shift);
+  DO_SYM_PAIR1_RT(r, ci, cj, limit_min_h, limit_max_h, sid, shift);
 #endif
-  }
 }
 
 /**
@@ -672,7 +843,8 @@ void DOPAIR1_BRANCH_RT(struct runner *r, struct cell *ci, struct cell *cj,
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
+void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int recurse_below_h_max,
+                    const int timer) {
 
   TIMER_TIC;
 
@@ -735,22 +907,48 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
     return;
   }
 
-  /* Recurse? */
-  if (cell_can_recurse_in_self_stars_task(c)) {
+  /* We reached a leaf OR a cell small enough to process quickly */
+  if (!c->split || c->stars.count < space_recurse_size_self_stars) {
 
-    /* Loop over all progeny. */
-    for (int k = 0; k < 8; k++)
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOSELF1_BRANCH_RT(r, c, /*limit_h_min=*/0,
+                      /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Should we change the recursion regime because we encountered a large
+       particle at this level? */
+    if (!recurse_below_h_max && !cell_can_recurse_in_subself_stars_task(c)) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* message("Multi-level SELF! c->count=%d", c->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOSELF1_BRANCH_RT(r, c, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        DOSUB_SELF1_RT(r, c->progeny[k], 0);
-        for (int j = k + 1; j < 8; j++)
-          if (c->progeny[j] != NULL)
-            DOSUB_PAIR1_RT(r, c->progeny[k], c->progeny[j], 0);
+        DOSUB_SELF1_RT(r, c->progeny[k], recurse_below_h_max,
+                       /*gettimer=*/0);
+        for (int j = k + 1; j < 8; j++) {
+          if (c->progeny[j] != NULL) {
+            DOSUB_PAIR1_RT(r, c->progeny[k], c->progeny[j], recurse_below_h_max,
+                           /*gettimer=*/0);
+          }
+        }
       }
-  }
-
-  /* Otherwise, compute self-interaction. */
-  else {
-    DOSELF1_BRANCH_RT(r, c, 0);
+    }
   }
 
   if (timer) TIMER_TOC(TIMER_DOSUB_SELF_RT);
@@ -765,44 +963,117 @@ void DOSUB_SELF1_RT(struct runner *r, struct cell *c, int timer) {
  * @param gettimer Do we have a timer ?
  */
 void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
-                    int timer) {
-#if 0
+                    int recurse_below_h_max, const int timer) {
   TIMER_TIC;
 
   struct space *s = r->e->s;
   const struct engine *e = r->e;
 
-  /* Should we even bother? */
-  const int should_do_ci = rt_should_iact_cell_pair(ci, cj, e);
-  const int should_do_cj = rt_should_iact_cell_pair(cj, ci, e);
-  if (!should_do_ci && !should_do_cj) return;
-
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
   const int sid = space_getsid(s, &ci, &cj, shift);
 
-  /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_task(ci, cj) &&
-      cell_can_recurse_in_pair_stars_task(cj, ci)) {
-    struct cell_split_pair *csp = &cell_split_pairs[sid];
+  /* Should we even bother? */
+  const int do_ci = rt_should_iact_cell_pair(ci, cj, e);
+  const int do_cj = rt_should_iact_cell_pair(cj, ci, e);
+  if (!do_ci && !do_cj) return;
+
+  /* We reached a leaf OR a cell small enough to be processed quickly */
+  if (!ci->split || ci->stars.count < space_recurse_size_pair_stars ||
+      !cj->split || cj->stars.count < space_recurse_size_pair_stars) {
+
+    /* Do any of the cells need to be sorted first?
+     * Since h_max might have changed, we may not have sorted at this level */
+    if (do_ci) {
+      if (!(ci->stars.sorted & (1 << sid)) ||
+          ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        runner_do_stars_sort(r, ci, (1 << sid), 0, 0);
+      }
+      if (!(cj->hydro.sorted & (1 << sid)) ||
+          cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*clock=*/0);
+      }
+    }
+    if (do_cj) {
+      if (!(ci->hydro.sorted & (1 << sid)) ||
+          ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+        runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                             /*clock=*/0);
+      }
+      if (!(cj->stars.sorted & (1 << sid)) ||
+          cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
+        runner_do_stars_sort(r, cj, (1 << sid), 0, 0);
+      }
+    }
+
+    /* We interact all particles in that cell:
+       - No limit on the smallest h
+       - Apply the max h limit if we are recursing below the level
+       where h is smaller than the cell size */
+    DOPAIR1_BRANCH_RT(r, ci, cj, /*limit_h_min=*/0,
+                      /*limit_h_max=*/recurse_below_h_max);
+
+  } else {
+
+    /* Both ci and cj are split */
+
+    /* Should we change the recursion regime because we encountered a large
+       particle? */
+    if (!recurse_below_h_max && (!cell_can_recurse_in_subpair_stars_task(ci) ||
+                                 !cell_can_recurse_in_subpair_stars_task(cj))) {
+      recurse_below_h_max = 1;
+    }
+
+    /* If some particles are larger than the daughter cells, we must
+       process them at this level before going deeper */
+    if (recurse_below_h_max) {
+
+      /* Do any of the cells need to be sorted first?
+       * Since h_max might have changed, we may not have sorted at this level */
+      if (do_ci) {
+        if (!(ci->stars.sorted & (1 << sid)) ||
+            ci->stars.dx_max_sort_old > ci->dmin * space_maxreldx) {
+          runner_do_stars_sort(r, ci, (1 << sid), 0, 0);
+        }
+        if (!(cj->hydro.sorted & (1 << sid)) ||
+            cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx) {
+          runner_do_hydro_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                               /*clock=*/0);
+        }
+      }
+      if (do_cj) {
+        if (!(ci->hydro.sorted & (1 << sid)) ||
+            ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+          runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                               /*clock=*/0);
+        }
+        if (!(cj->stars.sorted & (1 << sid)) ||
+            cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
+          runner_do_stars_sort(r, cj, (1 << sid), 0, 0);
+        }
+      }
+
+      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
+       */
+      /* 	      cj->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOPAIR1_BRANCH_RT(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
+    }
+
+    /* Recurse to the lower levels. */
+    const struct cell_split_pair *const csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
-      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        DOSUB_PAIR1_RT(r, ci->progeny[pid], cj->progeny[pjd], 0);
+      if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL) {
+        DOSUB_PAIR1_RT(r, ci->progeny[pid], cj->progeny[pjd],
+                       recurse_below_h_max,
+                       /*gettimer=*/0);
+      }
     }
-  }
-
-  /* Otherwise, compute the pair directly. */
-  else {
-
-    /* do full checks again, space_getsid() might swap ci/cj pointers */
-    const int do_ci_stars =
-        (cj->nodeID == e->nodeID) && rt_should_iact_cell_pair(ci, cj, e);
-    const int do_cj_stars =
-        (ci->nodeID == e->nodeID) && rt_should_iact_cell_pair(cj, ci, e);
-
-    if (do_ci_stars || do_cj_stars) DOPAIR1_BRANCH_RT(r, ci, cj, 0);
   }
 
   if (timer) TIMER_TOC(TIMER_DOSUB_PAIR_RT);

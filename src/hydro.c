@@ -272,6 +272,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
   /* Creare files and write header */
   FILE *file_swift = fopen(file_name_swift, "w");
+  if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Hydro accuracy test - SWIFT DENSITIES\n");
   fprintf(file_swift, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
   fprintf(file_swift, "# h_max= %e\n", h_max);
@@ -302,7 +303,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
               "%16.8e %16.8e %16.8e\n",
               id, pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density,
               pi->N_gradient, pi->N_force, pi->rho, pi->n_gradient, pi->n_force,
-              /* pi->limiter_data.n_limiter, */ 0., N_ngb);
+              pi->limiter_data.n_limiter, N_ngb);
     }
   }
 
@@ -318,6 +319,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
   /* Creare files and write header */
   FILE *file_exact = fopen(file_name_exact, "w");
+  if (file_exact == NULL) error("Could not create file '%s'.", file_name_exact);
   fprintf(file_exact, "# Hydro accuracy test - EXACT DENSITIES\n");
   fprintf(file_exact, "# N= %d\n", SWIFT_HYDRO_DENSITY_CHECKS);
   fprintf(file_exact, "# h_max= %e\n", h_max);
@@ -363,7 +365,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
               id, pi->x[0], pi->x[1], pi->x[2], pi->h, pi->N_density_exact,
               pi->N_gradient_exact, pi->N_force_exact, pi->rho_exact,
               pi->n_gradient_exact, pi->n_force_exact,
-              /* pi->limiter_data.n_limiter_exact, */ 0., N_ngb);
+              pi->limiter_data.n_limiter_exact, N_ngb);
 
       /* Check that we did not go above the threshold.
        * Note that we ignore particles that saw an inhibited particle as a

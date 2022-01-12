@@ -31,6 +31,7 @@ struct engine;
 struct space;
 struct gpart;
 struct threadpool;
+struct cell;
 
 /**
  * @brief Data structure for the long-range periodic forces using a mesh
@@ -45,6 +46,9 @@ struct pm_mesh {
 
   /*! Side-length of the mesh */
   int N;
+
+  /*! Whether mesh is distributed between MPI ranks */
+  int distributed_mesh;
 
   /*! Integer time-step end of the mesh force for the last step */
   integertime_t ti_end_mesh_last;
@@ -76,8 +80,8 @@ struct pm_mesh {
   /*! Distance below which tree forces are Newtonian */
   double r_cut_min;
 
-  /*! Potential field */
-  double *potential;
+  /*! Full N*N*N potential field */
+  double *potential_global;
 };
 
 void pm_mesh_init(struct pm_mesh *mesh, const struct gravity_props *props,

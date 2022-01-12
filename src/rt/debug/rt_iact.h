@@ -28,6 +28,33 @@
  */
 
 /**
+ * @brief Preparation step for injection to gather necessary data.
+ * This function gets called during the feedback force loop.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle.
+ * @param pj Second (gas) particle (not updated).
+ * @param cosmo The cosmological model.
+ * @param rt_props Properties of the RT scheme.
+ */
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_rt_injection_prep(const float r2, const float dx[3],
+                                     const float hi, const float hj,
+                                     struct spart *si, struct part *pj,
+                                     const struct cosmology *cosmo,
+                                     const struct rt_props *rt_props) {
+
+  si->rt_data.debug_iact_hydro_inject_prep += 1;
+  si->rt_data.debug_iact_hydro_inject_prep_tot += 1ULL;
+  pj->rt_data.debug_iact_stars_inject_prep += 1;
+  pj->rt_data.debug_iact_stars_inject_prep_tot += 1ULL;
+}
+
+/**
  * @brief Injection step interaction between star and hydro particles.
  *
  * @param r2 Comoving square distance between the two particles.
@@ -40,14 +67,42 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
-    const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *restrict si, struct part *restrict pj, const float a,
+    const float H) {
+
+  if (si->rt_data.debug_iact_hydro_inject_prep == 0)
+    error(
+        "Injecting energy from star that wasn't called"
+        " during injection prep");
+  if (pj->rt_data.debug_iact_stars_inject_prep == 0) {
+
+    const float hig2 = hi * hi * kernel_gamma2;
+    const float res = sqrtf(r2 / hig2);
+    error(
+        "Injecting energy into part that wasn't called"
+        " during injection prep: sID %lld pID %lld r/H_s %.6f",
+        si->id, pj->id, res);
+  }
 
   si->rt_data.debug_iact_hydro_inject += 1;
   si->rt_data.debug_radiation_emitted_tot += 1ULL;
 
   pj->rt_data.debug_iact_stars_inject += 1;
   pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
+
+  /* Attempt to catch race condition/dependency error */
+  if (si->rt_data.debug_iact_hydro_inject_prep <
+      si->rt_data.debug_iact_hydro_inject)
+    error(
+        "Star interacts with more particles during"
+        " injection than during injection prep");
+
+  if (pj->rt_data.debug_iact_stars_inject_prep <
+      pj->rt_data.debug_iact_stars_inject)
+    error(
+        "Part interacts with more stars during"
+        " injection than during injection prep");
 }
 
 /**
@@ -67,19 +122,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
  * @param mode 0 if non-symmetric interaction, 1 if symmetric
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H, int mode) {
+    float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, int mode) {
 
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do iact transport when "
         "finalise injection count is %d",
         pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called iact transport on particle "
-        "with iact gradient count 0");
 
   if (pi->rt_data.debug_gradients_done != 1)
     error(
@@ -96,11 +147,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
           "Trying to do iact transport when "
           "finalise injection count is %d",
           pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_calls_iact_gradient == 0)
-      error(
-          "Called iact transport on particle "
-          "with iact gradient count 0");
 
     if (pj->rt_data.debug_gradients_done != 1)
       error(
@@ -128,8 +174,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 1);
 }
@@ -151,9 +198,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_transport(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
-                                struct part *restrict pi,
-                                struct part *restrict pj, float a, float H) {
+runner_iact_nonsym_rt_transport(float r2, const float dx[3], const float hi,
+                                const float hj, struct part *restrict pi,
+                                struct part *restrict pj, const float a,
+                                const float H) {
 
   runner_iact_rt_flux_common(r2, dx, hi, hj, pi, pj, a, H, 0);
 }
@@ -175,8 +223,9 @@ runner_iact_nonsym_rt_transport(float r2, const float *dx, float hi, float hj,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   rt_gradients_collect(r2, dx, hi, hj, pi, pj);
 }
@@ -199,9 +248,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_rt_gradient(float r2, const float *dx, float hi, float hj,
-                               struct part *restrict pi,
-                               struct part *restrict pj, float a, float H) {
+runner_iact_nonsym_rt_gradient(float r2, const float dx[3], const float hi,
+                               const float hj, struct part *restrict pi,
+                               struct part *restrict pj, const float a,
+                               const float H) {
 
   rt_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
 }

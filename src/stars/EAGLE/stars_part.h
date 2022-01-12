@@ -124,6 +124,9 @@ struct spart {
   /*! Particle time bin */
   timebin_t time_bin;
 
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
   /*! Number of time-steps since the last enrichment step */
   char count_since_last_enrichment;
 
@@ -156,6 +159,8 @@ struct spart {
 
   /*! Exact value of the density field obtained via brute-force loop */
   float rho_exact;
+
+  int has_done_feedback;
 #endif
 
 #ifdef DEBUG_INTERACTIONS_STARS

@@ -33,7 +33,7 @@
 #include "units.h"
 
 /* Include the CSDS */
-#include "csds/src/csds_logfile_writer.h"
+#include "csds/src/logfile_writer.h"
 
 /* Forward declaration. */
 struct gpart;
@@ -110,7 +110,7 @@ struct csds_part_data {
 
 /* Function prototypes. */
 void csds_log_all_particles(struct csds_writer *log, const struct engine *e,
-                            int first_log);
+                            const enum csds_special_flags flag);
 void csds_log_part(struct csds_writer *log, const struct part *p,
                    struct xpart *xp, const struct engine *e,
                    const int log_all_fields, const enum csds_special_flags flag,

@@ -377,6 +377,11 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
+  warning(
+      "Gas particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      p->id, h, p->density.wcount);
+
   /* Re-set problematic values */
   p->density.wcount = kernel_root * h_inv_dim;
   p->density.wcount_dh = 0.f;

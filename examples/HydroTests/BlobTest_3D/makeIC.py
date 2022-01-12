@@ -166,4 +166,3 @@ def write_out_ics(
 
 if __name__ == "__main__":
     write_out_ics(filename="blob.hdf5", num_on_side=64)
-

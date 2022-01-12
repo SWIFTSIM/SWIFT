@@ -77,7 +77,8 @@ Stars:
   
 # Parameters for the self-gravity scheme
 Gravity:
-  mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh.
+  mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh (must be even).
+  distributed_mesh:              0         # (Optional) Are we using a distributed mesh when running over MPI (necessary for meshes > 1290^3)
   eta:                           0.025     # Constant dimensionless multiplier for time integration.
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
@@ -142,12 +143,13 @@ Scheduler:
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
-  time_begin:        0.    # The starting time of the simulation (in internal units).
-  time_end:          1.    # The end time of the simulation (in internal units).
-  dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
-  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
-  max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
-
+  time_begin:          0.    # The starting time of the simulation (in internal units).
+  time_end:            1.    # The end time of the simulation (in internal units).
+  dt_min:              1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:              1e-2  # The maximal time-step size of the simulation (in internal units).
+  max_dt_RMS_factor:   0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
+  dt_RMS_use_gas_only: 0     # (Optional) When computing the max RMS dt, should only the gas particles be considered in the baryon component calculation?
+  
 # Parameters governing the snapshots
 Snapshots:
   basename:   output      # Common part of the name of output files.
@@ -159,6 +161,9 @@ Snapshots:
   invoke_fof: 0           # (Optional) Call FOF every time a snapshot is written
   compression: 0          # (Optional) Set the level of GZIP compression of the HDF5 datasets [0-9]. 0 does no compression. The lossless compression is applied to *all* the fields.
   distributed: 0          # (Optional) When running over MPI, should each rank write a partial snapshot or do we want a single file? 1 implies one file per MPI rank.
+  lustre_OST_count:  0    # (Optional) If > 0, the number of lustre OSTs to distribure the single-striped files over. Has no effect on non-Lustre filesystems. Has an effect only on distributed snapshots.
+  use_delta_from_edge: 0  # (Optional) Should particles close to the box edge be moved back towards 0 by a vector perpendicular to the box edge? This is useful in cases where lossy compression moves particle beyond the edge.
+  delta_from_edge:     0. # (Optional) Norm of the vector to use when moving particles away from the edge
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
@@ -203,6 +208,7 @@ InitialConditions:
   shift:      [0.0,0.0,0.0]         # (Optional) A shift to apply to all particles read from the ICs (in internal units).
   replicate:  2                     # (Optional) Replicate all particles along each axis a given integer number of times. Default 1.
   remap_ids:  0                     # (Optional) Remap all the particle IDs to the range [1, NumPart].
+  metadata_group_name: ICs_parameters # (Optional) Copy this HDF5 group from the initial conditions file to all snapshots, if found
 
 # Parameters controlling restarts
 Restarts:
@@ -216,6 +222,7 @@ Restarts:
   max_run_time:       24.0       # (optional) Maximal wall-clock time in hours. The application will exit when this limit is reached.
   resubmit_on_exit:   0          # (Optional) whether to run a command when exiting after the time limit has been reached.
   resubmit_command:   ./resub.sh # (Optional) Command to run when time limit is reached. Compulsory if resubmit_on_exit is switched on. Note potentially unsafe.
+  lustre_OST_count:  0           # (Optional) If > 0, the number of lustre OSTs to distribure the single-striped restart files over. Has no effect on non-Lustre filesystems.
 
 # Parameters governing domain decomposition
 DomainDecomposition:
@@ -639,11 +646,21 @@ EAGLEAGN:
   merger_max_distance_ratio:          3.0        # Maximal distance over which two BHs can merge, in units of the softening length.
   minimum_timestep_Myr:               1.0        # Minimum time-step size for BHs in Mega-years. The time-step size is computed based on the accretion rate and this serves as a minimum. Defaults to FLT_MAX.
 
-# Parameters related to the neutrino particles ----------------------------------
+# Parameters related to the neutrinos --------------------------------------------
 Neutrino:
   use_delta_f:                        1          # Use the delta-f method for shot noise reduction
+  use_delta_f_mesh_only:              0          # Use the delta-f method, but only in the mesh gravity calculation and outputs
   generate_ics:                       0          # Automatically generate neutrino velocities at the start of the run
-  neutrino_seed:                      1234       # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
+  neutrino_seed:                      0          # Seed used in the delta-f weighting step for Fermi-Dirac momentum generation
+  use_linear_response: 0                         # Option to use the linear response method
+  transfer_functions_filename: perturb.hdf5      # For linear response neutrinos, path to an hdf5 file with transfer functions, redshifts, and wavenumbers
+  dataset_redshifts: Redshifts                   # For linear response neutrinos, name of the dataset with the redshifts (a vector of length N_z)
+  dataset_wavenumbers: Wavenumbers               # For linear response neutrinos, name of the dataset with the wavenumbers (a vector of length N_k)
+  dataset_delta_cdm: Functions/d_cdm             # For linear response neutrinos, name of the dataset with the cdm density transfer function (N_z x N_k)
+  dataset_delta_baryon: Functions/d_b            # For linear response neutrinos, name of the dataset with the baryon density transfer function (N_z x N_k)
+  dataset_delta_nu: Functions/d_ncdm[0]          # For linear response neutrinos, name of the dataset with the neutrino density transfer function (N_z x N_k)
+  fixed_bg_density: 1                            # For linear response neutrinos, whether to use a fixed present-day background density
+  use_model_none: 0                              # Option to use no neutrino model
 
 # Parameters related to the sink particles ---------------------------------------
 
@@ -662,6 +679,8 @@ DebugRT:
     all_parts_have_stars:  0          # Set to 1 to do additional tests that only work if all hydro particles have a star particle neighbour
 
 GEARRT:
+    f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
+    CFL_condition: 0.99                               # CFL condition for RT, independent of hydro
     photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N). Outer edges of zero and infinity are assumed.
-    use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_per_s parameter
+    use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_LSol parameter
     star_emission_rates_LSol: [1., 1., 1., 1.]        # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set, in units of Solar Luminosity.

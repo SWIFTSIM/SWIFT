@@ -42,8 +42,7 @@ def changeType(f, old, new):
 
     for name in old:
         if debug:
-            print("Moving '%s' from '%s' to '%s'"
-                  % (name, old_group, new_group))
+            print("Moving '%s' from '%s' to '%s'" % (name, old_group, new_group))
 
         tmp = old[name][:]
         del old[name]
@@ -75,7 +74,7 @@ def countPart(f):
 
     f["Header"].attrs["NumPart_ThisFile"] = npart
     f["Header"].attrs["NumPart_Total"] = npart
-    f["Header"].attrs["NumPart_Total_HighWord"] = [0]*N_type
+    f["Header"].attrs["NumPart_Total_HighWord"] = [0] * N_type
 
 
 if __name__ == "__main__":

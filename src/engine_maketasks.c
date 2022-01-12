@@ -555,6 +555,9 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
                              c, NULL);
     t_rho = scheduler_addtask(s, task_type_recv, task_subtype_rho, c->mpi.tag,
                               0, c, NULL);
+
+    scheduler_addunlock(s, t_xv, t_rho);
+
 #ifdef EXTRA_HYDRO_LOOP
     t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                    c->mpi.tag, 0, c, NULL);
@@ -2210,6 +2213,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Self-interaction? */
     else if (t_type == task_type_self && t_subtype == task_subtype_density) {
 
+#ifdef ONLY_SUBTASKS
+      error("Found some self tasks!");
+#else
+
       const int bcount_i = ci->black_holes.count;
 
       /* Make the self-density tasks depend on the drift only. */
@@ -2464,10 +2471,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t_rt_transport,
                             ci->hydro.super->hydro.rt_transport_out);
       }
+#endif
+
     }
 
     /* Otherwise, pair interaction? */
     else if (t_type == task_type_pair && t_subtype == task_subtype_density) {
+
+#ifdef ONLY_SUBTASKS
+      error("Found some self tasks!");
+#else
 
       const int bcount_i = ci->black_holes.count;
       const int bcount_j = cj->black_holes.count;
@@ -2994,6 +3007,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               cj->hydro.super->black_holes.swallow_ghost_0);
         }
       }
+#endif
     }
 
     /* Otherwise, sub-self interaction? */
@@ -4420,7 +4434,7 @@ void engine_maketasks(struct engine *e) {
   }
 
   /* Allocate memory for foreign particles */
-  engine_allocate_foreign_particles(e);
+  engine_allocate_foreign_particles(e, /*fof=*/0);
 
 #endif
 
