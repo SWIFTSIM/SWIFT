@@ -79,6 +79,42 @@ INLINE static void set_SS08_water(struct SESAME_params *mat,
   mat->mat_id = mat_id;
   mat->date = 20201003;
 }
+INLINE static void set_AQUA(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Haldemann et al. (2020)
+  mat->mat_id = mat_id;
+  mat->date = 20201012;
+}
+INLINE static void set_CMS19_H(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Chabrier et al. (2019)
+  mat->mat_id = mat_id;
+  mat->date = 20201014;
+}
+INLINE static void set_CMS19_He(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Chabrier et al. (2019)
+  mat->mat_id = mat_id;
+  mat->date = 20201014;
+}
+INLINE static void set_CMS19_HHe(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Chabrier et al. (2019)
+  mat->mat_id = mat_id;
+  mat->date = 20210219;
+}
+INLINE static void set_SCVH95_HHe(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Saumon et al. 1995
+  mat->mat_id = mat_id;
+  mat->date = 20210219;
+}
+INLINE static void set_REOS3_HHe(struct SESAME_params *mat,
+                                  enum eos_planetary_material_id mat_id) {
+  // Becker et al. 2014
+  mat->mat_id = mat_id;
+  mat->date = 20210302;
+}
 INLINE static void set_ANEOS_forsterite(struct SESAME_params *mat,
                                         enum eos_planetary_material_id mat_id) {
   // Stewart et al. (2019)
@@ -154,7 +190,7 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
       if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
     }
   }
-
+  
   // Temperatures (not log yet)
   for (int i_T = -1; i_T < mat->num_T; i_T++) {
     // Ignore the first elements of rho = 0, T = 0
@@ -167,7 +203,7 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
     }
   }
 
-  // Sp. int. energies (not log yet), pressures, sound speeds, and sp.
+  // Sp. int. energies (not log yet), pressures, sound speeds, and sp. 
   // entropies (not log yet)
   for (int i_T = -1; i_T < mat->num_T; i_T++) {
     for (int i_rho = -1; i_rho < mat->num_rho; i_rho++) {
@@ -196,7 +232,7 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
     mat->table_log_rho[i_rho] = logf(mat->table_log_rho[i_rho]);
   }
-
+  
   // Convert temperatures to log(temperature)
   for (int i_T = 0; i_T < mat->num_T; i_T++) {
     mat->table_log_T[i_T] = logf(mat->table_log_T[i_T]);
@@ -207,24 +243,10 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
   mat->P_tiny = FLT_MAX;
   mat->c_tiny = FLT_MAX;
   mat->s_tiny = FLT_MAX;
-
-  // Enforce that the 1D arrays of u (at each rho) are monotonic
-  // This is necessary because, for some high-density u slices at very low T,
-  // u decreases (very slightly) with T, which makes the interpolation fail
+  
+  // Compute tiny values
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
-    for (int i_T = mat->num_T - 1; i_T > 0; i_T--) {
-
-      // If the one-lower-T u is greater than this u
-      if (mat->table_log_u_rho_T[i_rho * mat->num_T + i_T] <
-          mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1]) {
-
-        // Replace it and all elements below it with that value
-        for (int j_u = 0; j_u < i_T; j_u++) {
-          mat->table_log_u_rho_T[i_rho * mat->num_T + j_u] =
-              mat->table_log_u_rho_T[i_rho * mat->num_T + i_T];
-        }
-        break;
-      }
+    for (int i_T = 0; i_T < mat->num_T; i_T++) {
 
       // Smallest positive values
       if ((mat->table_log_u_rho_T[i_rho * mat->num_T + i_T] < mat->u_tiny) &&
@@ -245,14 +267,15 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
       }
     }
   }
-
+  
   // Tiny values to allow interpolation near non-positive values
   mat->u_tiny *= 1e-3f;
   mat->P_tiny *= 1e-3f;
   mat->c_tiny *= 1e-3f;
   mat->s_tiny *= 1e-3f;
 
-  // Convert sp. int. energies to log(sp. int. energy), same for sp. entropies
+  // Convert sp. int. energies to log(sp. int. energy),
+  // same for sp. entropies, and ensure P > 0
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
     for (int i_T = 0; i_T < mat->num_T; i_T++) {
       // If not positive then set very small for the log
@@ -270,13 +293,44 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
 
       mat->table_log_s_rho_T[i_rho * mat->num_T + i_T] =
           logf(mat->table_log_s_rho_T[i_rho * mat->num_T + i_T]);
-
+          
       // Ensure P > 0
       if (mat->table_P_rho_T[i_rho * mat->num_T + i_T] <= 0) {
         mat->table_P_rho_T[i_rho * mat->num_T + i_T] = mat->P_tiny;
       }
     }
   }
+
+  // Enforce that the 1D arrays of u (at each rho) are monotonic
+  // This is necessary because, for some high-density u slices at very low T,
+  // u decreases (very slightly) with T, which makes the interpolation fail
+  // Ensure partial u/partial T at fixed rho is >= 0
+  for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
+    for (int i_T = mat->num_T - 1; i_T > 0; i_T--) {
+
+      // If the one-lower-T u is greater than this u
+      if (mat->table_log_u_rho_T[i_rho * mat->num_T + i_T] <
+          mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1]) {
+
+        mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1] =
+              mat->table_log_u_rho_T[i_rho * mat->num_T + i_T];
+      }
+    }
+  }
+  
+  // Ensure partial P/partial rho at fixed T >= 0
+  for (int i_rho = mat->num_rho - 1; i_rho > 0; i_rho--) {
+    for (int i_T = 0; i_T < mat->num_T; i_T++) {
+      if (mat->table_P_rho_T[i_rho * mat->num_T + i_T] <
+          mat->table_P_rho_T[(i_rho - 1) * mat->num_T + i_T]) {
+
+        mat->table_P_rho_T[(i_rho - 1) * mat->num_T + i_T] =
+              mat->table_P_rho_T[i_rho * mat->num_T + i_T];
+      }    
+    }
+  }
+
+  
 }
 
 // Convert to internal units
@@ -293,7 +347,7 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
         logf(units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY) /
              units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
   }
-
+  
   // Temperatures (log)
   for (int i_T = 0; i_T < mat->num_T; i_T++) {
     mat->table_log_T[i_T] +=
@@ -313,26 +367,21 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
       mat->table_c_rho_T[i_rho * mat->num_T + i_T] *=
           1e3f * units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
           units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
-      mat->table_log_s_rho_T[i_rho * mat->num_T + i_T] +=
-          logf(units_cgs_conversion_factor(
-                   &si, UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS) /
-               units_cgs_conversion_factor(
-                   us, UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS));
+      mat->table_log_s_rho_T[i_rho * mat->num_T + i_T] += logf(
+          units_cgs_conversion_factor(&si, UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS) /
+          units_cgs_conversion_factor(us, UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS));
     }
   }
 
   // Tiny values
-  mat->u_tiny *=
-      units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS) /
-      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+  mat->u_tiny *= units_cgs_conversion_factor(&si, UNIT_CONV_ENERGY_PER_UNIT_MASS) /
+                 units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
   mat->P_tiny *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE) /
                  units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
   mat->c_tiny *= 1e3f * units_cgs_conversion_factor(&si, UNIT_CONV_SPEED) /
                  units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
-  mat->s_tiny *=
-      units_cgs_conversion_factor(&si,
-                                  UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS) /
-      units_cgs_conversion_factor(us, UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS);
+  mat->s_tiny *= units_cgs_conversion_factor(&si, UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS) /
+                 units_cgs_conversion_factor(us, UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS);
 }
 
 // gas_internal_energy_from_entropy
@@ -411,8 +460,8 @@ INLINE static float SESAME_internal_energy_from_entropy(
   log_u_4 = mat->table_log_u_rho_T[(idx_rho + 1) * mat->num_T + idx_s_2 + 1];
 
   // If below the minimum s at this rho then just use the lowest table values
-  if ((idx_rho > 0.f) && ((intp_s_1 < 0.f) || (intp_s_2 < 0.f) ||
-                          (log_u_1 > log_u_2) || (log_u_3 > log_u_4))) {
+  if ((idx_rho > 0.f) &&
+      ((intp_s_1 < 0.f) || (intp_s_2 < 0.f) || (log_u_1 > log_u_2) || (log_u_3 > log_u_4))) {
     intp_s_1 = 0;
     intp_s_2 = 0;
   }
@@ -816,8 +865,7 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
 
   float rho, log_rho, log_T_1, log_T_2, log_rho_1, log_rho_2;
 
-  // Avoid impossible values
-  if (P <= 0.f || T <= 0.f) {
+  if (P <= 0.f) {
     return 0.f;
   }
 
@@ -908,6 +956,5 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
   
   return rho;
 }
-
 
 #endif /* SWIFT_SESAME_EQUATION_OF_STATE_H */

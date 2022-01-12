@@ -447,6 +447,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* CFL condition */
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->force.v_sig);
+    
+
 
   return dt_cfl;
 }
@@ -511,6 +513,17 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->I = 0.f;
   p->sum_wij = 0.f;
 #endif
+    
+#ifdef PLANETARY_MATRIX_INVERSION
+int i, j;
+for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+          p->Dinv[i][j] = 0.f;
+          p->E[i][j] = 0.f;
+      }
+}
+#endif
+    
 }
 
 /**
@@ -581,10 +594,58 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 #endif
 #ifdef WENDLAND_C6_KERNEL
   //const float alpha = 7.1f; // eta=1.2348
-  const float alpha = 5.1;  // eta=2.2
+  const float alpha = 5.1f;  // eta=2.2
 #endif
   p->I *= alpha;
 #endif
+    
+#ifdef PLANETARY_MATRIX_INVERSION 
+  int i,j,k;
+    
+  /* In this section we carry out matrix inversion to find D and calculate dv_aux */
+    
+  float determinant=0.f;
+  /* We normalise the Dinv matrix to the mean of its 9 elements to stop us hitting float precision limits during matrix inversion process */
+  float mean_Dinv = (p->Dinv[0][0] + p->Dinv[0][1] + p->Dinv[0][2] + p->Dinv[1][0] + p->Dinv[1][1] + p->Dinv[1][2] + p->Dinv[2][0] + p->Dinv[2][1] + p->Dinv[2][2])/9.f;
+  
+  for(i=0;i<3;i++){
+     for(j=0;j<3;j++){       
+          /* Normalise Dinv to mean of its values */
+          p->Dinv[i][j] = p->Dinv[i][j] / mean_Dinv;
+          
+          /* Aux dv (eq 19 in Rosswog 2020) */
+          p->dv_aux[i][j] = 0.f; 
+      }
+  }
+    
+ for(i=0;i<3;i++){
+      /* Matrix Dinv det */
+      determinant += (p->Dinv[0][i]*(p->Dinv[1][(i+1)%3]*p->Dinv[2][(i+2)%3] - p->Dinv[1][(i+2)%3]*p->Dinv[2][(i+1)%3]));
+ }     
+ 
+    
+   float D[3][3];
+   for(i=0;i<3;i++){
+      for(j=0;j<3;j++){ 
+          
+          /* Find D from inverse of Dinv */
+          D[i][j] = ((p->Dinv[(i+1)%3][(j+1)%3] * p->Dinv[(i+2)%3][(j+2)%3]) - (p->Dinv[(i+1)%3][(j+2)%3]*p->Dinv[(i+2)%3][(j+1)%3]))/ (determinant * mean_Dinv);
+          if (isnan(D[i][j]) || isinf(D[i][j])){
+              D[i][j] = 0.f;
+              //printf("D error");
+              //exit(0);
+          }
+          
+          for (k = 0; k < 3; ++k) {
+            /* Calculate dv_aux (eq 19 in Rosswog 2020) */
+            p->dv_aux[i][k] += D[i][j] * p->E[k][j];
+                         
+          } 
+      }
+   }
+
+#endif    
+    
 }
 
 /**
@@ -648,21 +709,51 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->sum_wij_exp_P = 0.f;
   p->sum_wij_exp = 0.f;
 
-  /* Compute the pressure */
+  
+  
+  //Compute the pressure 
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
       
-  /* Compute the temperature */
+   //Compute the temperature 
   const float temperature =
       gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
 
   p->P = pressure;
   p->T = temperature;
 
+
   /* Turn Imbalance to 0 if h == h_max */
   if (p->h > 0.999f * hydro_props->h_max){
     p->I = 0.f;
   }
+
+    
+   // p->imbalance_flag = 0;
+    //if (p->h < 0.999f * hydro_props->h_max){
+    //      p->imbalance_flag = 1;
+    //}
+  
+#endif
+    
+#ifdef PLANETARY_MATRIX_INVERSION          
+    
+    int i,j,k;
+    for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+          
+         p->Cinv[i][j] = 0.f;
+         p->dv[i][j] = 0.f;
+          
+         for (k = 0; k < 3; ++k) {
+            p->ddv[i][j][k] = 0.f;
+         }
+      }
+   }
+    
+    
+    p->N_grad=0.f;
+
 #endif
 }
 
@@ -712,9 +803,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
-  const float P_min = gas_pressure_from_internal_energy(rho_min, p->u, p->mat_id);
-  const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
+ // const float P_min = gas_pressure_from_internal_energy(rho_min, p->u, p->mat_id);
+ // const float T_min = gas_temperature_from_internal_energy(rho_min, p->u, p->mat_id);
  
+    //Added this to see if it fixes issue:
+    //if (p->imbalance_flag == 1) {
+    
   /* Bullet proof */
   if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->sum_wij_exp_T > 0.f && p->I > 0.f){
 	  /* End computation */
@@ -722,22 +816,20 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 	  p->sum_wij_exp_T /= p->sum_wij_exp;
 	  
 	  /* Compute new P */ 
-	  float P_new = 0.f;
-	  P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
+	  float P_new = expf(-p->I*p->I)*p->P + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_P;
 
-          /* Compute new T */
-	  float T_new = 0.f;
-	  T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
+    /* Compute new T */
+	  float T_new = expf(-p->I*p->I)*p->T + (1.f - expf(-p->I*p->I))*p->sum_wij_exp_T;
           
 	  /* Compute new density */
 	  float rho_new =
 	      gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
-	 
+   
 	  /* Ensure new density is not lower than minimum SPH density */
 	  if (rho_new < rho_min){
 	    p->rho = rho_min;
-            p->P = P_min;
-            p->T = T_min;
+            p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);//P_min;
+            p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);//T_min;
 	  } else {
             p->rho = rho_new;
             p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
@@ -750,7 +842,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     p->T = T;
   }
 
+  
+    
 #endif
+    
+     
 }
 
 
@@ -842,6 +938,95 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 #endif
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+    
+    
+    
+#ifdef PLANETARY_MATRIX_INVERSION   
+       
+  int i,j,k,l;
+    
+  /* In this section we: 
+      1) take the inverse of the Cinv matrix; 
+      2) calculate C_dv (eq 18 in Rosswog 2020);
+      3) calculate C_ddv (eq 18 in Rosswog 2020 but using the dv_aux instead of v to get second derivative).
+  */
+    
+   for (i = 0; i < 3; ++i) {
+          for (j = 0; j < 3; ++j) {
+             p->C_dv[i][j] = 0.f;
+             for (k = 0; k < 3; ++k) {
+                p->C_ddv[i][j][k] = 0.f;
+             }
+          }
+       }
+    
+    /* If h=h_max don't do anything fancy. Things like using m/rho to calculate the volume stops working */
+    if (p->h < 0.999f * hydro_props->h_max){
+      
+      /* This flag tells us whether to do the matrix version method or not when we're in the force loop and don't have access to p->h */
+      p->matrix_flag = 1;
+    
+      float determinant=0.f;
+      /* We normalise the Cinv matrix to the mean of its 9 elements to stop us hitting float precision limits during matrix inversion process */
+      float mean_Cinv = (p->Cinv[0][0] + p->Cinv[0][1] + p->Cinv[0][2] + p->Cinv[1][0] + p->Cinv[1][1] + p->Cinv[1][2] + p->Cinv[2][0] + p->Cinv[2][1] + p->Cinv[2][2])/9.f;
+        
+      /* Calculate det and normalise Cinv */
+      for(i=0;i<3;i++){
+          for(j=0;j<3;j++){ 
+              p->Cinv[i][j] = p->Cinv[i][j] / mean_Cinv;
+          }
+      }      
+        
+      for(i=0;i<3;i++){
+          determinant += (p->Cinv[0][i]*(p->Cinv[1][(i+1)%3]*p->Cinv[2][(i+2)%3] - p->Cinv[1][(i+2)%3]*p->Cinv[2][(i+1)%3]));
+      }
+          
+          
+          
+       for(i=0;i<3;i++){
+              for(j=0;j<3;j++){ 
+                  /* Find C from inverse of Cinv */
+                  p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ (determinant * mean_Cinv);
+                  if (isnan(p->C[i][j]) || isinf(p->C[i][j])){
+                      p->C[i][j] = 0.f;
+                      //printf("C error");       
+                      //exit(0);
+                  }
+                  
+                  
+                  for (k = 0; k < 3; ++k) {
+                         /* calculate C_dv (eq 18 in Rosswog 2020) */
+                         p->C_dv[i][k] += p->C[i][j] * p->dv[k][j];
+                         for (l = 0; l < 3; ++l) {
+                            /* calculate C_ddv (eq 18 in Rosswog 2020) */
+                            p->C_ddv[i][l][k] += p->C[i][j] * p->ddv[l][k][j];
+                         }
+                     }   
+              }
+       }
+        
+        
+    }else{
+         
+        /* If we hit h_max then we don't do anything fancy */
+         p->matrix_flag = 0;
+        
+         for(i=0;i<3;i++){
+              for(j=0;j<3;j++) 
+                  p->C[i][j] = 0.f;
+       }
+   }
+#endif
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
 }
 
 /**
@@ -889,7 +1074,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   /* Compute the pressure */
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-
+    
   /* Compute the sound speed */
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);

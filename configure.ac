@@ -499,6 +499,18 @@ if test "$planetary_imbalance" = "yes"; then
    AC_DEFINE([PLANETARY_IMBALANCE],1,[Enable planetary imbalance statistic method])
 fi
 
+# Check if matrix inversion method is on for planetary simulations
+AC_ARG_ENABLE([planetary-matrix-inversion],
+   [AS_HELP_STRING([--enable-planetary-matrix-inversion],
+     [Enable matrix inversion method for planetary simulations @<:@yes/no@:>@]
+   )],
+   [planetary_matrix_inversion="$enableval"],
+   [planetary_matrix_inversion="no"]
+)
+if test "$planetary_matrix_inversion" = "yes"; then
+   AC_DEFINE([PLANETARY_MATRIX_INVERSION],1,[Enable planetary matrix inversion method])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -2617,6 +2629,7 @@ AC_MSG_RESULT([
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
    Planetary imbalance method  : $planetary_imbalance
+   Planetary matrix method     : $planetary_matrix_inversion
 
    Continuous Sim. Data Stream : $with_csds
 
