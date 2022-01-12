@@ -238,6 +238,10 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
       shift[k] = -e->s->dim[k];
   }
 
+  /* Get the limits in h (if any) */
+  const float h_min = limit_min_h ? ci->dmin * 0.5 * (1. / kernel_gamma) : 0.;
+  const float h_max = limit_max_h ? ci->dmin * (1. / kernel_gamma) : FLT_MAX;
+
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount_i; sid++) {
 
@@ -1357,6 +1361,25 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
           cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
         runner_do_stars_sort(r, cj, (1 << sid), 0, 0);
       }
+      if (do_cj) {
+        if (!(ci->hydro.sorted & (1 << sid)) ||
+            ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx) {
+          runner_do_hydro_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                               /*clock=*/0);
+        }
+        if (!(cj->stars.sorted & (1 << sid)) ||
+            cj->stars.dx_max_sort_old > cj->dmin * space_maxreldx) {
+          runner_do_stars_sort(r, cj, (1 << sid), 0, 0);
+        }
+      }
+
+      /* message("Multi-level PAIR! ci->count=%d cj->count=%d", ci->hydro.count,
+       */
+      /* 	      cj->hydro.count); */
+
+      /* Interact all *active* particles with h in the range [dmin/2, dmin)
+         with all their neighbours */
+      DOPAIR1_BRANCH_STARS(r, ci, cj, /*limit_h_min=*/1, /*limit_h_max=*/1);
     }
 
     /* We interact all particles in that cell:

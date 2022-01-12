@@ -1077,4 +1077,5 @@ void DOSUB_PAIR1_RT(struct runner *r, struct cell *ci, struct cell *cj,
   }
 
   if (timer) TIMER_TOC(TIMER_DOSUB_PAIR_RT);
+#endif
 }

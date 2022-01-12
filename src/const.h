@@ -20,6 +20,9 @@
 #ifndef SWIFT_CONST_H
 #define SWIFT_CONST_H
 
+#define ICHECK 109950
+#define SCHECK 2400
+
 /* I/O Constant; this determines the relative tolerance between the value of
  * redshift read from the snapshot, and the value from the parameter file. This
  * current value asserts that they must match within 0.1%. */

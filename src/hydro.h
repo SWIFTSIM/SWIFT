@@ -71,6 +71,10 @@
 #include "./hydro/Planetary/hydro.h"
 #include "./hydro/Planetary/hydro_iact.h"
 #define SPH_IMPLEMENTATION "Minimal version of SPH with multiple materials"
+#elif defined(PLANETARY_GDF_SPH)
+#include "./hydro/PlanetaryGDF/hydro.h"
+#include "./hydro/PlanetaryGDF/hydro_iact.h"
+#define SPH_IMPLEMENTATION "GDF SPH with multiple materials (Wadsley+ 2017)"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro.h"
 #include "./hydro/SPHENIX/hydro_iact.h"
@@ -90,9 +94,9 @@
 
 /* Check whether this scheme implements the density checks */
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-#if !defined(SPHENIX_SPH) && !defined(PLANETARY_SPH)
+#if !defined(SPHENIX_SPH) && !defined(PLANETARY_SPH) && !defined(PLANETARY_GDF_SPH)
 #error \
-    "Can only use the hydro brute-force density checks with the SPHENIX or PLANETARY hydro schemes."
+    "Can only use the hydro brute-force density checks with the SPHENIX, PLANETARY or PLANETARY-GDF hydro schemes."
 #endif
 #endif
 

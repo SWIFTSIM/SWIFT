@@ -111,6 +111,8 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
         /* Interact loop of type 1? */
         if (r2 < hig2) {
 
+          // if (id != pj->id && r2 < 1e-10 && e->step == SCHECK) continue;
+
           const float mj = pj->mass;
 
           float wi, wi_dx;
@@ -119,6 +121,10 @@ void hydro_exact_density_compute_mapper(void *map_data, int nr_parts,
           const float r = sqrtf(r2);
           const float ui = r * hi_inv;
           kernel_deval(ui, &wi, &wi_dx);
+
+          if (id == ICHECK && e->step == SCHECK)
+            message("pi=%lld interacting with pj=%lld inhibited=%d r2=%e", id,
+                    pj->id, pj->time_bin == time_bin_inhibited, r2);
 
           /* Flag that we found an inhibited neighbour */
           if (part_is_inhibited(pj, e)) {

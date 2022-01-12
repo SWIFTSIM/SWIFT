@@ -482,6 +482,30 @@ if test "$planetary_fixed_entropy" = "yes"; then
    AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
 fi
 
+# Check if imbalance statistic method is on for planetary simulations
+AC_ARG_ENABLE([planetary-imbalance],
+   [AS_HELP_STRING([--enable-planetary-imbalance],
+     [Enable imbalance statistic method for planetary simulations @<:@yes/no@:>@]
+   )],
+   [planetary_imbalance="$enableval"],
+   [planetary_imbalance="no"]
+)
+if test "$planetary_imbalance" = "yes"; then
+   AC_DEFINE([PLANETARY_IMBALANCE],1,[Enable planetary imbalance statistic method])
+fi
+
+# Check if matrix inversion method is on for planetary simulations
+AC_ARG_ENABLE([planetary-matrix-inversion],
+   [AS_HELP_STRING([--enable-planetary-matrix-inversion],
+     [Enable matrix inversion method for planetary simulations @<:@yes/no@:>@]
+   )],
+   [planetary_matrix_inversion="$enableval"],
+   [planetary_matrix_inversion="no"]
+)
+if test "$planetary_matrix_inversion" = "yes"; then
+   AC_DEFINE([PLANETARY_MATRIX_INVERSION],1,[Enable planetary matrix inversion method])
+fi
+
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
 AX_ASM_ARM_CNTVCT
@@ -1715,7 +1739,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowfax, planetary, planetary-gdf, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -1757,6 +1781,9 @@ case "$with_hydro" in
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
+   ;;
+   planetary-gdf)
+      AC_DEFINE([PLANETARY_GDF_SPH], [1], [Planetary GDF SPH])
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
@@ -2695,6 +2722,8 @@ AC_MSG_RESULT([
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
+   Planetary imbalance method  : $planetary_imbalance
+   Planetary matrix method     : $planetary_matrix_inversion
 
    Continuous Sim. Data Stream : $with_csds
 

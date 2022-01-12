@@ -1541,6 +1541,8 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
       }
     }
   }
+
+#endif
 }
 
 /**

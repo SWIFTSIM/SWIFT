@@ -275,12 +275,14 @@ void hydro_props_print(const struct hydro_props *p) {
 
   // MATTHIEU: Temporary location for this planetary SPH i/o business.
 
-#ifdef PLANETARY_SPH
+#ifdef PLANETARY_FIXED_ENTROPY
+  message("Planetary SPH: Fixed entropy ENABLED");
+#endif
 #ifdef PLANETARY_SPH_NO_BALSARA
   message("Planetary SPH: Balsara switch DISABLED");
-#else
-  message("Planetary SPH: Balsara switch ENABLED");
 #endif
+#ifdef PLANETARY_IMBALANCE
+  message("Planetary SPH: Imbalance statistic ENABLED");
 #endif
 }
 
