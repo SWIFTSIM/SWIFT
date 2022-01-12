@@ -530,25 +530,16 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->sum_wij = 0.f;
 #endif
     
-p->Dinv[0][0] = 0.f;
-p->Dinv[0][1] = 0.f;
-p->Dinv[0][2] = 0.f;
-p->Dinv[1][0] = 0.f;
-p->Dinv[1][1] = 0.f;
-p->Dinv[1][2] = 0.f;
-p->Dinv[2][0] = 0.f;
-p->Dinv[2][1] = 0.f;
-p->Dinv[2][2] = 0.f;
-
-p->E_v[0][0] = 0.f;
-p->E_v[0][1] = 0.f;
-p->E_v[0][2] = 0.f;
-p->E_v[1][0] = 0.f;
-p->E_v[1][1] = 0.f;
-p->E_v[1][2] = 0.f;
-p->E_v[2][0] = 0.f;
-p->E_v[2][1] = 0.f;
-p->E_v[2][2] = 0.f;
+#ifdef PLANETARY_MATRIX_INVERSION
+int i, j;
+for (i = 0; i < 3; ++i) {
+      for (j = 0; j < 3; ++j) {
+          p->Dinv[i][j] = 0.f;
+          p->E[i][j] = 0.f;
+      }
+}
+#endif
+    
 }
 
 /**
@@ -623,70 +614,52 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->I *= alpha;
 #endif
     
-        
+#ifdef PLANETARY_MATRIX_INVERSION 
   int i,j,k;
+    
+  /* In this section we carry out matrix inversion to find D and calculate dv_aux */
+    
   float determinant=0.f;
- 
- 
-  for(i=0;i<3;i++)
+  /* We normalise the Dinv matrix to the mean of its 9 elements to stop us hitting float precision limits during matrix inversion process */
+  float mean_Dinv = (p->Dinv[0][0] + p->Dinv[0][1] + p->Dinv[0][2] + p->Dinv[1][0] + p->Dinv[1][1] + p->Dinv[1][2] + p->Dinv[2][0] + p->Dinv[2][1] + p->Dinv[2][2])/9.f;
+  
+  for(i=0;i<3;i++){
+     for(j=0;j<3;j++){       
+          /* Normalise Dinv to mean of its values */
+          p->Dinv[i][j] = p->Dinv[i][j] / mean_Dinv;
+          
+          /* Aux dv (eq 19 in Rosswog 2020) */
+          p->dv_aux[i][j] = 0.f; 
+      }
+  }
+    
+ for(i=0;i<3;i++){
+      /* Matrix Dinv det */
       determinant += (p->Dinv[0][i]*(p->Dinv[1][(i+1)%3]*p->Dinv[2][(i+2)%3] - p->Dinv[1][(i+2)%3]*p->Dinv[2][(i+1)%3]));
-    
-  float mean_D = (p->Dinv[0][0] + p->Dinv[0][1] + p->Dinv[0][2] + p->Dinv[1][0] + p->Dinv[1][1] + p->Dinv[1][2] + p->Dinv[2][0] + p->Dinv[2][1] + p->Dinv[2][2])/9.f;
-        
-        p->Dinv[0][0] = p->Dinv[0][0] / mean_D;
-        p->Dinv[0][1] = p->Dinv[0][1] / mean_D;
-        p->Dinv[0][2] = p->Dinv[0][2] / mean_D;
-        p->Dinv[1][0] = p->Dinv[1][0] / mean_D;
-        p->Dinv[1][1] = p->Dinv[1][1] / mean_D;
-        p->Dinv[1][2] = p->Dinv[1][2] / mean_D;
-        p->Dinv[2][0] = p->Dinv[2][0] / mean_D;
-        p->Dinv[2][1] = p->Dinv[2][1] / mean_D;
-        p->Dinv[2][2] = p->Dinv[2][2] / mean_D;
-        
-    
+ }     
  
-  for(i=0;i<3;i++)
-      determinant += (p->Dinv[0][i]*(p->Dinv[1][(i+1)%3]*p->Dinv[2][(i+2)%3] - p->Dinv[1][(i+2)%3]*p->Dinv[2][(i+1)%3]));
     
-    
+   float D[3][3];
    for(i=0;i<3;i++){
       for(j=0;j<3;j++){ 
-          p->D[i][j] = ((p->Dinv[(i+1)%3][(j+1)%3] * p->Dinv[(i+2)%3][(j+2)%3]) - (p->Dinv[(i+1)%3][(j+2)%3]*p->Dinv[(i+2)%3][(j+1)%3]))/ (determinant * mean_D);
-          if (isnan(p->D[i][j]) || isinf(p->D[i][j])){
-              p->D[i][j] = 0.f;
-              printf("D error");
-              exit(0);
+          
+          /* Find D from inverse of Dinv */
+          D[i][j] = ((p->Dinv[(i+1)%3][(j+1)%3] * p->Dinv[(i+2)%3][(j+2)%3]) - (p->Dinv[(i+1)%3][(j+2)%3]*p->Dinv[(i+2)%3][(j+1)%3]))/ (determinant * mean_Dinv);
+          if (isnan(D[i][j]) || isinf(D[i][j])){
+              D[i][j] = 0.f;
+              //printf("D error");
+              //exit(0);
           }
-      }
-   }
-    
-    
-    
-    // matrix multiplication D and E
-    
-    
-    p->dv_aux[0][0] = 0.f;
-    p->dv_aux[0][1] = 0.f;
-    p->dv_aux[0][2] = 0.f;
-    p->dv_aux[1][0] = 0.f;
-    p->dv_aux[1][1] = 0.f;
-    p->dv_aux[1][2] = 0.f;
-    p->dv_aux[2][0] = 0.f;
-    p->dv_aux[2][1] = 0.f;
-    p->dv_aux[2][2] = 0.f;
-    
-      
-    for (i = 0; i < 3; ++i) {
-      for (j = 0; j < 3; ++j) {
-         for (k = 0; k < 3; ++k) {
-            p->dv_aux[i][j] += p->D[i][k] * p->E_v[j][k];
+          
+          for (k = 0; k < 3; ++k) {
+            /* Calculate dv_aux (eq 19 in Rosswog 2020) */
+            p->dv_aux[i][k] += D[i][j] * p->E[k][j];
                          
-         }
+          } 
       }
    }
-    
-    
-    
+
+#endif    
     
 }
 
@@ -771,21 +744,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   
 #endif
     
-          
-    p->Cinv[0][0] = 0.f;
-    p->Cinv[0][1] = 0.f;
-    p->Cinv[0][2] = 0.f;
-    p->Cinv[1][0] = 0.f;
-    p->Cinv[1][1] = 0.f;
-    p->Cinv[1][2] = 0.f;
-    p->Cinv[2][0] = 0.f;
-    p->Cinv[2][1] = 0.f;
-    p->Cinv[2][2] = 0.f;
+#ifdef PLANETARY_MATRIX_INVERSION          
     
     int i,j,k;
     for (i = 0; i < 3; ++i) {
       for (j = 0; j < 3; ++j) {
+          
+         p->Cinv[i][j] = 0.f;
          p->dv[i][j] = 0.f;
+          
          for (k = 0; k < 3; ++k) {
             p->ddv[i][j][k] = 0.f;
          }
@@ -794,6 +761,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     
     
     p->N_grad=0.f;
+#endif
 }
 
 /**
@@ -876,45 +844,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 	      gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
       
       
-      /*
-      if(p->id==10152953){
-          
-                                      printf("P_new");
-    printf("\n");
-    printf("%f",P_new);
-    printf("\n");
-          
-                                      printf("p->P");
-    printf("\n");
-    printf("%f",p->P);
-    printf("\n");
-          
-                                      printf("T_new");
-    printf("\n");
-    printf("%f",T_new);
-    printf("\n");
-          
-                                      printf("p->T");
-    printf("\n");
-    printf("%f",p->T);
-    printf("\n");
-          
-                                                         printf("p->rho");
-    printf("\n");
-    printf("%f",p->rho);
-    printf("\n");
-          
-                                                printf("rho_new");
-    printf("\n");
-    printf("%f",rho_new);
-    printf("\n");
-                                                         printf("p->u");
-    printf("\n");
-    printf("%f",p->u);
-    printf("\n");
-          
-      }
-      */
+   
    
 	  /* Ensure new density is not lower than minimum SPH density */
 	  if (rho_new < rho_min){
@@ -933,7 +863,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     p->T = T;
   }
 
-    //}
+  
     
 #endif
     
@@ -1032,10 +962,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     
     
     
-    
+#ifdef PLANETARY_MATRIX_INVERSION   
        
-  /* matrix inverse */
   int i,j,k,l;
+    
+  /* In this section we: 
+      1) take the inverse of the Cinv matrix; 
+      2) calculate C_dv (eq 18 in Rosswog 2020);
+      3) calculate C_ddv (eq 18 in Rosswog 2020 but using the dv_aux instead of v to get second derivative).
+  */
     
    for (i = 0; i < 3; ++i) {
           for (j = 0; j < 3; ++j) {
@@ -1046,70 +981,72 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
           }
        }
     
-        // need this for when particle hits h_max since m/rho stops correponding to volume element so matix inversion method doesn't work
+    /* If h=h_max don't do anything fancy. Things like using m/rho to calculate the volume stops working */
     if (p->h < 0.999f * hydro_props->h_max){
-        
-      p->force.matrix_flag = 1;
+      
+      /* This flag tells us whether to do the matrix version method or not when we're in the force loop and don't have access to p->h */
+      p->matrix_flag = 1;
     
       float determinant=0.f;
-      float mean_C = (p->Cinv[0][0] + p->Cinv[0][1] + p->Cinv[0][2] + p->Cinv[1][0] + p->Cinv[1][1] + p->Cinv[1][2] + p->Cinv[2][0] + p->Cinv[2][1] + p->Cinv[2][2])/9.f;
+      /* We normalise the Cinv matrix to the mean of its 9 elements to stop us hitting float precision limits during matrix inversion process */
+      float mean_Cinv = (p->Cinv[0][0] + p->Cinv[0][1] + p->Cinv[0][2] + p->Cinv[1][0] + p->Cinv[1][1] + p->Cinv[1][2] + p->Cinv[2][0] + p->Cinv[2][1] + p->Cinv[2][2])/9.f;
         
-        p->Cinv[0][0] = p->Cinv[0][0] / mean_C;
-        p->Cinv[0][1] = p->Cinv[0][1] / mean_C;
-        p->Cinv[0][2] = p->Cinv[0][2] / mean_C;
-        p->Cinv[1][0] = p->Cinv[1][0] / mean_C;
-        p->Cinv[1][1] = p->Cinv[1][1] / mean_C;
-        p->Cinv[1][2] = p->Cinv[1][2] / mean_C;
-        p->Cinv[2][0] = p->Cinv[2][0] / mean_C;
-        p->Cinv[2][1] = p->Cinv[2][1] / mean_C;
-        p->Cinv[2][2] = p->Cinv[2][2] / mean_C;
+      /* Calculate det and normalise Cinv */
+      for(i=0;i<3;i++){
+          for(j=0;j<3;j++){ 
+              p->Cinv[i][j] = p->Cinv[i][j] / mean_Cinv;
+          }
+      }      
         
-        
-        
-        
-
-      for(i=0;i<3;i++)
+      for(i=0;i<3;i++){
           determinant += (p->Cinv[0][i]*(p->Cinv[1][(i+1)%3]*p->Cinv[2][(i+2)%3] - p->Cinv[1][(i+2)%3]*p->Cinv[2][(i+1)%3]));
-
-           for(i=0;i<3;i++){
+      }
+          
+          
+          
+       for(i=0;i<3;i++){
               for(j=0;j<3;j++){ 
-                  p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ (determinant * mean_C);
+                  /* Find C from inverse of Cinv */
+                  p->C[i][j] = ((p->Cinv[(i+1)%3][(j+1)%3] * p->Cinv[(i+2)%3][(j+2)%3]) - (p->Cinv[(i+1)%3][(j+2)%3]*p->Cinv[(i+2)%3][(j+1)%3]))/ (determinant * mean_Cinv);
                   if (isnan(p->C[i][j]) || isinf(p->C[i][j])){
                       p->C[i][j] = 0.f;
-                      printf("C error");
-                      printf("\n");
-                      
-                      
-                      exit(0);
+                      //printf("C error");       
+                      //exit(0);
                   }
                   
-                 
+                  
+                  for (k = 0; k < 3; ++k) {
+                         /* calculate C_dv (eq 18 in Rosswog 2020) */
+                         p->C_dv[i][k] += p->C[i][j] * p->dv[k][j];
+                         for (l = 0; l < 3; ++l) {
+                            /* calculate C_ddv (eq 18 in Rosswog 2020) */
+                            p->C_ddv[i][l][k] += p->C[i][j] * p->ddv[l][k][j];
+                         }
+                     }   
               }
        }
-
-
-        for (i = 0; i < 3; ++i) {      
-          for (j = 0; j < 3; ++j) {
-             for (k = 0; k < 3; ++k) {
-
-                 p->C_dv[i][j] += p->C[i][k] * p->dv[j][k];
-                 for (l = 0; l < 3; ++l) {
-
-                    p->C_ddv[i][j][k] += p->C[i][l] * p->ddv[j][k][l];
-                 }
-             }
-          }
-       }
+        
         
     }else{
          
-         p->force.matrix_flag = 0;
+        /* If we hit h_max then we don't do anything fancy */
+         p->matrix_flag = 0;
         
          for(i=0;i<3;i++){
               for(j=0;j<3;j++) 
                   p->C[i][j] = 0.f;
        }
    }
+#endif
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 }
 

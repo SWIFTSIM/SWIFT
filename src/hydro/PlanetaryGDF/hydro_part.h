@@ -133,32 +133,6 @@ struct part {
   /* Correction factors for kernel gradients. f = weighted_wcount/(rho*weighted_neighbour_wcount) */
   float f_gdf;
     
-  /*! Particle C matrix. */
-  float C[3][3], Cinv[3][3];
-    
-  /*! Particle D matrix. */
-  float D[3][3], Dinv[3][3];
-    
-  /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
-  float E_v[3][3]; 
-    
-  /*! Particle auxiliary gradient*/
-  float dv_aux[3][3];
-    
-  /*! Particle gradients from eq 18 (without C multiplied)*/
-  float dv[3][3];
-  float ddv[3][3][3];
-
-  /*! Particle gradients from eq 18 (with C multiplied)*/
-  float C_dv[3][3];
-  float C_ddv[3][3][3];
-    
-  /*! Number of particles in grad loop*/
-  float N_grad;
-    
-  /*! Imbalance method flag */
-  //int imbalance_flag;
-    
 
 
   /* Store density/force specific stuff. */
@@ -217,9 +191,6 @@ struct part {
       /*! Balsara switch */
       float balsara;
         
-      /*! Inverse matrix method flag */
-      int matrix_flag;
-
     } force;
   };
 
@@ -332,6 +303,34 @@ struct part {
 
   /* sum w_ij*/
   float sum_wij;
+#endif
+    
+#ifdef PLANETARY_MATRIX_INVERSION
+  /*! Particle C matrix. */
+  float C[3][3], Cinv[3][3];
+    
+  /*! Particle D matrix. */
+  float Dinv[3][3];
+    
+  /*! Particle E matrix. i.e. second part of eq 19 in Rosswog 2020*/
+  float E[3][3]; 
+    
+  /*! Particle auxiliary gradient*/
+  float dv_aux[3][3];
+    
+  /*! Particle gradients from eq 18 (without C multiplied)*/
+  float dv[3][3];
+  float ddv[3][3][3];
+
+  /*! Particle gradients from eq 18 (with C multiplied)*/
+  float C_dv[3][3];
+  float C_ddv[3][3][3];
+    
+  /*! Number of particles in grad loop*/
+  float N_grad;
+    
+  /*! Inverse matrix method flag */
+  int matrix_flag;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
