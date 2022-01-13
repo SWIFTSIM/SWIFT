@@ -432,9 +432,25 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
+  struct engine *e = s->e;
 
-  const int delta_m = neighbour_cell_delta; // Should compute this, but how?
-  const int delta_p = neighbour_cell_delta;
+  /* Get some info about the physics */
+	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+	const double max_mesh_dist = e->mesh->r_cut_max;
+	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
+	/* Maximal distance from shifted CoM to any corner */
+	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
+
+	/* Compute how many cells away we need to walk */
+	const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
+
+	/* Turn this into upper and lower bounds for loops */
+	const int delta_m = delta_cells;
+	const int delta_p = delta_cells;
+
+//  const int delta_m = neighbour_cell_delta; // Should compute this, but how?
+//  const int delta_p = neighbour_cell_delta;
 
   int neighbour_count = 0;
 
