@@ -554,7 +554,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     float eta_j_2 = r2 * hj_inv * hj_inv;
     
     /* If h=h_max don't do anything fancy. Things like using m/rho to calculate the volume stops working */
-    if(pi->matrix_flag && pj->matrix_flag){
+    if(pi->is_h_max && pj->is_h_max){
         
         /* For loops */
         int j,k;
@@ -817,7 +817,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     float eta_j_2 = r2 * hj_inv * hj_inv;
     
     /* If h=h_max don't do anything fancy. Things like using m/rho to calculate the volume stops working */
-    if(pi->matrix_flag == 1 && pj->matrix_flag == 1){
+    if(pi->is_h_max == 1 && pj->is_h_max == 1){
         
         /* For loops */
         int j,k;

@@ -964,7 +964,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     if (p->h < 0.999f * hydro_props->h_max){
       
       /* This flag tells us whether to do the matrix version method or not when we're in the force loop and don't have access to p->h */
-      p->matrix_flag = 1;
+      p->is_h_max = 1;
     
       float determinant=0.f;
       /* We normalise the Cinv matrix to the mean of its 9 elements to stop us hitting float precision limits during matrix inversion process */
@@ -1009,7 +1009,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     }else{
          
         /* If we hit h_max then we don't do anything fancy */
-         p->matrix_flag = 0;
+         p->is_h_max = 0;
         
          for(i=0;i<3;i++){
               for(j=0;j<3;j++) 

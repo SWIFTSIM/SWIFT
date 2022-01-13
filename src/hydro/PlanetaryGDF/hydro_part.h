@@ -332,7 +332,7 @@ struct part {
   float N_grad;
     
   /*! Inverse matrix method flag */
-  int matrix_flag;
+  int is_h_max;
 #endif
 
 } SWIFT_STRUCT_ALIGN;
