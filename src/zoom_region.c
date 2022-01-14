@@ -1607,6 +1607,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Loop over all its neighbours in range. */
 		for (int cjd = cell_loop_lower; cjd <= cell_loop_upper; cjd++) {
 
+			struct cell *cj = &cells[cjd];
+
 			/* Skip non-neighbour natural cells. */
 			if ((cjd > bkg_cell_offset) && (cj->tl_cell_type != tl_cell_neighbour)){
 				continue;
@@ -1616,8 +1618,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			if (cjd > bkg_cell_offset) {
 				int cjd_without_offset -= bkg_cell_offset;
 			}
-
-			struct cell *cj = &cells[cjd];
 
 			/* Avoid void cells, empty cells and completely foreign pairs */
 			if (cj->grav.count == 0 ||
