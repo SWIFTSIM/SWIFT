@@ -434,6 +434,9 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
   struct cell *cells = s->cells_top;
   struct engine *e = s->e;
 
+  	/* Some info about the zoom domain */
+	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
   /* Get some info about the physics */
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
 	const double max_mesh_dist = e->mesh->r_cut_max;
