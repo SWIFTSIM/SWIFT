@@ -1609,6 +1609,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 
 			struct cell *cj = &cells[cjd];
 
+			int cjd_without_offset = cjd;
+
 			/* Skip non-neighbour natural cells. */
 			if ((cjd > bkg_cell_offset) && (cj->tl_cell_type != tl_cell_neighbour)){
 				continue;
@@ -1616,7 +1618,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 
 			/* If this is a background cell remove the offset. */
 			if (cjd > bkg_cell_offset) {
-				int cjd_without_offset -= bkg_cell_offset;
+				cjd_without_offset -= bkg_cell_offset;
 			}
 
 			/* Avoid void cells, empty cells and completely foreign pairs */
