@@ -1599,27 +1599,27 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			cell_loop_upper = s->nr_cells;
 		}
 
-		/* Integer indices of the cell in the top-level grid */
-		const int i = cid_with_offset / (cdim[1] * cdim[2]);
-		const int j = (cid_with_offset / cdim[2]) % cdim[1];
-		const int k = cid_with_offset % cdim[2];
+//		/* Integer indices of the cell in the top-level grid */
+//		const int i = cid_with_offset / (cdim[1] * cdim[2]);
+//		const int j = (cid_with_offset / cdim[2]) % cdim[1];
+//		const int k = cid_with_offset % cdim[2];
 
 		/* Loop over all its neighbours in range. */
 		for (int cjd = cell_loop_lower; cjd <= cell_loop_upper; cjd++) {
 
 			struct cell *cj = &cells[cjd];
 
-			int cjd_without_offset = cjd;
+//			int cjd_without_offset = cjd;
 
 			/* Skip non-neighbour natural cells. */
 			if ((cjd > bkg_cell_offset) && (cj->tl_cell_type != tl_cell_neighbour)){
 				continue;
 			}
 
-			/* If this is a background cell remove the offset. */
-			if (cjd > bkg_cell_offset) {
-				cjd_without_offset -= bkg_cell_offset;
-			}
+//			/* If this is a background cell remove the offset. */
+//			if (cjd > bkg_cell_offset) {
+//				cjd_without_offset -= bkg_cell_offset;
+//			}
 
 			/* Avoid void cells, empty cells and completely foreign pairs */
 			if (cj->grav.count == 0 ||
@@ -1634,10 +1634,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
       	continue;
       }
 
-			/* Integer indices of the cell in the top-level grid */
-			const int cj_i = cjd_without_offset / (cdim[1] * cdim[2]);
-			const int cj_j = (cjd_without_offset / cdim[2]) % cdim[1];
-			const int cj_k = cjd_without_offset % cdim[2];
+//			/* Integer indices of the cell in the top-level grid */
+//			const int cj_i = cjd_without_offset / (cdim[1] * cdim[2]);
+//			const int cj_j = (cjd_without_offset / cdim[2]) % cdim[1];
+//			const int cj_k = cjd_without_offset % cdim[2];
 
 			/* Recover the multipole information */
 			const struct gravity_tensors *multi_i = ci->grav.multipole;
