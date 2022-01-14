@@ -439,8 +439,6 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
 
   /* Get some info about the physics */
 	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
-	const double max_mesh_dist = e->mesh->r_cut_max;
-	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
 	/* Maximal distance from shifted CoM to any corner */
 	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
@@ -1581,7 +1579,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* If the cell is a natural cell and not a neighbour cell
 		 * we don't need to do anything */
 		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-			continue
+			continue;
 		}
 
 		/* If the cell is a natural cell we must subtract the offset to find ijk
