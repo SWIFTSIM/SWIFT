@@ -16,7 +16,7 @@
 
 /* Define some values, shouldn't need to change these. */
 #define zoom_boost_factor 1.1 // Multiply zoom region by this to give a buffer.
-#define neighbour_cell_delta 1 // How many layers of neighbours do we go out?
+//#define neighbour_cell_delta 1 // How many layers of neighbours do we go out?
 
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the zoom_region struct.
@@ -1595,7 +1595,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		} else {
 			/* Set the neighbour loop limits*/
 			cell_loop_lower = bkg_cell_offset;
-			cell_loop_upper = 2 * bkg_cell_offset;
+			cell_loop_upper = s->nr_cells;
 		}
 
 		/* Integer indices of the cell in the top-level grid */
