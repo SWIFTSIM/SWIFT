@@ -1535,7 +1535,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
 	/* Some info about the domain */
-	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+//	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 	int periodic = s->periodic;
 
