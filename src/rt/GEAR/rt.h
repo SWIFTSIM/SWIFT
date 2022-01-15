@@ -99,6 +99,9 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
     p->rt_data.density[g].flux[1] = 0.f;
     p->rt_data.density[g].flux[2] = 0.f;
   }
+
+  rt_part_reset_mass_fluxes(p);
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
   p->rt_data.debug_iact_stars_inject_prep_tot = 0ULL;
@@ -294,11 +297,30 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
   float dt = psize * rt_params.reduced_speed_of_light_inverse *
              rt_props->CFL_condition;
 
+  /* TODO: Add cooling time */
+
   return dt;
 }
 
 /**
- * @brief Compute the time-step length for an RT step of a particle.
+ * @brief Computes the next radiative transfer time step size
+ * of a given star particle (during timestep tasks).
+ *
+ * @param sp spart to work on
+ * @param rt_props the RT properties struct
+ * @param cosmo the cosmology
+ */
+__attribute__((always_inline)) INLINE static float rt_compute_spart_timestep(
+    const struct spart* restrict sp, const struct rt_props* restrict rt_props,
+    const struct cosmology* restrict cosmo) {
+
+  /* For now, the only thing we care about is the upper threshold for stars. */
+  return rt_props->stars_max_timestep;
+}
+
+/**
+ * @brief Compute the time-step length for an RT step of a particle from given
+ * integer times ti_beg and ti_end
  *
  * @param ti_beg Start of the time-step (on the integer time-line).
  * @param ti_end End of the time-step (on the integer time-line).
@@ -347,7 +369,7 @@ rt_injection_update_photon_density(struct part* restrict p,
 }
 
 /**
- * @brief Compute the photon emission rates for this stellar particle
+ * @brief Compute the photon emission rates for this stellar particle.
  *        This function is called every time the spart is being reset
  *        (during start-up and during stars ghost if spart is active)
  *        and assumes that the photon emission rate is an intrinsic
@@ -450,7 +472,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     rtd->conserved[g].flux[1] += rtd->flux[g].flux[1] * dt;
     rtd->conserved[g].flux[2] += rtd->flux[g].flux[2] * dt;
     rt_check_unphysical_conserved(&rtd->conserved[g].energy,
-                                  rtd->conserved[g].flux);
+                                  rtd->conserved[g].flux, 1);
   }
 }
 
@@ -459,13 +481,110 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
  *
  * This function wraps around rt_do_thermochemistry function.
  *
- * @param p particle to work on
+ * @param p Particle to work on.
+ * @param xp Pointer to the particle' extended data.
  * @param rt_props RT properties struct
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p, const struct rt_props* rt_props) {
+    struct part* restrict p, struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us, const double dt) {
 
-  rt_do_thermochemistry(p, rt_props);
+  /* Note: Can't pass rt_props as const struct because of grackle
+   * accessinging its properties there */
+
+  rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
+                        dt);
+}
+
+/**
+ * @brief Extra operations done during the kick. This needs to be
+ * done before the particle mass is updated in the hydro_kick_extra
+ *
+ * @param p Particle to act upon.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
+ */
+__attribute__((always_inline)) INLINE static void rt_kick_extra(
+    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {
+
+  /* Update the mass fraction changes due to interparticle fluxes */
+  const float current_mass = p->conserved.mass;
+
+  const float current_mass_HI =
+      current_mass * p->rt_data.tchem.mass_fraction_HI;
+  const float current_mass_HII =
+      current_mass * p->rt_data.tchem.mass_fraction_HII;
+  const float current_mass_HeI =
+      current_mass * p->rt_data.tchem.mass_fraction_HeI;
+  const float current_mass_HeII =
+      current_mass * p->rt_data.tchem.mass_fraction_HeII;
+  const float current_mass_HeIII =
+      current_mass * p->rt_data.tchem.mass_fraction_HeIII;
+
+  const float new_mass_HI =
+      current_mass_HI + p->rt_data.mass_flux.HI * dt_therm;
+  const float new_mass_HII =
+      current_mass_HII + p->rt_data.mass_flux.HII * dt_therm;
+  const float new_mass_HeI =
+      current_mass_HeI + p->rt_data.mass_flux.HeI * dt_therm;
+  const float new_mass_HeII =
+      current_mass_HeII + p->rt_data.mass_flux.HeII * dt_therm;
+  const float new_mass_HeIII =
+      current_mass_HeIII + p->rt_data.mass_flux.HeIII * dt_therm;
+
+  const float new_mass_tot = new_mass_HI + new_mass_HII + new_mass_HeI +
+                             new_mass_HeII + new_mass_HeIII;
+
+  /* During the initial fake time step, if the mass fractions haven't been set
+   * up yet, we could encounter divisions by zero here, so skip that. If it
+   * isn't the initial time step, the error will be caught down the line by
+   * another call
+   * to rt_check_unphysical_mass_fractions() (not the one 10 lines below this)
+   */
+  if (new_mass_tot == 0.f) return;
+
+  const float new_mass_tot_inv = 1.f / new_mass_tot;
+
+  p->rt_data.tchem.mass_fraction_HI = new_mass_HI * new_mass_tot_inv;
+  p->rt_data.tchem.mass_fraction_HII = new_mass_HII * new_mass_tot_inv;
+  p->rt_data.tchem.mass_fraction_HeI = new_mass_HeI * new_mass_tot_inv;
+  p->rt_data.tchem.mass_fraction_HeII = new_mass_HeII * new_mass_tot_inv;
+  p->rt_data.tchem.mass_fraction_HeIII = new_mass_HeIII * new_mass_tot_inv;
+
+  rt_check_unphysical_mass_fractions(p);
+
+  /* Don't update actual particle mass, that'll be done in the
+   * hydro_kick_extra calls */
+}
+
+/**
+ * @brief Prepare a particle for the !HYDRO! force calculation.
+ * E.g. for the meshless schemes, we need to take into account the
+ * mass fluxes of the constituent species between particles.
+ * NOTE: don't call this during rt_init_part or rt_reset_part,
+ * follow the hydro_prepare_force logic.
+ *
+ * @param p particle to work on
+ **/
+__attribute__((always_inline)) INLINE static void rt_prepare_force(
+    struct part* p) {
+
+  rt_part_reset_mass_fluxes(p);
 }
 
 /**
@@ -475,6 +594,17 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
  */
 __attribute__((always_inline)) INLINE static void rt_clean(
     struct rt_props* props) {
+
+  /* Clean up grackle data. This is a call to a grackle function */
+  _free_chemistry_data(&props->grackle_chemistry_data,
+                       props->grackle_chemistry_rates);
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    free(props->energy_weighted_cross_sections[g]);
+    free(props->number_weighted_cross_sections[g]);
+  }
+  free(props->energy_weighted_cross_sections);
+  free(props->number_weighted_cross_sections);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   fclose(props->conserved_energy_filep);
