@@ -693,3 +693,8 @@ GEARRT:
     mass_fraction_HeII: 0.                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
     mass_fraction_HeIII: 0.                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
     skip_thermochemistry: 0                           # (Optional) skip the thermochemistry. This is intended only for debugging and testing the radiation transport, as it breaks the purpose of RT.
+    stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+    stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+    stellar_spectrum_blackbody_temperature_K: 1.e4    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum. 
+    stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
+

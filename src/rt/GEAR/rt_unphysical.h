@@ -79,19 +79,20 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
  *
  * @param energy pointer to the photon energy
  * @param flux pointer to photon fluxes (3 dimensional)
+ * @param c integer indentifier where this function was called from
  */
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
-    float* energy, float* flux) {
+    float* energy, float* flux, int c) {
 
   /* Check for negative energies */
 #ifdef SWIFT_DEBUG_CHECKS
   if (*energy < 0.f && fabs(*energy) > 1.e-1)
-    message("Fixing unphysical energy %.6e | %.6e %.6e %.6e", *energy, flux[0],
-            flux[1], flux[2]);
+    message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e", c,
+            *energy, flux[0], flux[1], flux[2]);
 #endif
   if (isinf(*energy) || isnan(*energy))
-    error("Got inf/nan radiation energy %.6e | %.6e %.6e %.6e", *energy,
-          flux[0], flux[1], flux[2]);
+    error("Got inf/nan radiation energy case %d | %.6e | %.6e %.6e %.6e", c,
+          *energy, flux[0], flux[1], flux[2]);
 
   if (*energy <= 0.f) {
     *energy = 0.f;
@@ -152,4 +153,51 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
     }
   }
 }
+
+/**
+ * @brief check whether gas species mass fractions have physical
+ * values and correct small errors if necessary.
+ */
+__attribute__((always_inline)) INLINE static void
+rt_check_unphysical_mass_fractions(struct part* restrict p) {
+
+  if (p->rt_data.tchem.mass_fraction_HI < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HI < -1e4)
+      message("WARNING: Got negative HI mass fraction?");
+    p->rt_data.tchem.mass_fraction_HI = 0.f;
+  }
+  if (p->rt_data.tchem.mass_fraction_HII < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HII < -1e4)
+      message("WARNING: Got negative HII mass fraction?");
+    p->rt_data.tchem.mass_fraction_HII = 0.f;
+  }
+  if (p->rt_data.tchem.mass_fraction_HeI < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HeI < -1e4)
+      message("WARNING: Got negative HeI mass fraction?");
+    p->rt_data.tchem.mass_fraction_HeI = 0.f;
+  }
+  if (p->rt_data.tchem.mass_fraction_HeII < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HeII < -1e4)
+      message("WARNING: Got negative HeII mass fraction?");
+    p->rt_data.tchem.mass_fraction_HeII = 0.f;
+  }
+  if (p->rt_data.tchem.mass_fraction_HeIII < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HeIII < -1e4)
+      message("WARNING: Got negative HeIII mass fraction?");
+    p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+  }
+
+  const float XHI = p->rt_data.tchem.mass_fraction_HI;
+  const float XHII = p->rt_data.tchem.mass_fraction_HII;
+  const float XHeI = p->rt_data.tchem.mass_fraction_HeI;
+  const float XHeII = p->rt_data.tchem.mass_fraction_HeII;
+  const float XHeIII = p->rt_data.tchem.mass_fraction_HeIII;
+
+  const float Xtot = XHI + XHII + XHeI + XHeII + XHeIII;
+
+  /* Make sure we sum up to 1. TODO: Assuming we have no metals. */
+  if (fabsf(Xtot - 1.f) > 1e-3)
+    error("Got total mass fraction of gas = %.6g", Xtot);
+}
+
 #endif /* SWIFT_RT_UNPHYSICAL_GEAR_H */

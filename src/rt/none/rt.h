@@ -144,7 +144,23 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
 }
 
 /**
- * @brief Compute the time-step length for an RT step of a particle.
+ * @brief Computes the next radiative transfer time step size
+ * of a given star particle (during timestep tasks).
+ *
+ * @param sp spart to work on
+ * @param rt_props the RT properties struct
+ * @param cosmo the cosmology
+ */
+__attribute__((always_inline)) INLINE static float rt_compute_spart_timestep(
+    const struct spart* restrict sp, const struct rt_props* restrict rt_props,
+    const struct cosmology* restrict cosmo) {
+
+  return FLT_MAX;
+}
+
+/**
+ * @brief Compute the time-step length for an RT step of a particle from given
+ * integer times ti_beg and ti_end
  *
  * @param ti_beg Start of the time-step (on the integer time-line).
  * @param ti_end End of the time-step (on the integer time-line).
@@ -215,13 +231,50 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 /**
  * @brief Do the thermochemistry on a particle.
  *
- * This function wraps around rt_do_thermochemistry function.
- *
- * @param p particle to work on
+ * @param p Particle to work on.
+ * @param xp Pointer to the particle' extended data.
  * @param rt_props RT properties struct
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p, const struct rt_props* rt_props) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us, const double dt) {}
+
+/**
+ * @brief Extra operations done during the kick.
+ *
+ * @param p Particle to act upon.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
+ */
+__attribute__((always_inline)) INLINE static void rt_kick_extra(
+    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {}
+
+/**
+ * @brief Prepare a particle for the !HYDRO! force calculation.
+ * E.g. for the meshless schemes, we need to take into account the
+ * mass fluxes of the ionizing species between particles.
+ * NOTE: don't call this during rt_init_part or rt_reset_part,
+ * follow the hydro_prepare_force logic.
+ *
+ * @param p particle to work on
+ **/
+__attribute__((always_inline)) INLINE static void rt_prepare_force(
+    struct part* p) {}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.

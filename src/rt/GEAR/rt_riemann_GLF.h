@@ -47,8 +47,8 @@
  */
 __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
     const float UL[4], const float UR[4], const float FLnorm,
-    const float FRnorm, const float hyperFluxL[4][3],
-    const float hyperFluxR[4][3], float flux_half[4], const float n_unit[3]) {
+    const float FRnorm, float hyperFluxL[4][3], float hyperFluxR[4][3],
+    float flux_half[4], const float n_unit[3]) {
   float fluxL[4];
   fluxL[0] = hyperFluxL[0][0] * n_unit[0] + hyperFluxL[0][1] * n_unit[1] +
              hyperFluxL[0][2] * n_unit[2];

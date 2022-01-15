@@ -16,9 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_THERMOCHEMISTRY_GEAR_H
-#define SWIFT_RT_THERMOCHEMISTRY_GEAR_H
+#ifndef SWIFT_RT_GEAR_THERMOCHEMISTRY_H
+#define SWIFT_RT_GEAR_THERMOCHEMISTRY_H
 
+/* need to rework (and check) code if changed */
+#define GRACKLE_NPART 1
+#define GRACKLE_RANK 3
+
+#include "rt_interaction_rates.h"
 #include "rt_ionization_equilibrium.h"
 
 /**
@@ -58,15 +63,33 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
     p->rt_data.tchem.mass_fraction_HeII = rt_props->mass_fraction_HeII_init;
     p->rt_data.tchem.mass_fraction_HeIII = rt_props->mass_fraction_HeIII_init;
   }
+
+  /* Check that we didn't do something stupid */
+  rt_check_unphysical_mass_fractions(p);
 }
 
 /**
  * @brief Main function for the thermochemistry step.
  *
  * @param p Particle to work on.
+ * @param xp Pointer to the particle' extended data.
+ * @param rt_props RT properties struct
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param dt The time-step of this particle.
  */
-__attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
-    struct part* restrict p, const struct rt_props* rt_props) {
+static void rt_do_thermochemistry(struct part* restrict p,
+                                  struct xpart* restrict xp,
+                                  struct rt_props* rt_props,
+                                  const struct cosmology* restrict cosmo,
+                                  const struct hydro_props* hydro_props,
+                                  const struct phys_const* restrict phys_const,
+                                  const struct unit_system* restrict us,
+                                  const double dt) {
+  /* Note: Can't pass rt_props as const struct because of grackle
+   * accessinging its properties there */
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (!p->rt_data.debug_injection_done)
@@ -79,7 +102,116 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
   p->rt_data.debug_thermochem_done += 1;
 #endif
 
+  /* Nothing to do here? */
   if (rt_props->skip_thermochemistry) return;
+  if (dt == 0.) return;
+
+  /* This is where the fun begins */
+  /* ---------------------------- */
+
+  /* initialize data */
+  grackle_field_data particle_grackle_data;
+
+  int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
+  int grid_start[GRACKLE_RANK] = {0, 0, 0};
+  int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
+
+  particle_grackle_data.grid_dx = 0.;
+  particle_grackle_data.grid_rank = GRACKLE_RANK;
+  particle_grackle_data.grid_dimension = grid_dimension;
+  particle_grackle_data.grid_start = grid_start;
+  particle_grackle_data.grid_end = grid_end;
+
+  /* general particle data */
+  gr_float density = hydro_get_physical_density(p, cosmo);
+  const float u_minimal = hydro_props->minimal_internal_energy;
+  gr_float internal_energy =
+      max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
+
+  const float u_old = internal_energy;
+
+  /* initialize density */
+  particle_grackle_data.density = &density;
+  particle_grackle_data.internal_energy = &internal_energy;
+  /* grackle 3.0 doc: "Currently not used" */
+  particle_grackle_data.x_velocity = NULL;
+  particle_grackle_data.y_velocity = NULL;
+  particle_grackle_data.z_velocity = NULL;
+
+  gr_float species_densities[6];
+  rt_tchem_get_species_densities(p, density, species_densities);
+
+  particle_grackle_data.HI_density = &species_densities[0];
+  particle_grackle_data.HII_density = &species_densities[1];
+  particle_grackle_data.HeI_density = &species_densities[2];
+  particle_grackle_data.HeII_density = &species_densities[3];
+  particle_grackle_data.HeIII_density = &species_densities[4];
+  particle_grackle_data.e_density = &species_densities[5];
+
+  particle_grackle_data.volumetric_heating_rate = NULL;
+  particle_grackle_data.specific_heating_rate = NULL;
+
+  gr_float rates[5];
+  float rates_by_frequency_bin[RT_NGROUPS];
+  rt_tchem_get_interaction_rates(rates, rates_by_frequency_bin, p,
+                                 species_densities, rt_props, phys_const, us,
+                                 cosmo);
+  particle_grackle_data.RT_heating_rate = &rates[0];
+  particle_grackle_data.RT_HI_ionization_rate = &rates[1];
+  particle_grackle_data.RT_HeI_ionization_rate = &rates[2];
+  particle_grackle_data.RT_HeII_ionization_rate = &rates[3];
+  particle_grackle_data.RT_H2_dissociation_rate = &rates[4];
+
+  particle_grackle_data.metal_density = NULL;
+
+  /* solve chemistry */
+  if (!local_solve_chemistry(
+          &rt_props->grackle_chemistry_data, rt_props->grackle_chemistry_rates,
+          &rt_props->grackle_units, &particle_grackle_data, dt))
+    error("Error in solve_chemistry.");
+
+  /* update particle internal energy. Grackle had access by reference
+   * to internal_energy */
+  const float u_new = max(internal_energy, u_minimal);
+
+  /* Redo if we changed by more than 10% ? */
+  if (fabsf(u_new - u_old) > 0.1f * u_old) {
+    /* Redo because we changed by more than 10% ! */
+    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
+                          0.5 * dt);
+    rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
+                          0.5 * dt);
+    return;
+  }
+
+  /* If we're good, update the particle data from grackle results */
+  hydro_set_internal_energy(p, u_new);
+
+  /* update radiation fields */
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    const float factor_new = (1.f - dt * rates_by_frequency_bin[g]);
+    p->rt_data.conserved[g].energy *= factor_new;
+    for (int i = 0; i < 3; i++) {
+      p->rt_data.conserved[g].flux[i] *= factor_new;
+    }
+    rt_check_unphysical_conserved(&p->rt_data.conserved[g].energy,
+                                  p->rt_data.conserved[g].flux, 2);
+  }
+
+  /* copy updated grackle data to particle */
+  const gr_float one_over_rho = 1. / density;
+  p->rt_data.tchem.mass_fraction_HI =
+      particle_grackle_data.HI_density[0] * one_over_rho;
+  p->rt_data.tchem.mass_fraction_HII =
+      particle_grackle_data.HII_density[0] * one_over_rho;
+  p->rt_data.tchem.mass_fraction_HeI =
+      particle_grackle_data.HeI_density[0] * one_over_rho;
+  p->rt_data.tchem.mass_fraction_HeII =
+      particle_grackle_data.HeII_density[0] * one_over_rho;
+  p->rt_data.tchem.mass_fraction_HeIII =
+      particle_grackle_data.HeIII_density[0] * one_over_rho;
+
+  rt_check_unphysical_mass_fractions(p);
 }
 
-#endif /* SWIFT_RT_THERMOCHEMISTRY_GEAR_H */
+#endif /* SWIFT_RT_GEAR_THERMOCHEMISTRY_H */
