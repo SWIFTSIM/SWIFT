@@ -114,7 +114,7 @@ INLINE static void rt_convert_conserved_photon_fluxes(
 }
 
 /**
- * @brief Extract mass fractions of ionizing species from tchem struct.
+ * @brief Extract mass fractions of constituent species from tchem struct.
  * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
  */
 INLINE static void rt_convert_mass_fractions(const struct engine* engine,
@@ -149,7 +149,7 @@ INLINE static int rt_write_particles(const struct part* parts,
   list[2] = io_make_output_field_convert_part(
       "IonMassFractions", FLOAT, 5, UNIT_CONV_NO_UNITS, 0, parts,
       /*xparts=*/NULL, rt_convert_mass_fractions,
-      "Mass fractions of all ionizing species");
+      "Mass fractions of all constituent species");
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   num_elements += 8;
@@ -258,13 +258,24 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Write photon group bin edges */
   /* ---------------------------- */
+
+  /* Note: photon frequency bin edges are kept in cgs. Convert them here to
+   * internal units so we're still compatible with swiftsimio. */
+  const float Hz_internal =
+      units_cgs_conversion_factor(internal_units, UNIT_CONV_INV_TIME);
+  const float Hz_internal_inv = 1.f / Hz_internal;
+  float photon_groups_internal[RT_NGROUPS];
+  for (int g = 0; g < RT_NGROUPS; g++)
+    photon_groups_internal[g] = rtp->photon_groups[g] * Hz_internal_inv;
+
   hid_t type_float = H5Tcopy(io_hdf5_type(FLOAT));
 
   hsize_t dims[1] = {RT_NGROUPS};
   hid_t space = H5Screate_simple(1, dims, NULL);
   hid_t dset = H5Dcreate(h_grp, "PhotonGroupEdges", type_float, space,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dset, type_float, H5S_ALL, H5S_ALL, H5P_DEFAULT, rtp->photon_groups);
+  H5Dwrite(dset, type_float, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           photon_groups_internal);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
@@ -398,8 +409,8 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   H5Dclose(dset_cred);
 
-  /* Write ionizing species mass fractions */
-  /* ------------------------------------- */
+  /* Write constituent species mass fractions */
+  /* ---------------------------------------- */
 
   char names_mf[5 * RT_LABELS_SIZE];
   strcpy(names_mf + 0 * RT_LABELS_SIZE, "HI\0");

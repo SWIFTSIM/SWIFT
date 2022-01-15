@@ -95,4 +95,18 @@ __attribute__((always_inline)) INLINE static void rt_compute_flux(
   fluxes[3] *= Anorm;
 }
 
+/**
+ * @brief reset the mass fluxes of constituent species for a particle.
+ *
+ * @param p particle to work on.
+ **/
+__attribute__((always_inline)) INLINE static void rt_part_reset_mass_fluxes(
+    struct part* restrict p) {
+  p->rt_data.mass_flux.HI = 0.f;
+  p->rt_data.mass_flux.HII = 0.f;
+  p->rt_data.mass_flux.HeI = 0.f;
+  p->rt_data.mass_flux.HeII = 0.f;
+  p->rt_data.mass_flux.HeIII = 0.f;
+}
+
 #endif /* SWIFT_GEAR_RT_FLUX_H */

@@ -76,6 +76,15 @@ struct rt_part_data {
     float number_density_electrons; /* number density of electrons */
   } tchem;
 
+  /* Keep track of the actual mass fluxes of the gas species */
+  struct {
+    float HI;    /* mass fraction taken by HI */
+    float HII;   /* mass fraction taken by HII */
+    float HeI;   /* mass fraction taken by HeI */
+    float HeII;  /* mass fraction taken by HeII */
+    float HeIII; /* mass fraction taken by HeIII */
+  } mass_flux;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* debugging data to store during entire run */
 

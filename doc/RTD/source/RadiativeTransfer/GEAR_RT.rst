@@ -50,6 +50,7 @@ You need to provide the following runtime parameters in the yaml file:
        hydrogen_mass_fraction:  0.76                      # total hydrogen (H + H+) mass fraction in the 
                                                           # metal-free portion of the gas
 
+       stellar_spectrum_type: 0                           # Which radiation spectrum to use. 0: constant. 1: blackbody spectrum.
 
 The ``photon_groups`` need to be ``N - 1`` frequency edges (floats) to separate 
 the spectrum into ``N`` groups. The outer limits of zero and infinity are 
@@ -67,7 +68,19 @@ intended to be optional in the future, **for now it needs to be set to 1.**, and
 it requires you to manually set the stellar emission rates via the
 ``star_emission_rates_LSol`` parameter.
 
+When solving the thermochemistry, we need to assume some form of stellar
+spectrum so we may integrate over frequency bins to obtain average interaction
+rates. The parameter ``stellar_spectrum_type`` is hence required, and allows you
+to select between:
 
+- constant spectrum (``stellar_spectrum_type: 0``)
+    - This choice additionally requires you to provide a maximal frequency for
+      the spectrum after which it'll be cut off via the 
+      ``stellar_spectrum_const_max_frequency_Hz`` parameter
+
+- blackbody spectrum (``stellar_spectrum_type: 1``)
+    - In this case, you need to provide also temperature of the blackbody via the 
+      ``stellar_spectrum_blackbody_temperature_K`` parameter.
 
 Initial Conditions
 ~~~~~~~~~~~~~~~~~~
@@ -188,7 +201,8 @@ Generate Ionization Mass Fractions Using SWIFT
 ``````````````````````````````````````````````
 
 .. warning:: Using SWIFT to generate initial ionization mass fractions will
-   overwrite any initial conditions that have been read in.
+   overwrite the mass fractions that have been read in from the initial 
+   conditions.
 
 Optionally, you can use SWIFT to generate the initial mass fractions of the
 ionizing species. To set the initial mass fractions of all particles to the same
