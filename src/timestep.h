@@ -235,8 +235,12 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     new_dt_self = gravity_compute_timestep_self(
         sp->gpart, a_hydro, e->gravity_properties, e->cosmology);
 
+  float new_dt_rt = FLT_MAX;
+  if (e->policy & engine_policy_rt)
+    new_dt_rt = rt_compute_spart_timestep(sp, e->rt_props, e->cosmology);
+
   /* Take the minimum of all */
-  float new_dt = min3(new_dt_stars, new_dt_self, new_dt_ext);
+  float new_dt = min4(new_dt_stars, new_dt_self, new_dt_ext, new_dt_rt);
 
   /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);

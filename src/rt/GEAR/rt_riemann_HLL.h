@@ -117,8 +117,8 @@ rt_riemann_interpolate_eigenvals(float f, float theta, float *lambda_min,
  */
 __attribute__((always_inline)) INLINE static void rt_riemann_solve_for_flux(
     const float UL[4], const float UR[4], const float FLnorm,
-    const float FRnorm, const float hyperFluxL[4][3],
-    const float hyperFluxR[4][3], float flux_half[4], const float n_unit[3]) {
+    const float FRnorm, float hyperFluxL[4][3], float hyperFluxR[4][3],
+    float flux_half[4], const float n_unit[3]) {
 
   /* Compute reduced fluxes and angles between surface and flux.
    * These are based on physical fluxes, not hyperbolic fluxes. */

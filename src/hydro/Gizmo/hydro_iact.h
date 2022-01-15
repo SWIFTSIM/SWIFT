@@ -24,6 +24,7 @@
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
 #include "hydro_velocities.h"
+#include "rt_additions.h"
 
 #define GIZMO_VOLUME_CORRECTION
 
@@ -415,6 +416,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
   if (mode == 1) {
     hydro_part_update_fluxes_right(pj, totflux, dx);
   }
+
+  /* If we're working with RT, we need to pay additional attention to the
+   * individual mass fractions of ionizing species. */
+  rt_part_update_mass_fluxes(pi, pj, totflux[0], mode);
 }
 
 /**
