@@ -413,7 +413,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   }
 
   /* Now find what cells neighbour the zoom region. */
-  if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
+  if (s->with_zoom_region) find_neighbouring_cells(s, s->e, verbose);
 
 #endif
 }
@@ -427,14 +427,13 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
  * @param s The space.
  * @param verbose Are we talking?
  */
-void find_neighbouring_cells(struct space *s, const int verbose) {
+void find_neighbouring_cells(struct space *s, struct engine *e, const int verbose) {
 #ifdef WITH_ZOOM_REGION
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
-  struct engine *e = s->e;
 
-  	/* Some info about the zoom domain */
+  /* Some info about the zoom domain */
 	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
   /* Get some info about the physics */
