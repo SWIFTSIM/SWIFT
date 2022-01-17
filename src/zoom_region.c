@@ -16,7 +16,7 @@
 
 /* Define some values, shouldn't need to change these. */
 #define zoom_boost_factor 1.1 // Multiply zoom region by this to give a buffer.
-#define neighbour_cell_delta 3 // How many layers of neighbours do we go out?
+#define neighbour_cell_delta 1 // How many layers of neighbours do we go out?
 
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the zoom_region struct.
@@ -1575,11 +1575,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
-		/* If the cell is a natural cell and not a neighbour cell
-		 * we don't need to do anything */
-		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-			continue;
-		}
+//		/* If the cell is a natural cell and not a neighbour cell
+//		 * we don't need to do anything */
+//		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
+//			continue;
+//		}
 
 		/* If the cell is a natural cell we must subtract the offset to find ijk
 		 * and loop over only zoom cells*/
