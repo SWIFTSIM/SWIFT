@@ -463,8 +463,8 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
-//        /* Only interested in cells hosting zoom top level cells. */
-//        if (cells[cid].tl_cell_type != void_tl_cell) continue;
+        /* Only interested in cells hosting zoom top level cells. */
+        if (cells[cid].tl_cell_type != void_tl_cell) continue;
 
         /* Loop over all its direct neighbours. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
