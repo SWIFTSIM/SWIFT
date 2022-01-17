@@ -1406,7 +1406,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_samesize(void *map_data,
 					int cjd = cell_getid(cdim, iii, jjj, kkk);
 
 					/* If this is a background cell apply the offset. */
-					if (cid > bkg_cell_offset) {
+					if (ci->tl_cell_type <= 2) {
 						cjd += bkg_cell_offset;
 					}
 
@@ -1430,7 +1430,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_samesize(void *map_data,
 					const double min_radius2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
 
 					/* Are we beyond the distance where the truncated forces are 0 ?*/
-					if (periodic && (cid > bkg_cell_offset) && min_radius2 > max_mesh_dist2) continue;
+					if (periodic && (ci->tl_cell_type <= 2) && min_radius2 > max_mesh_dist2) continue;
 
 					/* Are the cells too close for a MM interaction ? */
 					if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -1611,12 +1611,12 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //			int cjd_without_offset = cjd;
 
 			/* Skip non-neighbour natural cells. */
-			if ((cjd > bkg_cell_offset) && (cj->tl_cell_type != tl_cell_neighbour)){
+			if ((cj->tl_cell_type <= 2) && (cj->tl_cell_type != tl_cell_neighbour)){
 				continue;
 			}
 
 //			/* If this is a background cell remove the offset. */
-//			if (cjd > bkg_cell_offset) {
+//			if (cj->tl_cell_type <= 2) {
 //				cjd_without_offset -= bkg_cell_offset;
 //			}
 
@@ -1651,7 +1651,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			const double min_radius2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
 
 			/* Are we beyond the distance where the truncated forces are 0 ?*/
-			if (periodic && (cid > bkg_cell_offset) && min_radius2 > max_mesh_dist2) continue;
+			if (periodic && (ci->tl_cell_type <= 2) && min_radius2 > max_mesh_dist2) continue;
 
 			/* Are the cells too close for a MM interaction ? */
 			if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
