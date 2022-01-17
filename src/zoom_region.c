@@ -1596,7 +1596,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		} else {
 			/* Set the neighbour loop limits*/
 			cell_loop_lower = bkg_cell_offset;
-			cell_loop_upper = s->nr_cells;
+			cell_loop_upper = 2 * bkg_cell_offset;
 		}
 
 //		/* Integer indices of the cell in the top-level grid */
