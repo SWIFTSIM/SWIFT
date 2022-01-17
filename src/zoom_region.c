@@ -1605,7 +1605,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //		const int k = cid_with_offset % cdim[2];
 
 		/* Loop over all its neighbours in range. */
-		for (int cjd = cell_loop_lower; cjd <= cell_loop_upper; cjd++) {
+		for (int cjd = cell_loop_lower; cjd < cell_loop_upper; cjd++) {
 
 			struct cell *cj = &cells[cjd];
 
@@ -1621,7 +1621,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //				cjd_without_offset -= bkg_cell_offset;
 //			}
 
-			/* Avoid void cells, empty cells and completely foreign pairs */
+			/* Avoid empty cells and completely foreign pairs */
 			if (cj->grav.count == 0 ||
 			    (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
@@ -1652,7 +1652,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			const double min_radius2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
 
 			/* Are we beyond the distance where the truncated forces are 0 ?*/
-			if (periodic && (cid >= bkg_cell_offset) && min_radius2 > max_mesh_dist2) continue;
+			if (periodic && min_radius2 > max_mesh_dist2) continue;
 
 			/* Are the cells too close for a MM interaction ? */
 			if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
