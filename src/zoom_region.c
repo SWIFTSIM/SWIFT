@@ -1556,9 +1556,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //	int delta_p = delta_cells;
 
 	/* Instantiate upper and lower limits of neighbour loop
-	 * Note: This is current unefficient and the loop is performed
+	 * Note: This is currently inefficient and the loop is performed
 	 * over all applicable cells to ci's current type (ci=natural
-	 * cj=zoom and vice versa)skipping any cells outside the necessary distance */
+	 * cj=zoom and vice versa) skipping any cells outside the necessary distance */
 	int cell_loop_lower;
 	int cell_loop_upper;
 
@@ -1625,13 +1625,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			    (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
 
-			/* Minimal distance between any two points in the cells */
-      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
-
-      /* Skip cells that are beyond the maximal distance for gravity tasks */
-      if (min_dist_CoM2 > distance2) {
-      	continue;
-      }
+//			/* Minimal distance between any two points in the cells */
+//      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
+//
+//      /* Skip cells that are beyond the maximal distance for gravity tasks */
+//      if (min_dist_CoM2 > distance2) {
+//      	continue;
+//      }
 
 //			/* Integer indices of the cell in the top-level grid */
 //			const int cj_i = cjd_without_offset / (cdim[1] * cdim[2]);
