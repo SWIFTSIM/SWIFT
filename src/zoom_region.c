@@ -16,7 +16,7 @@
 
 /* Define some values, shouldn't need to change these. */
 #define zoom_boost_factor 1.1 // Multiply zoom region by this to give a buffer.
-#define neighbour_cell_delta 1 // How many layers of neighbours do we go out?
+#define neighbour_cell_delta 3 // How many layers of neighbours do we go out?
 
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the zoom_region struct.
@@ -221,11 +221,10 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
   /* Loop over top level cells twice, second time is for the zoom region. */
   for (int n = 0; n < 2; n++) {
-    if (n == 1 && !s->with_zoom_region) continue;
 
     /* Set the cell location and sizes. */
-    for (int i = 0; i < cdim[0]; i++)
-      for (int j = 0; j < cdim[1]; j++)
+    for (int i = 0; i < cdim[0]; i++) {
+      for (int j = 0; j < cdim[1]; j++) {
         for (int k = 0; k < cdim[2]; k++) {
           const size_t cid = cell_getid(cdim, i, j, k);
 
@@ -347,6 +346,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
           }
         }
+      }
+    }
 
     /* Compute size of top level zoom cells on first iteration. */
     if (n == 1) continue;
@@ -1539,14 +1540,14 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	int periodic = s->periodic;
 
 //	/* Get some info about the physics */
-	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+//	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
 	const double max_mesh_dist = e->mesh->r_cut_max;
 	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
-	/* Maximal distance from shifted CoM to any corner
-	 * (only the natural cell distance is applicable) */
-	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
-	const double distance2 = distance * distance;
+//	/* Maximal distance from shifted CoM to any corner
+//	 * (only the natural cell distance is applicable) */
+//	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
+//	const double distance2 = distance * distance;
 
 //	/* Compute how many cells away we need to walk */
 //	const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
@@ -1575,11 +1576,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
-		/* If the cell is a natural cell and not a neighbour cell
-		 * we don't need to do anything */
-		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-			continue;
-		}
+//		/* If the cell is a natural cell and not a neighbour cell
+//		 * we don't need to do anything */
+//		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
+//			continue;
+//		}
 
 		/* If the cell is a natural cell we must subtract the offset to find ijk
 		 * and loop over only zoom cells*/
@@ -1625,13 +1626,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			    (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
 
-			/* Minimal distance between any two points in the cells */
-      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
-
-      /* Skip cells that are beyond the maximal distance for gravity tasks */
-      if (min_dist_CoM2 > distance2) {
-      	continue;
-      }
+//			/* Minimal distance between any two points in the cells */
+//      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
+//
+//      /* Skip cells that are beyond the maximal distance for gravity tasks */
+//      if (min_dist_CoM2 > distance2) {
+//      	continue;
+//      }
 
 //			/* Integer indices of the cell in the top-level grid */
 //			const int cj_i = cjd_without_offset / (cdim[1] * cdim[2]);
