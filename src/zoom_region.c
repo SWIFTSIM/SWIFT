@@ -1622,13 +1622,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			    (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
 
-			/* Minimal distance between any two points in the cells */
-      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
-
-      /* Skip cells that are beyond the maximal distance for gravity tasks */
-      if (min_dist_CoM2 > distance2) {
-      	continue;
-      }
+//			/* Minimal distance between any two points in the cells */
+//      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
+//
+//      /* Skip cells that are beyond the maximal distance for gravity tasks */
+//      if (min_dist_CoM2 > distance2) {
+//      	continue;
+//      }
 
 //			/* Integer indices of the cell in the top-level grid */
 //			const int cj_i = cjd_without_offset / (cdim[1] * cdim[2]);
