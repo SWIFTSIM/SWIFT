@@ -433,8 +433,8 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
 
-//  /* Some info about the zoom domain */
-//	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  /* Some info about the zoom domain */
+	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
 //  /* Get some info about the physics */
 //	const double theta_crit_inv = 1. / s->e->gravity_properties->theta_crit;
@@ -461,7 +461,7 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
       for (int k = 0; k < cdim[2]; k++) {
 
         /* Get the cell ID. */
-        const int cid = cell_getid(cdim, i, j, k);
+        const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
         /* Only interested in cells hosting zoom top level cells. */
         if (cells[cid].tl_cell_type != void_tl_cell) continue;
