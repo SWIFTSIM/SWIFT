@@ -413,7 +413,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   }
 
   /* Now find what cells neighbour the zoom region. */
-  if (s->with_zoom_region) find_neighbouring_cells(s, s->e, verbose);
+  if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
 
 #endif
 }
@@ -427,7 +427,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
  * @param s The space.
  * @param verbose Are we talking?
  */
-void find_neighbouring_cells(struct space *s, struct engine *e, const int verbose) {
+void find_neighbouring_cells(struct space *s, const int verbose) {
 #ifdef WITH_ZOOM_REGION
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
@@ -436,21 +436,21 @@ void find_neighbouring_cells(struct space *s, struct engine *e, const int verbos
   /* Some info about the zoom domain */
 	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-  /* Get some info about the physics */
-	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+//  /* Get some info about the physics */
+//	const double theta_crit_inv = 1. / s->e->gravity_properties->theta_crit;
+//
+//	/* Maximal distance from shifted CoM to any corner */
+//	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
+//
+//	/* Compute how many cells away we need to walk */
+//	const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
+//
+//	/* Turn this into upper and lower bounds for loops */
+//	const int delta_m = delta_cells;
+//	const int delta_p = delta_cells;
 
-	/* Maximal distance from shifted CoM to any corner */
-	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
-
-	/* Compute how many cells away we need to walk */
-	const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
-
-	/* Turn this into upper and lower bounds for loops */
-	const int delta_m = delta_cells;
-	const int delta_p = delta_cells;
-
-//  const int delta_m = neighbour_cell_delta; // Should compute this, but how?
-//  const int delta_p = neighbour_cell_delta;
+  const int delta_m = neighbour_cell_delta; // Should compute this, but how?
+  const int delta_p = neighbour_cell_delta;
 
   int neighbour_count = 0;
 
