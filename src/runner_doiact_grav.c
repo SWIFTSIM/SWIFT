@@ -810,13 +810,17 @@ static INLINE void runner_dopair_grav_pp_full(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (gparts_j[pjd].time_bin == time_bin_not_created && mass_j != 0.f) {
-        error("Found an extra gpart in the gravity interaction");
-      }
+      if (!foreign_j && gparts_j[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.f)
+        error("Found a local extra gpart in the gravity interaction");
+
+      if (foreign_j && gparts_foreign_j[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.f)
+        error("Found a foreign gpart in the gravity interaction");
+
       if (gparts_i[pid].time_bin == time_bin_not_created &&
-          ci_cache->m[pid] != 0.f) {
+          ci_cache->m[pid] != 0.f)
         error("Found an extra gpart in the gravity interaction");
-      }
 
       if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
