@@ -116,7 +116,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         t_pack_fof = scheduler_addtask(s, task_type_pack, task_subtype_fof, 0,
                                        0, ci, cj);
 
-	/* Pack before you send */
+        /* Pack before you send */
         scheduler_addunlock(s, t_pack_fof, t_fof);
       }
 
@@ -4088,8 +4088,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
-      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, /*t_fof=*/NULL,
-                                   tend, with_fof);
+      engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, /*t_fof=*/NULL, tend,
+                                   with_fof);
   }
 }
 
