@@ -667,8 +667,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       const float balsara_j = pj->force.balsara;
 
     
-    float Q_i = -0.5f * v_sig * mu_ij * (balsara_i + balsara_j);
-    float Q_j = -0.5f * v_sig * mu_ij * (balsara_i + balsara_j);
+    float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj / (rhoi + rhoj);
+    float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj / (rhoi + rhoj);
        
 #endif
     
@@ -931,8 +931,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       const float balsara_j = pj->force.balsara;
 
     
-    float Q_i = -0.5f * v_sig * mu_ij * (balsara_i + balsara_j);
-    float Q_j = -0.5f * v_sig * mu_ij * (balsara_i + balsara_j);
+    float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj / (rhoi + rhoj);
+    float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj / (rhoi + rhoj);
        
 #endif
 
