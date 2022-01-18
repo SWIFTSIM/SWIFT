@@ -19,22 +19,6 @@
 AC_INIT([SWIFT],[0.9.0],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
-#  We want to stop when given unrecognised options. No subdirs so this is safe.
-enable_option_checking=${enable_option_checking:-fatal}
-if test -n "$ac_unrecognized_opts"; then
-    case $enable_option_checking in
-        no)
-        ;;
-        fatal)
-            { $as_echo "$as_me: error: unrecognized options: $ac_unrecognized_opts" >&2
-              { (exit 1); exit 1; }; }
-        ;;
-        *)
-            $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2
-        ;;
-    esac
-fi
-
 AC_COPYRIGHT
 AC_CONFIG_SRCDIR([src/space.c])
 AC_CONFIG_AUX_DIR([.])
@@ -102,14 +86,10 @@ if test "$with_csds" = "yes"; then
       AC_MSG_ERROR([The CSDS requires that 'long long int' has size 8 bytes])
    fi
 
-   # Ensure that everything is alright for the CSDS
-   if test ! -f csds/Makefile.in; then
-      AC_MSG_ERROR([It seems that the submodule "CSDS" was not initialized, please rerun autogen.sh and reconfigure.])
-   fi
+   AC_CONFIG_SUBDIRS([csds])
 
 fi
 AM_CONDITIONAL([HAVECSDS],[test $with_csds = "yes"])
-AM_COND_IF([HAVECSDS], [AC_CONFIG_FILES([csds/Makefile csds/src/Makefile csds/tests/Makefile])])
 
 
 
@@ -690,6 +670,15 @@ if test "$enable_ubsan" = "yes"; then
    fi
 fi
 
+
+# MPI mesh gravity
+AC_ARG_ENABLE([mpi-mesh-gravity],
+	[AS_HELP_STRING([--enable-mpi-mesh-gravity],
+		[enable parallel mesh gravity (requires FFTW MPI library) @<:@no/yes@:>@]
+	)],
+	[with_mpi_mesh_gravity="${enableval}"],
+	[with_mpi_mesh_gravity="no"]
+)
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
@@ -862,6 +851,8 @@ AH_VERBATIM([__STDC_FORMAT_MACROS],
 # is given FFTW must be found.
 # If FFTW is found, we check whether this is the threaded version.
 have_fftw="no"
+have_mpi_fftw="no"
+have_threaded_fftw="no"
 AC_ARG_WITH([fftw],
     [AS_HELP_STRING([--with-fftw=PATH],
        [root directory where fftw is installed @<:@yes/no@:>@]
@@ -921,7 +912,33 @@ if test "x$with_fftw" != "xno"; then
          AC_DEFINE([HAVE_THREADED_FFTW],1,[The threaded FFTW library appears to be present.])
          FFTW_LIBS=$FFTW_THREADED_LIBS
          FFTW_INCS=$FFTW_THREADED_INCS
-	 have_fftw="yes - threaded"
+
+      fi
+   fi
+
+   # If MPI mesh gravity is not disabled, check whether we have the MPI version of FFTW
+   if test "x$enable_mpi" = "xyes" -a "x$with_mpi_mesh_gravity" != "xno"; then
+      # Was FFTW's location specifically given?
+      if test "x$with_fftw" != "xyes" -a "x$with_fftw" != "xtest" -a "x$with_fftw" != "x"; then
+         FFTW_MPI_LIBS="-L$with_fftw/lib -lfftw3_mpi -lfftw3"
+         FFTW_MPI_INCS="-I$with_fftw/include"
+      else
+         FFTW_MPI_LIBS="-lfftw3_mpi -lfftw3"
+         FFTW_MPI_INCS=""
+      fi
+
+      # Verify that the library has MPI support
+      AC_CHECK_LIB([fftw3],[fftw_mpi_init],[have_mpi_fftw="yes"],
+                   [have_mpi_fftw="no"], $FFTW_MPI_LIBS)
+
+      # If found, update things. Don't add MPI flags to FFTW_*_LIBS etc because
+      # we don't want to link the MPI library into the non-MPI swift executable.
+      if test "x$have_mpi_fftw" = "xyes"; then
+         AC_DEFINE([HAVE_MPI_FFTW],1,[The MPI FFTW library appears to be present.])
+      else
+         if test "x$with_mpi_mesh_gravity" = "xyes" ; then
+            AC_MSG_ERROR("Unable to find FFTW MPI library for MPI mesh gravity")
+         fi
       fi
    fi
 fi
@@ -933,6 +950,7 @@ AC_ARG_WITH([arm-fftw],
     [with_arm_fftw="$withval"],
     [with_arm_fftw=no]
 )
+have_arm_fftw="no"
 if test "x$with_arm_fftw" != "xno"; then
 
    # Was FFTW's location specifically given?
@@ -949,14 +967,12 @@ if test "x$with_arm_fftw" != "xno"; then
       AC_CHECK_LIB([armpl_lp64],[fftw_malloc],[have_fftw="yes"],[have_fftw="no"],$FFTW_LIBS)
       if test "x$have_arm_fftw" != "xno"; then
       	 AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.])
-	 have_fftw="yes - ARM"
       fi
    # FFTW was specified, check that it was a valid location.
    else
       AC_CHECK_LIB([armpl_lp64],[fftw_malloc],
          AC_DEFINE([HAVE_FFTW],1,[The FFTW library appears to be present.]),
          AC_MSG_ERROR(something is wrong with the FFTW library!), $FFTW_LIBS)
-      have_fftw="yes - ARM"
    fi
 
    # FFTW was requested not to be used.
@@ -993,6 +1009,10 @@ fi
 AC_SUBST([FFTW_LIBS])
 AC_SUBST([FFTW_INCS])
 AM_CONDITIONAL([HAVEFFTW],[test -n "$FFTW_LIBS"])
+
+AC_SUBST([FFTW_MPI_LIBS])
+AC_SUBST([FFTW_MPI_INCS])
+AM_CONDITIONAL([HAVEMPIFFTW],[test -n "$FFTW_MPI_LIBS"])
 
 #  Check for -lprofiler usually part of the gperftools along with tcmalloc.
 have_profiler="no"
@@ -1176,45 +1196,6 @@ AC_ARG_WITH([random-seed],
 )
 AC_DEFINE_UNQUOTED([SWIFT_RANDOM_SEED_XOR], [$with_random_seed],[Value of the random seed.])
 
-# Check for python.
-have_python="no"
-AC_ARG_WITH([python],
-    [AS_HELP_STRING([--with-python=PATH],
-       [root directory where python is installed @<:@yes/no@:>@]
-    )],
-    [with_python="$withval"],
-    [with_python="no"]
-)
-if test "x$with_python" != "xno"; then
-   if test "$with_python" == ""; then
-      # use linux default python
-      with_python="/usr/"
-   fi
-   AM_PATH_PYTHON([3], [], [AC_MSG_ERROR(python not found)])   
-   AC_ARG_VAR([PYTHON_LIBS], [Linking flags for python, bypassing python-config])
-   AC_ARG_VAR([PYTHON_INCS], [Include flags for python, bypassing python-config])
-   AC_ARG_VAR([PYTHON_CONFIG], [Path to python-config])
-   AS_IF([test -z "$PYTHON_INCS"], [
-      AS_IF([test -z "$PYTHON_CONFIG"], [
-      	AC_PATH_PROGS([PYTHON_CONFIG],
-	          [python$PYTHON_VERSION-config python-config],
-                  [no],
-                  [`dirname $PYTHON`])
-    	AS_IF([test "$PYTHON_CONFIG" = no], [AC_MSG_ERROR([cannot find python-config for $PYTHON.])])
-      ])
-      AC_MSG_CHECKING([python include flags])
-      PYTHON_INCS=`$PYTHON_CONFIG --includes`
-      PYTHON_LIBS=`$PYTHON_CONFIG --ldflags`
-      AC_MSG_RESULT([$PYTHON_INCS])
-      AC_MSG_RESULT([$PYTHON_LIBS])
-  ])
-  have_python="yes"
-  AC_DEFINE([HAVE_PYTHON],1,[Python appears to be present.])
-fi
-AC_SUBST([PYTHON_INCS])
-AC_SUBST([PYTHON_LIBS])
-AM_CONDITIONAL([HAVEPYTHON],[test -n "$PYTHON_INCS"])
-
 
 # Check for HDF5. This is required.
 AX_LIB_HDF5
@@ -1295,7 +1276,7 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
-# Check for VELOCIraptor.
+# Check for VELOCIraptor, non-MPI.
 have_velociraptor="no"
 AC_ARG_WITH([velociraptor],
     [AS_HELP_STRING([--with-velociraptor=PATH],
@@ -1306,7 +1287,7 @@ AC_ARG_WITH([velociraptor],
 )
 if test "x$with_velociraptor" != "xno"; then
    if test "x$with_velociraptor" != "xyes" -a "x$with_velociraptor" != "x"; then
-      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5"
+      VELOCIRAPTOR_LIBS="-L$with_velociraptor -lvelociraptor -lstdc++ -lhdf5"
       CFLAGS="$CFLAGS -fopenmp"
    else
       VELOCIRAPTOR_LIBS=""
@@ -1318,8 +1299,8 @@ if test "x$with_velociraptor" != "xno"; then
    AC_CHECK_LIB(
       [velociraptor],
       [InitVelociraptor],
-      [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The VELOCIraptor library appears to be present.])],
-      [AC_MSG_ERROR(Cannot find VELOCIraptor library at $with_velociraptor or incompatible HDF5 library loaded.)],
+      [AC_DEFINE([HAVE_VELOCIRAPTOR],1,[The non-MPI VELOCIraptor library appears to be present.])],
+      [AC_MSG_ERROR(Cannot find non-MPI VELOCIraptor library at $with_velociraptor or incompatible HDF5 library loaded.)],
       [$VELOCIRAPTOR_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
    )
 fi
@@ -1335,6 +1316,57 @@ if test "$have_velociraptor" == "yes"; then
        [AC_MSG_RESULT(VELOCIraptor not compiled to so as to *not* store masses per particle.)],
        [$VELOCIRAPTOR_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
     )
+fi
+
+#  Check for MPI VELOCIraptor, same as above.
+have_mpi_velociraptor="no"
+AC_ARG_WITH([velociraptor-mpi],
+    [AS_HELP_STRING([--with-velociraptor-mpi=PATH],
+       [Directory where MPI version of velociraptor library exists @<:@yes/no@:>@]
+    )],
+    [with_mpi_velociraptor="$withval"],
+    [with_mpi_velociraptor="no"]
+)
+if test "x$with_mpi_velociraptor" != "xno"; then
+   if test "x$with_mpi_velociraptor" != "xyes" -a "x$with_mpi_velociraptor" != "x"; then
+      VELOCIRAPTOR_MPI_LIBS="-L$with_mpi_velociraptor -lvelociraptor -lmpi -lstdc++ -lhdf5"
+      CFLAGS="$CFLAGS -fopenmp"
+   else
+      VELOCIRAPTOR_MPI_LIBS=""
+   fi
+
+   have_mpi_velociraptor="yes"
+   AS_VAR_APPEND([VELOCIRAPTOR_MPI_LIBS], ["$FCLIBS"])
+
+   AC_CHECK_LIB(
+      [velociraptor],
+      [InitVelociraptor],
+      [AC_DEFINE([HAVE_MPI_VELOCIRAPTOR],1,[The MPI VELOCIraptor library appears to be present.])],
+      [AC_MSG_ERROR(Cannot find MPI VELOCIraptor library at $with_mpi_velociraptor or incompatible HDF5 library loaded.)],
+      [$VELOCIRAPTOR_MPI_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
+   )
+fi
+AC_SUBST([VELOCIRAPTOR_MPI_LIBS])
+AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_MPI_LIBS"])
+
+# Let's check how this one was compiled.
+if test "$have_mpi_velociraptor" == "yes"; then
+    AC_CHECK_LIB(
+       [velociraptor],
+       [VR_NOMASS],
+       [AC_DEFINE([HAVE_VELOCIRAPTOR_WITH_NOMASS],1,[The MPI VELOCIraptor library has been compiled with the NOMASS option. Only useful if running a uniform box.])],
+       [AC_MSG_RESULT(VELOCIraptor not compiled to so as to *not* store masses per particle.)],
+       [$VELOCIRAPTOR_MPI_LIBS $HDF5_LDFLAGS $HDF5_LIBS $GSL_LIBS]
+    )
+fi
+
+# If we have one library, but not the other then use that for both.
+if test "$have_mpi_velociraptor" == "yes" -a "$have_velociraptor" != "yes"; then
+   VELOCIRAPTOR_LIBS="$VELOCIRAPTOR_MPI_LIBS"
+   AC_SUBST([VELOCIRAPTOR_LIBS])
+elif test "$have_velociraptor" == "yes" -a "$have_mpi_velociraptor" != "yes"; then
+   VELOCIRAPTOR_MPI_LIBS="$VELOCIRAPTOR_LIBS"
+   AC_SUBST([VELOCIRAPTOR_MPI_LIBS])
 fi
 
 # Check for dummy VELOCIraptor.
@@ -1566,7 +1598,7 @@ AC_SUBST([NUMA_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, EAGLE, EAGLE-XL default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1605,7 +1637,19 @@ case "$with_subgrid" in
 	with_subgrid_chemistry=QLA
 	with_subgrid_tracers=none
 	with_subgrid_entropy_floor=QLA
-	with_subgrid_stars=none
+	with_subgrid_stars=basic
+	with_subgrid_star_formation=QLA
+	with_subgrid_feedback=none
+	with_subgrid_black_holes=none
+	with_subgrid_sink=none
+	enable_fof=no
+   ;;
+   QLA-EAGLE)
+	with_subgrid_cooling=QLA-EAGLE
+	with_subgrid_chemistry=QLA
+	with_subgrid_tracers=none
+	with_subgrid_entropy_floor=QLA
+	with_subgrid_stars=basic
 	with_subgrid_star_formation=QLA
 	with_subgrid_feedback=none
 	with_subgrid_black_holes=none
@@ -1736,12 +1780,15 @@ case "$with_hydro" in
    ;;
    gizmo-mfv)
       AC_DEFINE([GIZMO_MFV_SPH], [1], [GIZMO MFV SPH])
+      need_riemann_solver=yes
    ;;
    gizmo-mfm)
       AC_DEFINE([GIZMO_MFM_SPH], [1], [GIZMO MFM SPH])
+      need_riemann_solver=yes
    ;;
    shadowfax)
       AC_DEFINE([SHADOWFAX_SPH], [1], [Shadowfax SPH])
+      need_riemann_solver=yes
    ;;
    planetary)
       AC_DEFINE([PLANETARY_SPH], [1], [Planetary SPH])
@@ -1956,6 +2003,10 @@ case "$with_riemann" in
    ;;
 esac
 
+if test "x$need_riemann_solver" == "xyes" -a "$with_riemann" == "none"; then
+  AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
+fi
+
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
@@ -2045,6 +2096,10 @@ case "$with_cooling" in
    QLA)
       AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
       with_cooling="QLA (Ploeckinger+20 tables) with constant primordial Z"
+   ;;
+   QLA-EAGLE)
+      AC_DEFINE([COOLING_QLA_EAGLE], [1], [Cooling following the Quick-Lyman-alpha model])
+      with_cooling="QLA (Wiersma+09 tables) with constant primordial Z"
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
@@ -2430,6 +2485,31 @@ AC_ARG_WITH([rt],
    [with_rt="none"]
 )
 
+# For GEAR-RT scheme: Select a RT Riemann solver
+AC_ARG_WITH([rt-riemann-solver],
+   [AS_HELP_STRING([--with-rt-riemann-solver=<scheme>],
+      [Riemann solver for the moments of the ratiadiative transfer equation with the M1 closure to use @<:@none, HLL, GLF, default: none@:>@. 
+      For the GEAR RT scheme, you need to select one Riemann solver.]
+   )],
+   [with_rt_riemann_solver="$withval"],
+   [with_rt_riemann_solver="none"]
+)
+
+case "$with_rt_riemann_solver" in
+    none)
+        AC_DEFINE([RT_RIEMANN_SOLVER_NONE], [1], [No RT riemann solver])
+        ;;
+    HLL)
+        AC_DEFINE([RT_RIEMANN_SOLVER_HLL], [1], [HLL RT riemann solver])
+        ;;
+    GLF)
+        AC_DEFINE([RT_RIEMANN_SOLVER_GLF], [1], [GLF RT riemann solver])
+        ;;
+    *)
+        AC_MSG_ERROR("Unknown RT Riemann solver: $with_rt_riemann_solver")
+        ;;
+esac
+
 case "$with_rt" in
    none)
       AC_DEFINE([RT_NONE], [1], [No radiative transfer scheme])
@@ -2453,13 +2533,24 @@ case "$with_rt" in
       fi
 
       if test "$with_hydro" != "gizmo-mfv"; then
-          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro])
+          AC_MSG_ERROR([GEAR-RT: Cannot work without gizmo-mfv hydro. Compile using --with-hydro=gizmo-mfv])
+      fi
+
+      if test "$with_rt_riemann_solver" = "none"; then
+          AC_MSG_ERROR([GEAR-RT: You need to select an RT Riemann solver (--with-rt-riemann-solver=...)])
+      fi
+
+      if test "$have_grackle" != "yes"; then
+        AC_MSG_ERROR([GEAR-RT: You need the grackle library for GEAR-RT. (--with-grackle=PATH)])
       fi
 
    ;;
    debug)
       AC_DEFINE([RT_DEBUG], [1], [debugging scheme])
       AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
+   ;;
+   SPHM1RT)
+      AC_DEFINE([RT_SPHM1RT], [1], [SPHM1RT radiative transfer scheme (Chan+21: 2102.08404)])
    ;;
    *)
       AC_MSG_ERROR([Unknown radiative transfer scheme: $with_rt])
@@ -2497,7 +2588,8 @@ DX_INIT_DOXYGEN(SWIFT, doc/Doxyfile, doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Check if using QLA cooling
-AM_CONDITIONAL([HAVEQLACOOLING], [test "${with_cooling:0:3}" = "QLA"])
+AM_CONDITIONAL([HAVEQLACOOLING], [test "${with_cooling:0:6}" = "QLA (P"])
+AM_CONDITIONAL([HAVEQLAEAGLECOOLING], [test "${with_cooling:0:6}" = "QLA (W"])
 
 # Check if using EAGLE cooling
 AM_CONDITIONAL([HAVEEAGLECOOLING], [test "${with_cooling:0:5}" = "EAGLE"])
@@ -2589,7 +2681,10 @@ AC_MSG_RESULT([
    HDF5 enabled         : $with_hdf5
     - parallel          : $have_parallel_hdf5
    METIS/ParMETIS       : $have_metis / $have_parmetis
-   FFTW3 enabled        : $have_fftw
+   FFTW3 enabled        : $have_fftw   
+    - threaded          : $have_threaded_fftw
+    - MPI               : $have_mpi_fftw
+    - ARM               : $have_arm_fftw
    GSL enabled          : $have_gsl
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
@@ -2641,6 +2736,13 @@ AC_MSG_RESULT([
    Planetary fixed entropy     : $planetary_fixed_entropy
 
    Continuous Sim. Data Stream : $with_csds
-   Python enabled              : $have_python
 
- ------------------------])
+ ------------------------]
+)
+
+#  Report any unrecognised options loudly.
+if test "$ac_unrecognized_opts" != ""; then
+AC_MSG_RESULT([
+  *** WARNING: unrecognized options: $ac_unrecognized_opts ***
+])
+fi

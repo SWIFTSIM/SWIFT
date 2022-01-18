@@ -25,6 +25,7 @@
 #include "black_holes_struct.h"
 #include "chemistry_struct.h"
 #include "particle_splitting_struct.h"
+#include "rays_struct.h"
 #include "timeline.h"
 
 /**

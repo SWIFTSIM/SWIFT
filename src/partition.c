@@ -462,6 +462,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
     /* Percentile cut keeps 99.8% of cells and clips above. */
     int cut = ceil(s->nr_cells * 0.998);
+    if (cut == s->nr_cells) cut = s->nr_cells - 1;
 
     /* And clip. */
     int nadj = 0;

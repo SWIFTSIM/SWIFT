@@ -502,7 +502,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:p:")) != -1) {
     switch (c) {
       case 'h':
@@ -837,11 +837,16 @@ int main(int argc, char *argv[]) {
 
   ticks self_time = timings[26];
 
-  message("Corner calculations took:     %15lli ticks.", corner_time / runs);
-  message("Edge calculations took:       %15lli ticks.", edge_time / runs);
-  message("Face calculations took:       %15lli ticks.", face_time / runs);
-  message("Self calculations took:       %15lli ticks.", self_time / runs);
-  message("SWIFT calculation took:       %15lli ticks.", time / runs);
+  message("Corner calculations took:     %.3f %s.",
+          clocks_from_ticks(corner_time / runs), clocks_getunit());
+  message("Edge calculations took:       %.3f %s.",
+          clocks_from_ticks(edge_time / runs), clocks_getunit());
+  message("Face calculations took:       %.3f %s.",
+          clocks_from_ticks(face_time / runs), clocks_getunit());
+  message("Self calculations took:       %.3f %s.",
+          clocks_from_ticks(self_time / runs), clocks_getunit());
+  message("SWIFT calculation took:       %.3f %s.",
+          clocks_from_ticks(time / runs), clocks_getunit());
 
   for (int j = 0; j < 125; ++j)
     reset_particles(cells[j], &space.hs, vel, press, size, rho);
@@ -964,7 +969,8 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Output timing */
-  message("Brute force calculation took: %15lli ticks.", toc - tic);
+  message("Brute force calculation took : %.3f %s.",
+          clocks_from_ticks(toc - tic), clocks_getunit());
 
   sprintf(outputFileName, "brute_force_125_%.150s.dat",
           outputFileNameExtension);

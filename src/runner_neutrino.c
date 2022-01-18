@@ -33,20 +33,6 @@
 #include "engine.h"
 #include "timers.h"
 
-/* Compute the dimensionless neutrino momentum (units of kb*T).
- *
- * @param v The internal 3-velocity
- * @param m_eV The neutrino mass in electron-volts
- * @param fac Conversion factor = 1. / (speed_of_light * T_nu_eV)
- */
-INLINE static double neutrino_momentum(float v[3], double m_eV, double fac) {
-
-  float v2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
-  float vmag = sqrtf(v2);
-  double p = vmag * fac * m_eV;
-  return p;
-}
-
 /**
  * @brief Weight the active neutrino particles in a cell using the delta-f
  * method.
@@ -71,14 +57,8 @@ void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
     error("Phase space weighting without cosmology not implemented.");
 
   /* Retrieve physical and cosmological constants */
-  const double c_vel = e->physical_constants->const_speed_light_c;
-  const double *m_eV_array = e->cosmology->M_nu_eV;
-  const double *deg_array = e->cosmology->deg_nu;
-  const int N_nu = e->cosmology->N_nu;
-  const double T_eV = e->cosmology->T_nu_0_eV;
-  const double fac = 1.0 / (c_vel * T_eV);
-  const double inv_mass_factor = 1. / e->neutrino_mass_conversion_factor;
-  const long long neutrino_seed = e->neutrino_properties->neutrino_seed;
+  struct neutrino_model nu_model;
+  gather_neutrino_consts(e->s, &nu_model);
 
   /* Recurse? */
   if (c->split) {
@@ -95,24 +75,9 @@ void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer) {
       if (!(gp->type == swift_type_neutrino && gpart_is_starting(gp, e)))
         continue;
 
-      /* Use a particle id dependent seed */
-      const long long seed = gp->id_or_neg_offset + neutrino_seed;
-
-      /* Compute the initial dimensionless momentum from the seed */
-      const double pi = neutrino_seed_to_fermi_dirac(seed);
-
-      /* The neutrino mass and degeneracy (we cycle based on the seed) */
-      const double m_eV = neutrino_seed_to_mass(N_nu, m_eV_array, seed);
-      const double deg = neutrino_seed_to_degeneracy(N_nu, deg_array, seed);
-      const double mass = deg * m_eV * inv_mass_factor;
-
-      /* Compute the current dimensionless momentum */
-      double p = neutrino_momentum(gp->v_full, m_eV, fac);
-
-      /* Compute the initial and current background phase-space density */
-      double fi = fermi_dirac_density(pi);
-      double f = fermi_dirac_density(p);
-      double weight = 1.0 - f / fi;
+      /* Compute the mass and delta-f weight */
+      double mass, weight;
+      gpart_neutrino_mass_weight(gp, &nu_model, &mass, &weight);
 
       /* Set the statistically weighted mass */
       gp->mass = mass * weight;

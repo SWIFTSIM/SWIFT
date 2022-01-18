@@ -26,10 +26,32 @@
 #include "../../engine.h"
 #include "fermi_dirac.h"
 #include "neutrino_properties.h"
+#include "neutrino_response.h"
 #include "relativity.h"
 
 /* Riemann function zeta(3) */
 #define M_ZETA_3 1.2020569031595942853997
+
+/**
+ * @brief Shared information for delta-f neutrino weighting of a cell.
+ */
+struct neutrino_model {
+  char use_delta_f_mesh_only;
+  double *M_nu_eV;
+  double *deg_nu;
+  int N_nu;
+  double fac;
+  double inv_mass_factor;
+  long long neutrino_seed;
+};
+
+void gather_neutrino_consts(const struct space *s, struct neutrino_model *nm);
+void gpart_neutrino_weight_mesh_only(const struct gpart *gp,
+                                     const struct neutrino_model *nm,
+                                     double *weight);
+void gpart_neutrino_mass_weight(const struct gpart *gp,
+                                const struct neutrino_model *nm, double *mass,
+                                double *weight);
 
 /* Compute the ratio of macro particle mass in internal mass units to
  * the mass of one microscopic neutrino in eV.
@@ -121,5 +143,17 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_neutrino(
     gp->mass = deg * m_eV * inv_mass_factor;
   }
 }
+
+void compute_neutrino_diagnostics(
+    const struct space *s, const struct cosmology *cosmo,
+    const struct phys_const *physical_constants,
+    const struct neutrino_props *neutrino_properties, const int rank, double *r,
+    double *I_df, double *mass_tot);
+void neutrino_check_cosmology(const struct space *s,
+                              const struct cosmology *cosmo,
+                              const struct phys_const *physical_constants,
+                              struct swift_params *params,
+                              const struct neutrino_props *neutrino_props,
+                              const int rank, const int verbose);
 
 #endif /* SWIFT_DEFAULT_NEUTRINO_H */

@@ -549,6 +549,11 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
+  warning(
+      "Gas particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      p->id, h, p->density.wcount);
+
   /* Re-set problematic values */
   p->rho = p->mass * kernel_root * h_inv_dim;
   p->density.wcount = kernel_root * h_inv_dim;
@@ -623,9 +628,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.9999f * hydro_props->h_max) {
     rho_dh = 0.f;
+    warning("h ~ h_max for particle with ID %lld (h: %g)", p->id, p->h);
   }
-  const float omega_inv =
-      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
+  const float grad_rho_term = hydro_dimension_inv * p->h * rho_dh * rho_inv;
+  float omega_inv;
+  if (grad_rho_term < -0.9999f) {
+    omega_inv = 1.f;
+    warning(
+        "grad_rho_term very small for particle with ID %lld (h: %g, rho: %g, "
+        "rho_dh: %g).",
+        p->id, p->h, p->rho, rho_dh);
+  } else {
+    omega_inv = 1.f / (1.f + grad_rho_term);
+  }
 
   /* Update variables. */
   p->force.f = omega_inv;

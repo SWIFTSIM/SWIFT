@@ -24,50 +24,56 @@ import numpy as np
 # Generates a swift IC file for the Kelvin-Helmholtz vortex in a periodic box
 
 # Parameters
-gamma = 5./3.     # Gas adiabatic index
-P0    = 2.5       # Pressure
-rho0  = 1.        # Density
-d     = 0.0317    # Thickness of the transition layer
-B     = 0.0005    # Amplitude of the seed velocity
+gamma = 5.0 / 3.0  # Gas adiabatic index
+P0 = 2.5  # Pressure
+rho0 = 1.0  # Density
+d = 0.0317  # Thickness of the transition layer
+B = 0.0005  # Amplitude of the seed velocity
 
 fileOutputName = "kelvinHelmholtzGrowthRate.hdf5"
 
-#---------------------------------------------------
+# ---------------------------------------------------
 
-glass = h5py.File("glassPlane_128.hdf5", 'r')
+glass = h5py.File("glassPlane_128.hdf5", "r")
 pos = glass["/PartType0/Coordinates"][:, :]
 h = glass["/PartType0/SmoothingLength"][:]
 
 N = len(h)
-vol = 1.
+vol = 1.0
 
 # Generate extra arrays
 v = np.zeros((N, 3))
 ids = np.linspace(1, N, N)
 m = np.ones(N) * rho0 * vol / N
-u = np.ones(N) * P0 / (rho0 * (gamma - 1.))
+u = np.ones(N) * P0 / (rho0 * (gamma - 1.0))
 
 v[pos[:, 1] <= 0.25 - d, 0] = -0.5
-v[(pos[:, 1] < 0.25 + d) & (pos[:, 1] > 0.25 - d), 0] = \
-  -0.5 + \
-  0.5 * (pos[(pos[:, 1] < 0.25 + d) & (pos[:, 1] > 0.25 - d), 1] + d - 0.25) / d
+v[(pos[:, 1] < 0.25 + d) & (pos[:, 1] > 0.25 - d), 0] = (
+    -0.5
+    + 0.5 * (pos[(pos[:, 1] < 0.25 + d) & (pos[:, 1] > 0.25 - d), 1] + d - 0.25) / d
+)
 v[(pos[:, 1] <= 0.75 - d) & (pos[:, 1] >= 0.25 + d), 0] = 0.5
-v[(pos[:, 1] < 0.75 + d) & (pos[:, 1] > 0.75 - d), 0] = \
-  0.5 - \
-  0.5 * (pos[(pos[:, 1] < 0.75 + d) & (pos[:, 1] > 0.75 - d), 1] + d - 0.75) / d
+v[(pos[:, 1] < 0.75 + d) & (pos[:, 1] > 0.75 - d), 0] = (
+    0.5 - 0.5 * (pos[(pos[:, 1] < 0.75 + d) & (pos[:, 1] > 0.75 - d), 1] + d - 0.75) / d
+)
 v[pos[:, 1] >= 0.75 + d, 0] = -0.5
 
-v[:, 1] = B * np.sin(4. * np.pi * pos[:, 0]) * \
-          (np.exp(-(pos[:, 1] - 0.25)**2 / 32. / d**2) + \
-           np.exp(-(pos[:, 1] - 0.75)**2 / 32. / d**2))
-            
-#File
-fileOutput = h5py.File(fileOutputName, 'w')
+v[:, 1] = (
+    B
+    * np.sin(4.0 * np.pi * pos[:, 0])
+    * (
+        np.exp(-(pos[:, 1] - 0.25) ** 2 / 32.0 / d ** 2)
+        + np.exp(-(pos[:, 1] - 0.75) ** 2 / 32.0 / d ** 2)
+    )
+)
+
+# File
+fileOutput = h5py.File(fileOutputName, "w")
 
 # Header
 grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [1., 1., 1.]
-grp.attrs["NumPart_Total"] =  [N, 0, 0, 0, 0, 0]
+grp.attrs["BoxSize"] = [1.0, 1.0, 1.0]
+grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
@@ -76,21 +82,21 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["Dimension"] = 2
 
-#Units
+# Units
 grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.
-grp.attrs["Unit mass in cgs (U_M)"] = 1.
-grp.attrs["Unit time in cgs (U_t)"] = 1.
-grp.attrs["Unit current in cgs (U_I)"] = 1.
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+grp.attrs["Unit length in cgs (U_L)"] = 1.0
+grp.attrs["Unit mass in cgs (U_M)"] = 1.0
+grp.attrs["Unit time in cgs (U_t)"] = 1.0
+grp.attrs["Unit current in cgs (U_I)"] = 1.0
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
-#Particle group
+# Particle group
 grp = fileOutput.create_group("/PartType0")
-grp.create_dataset("Coordinates", data = pos, dtype = 'd')
-grp.create_dataset("Velocities", data = v, dtype = 'f')
-grp.create_dataset("Masses", data = m, dtype = 'f')
-grp.create_dataset("SmoothingLength", data = h, dtype = 'f')
-grp.create_dataset("InternalEnergy", data = u, dtype = 'f')
-grp.create_dataset("ParticleIDs", data = ids, dtype = 'L')
+grp.create_dataset("Coordinates", data=pos, dtype="d")
+grp.create_dataset("Velocities", data=v, dtype="f")
+grp.create_dataset("Masses", data=m, dtype="f")
+grp.create_dataset("SmoothingLength", data=h, dtype="f")
+grp.create_dataset("InternalEnergy", data=u, dtype="f")
+grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 
 fileOutput.close()

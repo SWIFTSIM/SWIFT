@@ -40,7 +40,7 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float *dx,
+runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const float hi, const float hj,
                                     struct spart *si, const struct part *pj,
                                     const struct xpart *xpj,
@@ -112,7 +112,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
 }
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_prep1(const float r2, const float *dx,
+runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
                                   const float hi, const float hj,
                                   const struct spart *si, struct part *pj,
                                   const struct xpart *xpj,
@@ -145,7 +145,7 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float *dx,
 }
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_prep2(const float r2, const float *dx,
+runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
                                   const float hi, const float hj,
                                   struct spart *si, const struct part *pj,
                                   const struct xpart *xpj,
@@ -204,16 +204,14 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float *dx,
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  const struct spart *si, struct part *pj,
-                                  struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const struct feedback_props *fb_props,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_feedback_apply(
+    const float r2, const float dx[3], const float hi, const float hj,
+    const struct spart *si, struct part *pj, struct xpart *xpj,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (si->count_since_last_enrichment != 0)
+  if (si->count_since_last_enrichment != 0 && engine_current_step > 0)
     error("Computing feedback from a star that should not");
 #endif
 
@@ -491,9 +489,19 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
    * than the current_thermal_energy, this is mainly the case if the change
    * in mass is relatively small and the velocity vectors between both the
    * gas particle and the star particle have a small angle. */
-  const double new_thermal_energy = current_kinetic_energy_gas +
-                                    current_thermal_energy + injected_energy +
-                                    E_kinetic_unused - new_kinetic_energy_gas;
+  double new_thermal_energy = current_kinetic_energy_gas +
+                              current_thermal_energy + injected_energy +
+                              E_kinetic_unused - new_kinetic_energy_gas;
+
+  /* In rare configurations the new thermal energy could become negative.
+   * We must prevent that even if that implies a slight violation of the
+   * conservation of total energy.
+   * The minimum energy (in units of energy not energy per mass) is
+   * the total particle mass (including the mass to distribute) at the
+   * minimal internal energy per unit mass */
+  const double min_u = hydro_props->minimal_internal_energy * new_mass;
+
+  new_thermal_energy = max(new_thermal_energy, min_u);
 
   /* Convert this to a specific thermal energy */
   const double u_new_enrich = new_thermal_energy * new_mass_inv;

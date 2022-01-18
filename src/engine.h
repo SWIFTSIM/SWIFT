@@ -36,7 +36,7 @@
 #include "barrier.h"
 #include "clocks.h"
 #include "collectgroup.h"
-#include "dump.h"
+#include "ic_info.h"
 #include "mesh_gravity.h"
 #include "output_options.h"
 #include "parser.h"
@@ -163,6 +163,10 @@ struct engine {
 
   /* Dimensionless factor for the RMS time-step condition. */
   double max_RMS_displacement_factor;
+
+  /* When computing the max RMS dt, should only the gas particles
+   * be considered as the baryon component? */
+  int max_RMS_dt_use_only_gas;
 
   /* Time of the simulation beginning */
   double time_begin;
@@ -319,11 +323,17 @@ struct engine {
   float snapshot_subsample_fraction[swift_type_count];
   int snapshot_run_on_dump;
   int snapshot_distributed;
+  int snapshot_lustre_OST_count;
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
   struct unit_system *snapshot_units;
+  int snapshot_use_delta_from_edge;
+  double snapshot_delta_from_edge;
   int snapshot_output_count;
+
+  /* Metadata from the ICs */
+  struct ic_info *ics_metadata;
 
   /* Structure finding information */
   double a_first_stf_output;
@@ -462,6 +472,9 @@ struct engine {
   /* Properties of the neutrino model */
   const struct neutrino_props *neutrino_properties;
 
+  /* The linear neutrino response */
+  struct neutrino_response *neutrino_response;
+
   /* Properties of the self-gravity scheme */
   struct gravity_props *gravity_properties;
 
@@ -508,6 +521,9 @@ struct engine {
   /* Whether to dump restart files after the last step. */
   int restart_onexit;
 
+  /* Number of Lustre OSTs on the system to use as rank-based striping offset */
+  int restart_lustre_OST_count;
+
   /* Name of the restart file. */
   const char *restart_file;
 
@@ -522,6 +538,12 @@ struct engine {
 
   /* The globally agreed runtime, in hours. */
   float runtime;
+
+  /* The locally accumulated deadtime. */
+  double local_deadtime;
+
+  /* The globally accumulated deadtime. */
+  double global_deadtime;
 
   /* Time-integration mesh kick to apply to the particle velocities for
    * snapshots */
@@ -569,7 +591,6 @@ void engine_compute_next_statistics_time(struct engine *e);
 void engine_compute_next_los_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
-void engine_unskip_timestep_communications(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
 void engine_drift_top_multipoles(struct engine *e);
 void engine_reconstruct_multipoles(struct engine *e);
@@ -592,13 +613,15 @@ void engine_init(
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos, struct feedback_props *feedback,
-    struct rt_props *rt, struct pm_mesh *mesh,
+    const struct neutrino_props *neutrinos,
+    struct neutrino_response *neutrino_response,
+    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
-    struct fof_props *fof_properties, struct los_props *los_properties);
+    struct fof_props *fof_properties, struct los_props *los_properties,
+    struct ic_info *ics_metadata);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
@@ -648,6 +671,7 @@ void engine_split_gas_particles(struct engine *e);
 #ifdef HAVE_SETAFFINITY
 cpu_set_t *engine_entry_affinity(void);
 #endif
+void engine_numa_policies(int rank, int verbose);
 
 /* Struct dump/restore support. */
 void engine_struct_dump(struct engine *e, FILE *stream);

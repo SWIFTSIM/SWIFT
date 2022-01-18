@@ -45,6 +45,7 @@
 
 #ifdef HAVE_LIBNUMA
 #include <numa.h>
+#include <numaif.h>
 #endif
 
 /* This object's header. */
@@ -308,11 +309,12 @@ void engine_repartition_trigger(struct engine *e) {
       memuse_use(&size, &resident, &shared, &text, &data, &library, &dirty);
 
       /* Gather it together with the CPU times used by the tasks in the last
-       * step. */
-      double timemem[3] = {e->usertime_last_step, e->systime_last_step,
-                           (double)resident};
-      double timemems[e->nr_nodes * 3];
-      MPI_Gather(&timemem, 3, MPI_DOUBLE, timemems, 3, MPI_DOUBLE, 0,
+       * step (and the deadtime fraction, for output). */
+      double timemem[4] = {
+          e->usertime_last_step, e->systime_last_step, (double)resident,
+          e->local_deadtime / (e->nr_threads * e->wallclock_time)};
+      double timemems[e->nr_nodes * 4];
+      MPI_Gather(&timemem, 4, MPI_DOUBLE, timemems, 4, MPI_DOUBLE, 0,
                  MPI_COMM_WORLD);
       if (e->nodeID == 0) {
 
@@ -335,7 +337,7 @@ void engine_repartition_trigger(struct engine *e) {
 
         double msum = timemems[2];
 
-        for (int k = 3; k < e->nr_nodes * 3; k += 3) {
+        for (int k = 4; k < e->nr_nodes * 4; k += 4) {
           if (timemems[k] > umaxtime) umaxtime = timemems[k];
           if (timemems[k] < umintime) umintime = timemems[k];
 
@@ -399,23 +401,32 @@ void engine_repartition_trigger(struct engine *e) {
         FILE *memlog = NULL;
         if (!opened) {
           timelog = fopen("rank_cpu_balance.log", "w");
-          fprintf(timelog, "# step rank user sys sum\n");
+          if (timelog == NULL)
+            error("Could not create file 'rank_cpu_balance.log'.");
+          fprintf(timelog, "# step rank user sys sum deadfrac\n");
 
           memlog = fopen("rank_memory_balance.log", "w");
+          if (memlog == NULL)
+            error("Could not create file 'rank_memory_balance.log'.");
           fprintf(memlog, "# step rank resident\n");
 
           opened = 1;
         } else {
           timelog = fopen("rank_cpu_balance.log", "a");
+          if (timelog == NULL)
+            error("Could not open file 'rank_cpu_balance.log' for writing.");
           memlog = fopen("rank_memory_balance.log", "a");
+          if (memlog == NULL)
+            error("Could not open file 'rank_memory_balance.log' for writing.");
         }
 
-        for (int k = 0; k < e->nr_nodes * 3; k += 3) {
+        for (int k = 0; k < e->nr_nodes * 4; k += 4) {
 
-          fprintf(timelog, "%d %d %f %f %f\n", e->step, k / 3, timemems[k],
-                  timemems[k + 1], timemems[k] + timemems[k + 1]);
+          fprintf(timelog, "%d %d %f %f %f %f\n", e->step, k / 4, timemems[k],
+                  timemems[k + 1], timemems[k] + timemems[k + 1],
+                  timemems[k + 3]);
 
-          fprintf(memlog, "%d %d %ld\n", e->step, k / 3, (long)timemems[k + 2]);
+          fprintf(memlog, "%d %d %ld\n", e->step, k / 4, (long)timemems[k + 2]);
         }
 
         fprintf(timelog, "# %d mean times: %f %f %f\n", e->step, umean, smean,
@@ -716,8 +727,11 @@ void engine_exchange_proxy_multipoles(struct engine *e) {
  * memory and link all the cells that have tasks and all cells
  * deeper in the tree.
  *
+ * When running FOF, we only need #gpart arrays so we restrict
+ * the allocations to this particle type only
+ *
  * @param e The #engine.
- * @param Are the foreign gpart regular or FOF?
+ * @param fof Are we allocating buffers just for FOF?
  */
 void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
@@ -878,7 +892,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   for (int k = 0; k < nr_proxies; k++) {
     for (int j = 0; j < e->proxies[k].nr_cells_in; j++) {
 
-      if (e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
+      if (!fof && e->proxies[k].cells_in_type[j] & proxy_cell_type_hydro) {
 
         const size_t count_parts =
             cell_link_foreign_parts(e->proxies[k].cells_in[j], parts);
@@ -899,7 +913,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
         gparts_foreign = &gparts_foreign[count_gparts];
       }
 
-      if (with_stars) {
+      if (!fof && with_stars) {
 
         /* For stars, we just use the numbers in the top-level cells */
         cell_link_sparts(e->proxies[k].cells_in[j], sparts);
@@ -907,7 +921,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
                          space_extra_sparts];
       }
 
-      if (with_black_holes) {
+      if (!fof && with_black_holes) {
 
         /* For black holes, we just use the numbers in the top-level cells */
         cell_link_bparts(e->proxies[k].cells_in[j], bparts);
@@ -1175,7 +1189,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 
   float ntasks = n1 * ntop + n2 * (ncells - ntop);
-  if (ncells > 0) tasks_per_cell = ceil(ntasks / ncells);
+  if (ncells > 0) tasks_per_cell = ceilf(ntasks / ncells);
 
   if (tasks_per_cell < 1.0f) tasks_per_cell = 1.0f;
   if (e->verbose)
@@ -1581,7 +1595,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_drift_sink || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
-        t->type == task_type_timestep_sync ||
+        t->type == task_type_timestep_sync || t->type == task_type_collect ||
         t->type == task_type_end_hydro_force || t->type == task_type_cooling ||
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
@@ -1619,12 +1633,10 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sink_compute_formation ||
         t->subtype == task_subtype_sink_merger ||
         t->subtype == task_subtype_sink_accretion ||
-        t->subtype == task_subtype_tend_part ||
-        t->subtype == task_subtype_tend_gpart ||
-        t->subtype == task_subtype_tend_spart ||
-        t->subtype == task_subtype_tend_sink ||
-        t->subtype == task_subtype_tend_bpart ||
-        t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
+        t->subtype == task_subtype_spart_density ||
+        t->subtype == task_subtype_part_prep1 ||
+        t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_rt_inject ||
         t->subtype == task_subtype_rt_gradient ||
@@ -1676,6 +1688,11 @@ void engine_launch(struct engine *e, const char *call) {
   space_reset_task_counters(e->s);
 #endif
 
+  /* reset the active time counters for the runners */
+  for (int i = 0; i < e->nr_threads; ++i) {
+    runner_reset_active_time(&e->runners[i]);
+  }
+
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
 
@@ -1696,6 +1713,14 @@ void engine_launch(struct engine *e, const char *call) {
 
   /* Store the wallclock time */
   e->sched.total_ticks += getticks() - tic;
+
+  /* accumulate active counts for all runners */
+  ticks active_time = 0;
+  for (int i = 0; i < e->nr_threads; ++i) {
+    active_time += runner_get_active_time(&e->runners[i]);
+  }
+  e->sched.deadtime.active_ticks += active_time;
+  e->sched.deadtime.waiting_ticks += getticks() - tic;
 
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
@@ -1754,6 +1779,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
+
+  /* reset the deadtime information in the scheduler */
+  e->sched.deadtime.active_ticks = 0;
+  e->sched.deadtime.waiting_ticks = 0;
 
   /* Update the softening lengths */
   if (e->policy & engine_policy_self_gravity)
@@ -1907,20 +1936,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   TIMER_TOC2(timer_runners);
 
   /* Initialise additional RT data now that time bins are set */
-  if ((e->policy & engine_policy_rt) &&
-      !e->rt_props->hydro_controlled_injection) {
-    space_convert_rt_quantities(e->s, e->verbose);
-  }
-
-  /* Since the time-steps may have changed because of the limiter's
-   * action, we need to communicate the new time-step sizes */
-  if ((e->policy & engine_policy_timestep_sync) ||
-      (e->policy & engine_policy_timestep_limiter)) {
-#ifdef WITH_MPI
-    engine_unskip_timestep_communications(e);
-    engine_launch(e, "timesteps");
-#endif
-  }
+  if (e->policy & engine_policy_rt)
+    space_convert_rt_quantities_after_zeroth_step(e->s, e->verbose);
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -1952,6 +1969,11 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   space_check_limiter(e->s);
   space_check_swallow(e->s);
 #endif
+
+  /* Compute the local accumulated deadtime. */
+  const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
+                          e->sched.deadtime.active_ticks;
+  e->local_deadtime = clocks_from_ticks(deadticks);
 
   /* Recover the (integer) end of the next time-step */
   engine_collect_end_of_step(e, 1);
@@ -2095,6 +2117,10 @@ void engine_step(struct engine *e) {
   struct clocks_time time1, time2;
   clocks_gettime(&time1);
 
+  /* reset the deadtime information in the scheduler */
+  e->sched.deadtime.active_ticks = 0;
+  e->sched.deadtime.waiting_ticks = 0;
+
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
   /* We may want to compare times across ranks, so make sure all steps start
    * at the same time, just different ticks. */
@@ -2104,16 +2130,18 @@ void engine_step(struct engine *e) {
 
   if (e->nodeID == 0) {
 
+    const double dead_time = e->global_deadtime / (e->nr_nodes * e->nr_threads);
+
     const ticks tic_files = getticks();
 
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
-        "%12lld %12lld %21.3f %6d\n",
+        "%12lld %12lld %21.3f %6d %21.3f\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
-        e->step_props);
+        e->step_props, dead_time);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif
@@ -2211,6 +2239,19 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_fof) {
     if (e->ti_end_min > e->ti_next_fof && e->ti_next_fof > 0) {
       e->run_fof = 1;
+      e->forcerebuild = 1;
+    }
+  }
+
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
+      e->mesh->ti_end_mesh_next == e->ti_current)
+    e->forcerebuild = 1;
+
+  /* Do we want a snapshot that will trigger a FOF call? */
+  if (e->ti_current + (e->ti_current - e->ti_old) > e->ti_next_snapshot &&
+      e->ti_next_snapshot > 0) {
+    if ((e->policy & engine_policy_fof) && e->snapshot_invoke_fof) {
+      e->forcerebuild = 1;
     }
   }
 
@@ -2355,16 +2396,6 @@ void engine_step(struct engine *e) {
   e->systime_last_step = end_systime - start_systime;
 #endif
 
-  /* Since the time-steps may have changed because of the limiter's
-   * action, we need to communicate the new time-step sizes */
-  if ((e->policy & engine_policy_timestep_sync) ||
-      (e->policy & engine_policy_timestep_limiter)) {
-#ifdef WITH_MPI
-    engine_unskip_timestep_communications(e);
-    engine_launch(e, "timesteps");
-#endif
-  }
-
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
   if (e->policy & engine_policy_hydro)
@@ -2420,6 +2451,11 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_end_of_step(e, e->verbose);
 #endif
+
+  /* Compute the local accumulated deadtime. */
+  const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
+                          e->sched.deadtime.active_ticks;
+  e->local_deadtime = clocks_from_ticks(deadticks);
 
   /* Collect information about the next time-step */
   engine_collect_end_of_step(e, 1);
@@ -2515,7 +2551,8 @@ void engine_reconstruct_multipoles(struct engine *e) {
 }
 
 /**
- * @brief Split the underlying space into regions and assign to separate nodes.
+ * @brief Split the underlying space into regions, construct proxies and
+ * distribute the particles where they belong.
  *
  * @param e The #engine.
  * @param initial_partition structure defining the cell partition technique
@@ -2533,97 +2570,16 @@ void engine_split(struct engine *e, struct partition *initial_partition) {
   /* Make the proxies. */
   engine_makeproxies(e);
 
-  /* Re-allocate the local parts. */
-  if (e->verbose)
-    message("Re-allocating parts array from %zu to %zu.", s->size_parts,
-            (size_t)(s->nr_parts * engine_redistribute_alloc_margin));
-  s->size_parts = s->nr_parts * engine_redistribute_alloc_margin;
-  struct part *parts_new = NULL;
-  struct xpart *xparts_new = NULL;
-  if (swift_memalign("parts", (void **)&parts_new, part_align,
-                     sizeof(struct part) * s->size_parts) != 0 ||
-      swift_memalign("xparts", (void **)&xparts_new, xpart_align,
-                     sizeof(struct xpart) * s->size_parts) != 0)
-    error("Failed to allocate new part data.");
+  /* Turn off the csds to avoid writing the communications to
+   * the CSDS (since we haven't properly started the run yet) */
+  const int with_csds = e->policy & engine_policy_csds;
+  if (with_csds) e->policy &= ~engine_policy_csds;
 
-  if (s->nr_parts > 0) {
-    memcpy(parts_new, s->parts, sizeof(struct part) * s->nr_parts);
-    memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->nr_parts);
-  }
-  swift_free("parts", s->parts);
-  swift_free("xparts", s->xparts);
-  s->parts = parts_new;
-  s->xparts = xparts_new;
+  /* Move the particles to the ranks they belong to */
+  engine_redistribute(e);
 
-  /* Re-link the gparts to their parts. */
-  if (s->nr_parts > 0 && s->nr_gparts > 0)
-    part_relink_gparts_to_parts(s->parts, s->nr_parts, 0);
-
-  /* Re-allocate the local sparts. */
-  if (e->verbose)
-    message("Re-allocating sparts array from %zu to %zu.", s->size_sparts,
-            (size_t)(s->nr_sparts * engine_redistribute_alloc_margin));
-  s->size_sparts = s->nr_sparts * engine_redistribute_alloc_margin;
-  struct spart *sparts_new = NULL;
-  if (swift_memalign("sparts", (void **)&sparts_new, spart_align,
-                     sizeof(struct spart) * s->size_sparts) != 0)
-    error("Failed to allocate new spart data.");
-
-  if (s->nr_sparts > 0)
-    memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->nr_sparts);
-  swift_free("sparts", s->sparts);
-  s->sparts = sparts_new;
-
-  /* Re-link the gparts to their sparts. */
-  if (s->nr_sparts > 0 && s->nr_gparts > 0)
-    part_relink_gparts_to_sparts(s->sparts, s->nr_sparts, 0);
-
-  /* Re-allocate the local bparts. */
-  if (e->verbose)
-    message("Re-allocating bparts array from %zu to %zu.", s->size_bparts,
-            (size_t)(s->nr_bparts * engine_redistribute_alloc_margin));
-  s->size_bparts = s->nr_bparts * engine_redistribute_alloc_margin;
-  struct bpart *bparts_new = NULL;
-  if (swift_memalign("bparts", (void **)&bparts_new, bpart_align,
-                     sizeof(struct bpart) * s->size_bparts) != 0)
-    error("Failed to allocate new bpart data.");
-
-  if (s->nr_bparts > 0)
-    memcpy(bparts_new, s->bparts, sizeof(struct bpart) * s->nr_bparts);
-  swift_free("bparts", s->bparts);
-  s->bparts = bparts_new;
-
-  /* Re-link the gparts to their bparts. */
-  if (s->nr_bparts > 0 && s->nr_gparts > 0)
-    part_relink_gparts_to_bparts(s->bparts, s->nr_bparts, 0);
-
-  /* Re-allocate the local gparts. */
-  if (e->verbose)
-    message("Re-allocating gparts array from %zu to %zu.", s->size_gparts,
-            (size_t)(s->nr_gparts * engine_redistribute_alloc_margin));
-  s->size_gparts = s->nr_gparts * engine_redistribute_alloc_margin;
-  struct gpart *gparts_new = NULL;
-  if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
-                     sizeof(struct gpart) * s->size_gparts) != 0)
-    error("Failed to allocate new gpart data.");
-
-  if (s->nr_gparts > 0)
-    memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->nr_gparts);
-  swift_free("gparts", s->gparts);
-  s->gparts = gparts_new;
-
-  /* Re-link everything to the gparts. */
-  if (s->nr_gparts > 0)
-    part_relink_all_parts_to_gparts(s->gparts, s->nr_gparts, s->parts, s->sinks,
-                                    s->sparts, s->bparts, &e->threadpool);
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-  /* Verify that the links are correct */
-  part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
-                    s->nr_parts, s->nr_gparts, s->nr_sinks, s->nr_sparts,
-                    s->nr_bparts, e->verbose);
-#endif
+  /* Turn it back on */
+  if (with_csds) e->policy |= engine_policy_csds;
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -2763,6 +2719,58 @@ void engine_unpin(void) {
 }
 
 /**
+ * @brief Define a NUMA memory placement policy of interleave across the
+ * available NUMA nodes rather than having memory in the local node, which
+ * means we have a lot of memory associated with the main thread NUMA node, so
+ * we don't make good use of the overall memory bandwidth between nodes.
+ *
+ * @param rank the MPI rank, if relevant.
+ * @param verbose whether to make a report about the selected NUMA nodes.
+ */
+void engine_numa_policies(int rank, int verbose) {
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+
+  /* Get our affinity mask (on entry), that defines what NUMA nodes we should
+   * use. */
+  cpu_set_t *entry_affinity = engine_entry_affinity();
+
+  /* Now convert the affinity mask into NUMA nodemask. */
+  struct bitmask *nodemask = numa_allocate_nodemask();
+  int nnuma = numa_num_configured_nodes();
+
+  for (unsigned long i = 0; i < CPU_SETSIZE; i++) {
+
+    /* If in the affinity mask we set NUMA node of CPU bit. */
+    if (CPU_ISSET(i, entry_affinity)) {
+      int numanode = numa_node_of_cpu(i);
+      numa_bitmask_setbit(nodemask, numanode);
+    }
+  }
+
+  if (verbose) {
+    char report[1024];
+    int len = sprintf(report, "NUMA nodes in use: [");
+    for (int i = 0; i < nnuma; i++) {
+      if (numa_bitmask_isbitset(nodemask, i)) {
+        len += sprintf(&report[len], "%d ", i);
+      } else {
+        len += sprintf(&report[len], ". ");
+      }
+    }
+    sprintf(&report[len], "]");
+    printf("[%04d] %s\n", rank, report);
+    fflush(stdout);
+  }
+
+  /* And set. */
+  set_mempolicy(MPOL_INTERLEAVE, nodemask->maskp, nodemask->size + 1);
+  numa_free_nodemask(nodemask);
+
+#endif
+}
+
+/**
  * @brief init an engine struct with the necessary properties for the
  *        simulation.
  *
@@ -2801,6 +2809,7 @@ void engine_unpin(void) {
  * @param chemistry The chemistry information.
  * @param fof_properties The #fof_props of this run.
  * @param los_properties the #los_props of this run.
+ * @param ics_metadata metadata read from the simulation ICs
  */
 void engine_init(
     struct engine *e, struct space *s, struct swift_params *params,
@@ -2813,13 +2822,15 @@ void engine_init(
     const struct entropy_floor_properties *entropy_floor,
     struct gravity_props *gravity, struct stars_props *stars,
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
-    const struct neutrino_props *neutrinos, struct feedback_props *feedback,
-    struct rt_props *rt, struct pm_mesh *mesh,
+    const struct neutrino_props *neutrinos,
+    struct neutrino_response *neutrino_response,
+    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
-    struct fof_props *fof_properties, struct los_props *los_properties) {
+    struct fof_props *fof_properties, struct los_props *los_properties,
+    struct ic_info *ics_metadata) {
 
   struct clocks_time tic, toc;
   if (engine_rank == 0) clocks_gettime(&tic);
@@ -2877,10 +2888,18 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_distributed =
       parser_get_opt_param_int(params, "Snapshots:distributed", 0);
+  e->snapshot_lustre_OST_count =
+      parser_get_opt_param_int(params, "Snapshots:lustre_OST_count", 0);
   e->snapshot_invoke_stf =
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
       parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
+  e->snapshot_use_delta_from_edge =
+      parser_get_opt_param_int(params, "Snapshots:use_delta_from_edge", 0);
+  if (e->snapshot_use_delta_from_edge) {
+    e->snapshot_delta_from_edge =
+        parser_get_param_double(params, "Snapshots:delta_from_edge");
+  }
   e->dump_catalogue_when_seeding =
       parser_get_opt_param_int(params, "FOF:dump_catalogue_when_seeding", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
@@ -2893,6 +2912,8 @@ void engine_init(
   e->dt_max_RMS_displacement = FLT_MAX;
   e->max_RMS_displacement_factor = parser_get_opt_param_double(
       params, "TimeIntegration:max_dt_RMS_factor", 0.25);
+  e->max_RMS_dt_use_only_gas = parser_get_opt_param_int(
+      params, "TimeIntegration:dt_RMS_use_gas_only", 0);
   e->dt_kick_grav_mesh_for_io = 0.f;
   e->a_first_statistics =
       parser_get_opt_param_double(params, "Statistics:scale_factor_first", 0.1);
@@ -2914,6 +2935,7 @@ void engine_init(
   e->black_holes_properties = black_holes;
   e->sink_properties = sinks;
   e->neutrino_properties = neutrinos;
+  e->neutrino_response = neutrino_response;
   e->mesh = mesh;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
@@ -2926,6 +2948,7 @@ void engine_init(
   e->output_options = output_options;
   e->stf_this_timestep = 0;
   e->los_properties = los_properties;
+  e->ics_metadata = ics_metadata;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;
   e->systime_last_step = 0.0;
@@ -3188,9 +3211,12 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     /* Baryon case */
     if (N_b > 0.f) {
 
-      /* Minimal mass for the baryons */
-      const float min_mass_b =
-          min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
+      /* Minimal mass for the bayons */
+      float min_mass_b;
+      if (e->max_RMS_dt_use_only_gas)
+        min_mass_b = min_mass[0];
+      else
+        min_mass_b = min4(min_mass[0], min_mass[3], min_mass[4], min_mass[5]);
 
       /* Inter-particle sepration for the baryons */
       const float d_b = cbrtf(min_mass_b / (Ob * rho_crit0));
@@ -3251,7 +3277,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   const timebin_t bin = get_time_bin(new_dti);
 
-  if (new_dti != old_dti)
+  if (e->verbose && new_dti != old_dti)
     message("Mesh time-step changed to %e (time-bin %d)",
             get_timestep(bin, e->time_base), bin);
 
@@ -3292,6 +3318,8 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_list_clean(&e->output_list_los);
 
   output_options_clean(e->output_options);
+
+  ic_info_clean(e->ics_metadata);
 
   swift_free("links", e->links);
 #if defined(WITH_CSDS)
@@ -3355,6 +3383,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->fof_properties);
 #endif
     free((void *)e->los_properties);
+    free((void *)e->ics_metadata);
 #ifdef WITH_MPI
     free((void *)e->reparttype);
 #endif
@@ -3409,11 +3438,13 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
   neutrino_struct_dump(e->neutrino_properties, stream);
+  neutrino_response_struct_dump(e->neutrino_response, stream);
   chemistry_struct_dump(e->chemistry, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+  ic_info_struct_dump(e->ics_metadata, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
 
@@ -3543,6 +3574,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   neutrino_struct_restore(neutrino_properties, stream);
   e->neutrino_properties = neutrino_properties;
 
+  struct neutrino_response *neutrino_response =
+      (struct neutrino_response *)malloc(sizeof(struct neutrino_response));
+  neutrino_response_struct_restore(neutrino_response, stream);
+  e->neutrino_response = neutrino_response;
+
   struct chemistry_global_data *chemistry =
       (struct chemistry_global_data *)malloc(
           sizeof(struct chemistry_global_data));
@@ -3560,6 +3596,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct los_props *)malloc(sizeof(struct los_props));
   los_struct_restore(los_properties, stream);
   e->los_properties = los_properties;
+
+  struct ic_info *ics_metadata =
+      (struct ic_info *)malloc(sizeof(struct ic_info));
+  ic_info_struct_restore(ics_metadata, stream);
+  e->ics_metadata = ics_metadata;
 
   struct swift_params *parameter_file =
       (struct swift_params *)malloc(sizeof(struct swift_params));

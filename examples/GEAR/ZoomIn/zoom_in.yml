@@ -19,7 +19,8 @@ TimeIntegration:
   dt_min:     1e-16 # The minimal time-step size of the simulation (in internal units).
   dt_max:     0.1  # The maximal time-step size of the simulation (in internal units).
   max_dt_RMS_factor: 0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
-
+  dt_RMS_use_gas_only: 1 
+  
 # Cosmological parameters
 Cosmology:
   h:              0.673        # Reduced Hubble constant

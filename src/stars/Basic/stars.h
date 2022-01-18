@@ -164,6 +164,11 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
 __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
     struct spart* restrict sp, const struct cosmology* cosmo) {
 
+  warning(
+      "Star particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      sp->id, sp->h, sp->density.wcount);
+
   /* Some smoothing length multiples. */
   const float h = sp->h;
   const float h_inv = 1.0f / h;                 /* 1/h */

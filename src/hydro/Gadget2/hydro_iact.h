@@ -49,8 +49,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
   float wj, wj_dx;
@@ -69,7 +70,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Compute the kernel function for pi */
   const float hi_inv = 1.f / hi;
@@ -147,8 +148,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
   float dv[3], curlvr[3];
@@ -165,7 +167,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Compute the kernel function */
   const float hi_inv = 1.0f / hi;
@@ -446,8 +448,9 @@ runner_iact_nonsym_2_vec_density(float *R2, float *Dx, float *Dy, float *Dz,
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -464,7 +467,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Get some values in local variables. */
   const float mi = pi->mass;
@@ -575,8 +578,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    const struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -593,7 +597,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Get some values in local variables. */
   const float mj = pj->mass;

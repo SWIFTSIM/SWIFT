@@ -375,8 +375,8 @@ static void parse_line(char *line, struct swift_params *params) {
         parse_value(no_space_line, params);
       }
       /* Check for invalid lines,not including the start and end of file. */
-      else if (strcmp(trim_line, PARSER_START_OF_FILE) &&
-               strcmp(trim_line, PARSER_END_OF_FILE)) {
+      else if (!strcmp(trim_line, PARSER_START_OF_FILE) &&
+               !strcmp(trim_line, PARSER_END_OF_FILE)) {
         error("Invalid line:%d '%s'.", lineNumber, trim_line);
       }
     }
@@ -518,6 +518,13 @@ static void parse_section_param(char *line, int *isFirstParam,
 
   /* Check for duplicate parameter name. */
   find_duplicate_params(params, paramName);
+
+  /* Choke on invalid input */
+  if (token == NULL)
+    error(
+        "Invalid parameter value for parameter '%s'. Cannot be an empty "
+        "string.",
+        paramName);
 
   strcpy(params->data[params->paramCount].name, paramName);
   strcpy(params->data[params->paramCount].value, token);

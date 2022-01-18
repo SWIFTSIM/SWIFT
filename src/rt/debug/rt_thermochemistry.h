@@ -30,7 +30,6 @@
  *
  * @param p Particle to work on.
  */
-
 __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
     struct part *restrict p) {
 

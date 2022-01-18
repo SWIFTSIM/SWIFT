@@ -24,7 +24,7 @@ def virial_temp(mu, M, h=0.703, a=1.0):
 
     Equation 1.
     """
-    return  4e4 * (mu / 1.2) * (M * h / 1e8) ** (2 / 3) / (10 * a)
+    return 4e4 * (mu / 1.2) * (M * h / 1e8) ** (2 / 3) / (10 * a)
 
 
 def calculate_group_sizes_array(offsets: np.array, total_size: int) -> np.array:
@@ -135,15 +135,12 @@ if __name__ == "__main__":
 
         # Requires numpy 1.15 or greater.
         _, particles_in_halos_mask, group_array_mask = np.intersect1d(
-            particle_ids,
-            ids_in_halos,
-            assume_unique=True,
-            return_indices=True,
+            particle_ids, ids_in_halos, assume_unique=True, return_indices=True
         )
 
         # We also need to re-index the group array to cut out DM particles
         group_array = group_array[group_array_mask]
-        
+
         # Kill the spare
         del particle_ids
 
@@ -171,7 +168,7 @@ if __name__ == "__main__":
 
     # First get a mask to ensure no runtime warnings
     mask = particles_in_group != 0
-    
+
     # Normalize
     temp_in_group[mask] /= particles_in_group[mask]
     dens_in_group[mask] /= particles_in_group[mask]
@@ -187,10 +184,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots()
     ax.loglog()
 
-    mask = np.logical_and.reduce([
-         halo_temperatures != 0.0,
-         temp_in_group != 0.0,
-    ])
+    mask = np.logical_and.reduce([halo_temperatures != 0.0, temp_in_group != 0.0])
 
     temp_in_group = temp_in_group[mask]
     halo_temperatures = halo_temperatures[mask]
@@ -202,11 +196,9 @@ if __name__ == "__main__":
     top = max([halo_range[1], mean_range[1]])
 
     plt.plot(
-        [bottom, top],
-        [bottom, top],
-        lw=2, linestyle="--", color="grey", label="1:1"
+        [bottom, top], [bottom, top], lw=2, linestyle="--", color="grey", label="1:1"
     )
-    
+
     ax.scatter(halo_temperatures, temp_in_group, s=2, edgecolor="none", label="Halos")
 
     ax.set_ylabel("Mean Group Temperature [K]")

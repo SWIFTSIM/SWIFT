@@ -224,37 +224,40 @@ struct pcell {
 /**
  * @brief Cell information at the end of a time-step.
  */
-struct pcell_step_hydro {
+struct pcell_step {
 
-  /*! Minimal integer end-of-timestep in this cell (hydro) */
-  integertime_t ti_end_min;
+  struct {
 
-  /*! Maximal distance any #part has travelled since last rebuild */
-  float dx_max_part;
-};
+    /*! Minimal integer end-of-timestep in this cell (hydro) */
+    integertime_t ti_end_min;
 
-struct pcell_step_grav {
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+  } hydro;
 
-  /*! Minimal integer end-of-timestep in this cell (gravity) */
-  integertime_t ti_end_min;
-};
+  struct {
 
-struct pcell_step_stars {
+    /*! Minimal integer end-of-timestep in this cell (gravity) */
+    integertime_t ti_end_min;
+  } grav;
 
-  /*! Minimal integer end-of-timestep in this cell (stars) */
-  integertime_t ti_end_min;
+  struct {
 
-  /*! Maximal distance any #part has travelled since last rebuild */
-  float dx_max_part;
-};
+    /*! Minimal integer end-of-timestep in this cell (stars) */
+    integertime_t ti_end_min;
 
-struct pcell_step_black_holes {
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+  } stars;
 
-  /*! Minimal integer end-of-timestep in this cell (black_holes) */
-  integertime_t ti_end_min;
+  struct {
 
-  /*! Maximal distance any #part has travelled since last rebuild */
-  float dx_max_part;
+    /*! Minimal integer end-of-timestep in this cell (black_holes) */
+    integertime_t ti_end_min;
+
+    /*! Maximal distance any #part has travelled since last rebuild */
+    float dx_max_part;
+  } black_holes;
 };
 
 /**
@@ -416,6 +419,9 @@ struct cell {
    * feedback */
   struct task *timestep_sync;
 
+  /*! The task to recursively collect time-steps */
+  struct task *timestep_collect;
+
 #ifdef WITH_CSDS
   /*! The csds task */
   struct task *csds;
@@ -494,16 +500,8 @@ void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
-int cell_pack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
-int cell_unpack_end_step_hydro(struct cell *c, struct pcell_step_hydro *pcell);
-int cell_pack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
-int cell_unpack_end_step_grav(struct cell *c, struct pcell_step_grav *pcell);
-int cell_pack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
-int cell_unpack_end_step_stars(struct cell *c, struct pcell_step_stars *pcell);
-int cell_pack_end_step_black_holes(struct cell *c,
-                                   struct pcell_step_black_holes *pcell);
-int cell_unpack_end_step_black_holes(struct cell *c,
-                                     struct pcell_step_black_holes *pcell);
+int cell_pack_end_step(const struct cell *c, struct pcell_step *pcell);
+int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcell);
 void cell_pack_timebin(const struct cell *const c, timebin_t *const t);
 void cell_unpack_timebin(struct cell *const c, timebin_t *const t);
 void cell_pack_gpart(const struct cell *const c, struct gpart_foreign *const b);

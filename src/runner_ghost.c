@@ -131,8 +131,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     if ((right = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
-      if (spart_is_active(&sparts[k], e) &&
-          feedback_is_active(&sparts[k], e->time, cosmo, with_cosmology)) {
+      if (spart_is_active(&sparts[k], e) && feedback_is_active(&sparts[k], e)) {
         sid[scount] = k;
         h_0[scount] = sparts[k].h;
         left[scount] = 0.f;
@@ -168,7 +167,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         float h_new;
         int has_no_neighbours = 0;
 
-        if (sp->density.wcount == 0.f) { /* No neighbours case */
+        if (sp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -210,7 +209,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
             stars_reset_feedback(sp);
 
             /* Only do feedback if stars have a reasonable birth time */
-            if (feedback_is_active(sp, e->time, cosmo, with_cosmology)) {
+            if (feedback_is_active(sp, e)) {
 
               const integertime_t ti_step = get_integer_timestep(sp->time_bin);
               const integertime_t ti_begin =
@@ -381,7 +380,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         stars_reset_feedback(sp);
 
         /* Only do feedback if stars have a reasonable birth time */
-        if (feedback_is_active(sp, e->time, cosmo, with_cosmology)) {
+        if (feedback_is_active(sp, e)) {
 
           const integertime_t ti_step = get_integer_timestep(sp->time_bin);
           const integertime_t ti_begin =
@@ -509,6 +508,15 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     if (scount) {
+      warning(
+          "Smoothing length failed to converge for the following star "
+          "particles:");
+      for (int i = 0; i < scount; i++) {
+        struct spart *sp = &sparts[sid[i]];
+        warning("ID: %lld, h: %g, wcount: %g", sp->id, sp->h,
+                sp->density.wcount);
+      }
+
       error("Smoothing length failed to converge on %i particles.", scount);
     }
 
@@ -644,7 +652,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
         float h_new;
         int has_no_neighbours = 0;
 
-        if (bp->density.wcount == 0.f) { /* No neighbours case */
+        if (bp->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -839,6 +847,15 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
     }
 
     if (bcount) {
+      warning(
+          "Smoothing length failed to converge for the following BH "
+          "particles:");
+      for (int i = 0; i < bcount; i++) {
+        struct bpart *bp = &bparts[sid[i]];
+        warning("ID: %lld, h: %g, wcount: %g", bp->id, bp->h,
+                bp->density.wcount);
+      }
+
       error("Smoothing length failed to converge on %i particles.", bcount);
     }
 
@@ -1011,6 +1028,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
+        rt_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1134,7 +1152,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         float h_new;
         int has_no_neighbours = 0;
 
-        if (p->density.wcount == 0.f) { /* No neighbours case */
+        if (p->density.wcount < 1.e-5 * kernel_root) { /* No neighbours case */
 
           /* Flag that there were no neighbours */
           has_no_neighbours = 1;
@@ -1232,6 +1250,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Compute variables required for the force loop */
             hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
             timestep_limiter_prepare_force(p, xp);
+            rt_prepare_force(p);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1394,6 +1413,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
+        rt_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1462,6 +1482,14 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     if (count) {
+      warning(
+          "Smoothing length failed to converge for the following gas "
+          "particles:");
+      for (int i = 0; i < count; i++) {
+        struct part *p = &parts[pid[i]];
+        warning("ID: %lld, h: %g, wcount: %g", p->id, p->h, p->density.wcount);
+      }
+
       error("Smoothing length failed to converge on %i particles.", count);
     }
 

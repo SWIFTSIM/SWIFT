@@ -30,13 +30,18 @@
 #include <unistd.h>
 
 /* Local headers. */
+#include "csds/src/csds_logfile_writer.h"
 #include "swift.h"
 
 void test_log_parts(struct csds_writer *log) {
-  struct dump *d = &log->dump;
+  struct csds_logfile_writer *d = &log->logfile;
   struct engine e;
+  struct cosmology cosmo;
+  e.cosmology = &cosmo;
+  cosmo.a_factor_hydro_accel = 1;
+  cosmo.a_factor_grav_accel = 1;
 
-  /* Write several copies of a part to the dump. */
+  /* Write several copies of a part to the logfile. */
   struct part p;
   struct xpart xp;
   bzero(&p, sizeof(struct part));
@@ -46,22 +51,25 @@ void test_log_parts(struct csds_writer *log) {
   xp.csds_data.last_offset = 0;
 
   /* Write the full part. */
-  csds_log_part(log, &p, &xp, &e, /* log_all */ 1, /* special flags */ 0);
+  csds_log_part(log, &p, &xp, &e, /* log_all */ 1, csds_flag_none,
+                /* flag_data */ 0);
   printf("Wrote part at offset %#016zx.\n", xp.csds_data.last_offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
   p.v[0] = 0.;
-  csds_log_part(log, &p, &xp, &e, /* log_all */ 0, /* special flags */ 0);
+  csds_log_part(log, &p, &xp, &e, /* log_all */ 0, csds_flag_none,
+                /* flag_data */ 0);
   printf("Wrote part at offset %#016zx.\n", xp.csds_data.last_offset);
 
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v[0] = 0.3;
-  csds_log_part(log, &p, &xp, &e, /* log_all */ 0, /* special flags */ 0);
+  csds_log_part(log, &p, &xp, &e, /* log_all */ 0, csds_flag_none,
+                /* flag_data */ 0);
   printf("Wrote part at offset %#016zx.\n", xp.csds_data.last_offset);
 
-  /* Recover the last part from the dump. */
+  /* Recover the last part from the logfile. */
   bzero(&p, sizeof(struct part));
   size_t offset = xp.csds_data.last_offset;
   size_t offset_old = offset;
@@ -75,7 +83,7 @@ void test_log_parts(struct csds_writer *log) {
     abort();
   }
 
-  /* Recover the second part from the dump (only position). */
+  /* Recover the second part from the logfile (only position). */
   bzero(&p, sizeof(struct part));
   offset_old = offset;
   mask = csds_read_part(log, &p, &offset, (const char *)d->data);
@@ -88,7 +96,7 @@ void test_log_parts(struct csds_writer *log) {
     abort();
   }
 
-  /* Recover the first part from the dump. */
+  /* Recover the first part from the logfile. */
   bzero(&p, sizeof(struct part));
   offset_old = offset;
   mask = csds_read_part(log, &p, &offset, (const char *)d->data);
@@ -103,10 +111,10 @@ void test_log_parts(struct csds_writer *log) {
 }
 
 void test_log_gparts(struct csds_writer *log) {
-  struct dump *d = &log->dump;
+  struct csds_logfile_writer *d = &log->logfile;
   struct engine e;
 
-  /* Write several copies of a part to the dump. */
+  /* Write several copies of a part to the logfile. */
   struct gpart p;
   bzero(&p, sizeof(struct gpart));
   p.x[0] = 1.0;
@@ -115,22 +123,25 @@ void test_log_gparts(struct csds_writer *log) {
   p.csds_data.last_offset = 0;
 
   /* Write the full part. */
-  csds_log_gpart(log, &p, &e, /* log_all */ 1, /* special flags */ 0);
+  csds_log_gpart(log, &p, &e, /* log_all */ 1, csds_flag_none,
+                 /* flag_data */ 0);
   printf("Wrote gpart at offset %#016zx.\n", p.csds_data.last_offset);
 
   /* Write only the position. */
   p.x[0] = 2.0;
   p.v_full[0] = 0.;
-  csds_log_gpart(log, &p, &e, /* log_all */ 0, /* special flags */ 0);
+  csds_log_gpart(log, &p, &e, /* log_all */ 0, csds_flag_none,
+                 /* flag_data */ 0);
   printf("Wrote gpart at offset %#016zx.\n", p.csds_data.last_offset);
 
   /* Write the position and velocity. */
   p.x[0] = 3.0;
   p.v_full[0] = 0.3;
-  csds_log_gpart(log, &p, &e, /* log_all */ 0, /* special flags */ 0);
+  csds_log_gpart(log, &p, &e, /* log_all */ 0, csds_flag_none,
+                 /* flag_data */ 0);
   printf("Wrote gpart at offset %#016zx.\n", p.csds_data.last_offset);
 
-  /* Recover the last part from the dump. */
+  /* Recover the last part from the logfile. */
   size_t offset = p.csds_data.last_offset;
   bzero(&p, sizeof(struct gpart));
   size_t offset_old = offset;
@@ -144,7 +155,7 @@ void test_log_gparts(struct csds_writer *log) {
     abort();
   }
 
-  /* Recover the second part from the dump. */
+  /* Recover the second part from the logfile. */
   bzero(&p, sizeof(struct gpart));
   offset_old = offset;
   mask = csds_read_gpart(log, &p, &offset, (const char *)d->data);
@@ -157,7 +168,7 @@ void test_log_gparts(struct csds_writer *log) {
     abort();
   }
 
-  /* Recover the first part from the dump. */
+  /* Recover the first part from the logfile. */
   bzero(&p, sizeof(struct gpart));
   offset_old = offset;
   mask = csds_read_gpart(log, &p, &offset, (const char *)d->data);
@@ -172,13 +183,13 @@ void test_log_gparts(struct csds_writer *log) {
 }
 
 void test_log_timestamps(struct csds_writer *log) {
-  struct dump *d = &log->dump;
+  struct csds_logfile_writer *d = &log->logfile;
 
   /* The timestamp to log. */
   integertime_t t = 10;
   double time = 0.1;
 
-  /* Start with an offset at the end of the dump. */
+  /* Start with an offset at the end of the logfile. */
   size_t offset = d->count;
 
   /* Log three consecutive timestamps. */
