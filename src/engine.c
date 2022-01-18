@@ -2164,11 +2164,11 @@ void engine_step(struct engine *e) {
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-          "%12lld %21.3f %6d\n",
+          "%12lld %21.3f %6d %21.3f\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
-          e->step_props);
+          e->step_props, dead_time);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(e->file_timesteps);
 #endif
