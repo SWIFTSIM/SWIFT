@@ -165,7 +165,6 @@ void space_regrid(struct space *s, int verbose) {
     int cid = 0;
 #ifdef WITH_ZOOM_REGION
     for (int n = 0; n < 2; n++) {
-    	if (n ==1 && !s->with_zoom_region) continue;
 	    for (int i = 0; i < s->cdim[0]; i++) {
 	      for (int j = 0; j < s->cdim[1]; j++) {
 	        for (int k = 0; k < s->cdim[2]; k++) {
