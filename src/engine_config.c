@@ -61,8 +61,12 @@ extern int engine_max_parts_per_cooling;
 static void *engine_dumper_poll(void *p) {
   struct engine *e = (struct engine *)p;
 
+#ifdef WITH_MPI
   char dumpfile[10];
   snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
+#else
+  const char *dumpfile = ".dump";
+#endif
 
   while (1) {
     if (access(dumpfile, F_OK) == 0) {
@@ -112,8 +116,12 @@ static void *engine_dumper_poll(void *p) {
 static void engine_dumper_init(struct engine *e) {
   pthread_t dumper;
 
+#ifdef WITH_MPI
   char dumpfile[10];
   snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
+#else
+  const char *dumpfile = ".dump";
+#endif
 
   /* Make sure the .dump file is not present, that is bad when starting up. */
   struct stat buf;
