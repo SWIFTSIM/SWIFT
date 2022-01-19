@@ -683,7 +683,7 @@ void feedback_props_init(struct feedback_props* fp,
    * mass bins used in IMF  */
   compute_ejecta(fp);
 
-  message("initialized stellar feedback");
+  if (engine_rank == 0) message("initialized stellar feedback");
 }
 
 /**
