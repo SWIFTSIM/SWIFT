@@ -1449,6 +1449,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data, int num_el
 	const int nodeID = e->nodeID;
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	struct cell *cells = s->cells_top;
+	const double theta_crit = e->gravity_properties->theta_crit;
 
 	/* Compute how many cells away we need to walk */
 	const double distance = 2.5 * cells[0].width[0] / theta_crit;
