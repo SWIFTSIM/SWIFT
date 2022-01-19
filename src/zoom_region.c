@@ -50,7 +50,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
  *
  * @param cdim Cell dimentions of the TL grid (same for natural TL and zoom grid).
  * @param x, y, z Location of particle.
- * @param i, j, k Location of particle (as integer fraction of box, 0 to 1).
+ * @param i, j, k Location of particle in the natural grid [0, cdim].
  * @param s The space.
  */
 int cell_getid_zoom(const int cdim[3], const double x, const double y,
