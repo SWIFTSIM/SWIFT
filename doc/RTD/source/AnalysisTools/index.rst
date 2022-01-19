@@ -185,3 +185,35 @@ the number of concurrent processes to use and a time limit. Concurrent
 processes are useful to speed up the analysis of a lot of task data and a
 consistent time limit so that comparisons across plots is easy. The results
 can be viewed in a single HTML document. 
+
+
+Live internal inspection using the dumper thread
+------------------------------------------------
+
+If the configuration option ``--enable-dumper`` is used then an extra thread
+is created that polls for the existence of local files called
+``.dump<.rank>``. When found this will trigger dump logs of the current state
+of various internal queues and loggers, depending on what is enabled.
+
+Without any other options this will dump logs of the current tasks in the
+queues (these are those ready to run when time and all conflicts allow) and
+all the tasks that are expected to run this step (those which are active in
+the current time step). If ``memuse-reports`` is enabled the currently logged
+memory use is also dumped and if ``mpiuse-reports`` is enabled the MPI
+communications performed this step are dumped. As part of this dump a report
+about MPI messages which have been logged but not completed is also made to
+the terminal. These are useful when diagnosing MPI deadlocks.
+
+The active tasks are dumped to files ``task_dump-step<n>.dat`` or
+``task_dump_MPI-step<n>.dat_<rank>`` when using MPI.
+
+Similarly the currently queued tasks are dumped to files
+``queue_dump-step<n>.dat`` or ``queue_dump_MPI-step<n>.dat_<rank>``.
+
+Memory use logs are written to files ``memuse-error-report-rank<n>.txt``.
+The MPI logs follow the pattern using ``mpiuse-error-report-rank<n>.txt``.
+
+The ``.dump<.rank>`` files once seen are deleted, so dumping can be done more
+than once. For a non-MPI run the file is simply called ``.dump``, note for MPI
+you need to create one file per rank, so ``.dump.0``, ``.dump.1`` and so on.
+

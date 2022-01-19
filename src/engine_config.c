@@ -60,8 +60,16 @@ extern int engine_max_parts_per_cooling;
  */
 static void *engine_dumper_poll(void *p) {
   struct engine *e = (struct engine *)p;
+
+#ifdef WITH_MPI
+  char dumpfile[10];
+  snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
+#else
+  const char *dumpfile = ".dump";
+#endif
+
   while (1) {
-    if (access(".dump", F_OK) == 0) {
+    if (access(dumpfile, F_OK) == 0) {
 
       /* OK, do our work. */
       message("Dumping engine tasks in step: %d", e->step);
@@ -82,7 +90,7 @@ static void *engine_dumper_poll(void *p) {
       scheduler_dump_queues(e);
 
       /* Delete the file. */
-      unlink(".dump");
+      unlink(dumpfile);
       message("Dumping completed");
       fflush(stdout);
     }
@@ -108,9 +116,16 @@ static void *engine_dumper_poll(void *p) {
 static void engine_dumper_init(struct engine *e) {
   pthread_t dumper;
 
+#ifdef WITH_MPI
+  char dumpfile[10];
+  snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
+#else
+  const char *dumpfile = ".dump";
+#endif
+
   /* Make sure the .dump file is not present, that is bad when starting up. */
   struct stat buf;
-  if (stat(".dump", &buf) == 0) unlink(".dump");
+  if (stat(dumpfile, &buf) == 0) unlink(dumpfile);
 
   /* Thread does not exit, so nothing to do but create it. */
   pthread_create(&dumper, NULL, &engine_dumper_poll, e);
