@@ -79,9 +79,9 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
     
       /* Which zoom TL cell are we in? */
       const int zoom_index =
-          cell_getid(cdim, (x - zoom_region_bounds[0]) * ih_x_zoom,
-                     (y - zoom_region_bounds[2]) * ih_y_zoom,
-                     (z - zoom_region_bounds[4]) * ih_z_zoom);
+          cell_getid(cdim, (int)(x - zoom_region_bounds[0]) * ih_x_zoom,
+                     (int)(y - zoom_region_bounds[2]) * ih_y_zoom,
+                     (int)(z - zoom_region_bounds[4]) * ih_z_zoom);
       cell_id = zoom_index;
 #ifdef SWIFT_DEBUG_CHECKS
       if (zoom_index < 0 || zoom_index >= cdim[0] * cdim[1] * cdim[2])
@@ -359,6 +359,9 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       widths[1] = (zoom_region_bounds[3] - zoom_region_bounds[2]);
       widths[2] = (zoom_region_bounds[5] - zoom_region_bounds[4]);
 
+      message("zoom_region_interim_dim: [%f %f %f]",
+        		widths[0], widths[1], widths[2]);
+
       /* Get the maximum axis length of the zoom region. */
       double max_width = 0;
       for (int k = 0; k < 3; k++) {
@@ -366,10 +369,16 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
               max_width = widths[k];
       }
 
+      message("ijk_com: [%d %d %d]",
+      		(int)(s->zoom_props->com[0] * s->iwidth[0]), (int)(s->zoom_props->com[1] * s->iwidth[1]), (int)(s->zoom_props->com[2] * s->iwidth[2]));
+
+      /* To ensure the zoom region is exactly contained within natural cells
+       * we need to centre on the natural cell containing the
+       * centre of mass of the zoom region*/
       struct cell *restrict cent_c;
       const int cent_cid = cell_getid(cdim, (int)(s->zoom_props->com[0] * s->iwidth[0]),
       		(int)(s->zoom_props->com[1] * s->iwidth[1]), (int)(s->zoom_props->com[2] * s->iwidth[2]));;
-      cent_c = &s->cells_top[cent_cid];
+      cent_c = &s->cells_top[cent_cid + bkg_cell_offset];
 
       for (int k = 0; k < 3; k++) {
 
