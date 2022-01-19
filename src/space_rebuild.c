@@ -912,9 +912,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
-        gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
-    	message("gpos: [%f %f %f] cell_loc: [%f %f %f] cell_width: [%f %f %f]", gp->x[0], gp->x[1], gp->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-      error("gpart not sorted into the right top-level cell!");
+        gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2]) {
+	      message("gpos: [%f %f %f] cell_loc: [%f %f %f] cell_width: [%f %f %f]", gp->x[0], gp->x[1], gp->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
+	      error("gpart not sorted into the right top-level cell!");
+      }
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
