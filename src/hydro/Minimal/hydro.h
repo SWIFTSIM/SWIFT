@@ -679,6 +679,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->B_dt[0] = 0.0f;
   p->B_dt[1] = 0.0f;
   p->B_dt[2] = 0.0f;
+
+  p->B_mon = 0.0f;
 }
 
 /**

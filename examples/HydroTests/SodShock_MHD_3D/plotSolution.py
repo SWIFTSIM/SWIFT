@@ -95,8 +95,9 @@ data = dict(
     x=sim.gas.coordinates.value[:, 0],
     v=sim.gas.velocities.value[:, 0],
     u=sim.gas.internal_energies.value,
-    #S=sim.gas.entropies.value,
-    B=sim.gas.magnetic_flux_density.value[:,0],
+    S=sim.gas.entropies.value,
+    #B=sim.gas.magnetic_flux_density.value[:,0],
+    #B_mon=sim.gas.monopole_term.value,
     P=sim.gas.pressures.value,
     rho=sim.gas.densities.value,
     y=sim.gas.coordinates.value[:, 1],
@@ -135,7 +136,8 @@ plot = dict(
     diff=r"100$\times$ Diffusion Coefficient ($\alpha_D$)",
     visc=r"Viscosity Coefficient ($\alpha_V$)",
     #S="Entropy ($A$)",
-    B="Magnetic Flux Density ($B_x$)"
+    #B="Magnetic Flux Density ($B_x$)"
+    B_mon="Monopole Term"
 )
 
 log = dict(v=False, u=False, B=False, P=False, rho=False, visc=False, diff=False)

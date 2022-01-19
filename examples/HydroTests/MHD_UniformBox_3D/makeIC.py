@@ -69,7 +69,7 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.
 grp = file.create_group("/PartType0")
 
 v  = zeros((numPart, 3))
-v[:,1] = ones(numPart)*5
+#v[:,1] = ones(numPart)*0.00001
 ds = grp.create_dataset('Velocities', (numPart, 3), 'f')
 ds[()] = v
 v = zeros(1)
@@ -90,7 +90,7 @@ ds[()] = u
 u = zeros(1)
 
 B  = zeros((numPart, 3))
-B[:,2] = ones(numPart)*5
+#B[:,2] = ones(numPart)*0.00001
 ds = grp.create_dataset('MagneticFluxDensity', (numPart, 3), 'f')
 ds[()] = B
 B = zeros(1)

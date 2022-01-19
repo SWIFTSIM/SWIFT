@@ -2,11 +2,11 @@ from swiftsimio import load
 import numpy as np
 import matplotlib.pyplot as plt
 
-attrnum = 15
-snapnum = 8
+attrnum = 16
+snapnum = 9
 file_prefix = "sodShock_000"
 
-break_ptcle_id = 517709
+break_ptcle_id = 19823
 
 attrev = np.zeros((attrnum,snapnum))
 
@@ -30,12 +30,17 @@ for ii in range(snapnum):
 		else:
 			attrev[jj,ii] = val
 
-fig, ax = plt.subplots(nrows=3, ncols=5)
+#count = 8
+#plt.plot(attrev[count,:],label=attrs[count])
+#plt.show()
+#quit()
+
+fig, ax = plt.subplots(nrows=int(4), ncols=int(4))
 
 count = 0
 
-for ii in range(3):
-	for jj in range(5):
+for ii in range(int(4)):
+	for jj in range(int(4)):
 		ax[ii,jj].plot(attrev[count,:], label=attrs[count])
 
 		leg = ax[ii,jj].legend(handlelength=0, handletextpad=0, fancybox=True)
@@ -48,4 +53,3 @@ for ii in range(3):
 plt.show() 
 
 quit()
-

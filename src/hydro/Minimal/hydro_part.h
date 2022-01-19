@@ -134,6 +134,9 @@ struct part {
   /*! Time derivative of the magnetic field. */
   float B_dt[3];
 
+  /*! Monopole term in momentum equation. */
+  float B_mon;
+
   /* Store density/force specific stuff. */
   // union {
 

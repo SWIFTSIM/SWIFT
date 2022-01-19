@@ -32,10 +32,10 @@ v_L = 0.               # Velocity left state
 v_R = 0.               # Velocity right state
 P_L = 1.               # Pressure left state
 P_R = 0.1              # Pressure right state
-Bx_L = 0.00075 #0.75
-By_L = 0.001 #1.
-Bx_R = 0.00075 #0.75
-By_R = -0.001 #-1.
+Bx_L = 0. # 0.0075 # 0.75
+By_L = 0. # 0.01 # 1.
+Bx_R = 0. # 0.0075 # 0.75
+By_R = 0. #-0.01 # -1.
 fileName = "sodShock.hdf5" 
 
 
