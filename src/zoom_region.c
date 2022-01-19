@@ -1447,15 +1447,8 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data, int num_el
 	struct space *s = e->s;
 	struct scheduler *sched = &e->sched;
 	const int nodeID = e->nodeID;
-	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	struct cell *cells = s->cells_top;
-	const double theta_crit = e->gravity_properties->theta_crit;
-	const double max_distance = e->mesh->r_cut_max;
-	const double max_distance2 = max_distance * max_distance;
-
-	/* Some info about the zoom domain */
-	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
 	/* Compute how many cells away we need to walk */
 	const double distance = 2.5 * cells[0].width[0] / theta_crit;
