@@ -165,9 +165,9 @@ void space_regrid(struct space *s, int verbose) {
     int cid = 0;
 #ifdef WITH_ZOOM_REGION
     for (int n = 0; n < 2; n++) {
-	    for (int i = 0; i < s->cdim[0]; i++) {
-	      for (int j = 0; j < s->cdim[1]; j++) {
-	        for (int k = 0; k < s->cdim[2]; k++) {
+    	for (int i = 0; i < s->cdim[0]; i++) {
+    		for (int j = 0; j < s->cdim[1]; j++) {
+    			for (int k = 0; k < s->cdim[2]; k++) {
 	        	if (n == 0) {
 	        		cid = cell_getid(oldcdim, i, j, k);
 	        	} else {
@@ -200,12 +200,6 @@ void space_regrid(struct space *s, int verbose) {
   if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
       cdim[2] < s->cdim[2]) {
 
-#ifdef WITH_ZOOM_REGION
-    message("Constructing zoom region.");
-    /* Compute the bounds of the zoom region from the DM particles. */
-    if (s->with_zoom_region) construct_zoom_region(s, verbose);
-#endif
-
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
     message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
@@ -236,11 +230,18 @@ void space_regrid(struct space *s, int verbose) {
     }
     const float dmin = min3(s->width[0], s->width[1], s->width[2]);
 
+#ifdef WITH_ZOOM_REGION
+	  message("Constructing zoom region.");
+    /* Compute the bounds of the zoom region from the DM particles. */
+    if (s->with_zoom_region) construct_zoom_region(s, verbose);
+#endif
+
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
 
 #ifdef WITH_ZOOM_REGION
-    /* Double the number of top level cells, 2nd copy is for zoom region. */
+    /* Double the number of top level cells, 2nd copy becomes the background
+     * cells and zoom cells are placed witin the first nr_cells. */
     if (s->with_zoom_region) {
       s->tot_cells *= 2;
       s->nr_cells *= 2;
