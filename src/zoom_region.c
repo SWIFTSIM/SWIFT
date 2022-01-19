@@ -359,18 +359,12 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       widths[1] = (zoom_region_bounds[3] - zoom_region_bounds[2]);
       widths[2] = (zoom_region_bounds[5] - zoom_region_bounds[4]);
 
-      message("zoom_region_interim_dim: [%f %f %f]",
-        		widths[0], widths[1], widths[2]);
-
       /* Get the maximum axis length of the zoom region. */
       double max_width = 0;
       for (int k = 0; k < 3; k++) {
           if (widths[k] > max_width)
               max_width = widths[k];
       }
-
-      message("ijk_com: [%d %d %d]",
-      		(int)(s->zoom_props->com[0] * s->iwidth[0]), (int)(s->zoom_props->com[1] * s->iwidth[1]), (int)(s->zoom_props->com[2] * s->iwidth[2]));
 
       /* To ensure the zoom region is exactly contained within natural cells
        * we need to centre on the natural cell containing the
