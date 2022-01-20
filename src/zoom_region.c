@@ -190,7 +190,7 @@ void construct_zoom_region(struct space *s, int verbose) {
 		if (new_zoom_boundary[1] > s->dim[0]) shiftx = s->dim[0] - new_zoom_boundary[1] - s->width[0];
 		if (new_zoom_boundary[3] > s->dim[0]) shifty = s->dim[1] - new_zoom_boundary[3] - s->width[1];
 		if (new_zoom_boundary[5] > s->dim[0]) shiftz = s->dim[2] - new_zoom_boundary[5] - s->width[2];
-  	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f %f %f]", shiftx, shifty, shiftz);
+  	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
   }
 
   /* Get the maximum axis length and assign it to the zoom region dimension. */
@@ -416,7 +416,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 				if (zoom_region_bounds[1] > s->dim[0]) shiftx = s->dim[0] - zoom_region_bounds[1] - s->width[0];
 				if (zoom_region_bounds[3] > s->dim[0]) shifty = s->dim[1] - zoom_region_bounds[3] - s->width[1];
 				if (zoom_region_bounds[5] > s->dim[0]) shiftz = s->dim[2] - zoom_region_bounds[5] - s->width[2];
-		    error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f %f %f]", shiftx, shifty, shiftz);
+		    error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
 		  }
 
       /* Overwrite zoom region properties. */

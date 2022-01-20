@@ -914,9 +914,12 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2]) {
 	      message("gpos: [%f %f %f] cell_loc: [%f %f %f] cell_width: [%f %f %f]", gp->x[0], gp->x[1], gp->x[2], c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-	      message("width: [%f %f %f] iwidth: [%f %f %f] ijk(float): [%f %f %f] ijk(int): [%d %d %d] ", s->width[0], s->width[1], s->width[2], s->iwidth[0], s->iwidth[1], s->iwidth[2], (gp->x[0] * s->iwidth[0]), (gp->x[1] * s->iwidth[1]),
-                              (gp->x[2] * s->iwidth[2]), (int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]),
-                              (int)(gp->x[2] * s->iwidth[2]));
+	      message("width: [%f %f %f] iwidth: [%f %f %f] ijk(float): [%f %f %f] ijk(int): [%d %d %d] zoom_ijk(float): [%f %f %f] zoom_ijk(int): [%d %d %d]",
+	      		s->width[0], s->width[1], s->width[2], s->iwidth[0], s->iwidth[1], s->iwidth[2],
+	      		(gp->x[0] * s->iwidth[0]), (gp->x[1] * s->iwidth[1]), (gp->x[2] * s->iwidth[2]),
+	      		(int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]), (int)(gp->x[2] * s->iwidth[2]),
+	      		((gp->x[0] - s->zoom_props->region_bounds[0]) * s->zoom_props->iwidth[0]), ((gp->x[1] - s->zoom_props->region_bounds[2]) * s->zoom_props->iwidth[1]), ((gp->x[2] - s->zoom_props->region_bounds[4]) * s->zoom_props->iwidth[2]),
+	      		(int)((gp->x[0] - s->zoom_props->region_bounds[0]) * s->zoom_props->iwidth[0]), (int)((gp->x[1] - s->zoom_props->region_bounds[2]) * s->zoom_props->iwidth[1]), (int)((gp->x[2] - s->zoom_props->region_bounds[4]) * s->zoom_props->iwidth[2]));
 	      message("zoom_width: [%f %f %f] zoom_iwidth: [%f %f %f] zoom_bounds: [%f %f %f %f %f %f]", s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
 	      		s->zoom_props->iwidth[0], s->zoom_props->iwidth[1], s->zoom_props->iwidth[2],
 	      		s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1], s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3], s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]);
