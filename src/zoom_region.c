@@ -73,9 +73,9 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
     const double ih_z_zoom = zoom_props->iwidth[2];
 
     /* Are the passed coordinates within the zoom region? */
-    if (x > zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
-        y > zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
-        z > zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
+    if (x >= zoom_region_bounds[0] && x <= zoom_region_bounds[1] &&
+        y >= zoom_region_bounds[2] && y <= zoom_region_bounds[3] &&
+        z >= zoom_region_bounds[4] && z <= zoom_region_bounds[5]) {
     
       /* Which zoom TL cell are we in? */
       const int zoom_index =
@@ -193,9 +193,14 @@ void construct_zoom_region(struct space *s, int verbose) {
   	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
   }
 
-  s->zoom_props->dim[0] = widths[0] * zoom_boost_factor;
-  s->zoom_props->dim[1] = widths[1] * zoom_boost_factor;
-  s->zoom_props->dim[2] = widths[2] * zoom_boost_factor;
+	/* Store the initial width of the zoom region and boundaries */
+  for (int k = 0; k < 3; k++) {
+
+  	s->zoom_props->dim[k] = widths[k] * zoom_boost_factor;
+  	s->zoom_props->region_bounds[k * 2] = s->zoom_props->com[k] - (s->zoom_props->dim[k] / 2);
+  	s->zoom_props->region_bounds[(k * 2) + 1] = s->zoom_props->com[k] + (s->zoom_props->dim[k]/ 2);
+
+  }
 
   if (verbose)
     message("com: [%f %f %f] initial_dim: [%f %f %f]",
@@ -225,13 +230,92 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 #ifdef WITH_ZOOM_REGION
   
   /* We are recomputing the boundary of the zoom region. */
-  double zoom_region_bounds[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
+  double zoom_region_bounds[6] = s->zoom_props->region_bounds;
   const int bkg_cell_offset = cdim[0] * cdim[1] * cdim[2];
   float dmin_zoom = 0.f;
   double widths[3] = {0.0, 0.0, 0.0};
   double mid_points[3] = {0.0, 0.0, 0.0};
 
-  /* Loop over top level cells twice, second time is for the zoom region. */
+	/* Find new boundaries from the edge of natural cells */
+	for (int ijk = 0; ijk < 3; ijk++) {
+		const int low_bound = zoom_region_bounds[ijk * 2] * s->iwidth[ijk];
+		const int up_bound = zoom_region_bounds[(ijk * 2) + 1] * s->iwidth[ijk];
+		zoom_region_bounds[ijk * 2] = low_bound * s->width[ijk];
+		zoom_region_bounds[(ijk * 2) + 1] = up_bound * s->width[ijk] + s->width[ijk];
+	}
+
+	/* Assign each axis to width array. */
+  widths[0] = (zoom_region_bounds[1] - zoom_region_bounds[0]);
+  widths[1] = (zoom_region_bounds[3] - zoom_region_bounds[2]);
+  widths[2] = (zoom_region_bounds[5] - zoom_region_bounds[4]);
+
+  /* Get the maximum axis length of the zoom region. */
+  double max_width = 0;
+  for (int k = 0; k < 3; k++) {
+      if (widths[k] > max_width)
+          max_width = widths[k];
+  }
+
+  /* Find the new zoom region bounds for equal widths on all axis based on this maximum,
+   * centred on the central natural cell */
+  for (int k = 0; k < 3; k++) {
+    mid_points[k] = (int)(s->zoom_props->com[k] * s->iwidth[k]) * s->width[k] + (s->width[k] / 2);
+    zoom_region_bounds[k * 2] = mid_points[k] - (max_width / 2);
+    zoom_region_bounds[(k * 2) + 1] = mid_points[k] + (max_width / 2);
+  }
+
+  /* If this process has pushed the zoom region outside the bounds
+   * of the box we need to stop and shift the ICs to avoid having
+   * cells with unequal widths */
+  double shiftx = 0.;
+  double shifty = 0.;
+  double shiftz = 0.;
+  if ((zoom_region_bounds[0] < 0) || (zoom_region_bounds[1] > s->dim[0])
+  || (zoom_region_bounds[2] < 0) || (zoom_region_bounds[3] > s->dim[1])
+  || (zoom_region_bounds[4] < 0) || (zoom_region_bounds[5] > s->dim[2])) {
+		if (zoom_region_bounds[0] < 0) shiftx = -zoom_region_bounds[0] + s->width[0];
+		if (zoom_region_bounds[2] < 0) shifty = -zoom_region_bounds[2] + s->width[1];
+		if (zoom_region_bounds[4] < 0) shiftz = -zoom_region_bounds[4] + s->width[2];
+		if (zoom_region_bounds[1] > s->dim[0]) shiftx = s->dim[0] - zoom_region_bounds[1] - s->width[0];
+		if (zoom_region_bounds[3] > s->dim[0]) shifty = s->dim[1] - zoom_region_bounds[3] - s->width[1];
+		if (zoom_region_bounds[5] > s->dim[0]) shiftz = s->dim[2] - zoom_region_bounds[5] - s->width[2];
+    error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
+  }
+
+  /* Overwrite zoom region properties. */
+  s->zoom_props->dim[0] = (zoom_region_bounds[1] - zoom_region_bounds[0]);
+  s->zoom_props->dim[1] = (zoom_region_bounds[3] - zoom_region_bounds[2]);
+  s->zoom_props->dim[2] = (zoom_region_bounds[5] - zoom_region_bounds[4]);
+  for (int l = 0; l < 3; l++) {
+    s->zoom_props->width[l] = s->zoom_props->dim[l] / cdim[l];
+    s->zoom_props->iwidth[l] = 1 / s->zoom_props->width[l];
+    s->zoom_props->cdim[l] = cdim[l];
+  }
+
+  if (verbose) {
+    message("zoom_region_cent: [%f %f %f] zoom_region_bounds: [%f-%f %f-%f %f-%f]",
+        mid_points[0], mid_points[1], mid_points[2], zoom_region_bounds[0], zoom_region_bounds[1],
+        zoom_region_bounds[2], zoom_region_bounds[3], zoom_region_bounds[4], zoom_region_bounds[5]);
+    message("tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f] dim: [%f %f %f]",
+        s->width[0], s->width[1], s->width[2],
+        s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
+        max_width, max_width, max_width);
+    message("nr_tl_cells_in_zoom_region: [%f %f %f] nr_zoom_cells_in_tl_cell: [%f %f %f]",
+        max_width / s->width[0], max_width / s->width[1], max_width / s->width[2],
+        s->width[0] / s->zoom_props->width[0], s->width[1] / s->zoom_props->width[1],
+        s->width[2] / s->zoom_props->width[2]);
+  }
+
+  /* Set the number of zoom cells in a natural cell */
+  for (int l = 0; l < 6; l++) {
+  	s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
+  }
+  s->zoom_props->tl_cell_offset = bkg_cell_offset;
+  dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
+                   s->zoom_props->width[2]);
+  s->zoom_props->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+
+  /* Loop over top level cells twice, first time for the zoom region, second for the natural cells. */
   for (int n = 0; n < 2; n++) {
 
     /* Set the cell location and sizes. */
@@ -242,17 +326,6 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
           struct cell *restrict c;
           if (n == 0) {
-            /* Natural top level cells. */
-            c = &s->cells_top[cid + bkg_cell_offset];
-            c->loc[0] = i * s->width[0];
-            c->loc[1] = j * s->width[1];
-            c->loc[2] = k * s->width[2];
-            c->width[0] = s->width[0];
-            c->width[1] = s->width[1];
-            c->width[2] = s->width[2];
-            c->tl_cell_type = tl_cell;
-            c->dmin = dmin;
-          } else {
           	/* First we must create the zoom cell and it's multipoles */
             c = &s->cells_top[cid];
             c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
@@ -269,34 +342,39 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->dmin = dmin_zoom;
             c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
 
-          	/* On the second loop we also need to assign zoom cell information to natural cells. */
+          } else {
+
+          	/* Natural top level cells. */
             c = &s->cells_top[cid + bkg_cell_offset];
+            c->loc[0] = i * s->width[0];
+            c->loc[1] = j * s->width[1];
+            c->loc[2] = k * s->width[2];
+            c->width[0] = s->width[0];
+            c->width[1] = s->width[1];
+            c->width[2] = s->width[2];
+            c->tl_cell_type = tl_cell;
+            c->dmin = dmin;
             c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
 
-            /* We can't create the multipoles without first creating the zoom multipoles */
             if (s->with_self_gravity)
               c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
 
             /* We need to update the cell types after increasing the zoom region size in the first interation */
-				    if (c->loc[0] > zoom_region_bounds[0] && c->loc[0] < zoom_region_bounds[1] &&
-				        c->loc[1] > zoom_region_bounds[2] && c->loc[1] < zoom_region_bounds[3] &&
-				        c->loc[2] > zoom_region_bounds[4] && c->loc[2] < zoom_region_bounds[5]) {
+				    if (c->loc[0] >= zoom_region_bounds[0] && c->loc[0] <= zoom_region_bounds[1] &&
+				        c->loc[1] >= zoom_region_bounds[2] && c->loc[1] <= zoom_region_bounds[3] &&
+				        c->loc[2] >= zoom_region_bounds[4] && c->loc[2] <= zoom_region_bounds[5]) {
 				    	/* Tag this top level cell as part of the zoom region. */
               c->tl_cell_type = void_tl_cell;
-				    }
 
-            /* Assign the start and end indices for the zoom cells within this cell */
-			      if (c->tl_cell_type == void_tl_cell) {
-			        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
+              /* Assign the start and end indices for the zoom cells within this cell */
+              c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
 			        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
 			        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
 			        c->end_i = (c->loc[0] - zoom_region_bounds[0] + c->width[0]) * s->zoom_props->iwidth[0];
 			        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[1]) * s->zoom_props->iwidth[1];
 			        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[2]) * s->zoom_props->iwidth[2];
-			      }
+				    }
 
-            /* Now switch back to the zoom cells to assign the universal attributes */
-            c = &s->cells_top[cid];
           }
           c->depth = 0;
           c->split = 0;
@@ -322,128 +400,9 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
           cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
 #endif
-          /* Only do what comes next first time round. */
-          if (n == 1) continue;
-          /* Is this top level cell within the zoom region? */
-          if (s->with_zoom_region &&
-              (c->loc[0] + c->width[0] >
-               s->zoom_props->com[0] - s->zoom_props->dim[0] / 2.) &&
-              (c->loc[0] <
-               s->zoom_props->com[0] + s->zoom_props->dim[0] / 2.) &&
-              (c->loc[1] + c->width[1] >
-               s->zoom_props->com[1] - s->zoom_props->dim[1] / 2.) &&
-              (c->loc[1] <
-               s->zoom_props->com[1] + s->zoom_props->dim[1] / 2.) &&
-              (c->loc[2] + c->width[2] >
-               s->zoom_props->com[2] - s->zoom_props->dim[2] / 2.) &&
-              (c->loc[2] <
-               s->zoom_props->com[2] + s->zoom_props->dim[2] / 2.)) {
 
-            /* Tag this top level cell as part of the zoom region. */
-            c->tl_cell_type = void_tl_cell;
-
-            /* Update the bounds of the zoom region. */
-            if (c->loc[0] < zoom_region_bounds[0])
-              zoom_region_bounds[0] = c->loc[0];
-            if (c->loc[0] + c->width[0] > zoom_region_bounds[1])
-              zoom_region_bounds[1] = c->loc[0] + c->width[0];
-            if (c->loc[1] < zoom_region_bounds[2])
-              zoom_region_bounds[2] = c->loc[1];
-            if (c->loc[1] + c->width[1] > zoom_region_bounds[3])
-              zoom_region_bounds[3] = c->loc[1] + c->width[1];
-            if (c->loc[2] < zoom_region_bounds[4])
-              zoom_region_bounds[4] = c->loc[2];
-            if (c->loc[2] + c->width[2] > zoom_region_bounds[5])
-              zoom_region_bounds[5] = c->loc[2] + c->width[2];
-
-          }
         }
       }
-    }
-
-    /* Compute size of top level zoom cells on first iteration. */
-    if (n == 1) continue;
-
-    if (s->with_zoom_region) {
-
-      /* Assign each axis to array. */
-      widths[0] = (zoom_region_bounds[1] - zoom_region_bounds[0]);
-      widths[1] = (zoom_region_bounds[3] - zoom_region_bounds[2]);
-      widths[2] = (zoom_region_bounds[5] - zoom_region_bounds[4]);
-
-      /* Get the maximum axis length of the zoom region. */
-      double max_width = 0;
-      for (int k = 0; k < 3; k++) {
-          if (widths[k] > max_width)
-              max_width = widths[k];
-      }
-
-      /* To ensure the zoom region is exactly contained within natural cells
-       * we need to centre on the natural cell containing the
-       * centre of mass of the zoom region*/
-      struct cell *restrict cent_c;
-      const int cent_cid = cell_getid(cdim, (int)(s->zoom_props->com[0] * s->iwidth[0]),
-      		(int)(s->zoom_props->com[1] * s->iwidth[1]), (int)(s->zoom_props->com[2] * s->iwidth[2]));;
-      cent_c = &s->cells_top[cent_cid + bkg_cell_offset];
-
-      /* Find the new zoom region bounds based on this central cell */
-      for (int k = 0; k < 3; k++) {
-
-      	mid_points[k] = cent_c->loc[k] + (s->width[k] / 2);
-      	zoom_region_bounds[k * 2] = mid_points[k] - (max_width / 2);
-      	zoom_region_bounds[(k * 2) + 1] = mid_points[k] + (max_width / 2);
-
-      }
-
-      /* If this process has pushed the zoom region outside the bounds 
-       * of the box we need to stop and shift the ICs to avoid having 
-       * cells with unequal widths */
-		  double shiftx = 0.;
-		  double shifty = 0.;
-		  double shiftz = 0.;
-		  if ((zoom_region_bounds[0] < 0) || (zoom_region_bounds[1] > s->dim[0])
-		  || (zoom_region_bounds[2] < 0) || (zoom_region_bounds[3] > s->dim[1])
-		  || (zoom_region_bounds[4] < 0) || (zoom_region_bounds[5] > s->dim[2])) {
-				if (zoom_region_bounds[0] < 0) shiftx = -zoom_region_bounds[0] + s->width[0];
-				if (zoom_region_bounds[2] < 0) shifty = -zoom_region_bounds[2] + s->width[1];
-				if (zoom_region_bounds[4] < 0) shiftz = -zoom_region_bounds[4] + s->width[2];
-				if (zoom_region_bounds[1] > s->dim[0]) shiftx = s->dim[0] - zoom_region_bounds[1] - s->width[0];
-				if (zoom_region_bounds[3] > s->dim[0]) shifty = s->dim[1] - zoom_region_bounds[3] - s->width[1];
-				if (zoom_region_bounds[5] > s->dim[0]) shiftz = s->dim[2] - zoom_region_bounds[5] - s->width[2];
-		    error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
-		  }
-
-      /* Overwrite zoom region properties. */
-      s->zoom_props->dim[0] = (zoom_region_bounds[1] - zoom_region_bounds[0]);
-      s->zoom_props->dim[1] = (zoom_region_bounds[3] - zoom_region_bounds[2]);
-      s->zoom_props->dim[2] = (zoom_region_bounds[5] - zoom_region_bounds[4]);
-      for (int l = 0; l < 3; l++) {
-        s->zoom_props->width[l] = s->zoom_props->dim[l] / cdim[l];
-        s->zoom_props->iwidth[l] = 1 / s->zoom_props->width[l];
-        s->zoom_props->cdim[l] = cdim[l];
-      }
-
-      if (verbose) {
-        message("zoom_region_cent: [%f %f %f] zoom_region_bounds: [%f-%f %f-%f %f-%f]",
-        		mid_points[0], mid_points[1], mid_points[2], zoom_region_bounds[0], zoom_region_bounds[1],
-        		zoom_region_bounds[2], zoom_region_bounds[3], zoom_region_bounds[4], zoom_region_bounds[5]);
-        message("tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f] dim: [%f %f %f]",
-	      		s->width[0], s->width[1], s->width[2],
-	      		s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
-	      		max_width, max_width, max_width);
-        message("nr_tl_cells_in_zoom_region: [%f %f %f] nr_zoom_cells_in_tl_cell: [%f %f %f]",
-        		max_width / s->width[0], max_width / s->width[1], max_width / s->width[2],
-        		s->width[0] / s->zoom_props->width[0], s->width[1] / s->zoom_props->width[1],
-        		s->width[2] / s->zoom_props->width[2]);
-      }
-
-      /* Set the number of zoom cells in a natural cell */
-      for (int l = 0; l < 6; l++)
-        s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
-      s->zoom_props->tl_cell_offset = bkg_cell_offset;
-      dmin_zoom = min3(s->zoom_props->width[0], s->zoom_props->width[1],
-                       s->zoom_props->width[2]);
-      s->zoom_props->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
     }
   }
 
