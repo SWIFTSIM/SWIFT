@@ -913,6 +913,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2]) {
+    	  message("supposed cid: %d Return cid: %d", cell_getid(s->cdim, 1, 0, 0), cell_getid(s->cdim, 0, 0, 0));
 	      message("gpos: [%f %f %f] cell_id: %d cell_loc: [%f %f %f] cell_width: [%f %f %f]", gp->x[0], gp->x[1], gp->x[2], new_gind, c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
 	      message("width: [%f %f %f] iwidth: [%f %f %f] ijk(float): [%f %f %f] ijk(int): [%d %d %d] zoom_ijk(float): [%f %f %f] zoom_ijk(int): [%d %d %d]",
 	      		s->width[0], s->width[1], s->width[2], s->iwidth[0], s->iwidth[1], s->iwidth[2],
