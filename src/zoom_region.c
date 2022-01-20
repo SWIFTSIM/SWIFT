@@ -193,18 +193,12 @@ void construct_zoom_region(struct space *s, int verbose) {
   	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
   }
 
-  /* Get the maximum axis length and assign it to the zoom region dimension. */
-  double max_width = 0;
-  for (int k = 0; k < 3; k++) {
-      if (widths[k] > max_width)
-          max_width = widths[k];
-  }
-  s->zoom_props->dim[0] = max_width * zoom_boost_factor;
-  s->zoom_props->dim[1] = max_width * zoom_boost_factor;
-  s->zoom_props->dim[2] = max_width * zoom_boost_factor;
+  s->zoom_props->dim[0] = widths[0] * zoom_boost_factor;
+  s->zoom_props->dim[1] = widths[1] * zoom_boost_factor;
+  s->zoom_props->dim[2] = widths[2] * zoom_boost_factor;
 
   if (verbose)
-    message("com: [%f %f %f] dim: [%f %f %f]",
+    message("com: [%f %f %f] initial_dim: [%f %f %f]",
           com[0], com[1], com[2], s->zoom_props->dim[0], s->zoom_props->dim[1],
           s->zoom_props->dim[2]);
 
