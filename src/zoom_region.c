@@ -178,15 +178,18 @@ void construct_zoom_region(struct space *s, int verbose) {
   widths[2] = (new_zoom_boundary[5] - new_zoom_boundary[4]);
 
   /* Ensure the zoom region does not extend over the edge of the box */
+  const double shiftx = 0.;
+  const double shifty = 0.;
+  const double shiftz = 0.;
   if ((new_zoom_boundary[0] < 0) || (new_zoom_boundary[1] > s->dim[0])
   || (new_zoom_boundary[2] < 0) || (new_zoom_boundary[3] > s->dim[1])
   || (new_zoom_boundary[4] < 0) || (new_zoom_boundary[5] > s->dim[2])) {
-		if (new_zoom_boundary[0] < 0) const double shiftx = -new_zoom_boundary[0] + s->width[0];
-		if (new_zoom_boundary[2] < 0) const double shifty = -new_zoom_boundary[2] + s->width[1];
-		if (new_zoom_boundary[4] < 0) const double shiftz = -new_zoom_boundary[4] + s->width[2];
-		if (new_zoom_boundary[1] > s->dim[0]) const double shiftx = s->dim[0] - new_zoom_boundary[1] - s->width;
-		if (new_zoom_boundary[3] > s->dim[0]) const double shifty = s->dim[1] - new_zoom_boundary[3] - s->width;
-		if (new_zoom_boundary[5] > s->dim[0]) const double shiftz = s->dim[2] - new_zoom_boundary[5] - s->width;
+		if (new_zoom_boundary[0] < 0) shiftx = -new_zoom_boundary[0] + s->width[0];
+		if (new_zoom_boundary[2] < 0) shifty = -new_zoom_boundary[2] + s->width[1];
+		if (new_zoom_boundary[4] < 0) shiftz = -new_zoom_boundary[4] + s->width[2];
+		if (new_zoom_boundary[1] > s->dim[0]) shiftx = s->dim[0] - new_zoom_boundary[1] - s->width;
+		if (new_zoom_boundary[3] > s->dim[0]) shifty = s->dim[1] - new_zoom_boundary[3] - s->width;
+		if (new_zoom_boundary[5] > s->dim[0]) shiftz = s->dim[2] - new_zoom_boundary[5] - s->width;
   	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f %f %f]", shiftx, shifty, shiftz);
   }
 
