@@ -326,6 +326,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
           struct cell *restrict c;
           if (n == 0) {
+
           	/* First we must create the zoom cell and it's multipoles */
             c = &s->cells_top[cid];
             c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
@@ -352,7 +353,6 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
             c->width[0] = s->width[0];
             c->width[1] = s->width[1];
             c->width[2] = s->width[2];
-            c->tl_cell_type = tl_cell;
             c->dmin = dmin;
             c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
 
@@ -360,9 +360,9 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
               c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
 
             /* We need to update the cell types after increasing the zoom region size in the first interation */
-				    if (c->loc[0] >= zoom_region_bounds[0] && c->loc[0] <= zoom_region_bounds[1] &&
-				        c->loc[1] >= zoom_region_bounds[2] && c->loc[1] <= zoom_region_bounds[3] &&
-				        c->loc[2] >= zoom_region_bounds[4] && c->loc[2] <= zoom_region_bounds[5]) {
+				    if (c->loc[0] >= zoom_region_bounds[0] && c->loc[0] < zoom_region_bounds[1] &&
+				        c->loc[1] >= zoom_region_bounds[2] && c->loc[1] < zoom_region_bounds[3] &&
+				        c->loc[2] >= zoom_region_bounds[4] && c->loc[2] < zoom_region_bounds[5]) {
 				    	/* Tag this top level cell as part of the zoom region. */
               c->tl_cell_type = void_tl_cell;
 
@@ -373,6 +373,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 			        c->end_i = (c->loc[0] - zoom_region_bounds[0] + c->width[0]) * s->zoom_props->iwidth[0];
 			        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[1]) * s->zoom_props->iwidth[1];
 			        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[2]) * s->zoom_props->iwidth[2];
+				    } else {
+				    	c->tl_cell_type = tl_cell;
 				    }
 
           }
