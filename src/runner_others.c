@@ -797,12 +797,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
               my_id = gp->id_or_neg_offset;
 
             error(
-                "g-particle (id=%lld, type=%s) did not interact "
+                "g-particle (id=%lld, type=%s, pos=[%f, %f, %f]) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld (local "
                 "num_gparts=%zd inhibited_gparts=%lld cell_type=%d cell_loc=[%f %f %f] rmax=%f grav_count=%d)",
-                my_id, part_type_names[gp->type], gp->num_interacted,
-                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts, c->tl_cell_type,
+                my_id, part_type_names[gp->type], gp->x[0], gp->x[1], gp->x[2], gp->num_interacted,
+                e->total_nr_gparts, e->s->nr_gparts, e->count_inhibited_gparts, tl_cell_types[c->tl_cell_type],
                 c->loc[0], c->loc[1], c->loc[2], c->grav.multipole->r_max, c->grav.count);
           }
         }
