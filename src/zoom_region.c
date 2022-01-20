@@ -177,6 +177,19 @@ void construct_zoom_region(struct space *s, int verbose) {
   widths[1] = (new_zoom_boundary[3] - new_zoom_boundary[2]);
   widths[2] = (new_zoom_boundary[5] - new_zoom_boundary[4]);
 
+  /* Ensure the zoom region does not extend over the edge of the box */
+  if ((new_zoom_boundary[0] < 0) || (new_zoom_boundary[1] > s->dim[0])
+  || (new_zoom_boundary[2] < 0) || (new_zoom_boundary[3] > s->dim[1])
+  || (new_zoom_boundary[4] < 0) || (new_zoom_boundary[5] > s->dim[2])) {
+		if (new_zoom_boundary[0] < 0) const double shiftx = -new_zoom_boundary[0] + s->width[0];
+		if (new_zoom_boundary[2] < 0) const double shifty = -new_zoom_boundary[2] + s->width[1];
+		if (new_zoom_boundary[4] < 0) const double shiftz = -new_zoom_boundary[4] + s->width[2];
+		if (new_zoom_boundary[1] > s->dim[0]) const double shiftx = s->dim[0] - new_zoom_boundary[1] - s->width;
+		if (new_zoom_boundary[3] > s->dim[0]) const double shifty = s->dim[1] - new_zoom_boundary[3] - s->width;
+		if (new_zoom_boundary[5] > s->dim[0]) const double shiftz = s->dim[2] - new_zoom_boundary[5] - s->width;
+  	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f %f %f]", shiftx, shifty, shiftz);
+  }
+
   /* Get the maximum axis length and assign it to the zoom region dimension. */
   double max_width = 0;
   for (int k = 0; k < 3; k++) {
@@ -191,6 +204,8 @@ void construct_zoom_region(struct space *s, int verbose) {
     message("com: [%f %f %f] dim: [%f %f %f]",
           com[0], com[1], com[2], s->zoom_props->dim[0], s->zoom_props->dim[1],
           s->zoom_props->dim[2]);
+
+
 #endif
 }
 
@@ -374,6 +389,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       		(int)(s->zoom_props->com[1] * s->iwidth[1]), (int)(s->zoom_props->com[2] * s->iwidth[2]));;
       cent_c = &s->cells_top[cent_cid + bkg_cell_offset];
 
+      /* Find the new zoom region bounds based on this central cell */
       for (int k = 0; k < 3; k++) {
 
       	mid_points[k] = cent_c->loc[k] + (s->width[k] / 2);
@@ -382,10 +398,19 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
       }
 
+      /* If this process has pushed the zoom region outside the bounds of the box correct it
+       * NOTE: Doing so will result in unequal zoom cell widths... FOR NOW */
+      for (int k = 0; k < 3; k++) {
+
+      	if (zoom_region_bounds[k * 2] < 0) zoom_region_bounds[k * 2] = 0;
+      	if (zoom_region_bounds[k * 2 + 1] > s->dim[k]) zoom_region_bounds[k * 2 + 1] = s->dim[k];
+
+      }
+
       /* Overwrite zoom region properties. */
-      s->zoom_props->dim[0] = max_width;
-      s->zoom_props->dim[1] = max_width;
-      s->zoom_props->dim[2] = max_width;
+      s->zoom_props->dim[0] = (zoom_region_bounds[1] - zoom_region_bounds[0]);
+      s->zoom_props->dim[1] = (zoom_region_bounds[3] - zoom_region_bounds[2]);
+      s->zoom_props->dim[2] = (zoom_region_bounds[5] - zoom_region_bounds[4]);
       for (int l = 0; l < 3; l++) {
         s->zoom_props->width[l] = s->zoom_props->dim[l] / cdim[l];
         s->zoom_props->iwidth[l] = 1 / s->zoom_props->width[l];
@@ -393,8 +418,9 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       }
 
       if (verbose) {
-        message("zoom_region_cent: [%f %f %f]",
-        		mid_points[0], mid_points[1], mid_points[2]);
+        message("zoom_region_cent: [%f %f %f] zoom_region_bounds: [%f-%f %f-%f %f-%f]",
+        		mid_points[0], mid_points[1], mid_points[2], zoom_region_bounds[0], zoom_region_bounds[1],
+        		zoom_region_bounds[2], zoom_region_bounds[3], zoom_region_bounds[4], zoom_region_bounds[5]);
         message("tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f] dim: [%f %f %f]",
 	      		s->width[0], s->width[1], s->width[2],
 	      		s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
@@ -406,7 +432,6 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       }
 
       /* Set the number of zoom cells in a natural cell */
-
       for (int l = 0; l < 6; l++)
         s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
       s->zoom_props->tl_cell_offset = bkg_cell_offset;
