@@ -401,14 +401,23 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
       }
 
-      /* If this process has pushed the zoom region outside the bounds of the box correct it
-       * NOTE: Doing so will result in unequal zoom cell widths... FOR NOW */
-      for (int k = 0; k < 3; k++) {
-
-      	if (zoom_region_bounds[k * 2] < 0) zoom_region_bounds[k * 2] = 0;
-      	if (zoom_region_bounds[k * 2 + 1] > s->dim[k]) zoom_region_bounds[k * 2 + 1] = s->dim[k];
-
-      }
+      /* If this process has pushed the zoom region outside the bounds 
+       * of the box we need to stop and shift the ICs to avoid having 
+       * cells with unequal widths */
+		  double shiftx = 0.;
+		  double shifty = 0.;
+		  double shiftz = 0.;
+		  if ((zoom_region_bounds[0] < 0) || (zoom_region_bounds[1] > s->dim[0])
+		  || (zoom_region_bounds[2] < 0) || (zoom_region_bounds[3] > s->dim[1])
+		  || (zoom_region_bounds[4] < 0) || (zoom_region_bounds[5] > s->dim[2])) {
+				if (zoom_region_bounds[0] < 0) shiftx = -zoom_region_bounds[0] + s->width[0];
+				if (zoom_region_bounds[2] < 0) shifty = -zoom_region_bounds[2] + s->width[1];
+				if (zoom_region_bounds[4] < 0) shiftz = -zoom_region_bounds[4] + s->width[2];
+				if (zoom_region_bounds[1] > s->dim[0]) shiftx = s->dim[0] - zoom_region_bounds[1] - s->width[0];
+				if (zoom_region_bounds[3] > s->dim[0]) shifty = s->dim[1] - zoom_region_bounds[3] - s->width[1];
+				if (zoom_region_bounds[5] > s->dim[0]) shiftz = s->dim[2] - zoom_region_bounds[5] - s->width[2];
+		    error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f %f %f]", shiftx, shifty, shiftz);
+		  }
 
       /* Overwrite zoom region properties. */
       s->zoom_props->dim[0] = (zoom_region_bounds[1] - zoom_region_bounds[0]);
