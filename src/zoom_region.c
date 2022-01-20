@@ -230,7 +230,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 #ifdef WITH_ZOOM_REGION
   
   /* We are recomputing the boundary of the zoom region. */
-  double zoom_region_bounds[6] = s->zoom_props->region_bounds;
+  double zoom_region_bounds[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
   const int bkg_cell_offset = cdim[0] * cdim[1] * cdim[2];
   float dmin_zoom = 0.f;
   double widths[3] = {0.0, 0.0, 0.0};
@@ -238,8 +238,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
 	/* Find new boundaries from the edge of natural cells */
 	for (int ijk = 0; ijk < 3; ijk++) {
-		const int low_bound = zoom_region_bounds[ijk * 2] * s->iwidth[ijk];
-		const int up_bound = zoom_region_bounds[(ijk * 2) + 1] * s->iwidth[ijk];
+		const int low_bound = s->zoom_props->region_bounds[ijk * 2] * s->iwidth[ijk];
+		const int up_bound = s->zoom_props->region_bounds[(ijk * 2) + 1] * s->iwidth[ijk];
 		zoom_region_bounds[ijk * 2] = low_bound * s->width[ijk];
 		zoom_region_bounds[(ijk * 2) + 1] = up_bound * s->width[ijk] + s->width[ijk];
 	}
