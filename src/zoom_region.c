@@ -449,6 +449,7 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
   const int delta_p = neighbour_cell_delta;
 
   int neighbour_count = 0;
+  int void_count = 0;
 
   /* Loop over each cell in the space to find the neighbouring top level cells
    * surrounding the zoom region. */
@@ -461,6 +462,8 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
 
         /* Only interested in cells hosting zoom top level cells. */
         if (cells[cid].tl_cell_type != void_tl_cell) continue;
+
+        void_count++;
 
         /* Loop over all its direct neighbours. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
@@ -492,8 +495,10 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
     }
   }
 
-  if (verbose)
-    message("%i cells neighbouring the zoom region", neighbour_count);
+  if (verbose) {
+  	message("%i cells neighbouring the zoom region", neighbour_count);
+  	message("%i cells void cells in the zoom region", void_count);
+  }
 #endif
 }
 
