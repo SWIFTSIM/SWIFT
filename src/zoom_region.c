@@ -1659,11 +1659,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
-//		/* If the cell is a natural cell and not a neighbour cell
-//		 * we don't need to do anything */
-//		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-//			continue;
-//		}
+		/* If the cell is a natural cell and not a neighbour cell
+		 * we don't need to do anything */
+		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
+			continue;
+		}
 
 		/* If the cell is a natural cell we must subtract the offset to find ijk
 		 * and loop over only zoom cells*/
@@ -1691,10 +1691,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 
 //			int cjd_without_offset = cjd;
 
-//			/* Skip non-neighbour natural cells. */
-//			if ((cjd >= bkg_cell_offset) && (cj->tl_cell_type != tl_cell_neighbour)){
-//				continue;
-//			}
+			/* Skip non-neighbour natural cells. */
+			if ((ci->tl_cell_type == zoom_tl_cell) && (cj->tl_cell_type != tl_cell_neighbour)){
+				continue;
+			}
 
 //			/* If this is a background cell remove the offset. */
 //			if (cjd >= bkg_cell_offset) {
@@ -1706,13 +1706,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			    (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
 
-			/* Minimal distance between any two points in the cells */
-      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
-
-      /* Skip cells that are beyond the maximal distance for gravity tasks */
-      if (min_dist_CoM2 > distance2) {
-      	continue;
-      }
+//			/* Minimal distance between any two points in the cells */
+//      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
+//
+//      /* Skip cells that are beyond the maximal distance for gravity tasks */
+//      if (min_dist_CoM2 > distance2) {
+//      	continue;
+//      }
 
 //			/* Integer indices of the cell in the top-level grid */
 //			const int cj_i = cjd_without_offset / (cdim[1] * cdim[2]);
