@@ -954,7 +954,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                       verbose);
 #endif
 
-  /* Hook the cells up to the parts. Make list of local and non-empty cells */
+	/* Define variables to count particles in cell types */
+	int bkg_cell_particles = 0;
+	int zoom_cell_particles = 0;
+
+	/* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
   struct part *finger = s->parts;
   struct xpart *xfinger = s->xparts;
@@ -982,10 +986,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     const int has_particles =
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
         (c->black_holes.count > 0) || (c->sinks.count > 0);
-
-    /* Define variables to count particles in cell types */
-    int bkg_cell_particles = 0;
-    int zoom_cell_particles = 0;
 
     if (is_local) {
       c->hydro.parts = finger;
