@@ -983,6 +983,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
         (c->hydro.count > 0) || (c->grav.count > 0) || (c->stars.count > 0) ||
         (c->black_holes.count > 0) || (c->sinks.count > 0);
 
+    /* Define variables to count particles in cell types */
+    int bkg_cell_particles = 0;
+    int zoom_cell_particles = 0;
+
     if (is_local) {
       c->hydro.parts = finger;
       c->hydro.xparts = xfinger;
@@ -1000,6 +1004,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->stars.count_total = c->stars.count + space_extra_sparts;
       c->sinks.count_total = c->sinks.count + space_extra_sinks;
       c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
+
+      /* Add the number of particles to the cell counter */
+      if (c->tl_cell_type <= 2) {
+	      bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count)
+      } else {
+	      zoom_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count)
+      }
 
       finger = &finger[c->hydro.count_total];
       xfinger = &xfinger[c->hydro.count_total];
@@ -1027,6 +1038,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             s->nr_cells);
     message("hooking up cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
+	  message("Have %d local particles in background cells",
+	          bkg_cell_particles);
+	  message("Have %d local particles in zoom cells",
+	          zoom_cell_particles);
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's
