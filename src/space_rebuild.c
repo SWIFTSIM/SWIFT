@@ -1007,9 +1007,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
       /* Add the number of particles to the cell counter */
       if (c->tl_cell_type <= 2) {
-	      bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count)
+	      bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
       } else {
-	      zoom_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count)
+	      zoom_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
       }
 
       finger = &finger[c->hydro.count_total];
