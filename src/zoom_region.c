@@ -1631,7 +1631,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	/* Maximal distance from shifted CoM to any corner
 	 * (only the natural cell distance is applicable) */
 	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
-	const double distance2 = distance * distance;
+//	const double distance2 = distance * distance;
 
 	/* Initialise upper and lower bounds for loops */
 	int delta_cells = 1;
@@ -1673,9 +1673,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			/* Integer indices of the cell in the zoom grid
 			 * NOTE: these can be neagtive but do not need wrapping!
 			 * They are skipped later */
-			i = (int)(((ci->loc[0] + (ci->width[0] / 2)) - zoom_region_bounds[0]) * s->zoom_props->width[0]);
-			j = (int)(((ci->loc[1] + (ci->width[1] / 2)) - zoom_region_bounds[2]) * s->zoom_props->width[1]);
-			k = (int)(((ci->loc[2] + (ci->width[2] / 2)) - zoom_region_bounds[4]) * s->zoom_props->width[2]);
+			i = (int)(((ci->loc[0] + (ci->width[0] / 2)) - s->zoom_props->region_bounds[0]) * s->zoom_props->width[0]);
+			j = (int)(((ci->loc[1] + (ci->width[1] / 2)) - s->zoom_props->region_bounds[2]) * s->zoom_props->width[1]);
+			k = (int)(((ci->loc[2] + (ci->width[2] / 2)) - s->zoom_props->region_bounds[4]) * s->zoom_props->width[2]);
 		} else {
 			delta_cells = (int)(distance / cells[bkg_cell_offset].width[0]) + 1;
 			delta_m = delta_cells;
