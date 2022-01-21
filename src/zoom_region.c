@@ -1624,14 +1624,14 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	int periodic = s->periodic;
 
 //	/* Get some info about the physics */
-	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+//	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
 	const double max_mesh_dist = e->mesh->r_cut_max;
 	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
-	/* Maximal distance from shifted CoM to any corner
-	 * (only the natural cell distance is applicable) */
-	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
-	const double distance2 = distance * distance;
+//	/* Maximal distance from shifted CoM to any corner
+//	 * (only the natural cell distance is applicable) */
+//	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
+//	const double distance2 = distance * distance;
 
 //	/* Compute how many cells away we need to walk */
 //	const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
