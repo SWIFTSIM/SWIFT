@@ -1630,7 +1630,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 
 	/* Maximal distance from shifted CoM to any corner
 	 * (only the natural cell distance is applicable) */
-	const double distance = 2. * cells[0].width[0] * theta_crit_inv;
+	const double distance = 2. * cells[0].width[bkg_cell_offset] * theta_crit_inv;
 //	const double distance2 = distance * distance;
 
 	/* Initialise upper and lower bounds for loops */
@@ -1728,8 +1728,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		//				cjd_without_offset -= bkg_cell_offset;
 		//			}
 
-					/* Avoid empty cells and completely foreign pairs */
-					if (cj->grav.count == 0 ||
+					/* Avoid duplicates, empty cells and completely foreign pairs */
+					if (cid >= cjd && ci->nodeID == cj->nodeID || cj->grav.count == 0 ||
 					    (ci->nodeID != nodeID && cj->nodeID != nodeID))
 						continue;
 
