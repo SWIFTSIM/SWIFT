@@ -1845,19 +1845,12 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
 	/* Some info about the domain */
-//	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 	int periodic = s->periodic;
 
 	/* Get some info about the physics */
-//	const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
 	const double max_mesh_dist = e->mesh->r_cut_max;
 	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-
-	/* Maximal distance from shifted CoM to any corner
-	 * (only the natural cell distance is applicable) */
-//	const double distance = 2. * cells[0].width[bkg_cell_offset] * theta_crit_inv;
-//	const double distance2 = distance * distance;
 
 	/* Define neighbour loop variables */
 	int cjd_offset = 0;
@@ -1898,28 +1891,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //				continue;
 //			}
 
-//			/* If this is a background cell remove the offset. */
-//			if (cjd >= bkg_cell_offset) {
-//				cjd_without_offset -= bkg_cell_offset;
-//			}
-
 			/* Avoid duplicates, empty cells and completely foreign pairs */
-			if (cid >= cjd && ci->nodeID == cj->nodeID || cj->grav.count == 0 ||
+			if (cid >= cjd && nodeID == cj->nodeID || cj->grav.count == 0 ||
 			    (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
-
-//			/* Minimal distance between any two points in the cells */
-//      const double min_dist_CoM2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
-//
-//      /* Skip cells that are beyond the maximal distance for gravity tasks */
-//      if (min_dist_CoM2 > distance2) {
-//      	continue;
-//      }
-
-//			/* Integer indices of the cell in the top-level grid */
-//			const int cj_i = cjd_without_offset / (cdim[1] * cdim[2]);
-//			const int cj_j = (cjd_without_offset / cdim[2]) % cdim[1];
-//			const int cj_k = cjd_without_offset % cdim[2];
 
 			/* Recover the multipole information */
 			const struct gravity_tensors *multi_i = ci->grav.multipole;
