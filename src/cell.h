@@ -684,9 +684,12 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
 
   } else {
 
-    const double dx = min(fabs(cix_max - cjx_min), fabs(cix_min - cjx_max));
-    const double dy = min(fabs(ciy_max - cjy_min), fabs(ciy_min - cjy_max));
-    const double dz = min(fabs(ciz_max - cjz_min), fabs(ciz_min - cjz_max));
+    const double dx = min4(fabs(cix_min - cjx_min), fabs(cix_min - cjx_max),
+                           fabs(cix_max - cjx_min), fabs(cix_max - cjx_max));
+    const double dy = min4(fabs(ciy_min - cjy_min), fabs(ciy_min - cjy_max),
+                           fabs(ciy_max - cjy_min), fabs(ciy_max - cjy_max));
+    const double dz = min4(fabs(ciz_min - cjz_min), fabs(ciz_min - cjz_max),
+                           fabs(ciz_max - cjz_min), fabs(ciz_max - cjz_max));
 
     return dx * dx + dy * dy + dz * dz;
   }
