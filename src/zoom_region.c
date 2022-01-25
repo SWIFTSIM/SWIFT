@@ -1867,11 +1867,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
-//		/* If the cell is a natural cell and not a neighbour cell
-//		 * we don't need to do anything */
-//		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-//			continue;
-//		}
+		/* If the cell is a natural cell and not a neighbour cell
+		 * we don't need to do anything */
+		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
+			continue;
+		}
 
 		/* Get the loop range for the neighbouring cells */
 		if (ci->tl_cell_type <= 2) {
@@ -1886,10 +1886,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			/* Get the cell */
 			struct cell *cj = &cells[cjd];
 
-//			/* Skip non-neighbour natural cells. */
-//			if ((ci->tl_cell_type == zoom_tl_cell) && (cj->tl_cell_type != tl_cell_neighbour)){
-//				continue;
-//			}
+			/* Skip non-neighbour natural cells. */
+			if ((ci->tl_cell_type == zoom_tl_cell) && (cj->tl_cell_type != tl_cell_neighbour)){
+				continue;
+			}
 
 			/* Avoid duplicates, empty cells and completely foreign pairs */
 			if (cid >= cjd && nodeID == cj->nodeID || cj->grav.count == 0 ||
