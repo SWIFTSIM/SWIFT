@@ -1892,7 +1892,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			}
 
 			/* Avoid duplicates, empty cells and completely foreign pairs */
-			if (cid >= cjd && nodeID == cj->nodeID || cj->grav.count == 0 ||
+			if ((cid >= cjd && nodeID == cj->nodeID) || cj->grav.count == 0 ||
 			    (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
 
