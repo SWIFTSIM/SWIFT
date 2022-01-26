@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 # ----------------------------------------------------
-# Plot the hydrogen number density, pressure,
-# temperature, and hydrogen mass fraction.
+# Plot slices of the hydrogen number density,
+# pressure, temperature, and hydrogen mass fraction.
 # ----------------------------------------------------
 
 import sys
@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm
+from swiftsimio.visualisation.slice import slice_gas
 
 # Parameters users should/may tweak
 
@@ -23,8 +24,8 @@ snapshot_base = "output"
 # parameters for imshow plots
 imshow_kwargs = {"origin": "lower"}
 
-# parameters for swiftsimio projections
-projection_kwargs = {"resolution": 1000, "parallel": True}
+# parameters for swiftsimio slices
+slice_kwargs = {"slice": 0.5, "resolution": 1000, "parallel": True}
 
 # -----------------------------------------------------------------------
 
@@ -61,6 +62,10 @@ def get_snapshot_list(snapshot_basename="output"):
             print("Didn't find file", fname)
             quit(1)
         snaplist.append(fname)
+
+    if len(snaplist) == 0:
+        print("Didn't find any outputs with basename '", snapshot_basename, "'")
+        quit(1)
 
     return snaplist
 
@@ -133,11 +138,9 @@ def plot_result(filename):
         0.0 * meta.boxsize[1].v,
         0.9 * meta.boxsize[1].v,
     ]
-    cutoff = int(0.05 * projection_kwargs["resolution"])
+    cutoff = int(0.05 * slice_kwargs["resolution"])
 
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = slice_gas(data, project="masses", **slice_kwargs)
     gamma = meta.hydro_scheme["Adiabatic index"][0]
 
     data.gas.mXHI = data.gas.ion_mass_fractions.HI * data.gas.masses
@@ -151,18 +154,10 @@ def plot_result(filename):
         gas_temperature(data.gas.internal_energies, mu, gamma) * data.gas.masses
     )
 
-    mass_weighted_hydrogen_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHI", **projection_kwargs
-    )
-    mass_weighted_pressure_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mP", **projection_kwargs
-    )
-    mass_weighted_density_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mrho", **projection_kwargs
-    )
-    mass_weighted_temperature_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mT", **projection_kwargs
-    )
+    mass_weighted_hydrogen_map = slice_gas(data, project="mXHI", **slice_kwargs)
+    mass_weighted_pressure_map = slice_gas(data, project="mP", **slice_kwargs)
+    mass_weighted_density_map = slice_gas(data, project="mrho", **slice_kwargs)
+    mass_weighted_temperature_map = slice_gas(data, project="mT", **slice_kwargs)
 
     hydrogen_map = mass_weighted_hydrogen_map / mass_map
     hydrogen_map = hydrogen_map[cutoff:-cutoff, cutoff:-cutoff]

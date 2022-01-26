@@ -26,8 +26,6 @@
 
 
 import os
-import h5py
-import numpy as np
 import unyt
 import swiftsimio
 
@@ -166,7 +164,6 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             "These tests only work for the GEAR RT scheme.",
             "Compile swift --with-rt=GEAR_N",
         )
-        quit()
 
     ngroups = int(firstfile.metadata.subgrid_scheme["PhotonGroupNumber"])
     rundata.ngroups = ngroups
@@ -266,7 +263,7 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             newsnap.stars = Stars
             newsnap.nstars = Stars.IDs.shape[0]
         except AttributeError:
-            Stars = RTStarData()
+            newsnap.stars = RTStarData()
             newsnap.has_stars = False
             newsnap.nstars = 0
 

@@ -148,7 +148,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 advected_positions[overshooters] -= boxsize
 
         analytical_solutions = np.zeros(
-            (part_positions.shape[0], ngroups), dtype=np.float
+            (part_positions.shape[0], ngroups), dtype=np.float64
         )
         for p in range(part_positions.shape[0]):
             E, F = initial_condition(advected_positions[p])
@@ -319,7 +319,6 @@ def get_minmax_vals(snaplist):
 
             for direction in ["X"]:
                 #  for direction in ["X", "Y", "Z"]:
-                new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 fluxmin_group.append(f.min())
                 fluxmax_group.append(f.max())

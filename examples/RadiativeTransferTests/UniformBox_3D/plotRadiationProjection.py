@@ -320,7 +320,6 @@ def get_minmax_vals(snaplist):
             dirmin = []
             dirmax = []
             for direction in ["X", "Y", "Z"]:
-                new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 dirmin.append(f.min())
                 dirmax.append(f.max())
