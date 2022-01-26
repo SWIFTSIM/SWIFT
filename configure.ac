@@ -363,7 +363,7 @@ AC_ARG_ENABLE([gravity-force-checks],
    [gravity_force_checks="$enableval"],
    [gravity_force_checks="no"]
 )
-if test "$gravity_force_checks" == "yes"; then
+if test "$gravity_force_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-gravity-force-checks!)
 elif test "$gravity_force_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_GRAVITY_FORCE_CHECKS], [$enableval] ,[Enable gravity brute-force checks])
@@ -377,7 +377,7 @@ AC_ARG_ENABLE([hydro-density-checks],
    [hydro_density_checks="$enableval"],
    [hydro_density_checks="no"]
 )
-if test "$hydro_density_checks" == "yes"; then
+if test "$hydro_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-hydro-density-checks!)
 elif test "$hydro_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_HYDRO_DENSITY_CHECKS], [$enableval] ,[Enable hydro density brute-force checks])
@@ -391,7 +391,7 @@ AC_ARG_ENABLE([stars-density-checks],
    [stars_density_checks="$enableval"],
    [stars_density_checks="no"]
 )
-if test "$stars_density_checks" == "yes"; then
+if test "$stars_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-stars-density-checks!)
 elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
@@ -405,7 +405,7 @@ AC_ARG_ENABLE([glass-making],
    [gravity_glass_making="$enableval"],
    [gravity_glass_making="no"]
 )
-if test "$gravity_glass_making" == "yes"; then
+if test "$gravity_glass_making" = "yes"; then
    AC_DEFINE([SWIFT_MAKE_GRAVITY_GLASS], 1, [Make the code run in a way to produce a glass file for gravity/cosmology])
 fi
 
@@ -417,7 +417,7 @@ AC_ARG_ENABLE([no-gravity-below-id],
    [no_gravity_below_id="$enableval"],
    [no_gravity_below_id="no"]
 )
-if test "$no_gravity_below_id" == "yes"; then
+if test "$no_gravity_below_id" = "yes"; then
    AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-no-gravity-below-id!)
 elif test "$no_gravity_below_id" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
@@ -431,7 +431,7 @@ AC_ARG_ENABLE([boundary-particles],
    [boundary_particles="$enableval"],
    [boundary_particles="no"]
 )
-if test "$boundary_particles" == "yes"; then
+if test "$boundary_particles" = "yes"; then
    AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
 elif test "$boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
@@ -446,7 +446,7 @@ AC_ARG_ENABLE([fixed-boundary-particles],
    [fixed_boundary_particles="$enableval"],
    [fixed_boundary_particles="no"]
 )
-if test "$fixed_boundary_particles" == "yes"; then
+if test "$fixed_boundary_particles" = "yes"; then
    AC_MSG_ERROR(Need to specify the ID below which particles get zero forces when using --enable-boundary-particles!)
 elif test "$fixed_boundary_particles" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_NO_GRAVITY_BELOW_ID], [$enableval] ,[Particles with smaller ID than this will have zero gravity forces])
@@ -746,7 +746,7 @@ have_pthread_barrier="no"
 AC_CHECK_LIB(pthread, pthread_barrier_init,
 	     have_pthread_barrier="yes",
 	     AC_MSG_WARN(POSIX implementation does not have barriers. SWIFT will use home-made ones.))
-if test "x$have_pthread_barrier" == "xyes"; then
+if test "x$have_pthread_barrier" = "xyes"; then
   AC_DEFINE([HAVE_PTHREAD_BARRIERS], [1], [The posix library implements barriers])
 fi
 
@@ -778,7 +778,7 @@ if test "x$with_metis" != "xno"; then
    fi
    AC_CHECK_LIB([metis],[METIS_PartGraphKway], [have_metis="yes"],
                 [have_metis="no"], $METIS_LIBS)
-   if test "$have_metis" == "yes"; then
+   if test "$have_metis" = "yes"; then
       AC_DEFINE([HAVE_METIS],1,[The METIS library is present.])
    else
       AC_MSG_ERROR("Failed to find a METIS library")
@@ -811,7 +811,7 @@ if test "x$with_parmetis" != "xno"; then
    fi
    AC_CHECK_LIB([parmetis],[ParMETIS_V3_RefineKway], [have_parmetis="yes"],
                 [have_parmetis="no"], $PARMETIS_LIBS)
-   if test "$have_parmetis" == "no"; then
+   if test "$have_parmetis" = "no"; then
 
 # A build may use an external METIS library, check for that.
 
@@ -827,7 +827,7 @@ if test "x$with_parmetis" != "xno"; then
                    [have_parmetis="no"], [$METIS_LIBS $PARMETIS_LIBS])
 
    fi
-   if test "$have_parmetis" == "yes"; then
+   if test "$have_parmetis" = "yes"; then
       AC_DEFINE([HAVE_PARMETIS],1,[The ParMETIS library is present.])
    else
       AC_MSG_ERROR("Failed to find a ParMETIS library")
@@ -1308,7 +1308,7 @@ AC_SUBST([VELOCIRAPTOR_LIBS])
 AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_LIBS"])
 
 # Now that we found VELOCIraptor, let's check how it was compiled.
-if test "$have_velociraptor" == "yes"; then
+if test "$have_velociraptor" = "yes"; then
     AC_CHECK_LIB(
        [velociraptor],
        [VR_NOMASS],
@@ -1350,7 +1350,7 @@ AC_SUBST([VELOCIRAPTOR_MPI_LIBS])
 AM_CONDITIONAL([HAVEVELOCIRAPTOR],[test -n "$VELOCIRAPTOR_MPI_LIBS"])
 
 # Let's check how this one was compiled.
-if test "$have_mpi_velociraptor" == "yes"; then
+if test "$have_mpi_velociraptor" = "yes"; then
     AC_CHECK_LIB(
        [velociraptor],
        [VR_NOMASS],
@@ -1361,10 +1361,10 @@ if test "$have_mpi_velociraptor" == "yes"; then
 fi
 
 # If we have one library, but not the other then use that for both.
-if test "$have_mpi_velociraptor" == "yes" -a "$have_velociraptor" != "yes"; then
+if test "$have_mpi_velociraptor" = "yes" -a "$have_velociraptor" != "yes"; then
    VELOCIRAPTOR_LIBS="$VELOCIRAPTOR_MPI_LIBS"
    AC_SUBST([VELOCIRAPTOR_LIBS])
-elif test "$have_velociraptor" == "yes" -a "$have_mpi_velociraptor" != "yes"; then
+elif test "$have_velociraptor" = "yes" -a "$have_mpi_velociraptor" != "yes"; then
    VELOCIRAPTOR_MPI_LIBS="$VELOCIRAPTOR_LIBS"
    AC_SUBST([VELOCIRAPTOR_MPI_LIBS])
 fi
@@ -1822,7 +1822,7 @@ AC_ARG_ENABLE([debug-interactions-stars],
 )
 if test "$enable_debug_interactions_stars" != "no"; then
     AC_DEFINE([DEBUG_INTERACTIONS_STARS],1,[Enable interaction debugging for stars])
-    if test "$enable_debug_interactions_stars" == "yes"; then
+    if test "$enable_debug_interactions_stars" = "yes"; then
       AC_DEFINE([MAX_NUM_OF_NEIGHBOURS_STARS],256,[The maximum number of particle neighbours to be logged for stars])
       [enable_debug_interactions_stars="yes (Logging up to 256 neighbours)"]
     else
@@ -1842,7 +1842,7 @@ AC_ARG_ENABLE([debug-interactions],
 if test "$enable_debug_interactions" != "no"; then
   if test "$with_hydro" = "gadget2"; then
       AC_DEFINE([DEBUG_INTERACTIONS_SPH],1,[Enable interaction debugging])
-    if test "$enable_debug_interactions" == "yes"; then
+    if test "$enable_debug_interactions" = "yes"; then
       AC_DEFINE([MAX_NUM_OF_NEIGHBOURS],256,[The maximum number of particle neighbours to be logged])
       [enable_debug_interactions="yes (Logging up to 256 neighbours)"]
     else
@@ -1864,7 +1864,7 @@ AC_ARG_ENABLE([debug-interactions-sinks],
 )
 if test "$enable_debug_interactions_sinks" != "no"; then
     AC_DEFINE([DEBUG_INTERACTIONS_SINKS],1,[Enable interaction debugging for sinks])
-    if test "$enable_debug_interactions_sinks" == "yes"; then
+    if test "$enable_debug_interactions_sinks" = "yes"; then
       AC_DEFINE([MAX_NUM_OF_NEIGHBOURS_SINKS],256,[The maximum number of particle neighbours to be logged for sinks])
       [enable_debug_interactions_sinks="yes (Logging up to 256 neighbours)"]
     else
@@ -2003,7 +2003,7 @@ case "$with_riemann" in
    ;;
 esac
 
-if test "x$need_riemann_solver" == "xyes" -a "$with_riemann" == "none"; then
+if test "x$need_riemann_solver" = "xyes" -a "$with_riemann" = "none"; then
   AC_MSG_ERROR([Hydro scheme $with_hydro requires selection of a Riemann solver!])
 fi
 
@@ -2051,9 +2051,9 @@ case "$with_chemistry" in
 esac
 
 if test "$with_chemistry" != "none"; then
-   if test "$enable_hand_vec" == "yes"; then
-      if test "$enable_vec" == "yes"; then
-         if test "$with_hydro" == "gadget2"; then
+   if test "$enable_hand_vec" = "yes"; then
+      if test "$enable_vec" = "yes"; then
+         if test "$with_hydro" = "gadget2"; then
             AC_MSG_ERROR([Cannot run with hand vectorisation and chemistry yet. Please use --disable-hand-vec])
          fi
       fi
@@ -2519,7 +2519,7 @@ case "$with_rt" in
       number_group=${with_rt:5}
       AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
 
-      if test "$number_group" == 0; then
+      if test "$number_group" -eq 0; then
           AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
       fi
       if ! test $number_group -eq $number_group; then
