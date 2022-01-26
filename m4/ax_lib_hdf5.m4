@@ -263,8 +263,18 @@ HDF5 support is being disabled.
             -I*) echo $HDF5_CPPFLAGS | $GREP -e "$arg" 2>&1 >/dev/null \
                   || HDF5_CPPFLAGS="$HDF5_CPPFLAGS $arg"
               ;;
-            -L*) echo $HDF5_LDFLAGS | $GREP -e "$arg" 2>&1 >/dev/null \
-                  || HDF5_LDFLAGS="$HDF5_LDFLAGS $arg"
+            -L*)
+                case "$arg" in
+                    */usr/lib)
+                         dnl Skip system libraries which shouldn't be present.
+                      ;;
+                    */usr/lib64)
+                      ;;
+                    *)
+                      echo $HDF5_LDFLAGS | $GREP -e "$arg" 2>&1 >/dev/null \
+                       || HDF5_LDFLAGS="$HDF5_LDFLAGS $arg"
+                      ;;
+                 esac
               ;;
             -l*) echo $HDF5_LIBS | $GREP -e "$arg" 2>&1 >/dev/null \
                   || HDF5_LIBS="$HDF5_LIBS $arg"
