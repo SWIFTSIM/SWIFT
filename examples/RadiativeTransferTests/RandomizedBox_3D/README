@@ -1,6 +1,6 @@
 This test case contains only gas and stars in a periodic box. The contents have
 no physical meaning, and are background particles on a regular grid overlapping
-a randomly sampled sine wave particle distribution. The purpose of this test are
+a randomly sampled sine wave particle distribution. The purposes of this test are
 as follows:
 
 - Neither the stars nor the gas particles are updated all at the same time. 
@@ -12,3 +12,6 @@ as follows:
 
 You can and should run the same sanity check scripts as in ../UniformBox_3D to
 check that everything's right.
+
+Compile swift with:
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro-dimension=3 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --enable-debugging-checks --with-grackle=$GRACKLE_ROOT

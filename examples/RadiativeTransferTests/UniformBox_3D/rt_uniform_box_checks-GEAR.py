@@ -41,7 +41,6 @@
 
 
 import numpy as np
-import unyt
 from sys import argv
 from swift_rt_GEAR_io import get_snap_data
 

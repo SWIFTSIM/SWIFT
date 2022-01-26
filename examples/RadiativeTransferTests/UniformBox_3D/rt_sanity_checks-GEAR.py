@@ -124,14 +124,12 @@ def check_injection(snapdata, rundata):
     ngroups = rundata.ngroups
 
     initial_energies = np.sum(snapdata[0].gas.PhotonEnergies, axis=0)
-    initial_time = snapdata[0].time
 
     # Check 1a) : sum initial energy + sum injected energy = sum current energy
     # --------------------------------------------------------------------------
     # TODO: this assumes no cosmological expansion
 
     for snap in snapdata[1:]:
-        dt = snap.time - initial_time
         # sum of each group over all particles
         photon_energies = np.sum(snap.gas.PhotonEnergies, axis=0)
         if snap.has_stars:
@@ -140,7 +138,7 @@ def check_injection(snapdata, rundata):
                 np.sum(snap.stars.InjectedPhotonEnergy, axis=0)
             )
         else:
-            injected_energies = np.zeros(ngroups, dtype=np.float)
+            injected_energies = np.zeros(ngroups, dtype=np.float64)
 
         for g in range(ngroups):
             energy_expected = initial_energies[g] + injected_energies[g]
@@ -183,7 +181,9 @@ def check_injection(snapdata, rundata):
     if snapdata[0].has_stars:
         emission_at_initial_time = snapdata[0].stars.InjectedPhotonEnergy.sum(axis=0)
     else:
-        emission_at_initial_time = np.zeros(rundata.ngroups, dtype=np.float) * unyt.erg
+        emission_at_initial_time = (
+            np.zeros(rundata.ngroups, dtype=np.float64) * unyt.erg
+        )
 
     if rundata.use_const_emission_rate and not rundata.hydro_controlled_injection:
         if len(snapdata) <= 2:

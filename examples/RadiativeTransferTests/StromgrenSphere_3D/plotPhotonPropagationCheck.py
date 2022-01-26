@@ -16,21 +16,27 @@
 #   correctly.
 # ----------------------------------------------------------------------
 
-import sys, os, gc
-import swiftsimio
+import gc
+import os
+import sys
+import matplotlib as mpl
 import numpy as np
+import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
-import matplotlib as mpl
 from scipy import stats
 from scipy.optimize import curve_fit
 
 # Parameters users should/may tweak
 
 # snapshot basename
-snapshot_base = "output"
+snapshot_base = "propagation_test"
+
+# additional anisotropy estimate plot?
+plot_anisotropy_estimate = False
 
 # which photon group to use.
+# NOTE: array index, not group number (which starts at 1 for GEAR)
 group_index = 0
 
 scatterplot_kwargs = {
@@ -168,6 +174,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     time = meta.time
     r_expect = meta.time * meta.reduced_lightspeed
 
+    L = None
     use_const_emission_rates = bool(meta.parameters["GEARRT:use_const_emission_rates"])
     if use_const_emission_rates:
         # read emission rate parameter as string
@@ -186,7 +193,11 @@ def plot_photons(filename, emin, emax, fmin, fmax):
         const_emission_rates = unyt.unyt_array(emlist, unyt.L_Sun)
         L = const_emission_rates[group_index]
 
-    fig = plt.figure(figsize=(5 * 4, 5.5), dpi=200)
+    if plot_anisotropy_estimate:
+        ncols = 4
+    else:
+        ncols = 3
+    fig = plt.figure(figsize=(5 * ncols, 5.5), dpi=200)
 
     nbins = 100
     r_bin_edges = np.linspace(0.5 * edgelen * 1e-3, 0.507 * edgelen, nbins + 1)
@@ -205,8 +216,6 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     Fz = getattr(data.gas.photon_fluxes, "Group" + str(group_index + 1) + "Z")
 
     fmag = np.sqrt(Fx ** 2 + Fy ** 2 + Fz ** 2)
-    sum_fmag = fmag.sum()
-    max_fmag = fmag.max()
     particle_count, _ = np.histogram(
         r,
         bins=r_analytical_bin_edges,
@@ -221,7 +230,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # ------------------------
     # Plot photon energies
     # ------------------------
-    ax1 = fig.add_subplot(1, 4, 1)
+    ax1 = fig.add_subplot(1, ncols, 1)
     ax1.set_title("Particle Radiation Energies")
     ax1.set_ylabel("Photon Energy [$" + energy_units_str + "$]")
 
@@ -278,7 +287,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # ------------------------------
     # Plot binned photon energies
     # ------------------------------
-    ax2 = fig.add_subplot(1, 4, 2)
+    ax2 = fig.add_subplot(1, ncols, 2)
     ax2.set_title("Total Radiation Energy in radial bins")
     ax2.set_ylabel("Total Photon Energy [$" + energy_units_str + "$]")
 
@@ -323,7 +332,7 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # ------------------------------
     # Plot photon fluxes
     # ------------------------------
-    ax3 = fig.add_subplot(1, 4, 3)
+    ax3 = fig.add_subplot(1, ncols, 3)
     ax3.set_title("Particle Radiation Flux Magnitudes")
     ax3.set_ylabel("Photon Flux Magnitude [$" + flux_units_str + "$]")
 
@@ -387,55 +396,58 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     # Plot photon flux sum
     # ------------------------------
 
-    ax4 = fig.add_subplot(1, 4, 4)
-    ax4.set_title("Vectorial Sum of Radiation Flux in radial bins")
-    ax4.set_ylabel("[1]")
+    if plot_anisotropy_estimate:
+        ax4 = fig.add_subplot(1, ncols, 4)
+        ax4.set_title("Vectorial Sum of Radiation Flux in radial bins")
+        ax4.set_ylabel("[1]")
 
-    fmag_sum_bin, _, _ = stats.binned_statistic(
-        r,
-        fmag,
-        statistic="sum",
-        bins=r_bin_edges,
-        range=(r_bin_edges[0], r_bin_edges[-1]),
-    )
-    mask_sum = fmag_sum_bin > 0
-    fmag_max_bin, _, _ = stats.binned_statistic(
-        r,
-        fmag,
-        statistic="max",
-        bins=r_bin_edges,
-        range=(r_bin_edges[0], r_bin_edges[-1]),
-    )
-    mask_max = fmag_max_bin > 0
-    Fx_sum_bin, _, _ = stats.binned_statistic(
-        r,
-        Fx,
-        statistic="sum",
-        bins=r_bin_edges,
-        range=(r_bin_edges[0], r_bin_edges[-1]),
-    )
-    Fy_sum_bin, _, _ = stats.binned_statistic(
-        r,
-        Fy,
-        statistic="sum",
-        bins=r_bin_edges,
-        range=(r_bin_edges[0], r_bin_edges[-1]),
-    )
-    F_sum_bin = np.sqrt(Fx_sum_bin ** 2 + Fy_sum_bin ** 2)
+        fmag_sum_bin, _, _ = stats.binned_statistic(
+            r,
+            fmag,
+            statistic="sum",
+            bins=r_bin_edges,
+            range=(r_bin_edges[0], r_bin_edges[-1]),
+        )
+        mask_sum = fmag_sum_bin > 0
+        fmag_max_bin, _, _ = stats.binned_statistic(
+            r,
+            fmag,
+            statistic="max",
+            bins=r_bin_edges,
+            range=(r_bin_edges[0], r_bin_edges[-1]),
+        )
+        mask_max = fmag_max_bin > 0
+        Fx_sum_bin, _, _ = stats.binned_statistic(
+            r,
+            Fx,
+            statistic="sum",
+            bins=r_bin_edges,
+            range=(r_bin_edges[0], r_bin_edges[-1]),
+        )
+        Fy_sum_bin, _, _ = stats.binned_statistic(
+            r,
+            Fy,
+            statistic="sum",
+            bins=r_bin_edges,
+            range=(r_bin_edges[0], r_bin_edges[-1]),
+        )
+        F_sum_bin = np.sqrt(Fx_sum_bin ** 2 + Fy_sum_bin ** 2)
 
-    ax4.plot(
-        r_bin_centres[mask_sum],
-        F_sum_bin[mask_sum] / fmag_sum_bin[mask_sum],
-        **lineplot_kwargs,
-        label="$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ / $\sum_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
-    )
-    ax4.plot(
-        r_bin_centres[mask_max],
-        F_sum_bin[mask_max] / fmag_max_bin[mask_max],
-        **lineplot_kwargs,
-        linestyle="--",
-        label="$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ / $\max_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
-    )
+        ax4.plot(
+            r_bin_centres[mask_sum],
+            F_sum_bin[mask_sum] / fmag_sum_bin[mask_sum],
+            **lineplot_kwargs,
+            label="$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
+            + "/ $\sum_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
+        )
+        ax4.plot(
+            r_bin_centres[mask_max],
+            F_sum_bin[mask_max] / fmag_max_bin[mask_max],
+            **lineplot_kwargs,
+            linestyle="--",
+            label="$\left| \sum_{i \in \mathrm{particles \ in \ bin}} \mathbf{F}_i \\right| $ "
+            + " / $\max_{i \in \mathrm{particles \ in \ bin}} \left| \mathbf{F}_{i} \\right| $",
+        )
 
     # -------------------------------------------
     # Cosmetics that all axes have in common

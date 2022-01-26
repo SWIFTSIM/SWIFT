@@ -189,13 +189,14 @@ static void rt_do_thermochemistry(struct part* restrict p,
 
   /* update radiation fields */
   for (int g = 0; g < RT_NGROUPS; g++) {
+    const float e_old = p->rt_data.conserved[g].energy;
     const float factor_new = (1.f - dt * rates_by_frequency_bin[g]);
     p->rt_data.conserved[g].energy *= factor_new;
     for (int i = 0; i < 3; i++) {
       p->rt_data.conserved[g].flux[i] *= factor_new;
     }
     rt_check_unphysical_conserved(&p->rt_data.conserved[g].energy,
-                                  p->rt_data.conserved[g].flux, 2);
+                                  p->rt_data.conserved[g].flux, e_old, 2);
   }
 
   /* copy updated grackle data to particle */

@@ -130,15 +130,8 @@ def get_number_densities_array(Temp, XH, XHe):
     # n_He = X_He * rho_gas / m_He = (1 - X_H) / (4 X_H) * n_H
     #      =  X_He / 4(1 - X_He) * nH = y * nH
 
-    #  if XH == 0:
-    #      nH = 0.0
-    #      nHe = 1.0
-    #  else:
-    #      nH = XH
-    #      nHe = XHe / 4
-
-    nH = np.zeros(XH.shape, dtype=float)
-    nHe = np.zeros(XH.shape, dtype=float)
+    nH = np.zeros(XH.shape, dtype=np.float64)
+    nHe = np.zeros(XH.shape, dtype=np.float64)
 
     mask = XH == 0
     nH[mask] = 0.0
@@ -148,13 +141,13 @@ def get_number_densities_array(Temp, XH, XHe):
     nH[inv_mask] = XH[inv_mask]
     nHe[inv_mask] = 0.25 * XHe[inv_mask]
 
-    # NOTE: This is not the ionization threshold!
-    nH0 = np.zeros(XH.shape, dtype=float)
-    nHp = np.zeros(XH.shape, dtype=float)
-    nHe0 = np.zeros(XH.shape, dtype=float)
-    nHep = np.zeros(XH.shape, dtype=float)
-    nHepp = np.zeros(XH.shape, dtype=float)
+    nH0 = np.zeros(XH.shape, dtype=np.float64)
+    nHp = np.zeros(XH.shape, dtype=np.float64)
+    nHe0 = np.zeros(XH.shape, dtype=np.float64)
+    nHep = np.zeros(XH.shape, dtype=np.float64)
+    nHepp = np.zeros(XH.shape, dtype=np.float64)
 
+    # NOTE: This is not the ionization threshold!
     neutral = Temp < 5000 * unyt.K
 
     nH0[neutral] = nH[neutral]
@@ -291,8 +284,8 @@ def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
 
 if __name__ == "__main__":
 
-    glass = h5py.File("glassPlane_64.hdf5", "r")
-    #  glass = h5py.File("glassPlane_128.hdf5", "r")
+    #  glass = h5py.File("glassPlane_64.hdf5", "r")
+    glass = h5py.File("glassPlane_128.hdf5", "r")
     parts = glass["PartType0"]
     xp = parts["Coordinates"][:]
     h = parts["SmoothingLength"][:]
@@ -340,8 +333,8 @@ if __name__ == "__main__":
     Mtot = rhoH * edgelen ** 3
     mpart = Mtot / xp.shape[0]
     mpart = mpart.to(cosmo_units["mass"])
-    w.gas.masses = np.ones(xp.shape[0], dtype=np.float) * mpart
-    w.stars.masses = np.ones(xs.shape[0], dtype=np.float) * mpart
+    w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
+    w.stars.masses = np.ones(xs.shape[0], dtype=np.float64) * mpart
 
     # get gas internal energy for a given temperature and composition
     XH = 1.0  # hydrogen mass fraction
@@ -351,6 +344,6 @@ if __name__ == "__main__":
     mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)
     internal_energy = internal_energy(T, mu)
 
-    w.gas.internal_energy = np.ones(xp.shape[0], dtype=np.float) * internal_energy
+    w.gas.internal_energy = np.ones(xp.shape[0], dtype=np.float64) * internal_energy
 
     w.write("stromgrenSphere-2D.hdf5")
