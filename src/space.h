@@ -84,6 +84,8 @@ extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
 extern int space_extra_sinks;
+extern double engine_redistribute_alloc_margin;
+extern double engine_foreign_alloc_margin;
 
 /**
  * @brief The space in which the cells and particles reside.
