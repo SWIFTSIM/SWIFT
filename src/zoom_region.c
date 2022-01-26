@@ -433,10 +433,9 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
 	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
 	message("Got here");
-	message("theta_crit=%f", s->e->gravity_properties->theta_crit);
 
   /* Get some info about the physics */
-	const double theta_crit_inv = 1. / s->e->gravity_properties->theta_crit;
+	const double theta_crit_inv = 1. / 0.7;
 
 	/* Maximal distance from shifted CoM to any corner */
 	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
