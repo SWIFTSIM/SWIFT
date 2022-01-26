@@ -408,8 +408,8 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
     }
   }
 
-//  /* Now find what cells neighbour the zoom region. */
-//  if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
+  /* Now find what cells neighbour the zoom region. */
+  if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
 
 #endif
 }
