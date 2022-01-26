@@ -90,6 +90,11 @@ int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
 int engine_max_parts_per_cooling = engine_max_parts_per_cooling_default;
 
+/*! Allocation margins */
+double engine_redistribute_alloc_margin =
+    engine_redistribute_alloc_margin_default;
+double engine_foreign_alloc_margin = engine_foreign_alloc_margin_default;
+
 /*! Maximal depth at which the stars resort task can be pushed */
 int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
 
@@ -1267,6 +1272,14 @@ void space_init(struct space *s, struct swift_params *params,
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_cooling",
                                engine_max_parts_per_cooling_default);
 
+  engine_redistribute_alloc_margin = parser_get_opt_param_double(
+      params, "Scheduler:engine_redist_alloc_margin",
+      engine_redistribute_alloc_margin_default);
+
+  engine_foreign_alloc_margin = parser_get_opt_param_double(
+      params, "Scheduler:engine_foreign_alloc_margin",
+      engine_foreign_alloc_margin_default);
+
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
             space_splitsize);
@@ -2414,6 +2427,12 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
                        "engine_star_resort_task_depth",
                        "engine_star_resort_task_depth");
+  restart_write_blocks(&engine_redistribute_alloc_margin, sizeof(double), 1,
+                       stream, "engine_redistribute_alloc_margin",
+                       "engine_redistribute_alloc_margin");
+  restart_write_blocks(&engine_foreign_alloc_margin, sizeof(double), 1, stream,
+                       "engine_foreign_alloc_margin",
+                       "engine_foreign_alloc_margin");
 
   /* More things to write. */
   if (s->nr_parts > 0) {
@@ -2488,6 +2507,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       NULL, "engine_max_parts_per_cooling");
   restart_read_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
                       NULL, "engine_star_resort_task_depth");
+  restart_read_blocks(&engine_redistribute_alloc_margin, sizeof(double), 1,
+                      stream, NULL, "engine_redistribute_alloc_margin");
+  restart_read_blocks(&engine_foreign_alloc_margin, sizeof(double), 1, stream,
+                      NULL, "engine_foreign_alloc_margin");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;

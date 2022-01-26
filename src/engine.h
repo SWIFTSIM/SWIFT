@@ -108,9 +108,9 @@ enum engine_step_properties {
 #define engine_maxproxies 64
 #define engine_tasksreweight 1
 #define engine_parts_size_grow 1.05
-#define engine_redistribute_alloc_margin 1.2
+#define engine_redistribute_alloc_margin_default 1.2
 #define engine_rebuild_link_alloc_margin 1.2
-#define engine_foreign_alloc_margin 1.05
+#define engine_foreign_alloc_margin_default 1.05
 #define engine_default_energy_file_name "statistics"
 #define engine_default_timesteps_file_name "timesteps"
 #define engine_max_parts_per_ghost_default 1000
@@ -523,6 +523,12 @@ struct engine {
 
   /* Number of Lustre OSTs on the system to use as rank-based striping offset */
   int restart_lustre_OST_count;
+
+  /* Do we free the foreign data before writing restart files? */
+  int free_foreign_when_dumping_restart;
+
+  /* Do we free the foreign data before rebuilding the tree? */
+  int free_foreign_when_rebuilding;
 
   /* Name of the restart file. */
   const char *restart_file;
