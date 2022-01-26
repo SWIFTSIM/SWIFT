@@ -432,21 +432,21 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
   /* Some info about the zoom domain */
 	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-//  /* Get some info about the physics */
-//	const double theta_crit_inv = 1. / s->e->gravity_properties->theta_crit;
-//
-//	/* Maximal distance from shifted CoM to any corner */
-//	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
-//
-//	/* Compute how many cells away we need to walk */
-//	const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
-//
-//	/* Turn this into upper and lower bounds for loops */
-//	const int delta_m = delta_cells;
-//	const int delta_p = delta_cells;
+  /* Get some info about the physics */
+	const double theta_crit_inv = 1. / s->e->gravity_properties->theta_crit;
 
-  const int delta_m = neighbour_cell_delta; // Should compute this, but how?
-  const int delta_p = neighbour_cell_delta;
+	/* Maximal distance from shifted CoM to any corner */
+	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
+
+	/* Compute how many cells away we need to walk */
+	const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
+
+	/* Turn this into upper and lower bounds for loops */
+	const int delta_m = delta_cells;
+	const int delta_p = delta_cells;
+
+//  const int delta_m = neighbour_cell_delta; // Should compute this, but how?
+//  const int delta_p = neighbour_cell_delta;
 
   int neighbour_count = 0;
   int void_count = 0;
@@ -1864,16 +1864,17 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
 
+		/* To avoid duplicates we only care about local cis */
+		if (ci->nodeID != nodeID) {
+			continue;
+		}
+
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
 		/* If the cell is a natural cell and not a neighbour cell
 		 * we don't need to do anything */
 		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-			continue;
-		}
-
-		if (ci->nodeID != nodeID) {
 			continue;
 		}
 
