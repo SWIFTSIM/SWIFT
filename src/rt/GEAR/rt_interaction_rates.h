@@ -300,6 +300,7 @@ static void rt_interaction_rates_init(struct rt_props *restrict rt_props,
                                                    integration_params.kB,
                                                    integration_params.h_planck);
   } else {
+    nu_stop_final = -1.;
     error("Unknown stellar spectrum type %d", rt_props->stellar_spectrum_type);
   }
 

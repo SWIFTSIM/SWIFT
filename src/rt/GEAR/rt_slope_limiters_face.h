@@ -126,7 +126,7 @@ __attribute__((always_inline)) INLINE static float rt_limiter_mc(
 __attribute__((always_inline)) INLINE static float rt_limiter_vanLeer(
     const float dQi, const float dQj) {
   const float r = dQj == 0.f ? dQi * 1e6 : dQi / dQj;
-  const float absr = fabs(r);
+  const float absr = fabsf(r);
   return (r + absr) / (1.f + absr);
 }
 

@@ -70,7 +70,7 @@ Tmax = T.v.max()
 
 
 u_theory, mu_theory, T_theory, XHI_theory, XHII_theory, XHeI_theory, XHeII_theory, XHeIII_theory = np.loadtxt(
-    "IonizationEquilibriumICSetupTestReference.txt", dtype=float, unpack=True
+    "IonizationEquilibriumICSetupTestReference.txt", dtype=np.float64, unpack=True
 )
 
 # ------------------

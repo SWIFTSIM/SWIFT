@@ -1,0 +1,9 @@
+Ion Mass Fraction Advection Test
+
+In some schemes, like the meshless (gizmo) scheme, particles exchange 
+masses via fluxes. This example tests whether the mass flux exchange 
+is done correctly by setting up regions of special ionization states
+and advecting them through time.
+
+To use the GEAR RT model, compile with :
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro-dimension=2 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT

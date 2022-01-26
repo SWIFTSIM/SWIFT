@@ -11,7 +11,6 @@ from swiftsimio import Writer
 import unyt
 import numpy as np
 import h5py
-from matplotlib import pyplot as plt
 
 # define unit system to use
 unitsystem = unyt.unit_systems.cgs_unit_system
@@ -33,7 +32,7 @@ n_p = 10000
 outputfilename = "ionization_equilibrium_test.hdf5"
 
 # particle positions
-xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float), boxsize.units)
+xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float64), boxsize.units)
 dx = boxsize / n_p
 for i in range(n_p):
     xp[i, 0] = (i + 0.5) * dx
@@ -42,7 +41,7 @@ w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=1)
 
 w.gas.coordinates = xp
 w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-w.gas.masses = np.ones(xp.shape[0], dtype=np.float) * 1000 * unyt.g
+w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
 w.gas.internal_energy = (
     np.logspace(np.log10(umin.v), np.log10(umax.v), n_p) * unyt.erg / unyt.g
 )

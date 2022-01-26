@@ -11,7 +11,6 @@
 import sys
 import os
 import swiftsimio
-import numpy as np
 import gc
 import unyt
 from matplotlib import pyplot as plt
@@ -23,8 +22,10 @@ from matplotlib.colors import SymLogNorm
 
 # plot all groups and all photon quantities
 plot_all_data = True
-# snapshot basename
-snapshot_base = "output"
+
+# plotting propagation tests or Stromgren sphere?
+do_stromgren_sphere = True
+
 # fancy up the plots a bit?
 fancy = True
 
@@ -34,12 +35,24 @@ imshow_kwargs = {"origin": "lower", "cmap": "viridis"}
 # parameters for swiftsimio projections
 projection_kwargs = {"resolution": 1024, "parallel": True}
 
+# snapshot basename
+snapshot_base = "propagation_test"
+
 # Set Units of your choice
 energy_units = unyt.erg
 energy_units_str = "\\rm{erg}"
 flux_units = 1e10 * energy_units / unyt.cm ** 2 / unyt.s
 flux_units_str = "10^{10} \\rm{erg} \\ \\rm{cm}^{-2} \\ \\rm{s}^{-1}"
 time_units = unyt.s
+
+if do_stromgren_sphere:
+    snapshot_base = "output"
+
+    energy_units = 1e50 * unyt.erg
+    energy_units_str = "10^{50} \\rm{erg}"
+    flux_units = 1e50 * unyt.erg / unyt.kpc ** 2 / unyt.Gyr
+    flux_units_str = "10^{60} \\rm{erg} \\ \\rm{kpc}^{-2} \\ \\rm{Gyr}^{-1}"
+    time_units = unyt.Myr
 # -----------------------------------------------------------------------
 
 
@@ -75,6 +88,10 @@ def get_snapshot_list(snapshot_basename="output"):
             print("Didn't find file", fname)
             quit(1)
         snaplist.append(fname)
+
+    if len(snaplist) == 0:
+        print("Didn't find any snapshots with basename '", snapshot_basename, "'")
+        quit(1)
 
     return snaplist
 
@@ -139,7 +156,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
     if plot_all_data:
         fig = plt.figure(figsize=(5 * 3, 5.05 * ngroups), dpi=200)
-        figname = filename[:-5] + "-all-quantities.png"
+        figname = filename[:-5] + "-radiation.png"
 
         for g in range(ngroups):
 
@@ -296,7 +313,6 @@ def get_minmax_vals(snaplist):
             dirmin = []
             dirmax = []
             for direction in ["X", "Y"]:
-                new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 dirmin.append(f.min())
                 dirmax.append(f.max())
