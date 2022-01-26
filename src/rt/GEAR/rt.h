@@ -467,12 +467,13 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
   struct rt_part_data* restrict rtd = &p->rt_data;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
+    const float e_old = rtd->conserved[g].energy;
     rtd->conserved[g].energy += rtd->flux[g].energy * dt;
     rtd->conserved[g].flux[0] += rtd->flux[g].flux[0] * dt;
     rtd->conserved[g].flux[1] += rtd->flux[g].flux[1] * dt;
     rtd->conserved[g].flux[2] += rtd->flux[g].flux[2] * dt;
     rt_check_unphysical_conserved(&rtd->conserved[g].energy,
-                                  rtd->conserved[g].flux, 1);
+                                  rtd->conserved[g].flux, e_old, 1);
   }
 }
 

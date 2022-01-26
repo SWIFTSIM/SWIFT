@@ -79,16 +79,24 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
  *
  * @param energy pointer to the photon energy
  * @param flux pointer to photon fluxes (3 dimensional)
+ * @param e_old photon energy before the change to be checked, if available.
  * @param c integer indentifier where this function was called from
  */
 __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
-    float* energy, float* flux, int c) {
+    float* energy, float* flux, const float e_old, int c) {
 
   /* Check for negative energies */
+  /* Note to self for printouts: Maximal allowable F = E * c. 
+   * In some cases, e.g. while cooling, we don't modify the fluxes,
+   * so you can get an estimate of what the photon energy used to be
+   * by dividing the printed out fluxes by the speed of light in
+   * code units */
 #ifdef SWIFT_DEBUG_CHECKS
-  if (*energy < 0.f && fabs(*energy) > 1.e-1)
-    message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e", c,
-            *energy, flux[0], flux[1], flux[2]);
+  float ratio = 1.;
+  if (e_old != 0.f) ratio = fabs(*energy / e_old);
+  if (*energy < 0.f && ratio > 1.e-4)
+    message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e | %.6e", c,
+            *energy, flux[0], flux[1], flux[2], ratio);
 #endif
   if (isinf(*energy) || isnan(*energy))
     error("Got inf/nan radiation energy case %d | %.6e | %.6e %.6e %.6e", c,

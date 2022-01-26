@@ -67,7 +67,6 @@ def check_hydro_sanity(snapdata):
     - RT transport calls >= RT gradient calls?
     """
 
-    nsnaps = len(snapdata)
     npart = snapdata[0].gas.coords.shape[0]
 
     print("Checking hydro")
@@ -78,7 +77,7 @@ def check_hydro_sanity(snapdata):
     for snap in snapdata:
 
         gas = snap.gas
-        stars = snap.stars
+        # stars = snap.stars
 
         # has a particle been called at least once?
         called = (
@@ -221,8 +220,6 @@ def check_stars_sanity(snapdata):
 
     print("Checking stars")
 
-    nsnaps = len(snapdata)
-
     # ----------------------------------------------
     #  check consistency of individual snapshots
     # ----------------------------------------------
@@ -259,9 +256,6 @@ def check_stars_hydro_interaction_sanity(snapdata):
     - are calls each step equal?
     - are total calls each step equal?
     """
-
-    nsnaps = len(snapdata)
-    npart = snapdata[0].gas.coords.shape[0]
 
     print("Checking hydro vs stars")
 

@@ -1,23 +1,27 @@
 Strömgen Sphere example in 3D
+-----------------------------
 
-For now, there are no gas interactions, and we use this
-example to perform tests and checks on photon injection
-and their propagation. The example contains 1 star in a
-glass hydro distribution in 3D. (State 09/2021)
+This directory contains two examples in one:
 
-Intented to compile with :
-    --with-rt=GEAR_1 --with-hydro-dimension=3
+    -   run a Strömgren sphere example, where a single central
+        star ionizes the surrounding medium in a box.
+        To run this example, use the provided `run.sh` script.
+        This script will then make use of the `makeIC.py` and
+        `plotSolution.py` script.
 
-Scripts in this directory:
+    -   run a propagation test of photons emitted from a single 
+        central source in an otherwise uniform box.
+        To run this example, use the provided `runPropagationTest.sh` script.
+        This script will then make use of the `makePropagationTestIC.py` and
+        `plotPhotonPropagationCheck.py` script.
 
-    - plotRadiationProjection.py:
-        plot photon energies and fluxes as a 2D projected 
-        image
 
-    - plotPhotonPropagationCheck.py:
-        Plots radiation energies and fluxes as function of 
-        radius centered on the injecting star. 
-        NOTE: Make sure that you use a photon group that 
-        doesn't interact with the gas to check the 
-        propagation properly. You'll have to hard-code
-        the index of the photon group in the script itself.
+Additional scripts:
+    -   `plotRadiationProjection.py`: Plots a projection of the radiation
+        quantities (energies, fluxes). NOTE: you might need to change the
+        'snapshot_base' variable at the top of the script depending on which
+        solutions you want to plot.
+
+To use the GEAR RT model, compile with :
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
+
