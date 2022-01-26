@@ -1873,6 +1873,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			continue;
 		}
 
+		if (ci->nodeID != nodeID) {
+			continue;
+		}
+
 		/* Get the loop range for the neighbouring cells */
 		if (ci->tl_cell_type <= 2) {
 			cjd_offset = 0;
