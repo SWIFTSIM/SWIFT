@@ -104,8 +104,10 @@ __attribute__((always_inline)) INLINE static void rt_get_pressure_tensor(
     return;
   }
 
-  /* f mustn't be > 1. This may happen since we use the reduced speed of light. */
-  const float f = min(1.f, rt_params.reduced_speed_of_light_inverse * Fnorm / U[0]);
+  /* f mustn't be > 1. This may happen since we use the reduced speed of light.
+   */
+  const float f =
+      min(1.f, rt_params.reduced_speed_of_light_inverse * Fnorm / U[0]);
   const float f2 = f * f;
   const float rootterm = 4.f - 3.f * f2;
   const float chi = (3.f + 4.f * f2) / (5.f + 2.f * sqrtf(rootterm));
