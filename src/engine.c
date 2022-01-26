@@ -1199,6 +1199,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Give some breathing space */
   scheduler_free_tasks(&e->sched);
 
+  /* Free the foreign particles to get more breathing space. */
+#ifdef WITH_MPI
+  if (e->free_foreign_when_rebuilding)
+    space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
+#endif
+
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
@@ -1311,6 +1317,12 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Re-build the tasks. */
   engine_maketasks(e);
+
+  /* Reallocate freed memory */
+#ifdef WITH_MPI
+  if (e->free_foreign_when_rebuilding)
+    engine_allocate_foreign_particles(e, /*fof=*/0);
+#endif
 
   /* Make the list of top-level cells that have tasks */
   space_list_useful_top_level_cells(e->s);
@@ -2879,6 +2891,10 @@ void engine_init(
       parser_get_opt_param_int(params, "FOF:dump_catalogue_when_seeding", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
   units_init_default(e->snapshot_units, params, "Snapshots", internal_units);
+  e->free_foreign_when_dumping_restart = parser_get_opt_param_int(
+      params, "Scheduler:free_foreign_during_restart", 0);
+  e->free_foreign_when_rebuilding = parser_get_opt_param_int(
+      params, "Scheduler:free_foreign_during_rebuild", 0);
   e->snapshot_output_count = 0;
   e->stf_output_count = 0;
   e->los_output_count = 0;
