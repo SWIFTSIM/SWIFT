@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
     float* energy, float* flux, const float e_old, int c) {
 
   /* Check for negative energies */
-  /* Note to self for printouts: Maximal allowable F = E * c. 
+  /* Note to self for printouts: Maximal allowable F = E * c.
    * In some cases, e.g. while cooling, we don't modify the fluxes,
    * so you can get an estimate of what the photon energy used to be
    * by dividing the printed out fluxes by the speed of light in
@@ -95,8 +95,8 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
   float ratio = 1.;
   if (e_old != 0.f) ratio = fabs(*energy / e_old);
   if (*energy < 0.f && ratio > 1.e-4)
-    message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e | %.6e", c,
-            *energy, flux[0], flux[1], flux[2], ratio);
+    message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e | %.6e",
+            c, *energy, flux[0], flux[1], flux[2], ratio);
 #endif
   if (isinf(*energy) || isnan(*energy))
     error("Got inf/nan radiation energy case %d | %.6e | %.6e %.6e %.6e", c,
