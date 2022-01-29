@@ -18,6 +18,10 @@ photon frequencies in a way that doesn't interact with gas!
 The ICs are created to be compatible with GEAR_RT. Recommended configuration:
 `--with-rt=GEAR_4 --with-rt-riemann-solver=GLF --with-hydro-dimension=2 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none`
 
+SPHM1RT:
+`--with-rt=SPHM1RT_4 --with-hydro-dimension=2 --with-stars=basic`
+Note that in SPHM1RT any (SPH) hydro scheme is compatible.
+
 Note that if you want to use a reduced speed of light for this test, you also 
 need to adapt the fluxes in the initial conditions! They are generated assuming
 that the speed of light is not reduced.

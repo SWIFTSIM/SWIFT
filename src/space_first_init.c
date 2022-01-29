@@ -66,6 +66,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct star_formation *star_formation = e->star_formation;
   const struct cooling_function_data *cool_func = e->cooling_func;
+  const struct rt_props *rt_props = e->rt_props;
 
   /* Check that the smoothing lengths are non-zero */
   for (int k = 0; k < count; k++) {
@@ -141,7 +142,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     particle_splitting_mark_part_as_not_split(&xp[k].split_data, p[k].id);
 
     /* And the radiative transfer */
-    rt_first_init_part(&p[k]);
+    rt_first_init_part(&p[k], rt_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */
