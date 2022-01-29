@@ -2549,8 +2549,19 @@ case "$with_rt" in
       AC_DEFINE([RT_DEBUG], [1], [debugging scheme])
       AC_DEFINE([SWIFT_RT_DEBUG_CHECKS], [1], [additional debugging checks for RT])
    ;;
-   SPHM1RT)
+   SPHM1RT_*)
       AC_DEFINE([RT_SPHM1RT], [1], [SPHM1RT radiative transfer scheme (Chan+21: 2102.08404)])
+      number_group=${with_rt:8}
+      AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
+
+      if test "$number_group" == 0; then
+          AC_MSG_ERROR([SPHM1RT: Cannot work with zero photon groups])
+      fi
+      if ! test $number_group -eq $number_group; then
+          # abuse -eq to check whether $number_group is an integer. -eq
+          # only works with those.
+          AC_MSG_ERROR([SPHM1RT: Cannot work with non-integer photon groups])
+      fi
    ;;
    *)
       AC_MSG_ERROR([Unknown radiative transfer scheme: $with_rt])

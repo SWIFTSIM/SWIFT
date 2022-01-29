@@ -20,16 +20,32 @@
 #ifndef SWIFT_RT_PROPERTIES_SPHM1RT_H
 #define SWIFT_RT_PROPERTIES_SPHM1RT_H
 
+#include "rt_parameters.h"
+
 /**
  * @file src/rt/SPHM1RT/rt_properties.h
- * @brief Main header file for the 'none' radiative transfer scheme properties.
- * SPHM1RT method described in Chan+21: 2102.08404
+ * @brief Main header file for the 'SPHM1RT' radiative transfer scheme
+ * properties. SPHM1RT method described in Chan+21: 2102.08404
  */
 
 /**
- * @brief Properties of the 'none' radiative transfer model
+ * @brief Properties of the 'SPHM1RT' radiative transfer model
  */
 struct rt_props {
+
+  /* CFL condition */
+  float CFL_condition;
+
+  /* reduced speed of light in code unit */
+  float cred;
+
+  /*! initial opacity */
+  float initialchi[RT_NGROUPS];
+
+  /* Frequency bin edges for photon groups
+   * Includes 0 as leftmost edge, doesn't include infinity as
+   * rightmost bin edge*/
+  float photon_groups[RT_NGROUPS];
 
   /* Are we running with hydro or star controlled injection?
    * This is added to avoid #ifdef macros as far as possible */
@@ -78,8 +94,53 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->convert_parts_after_zeroth_step = 0;
   rtp->convert_stars_after_zeroth_step = 0;
 
+  if (RT_NGROUPS <= 0) {
+    error(
+        "You need to run SPHM1RT with at least 1 photon group, "
+        "you have %d",
+        RT_NGROUPS);
+  } else if (RT_NGROUPS == 1) {
+    rtp->photon_groups[0] = 0.f;
+  } else {
+    /* Read in parameters */
+    float frequencies[RT_NGROUPS - 1];
+    parser_get_param_float_array(params, "SPHM1RT:photon_groups_Hz",
+                                 RT_NGROUPS - 1, frequencies);
+    float Hz_internal = units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
+    float Hz_internal_inv = 1.f / Hz_internal;
+    for (int g = 0; g < RT_NGROUPS - 1; g++) {
+      rtp->photon_groups[g + 1] = frequencies[g] * Hz_internal_inv;
+    }
+    rtp->photon_groups[0] = 0.f;
+  }
+
+  /* get reduced speed of light in code unit */
+  const float cred = parser_get_param_float(params, "SPHM1RT:cred");
+  rtp->cred = cred;
+
+  /* get initial opacity in code unit */
+  float initialchi[RT_NGROUPS];
+  int errorint = parser_get_opt_param_float_array(params, "SPHM1RT:chi",
+                                                  RT_NGROUPS, initialchi);
+
+  if (errorint == 0) {
+    message("SPHM1RT:chi not found in params");
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      rtp->initialchi[g] = 0.0f;
+    }
+  }
+
+  /* get CFL condition */
+  const float CFL = parser_get_param_float(params, "SPHM1RT:CFL_condition");
+  rtp->CFL_condition = CFL;
+
   /* After initialisation, print params to screen */
   rt_props_print(rtp);
+
+  /* Print a final message. */
+  if (engine_rank == 0) {
+    message("Radiative transfer initialized");
+  }
 }
 
 /**
