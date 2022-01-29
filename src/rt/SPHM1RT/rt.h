@@ -21,6 +21,7 @@
 #define SWIFT_RT_SPHM1RT_H
 
 #include "rt_properties.h"
+#include "rt_struct.h"
 
 #include <float.h>
 
@@ -29,6 +30,153 @@
  * @brief Main header file for no radiative transfer scheme.
  * SPHM1RT method described in Chan+21: 2102.08404
  */
+
+/**
+ * @brief Returns the comoving radiation energy per mass of a particle
+ * (note that the comoving and physical energy per mass are the same in our
+ * convention)
+ *
+ * @param p Pointer to the particle data.
+ * @param urad The comoving radiation energy per mass.
+ *
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_get_comoving_urad_multifrequency(const struct part* restrict p,
+                                           float urad[RT_NGROUPS]) {
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    urad[g] = p->rt_data.conserved[g].urad;
+  }
+}
+
+/**
+ * @brief Returns the physical radiation energy per mass of a particle
+ * (note that the comoving and physical energy per mass are the same in our
+ * convention)
+ *
+ * @param p Pointer to the particle data.
+ * @param cosmo Cosmology data structure.
+ * @param urad The physical radiation energy.
+ *
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_get_physical_urad_multifrequency(const struct part* restrict p,
+                                           const struct cosmology* cosmo,
+                                           float urad[RT_NGROUPS]) {
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    urad[g] = p->rt_data.conserved[g].urad;
+  }
+}
+
+/**
+ * @brief Sets the comoving radiation energy per mass of a particle
+ * (note that the comoving and physical energy per mass are the same in our
+ * convention)
+ *
+ * @param p The particle of interest.
+ * @param urad The comoving radiation energy per mass
+ *
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_comoving_urad_multifrequency(struct part* p,
+                                           const float urad[RT_NGROUPS]) {
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    p->rt_data.conserved[g].urad = urad[g];
+  }
+}
+
+/**
+ * @brief Sets the physical radiation energy per mass of a particle
+ * (note that the comoving and physical energy per mass are the same in our
+ * convention)
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param urad The physical radiation energy per mass
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_physical_urad_multifrequency(struct part* p,
+                                           const struct cosmology* cosmo,
+                                           const float urad[RT_NGROUPS]) {
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    p->rt_data.conserved[g].urad = urad[g];
+  }
+}
+
+/**
+ * @brief Returns the comoving radiation flux per gas density of a particle
+ * (note that the comoving and physical flux per gas density are the same in our
+ * convention)
+ *
+ * @param p Pointer to the particle data.
+ * @param fradtemp The comoving radiation flux per gas density
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_get_comoving_frad_multifrequency(const struct part* restrict p,
+                                           float fradtemp[RT_NGROUPS][3]) {
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    fradtemp[g][0] = p->rt_data.conserved[g].frad[0];
+    fradtemp[g][1] = p->rt_data.conserved[g].frad[1];
+    fradtemp[g][2] = p->rt_data.conserved[g].frad[2];
+  }
+}
+
+/**
+ * @brief Returns the physical radiation flux per gas density of a particle
+ * (note that the comoving and physical flux per gas density are the same in our
+ * convention)
+ *
+ * @param p Pointer to the particle data.
+ * @param cosmo Cosmology data structure
+ * @param fradtemp The comoving radiation flux per gas density
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_get_physical_frad_multifrequency(const struct part* restrict p,
+                                           const struct cosmology* cosmo,
+                                           float fradtemp[RT_NGROUPS][3]) {
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    fradtemp[g][0] = p->rt_data.conserved[g].frad[0];
+    fradtemp[g][1] = p->rt_data.conserved[g].frad[1];
+    fradtemp[g][2] = p->rt_data.conserved[g].frad[2];
+  }
+}
+
+/**
+ * @brief Sets the comoving radiation flux per density of a particle
+ * (note that the comoving and physical flux per density are the same in our
+ * convention)
+ *
+ * @param p The particle of interest.
+ * @param frad The comoving radiation flux
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_comoving_frad_multifrequency(struct part* p,
+                                           const float frad[RT_NGROUPS][3]) {
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    p->rt_data.conserved[g].frad[0] = frad[g][0];
+    p->rt_data.conserved[g].frad[1] = frad[g][1];
+    p->rt_data.conserved[g].frad[2] = frad[g][2];
+  }
+}
+
+/**
+ * @brief Sets the physical radiation flux of a particle
+ * (note that the comoving and physical flux are the same in our convention)
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param frad The comoving radiation flux
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_physical_radiation_flux_multifrequency(
+    struct part* p, const struct cosmology* cosmo, float frad[RT_NGROUPS][3]) {
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    p->rt_data.conserved[g].frad[0] = frad[g][0];
+    p->rt_data.conserved[g].frad[1] = frad[g][1];
+    p->rt_data.conserved[g].frad[2] = frad[g][2];
+  }
+}
 
 /**
  * @brief Initialisation of the RT density loop related particle data.
@@ -46,14 +194,93 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * the zeroth time step is finished.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+
+  struct rt_part_data* rpd = &p->rt_data;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rpd->dconserved_dt[g].urad = 0.0f;
+    rpd->dconserved_dt[g].frad[0] = 0.0f;
+    rpd->dconserved_dt[g].frad[1] = 0.0f;
+    rpd->dconserved_dt[g].frad[2] = 0.0f;
+  }
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rpd->viscosity[g].divf = 0.0f;
+    rpd->diffusion[g].graduradc[0] = 0.0f;
+    rpd->diffusion[g].graduradc[1] = 0.0f;
+    rpd->diffusion[g].graduradc[2] = 0.0f;
+  }
+
+  float fradmag, flux_max, correct;
+
+  /* To avoid radiation reaching other dimension and violating conservation */
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    if (hydro_dimension < 1.001f) {
+      rpd->conserved[g].frad[1] = 0.0f;
+    }
+    if (hydro_dimension < 2.001f) {
+      rpd->conserved[g].frad[2] = 0.0f;
+    }
+  }
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    /* TK: avoid the radiation flux to violate causality. Impose a limit: F<Ec
+     */
+
+    if ((rpd->conserved[g].frad[0] == 0.f) &&
+        (rpd->conserved[g].frad[1] == 0.f) &&
+        (rpd->conserved[g].frad[2] == 0.f)) {
+      fradmag = 0.f;
+    } else {
+      fradmag = sqrtf(rpd->conserved[g].frad[0] * rpd->conserved[g].frad[0] +
+                      rpd->conserved[g].frad[1] * rpd->conserved[g].frad[1] +
+                      rpd->conserved[g].frad[2] * rpd->conserved[g].frad[2]);
+    }
+
+    flux_max = rpd->conserved[g].urad * rpd->params.cred;
+    if (fradmag > 0.f) {
+      if (fradmag > flux_max) {
+        correct = flux_max / fradmag;
+        rpd->conserved[g].frad[0] = rpd->conserved[g].frad[0] * correct;
+        rpd->conserved[g].frad[1] = rpd->conserved[g].frad[1] * correct;
+        rpd->conserved[g].frad[2] = rpd->conserved[g].frad[2] * correct;
+      }
+    } else {
+      rpd->conserved[g].frad[0] = 0.0f;
+      rpd->conserved[g].frad[1] = 0.0f;
+      rpd->conserved[g].frad[2] = 0.0f;
+    }
+  }
+}
 
 /**
  * @brief First initialisation of the RT hydro particle data.
  * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p) {}
+    struct part* restrict p, const struct rt_props* restrict rt_props) {
+
+  struct rt_part_data* rpd = &p->rt_data;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rpd->viscosity[g].alpha = 1.0f;
+    rpd->diffusion[g].alpha = 1.0f;
+    rpd->params.chi[g] = rt_props->initialchi[g];
+    rpd->viscosity[g].divf_previous_step = 0.0f;
+  }
+
+  /* We can get parameters for diffusion (force loop) */
+
+  rpd->params.cred = rt_props->cred;
+
+  rpd->force.f = 1.0f;
+
+  rpd->dt = 1.0f;
+
+  rt_init_part(p);
+  rt_reset_part(p);
+}
 
 /**
  * @brief Initialises particle quantities that can't be set
@@ -104,7 +331,9 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
  * @param n The number of pieces to split into.
  */
 __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
-                                                                double n) {}
+                                                                double n) {
+  error("RT can't run with split particles for now.");
+}
 
 /**
  * @brief Exception handle a hydro part not having any neighbours in ghost task
@@ -112,7 +341,9 @@ __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
  * @param p The #part.
  */
 __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
-    struct part* p){};
+    struct part* p) {
+  message("WARNING: found particle without neighbours");
+};
 
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
@@ -129,7 +360,20 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  * @param rtp The RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
-    struct part* p, const struct rt_props* rtp){};
+    struct part* p, const struct rt_props* rtp) {
+
+  struct rt_part_data* rpd = &p->rt_data;
+  /* Note that in the input, we read radiation energy and flux
+   * then we convert these quantities to radiation energy per mass and flux per
+   * mass
+   */
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rpd->conserved[g].urad = rpd->conserved[g].urad / p->mass;
+    rpd->conserved[g].frad[0] = rpd->conserved[g].frad[0] / p->mass;
+    rpd->conserved[g].frad[1] = rpd->conserved[g].frad[1] / p->mass;
+    rpd->conserved[g].frad[2] = rpd->conserved[g].frad[2] / p->mass;
+  }
+};
 
 /**
  * @brief Computes the next radiative transfer time step size
@@ -142,8 +386,10 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
 __attribute__((always_inline)) INLINE static float rt_compute_timestep(
     const struct part* restrict p, const struct rt_props* restrict rt_props,
     const struct cosmology* restrict cosmo) {
+  float dt = p->h * cosmo->a / (p->rt_data.params.cred + FLT_MIN) *
+             rt_props->CFL_condition;
 
-  return FLT_MAX;
+  return dt;
 }
 
 /**
@@ -177,7 +423,12 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
     const integertime_t ti_beg, const integertime_t ti_end,
     const double time_base, const int with_cosmology,
     const struct cosmology* cosmo) {
-  return 0.0;
+  if (with_cosmology) {
+    error("SPHM1RT with cosmology not implemented yet! :(");
+    return 0.f;
+  } else {
+    return (ti_end - ti_beg) * time_base;
+  }
 }
 
 /**
@@ -220,7 +471,79 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
  * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
-    struct part* restrict p) {}
+    struct part* restrict p) {
+  struct rt_part_data* rpd = &p->rt_data;
+  /* artificial diffusion for shock capturing */
+  const float vsig_diss = rpd->params.cred;
+  /* similar to Cullen & Dehnen 2010 switch */
+  float divf, divf_previous_step, urad, viscosity_alpha, diffusion_alpha;
+  float divf_dt, shockest, alphaflim, alpha_f_diss, alpha_f_diss_loc;
+  float alpha_diss_loc, alpha_diss;
+  if (rpd->dt == 0) return;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    divf = rpd->viscosity[g].divf;
+    divf_previous_step = rpd->viscosity[g].divf_previous_step;
+    urad = rpd->conserved[g].urad;
+    viscosity_alpha = rpd->viscosity[g].alpha;
+    diffusion_alpha = rpd->diffusion[g].alpha;
+    divf_dt = (divf - divf_previous_step) / (rpd->dt);
+
+    if (urad == 0.f) {
+      shockest = FLT_MAX;
+    } else {
+      shockest = -p->h * p->h / (vsig_diss) / (vsig_diss)*divf_dt * 200.f;
+      shockest /= urad;
+    }
+    alphaflim = max(shockest, 0.0f); /* should be positive or 0 */
+    alpha_f_diss = viscosity_alpha;
+    alpha_f_diss_loc = 0.0f;
+
+    /* f diffusion only operates in compression */
+    if (divf < 0.0f) {
+      /* limit the diffusivity to Courant time step */
+      alpha_f_diss_loc = min(alphaflim, 1.0f);
+    }
+
+    if (alpha_f_diss_loc > alpha_f_diss) {
+      /* Reset the value of alpha to the appropriate value */
+      alpha_f_diss = alpha_f_diss_loc;
+    } else {
+      /* Integrate the alpha forward in time to decay back to alpha = alpha_loc
+       */
+      alpha_f_diss = alpha_f_diss_loc +
+                     (alpha_f_diss - alpha_f_diss_loc) *
+                         expf(-rpd->dt * vsig_diss *
+                              (1.f / p->h + rpd->params.chi[g] * p->rho));
+    }
+
+    /* alpha inspired by Price 2010: it should vanish where radiation energy
+     * difference is small */
+    alpha_diss_loc = 1.0f;
+    alpha_diss = diffusion_alpha;
+    if (alpha_diss_loc > alpha_diss) {
+      /* Reset the value of alpha to the appropriate value */
+      alpha_diss = alpha_diss_loc;
+    } else {
+      /* Integrate the alpha forward in time to decay back to alpha = alpha_loc
+       */
+      alpha_diss = alpha_diss_loc +
+                   (alpha_diss - alpha_diss_loc) *
+                       expf(-rpd->dt * vsig_diss *
+                            (0.01f / p->h + rpd->params.chi[g] * p->rho));
+    }
+
+    /* Cap the dissipation to avoid instabilities */
+    alpha_diss = min(alpha_diss, 1.0f);
+    alpha_diss = max(alpha_diss, 0.0f);
+
+    alpha_f_diss = min(alpha_f_diss, 1.0f);
+    alpha_f_diss = max(alpha_f_diss, 0.0f);
+
+    rpd->diffusion[g].alpha = alpha_diss;
+    rpd->viscosity[g].alpha = alpha_f_diss;
+  }
+}
 
 /**
  * @brief finishes up the transport step
@@ -229,7 +552,51 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  * @param dt the current time step of the particle
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt) {}
+    struct part* restrict p, const double dt) {
+  struct rt_part_data* rpd = &p->rt_data;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rpd->conserved[g].urad += rpd->dconserved_dt[g].urad * dt;
+    rpd->conserved[g].frad[0] += rpd->dconserved_dt[g].frad[0] * dt;
+    rpd->conserved[g].frad[1] += rpd->dconserved_dt[g].frad[1] * dt;
+    rpd->conserved[g].frad[2] += rpd->dconserved_dt[g].frad[2] * dt;
+  }
+
+  /* add frad source term implicitly */
+  float dfrac;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    dfrac = -rpd->params.chi[g] * p->rho * rpd->params.cred;
+    rpd->conserved[g].frad[0] *= expf(dfrac * dt);
+    rpd->conserved[g].frad[1] *= expf(dfrac * dt);
+    rpd->conserved[g].frad[2] *= expf(dfrac * dt);
+
+    /* update urad */
+    /* limiter to avoid negative urad */
+    /* negative urad will make the dissipation (diffusion) unstable) */
+    if (rpd->conserved[g].urad < 0.0f) {
+      rpd->conserved[g].urad = 0.0f;
+      rpd->conserved[g].frad[0] = 0.0f;
+      rpd->conserved[g].frad[1] = 0.0f;
+      rpd->conserved[g].frad[2] = 0.0f;
+    }
+
+    /* save next time step */
+    rpd->viscosity[g].divf_previous_step = rpd->viscosity[g].divf;
+  }
+
+  rpd->dt = dt;
+
+  /* To avoid radiation reaching other dimension and violating conservation */
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    if (hydro_dimension < 1.001f) {
+      rpd->conserved[g].frad[1] = 0.0f;
+    }
+    if (hydro_dimension < 2.001f) {
+      rpd->conserved[g].frad[2] = 0.0f;
+    }
+  }
+}
 
 /**
  * @brief Do the thermochemistry on a particle.
@@ -277,7 +644,23 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
  * @param p particle to work on
  **/
 __attribute__((always_inline)) INLINE static void rt_prepare_force(
-    struct part* p) {}
+    struct part* p) {
+
+  struct rt_part_data* rpd = &p->rt_data;
+
+  /* Some smoothing length multiples. */
+  const float rho = hydro_get_comoving_density(p);
+  const float rho_inv = 1.0f / rho; /* 1 / rho */
+
+  /* Compute the "grad h" term */
+  float rho_dh = p->density.rho_dh;
+
+  const float omega_inv =
+      1.f / (1.f + hydro_dimension_inv * p->h * rho_dh * rho_inv);
+
+  /* Update variables. */
+  rpd->force.f = omega_inv;
+}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.
