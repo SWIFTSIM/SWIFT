@@ -1566,7 +1566,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
       /* Skip inactive parts */
       if (!part_is_active(p, e)) continue;
 
-      rt_injection_update_photon_density(p, e->rt_props);
+      rt_finalise_injection(p, e->rt_props);
     }
   }
 

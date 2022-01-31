@@ -137,6 +137,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
         advected_positions = data.gas.coordinates[:].copy()
         advected_positions[:, 0] -= speed * time
+        nparts = advected_positions.shape[0]
         # add periodicity corrections
         negatives = advected_positions < 0.0
         if negatives.any():
@@ -147,11 +148,10 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             while advected_positions.max() > boxsize:
                 advected_positions[overshooters] -= boxsize
 
-        analytical_solutions = np.zeros(
-            (part_positions.shape[0], ngroups), dtype=np.float64
-        )
+        analytical_solutions = np.zeros((nparts, ngroups), dtype=np.float64)
+        dx = boxsize / nparts
         for p in range(part_positions.shape[0]):
-            E, F = initial_condition(advected_positions[p])
+            E, F = initial_condition(advected_positions[p], dx)
             for g in range(ngroups):
                 analytical_solutions[p, g] = E[g]
 
@@ -204,6 +204,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             # plot flux X
             new_attribute_str = "radiation_flux" + str(g + 1) + "X"
             photon_flux = getattr(data.gas, new_attribute_str)
+            photon_flux = photon_flux.to("erg/cm**2/s")
 
             ax = fig.add_subplot(2, ngroups, g + 1 + ngroups)
             ax.scatter(part_positions, photon_flux, **scatterplot_kwargs)
