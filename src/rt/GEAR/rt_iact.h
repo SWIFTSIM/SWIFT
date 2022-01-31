@@ -106,6 +106,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   if (si->density.wcount == 0.f) return;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+
   /* Do some checks and increase neighbour counts
    * before other potential early exits */
   if (si->rt_data.debug_iact_hydro_inject_prep == 0)
@@ -172,30 +173,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   if (dx[1] > 0.f) octant_index += 2;
   if (dx[2] > 0.f) octant_index += 4;
 
-  const float qw = si->rt_data.octant_weights[octant_index];
+  const float octw = si->rt_data.octant_weights[octant_index];
   /* We might end up in this scenario due to roundoff errors */
-  if (psi == 0.f || qw == 0.f) return;
+  if (psi == 0.f || octw == 0.f) return;
 
-  const float weight = psi / nonempty_octants / qw;
+  const float weight = psi / (nonempty_octants * octw);
 
   const float minus_r_inv = -1.f / r;
   const float n_unit[3] = {dx[0] * minus_r_inv, dx[1] * minus_r_inv,
                            dx[2] * minus_r_inv};
+  const float Vinv = 1.f / pj->geometry.volume;
 
   /* Nurse, the patient is ready now */
   /* TODO: this is done differently for RT_HYDRO_CONTROLLED_INJECTION */
   for (int g = 0; g < RT_NGROUPS; g++) {
     /* Inject energy. */
-    const float injected_energy = si->rt_data.emission_this_step[g] * weight;
-    pj->rt_data.conserved[g].energy += injected_energy;
+    const float injected_energy_density =
+        si->rt_data.emission_this_step[g] * weight * Vinv;
+    pj->rt_data.radiation[g].energy_density += injected_energy_density;
 
     /* Inject flux. */
     /* We assume the path from the star to the gas is optically thin */
     const float injected_flux =
-        injected_energy * rt_params.reduced_speed_of_light;
-    pj->rt_data.conserved[g].flux[0] += injected_flux * n_unit[0];
-    pj->rt_data.conserved[g].flux[1] += injected_flux * n_unit[1];
-    pj->rt_data.conserved[g].flux[2] += injected_flux * n_unit[2];
+        injected_energy_density * rt_params.reduced_speed_of_light;
+    pj->rt_data.radiation[g].flux[0] += injected_flux * n_unit[0];
+    pj->rt_data.radiation[g].flux[1] += injected_flux * n_unit[1];
+    pj->rt_data.radiation[g].flux[2] += injected_flux * n_unit[2];
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -235,6 +238,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     struct part *restrict pj, float a, float H, int mode) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  if (pi->rt_data.debug_kicked != 1)
+    error("Trying to iact transport with unkicked particle %lld (count=%d)",
+          pi->id, pi->rt_data.debug_kicked);
+
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do iact transport when "
@@ -263,6 +270,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
           "rt_finalise_gradient count is %d",
           pj->rt_data.debug_gradients_done);
 
+    if (pj->rt_data.debug_kicked != 1)
+      error("Trying to iact transport with unkicked particle %lld (count=%d)",
+            pj->id, pj->rt_data.debug_kicked);
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 #endif
@@ -376,15 +386,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    /* density state to be used to compute the flux */
+    /* radiation state to be used to compute the flux */
     float Ui[4], Uj[4];
     rt_gradients_predict(pi, pj, Ui, Uj, g, dx, r, xij_i);
 
     /* For first order method, skip the gradients */
     /* float Ui[4], Uj[4]; */
-    /* rt_part_get_density_vector(pi, g, Ui); */
-    /* rt_part_get_density_vector(pj, g, Uj); */
-    /* No need to check for unphysical densities, they
+    /* rt_part_get_radiation_state_vector(pi, g, Ui); */
+    /* rt_part_get_radiation_state_vector(pj, g, Uj); */
+    /* No need to check for unphysical quantities, they
      * haven't been touched since
      * rt_injection_update_photon_densities */
 
@@ -396,7 +406,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
      * pj is right state. The sign convention is that a positive total
      * flux is subtracted from the left state, and added to the right
      * state, based on how we chose the unit vector. By this convention,
-     * the time integration results in conserved += flux * dt */
+     * the time integration results in conserved quantity += flux * dt */
     rti->flux[g].energy -= totflux[0];
     rti->flux[g].flux[0] -= totflux[1];
     rti->flux[g].flux[1] -= totflux[2];

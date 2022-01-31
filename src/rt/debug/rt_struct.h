@@ -59,6 +59,9 @@ struct rt_part_data {
 
   /* Task completion flags */
 
+  /*! part got kicked? */
+  int debug_kicked;
+
   /*! calls from ghost1 tasks */
   int debug_injection_done;
 

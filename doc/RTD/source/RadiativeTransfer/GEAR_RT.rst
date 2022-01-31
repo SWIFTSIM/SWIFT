@@ -29,7 +29,13 @@ Compiling for GEAR RT
     need to compile using ``--with-hydro=gizmo-mfv``, which will also require
     you to select a hydro Riemann solver, e.g ``--with-riemann-solver=hllc``.
 
-
+-   The thermochemistry requires the `grackle <https://github.com/grackle-project/grackle>`_ 
+    library. Grackle is a chemistry and cooling library presented in 
+    `B. Smith et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S>`_.
+    Please note that the current implementation is not (yet) as
+    advanced as the :ref:`GEAR subgrid model grackle cooling <gear_grackle_cooling>`, 
+    and the parameters listed as available there are not applicable for the 
+    grackle cooling in combination with GEAR RT. 
 
 
 
@@ -82,9 +88,13 @@ to select between:
     - In this case, you need to provide also temperature of the blackbody via the 
       ``stellar_spectrum_blackbody_temperature_K`` parameter.
 
+
+
+
+
+
 Initial Conditions
 ~~~~~~~~~~~~~~~~~~
-
 
 Setting Up Initial Conditions for RT
 ````````````````````````````````````
@@ -115,15 +125,17 @@ group:
    MassFractionHeIII
 
 
-The ``PhotonEnergies*`` datasets need to have dimension ``nparts``, while the
-``PhotonFluxesGroup*`` datasets need to have dimension ``(nparts, 3)``, where
-``nparts`` is the number of hydro particles. If you are writing initial
-conditions where the fields have units, then ``PhotonEnergies*`` are expected to
-have units of energy :math:`[M L^2 T^{-2}]`), while the ``PhotonFluxes*`` fields
-should be in units of energy flux (energy per unit time per unit area, :math:`[M
-T^{-3}]`).
-The ``MassFraction*`` datasets need to have dimension ``nparts`` as well, and
-are all unitless.
+-   The ``PhotonEnergies*`` datasets need to have dimension ``nparts``, while the
+    ``PhotonFluxesGroup*`` datasets need to have dimension ``(nparts, 3)``, where
+    ``nparts`` is the number of hydro particles. 
+-   Note that the GEAR-RT scheme expects the ``PhotonEnergies*`` to be total 
+    energies, not energy densities. 
+-   If you are writing initial conditions where the fields have units, then 
+    ``PhotonEnergies*`` are expected to have units of energy 
+    :math:`[M L^2 T^{-2}]`), while the ``PhotonFluxes*`` fields should be in units 
+    of energy flux (energy per unit time per unit area, :math:`[M T^{-3}]`). 
+-   The ``MassFraction*`` datasets need to have dimension ``nparts`` as well, and
+    are all unitless.
 
 
 
@@ -233,3 +245,77 @@ for you assuming ionization equilibrium, following `Katz, et al. 1996
 The ``hydrogen_mass_fraction`` (which is a compulsory argument in any case) will
 determine the hydrogen and helium mass fractions, while SWIFT will determine the
 equilibrium ionizations.
+
+
+
+
+Accessing Output Data
+~~~~~~~~~~~~~~~~~~~~~~
+
+We recommend using `swiftsimio <https://github.com/SWIFTSIM/swiftsimio>`_ to 
+access the RT related snapshot data. The compatibility is being maintained.
+Here's an example how to access some specific quantities that you might find
+useful:
+
+
+.. code:: python
+
+    #!/usr/bin/env python3
+
+    import swiftsimio
+    import unyt
+
+    data = swiftsimio.load("output_0001.hdf5")
+    meta = data.metadata
+
+
+
+    # Accessing RT Related Metadata
+    # ---------------------------------
+
+    # get scheme name: "GEAR M1closure"
+    scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
+
+    # number of photon groups used
+    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+
+    # get the reduced speed of light that was used. Will have unyts.
+    reduced_speed_of_light = meta.reduced_lightspeed
+
+
+
+
+    # Accessing Photon Data
+    # ------------------------
+
+    # accessing a photon group directly
+    # NOTE: group names start with 1
+    group_1_photon_energies = data.gas.photon_energies.group1
+    group_1_photon_fluxes_x = data.gas.photon_fluxes.Group1X
+    group_1_photon_fluxes_y = data.gas.photon_fluxes.Group1Y
+    group_1_photon_fluxes_z = data.gas.photon_fluxes.Group1Z
+
+    # want to stack all fluxes into 1 array?
+    group1fluxes = swiftsimio.cosmo_array(
+        unyt.uvstack(
+            (group_1_photon_fluxes_x, group_1_photon_fluxes_y, group_1_photon_fluxes_z)
+        ),
+        group_1_photon_fluxes_x.units,
+    ).T
+    # group1fluxes.shape = (npart, 3)
+
+
+    # Load all photon energies in a list
+    photon_energies = [
+        getattr(data.gas.photon_energies, "group" + str(g + 1)) for g in range(ngroups)
+    ]
+
+
+
+    # Accessing Ion Mass Fractions
+    # -------------------------------
+    fHI = data.gas.ion_mass_fractions.HI
+    fHII = data.gas.ion_mass_fractions.HII
+    fHeI = data.gas.ion_mass_fractions.HeI
+    fHeII = data.gas.ion_mass_fractions.HeII
+    fHeIII = data.gas.ion_mass_fractions.HeIII

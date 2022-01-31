@@ -92,6 +92,9 @@ static void rt_do_thermochemistry(struct part* restrict p,
    * accessinging its properties there */
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  if (p->rt_data.debug_kicked != 1)
+    error("Trying to do thermochemistry on unkicked particle %lld (count=%d)",
+          p->id, p->rt_data.debug_kicked);
   if (!p->rt_data.debug_injection_done)
     error("Trying to do thermochemistry when injection step hasn't been done");
   if (!p->rt_data.debug_gradients_done)
@@ -189,14 +192,15 @@ static void rt_do_thermochemistry(struct part* restrict p,
 
   /* update radiation fields */
   for (int g = 0; g < RT_NGROUPS; g++) {
-    const float e_old = p->rt_data.conserved[g].energy;
+    const float e_old = p->rt_data.radiation[g].energy_density;
     const float factor_new = (1.f - dt * rates_by_frequency_bin[g]);
-    p->rt_data.conserved[g].energy *= factor_new;
+    p->rt_data.radiation[g].energy_density *= factor_new;
     for (int i = 0; i < 3; i++) {
-      p->rt_data.conserved[g].flux[i] *= factor_new;
+      p->rt_data.radiation[g].flux[i] *= factor_new;
     }
-    rt_check_unphysical_conserved(&p->rt_data.conserved[g].energy,
-                                  p->rt_data.conserved[g].flux, e_old, 2);
+    rt_check_unphysical_state(&p->rt_data.radiation[g].energy_density,
+                              p->rt_data.radiation[g].flux, e_old,
+                              /*callloc=*/2);
   }
 
   /* copy updated grackle data to particle */

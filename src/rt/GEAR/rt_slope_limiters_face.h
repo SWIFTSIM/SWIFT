@@ -148,8 +148,8 @@ __attribute__((always_inline)) INLINE static float rt_limiter_superbee(
 /**
  * @brief Slope limit the slopes at the interface between two particles
  *
- * @param Qi RT quantities of particle i (energy + fluxes in 3 dim)
- * @param Qj RT quantities of particle j (energy + fluxes in 3 dim)
+ * @param Qi RT quantities of particle i (energy density + fluxes in 3 dim)
+ * @param Qj RT quantities of particle j (energy density + fluxes in 3 dim)
  * @param dQi Difference between the RT quantities of particle i at the
  * position of particle i and at the interface position.
  * @param dQj Difference between the RT quantities of particle j at the

@@ -113,8 +113,6 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
   unsigned long long iacts_with_stars_sum_tot = 0ULL;
   float energy_sum[RT_NGROUPS];
   for (int g = 0; g < RT_NGROUPS; g++) energy_sum[g] = 0.f;
-  float energy_density_sum[RT_NGROUPS];
-  for (int g = 0; g < RT_NGROUPS; g++) energy_density_sum[g] = 0.f;
 
   for (int k = 0; k < count; k++) {
 
@@ -131,8 +129,8 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
 
     /* Sum up total energies for budget */
     for (int g = 0; g < RT_NGROUPS; g++) {
-      energy_density_sum[g] += p->rt_data.density[g].energy;
-      energy_sum[g] += p->rt_data.conserved[g].energy;
+      energy_sum[g] +=
+          p->rt_data.radiation[g].energy_density * p->geometry.volume;
     }
   }
 
@@ -146,8 +144,6 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
   for (int g = 0; g < RT_NGROUPS; g++) {
     atomic_add_f(&(e->rt_props->debug_total_radiation_conserved_energy[g]),
                  energy_sum[g]);
-    atomic_add_f(&(e->rt_props->debug_total_radiation_energy_density[g]),
-                 energy_density_sum[g]);
   }
 }
 
@@ -156,7 +152,7 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
  * particles and do whatever checks for this particular time step you
  * want done.
  *
- * @param s The #space.
+ * @param e The #engine.
  * @param verbose Are we talkative?
  */
 __attribute__((always_inline)) INLINE static void
@@ -179,7 +175,6 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
   e->rt_props->debug_star_injection_prep_iacts_with_parts_tot = 0LL;
   e->rt_props->debug_part_injection_prep_iacts_with_stars_tot = 0LL;
   for (int g = 0; g < RT_NGROUPS; g++) {
-    e->rt_props->debug_total_radiation_energy_density[g] = 0.f;
     e->rt_props->debug_total_radiation_conserved_energy[g] = 0.f;
     e->rt_props->debug_total_star_emitted_energy[g] = 0.f;
   }
@@ -271,17 +266,6 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
             e->rt_props->debug_total_radiation_conserved_energy[g]);
 
   if (e->step > 1) {
-    fprintf(e->rt_props->energy_density_filep, "\n");
-  } else {
-    fprintf(e->rt_props->energy_density_filep, "# nstars: %lld\n",
-            e->total_nr_sparts);
-  }
-  fprintf(e->rt_props->energy_density_filep, "%6d %12.6e ", e->step, e->time);
-  for (int g = 0; g < RT_NGROUPS; g++)
-    fprintf(e->rt_props->energy_density_filep, "%12.6e ",
-            e->rt_props->debug_total_radiation_energy_density[g]);
-
-  if (e->step > 1) {
     fprintf(e->rt_props->star_emitted_energy_filep, "\n");
   } else {
     fprintf(e->rt_props->star_emitted_energy_filep, "# nstars: %lld\n",
@@ -306,6 +290,7 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
  * further down the task system.
  *
  * @param p Hydro particle.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void
 rt_debugging_check_injection_part(struct part *restrict p,
@@ -324,6 +309,7 @@ rt_debugging_check_injection_part(struct part *restrict p,
  * further down the task system.
  *
  * @param s Star particle.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void
 rt_debugging_check_injection_spart(struct spart *restrict s,

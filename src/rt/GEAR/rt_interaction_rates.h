@@ -445,10 +445,8 @@ rt_tchem_get_interaction_rates(gr_float rates[5],
     /* Sum results for this group over all species */
     double heating_rate_group_nHI = 0.;
     double heating_rate_group_cgs = 0.;
-    /* NOTE: we need energy density here, not energy.
-     * But energy *density* hasn't been updated at this point. */
-    float energy_density_i_cgs = p->rt_data.conserved[group].energy /
-                                 p->geometry.volume * to_erg * to_inv_volume;
+    float energy_density_i_cgs =
+        p->rt_data.radiation[group].energy_density * to_erg * to_inv_volume;
 
     for (int spec = 0; spec < RT_NIONIZING_SPECIES; spec++) {
       const double cse = rt_props->energy_weighted_cross_sections[group][spec];

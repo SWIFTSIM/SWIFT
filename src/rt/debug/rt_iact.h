@@ -124,6 +124,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
+  if (pi->rt_data.debug_kicked != 1)
+    error("Trying to iact transport with unkicked particle %lld (count=%d)",
+          pi->id, pi->rt_data.debug_kicked);
+
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do iact transport when "
@@ -139,6 +143,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
+
+    if (pj->rt_data.debug_kicked != 1)
+      error("Trying to iact transport with unkicked particle %lld (count=%d)",
+            pj->id, pj->rt_data.debug_kicked);
 
     if (pj->rt_data.debug_injection_done != 1)
       error(

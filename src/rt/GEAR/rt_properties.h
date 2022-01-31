@@ -164,7 +164,6 @@ struct rt_props {
 
   /* Files to write energy budget to after every step */
   FILE* conserved_energy_filep;
-  FILE* energy_density_filep;
   FILE* star_emitted_energy_filep;
 #endif
 };
@@ -421,11 +420,6 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
           params, "GEARRT:set_equilibrium_initial_ionization_mass_fractions",
           /* default = */ 0);
 
-  /* Mark that we need some conversion after the first step now */
-  if (rtp->set_equilibrium_initial_ionization_mass_fractions ||
-      rtp->set_initial_ionization_mass_fractions)
-    rtp->convert_parts_after_zeroth_step = 1;
-
   if (rtp->set_equilibrium_initial_ionization_mass_fractions &&
       rtp->set_initial_ionization_mass_fractions)
     error(
@@ -484,17 +478,14 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->conserved_energy_filep = fopen("RT_conserved_energy_budget.txt", "w");
   if (rtp->conserved_energy_filep == NULL)
     error("Couldn't open RT conserved energy budget file to write in");
-  rtp->energy_density_filep = fopen("RT_energy_density_budget.txt", "w");
-  if (rtp->energy_density_filep == NULL)
-    error("Couldn't open RT energy density budget file to write in");
   rtp->star_emitted_energy_filep = fopen("RT_star_injected_energy.txt", "w");
   if (rtp->star_emitted_energy_filep == NULL)
     error("Couldn't open RT star energy budget file to write in");
 
   if (rtp->use_const_emission_rates) {
-    FILE* files[3] = {rtp->conserved_energy_filep, rtp->energy_density_filep,
+    FILE* files[2] = {rtp->conserved_energy_filep,
                       rtp->star_emitted_energy_filep};
-    for (int f = 0; f < 3; f++) {
+    for (int f = 0; f < 2; f++) {
       fprintf(files[f], "# Emission rates: ");
       const double solar_luminosity = 3.826e33; /* erg/s */
       for (int g = 0; g < RT_NGROUPS; g++)
