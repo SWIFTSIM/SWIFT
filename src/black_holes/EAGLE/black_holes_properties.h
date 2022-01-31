@@ -381,8 +381,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->use_nibbling = parser_get_param_int(params, "EAGLEAGN:use_nibbling");
   if (bp->use_nibbling) {
-    bp->min_gas_mass_for_nibbling =
-        parser_get_param_float(params, "EAGLEAGN:min_gas_mass_for_nibbling");
+    bp->min_gas_mass_for_nibbling = parser_get_param_float(
+        params, "EAGLEAGN:min_gas_mass_for_nibbling_Msun");
     bp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
   }
 
