@@ -2025,6 +2025,7 @@ if test "$with_subgrid" != "none"; then
    fi
 fi
 
+with_chemistry_name="none"
 case "$with_chemistry" in
    none)
       AC_DEFINE([CHEMISTRY_NONE], [1], [No chemistry function])
@@ -2033,17 +2034,23 @@ case "$with_chemistry" in
       AC_DEFINE([CHEMISTRY_GEAR_DIFFUSION], [1], [Chemistry taken from the GEAR model including the metal diffusion])
       number_element=${with_chemistry:15}
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
+      with_chemistry_name="GEAR (with $number_element elements and diffusion)"
+      with_chemistry="GEAR_DIFFUSION"
    ;;
    GEAR_*)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
       number_element=${with_chemistry:5}
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
+      with_chemistry_name="GEAR (with $number_element elements)"
+      with_chemistry="GEAR"
    ;;
    QLA)
       AC_DEFINE([CHEMISTRY_QLA], [1], [Chemistry taken from the Quick-Lyman-alpha model])
+      with_chemistry_name="QLA"
    ;;
    EAGLE)
       AC_DEFINE([CHEMISTRY_EAGLE], [1], [Chemistry taken from the EAGLE model])
+      with_chemistry_name="EAGLE (9 elements + smoothing)"
    ;;
    *)
       AC_MSG_ERROR([Unknown chemistry function: $with_chemistry])
@@ -2214,21 +2221,23 @@ if test "$with_subgrid" != "none"; then
    fi
 fi
 
+with_feedback_name="none"
 case "$with_feedback" in
    EAGLE-kinetic)
       AC_DEFINE([FEEDBACK_EAGLE_KINETIC], [1], [EAGLE kinetic stellar feedback and evolution model])
-      with_feedback="EAGLE kinetic stellar feedback and evolution model"
+      with_feedback_name="EAGLE kinetic stellar feedback and evolution model"
    ;;
    EAGLE-thermal)
       AC_DEFINE([FEEDBACK_EAGLE_THERMAL], [1], [EAGLE thermal stellar feedback and evolution model])
-      with_feedback="EAGLE thermal stellar feedback and evolution model"
+      with_feedback_name="EAGLE thermal stellar feedback and evolution model"
    ;;
    EAGLE)
       AC_DEFINE([FEEDBACK_EAGLE_THERMAL], [1], [EAGLE thermal stellar feedback and evolution model])
-      with_feedback="EAGLE thermal stellar feedback and evolution model"
+      with_feedback_name="EAGLE thermal stellar feedback and evolution model"
    ;;
    GEAR)
       AC_DEFINE([FEEDBACK_GEAR], [1], [GEAR stellar feedback and evolution model])
+      with_feedback_name="GEAR"
    ;;
    none)
       AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])
@@ -2559,7 +2568,7 @@ case "$with_rt" in
       number_group=${with_rt:8}
       AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
 
-      if test "$number_group" == 0; then
+      if test "$number_group" -eq 0; then
           AC_MSG_ERROR([SPHM1RT: Cannot work with zero photon groups])
       fi
       if ! test $number_group -eq $number_group; then
@@ -2614,8 +2623,8 @@ AM_CONDITIONAL([HAVEEAGLECOOLING], [test "$with_cooling" = "EAGLE"])
 AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "$with_cooling" = "COLIBRE"])
 
 # Check if using EAGLE feedback
-AM_CONDITIONAL([HAVEEAGLETHERMALFEEDBACK], [test "${with_feedback:0:13}" = "EAGLE thermal"])
-AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "${with_feedback:0:13}" = "EAGLE kinetic"])
+AM_CONDITIONAL([HAVEEAGLETHERMALFEEDBACK], [test "$with_feedback" = "EAGLE-thermal"])
+AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinetic"])
 
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
@@ -2633,7 +2642,7 @@ AM_CONDITIONAL([HAVE_GADGET2], [test "$with_hydro" = "gadget2"])
 AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
 
 # check if using GEAR chemistry
-AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "${with_chemistry:0:5}" = "GEAR_"])
+AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test "$with_chemistry" = "GEAR_DIFFUSION"])
 
 # check if using default stars
 AM_CONDITIONAL([HAVE_STARS_BASIC], [test "$with_stars" = "basic"])
@@ -2727,11 +2736,11 @@ AC_MSG_RESULT([
    Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor
    Cooling function     : $with_cooling_name
-   Chemistry            : $with_chemistry
+   Chemistry            : $with_chemistry_name
    Tracers              : $with_tracers
    Stellar model        : $with_stars
    Star formation model : $with_star_formation
-   Star feedback model  : $with_feedback
+   Star feedback model  : $with_feedback_name
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt$rt_extra_msg
