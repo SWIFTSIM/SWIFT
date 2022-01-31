@@ -2078,51 +2078,56 @@ if test "$with_subgrid" != "none"; then
    fi
 fi
 
+with_cooling_name="none"
 case "$with_cooling" in
    none)
       AC_DEFINE([COOLING_NONE], [1], [No cooling function])
    ;;
    const-du)
       AC_DEFINE([COOLING_CONST_DU], [1], [Const du/dt cooling function])
+      with_cooling_name=$with_cooling
    ;;
    const-lambda)
       AC_DEFINE([COOLING_CONST_LAMBDA], [1], [Const Lambda cooling function])
+      with_cooling_name=$with_cooling
    ;;
    grackle_*)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       primordial_chemistry=${with_cooling:8}
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
+      with_cooling_name="Grackle $primordial_chemistry"
+      with_cooling="grackle"
    ;;
    QLA)
       AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
-      with_cooling="QLA (Ploeckinger+20 tables) with constant primordial Z"
+      with_cooling_name="QLA (Ploeckinger+20 tables) with constant primordial Z"
    ;;
    QLA-EAGLE)
       AC_DEFINE([COOLING_QLA_EAGLE], [1], [Cooling following the Quick-Lyman-alpha model])
-      with_cooling="QLA (Wiersma+09 tables) with constant primordial Z"
+      with_cooling_name="QLA (Wiersma+09 tables) with constant primordial Z"
    ;;
    EAGLE)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
-      with_cooling="EAGLE (Wiersma+09 tables)"
+      with_cooling_name="EAGLE (Wiersma+09 tables)"
    ;;
    Wiersma)
       AC_DEFINE([COOLING_EAGLE], [1], [Cooling following the EAGLE model (Wiersma+09 tables)])
-      with_cooling="EAGLE (Wiersma+09 tables)"
+      with_cooling_name="EAGLE (Wiersma+09 tables)"
    ;;
    COLIBRE)
       AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling="COLIBRE (Ploeckinger+20 tables)"
+      with_cooling_name="COLIBRE (Ploeckinger+20 tables)"
    ;;
    Ploeckinger)
       AC_DEFINE([COOLING_COLIBRE], [1], [Cooling following the COLIBRE model (Ploeckinger+20 tables)])
-      with_cooling="COLIBRE (Ploeckinger+20 tables)"
+      with_cooling_name="COLIBRE (Ploeckinger+20 tables)"
    ;;
    *)
       AC_MSG_ERROR([Unknown cooling function: $with_cooling])
    ;;
 esac
 
-if test "${with_cooling:0:5}" = "EAGLE" || test "${with_cooling:0:7}" = "COLIBRE"; then
+if test "$with_cooling" = "EAGLE" || test "$with_cooling" = "COLIBRE"; then
    if test "$with_chemistry" = "none"; then
       AC_MSG_ERROR([Cannot run with EAGLE or COLIBRE cooling without chemistry. Please pick a chemistry model])
    fi
@@ -2599,21 +2604,21 @@ DX_INIT_DOXYGEN(SWIFT, doc/Doxyfile, doc/)
 AM_CONDITIONAL([HAVE_DOXYGEN], [test "$ac_cv_path_ac_pt_DX_DOXYGEN" != ""])
 
 # Check if using QLA cooling
-AM_CONDITIONAL([HAVEQLACOOLING], [test "${with_cooling:0:6}" = "QLA (P"])
-AM_CONDITIONAL([HAVEQLAEAGLECOOLING], [test "${with_cooling:0:6}" = "QLA (W"])
+AM_CONDITIONAL([HAVEQLACOOLING], [test "$with_cooling" = "QLA"])
+AM_CONDITIONAL([HAVEQLAEAGLECOOLING], [test "$with_cooling" = "QLA-EAGLE"])
 
 # Check if using EAGLE cooling
-AM_CONDITIONAL([HAVEEAGLECOOLING], [test "${with_cooling:0:5}" = "EAGLE"])
+AM_CONDITIONAL([HAVEEAGLECOOLING], [test "$with_cooling" = "EAGLE"])
 
 # Check if using COLIBRE cooling
-AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "${with_cooling:0:7}" = "COLIBRE"])
+AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "$with_cooling" = "COLIBRE"])
 
 # Check if using EAGLE feedback
 AM_CONDITIONAL([HAVEEAGLETHERMALFEEDBACK], [test "${with_feedback:0:13}" = "EAGLE thermal"])
 AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "${with_feedback:0:13}" = "EAGLE kinetic"])
 
 # check if using grackle cooling
-AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "${with_cooling:0:7}" = "grackle"])
+AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
@@ -2721,7 +2726,7 @@ AC_MSG_RESULT([
 
    Pressure floor       : $with_pressure_floor
    Entropy floor        : $with_entropy_floor
-   Cooling function     : $with_cooling
+   Cooling function     : $with_cooling_name
    Chemistry            : $with_chemistry
    Tracers              : $with_tracers
    Stellar model        : $with_stars
