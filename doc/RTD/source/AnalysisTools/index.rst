@@ -2,6 +2,7 @@
    Loic Hausammann 20th March 2019
    Peter W. Draper 28th March 2019
    Mladen Ivkovic 18th March 2021
+   Bert Vandenbroucke 31st February 2022
 
 .. _Analysis_Tools:
 
@@ -179,12 +180,17 @@ that as well, some offer the ability to process all ranks, and others to
 select individual ranks. 
 
 It is also possible to process a complete run of task data from all the
-available steps using the ``process_plot_tasks`` and
-``process_plot_tasks_MPI`` scripts, as appropriate, these have two arguments,
-the number of concurrent processes to use and a time limit. Concurrent
-processes are useful to speed up the analysis of a lot of task data and a
-consistent time limit so that comparisons across plots is easy. The results
-can be viewed in a single HTML document. 
+available steps using the ``process_plot_tasks.py`` and
+``process_plot_tasks_MPI.py`` scripts, as appropriate.
+These scripts have one required argument: a time limit to use on the horizontal
+time axis. When set to 0, this limit is determined by the data for each step,
+making it very hard to compare relative sizes of different steps.
+The optional ``--files`` arguments allows more control over which steps are
+included in the analysis. Large numbers of tasks can be analysed more
+efficiently by using multiple processes (the optional ``--nproc`` argument),
+and if sufficient memory is available, the parallel analysis can be optimised
+by using the size of the task data files to schedule parallel processes more
+effectively (the ``--weights`` argument).
 
 
 Live internal inspection using the dumper thread
