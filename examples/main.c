@@ -1269,14 +1269,6 @@ int main(int argc, char *argv[]) {
       neutrino_props_init(&neutrino_properties, &prog_const, &us, params,
                           &cosmo);
 
-	  /* Initialise the gravity properties */
-	  bzero(&gravity_properties, sizeof(struct gravity_props));
-	  if (with_self_gravity)
-		  gravity_props_init(
-				  &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
-				  with_external_gravity, with_baryon_particles, with_DM_particles,
-				  with_neutrinos, with_DM_background_particles, periodic, dim);
-
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
@@ -1296,7 +1288,15 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
-    /* Initialise the external potential properties */
+	  /* Initialise the gravity properties */
+	  bzero(&gravity_properties, sizeof(struct gravity_props));
+	  if (with_self_gravity)
+		  gravity_props_init(
+				  &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
+				  with_external_gravity, with_baryon_particles, with_DM_particles,
+				  with_neutrinos, with_DM_background_particles, periodic, s.dim);
+
+	  /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));
     if (with_external_gravity)
       potential_init(params, &prog_const, &us, &s, &potential);
