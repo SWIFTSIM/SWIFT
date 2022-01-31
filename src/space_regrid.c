@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "cell.h"
+#include "gravity_properties.h"
 #include "engine.h"
 #include "scheduler.h"
 #include "zoom_region.h"
@@ -37,7 +38,7 @@
  * @param s The #space.
  * @param verbose Print messages to stdout or not.
  */
-void space_regrid(struct space *s, int verbose) {
+void space_regrid(struct space *s, struct gravity_props *gravity_properties, int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
@@ -314,7 +315,7 @@ void space_regrid(struct space *s, int verbose) {
     }
 
 #ifdef WITH_ZOOM_REGION
-    construct_tl_cells_with_zoom_region(s, cdim, dmin, ti_current, verbose);
+    construct_tl_cells_with_zoom_region(s, cdim, dmin, ti_current, gravity_properties, verbose);
 #else
     /* Set the cell location and sizes. */
     for (int i = 0; i < cdim[0]; i++)

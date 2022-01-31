@@ -4,6 +4,7 @@
 #include <float.h>
 
 #include "cell.h"
+#include "gravity_properties.h"
 #include "engine.h"
 #include "proxy.h"
 #include "space.h"
@@ -226,7 +227,7 @@ void construct_zoom_region(struct space *s, int verbose) {
  * @param verbose Are we talking?
  */
 void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const float dmin,
-        const integertime_t ti_current, int verbose) {
+        const integertime_t ti_current, struct gravity_props *gravity_properties, int verbose) {
 #ifdef WITH_ZOOM_REGION
   
   /* We are recomputing the boundary of the zoom region. */
@@ -409,7 +410,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   }
 
   /* Now find what cells neighbour the zoom region. */
-  if (s->with_zoom_region) find_neighbouring_cells(s, verbose);
+  if (s->with_zoom_region) find_neighbouring_cells(s, gravity_properties, verbose);
 
 #endif
 }
@@ -423,7 +424,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
  * @param s The space.
  * @param verbose Are we talking?
  */
-void find_neighbouring_cells(struct space *s, const int verbose) {
+void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_properties, const int verbose) {
 #ifdef WITH_ZOOM_REGION
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
@@ -432,10 +433,8 @@ void find_neighbouring_cells(struct space *s, const int verbose) {
   /* Some info about the zoom domain */
 	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-	message("Got here");
-
   /* Get some info about the physics */
-	const double theta_crit_inv = 1. / 0.7;
+	const double theta_crit_inv = 1. / gravity_properties->theta_crit;
 
 	/* Maximal distance from shifted CoM to any corner */
 	const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;

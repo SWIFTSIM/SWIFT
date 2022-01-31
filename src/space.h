@@ -30,6 +30,7 @@
 #include <stddef.h>
 
 /* Includes. */
+#include "gravity_properties.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
@@ -383,8 +384,8 @@ void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct part *parts,
-                struct gpart *gparts, struct sink *sinks, struct spart *sparts,
+                const struct hydro_props *hydro_properties, struct gravity_props *gravity_properties,
+                struct part *parts, struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
@@ -408,7 +409,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
-void space_regrid(struct space *s, int verbose);
+void space_regrid(struct space *s, struct gravity_props *p, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
 void space_reorder_extras(struct space *s, int verbose);
