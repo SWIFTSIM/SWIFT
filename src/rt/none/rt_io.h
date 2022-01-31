@@ -55,6 +55,11 @@ INLINE static int rt_read_stars(const struct spart* sparts,
 /**
  * @brief Creates additional output fields for the radiative
  * transfer data of hydro particles.
+ *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
  */
 INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
@@ -64,6 +69,11 @@ INLINE static int rt_write_particles(const struct part* parts,
 /**
  * @brief Creates additional output fields for the radiative
  * transfer data of star particles.
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
  */
 INLINE static int rt_write_stars(const struct spart* sparts,
                                  struct io_props* list) {

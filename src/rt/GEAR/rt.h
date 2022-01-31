@@ -35,6 +35,44 @@
  */
 
 /**
+ * @brief Compute the photon emission rates for this stellar particle.
+ *        This function is called every time the spart is being reset
+ *        (during start-up and during stars ghost if spart is active)
+ *        and assumes that the photon emission rate is an intrinsic
+ *        stellar property, i.e. doesn't depend on the environment.
+ *
+ * @param sp star particle to work on
+ * @param time current system time
+ * @param star_age age of the star *at the end of the step*
+ * @param dt star time step
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param internal_units struct holding internal units
+ */
+__attribute__((always_inline)) INLINE static void
+rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
+                                 double star_age, double dt,
+                                 const struct rt_props* rt_props,
+                                 const struct phys_const* phys_const,
+                                 const struct unit_system* internal_units) {
+
+  /* Skip initial fake time-step */
+  if (dt == 0.0l) return;
+
+  if (time == 0.l) {
+    /* if function is called before the first actual step, time is still
+     * at zero unless specified otherwise in parameter file.*/
+    star_age = dt;
+  }
+
+  /* now get the emission rates */
+  double star_age_begin_of_step = star_age - dt;
+  star_age_begin_of_step = max(0.l, star_age_begin_of_step);
+  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
+                               phys_const, internal_units);
+}
+
+/**
  * @brief Initialisation of the RT density loop related particle data.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
  * are both called individually.
@@ -42,20 +80,14 @@
  * @param p Particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
-    struct part* restrict p) {
-
-  rt_gradients_init(p);
-  /* the Gizmo-style slope limiting doesn't help for RT as is,
-   * so we're skipping it for now. */
-  /* rt_slope_limit_cell_init(p); */
-}
+    struct part* restrict p) {}
 
 /**
  * @brief Reset of the RT hydro particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
  * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_part is made in space_convert_rt_quantities() after
- * the zeroth time step is finished.
+ * extra call to rt_reset_part is made in
+ * space_convert_rt_quantities_after_zeroth_step().
  *
  * @param p the particle to work on
  */
@@ -73,12 +105,17 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   p->rt_data.debug_calls_iact_gradient_interaction = 0;
   p->rt_data.debug_calls_iact_transport_interaction = 0;
 
+  p->rt_data.debug_kicked = 0;
   p->rt_data.debug_injection_done = 0;
   p->rt_data.debug_gradients_done = 0;
   p->rt_data.debug_transport_done = 0;
   p->rt_data.debug_thermochem_done = 0;
 #endif
 
+  rt_gradients_init(p);
+  /* the Gizmo-style slope limiting doesn't help for RT as is,
+   * so we're skipping it for now. */
+  /* rt_slope_limit_cell_init(p); */
   rt_part_reset_fluxes(p);
 }
 
@@ -93,14 +130,6 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   /* Don't reset conserved quantities here! ICs will be overwritten */
   rt_init_part(p);
   rt_reset_part(p);
-
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    p->rt_data.density[g].energy = 0.f;
-    p->rt_data.density[g].flux[0] = 0.f;
-    p->rt_data.density[g].flux[1] = 0.f;
-    p->rt_data.density[g].flux[2] = 0.f;
-  }
-
   rt_part_reset_mass_fluxes(p);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -116,20 +145,17 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
  *
  * @param p particle to work on
  * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param us unit_system struct
- * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void
 rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props,
-                               const struct phys_const* restrict phys_const,
-                               const struct unit_system* restrict us,
-                               const struct cosmology* restrict cosmo) {
+                               const struct rt_props* rt_props) {
 
-  /* If we're setting up ionising equilibrium initial conditions,
-   * then the particles need to have their densities known first. */
-  rt_tchem_first_init_part(p, rt_props, phys_const, us, cosmo);
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* If we're running with debugging checks on, reset debugging
+   * counters and flags in particular after the zeroth step so
+   * that the checks work as intended. */
+  rt_reset_part(p);
+#endif
 }
 
 /**
@@ -152,8 +178,7 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
  * are both called individually. Also, if debugging checks are active, an
  * extra call to rt_reset_spart is made in
- * space_convert_rt_quantities_after_zeroth_step() after the zeroth time
- * step is finished.
+ * space_convert_rt_quantities_after_zeroth_step()
  *
  * @param sp star particle to work on
  */
@@ -199,6 +224,39 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
 }
 
 /**
+ * @brief Initialises particle quantities that can't be set
+ * otherwise before the zeroth step is finished. E.g. because
+ * they require the star density to be known.
+ * @param sp star particle to work on
+ * @param time current system time
+ * @param star_age age of the star *at the end of the step*
+ * @param dt star time step
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param internal_units struct holding internal units
+ */
+__attribute__((always_inline)) INLINE static void
+rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
+                               double star_age, double dt,
+                               const struct rt_props* rt_props,
+                               const struct phys_const* phys_const,
+                               const struct unit_system* internal_units) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* If we're running with debugging checks on, reset debugging
+   * counters and flags in particular after the zeroth step so
+   * that the checks work as intended. */
+  rt_reset_spart(sp);
+#endif
+
+  /* If we're running with star controlled injection, we don't
+   * need to compute the stellar emission rates here now. */
+  if (rt_props->hydro_controlled_injection)
+    rt_compute_stellar_emission_rate(sp, time, star_age, dt, rt_props,
+                                     phys_const, internal_units);
+}
+
+/**
  * @brief Split the RT data of a particle into n pieces
  *
  * @param p The #part.
@@ -240,9 +298,15 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  *
  * @param p The particle to work on
  * @param rtp The RT properties struct
+ * @param phys_const physical constants struct
+ * @param us unit_system struct
+ * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
-    struct part* p, const struct rt_props* rtp) {
+    struct part* restrict p, const struct rt_props* rt_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo) {
 
   /* If we're reducing the speed of light, then we may encounter
    * photon fluxes which are way too high than the physically
@@ -253,31 +317,25 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
    * We only read in conserved quantities, so only check those. */
 
   struct rt_part_data* rtd = &p->rt_data;
-  for (int g = 0; g < RT_NGROUPS; g++) {
+  const float Vinv = 1.f / p->geometry.volume;
 
-    if (rtd->conserved[g].energy <= 0.f) {
-      rtd->conserved[g].energy = 0.f;
-      rtd->conserved[g].flux[0] = 0.f;
-      rtd->conserved[g].flux[1] = 0.f;
-      rtd->conserved[g].flux[2] = 0.f;
-      continue;
-    }
+  /* If we read in radiation energy, we read in
+   * total energy and store it as energy density.
+   * Correct that now. */
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rtd->radiation[g].energy_density *= Vinv;
 
     /* Check for too high fluxes */
-    const float flux2 = rtd->conserved[g].flux[0] * rtd->conserved[g].flux[0] +
-                        rtd->conserved[g].flux[1] * rtd->conserved[g].flux[1] +
-                        rtd->conserved[g].flux[2] * rtd->conserved[g].flux[2];
-    const float flux_norm = sqrtf(flux2);
-    const float flux_max =
-        rt_params.reduced_speed_of_light * rtd->conserved[g].energy;
-    if (flux_norm > flux_max) {
-      const float correct = flux_max / flux_norm;
-      rtd->conserved[g].flux[0] *= correct;
-      rtd->conserved[g].flux[1] *= correct;
-      rtd->conserved[g].flux[2] *= correct;
-    }
+    rt_check_unphysical_state(&rtd->radiation[g].energy_density,
+                              rtd->radiation[g].flux, /*e_old =*/0.f,
+                              /*callloc=*/0);
   }
-};
+
+  /* If we're setting up ionising equilibrium initial conditions,
+   * then the particles need to have their densities known first.
+   * So we can call the mass fractions initialization now. */
+  rt_tchem_first_init_part(p, rt_props, phys_const, us, cosmo);
+}
 
 /**
  * @brief Computes the next radiative transfer time step size
@@ -298,7 +356,7 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
   float dt = psize * rt_params.reduced_speed_of_light_inverse *
              rt_props->CFL_condition;
 
-  /* TODO: Add cooling time */
+  /* TODO: Add cooling time? */
 
   return dt;
 }
@@ -321,7 +379,10 @@ __attribute__((always_inline)) INLINE static float rt_compute_spart_timestep(
 
 /**
  * @brief Compute the time-step length for an RT step of a particle from given
- * integer times ti_beg and ti_end
+ * integer times ti_beg and ti_end. This time-step length is then used to
+ * compute the actual time integration of the transport/force step and the
+ * thermochemistry. This is not used to determine the time-step length during
+ * the time-step tasks.
  *
  * @param ti_beg Start of the time-step (on the integer time-line).
  * @param ti_end End of the time-step (on the integer time-line).
@@ -349,62 +410,21 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
  * @param p particle to work on
  * @param props struct #rt_props that contains global RT properties
  */
-__attribute__((always_inline)) INLINE static void
-rt_injection_update_photon_density(struct part* restrict p,
-                                   struct rt_props* props) {
-
-  const float V = p->geometry.volume;
-  const float Vinv = 1.f / V;
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    p->rt_data.density[g].energy = p->rt_data.conserved[g].energy * Vinv;
-    p->rt_data.density[g].flux[0] = p->rt_data.conserved[g].flux[0] * Vinv;
-    p->rt_data.density[g].flux[1] = p->rt_data.conserved[g].flux[1] * Vinv;
-    p->rt_data.density[g].flux[2] = p->rt_data.conserved[g].flux[2] * Vinv;
-    rt_check_unphysical_density(&p->rt_data.flux[g].energy,
-                                p->rt_data.flux[g].flux, 0);
-  }
+__attribute__((always_inline)) INLINE static void rt_finalise_injection(
+    struct part* restrict p, struct rt_props* props) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  if (p->rt_data.debug_kicked != 1)
+    error("called rt_ghost1 when particle %lld is unkicked (count=%d)", p->id,
+          p->rt_data.debug_kicked);
   p->rt_data.debug_injection_done += 1;
 #endif
-}
 
-/**
- * @brief Compute the photon emission rates for this stellar particle.
- *        This function is called every time the spart is being reset
- *        (during start-up and during stars ghost if spart is active)
- *        and assumes that the photon emission rate is an intrinsic
- *        stellar property, i.e. doesn't depend on the environment.
- *
- * @param sp star particle to work on
- * @param time current system time
- * @param star_age age of the star *at the end of the step*
- * @param dt star time step
- * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param internal_units struct holding internal units
- */
-__attribute__((always_inline)) INLINE static void
-rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
-                                 double star_age, double dt,
-                                 const struct rt_props* rt_props,
-                                 const struct phys_const* phys_const,
-                                 const struct unit_system* internal_units) {
-
-  /* Skip initial fake time-step */
-  if (dt == 0.0l) return;
-
-  if (time == 0.l) {
-    /* if function is called before the first actual step, time is still
-     * at zero unless specified otherwise in parameter file.*/
-    star_age = dt;
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rt_check_unphysical_state(&p->rt_data.radiation[g].energy_density,
+                              p->rt_data.radiation[g].flux, /*e_old=*/0.f,
+                              /*callloc=*/3);
   }
-
-  /* now get the emission rates */
-  double star_age_begin_of_step = star_age - dt;
-  star_age_begin_of_step = max(0.l, star_age_begin_of_step);
-  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
-                               phys_const, internal_units);
 }
 
 /**
@@ -416,6 +436,10 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
     struct part* restrict p) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  if (p->rt_data.debug_kicked != 1)
+    error("called finalise gradient when particle %lld is unkicked (count=%d)",
+          p->id, p->rt_data.debug_kicked);
+
   if (p->rt_data.debug_injection_done != 1)
     error(
         "Called finalise gradient on particle "
@@ -444,6 +468,10 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  if (p->rt_data.debug_kicked != 1)
+    error("called finalise transport when particle %lld is unkicked (count=%d)",
+          p->id, p->rt_data.debug_kicked);
+
   if (p->rt_data.debug_injection_done != 1)
     error(
         "Trying to do finalise_transport when "
@@ -466,15 +494,18 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 #endif
 
   struct rt_part_data* restrict rtd = &p->rt_data;
+  const float Vinv = 1.f / p->geometry.volume;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
-    const float e_old = rtd->conserved[g].energy;
-    rtd->conserved[g].energy += rtd->flux[g].energy * dt;
-    rtd->conserved[g].flux[0] += rtd->flux[g].flux[0] * dt;
-    rtd->conserved[g].flux[1] += rtd->flux[g].flux[1] * dt;
-    rtd->conserved[g].flux[2] += rtd->flux[g].flux[2] * dt;
-    rt_check_unphysical_conserved(&rtd->conserved[g].energy,
-                                  rtd->conserved[g].flux, e_old, 1);
+    const float e_old = rtd->radiation[g].energy_density;
+    /* Note: in this scheme, we're updating d/dt (U * V) + sum F * A = 0.
+     * So we'll need the division by the volume here. */
+    rtd->radiation[g].energy_density += rtd->flux[g].energy * dt * Vinv;
+    rtd->radiation[g].flux[0] += rtd->flux[g].flux[0] * dt * Vinv;
+    rtd->radiation[g].flux[1] += rtd->flux[g].flux[1] * dt * Vinv;
+    rtd->radiation[g].flux[2] += rtd->flux[g].flux[2] * dt * Vinv;
+    rt_check_unphysical_state(&rtd->radiation[g].energy_density,
+                              rtd->radiation[g].flux, e_old, /*callloc=*/4);
   }
 }
 
@@ -523,6 +554,14 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     struct part* p, float dt_therm, float dt_grav, float dt_hydro,
     float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* Don't account for timestep_sync backward kicks */
+  if (dt_therm >= 0.f && dt_grav >= 0.f && dt_hydro >= 0.f &&
+      dt_kick_corr >= 0.f) {
+    p->rt_data.debug_kicked += 1;
+  }
+#endif
 
   /* Update the mass fraction changes due to interparticle fluxes */
   const float current_mass = p->conserved.mass;
@@ -610,7 +649,6 @@ __attribute__((always_inline)) INLINE static void rt_clean(
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   fclose(props->conserved_energy_filep);
-  fclose(props->energy_density_filep);
   fclose(props->star_emitted_energy_filep);
 #endif
 }

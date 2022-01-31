@@ -46,12 +46,13 @@ INLINE static int rt_read_particles(const struct part* parts,
     sprintf(fieldname, "PhotonEnergiesGroup%d", phg + 1);
     list[count++] =
         io_make_input_field(fieldname, FLOAT, 1, OPTIONAL, UNIT_CONV_ENERGY,
-                            parts, rt_data.conserved[phg].energy);
+                            parts, rt_data.radiation[phg].energy_density);
     sprintf(fieldname, "PhotonFluxesGroup%d", phg + 1);
     list[count++] = io_make_input_field(fieldname, FLOAT, 3, OPTIONAL,
                                         UNIT_CONV_RADIATION_FLUX, parts,
-                                        rt_data.conserved[phg].flux);
+                                        rt_data.radiation[phg].flux);
   }
+
   list[count++] = io_make_input_field("MassFractionHI", FLOAT, 1, OPTIONAL,
                                       UNIT_CONV_NO_UNITS, parts,
                                       rt_data.tchem.mass_fraction_HI);
@@ -85,37 +86,54 @@ INLINE static int rt_read_stars(const struct spart* sparts,
 }
 
 /**
- * @brief Extract photon energies of conserved struct for all photon groups
+ * @brief Extract radiation energies of radiation struct for all photon groups
  * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
+ *
+ * @param engine the engine
+ * @param part the particle to extract data from
+ * @param xpart the according xpart to extract data from
+ * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_conserved_photon_energies(
-    const struct engine* engine, const struct part* part,
-    const struct xpart* xpart, float* ret) {
+INLINE static void rt_convert_radiation_energies(const struct engine* engine,
+                                                 const struct part* part,
+                                                 const struct xpart* xpart,
+                                                 float* ret) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
-    ret[g] = part->rt_data.conserved[g].energy;
+    ret[g] = part->rt_data.radiation[g].energy_density * part->geometry.volume;
   }
 }
 
 /**
- * @brief Extract photon energies of conserved struct for all photon groups
+ * @brief Extract radiation fluxes of radiation struct for all photon groups
  * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
+ *
+ * @param engine the engine
+ * @param part the particle to extract data from
+ * @param xpart the according xpart to extract data from
+ * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_conserved_photon_fluxes(
-    const struct engine* engine, const struct part* part,
-    const struct xpart* xpart, float* ret) {
+INLINE static void rt_convert_radiation_fluxes(const struct engine* engine,
+                                               const struct part* part,
+                                               const struct xpart* xpart,
+                                               float* ret) {
 
   int i = 0;
   for (int g = 0; g < RT_NGROUPS; g++) {
-    ret[i++] = part->rt_data.conserved[g].flux[0];
-    ret[i++] = part->rt_data.conserved[g].flux[1];
-    ret[i++] = part->rt_data.conserved[g].flux[2];
+    ret[i++] = part->rt_data.radiation[g].flux[0];
+    ret[i++] = part->rt_data.radiation[g].flux[1];
+    ret[i++] = part->rt_data.radiation[g].flux[2];
   }
 }
 
 /**
  * @brief Extract mass fractions of constituent species from tchem struct.
  * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
+ *
+ * @param engine the engine
+ * @param part the particle to extract data from
+ * @param xpart the according xpart to extract data from
+ * @param ret (return) the extracted data
  */
 INLINE static void rt_convert_mass_fractions(const struct engine* engine,
                                              const struct part* part,
@@ -132,6 +150,11 @@ INLINE static void rt_convert_mass_fractions(const struct engine* engine,
 /**
  * @brief Creates additional output fields for the radiative
  * transfer data of hydro particles.
+ *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
  */
 INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
@@ -140,11 +163,11 @@ INLINE static int rt_write_particles(const struct part* parts,
 
   list[0] = io_make_output_field_convert_part(
       "PhotonEnergies", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY, 0, parts,
-      /*xparts=*/NULL, rt_convert_conserved_photon_energies,
+      /*xparts=*/NULL, rt_convert_radiation_energies,
       "Photon Energies (all groups)");
   list[1] = io_make_output_field_convert_part(
       "PhotonFluxes", FLOAT, 3 * RT_NGROUPS, UNIT_CONV_RADIATION_FLUX, 0, parts,
-      /*xparts=*/NULL, rt_convert_conserved_photon_fluxes,
+      /*xparts=*/NULL, rt_convert_radiation_fluxes,
       "Photon Fluxes (all groups; x, y, and z coordinates)");
   list[2] = io_make_output_field_convert_part(
       "IonMassFractions", FLOAT, 5, UNIT_CONV_NO_UNITS, 0, parts,
@@ -197,6 +220,11 @@ INLINE static int rt_write_particles(const struct part* parts,
 /**
  * @brief Creates additional output fields for the radiative
  * transfer data of star particles.
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
  */
 INLINE static int rt_write_stars(const struct spart* sparts,
                                  struct io_props* list) {

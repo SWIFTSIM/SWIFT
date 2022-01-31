@@ -27,17 +27,11 @@
 /* Additional RT data in hydro particle struct */
 struct rt_part_data {
 
-  /* conserved state vector */
+  /* Radiation state vector. */
   struct {
-    float energy;
+    float energy_density;
     float flux[3];
-  } conserved[RT_NGROUPS];
-
-  /* density state vector */
-  struct {
-    float energy;
-    float flux[3];
-  } density[RT_NGROUPS];
+  } radiation[RT_NGROUPS];
 
   /* Fluxes in the conservation law sense */
   struct {
@@ -45,12 +39,12 @@ struct rt_part_data {
     float flux[3];
   } flux[RT_NGROUPS];
 
-  /* gradients of densities */
+  /* gradients of the radiation state. */
   /* for the flux[3][3] quantity:
    *    first index: x, y, z coordinate of the flux.
    *    Second index: gradient along x, y, z direction. */
   struct {
-    float energy[3];
+    float energy_density[3];
     float flux[3][3];
   } gradient[RT_NGROUPS];
 
@@ -116,6 +110,11 @@ struct rt_part_data {
 
   /*! calls from transport interaction loop in actual function */
   int debug_calls_iact_transport_interaction;
+
+  /* Task completion flags */
+
+  /*! part got kicked? */
+  int debug_kicked;
 
   /*! calls from ghost1 tasks */
   int debug_injection_done;

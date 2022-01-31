@@ -40,6 +40,7 @@ class RTGasData(object):
         self.IDs = None
         self.coords = None
         self.h = None
+        self.volumes = None
 
         self.PhotonEnergies = None
         self.PhotonFluxes = None
@@ -97,6 +98,7 @@ class Rundata(object):
 
         self.ngroups = 0  # photon frequency groups
         self.const_emission_rates = None
+        self.reduced_speed_of_light = -1.0
 
         return
 
@@ -204,6 +206,8 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
     if "hydro controlled" in scheme:
         rundata.hydro_controlled_injection = True
 
+    rundata.reduced_speed_of_light = firstfile.metadata.reduced_lightspeed
+
     # -------------------
     # Read in all files
     # -------------------
@@ -230,25 +234,27 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         Gas.IDs = data.gas.particle_ids
         Gas.coords = data.gas.coordinates
         Gas.h = data.gas.smoothing_lengths
-        Gas.PhotonEnergies = swiftsimio.cosmo_array(
-            [
-                getattr(data.gas.photon_energies, "group" + str(g))
-                for g in range(1, rundata.ngroups + 1)
-            ]
-        ).T
+        masses = data.gas.masses
+        densities = data.gas.densities
+        # skip potential div by zero
+        mask = densities == 0.0
+        masses[mask] = 0.0
+        densities[mask] = 1.0
+        Gas.volumes = masses / densities
 
-        Gas.PhotonFluxes = swiftsimio.cosmo_array(
-            [
-                unyt.uvstack(
-                    [
-                        getattr(data.gas.photon_fluxes, "Group" + str(g) + d)
-                        for d in ("X", "Y", "Z")
-                    ]
-                )
-                for g in range(1, rundata.ngroups + 1)
-            ],
-            data.gas.photon_fluxes.Group1X.units,
-        ).T
+        Gas.PhotonEnergies = [
+            getattr(data.gas.photon_energies, "group" + str(g + 1))
+            for g in range(rundata.ngroups)
+        ]
+        Gas.PhotonFluxes = [
+            unyt.uvstack(
+                [
+                    getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + d)
+                    for d in ("X", "Y", "Z")
+                ]
+            ).T
+            for g in range(rundata.ngroups)
+        ]
 
         newsnap.gas = Gas
         newsnap.npart = Gas.IDs.shape[0]

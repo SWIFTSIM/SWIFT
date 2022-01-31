@@ -35,14 +35,26 @@
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_collect(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    float r2, const float dx[3], float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
+
+  if (pi->rt_data.debug_kicked != 1)
+    error(
+        "Trying to do symmetric iact gradient unkicked particle %lld "
+        "(count=%d)",
+        pi->id, pi->rt_data.debug_kicked);
 
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do symmetric iact gradient when finalise injection count is "
         "%d ID %lld",
         pi->rt_data.debug_injection_done, pi->id);
+
+  if (pj->rt_data.debug_kicked != 1)
+    error(
+        "Trying to do symmetric iact gradient unkicked particle %lld "
+        "(count=%d)",
+        pj->id, pj->rt_data.debug_kicked);
 
   if (pj->rt_data.debug_injection_done != 1)
     error(
@@ -66,8 +78,14 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    float r2, const float dx[3], float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
+
+  if (pi->rt_data.debug_kicked != 1)
+    error(
+        "Trying to do nonsym iact gradient on unkicked particle %lld "
+        "(count=%d)",
+        pi->id, pi->rt_data.debug_kicked);
 
   if (pi->rt_data.debug_injection_done != 1)
     error(
