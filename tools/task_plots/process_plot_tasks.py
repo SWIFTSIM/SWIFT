@@ -68,9 +68,7 @@ script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 # parse command line arguments
 argparser = argparse.ArgumentParser()
 argparser.add_argument(
-    "time_range",
-    type=float,
-    help="Time range to use for the horizontal axis (in ms).",
+    "time_range", type=float, help="Time range to use for the horizontal axis (in ms)."
 )
 argparser.add_argument(
     "--files",
@@ -80,11 +78,7 @@ argparser.add_argument(
     help="Files to process (default: all thread_info-step*.dat files in the current directory).",
 )
 argparser.add_argument(
-    "--nproc",
-    "-j",
-    default=1,
-    type=int,
-    help="Number of parallel processes to use.",
+    "--nproc", "-j", default=1, type=int, help="Number of parallel processes to use."
 )
 argparser.add_argument(
     "--weights",

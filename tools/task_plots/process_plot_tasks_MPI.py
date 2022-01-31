@@ -71,9 +71,7 @@ script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 # parse command line arguments
 argparser = argparse.ArgumentParser()
 argparser.add_argument(
-    "time_range",
-    type=float,
-    help="Time range to use for the horizontal axis (in ms).",
+    "time_range", type=float, help="Time range to use for the horizontal axis (in ms)."
 )
 argparser.add_argument(
     "--files",
@@ -89,11 +87,7 @@ argparser.add_argument(
     help="Use file sizes as weights to determine task order.",
 )
 argparser.add_argument(
-    "--nproc",
-    "-j",
-    default=1,
-    type=int,
-    help="Number of parallel processes to use.",
+    "--nproc", "-j", default=1, type=int, help="Number of parallel processes to use."
 )
 args = argparser.parse_args()
 
@@ -144,7 +138,7 @@ for ifile in range(nfile):
     cmds.append(cmd)
     # plot_task commands are more expensive than their analyse_tasks
     # counterpart because they also need to write large image files
-    weights.append(2*weight)
+    weights.append(2 * weight)
 
     for irank in range(nrank):
         outname = "step{0}r{1}.stats".format(steps[ifile], irank)
@@ -155,12 +149,12 @@ for ifile in range(nfile):
         weights.append(weight)
 
 if args.weights:
-  # sort the commands according to their weight
-  # long/expensive commands will be launched first, to achieve maximum overlap
-  # with shorter commands
-  weights = np.array(weights)
-  order = np.argsort(weights)[::-1]
-  cmds = np.array(cmds)[order]
+    # sort the commands according to their weight
+    # long/expensive commands will be launched first, to achieve maximum overlap
+    # with shorter commands
+    weights = np.array(weights)
+    order = np.argsort(weights)[::-1]
+    cmds = np.array(cmds)[order]
 
 # now run all commands in parallel using the requested number of processes
 
