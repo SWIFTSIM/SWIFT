@@ -26,64 +26,15 @@
 
 /**
  * @brief check for and correct if needed unphysical
- * values for a photon density state
+ * values for a radiation state.
  *
- * @param energy pointer to the photon energy density
- * @param flux pointer to the photon flux density
- * @param c integer identifier where this function was called from
+ * @param energy_density pointer to the radiation energy density
+ * @param flux pointer to radiation flux (3 dimensional)
+ * @param e_old energy density before change to check. Set = 0 if not available
+ * @param callloc integer indentifier where this function was called from
  */
-__attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
-    float* energy, float* flux, int c) {
-
-  /* Check for negative energies */
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Only print something if it might be significant. Also skip
-   * message for case c=1, which is gradients predicting energies. */
-  if (*energy < 0.f && fabs(*energy) > 1.e-1 && c != 1)
-    message("Fixing unphysical energy case%d %.6e | %.6e %.6e %.6e", c, *energy,
-            flux[0], flux[1], flux[2]);
-#endif
-  if (isnan(*energy) || isinf(*energy))
-    error("Got inf/nan radiation energy case%d %.6e | %.6e %.6e %.6e", c,
-          *energy, flux[0], flux[1], flux[2]);
-  if (*energy <= 0.f) {
-    *energy = 0.f;
-    flux[0] = 0.f;
-    flux[1] = 0.f;
-    flux[2] = 0.f;
-    return;
-  }
-
-  /*   [> Check for too high fluxes <] */
-  /*   const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * */
-  /*   flux[2]; */
-  /*   const float flux_norm = sqrtf(flux2); */
-  /*   const float flux_max = rt_params.reduced_speed_of_light * *energy; */
-  /*   if (flux_norm > flux_max) { */
-  /*     const float correct = flux_max / flux_norm; */
-  /* #ifdef SWIFT_DEBUG_CHECKS */
-  /*     if (correct < 0.99 && c != 1) */
-  /*       message("Correcting max fluxes case%d %.6e | %.6e %.6e %.6e | %.6e",
-   */
-  /*               c, *energy, flux[0], flux[1], flux[2], correct); */
-  /* #endif */
-  /*     flux[0] *= correct; */
-  /*     flux[1] *= correct; */
-  /*     flux[2] *= correct; */
-  /*   } */
-}
-
-/**
- * @brief check for and correct if needed unphysical
- * values for a photon conserved state
- *
- * @param energy pointer to the photon energy
- * @param flux pointer to photon fluxes (3 dimensional)
- * @param e_old photon energy before the change to be checked, if available.
- * @param c integer indentifier where this function was called from
- */
-__attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
-    float* energy, float* flux, const float e_old, int c) {
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
+    float* energy_density, float* flux, const float e_old, int callloc) {
 
   /* Check for negative energies */
   /* Note to self for printouts: Maximal allowable F = E * c.
@@ -92,18 +43,19 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
    * by dividing the printed out fluxes by the speed of light in
    * code units */
 #ifdef SWIFT_DEBUG_CHECKS
-  float ratio = 1.;
-  if (e_old != 0.f) ratio = fabs(*energy / e_old);
-  if (*energy < 0.f && ratio > 1.e-4)
+  float ratio = 2.;
+  if (e_old != 0.f) ratio = fabsf(*energy_density / e_old);
+  /* callloc = 1 is gradient extrapolation. Don't print out those. */
+  if (*energy_density < -1e-2f && fabsf(ratio - 1.f) > 1.e-3f && callloc != 1)
     message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e | %.6e",
-            c, *energy, flux[0], flux[1], flux[2], ratio);
+            callloc, *energy_density, flux[0], flux[1], flux[2], ratio);
 #endif
-  if (isinf(*energy) || isnan(*energy))
-    error("Got inf/nan radiation energy case %d | %.6e | %.6e %.6e %.6e", c,
-          *energy, flux[0], flux[1], flux[2]);
+  if (isinf(*energy_density) || isnan(*energy_density))
+    error("Got inf/nan radiation energy case %d | %.6e | %.6e %.6e %.6e",
+          callloc, *energy_density, flux[0], flux[1], flux[2]);
 
-  if (*energy <= 0.f) {
-    *energy = 0.f;
+  if (*energy_density <= 0.f) {
+    *energy_density = 0.f;
     flux[0] = 0.f;
     flux[1] = 0.f;
     flux[2] = 0.f;
@@ -113,7 +65,7 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
   /* Check for too high fluxes */
   const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
   const float flux_norm = sqrtf(flux2);
-  const float flux_max = rt_params.reduced_speed_of_light * *energy;
+  const float flux_max = rt_params.reduced_speed_of_light * *energy_density;
   if (flux_norm > flux_max) {
     const float correct = flux_max / flux_norm;
     flux[0] *= correct;
@@ -165,6 +117,8 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 /**
  * @brief check whether gas species mass fractions have physical
  * values and correct small errors if necessary.
+ *
+ * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {

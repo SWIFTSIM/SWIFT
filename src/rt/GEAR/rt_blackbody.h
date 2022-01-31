@@ -31,6 +31,7 @@
  * @param T temperature characterizing the spectrum
  * @param kB Boltzmann constant
  * @param h_planck Planck's constant
+ * @param c speed of light
  */
 __attribute__((always_inline)) INLINE double blackbody_spectrum_intensity(
     const double nu, const double T, const double kB, const double h_planck,
@@ -59,6 +60,7 @@ __attribute__((always_inline)) INLINE double blackbody_spectrum_intensity(
  * @param T temperature characterizing the spectrum
  * @param kB Boltzmann constant
  * @param h_planck Planck's constant
+ * @param c speed of light
  */
 __attribute__((always_inline)) INLINE double blackbody_spectrum_energy_density(
     const double nu, const double T, const double kB, const double h_planck,

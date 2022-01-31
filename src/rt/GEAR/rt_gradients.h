@@ -49,7 +49,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_init(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
     for (int i = 0; i < 3; i++) {
-      rtd->gradient[g].energy[i] = 0.f;
+      rtd->gradient[g].energy_density[i] = 0.f;
       rtd->gradient[g].flux[i][0] = 0.f;
       rtd->gradient[g].flux[i][1] = 0.f;
       rtd->gradient[g].flux[i][2] = 0.f;
@@ -63,7 +63,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_init(
  *
  * @param p Particle
  * @param g photon group index to update (0 <= g < RT_NGROUPS)
- * @param dE energy gradient
+ * @param dE energy density gradient
  * @param dFx gradient of the x direction flux component
  * @param dFy gradient of the y direction flux component
  * @param dFz gradient of the z direction flux component
@@ -74,9 +74,9 @@ __attribute__((always_inline)) INLINE static void rt_gradients_update_part(
 
   struct rt_part_data *rtd = &p->rt_data;
 
-  rtd->gradient[g].energy[0] += dE[0];
-  rtd->gradient[g].energy[1] += dE[1];
-  rtd->gradient[g].energy[2] += dE[2];
+  rtd->gradient[g].energy_density[0] += dE[0];
+  rtd->gradient[g].energy_density[1] += dE[1];
+  rtd->gradient[g].energy_density[2] += dE[2];
 
   rtd->gradient[g].flux[0][0] += dFx[0];
   rtd->gradient[g].flux[0][1] += dFx[1];
@@ -117,9 +117,9 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
 
   struct rt_part_data *rtd = &p->rt_data;
   for (int g = 0; g < RT_NGROUPS; g++) {
-    rtd->gradient[g].energy[0] *= norm;
-    rtd->gradient[g].energy[1] *= norm;
-    rtd->gradient[g].energy[2] *= norm;
+    rtd->gradient[g].energy_density[0] *= norm;
+    rtd->gradient[g].energy_density[1] *= norm;
+    rtd->gradient[g].energy_density[2] *= norm;
     for (int i = 0; i < 3; i++) {
       rtd->gradient[g].flux[i][0] *= norm;
       rtd->gradient[g].flux[i][1] *= norm;
@@ -143,15 +143,27 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_collect(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    float r2, const float dx[3], float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  if (pi->rt_data.debug_kicked != 1)
+    error(
+        "Trying to do symmetric iact gradient unkicked particle %lld "
+        "(count=%d)",
+        pi->id, pi->rt_data.debug_kicked);
+
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do symmetric iact gradient when finalise injection count is "
         "%d ID %lld",
         pi->rt_data.debug_injection_done, pi->id);
+
+  if (pj->rt_data.debug_kicked != 1)
+    error(
+        "Trying to do symmetric iact gradient unkicked particle %lld "
+        "(count=%d)",
+        pj->id, pj->rt_data.debug_kicked);
 
   if (pj->rt_data.debug_injection_done != 1)
     error(
@@ -224,8 +236,8 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
   for (int g = 0; g < RT_NGROUPS; g++) {
 
     float Ui[4], Uj[4];
-    rt_part_get_density_vector(pi, g, Ui);
-    rt_part_get_density_vector(pj, g, Uj);
+    rt_part_get_radiation_state_vector(pi, g, Ui);
+    rt_part_get_radiation_state_vector(pj, g, Uj);
     const float dU[4] = {Ui[0] - Uj[0], Ui[1] - Uj[1], Ui[2] - Uj[2],
                          Ui[3] - Uj[3]};
 
@@ -291,10 +303,16 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
  * @param pj Particle j.
  */
 __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
+    float r2, const float dx[3], float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  if (pi->rt_data.debug_kicked != 1)
+    error(
+        "Trying to do nonsym iact gradient on unkicked particle %lld "
+        "(count=%d)",
+        pi->id, pi->rt_data.debug_kicked);
+
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do nonsym iact gradients when finalise injection count is "
@@ -342,8 +360,8 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
   for (int g = 0; g < RT_NGROUPS; g++) {
 
     float Ui[4], Uj[4];
-    rt_part_get_density_vector(pi, g, Ui);
-    rt_part_get_density_vector(pj, g, Uj);
+    rt_part_get_radiation_state_vector(pi, g, Ui);
+    rt_part_get_radiation_state_vector(pj, g, Uj);
     const float dU[4] = {Ui[0] - Uj[0], Ui[1] - Uj[1], Ui[2] - Uj[2],
                          Ui[3] - Uj[3]};
 
@@ -393,8 +411,10 @@ __attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
  *
  * @param pi Particle i
  * @param pj Particle j
- * @param Ui Resulting predicted and limited (density) state of particle i
- * @param Uj Resulting predicted and limited (density) state of particle j
+ * @param Ui (return) Resulting predicted and limited radiation state of
+ * particle i
+ * @param Uj (return) Resulting predicted and limited radiation state of
+ * particle j
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
  * @param r Comoving distance between particle i and particle j.
@@ -405,11 +425,11 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
     float Uj[4], int group, const float *dx, const float r,
     const float xij_i[3]) {
 
-  rt_part_get_density_vector(pi, group, Ui);
-  rt_part_get_density_vector(pj, group, Uj);
-  /* No need to check unphysical density here:
-   * the densities haven't been touched since
-   * the rt_injection_update_photon_density */
+  rt_part_get_radiation_state_vector(pi, group, Ui);
+  rt_part_get_radiation_state_vector(pj, group, Uj);
+  /* No need to check unphysical state here:
+   * they haven't been touched since the call
+   * to rt_injection_update_photon_density */
 
   float dE_i[3], dFx_i[3], dFy_i[3], dFz_i[3];
   float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
@@ -446,9 +466,9 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
   Uj[2] += dUj[2];
   Uj[3] += dUj[3];
 
-  /* Check and correct unphysical extrapolated densities */
-  rt_check_unphysical_density(Ui, &Ui[1], 1);
-  rt_check_unphysical_density(Uj, &Uj[1], 1);
+  /* Check and correct unphysical extrapolated states */
+  rt_check_unphysical_state(Ui, &Ui[1], /*e_old=*/0.f, /*callloc=*/1);
+  rt_check_unphysical_state(Uj, &Uj[1], /*e_old=*/0.f, /*callloc=*/1);
 }
 
 #endif /* SWIFT_RT_GRADIENT_GEAR_H */

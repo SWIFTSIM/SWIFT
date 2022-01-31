@@ -33,6 +33,9 @@
 __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
     struct part *restrict p) {
 
+  if (p->rt_data.debug_kicked != 1)
+    error("Trying to do thermochemistry on unkicked particle %lld (count=%d)",
+          p->id, p->rt_data.debug_kicked);
   if (!p->rt_data.debug_injection_done)
     error("Trying to do thermochemistry when injection step hasn't been done");
   if (!p->rt_data.debug_gradients_done)

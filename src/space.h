@@ -412,6 +412,7 @@ void space_init_sinks(struct space *s, int verbose);
 void space_convert_rt_quantities_after_zeroth_step(struct space *s,
                                                    int verbose);
 void space_convert_quantities(struct space *s, int verbose);
+void space_convert_rt_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);

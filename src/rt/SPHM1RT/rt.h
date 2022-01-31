@@ -182,6 +182,7 @@ radiation_set_physical_radiation_flux_multifrequency(
  * @brief Initialisation of the RT density loop related particle data.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
  * are both called individually.
+ * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {}
@@ -189,9 +190,8 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
 /**
  * @brief Reset of the RT hydro particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
- * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_part is made in space_convert_rt_quantities() after
- * the zeroth time step is finished.
+ * are both called individually.
+ * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
     struct part* restrict p) {
@@ -289,21 +289,16 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
  *
  * @param p particle to work on
  * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param us unit_system struct
- * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void
 rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props,
-                               const struct phys_const* restrict phys_const,
-                               const struct unit_system* restrict us,
-                               const struct cosmology* restrict cosmo) {}
+                               const struct rt_props* rt_props) {}
 
 /**
  * @brief Initialisation of the RT density loop related star particle data.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
  * are both called individually.
+ * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
     struct spart* restrict sp) {}
@@ -311,9 +306,8 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
 /**
  * @brief Reset of the RT star particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
- * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_spart is made in space_convert_rt_quantities() after
- * the zeroth time step is finished.
+ * are both called individually.
+ * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_spart(
     struct spart* restrict sp) {}
@@ -323,6 +317,25 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {}
+
+/**
+ * @brief Initialises particle quantities that can't be set
+ * otherwise before the zeroth step is finished. E.g. because
+ * they require the star density to be known.
+ * @param sp star particle to work on
+ * @param time current system time
+ * @param star_age age of the star *at the end of the step*
+ * @param dt star time step
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param internal_units struct holding internal units
+ */
+__attribute__((always_inline)) INLINE static void
+rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
+                               double star_age, double dt,
+                               const struct rt_props* rt_props,
+                               const struct phys_const* phys_const,
+                               const struct unit_system* internal_units) {}
 
 /**
  * @brief Split the RT data of a particle into n pieces
@@ -348,7 +361,7 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
  *
- * @param p The #part.
+ * @param sp The #spart.
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     struct spart* sp){};
@@ -358,9 +371,15 @@ __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
  *
  * @param p The particle to work on
  * @param rtp The RT properties struct
+ * @param phys_const physical constants struct
+ * @param us unit_system struct
+ * @param cosmo cosmology struct
  */
 __attribute__((always_inline)) INLINE static void rt_convert_quantities(
-    struct part* p, const struct rt_props* rtp) {
+    struct part* restrict p, const struct rt_props* rt_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo) {}
 
   struct rt_part_data* rpd = &p->rt_data;
   /* Note that in the input, we read radiation energy and flux
@@ -409,7 +428,10 @@ __attribute__((always_inline)) INLINE static float rt_compute_spart_timestep(
 
 /**
  * @brief Compute the time-step length for an RT step of a particle from given
- * integer times ti_beg and ti_end
+ * integer times ti_beg and ti_end. This time-step length is then used to
+ * compute the actual time integration of the transport/force step and the
+ * thermochemistry. This is not used to determine the time-step length during
+ * the time-step tasks.
  *
  * @param ti_beg Start of the time-step (on the integer time-line).
  * @param ti_end End of the time-step (on the integer time-line).
@@ -432,16 +454,13 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
 }
 
 /**
- * @brief Update the photon number of a particle, i.e. compute
- *  E^{n+1} = E^n + dt * dE_* / dt. This function finalises
- *  the injection step.
+ * @brief This function finalises the injection step.
  *
  * @param p particle to work on
  * @param props struct #rt_props that contains global RT properties
  */
-__attribute__((always_inline)) INLINE static void
-rt_injection_update_photon_density(struct part* restrict p,
-                                   struct rt_props* props) {}
+__attribute__((always_inline)) INLINE static void rt_finalise_injection(
+    struct part* restrict p, struct rt_props* props) {}
 
 /**
  * @brief Compute the photon emission rates for this stellar particle

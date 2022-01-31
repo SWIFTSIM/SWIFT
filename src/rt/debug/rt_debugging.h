@@ -106,7 +106,7 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
  * particles and do whatever checks for this particular time step you
  * want done.
  *
- * @param s The #space.
+ * @param e The #engine.
  * @param verbose Are we talkative?
  */
 __attribute__((always_inline)) INLINE static void
@@ -209,6 +209,7 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
  * further down the task system.
  *
  * @param p Hydro particle.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void
 rt_debugging_check_injection_part(struct part *restrict p,
@@ -226,6 +227,7 @@ rt_debugging_check_injection_part(struct part *restrict p,
  * further down the task system.
  *
  * @param s Star particle.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void
 rt_debugging_check_injection_spart(struct spart *restrict s,
