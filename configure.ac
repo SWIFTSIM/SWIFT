@@ -2032,14 +2032,14 @@ case "$with_chemistry" in
    ;;
    GEAR_DIFFUSION_*)
       AC_DEFINE([CHEMISTRY_GEAR_DIFFUSION], [1], [Chemistry taken from the GEAR model including the metal diffusion])
-      number_element=${with_chemistry:15}
+      number_element=${with_chemistry#*_}
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
       with_chemistry_name="GEAR (with $number_element elements and diffusion)"
       with_chemistry="GEAR_DIFFUSION"
    ;;
    GEAR_*)
       AC_DEFINE([CHEMISTRY_GEAR], [1], [Chemistry taken from the GEAR model])
-      number_element=${with_chemistry:5}
+      number_element=${with_chemistry#*_}
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
       with_chemistry_name="GEAR (with $number_element elements)"
       with_chemistry="GEAR"
@@ -2100,7 +2100,7 @@ case "$with_cooling" in
    ;;
    grackle_*)
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
-      primordial_chemistry=${with_cooling:8}
+      primordial_chemistry=${with_cooling#*_}
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
       with_cooling_name="Grackle $primordial_chemistry"
       with_cooling="grackle"
@@ -2530,7 +2530,7 @@ case "$with_rt" in
    ;;
    GEAR_*)
       AC_DEFINE([RT_GEAR], [1], [GEAR M1 closure scheme])
-      number_group=${with_rt:5}
+      number_group=${with_rt#*_}
       AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
 
       if test "$number_group" -eq 0; then
@@ -2565,7 +2565,7 @@ case "$with_rt" in
    ;;
    SPHM1RT_*)
       AC_DEFINE([RT_SPHM1RT], [1], [SPHM1RT radiative transfer scheme (Chan+21: 2102.08404)])
-      number_group=${with_rt:8}
+      number_group=${with_rt#*_}
       AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
 
       if test "$number_group" -eq 0; then
