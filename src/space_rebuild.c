@@ -28,6 +28,7 @@
 /* Local headers. */
 #include "cell.h"
 #include "engine.h"
+#include "gravity_properties.h"
 #include "memswap.h"
 #include "zoom_region.h"
 
@@ -47,7 +48,7 @@ extern unsigned long long last_leaf_cell_id;
  * @param repartitioned Did we just repartition?
  * @param verbose Print messages to stdout or not
  */
-void space_rebuild(struct space *s, int repartitioned, int verbose) {
+void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gravity_properties, int verbose) {
 
   const ticks tic = getticks();
 
@@ -63,7 +64,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 #endif
 
   /* Re-grid if necessary, or just re-set the cell data. */
-  space_regrid(s, verbose);
+  space_regrid(s, gravity_properties, verbose);
 
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
@@ -913,17 +914,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2]) {
-    	  message("supposed cid: %d Return cid: %d", cell_getid(s->cdim, 1, 0, 0), cell_getid(s->cdim, 0, 0, 0));
-	      message("gpos: [%f %f %f] cell_id: %d cell_loc: [%f %f %f] cell_width: [%f %f %f]", gp->x[0], gp->x[1], gp->x[2], new_gind, c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1], c->width[2]);
-	      message("width: [%f %f %f] iwidth: [%f %f %f] ijk(float): [%f %f %f] ijk(int): [%d %d %d] zoom_ijk(float): [%f %f %f] zoom_ijk(int): [%d %d %d]",
-	      		s->width[0], s->width[1], s->width[2], s->iwidth[0], s->iwidth[1], s->iwidth[2],
-	      		(gp->x[0] * s->iwidth[0]), (gp->x[1] * s->iwidth[1]), (gp->x[2] * s->iwidth[2]),
-	      		(int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]), (int)(gp->x[2] * s->iwidth[2]),
-	      		((gp->x[0] - s->zoom_props->region_bounds[0]) * s->zoom_props->iwidth[0]), ((gp->x[1] - s->zoom_props->region_bounds[2]) * s->zoom_props->iwidth[1]), ((gp->x[2] - s->zoom_props->region_bounds[4]) * s->zoom_props->iwidth[2]),
-	      		(int)((gp->x[0] - s->zoom_props->region_bounds[0]) * s->zoom_props->iwidth[0]), (int)((gp->x[1] - s->zoom_props->region_bounds[2]) * s->zoom_props->iwidth[1]), (int)((gp->x[2] - s->zoom_props->region_bounds[4]) * s->zoom_props->iwidth[2]));
-	      message("zoom_width: [%f %f %f] zoom_iwidth: [%f %f %f] zoom_bounds: [%f %f %f %f %f %f]", s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
-	      		s->zoom_props->iwidth[0], s->zoom_props->iwidth[1], s->zoom_props->iwidth[2],
-	      		s->zoom_props->region_bounds[0], s->zoom_props->region_bounds[1], s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3], s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]);
 	      error("gpart not sorted into the right top-level cell!");
       }
   }

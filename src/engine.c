@@ -1185,7 +1185,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   scheduler_free_tasks(&e->sched);
 
   /* Re-build the space. */
-  space_rebuild(e->s, repartitioned, e->verbose);
+  space_rebuild(e->s, repartitioned, e->gravity_properties, e->verbose);
 
   /* Report the number of cells and memory */
   if (e->verbose)
@@ -2126,7 +2126,7 @@ void engine_step(struct engine *e) {
   }
 
   /* We need some cells to exist but not the whole task stuff. */
-  if (e->restarting) space_rebuild(e->s, 0, e->verbose);
+  if (e->restarting) space_rebuild(e->s, 0, e->gravity_properties, e->verbose);
 
   /* Move forward in time */
   e->ti_old = e->ti_current;

@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
   /* Build the infrastructure */
   struct space space;
   double dim[3] = {1., 1., 1.};
-  space_init(&space, params, &cosmo, dim, NULL, gparts, NULL, 0, nr_gparts, 0,
+  space_init(&space, params, &cosmo, dim, NULL, gparts, NULL, NULL, 0, nr_gparts, 0,
              1, 1, 0, 0, 1, 1, 0);
 
   struct engine engine;
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
   threadpool_init(&engine.threadpool, engine.nr_threads);
 
   /* Construct the space and all the multipoles. */
-  space_rebuild(&space, 1);
+  space_rebuild(&space, &gravity_properties, 1);
 
 /* Initialise the Ewald correction table */
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
