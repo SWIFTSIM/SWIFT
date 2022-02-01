@@ -257,14 +257,14 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
               const integertime_t ti_end = ti_begin + ti_step / 2;
               
 #ifdef SWIFT_DEBUG_CHECKS
-              const integertime_t ti_end =
+              const integertime_t ti_end_check =
               get_integer_time_end(ti_current + 1, dmp->time_bin);
               
               if (ti_begin != ti_current)
                   error(
                         "DM-particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
                         "ti_step=%lld time_bin=%d ti_current=%lld",
-                        ti_end, ti_begin, ti_step, dmp->time_bin, ti_current);
+                        ti_end_check, ti_begin, ti_step, dmp->time_bin, ti_current);
 #endif
 
               /* Time interval for this gravity half-kick */
