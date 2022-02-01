@@ -386,8 +386,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
   }
 
-  if ((bp->min_gas_mass_for_nibbling < 1e-5 bp->subgrid_seed_mass) ||
-      (bp->min_gas_mass_for_nibbling > 1e5 bp->subgrid_seed_mass)) {
+  if ((bp->min_gas_mass_for_nibbling < 1e-5 * bp->subgrid_seed_mass) ||
+      (bp->min_gas_mass_for_nibbling > 1e5 * bp->subgrid_seed_mass)) {
     error(
         "The BH seeding mass and minimal gas mass for nibbling differ by more "
         "than 10^5. That is probably indicating a typo in the parameter file.");
