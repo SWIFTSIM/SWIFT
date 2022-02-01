@@ -2032,7 +2032,7 @@ case "$with_chemistry" in
    ;;
    GEAR_DIFFUSION_*)
       AC_DEFINE([CHEMISTRY_GEAR_DIFFUSION], [1], [Chemistry taken from the GEAR model including the metal diffusion])
-      number_element=${with_chemistry#*_}
+      number_element=${with_chemistry##*_}
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
       with_chemistry_name="GEAR (with $number_element elements and diffusion)"
       with_chemistry="GEAR_DIFFUSION"
@@ -2533,7 +2533,7 @@ case "$with_rt" in
       number_group=${with_rt#*_}
       AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
 
-      if test "$number_group" -eq 0; then
+      if test "$number_group" = "0"; then
           AC_MSG_ERROR([GEAR-RT: Cannot work with zero photon groups])
       fi
       if ! test $number_group -eq $number_group; then
@@ -2568,7 +2568,7 @@ case "$with_rt" in
       number_group=${with_rt#*_}
       AC_DEFINE_UNQUOTED([RT_NGROUPS], [$number_group], [Number of photon groups to follow])
 
-      if test "$number_group" -eq 0; then
+      if test "$number_group" -eq "0"; then
           AC_MSG_ERROR([SPHM1RT: Cannot work with zero photon groups])
       fi
       if ! test $number_group -eq $number_group; then
