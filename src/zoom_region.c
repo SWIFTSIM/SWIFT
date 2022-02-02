@@ -446,9 +446,6 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
 	const int delta_m = delta_cells;
 	const int delta_p = delta_cells;
 
-//  const int delta_m = neighbour_cell_delta; // Should compute this, but how?
-//  const int delta_p = neighbour_cell_delta;
-
   int neighbour_count = 0;
   int void_count = 0;
 
@@ -498,7 +495,7 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
 
   if (verbose) {
   	message("%i cells neighbouring the zoom region", neighbour_count);
-  	message("%i cells void cells in the zoom region", void_count);
+  	message("%i void cells in the zoom region", void_count);
   }
 #endif
 }
@@ -1873,11 +1870,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
-		/* If the cell is a natural cell and not a neighbour cell
-		 * we don't need to do anything */
-		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-			continue;
-		}
+//		/* If the cell is a natural cell and not a neighbour cell
+//		 * we don't need to do anything */
+//		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
+//			continue;
+//		}
 
 		/* Get the loop range for the neighbouring cells */
 		if (ci->tl_cell_type <= 2) {
@@ -1892,10 +1889,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			/* Get the cell */
 			struct cell *cj = &cells[cjd];
 
-			/* Skip non-neighbour natural cells. */
-			if ((ci->tl_cell_type == zoom_tl_cell) && (cj->tl_cell_type != tl_cell_neighbour)){
-				continue;
-			}
+//			/* Skip non-neighbour natural cells. */
+//			if ((ci->tl_cell_type == zoom_tl_cell) && (cj->tl_cell_type != tl_cell_neighbour)){
+//				continue;
+//			}
 
 			/* Avoid duplicates, empty cells and completely foreign pairs */
 			if ((cid >= cjd && ci->nodeID == cj->nodeID) || cj->grav.count == 0 ||
