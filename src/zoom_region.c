@@ -1862,10 +1862,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
 
-//		/* To avoid duplicates we only care about local cis */
-//		if (ci->nodeID != nodeID) {
-//			continue;
-//		}
+		/* To avoid duplicates we only care about local cis */
+		if (ci->nodeID != nodeID) {
+			continue;
+		}
 
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
