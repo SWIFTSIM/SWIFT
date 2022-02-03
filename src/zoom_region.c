@@ -1862,10 +1862,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
 
-		/* To avoid duplicates we only care about local cis */
-		if (ci->nodeID != nodeID) {
-			continue;
-		}
+//		/* To avoid duplicates we only care about local cis */
+//		if (ci->nodeID != nodeID) {
+//			continue;
+//		}
 
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
@@ -1883,8 +1883,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			cjd_offset = bkg_cell_offset;
 		}
 
-		/* Loop over every other cell within (Manhattan) range delta */
-		for (int cjd = 0 + cjd_offset; cjd < bkg_cell_offset + cjd_offset; cjd++) {
+		/* Loop over every other cell */
+		for (int cjd = 0 + cjd_offset; cjd < (bkg_cell_offset + cjd_offset); cjd++) {
 
 			/* Get the cell */
 			struct cell *cj = &cells[cjd];
@@ -1894,9 +1894,13 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //				continue;
 //			}
 
-			/* Avoid duplicates, empty cells and completely foreign pairs */
-			if ((cid >= cjd && ci->nodeID == cj->nodeID) || cj->grav.count == 0 ||
-			    (ci->nodeID != nodeID && cj->nodeID != nodeID))
+			/* Explictly avoid duplicates */
+			if ((ci->nodeID == cj->nodeID) && ((ci->tl_cell_type <= 2) && (cj->tl_cell_type == zoom_tl_cell))) {
+				continue;
+			}
+
+			/* Avoid empty cells and completely foreign pairs */
+			if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
 
 			/* Recover the multipole information */
