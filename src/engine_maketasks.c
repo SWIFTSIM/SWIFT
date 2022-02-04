@@ -4248,7 +4248,7 @@ void engine_maketasks(struct engine *e) {
 							 s->nr_cells, 1, threadpool_auto_chunk_size, e);
     } else {
     	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-										 s->nr_cells, 1, threadpool_auto_chunk_size, e);
+										 s->zoom_props->tl_cell_offset, 1, threadpool_auto_chunk_size, e);
     }
 #else
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
