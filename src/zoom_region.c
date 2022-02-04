@@ -1839,7 +1839,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	/* Handle on the cells and proxies */
 	struct cell *cells = s->cells_top;
 
-	message("%d %d", s->zoom_props->tl_cell_offset, s->nr_cells)
+	message("%d %d", s->zoom_props->tl_cell_offset, s->nr_cells);
 
 	/* Some info about the zoom domain */
 	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
@@ -1928,7 +1928,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 					/*is_tree_walk=*/0)) {
 
 				message("cid=%d cjd=%d, ci->tl_cell_type=%d cj->tl_cell_type=%d, ci->nodeID=%d cj->nodeID=%d",
-						cid, cjd, ci->tl_cell_type, cj->tl_cell_type, ci->nodeID, cj->nodeID)
+						cid, cjd, ci->tl_cell_type, cj->tl_cell_type, ci->nodeID, cj->nodeID);
 
 				/* Ok, we need to add a direct pair calculation */
 				scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
