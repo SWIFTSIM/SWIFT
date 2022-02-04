@@ -120,9 +120,13 @@ INLINE static void starformation_init_backend(
   starform->star_formation_efficiency = parser_get_param_double(
       parameter_file, "GEARStarFormation:star_formation_efficiency");
 
-  /* Maximum temperature for star formation */
+  /* Maximum gas temperature for star formation */
   starform->maximal_temperature = parser_get_param_double(
       parameter_file, "GEARStarFormation:maximal_temperature");
+
+  /* Minimal gas density for star formation */
+  starform->density_threashold = parser_get_param_double(
+      parameter_file, "GEARStarFormation:density_threashold");
 
   /* Number of stars per particles */
   starform->n_stars_per_part = parser_get_param_double(
@@ -140,11 +144,17 @@ INLINE static void starformation_init_backend(
   starform->n_jeans_2_3 = pow(starform->n_jeans_2_3, 2. / 3.);
 
   /* Apply unit change */
-  starform->maximal_temperature *=
+  starform->maximal_temperature /=
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  starform->density_threashold /=
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
   /* Initialize the mass of the stars to 0 for the stats computation */
   starform->mass_stars = 0;
+
+  message("maximal_temperature = %g", starform->maximal_temperature);
+  message("density_threashold  = %g", starform->density_threashold);
 }
 
 #endif /* SWIFT_STAR_FORMATION_GEAR_IO_H */
