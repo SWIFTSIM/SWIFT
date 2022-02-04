@@ -1859,6 +1859,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Get the cell index. */
 		const int cid = (size_t)(map_data) + ind;
 
+    /* We only wish to loop over ci zoom cells, symmetry is handled later */
+    if (cid >= bkg_cell_offset) continue;
+
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
 
@@ -1876,15 +1879,15 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //			continue;
 //		}
 
-		/* Get the loop range for the neighbouring cells */
-		if (ci->tl_cell_type <= 2) {
-			cjd_offset = 0;
-		} else {
-			cjd_offset = bkg_cell_offset;
-		}
+//		/* Get the loop range for the neighbouring cells */
+//		if (ci->tl_cell_type <= 2) {
+//			cjd_offset = 0;
+//		} else {
+//			cjd_offset = bkg_cell_offset;
+//		}
 
 		/* Loop over every other cell */
-		for (int cjd = 0; cjd < s->nr_cells; cjd++) {
+		for (int cjd = bkg_cell_offset; cjd < s->nr_cells; cjd++) {
 
 			/* Get the cell */
 			struct cell *cj = &cells[cjd];
@@ -1894,10 +1897,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //				continue;
 //			}
 
-			/* Explictly avoid duplicates */
-			if (((ci->nodeID == nodeID && ci->tl_cell_type <= 2) && (cj->nodeID == nodeID && cj->tl_cell_type == zoom_tl_cell))) {
-				continue;
-			}
+//			/* Explictly avoid duplicates */
+//			if (((ci->nodeID == nodeID && ci->tl_cell_type <= 2) && (cj->nodeID == nodeID && cj->tl_cell_type == zoom_tl_cell)) ||
+//			    ((ci->nodeID == nodeID && ci->tl_cell_type <= 2) && (cj->nodeID != nodeID && cj->tl_cell_type == zoom_tl_cell))) {
+//				continue;
+//			}
 
 			/* Avoid empty cells and completely foreign pairs */
 			if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
@@ -1925,6 +1929,14 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 				/* Ok, we need to add a direct pair calculation */
 				scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
 				                  ci, cj);
+
+				/* If cells are not on the same node we need to handle to mirrored task */
+				if ci->nodeID != cj->nodeID {
+					/* Ok, we need to add a direct pair calculation */
+				  scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
+				                    cj, ci);
+
+				}
 
 #ifdef SWIFT_DEBUG_CHECKS
 				/* Ensure both cells are not in the same level */
