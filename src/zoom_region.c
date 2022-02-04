@@ -1862,6 +1862,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
     /* We only wish to loop over ci zoom cells, symmetry is handled later */
     if (cid >= bkg_cell_offset) continue;
 
+    if (ci->nodeID != nodeID) {
+					continue;
+				}
+
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
 
