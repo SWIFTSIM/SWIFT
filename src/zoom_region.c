@@ -1925,13 +1925,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 				scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
 				                  ci, cj);
 
-				/* If cells are not on the same node we need to handle the mirrored task */
-				if (cj->nodeID != nodeID) {
-					/* Ok, we need to add a direct pair calculation */
-				  scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
-				                    cj, ci);
-				}
-
 #ifdef SWIFT_DEBUG_CHECKS
 				/* Ensure both cells are not in the same level */
 				if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
