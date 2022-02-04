@@ -1850,8 +1850,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	const double max_mesh_dist = e->mesh->r_cut_max;
 	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
-	/* Define neighbour loop variables */
-	int cjd_offset = 0;
+//	/* Define neighbour loop variables */
+//	int cjd_offset = 0;
 
 	/* Loop through the elements, which are just byte offsets from NULL. */
 	for (int ind = 0; ind < num_elements; ind++) {
@@ -1931,11 +1931,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 				                  ci, cj);
 
 				/* If cells are not on the same node we need to handle to mirrored task */
-				if ci->nodeID != cj->nodeID {
+				if (ci->nodeID != cj->nodeID) {
 					/* Ok, we need to add a direct pair calculation */
 				  scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
 				                    cj, ci);
-
 				}
 
 #ifdef SWIFT_DEBUG_CHECKS
