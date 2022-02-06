@@ -1910,7 +1910,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 				continue;
 
 			/* Explictly avoid duplicates */
-			if (ci->nodeID == cj->nodeID && cid >= cjd) {
+			if (((ci->nodeID == cj->nodeID && cid >= cjd) || (cj->nodeID == nodeID && cj->tl_cell_type == zoom_tl_cell)) {
 				continue;
 			}
 
