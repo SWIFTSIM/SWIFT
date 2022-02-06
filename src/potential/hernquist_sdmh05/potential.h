@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_POTENTIAL_HERNQUIST_H
-#define SWIFT_POTENTIAL_HERNQUIST_H
+#ifndef SWIFT_POTENTIAL_HERNQUIST_SDMH05_H
+#define SWIFT_POTENTIAL_HERNQUIST_SDMH05_H
 
 /* Config parameters. */
 #include "../config.h"
@@ -36,6 +36,9 @@
 
 /**
  * @brief External Potential Properties - Hernquist potential
+ *
+ * We follow the definition of
+ * Springel, Di Matteo & Hernquist, 2005, MNRAS, Vol. 361, Issue 3, 776-794
  */
 struct external_potential {
 
@@ -45,21 +48,9 @@ struct external_potential {
   /*! Mass of the halo (total Hernquist mass) */
   double mass;
 
-  /*! M200 mass, mass within R200 */
-  double M200;
-
-  /*! R200 */
-  double R200;
-
-  /*! concentration of the halo */
-  double c;
-
   /*! Scale length (often as a, to prevent confusion with the cosmological
    * scale-factor we use al) */
   double al;
-
-  /*! NFW equivalent scale radius */
-  double Rs;
 
   /*! Square of the softening length. Acceleration tends to zero within this
    * distance from the origin */
@@ -72,10 +63,6 @@ struct external_potential {
   /*! Time-step condition pre-factor, is multiplied times the circular orbital
    * time to get the time steps */
   double timestep_mult;
-
-  /*! Mode to use 0 for simplest form of potential purely 1 for idealized
-   * galaxies */
-  int usedisk;
 };
 
 /**
@@ -139,11 +126,9 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   const float dz = g->x[2] - potential->x[2];
 
   /* Calculate the acceleration */
-  const float r2 = dx * dx + dy * dy + dz * dz + potential->epsilon2;
-  const float r = sqrtf(r2);
+  const float r = sqrtf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
   const float r_plus_a_inv = 1.f / (r + potential->al);
   const float r_plus_a_inv2 = r_plus_a_inv * r_plus_a_inv;
-
   const float acc = -potential->mass * r_plus_a_inv2 / r;
   const float pot = -potential->mass * r_plus_a_inv;
 
@@ -172,7 +157,7 @@ external_gravity_get_potential_energy(
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-  const float r = sqrtf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
+  const float r = sqrtf(dx * dx + dy * dy + dz * dz);
   const float r_plus_alinv = 1.f / (r + potential->al);
   return -phys_const->const_newton_G * potential->mass * r_plus_alinv;
 }
@@ -212,11 +197,11 @@ static INLINE void potential_init_backend(
   }
 
   /* check whether we use the more advanced idealized disk setting */
-  potential->usedisk = parser_get_opt_param_int(
+  const int usedisk = parser_get_opt_param_int(
       parameter_file, "HernquistPotential:idealizeddisk",
       idealized_disk_default);
 
-  if (!potential->usedisk) {
+  if (!usedisk) {
     /* Read the parameters of the model in the case of the simple
      * potential form \f$ \Phi = - \frac{GM}{r+a} \f$ */
     potential->mass =
@@ -266,35 +251,19 @@ static INLINE void potential_init_backend(
       error("Please specify one of the 3 variables M200, V200 or R200");
     }
 
-    potential->M200 = M200;
-    potential->R200 = R200;
+    /* message("M200 = %g, R200 = %g, V200 = %g", M200, R200, V200); */
+    /* message("H0 = %g", H0); */
 
     /* get the concentration from the parameter file */
-    potential->c = parser_get_param_double(parameter_file,
-                                           "HernquistPotential:concentration");
-
-    /* Define the concentration a bit more simple */
-    const double cc = potential->c;
+    const double concentration = parser_get_param_double(
+        parameter_file, "HernquistPotential:concentration");
 
     /* Calculate the Scale radius using the NFW definition */
-    potential->Rs = R200 / cc;
-
-    /* Define inv concentration */
-    const double cc_inv = 1 / cc;
-
-    /* Calculate b using the concentration*/
-    const double b = 2. * cc_inv * cc_inv * (log(1. + cc) - cc / (1. + cc));
+    const double RS = R200 / concentration;
 
     /* Calculate the Hernquist equivalent scale length */
-    potential->al = (b + sqrt(b)) / (1 - b) * R200;
-
-    /* Define R200 inv*/
-    const double R200_inv = 1. / R200;
-
-    /* Calculate the total mass */
-    const double M_total_mass = (potential->R200 + potential->al) *
-                                (potential->R200 + potential->al) * R200_inv *
-                                R200_inv * potential->M200;
+    potential->al = RS * sqrt(1. * (log(1. + concentration) -
+                                    concentration / (1. + concentration)));
 
     /* Depending on the disk mass and and the bulge mass the halo
      * gets a different mass, because of this we read the fractions
@@ -308,7 +277,7 @@ static INLINE void potential_init_backend(
     const double Mbulge = M200 * bulgefraction;
 
     /* Store the mass of the DM halo */
-    potential->mass = M_total_mass - Mdisk - Mbulge;
+    potential->mass = M200 - Mdisk - Mbulge;
   }
 
   /* Retrieve the timestep and softening of the potential */
@@ -335,20 +304,11 @@ static inline void potential_print_backend(
     const struct external_potential* potential) {
 
   message(
-      "external potential is 'hernquist' with properties are (x,y,z) = (%e, "
-      "%e, %e), mass = %e scale length = %e , minimum time = %e timestep "
-      "multiplier = %e",
+      "external potential is 'hernquist Springel, Di Matteo & Herquist 2005' "
+      "with properties are (x,y,z) = (%e, %e, %e), mass = %e scale length = %e "
+      ", minimum time = %e timestep multiplier = %e",
       potential->x[0], potential->x[1], potential->x[2], potential->mass,
       potential->al, potential->mintime, potential->timestep_mult);
-  if (potential->usedisk == 1) {
-    message(
-        "Running with the idealized disk setup, M200 = %e, R200 = %e, c = %e",
-        potential->M200, potential->R200, potential->c);
-    message(
-        "Hernquist scale length = %e, NFW equivalent scale length = %e, total "
-        "Hernquist mass = %e",
-        potential->al, potential->Rs, potential->mass);
-  }
 }
 
-#endif /* SWIFT_POTENTIAL_HERNQUIST_H */
+#endif /* SWIFT_POTENTIAL_HERNQUIST_SDMH05_H */

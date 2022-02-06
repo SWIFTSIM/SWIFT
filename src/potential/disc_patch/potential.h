@@ -28,8 +28,8 @@
 #include <math.h>
 
 /* Local includes. */
-#include "const.h"
 #include "error.h"
+#include "gravity.h"
 #include "minmax.h"
 #include "parser.h"
 #include "part.h"
@@ -115,7 +115,7 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const float norm = potential->norm;
 
   /* absolute value of height above disc */
-  const float dx = fabsf(g->x[0] - potential->x_disc);
+  const float dx = fabs(g->x[0] - potential->x_disc);
 
   /* vertical acceleration */
   const float x_accel = norm * tanhf(dx * b_inv);
@@ -173,6 +173,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   const float abs_dx = fabsf(dx);
   const float t_growth = potential->growth_time;
   const float t_growth_inv = potential->growth_time_inv;
+  const float b = potential->scale_height;
   const float b_inv = potential->scale_height_inv;
   const float x_trunc = potential->x_trunc;
   const float x_max = potential->x_max;
@@ -184,25 +185,30 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
 
   /* Truncated or not ? */
   float a_x;
+  float pot;
   if (abs_dx < x_trunc) {
 
     /* Acc. 2 pi sigma tanh(x/b) */
     a_x = reduction_factor * norm_over_G * tanhf(abs_dx * b_inv);
+    pot = -reduction_factor * norm_over_G * logf(coshf(abs_dx * b_inv)) * b;
   } else if (abs_dx < x_max) {
 
     /* Acc. 2 pi sigma tanh(x/b) [1/2 + 1/2cos((x-xmax)/(pi x_trans))] */
     a_x =
         reduction_factor * norm_over_G * tanhf(abs_dx * b_inv) *
         (0.5f + 0.5f * cosf((float)(M_PI) * (abs_dx - x_trunc) * x_trans_inv));
+    pot = 0.f;
   } else {
 
     /* Acc. 0 */
     a_x = 0.f;
+    pot = 0.f;
   }
 
   /* Get the correct sign. Recall G is multipiled in later on */
   if (dx > 0) g->a_grav[0] -= a_x;
   if (dx < 0) g->a_grav[0] += a_x;
+  gravity_add_comoving_potential(g, pot);
 }
 
 /**
@@ -283,8 +289,6 @@ static INLINE void potential_init_backend(
       parameter_file, "DiscPatchPotential:x_trunc", FLT_MAX);
   potential->x_max = parser_get_opt_param_double(
       parameter_file, "DiscPatchPotential:x_max", FLT_MAX);
-  potential->x_disc =
-      parser_get_param_double(parameter_file, "DiscPatchPotential:x_disc");
   potential->timestep_mult = parser_get_param_double(
       parameter_file, "DiscPatchPotential:timestep_mult");
   potential->growth_time = parser_get_opt_param_double(

@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "cooling.h"
 #include "debug.h"
+#include "potential.h"
 #include "rt.h"
 #include "timeline.h"
 

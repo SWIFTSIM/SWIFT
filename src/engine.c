@@ -83,6 +83,7 @@
 #include "output_list.h"
 #include "output_options.h"
 #include "partition.h"
+#include "potential.h"
 #include "profiler.h"
 #include "proxy.h"
 #include "restart.h"

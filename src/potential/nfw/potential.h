@@ -29,6 +29,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "gravity.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -48,9 +49,6 @@ struct external_potential {
 
   /*! The scale radius of the NFW potential */
   double r_s;
-
-  /*! The pre-factor \f$ 4 M200 / (4 pi f(c)) \f$ */
-  double pre_factor;
 
   /*! The critical density of the universe */
   double rho_c;
@@ -76,8 +74,8 @@ struct external_potential {
   /*! Common log term \f$ \ln(1+c_{200}) - \frac{c_{200}}{1 + c_{200}} \f$ */
   double log_c200_term;
 
-  /*! inverse of common log term \f$ \ln(1+c_{200}) - \frac{c_{200}}{1 +
-   * c_{200}} \f$ */
+  /*! M_200 times inverse of common log term \f$ \ln(1+c_{200}) -
+   * \frac{c_{200}}{1 + c_{200}} \f$ */
   double M_200_times_log_c200_term_inv;
 
   /*! Softening length */
@@ -159,23 +157,26 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* restrict potential,
     const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
+  /* Determine the position relative to the centre of the potential */
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
 
-  const float r2 = dx * dx + dy * dy + dz * dz;
-  const float r2_inv = 1.f / r2;
-
+  /* Calculate the acceleration */
+  const float r2 =
+      dx * dx + dy * dy + dz * dz + potential->eps * potential->eps;
   const float r = sqrtf(r2);
   const float r_inv = 1.f / r;
-
   const float M_encl = enclosed_mass_NFW(potential, r);
 
-  const float minus_M_encl_over_r3 = -M_encl * r_inv * r2_inv;
+  const float acc = -M_encl * r_inv * r_inv * r_inv;
+  const float pot = -potential->M_200_times_log_c200_term_inv * r_inv *
+                    logf(1.f + r / potential->r_s);
 
-  g->a_grav[0] += minus_M_encl_over_r3 * dx;
-  g->a_grav[1] += minus_M_encl_over_r3 * dy;
-  g->a_grav[2] += minus_M_encl_over_r3 * dz;
+  g->a_grav[0] += acc * dx;
+  g->a_grav[1] += acc * dy;
+  g->a_grav[2] += acc * dz;
+  gravity_add_comoving_potential(g, pot);
 }
 
 /**
@@ -200,7 +201,7 @@ external_gravity_get_potential_energy(
 
   const float r =
       sqrtf(dx * dx + dy * dy + dz * dz + potential->eps * potential->eps);
-  const float term1 = -potential->pre_factor / r;
+  const float term1 = -potential->M_200_times_log_c200_term_inv / r;
   const float term2 = logf(1.0f + r / potential->r_s);
 
   return term1 * term2;
@@ -270,11 +271,6 @@ static INLINE void potential_init_backend(
       potential->M_200 *
       (1 - potential->bulgefraction - potential->diskfraction) /
       potential->log_c200_term;
-
-  potential->pre_factor =
-      potential->M_200 *
-      (1 - potential->bulgefraction - potential->diskfraction) /
-      (4 * M_PI * potential->log_c200_term);
 
   /* Compute the orbital time at the softening radius */
   const double sqrtgm = sqrt(phys_const->const_newton_G * potential->M_200);
