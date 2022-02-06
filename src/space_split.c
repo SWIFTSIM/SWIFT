@@ -254,7 +254,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       cp->mpi.tag = -1;
 #endif  // WITH_MPI
 #ifdef WITH_ZOOM_REGION
-      cp->tl_cell_types = c->tl_cell_types;
+      cp->tl_cell_type = c->tl_cell_type;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
       cell_assign_cell_index(cp, c);
