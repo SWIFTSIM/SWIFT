@@ -1872,9 +1872,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Get the cell */
 		struct cell *ci = &cells[cid];
 
-//    if (ci->nodeID != nodeID) {
-//			continue;
-//		}
+    /* If this cell is on this node and is a background cell
+     * then we have to avoid duplicating tasks */
+    if (ci->nodeID == nodeID && ci->tl_cell_type <= 2) {
+			continue;
+		}
 
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
@@ -1903,14 +1905,14 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 //				continue;
 //			}
 
-			/* Explictly avoid duplicates */
-			if (((ci->nodeID == nodeID && ci->tl_cell_type <= 2) && (cj->nodeID == nodeID && cj->tl_cell_type == zoom_tl_cell)) || (cj->nodeID == nodeID && cj->tl_cell_type == zoom_tl_cell)) {
-				continue;
-			}
-
 			/* Avoid empty cells and completely foreign pairs */
 			if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
 				continue;
+
+			/* Explictly avoid duplicates */
+			if (ci->nodeID == cj->nodeID && cid >= cjd) {
+				continue;
+			}
 
 			/* Recover the multipole information */
 			const struct gravity_tensors *multi_i = ci->grav.multipole;
