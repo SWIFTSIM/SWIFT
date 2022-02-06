@@ -41,7 +41,6 @@
 #include "output_options.h"
 #include "parser.h"
 #include "partition.h"
-#include "potential.h"
 #include "runner.h"
 #include "scheduler.h"
 #include "space.h"
@@ -50,6 +49,7 @@
 #include "velociraptor_interface.h"
 
 struct black_holes_properties;
+struct external_potential;
 
 /**
  * @brief The different policies the #engine can follow.

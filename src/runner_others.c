@@ -50,6 +50,7 @@
 #include "fof.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "potential.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "space.h"

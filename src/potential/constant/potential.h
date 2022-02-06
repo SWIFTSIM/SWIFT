@@ -28,6 +28,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "gravity.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -72,9 +73,14 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
+  const float gh = g->x[0] * potential->g[0] + g->x[1] * potential->g[1] +
+                   g->x[2] * potential->g[2];
+  const float pot = -gh / 3.f;
+
   g->a_grav[0] += potential->g[0];
   g->a_grav[1] += potential->g[1];
   g->a_grav[2] += potential->g[2];
+  gravity_add_comoving_potential(g, pot);
 }
 
 /**
