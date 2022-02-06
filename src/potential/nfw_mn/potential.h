@@ -29,6 +29,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "gravity.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -157,22 +158,31 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   /* First for the NFW part */
   const float R2 = dx * dx + dy * dy;
   const float r = sqrtf(R2 + dz * dz + potential->eps * potential->eps);
+  const float r_inv = 1.f / r;
   const float term1 = potential->pre_factor;
-  const float term2 = (1.0f / ((r + potential->r_s) * r * r) -
-                       logf(1.0f + r / potential->r_s) / (r * r * r));
+  const float term2 =
+      r / (r + potential->r_s) - logf(1.0f + r / potential->r_s);
 
-  g->a_grav[0] += term1 * term2 * dx;
-  g->a_grav[1] += term1 * term2 * dy;
-  g->a_grav[2] += term1 * term2 * dz;
+  const float acc_nfw = term1 * term2 * r_inv * r_inv * r_inv;
+  const float pot_nfw =
+      -potential->pre_factor * logf(1.0f + r / potential->r_s) * r_inv;
+
+  g->a_grav[0] += acc_nfw * dx;
+  g->a_grav[1] += acc_nfw * dy;
+  g->a_grav[2] += acc_nfw * dz;
+  gravity_add_comoving_potential(g, pot_nfw);
 
   /* Now the the MN disk */
   const float f1 = sqrtf(potential->Zdisk * potential->Zdisk + dz * dz);
   const float f2 = potential->Rdisk + f1;
-  const float f3 = pow(R2 + f2 * f2, -3.0 / 2.0);
+  const float f3 = powf(R2 + f2 * f2, -1.5f);
+  const float mn_term = potential->Rdisk + sqrtf(potential->Zdisk + dz * dz);
+  const float pot_mn = -potential->Mdisk / sqrtf(R2 + mn_term * mn_term);
 
   g->a_grav[0] -= potential->Mdisk * f3 * dx;
   g->a_grav[1] -= potential->Mdisk * f3 * dy;
   g->a_grav[2] -= potential->Mdisk * f3 * (f2 / f1) * dz;
+  gravity_add_comoving_potential(g, pot_mn);
 }
 
 /**
@@ -203,10 +213,10 @@ external_gravity_get_potential_energy(
   const float term2 = logf(1.0f + r / potential->r_s);
 
   /* Now for the MN disk */
-  const float MN_term = potential->Rdisk + sqrtf(potential->Zdisk + dz * dz);
-  const float MN_pot = -potential->Mdisk / sqrtf(R2 + MN_term * MN_term);
+  const float mn_term = potential->Rdisk + sqrtf(potential->Zdisk + dz * dz);
+  const float mn_pot = -potential->Mdisk / sqrtf(R2 + mn_term * mn_term);
 
-  return term1 * term2 + MN_pot;
+  return term1 * term2 + mn_pot;
 }
 
 /**

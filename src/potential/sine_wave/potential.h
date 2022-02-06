@@ -27,8 +27,8 @@
 #include <math.h>
 
 /* Local includes. */
-#include "const.h"
 #include "error.h"
+#include "gravity.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -36,7 +36,7 @@
 #include "units.h"
 
 /**
- * @brief External Potential Properties - Sine wave case
+ * @brief External Potential Properties - Sine wave along the x-axis case
  */
 struct external_potential {
 
@@ -80,13 +80,15 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     const struct phys_const* restrict phys_const, struct gpart* restrict g) {
 
   float Acorr = 1.;
+  if (time < potential->growth_time) Acorr = time / potential->growth_time;
 
-  if (time < potential->growth_time) {
-    Acorr = time / potential->growth_time;
-  }
-
-  g->a_grav[0] = potential->amplitude * Acorr * sin(2. * M_PI * g->x[0]) /
+  g->a_grav[0] = potential->amplitude * Acorr * sinf(2. * M_PI * g->x[0]) /
                  phys_const->const_newton_G;
+
+  const float pot = potential->amplitude * Acorr * cosf(2. * M_PI * g->x[0]) /
+                    (phys_const->const_newton_G * 2. * M_PI);
+
+  gravity_add_comoving_potential(g, pot);
 }
 
 /**
@@ -103,8 +105,11 @@ external_gravity_get_potential_energy(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, const struct gpart* gp) {
 
-  /* this potential does not really have a potential energy */
-  return 0.;
+  float Acorr = 1.;
+  if (time < potential->growth_time) Acorr = time / potential->growth_time;
+
+  return potential->amplitude * Acorr * cosf(2. * M_PI * gp->x[0]) /
+         (phys_const->const_newton_G * 2. * M_PI);
 }
 
 /**
@@ -125,8 +130,8 @@ static INLINE void potential_init_backend(
       parser_get_param_double(parameter_file, "SineWavePotential:amplitude");
   potential->growth_time = parser_get_opt_param_double(
       parameter_file, "SineWavePotential:growth_time", 0.);
-  potential->timestep_limit = parser_get_param_double(
-      parameter_file, "SineWavePotential:timestep_limit");
+  potential->timestep_limit = parser_get_opt_param_double(
+      parameter_file, "SineWavePotential:timestep_limit", FLT_MAX);
 }
 
 /**

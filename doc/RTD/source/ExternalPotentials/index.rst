@@ -1,6 +1,7 @@
 .. External potentials in SWIFT
    Folkert Nobels, 25th October 2018
    Alejandro Benitez-Llambay, October 2019
+   Matthieu Schaller, December 2021
    
 External Potentials 
 ===================
@@ -12,44 +13,302 @@ potential in SWIFT.
 Implemented External Potentials
 -------------------------------
 
-Currently there are several potentials implemented in SWIFT. On this page we 
-give a short overview of the potentials that are implemented in the code:
+Currently there are several potentials implemented in SWIFT. On this page we
+give a short overview of the potentials that are implemented in the code. They
+are all switched on at configuration time via the argument
+``--with-ext-potential=XYZ`` and get their own independant section in the
+parameter file. The name of the potential to pass to the configuration script is
+given in the parenthesis of the titles below; for instance
+``--with-ext-potential=herquist``.
 
-1. No potential (none)
-2. Point mass potential (point-mass): classical point mass, can be placed at
-   a position with a mass.
-3. Plummer potential (point-mass-softened): in the code a softened point mass 
-   corresponds to a Plummer potential, can be placed at a position with a mass.
-4. Isothermal potential (isothermal): An isothermal potential which corresponds 
-   to a density profile which is :math:`\propto r^{-2}` and a potential which is 
-   logarithmic. This potential has as free parameters the rotation velocity 
-   and the position.
-5. Hernquist potential (hernquist): A potential that is given by the Hernquist 
-   potential: 
+1. No potential (``none``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This is the default setup. No external potential is used.
+There are no parameters associated with this model.
+
+2. Constant acceleration (``constant``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This "potential" just applies a constant acceleration vector at every position
+:math:`\vec{x}` in the simulation volume. This is very common in idealised test
+cases like the Rayleigh-Taylor instability or engineering applications relying
+on Earth's constant gravity field.
+
+ * :math:`\phi(\vec{x}) = -\vec{g} \cdot \vec{x}`
+ * :math:`\vec{a}(\vec{x}) = \vec{g}`
+
+The only parameter of this model is the vector :math:`\vec{g}` given in `cgs`
+units:
+
+.. code:: YAML
+	  
+   ConstantPotential:
+      g_cgs:           [0., 0., -9,81]  # Earth acceleration along z-axis (cgs units)
+
+      
+3. Point mass potential (``point-mass``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A simple single point mass that can be placed at any position :math:`\vec{p}`.
+The position can be specified either absolutely or with respect to the centre of
+the simulation volume. 
+
+ * :math:`\phi(\vec{x}) = -\displaystyle\frac{G_{\rm N}m}{|r|}`
+ * :math:`\vec{a}(\vec{x}) = -\displaystyle\frac{G_{\rm N}m}{|r|^3}\vec{r}`,
+
+where :math:`\vec{r} = \vec{x} - \vec{p}`.
+
+The code also imposes an extra limit of the size of the particles'
+time-step. The time-step has to be shorter than :math:`\Delta t_{pot} = C
+|\vec{a}(\vec{x})| / |\dot{\vec{a}}(\vec{x})|`. This criterion is designed to
+make sure the changes in accelerations remain small. The jerk
+(:math:`\dot{\vec{a}}\equiv\frac{d}{dt}\vec{a}`) is calculated from the
+positions of the particles and only includes the contribution of the external
+potential itself. The other criteria (CFL, self-gravity, ...) are applied on top
+of this criterion. The dimensionless constant :math:`C` defaults to `FLT_MAX` if
+left unspecified, effectively making SWIFT run without this time-step criterion.
+
+The parameters of the model are:
+
+.. code:: YAML
+	  
+   PointMassPotential:
+      position:         [3., 4., 5.]  # Location of the point mass (internal units)
+      useabspos:                   1  # Use absolute positions (0 for relative to centre)
+      mass:                 5.972e24  # Mass of the point (internal units)
+      timestep_mult:             0.1  # (Optional) The dimensionless constant C in the time-step condition
+	  
+4. Plummer potential (``point-mass-softened``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A single point mass with a fixed softening length using a Plummer shape that can
+be placed at any position :math:`\vec{p}`.  The position can be specified either
+absolutely or with respect to the centre of the simulation volume.
+
+ * :math:`\phi(\vec{x}) = -\displaystyle\frac{G_{\rm N}m}{\sqrt{|r|^2 + \epsilon^2}}`
+ * :math:`\vec{a}(\vec{x}) = -\displaystyle\frac{G_{\rm N}m}{(|r|^2 + \epsilon^2)^{3/2}}\vec{r}`,
+
+where :math:`\vec{r} = \vec{x} - \vec{p}`.
+
+The code also imposes an extra limit of the size of the particles'
+time-step. The time-step has to be shorter than :math:`\Delta t_{pot} = C
+|\vec{a}(\vec{x})| / |\dot{\vec{a}}(\vec{x})|`. This criterion is designed to
+make sure the changes in accelerations remain small. The jerk
+(:math:`\dot{\vec{a}}\equiv\frac{d}{dt}\vec{a}`) is calculated from the
+positions of the particles and only includes the contribution of the external
+potential itself. The other criteria (CFL, self-gravity, ...) are applied on top
+of this criterion. The dimensionless constant :math:`C` defaults to `FLT_MAX` if
+left unspecified, effectively making SWIFT run without this time-step criterion.
+
+The parameters of the model are:
+
+.. code:: YAML
+	  
+   PointMassPotential:
+      position:         [3., 4., 5.]  # Location of the point mass (internal units)
+      useabspos:                   1  # Use absolute positions (0 for relative to centre)
+      mass:                 5.972e24  # Mass of the point (internal units)
+      softening:                0.01  # Softening length (internal units)
+      timestep_mult:             0.1  # (Optional) The dimensionless constant C in the time-step condition
+      
+5. Isothermal potential (``isothermal``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An isothermal potential which corresponds to a density profile which is
+:math:`\propto r^{-2}` and a potential which is logarithmic. This potential is
+entirely set by its centre :math:`\vec{p}` and the (radially-constant) rotation
+velocity of the potential :math:`v_{\rm rot}`. The centre of the potential is softened.
+	 
+ * :math:`\phi(\vec{x}) = -\displaystyle\frac{1}{4\pi G_{\rm N}}\log(\sqrt{|r|^2 + \epsilon^2})`
+ * :math:`\vec{a}(\vec{x}) = -\displaystyle\frac{v_{\rm rot}^2} {|r|^2 + \epsilon^2}`,
+
+where :math:`\vec{r} = \vec{x} - \vec{p}`.
+
+The code also imposes an extra limit of the size of the particles'
+time-step. The time-step has to be shorter than :math:`\Delta t_{pot} = C
+|\vec{a}(\vec{x})| / |\dot{\vec{a}}(\vec{x})|`. This criterion is designed to
+make sure the changes in accelerations remain small. The jerk
+(:math:`\dot{\vec{a}}\equiv\frac{d}{dt}\vec{a}`) is calculated from the
+positions of the particles and only includes the contribution of the external
+potential itself. The other criteria (CFL, self-gravity, ...) are applied on top
+of this criterion. The dimensionless constant :math:`C` defaults to `FLT_MAX` if
+left unspecified, effectively making SWIFT run without this time-step criterion.
+
+The parameters of the model are:
+
+.. code:: YAML
+	  
+   IsothermalPotential:
+      position:         [3., 4., 5.]  # Location of the centre of the profile (internal units)
+      useabspos:                   1  # Use absolute positions (0 for relative to centre)
+      vrot:                      200  # Rotation velocity of the profile (internal units)
+      softening:                0.01  # Softening length (internal units)
+      timestep_mult:             0.1  # (Optional) The dimensionless constant C in the time-step condition
+
    
-   :math:`\Phi(r) = - \frac{GM}{r+a}.`
+6. Hernquist potential (``hernquist``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   The free parameters of Hernquist potential are mass, scale length,
-   and softening. The potential can be set at any position in the box.
-6. NFW potential (nfw): The most used potential to describe dark matter halos, the  
-   potential is given by:
+A potential that is given by the Hernquist (1990)
+potential: 
 
-   :math:`\Phi(r) = - \frac{4\pi G \rho_0 R_s^3}{r} \ln \left( 1+ 
-   \frac{r}{R_s} \right).`
+:math:`\Phi(r) = - \frac{G_{\rm N}M}{r+a}.`
 
-   This potential has as free parameters the concentration of the DM halo, the
-   virial mass (:math:`M_{200}`) and the critical density.
-7. NFW poential + Miyamoto-Nagai potential (nfw_mn): This includes and NFW potential (identical to nfw)
+The free parameters of the Hernquist potential are mass, scale length,
+and softening. The potential can be set at any position in the box. 
+The potential add an additional time step constrain that limits the 
+time step to a maximum of a specified fraction of the circular orbital 
+time at the current radius of the particle. The other criteria 
+(CFL, self-gravity, ...) are applied on top of this criterion.
+
+The Hernquist potential can be run in the most basic version, then only the 
+Hernquist mass, scale length, softening length and fraction of the 
+orbital time for the time step limit are used, the parameters of the
+model in this case are:
+
+.. code:: YAML
+
+    HernquistPotential:
+        useabspos:       0              # 0 -> positions based on centre, 1 -> absolute positions 
+        position:        [0.,0.,0.]     # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+        mass:            1e12           # Mass of the Hernquist potential
+        scalelength:     2.0            # scale length a
+        timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+        epsilon:         0.2            # Softening size (internal units)
+
+Besides the basic version, it is also possible to run the Hernquist 
+potential for idealised disk galaxies that follow the approach of 
+Springel+ 2005. The default Hernquist potential uses a corrected value 
+for the formulation that improves the match with the NFW (below) with
+the same M200 (Nobels+ in prep). Contrary to above, the idealised disk 
+setup runs with a specified M200, concentration and reduced Hubble 
+constant that set both the mass and scale length parameter. The reduced
+Hubble constant is only used to determine R200. 
+
+The parameters of the model are:
+
+.. code:: YAML
+
+    HernquistPotential:
+        useabspos:       0              # 0 -> positions based on centre, 1 -> absolute positions 
+        position:        [0.,0.,0.]     # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+        idealizeddisk:   1              # Run with an idealized galaxy disk
+        M200:            137.0          # M200 of the galaxy disk
+        h:               0.704          # reduced Hubble constant (value does not specify the used units!)
+        concentration:   9.0            # concentration of the Halo
+        diskfraction:    0.040          # Disk mass fraction
+        bulgefraction:   0.0            # Bulge mass fraction
+        timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+        epsilon:         0.2            # Softening size (internal units)
+
+
+7. Hernquist potential (``hernquist-sdmh05``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This is the same potential as Hernquist with the difference being the
+way that the idealised disk part is calculated. This potential uses
+exactly the same approach as `Springel, Di Matteo & Hernquist (2005)
+<https://ui.adsabs.harvard.edu/abs/2005MNRAS.361..776S/abstract>`_,
+this means that ICs generated with the original `MakeNewDisk` code can
+be used when using this potential. Contrary to the updated Hernquist
+potential (above) it is not possible to have an identically matched
+NFW potential.
+
+   
+8. Navarro-Frenk-White potential (``nfw``):
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   
+The most used potential to describe dark matter halos, the  
+potential is given by:
+
+:math:`\Phi(r) = - \frac{4\pi G_{\rm N} \rho_0 R_s^3}{r} \ln \left( 1+ 
+\frac{r}{R_s} \right).`
+
+This potential has as free parameters the concentration of the DM halo, the
+virial mass (:math:`M_{200}`) and the critical density. The potential add 
+an additional time step constrain that limits the time step to a maximum of 
+a specified fraction of the orbital time. 
+
+This potential in the centre and the enclosed mass at R200 are identical to 
+the Hernquist potential discussed above. 
+
+The parameters of the model are:
+
+.. code:: YAML
+
+    NFWPotential:
+        useabspos:       0              # 0 -> positions based on centre, 1 -> absolute positions 
+        position:        [0.,0.,0.]     # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+        M200:            137.0          # M200 of the galaxy disk
+        h:               0.704          # reduced Hubble constant (value does not specify the used units!)
+        concentration:   9.0            # concentration of the Halo
+        diskfraction:    0.040          # Disk mass fraction
+        bulgefraction:   0.0            # Bulge mass fraction
+        timestep_mult:   0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+        epsilon:         0.2            # Softening size (internal units)
+
+   
+9. NFW poential + Miyamoto-Nagai potential (``nfw-mn``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+   This includes and NFW potential (identical to nfw)
    plus an axisymmetric Miyamoto-Nagai potential. The Miyamoto-Nagai potential is given by:
 
-   :math:`\Phi(R,z) = - \frac{G M_{d}}{\sqrt{R^2 + \left ( R_d + \sqrt{z^2 + Z_d^2} \right )^2}}`,
+   :math:`\Phi(R,z) = - \frac{G_{\rm N} M_{d}}{\sqrt{R^2 + \left ( R_d + \sqrt{z^2 + Z_d^2} \right )^2}}`,
 
    where :math:`R^2 = x^2 + y^2` is the projected radius and :math:`M_d`, :math:`R_d`, :math:`Z_d` are the 
    mass, scalelength and scaleheight of the disk (in internal units), respectively. 
+
+The parameters of the model are:
+
+.. code:: YAML
+
+    NFW_MNPotential:
+        useabspos:        0              # 0 -> positions based on centre, 1 -> absolute positions 
+        position:         [0.,0.,0.]     # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
+        M_200:            137.0          # M200 of the halo in internal units
+	critical_density: 123.4          # Critical density of the universe in internal units
+        concentration:    9.0            # concentration of the NFW halo
+	Mdisk:            3.0            # Mass of the disk in internal units
+	Rdisk:            3.0            # Disk scale-length in internal units
+	Zdisk:            3.0            # Disk scale-height in internal units
+        timestep_mult:    0.01           # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
+
    
-8. Sine wave (sine-wave)
-9. Point mass ring (point-mass-ring)
-10. Disc Patch (disc-patch)
+10. Sine wave (``sine-wave``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This "potential" is designed for specific idealised tests. It is a basic (not
+really physical!) sinusoid wave along the x-axis with a unit wavelength and a
+tunable amplitude and growth time.
+
+ * :math:`\phi(\vec{x}) = A \cos\left(2 \pi x_{0}\right) / 2\pi`
+ * :math:`a_0(\vec{x}) = A \sin\left(2 \pi x_{0}\right)`,
+
+where the 0 subscript indicates the x-component. The y- and z-components are zero.
+
+The amplitude :math:`A` can be growing linearly to its maximum over a fixed
+time-scale.
+
+Optionally, a constant maximail time-step size can be used with this potential.
+
+The parameters of the model are:
+
+.. code:: YAML
+
+   SineWavePotential:
+      amplitude:                 2.5  # The amplitude of the wave (internal units) 
+      growth_time:               1.2  # Time for the amplitude to grow to its final value (internal units)
+      timestep_limit:            5.0  # (Optional) The max time-step of the particles (internal units)
+
+11. Disc Patch (``disc-patch``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A potential corresponding to a vertical slice through a galactic disk. This
+follows the definitions of `Creasey, Theuns & Bower (2013)
+<https://adsabs.harvard.edu/abs/2013MNRAS.429.1922C>`_ equations (16) and (17).
+The potential is implemented along the x-axis.
 
 
 How to implement your own potential

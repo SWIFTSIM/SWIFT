@@ -41,6 +41,7 @@
 #include "error.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "potential.h"
 #include "sink_io.h"
 #include "stars_io.h"
 #include "threadpool.h"
