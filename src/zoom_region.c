@@ -1377,6 +1377,11 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data, int num
 						                  ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
+						/* Ensure both cells are background cells */
+						if (ci->tl_cell_type == 3 || cj->tl_cell_type == 3) {
+							error("Cell %d and cell %d are not background cells! (ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
+										cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+						}
 						#ifdef WITH_MPI
 
             /* Let's cross-check that we had a proxy for that cell */
@@ -1531,6 +1536,11 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data, int num_el
 						                  ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
+						/* Ensure both cells are zoom cells */
+						if (ci->tl_cell_type <= 2 || cj->tl_cell_type <= 2) {
+							error("Cell %d and cell %d are not zoom cells! (ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
+										cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+						}
 						#ifdef WITH_MPI
 
             /* Let's cross-check that we had a proxy for that cell */
@@ -1929,7 +1939,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 				/* Ensure both cells are not in the same level */
 				if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
 				(ci->tl_cell_type == cj->tl_cell_type))) {
-					error("Cell %d and cell %d are the same cell type! (ci=%d, cj=%d)",
+					error("Cell %d and cell %d are the same cell type! (ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
 								cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
 				}
 #ifdef WITH_MPI
