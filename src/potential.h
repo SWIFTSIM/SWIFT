@@ -36,6 +36,8 @@
 #include "./potential/isothermal/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_HERNQUIST)
 #include "./potential/hernquist/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_HERNQUIST_SDMH05)
+#include "./potential/hernquist_sdmh05/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_NFW)
 #include "./potential/nfw/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_NFW_MN)
@@ -44,8 +46,6 @@
 #include "./potential/disc_patch/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_SINE_WAVE)
 #include "./potential/sine_wave/potential.h"
-#elif defined(EXTERNAL_POTENTIAL_POINTMASS_RING)
-#include "./potential/point_mass_ring/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_POINTMASS_SOFT)
 #include "./potential/point_mass_softened/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_CONSTANT)
