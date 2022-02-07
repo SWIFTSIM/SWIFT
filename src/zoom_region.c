@@ -1906,5 +1906,86 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
   }
 }
 
+/**
+ * @brief Constructs the top-level self + pair tasks for the FOF loop over
+ * neighbours.
+ *
+ * Here we construct all the tasks for all possible neighbouring non-empty
+ * local cells in the hierarchy. No dependencies are being added thus far.
+ * Additional loop over neighbours can later be added by simply duplicating
+ * all the tasks created by this function.
+ *
+ * This replaces the function in engine_maketasks but simply removes periodicity
+ * (the zoom level never has periodicity), otherwise the function is identical.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
+void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data, int num_elements,
+                                      void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without gravity particles */
+    if (ci->grav.count == 0) continue;
+
+    /* If the cells is local build a self-interaction */
+    if (ci->nodeID == nodeID)
+      scheduler_addtask(sched, task_type_fof_self, task_subtype_none, 0, 0, ci,
+                        NULL);
+    else
+      continue;
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (iii < 0 || iii >= cdim[0]) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (jjj < 0 || jjj >= cdim[1]) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (kkk < 0 || kkk >= cdim[2]) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is that neighbour local and does it have particles ? */
+          if (cid >= cjd || cj->grav.count == 0 || (ci->nodeID != cj->nodeID))
+            continue;
+
+          /* Construct the pair task */
+          scheduler_addtask(sched, task_type_fof_pair, task_subtype_none, 0, 0,
+                            ci, cj);
+        }
+      }
+    }
+  }
+}
+
 
 #endif /* WITH_ZOOM_REGION */
