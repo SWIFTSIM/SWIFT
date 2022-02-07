@@ -1349,11 +1349,28 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     error("assigning top level cell index to cell with depth > 0");
   } else {
 #ifdef WITH_ZOOM_REGION
-    if (1) {
+    if ((2 * cdim[0] * cdim[1] * cdim[2]) > 32 * 32 * 32)  {
+    	/* print warning only once */
+      if (last_cell_id == 1ULL) {
+        message(
+            "WARNING: Got  2 x (%d x %d x %d) top level cells. "
+            "Cell IDs are only guaranteed to be "
+            "reproduceably unique if count is < 32^3",
+            cdim[0], cdim[1], cdim[2]);
+      }
+      /* Do this in same line. Otherwise, bad things happen. */
+      c->cellID = atomic_inc(&last_cell_id);
+    } else {
+      int i = (int)(c->loc[0] * iwidth[0] + 0.5);
+      int j = (int)(c->loc[1] * iwidth[1] + 0.5);
+      int k = (int)(c->loc[2] * iwidth[2] + 0.5);
+      c->cellID = (unsigned long long)(cell_getid_zoom(cdim, c->loc[0], c->loc[1], c->loc[2], i, j, k) + 1);
+    }
+    /* in both cases, keep track of first prodigy index */
+    atomic_inc(&last_leaf_cell_id);
 #else
     if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
-#endif
-      /* print warning only once */
+    	      /* print warning only once */
       if (last_cell_id == 1ULL) {
         message(
             "WARNING: Got %d x %d x %d top level cells. "
@@ -1371,6 +1388,7 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     }
     /* in both cases, keep track of first prodigy index */
     atomic_inc(&last_leaf_cell_id);
+#endif
   }
 #endif
 }
