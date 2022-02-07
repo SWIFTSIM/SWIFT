@@ -1995,4 +1995,144 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	}
 }
 
+/**
+ * @brief Constructs the top-level pair tasks for the first hydro loop over
+ * neighbours
+ *
+ * Here we construct all the tasks for all possible neighbouring non-empty
+ * local cells in the hierarchy. No dependencies are being added thus far.
+ * Additional loop over neighbours can later be added by simply duplicating
+ * all the tasks created by this function.
+ *
+ * This replaces the function in engine_maketasks but simply removes periodicity
+ * (the zoom level never has periodicity), otherwise the function is identical.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
+void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elements,
+		                                              void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without hydro or star particles */
+    if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0) &&
+        (!with_sinks || ci->sinks.count == 0) &&
+        (!with_black_holes || ci->black_holes.count == 0))
+      continue;
+
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
+      scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
+                        NULL);
+    }
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (iii < 0 || iii >= cdim[0]) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (jjj < 0 || jjj >= cdim[1]) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (kkk < 0 || kkk >= cdim[2]) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is that neighbour local and does it have gas or star particles ? */
+          if ((cid >= cjd) ||
+              ((cj->hydro.count == 0) &&
+               (!with_feedback || cj->stars.count == 0) &&
+               (!with_sinks || cj->sinks.count == 0) &&
+               (!with_black_holes || cj->black_holes.count == 0)) ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct the pair task */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair, task_subtype_density, sid, 0,
+                            ci, cj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cid);
+          }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+        }
+      }
+    }
+  }
+}
+
+
 #endif /* WITH_ZOOM_REGION */
