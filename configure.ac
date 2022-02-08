@@ -2623,7 +2623,7 @@ AM_CONDITIONAL([HAVEEAGLECOOLING], [test "$with_cooling" = "EAGLE"])
 AM_CONDITIONAL([HAVECOLIBRECOOLING], [test "$with_cooling" = "COLIBRE"])
 
 # Check if using EAGLE feedback
-AM_CONDITIONAL([HAVEEAGLETHERMALFEEDBACK], [test "$with_feedback" = "EAGLE-thermal"])
+AM_CONDITIONAL([HAVEEAGLETHERMALFEEDBACK], [test "${with_feedback%-thermal}" = "EAGLE"])
 AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinetic"])
 
 # check if using grackle cooling
