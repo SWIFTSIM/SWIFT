@@ -1343,7 +1343,12 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
  * @param iwidth inverse of top cell width
  */
 __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
-    struct cell *c, int cdim[3], double dim[3], double iwidth[3]) {
+    struct cell *c, const struct space *s) {
+
+	/* Get some information from the space */
+	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+	const int dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+	const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   if (c->depth != 0) {
@@ -1365,7 +1370,7 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
       int i = (int)(c->loc[0] * iwidth[0] + 0.5);
       int j = (int)(c->loc[1] * iwidth[1] + 0.5);
       int k = (int)(c->loc[2] * iwidth[2] + 0.5);
-      c->cellID = (unsigned long long)(cell_getid_zoom(cdim, c->loc[0], c->loc[1], c->loc[2], i, j, k) + 1);
+      c->cellID = (unsigned long long)(cell_getid_zoom(cdim, c->loc[0], c->loc[1], c->loc[2], s, i, j, k) + 1);
     }
     /* in both cases, keep track of first prodigy index */
     atomic_inc(&last_leaf_cell_id);

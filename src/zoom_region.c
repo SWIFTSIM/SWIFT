@@ -421,7 +421,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
           c->mpi.send = NULL;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-          cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
+          cell_assign_top_level_cell_index(c, s);
 #endif
 
         }
