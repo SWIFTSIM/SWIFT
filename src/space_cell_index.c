@@ -128,9 +128,8 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 #ifdef WITH_ZOOM_REGION
 	  const int index = cell_getid_zoom(cdim, pos_x,
 	                                    pos_y, pos_z, s,
-	                                    pos_x * ih_x,
-	                                    pos_y * ih_y,
-	                                    pos_z * ih_z);
+	                                    (int)(pos_x * ih_x), (int)(pos_y * ih_y),
+                                      (int)(pos_z * ih_z));
 #else
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
