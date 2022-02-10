@@ -42,30 +42,28 @@ It defines how many steps are done in between two task level output dumps.
 Cell graph
 ----------
 
-An interactive graph of the cells is available with the configuration option ``--enable-cell-graph``.
-During a run, SWIFT will generate a ``cell_hierarchy_*.csv`` file per MPI rank at the frequency given by the parameter ``--cell-dumps=n``.
-The command ``tools/make_cell_hierarchy.sh cell_hierarchy_0000_*.csv`` merges the files at time step 0 together and generates the file ``cell_hierarchy.html``
-that contains the graph and can be read with your favorite web browser.
+An interactive graph of the cells is available with the configuration option ``--enable-cell-graph``. During a
+run, SWIFT will generate a ``cell_hierarchy_*.csv`` file per MPI rank at the frequency given by the parameter
+``--cell-dumps=n``. The script ``tools/make_cell_hierarchy.py`` can be used to collate the files produced by
+different MPI ranks and convert them into a web page that shows an interactive cell hierarchy. The script
+takes the names of all the files you want to include as input, and requires an output prefix that will be used
+to name the output files ``prefix.csv`` and ``prefix.html``. If the prefix path contains directories that do
+not exist, the script will create those.
 
-With most web browsers, you cannot access the files directly.
-If it is the case, the cells will never appear (but everything else should be fine).
-To solve this problem, you will need to either access them through an existing server (e.g. public http provided by your university)
-or install ``npm`` and then run the following commands
+The output files cannot be directly viewed from a browser, because they require a server connection to
+interactively load the data. You can either copy them over to a server, or set up a local server yourself. The
+latter can also be done directly by the script by using the optional parameter ``--serve``.
 
-.. code-block:: bash
+When running a large simulation, the data loading may take a while (a few seconds for EAGLE_6). Your browser
+should not be hanging, but will appear to be idle. For really large simulations, the browser will give up and
+will probably display an error message.
 
-   npm install http-server -g
-   http-server .
-
-Now you can open the web page ``http://localhost:8080/cell_hierarchy.html``.
-When running a large simulation, the data loading may take a while (a few seconds for EAGLE_6).
-Your browser should not be hanging, but will seems to be idle.
-
-If you wish to add some information to the graph, you can do it by modifying the files ``src/space.c`` and ``tools/data/cell_hierarchy.html``.
-In the first one, you will need to modify the calls to ``fprintf`` in the functions ``space_write_cell_hierarchy`` and ``space_write_cell``.
-Here the code is simply writing CSV files containing all the required information about the cells.
-In the second one, you will need to find the function ``mouseover`` and add the field that you have created.
-You can also increase the size of the bubble through the style parameter ``height``.
+If you wish to add some information to the graph, you can do it by modifying the files ``src/space.c`` and
+``tools/data/cell_hierarchy.html``. In the first one, you will need to modify the calls to ``fprintf`` in the
+functions ``space_write_cell_hierarchy`` and ``space_write_cell``. Here the code is simply writing CSV files
+containing all the required information about the cells. In the second file, you will need to find the
+function ``mouseover`` and add the field that you have created. You can also increase the size of the bubble
+through the style parameter ``height``.
 
 Memory usage reports
 --------------------
