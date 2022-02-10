@@ -96,14 +96,15 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
     const double ih_z_zoom = zoom_props->iwidth[2];
 
     /* Are the passed coordinates within the zoom region? */
-    if (x >= zoom_region_bounds[0] && x <= zoom_region_bounds[1] &&
-        y >= zoom_region_bounds[2] && y <= zoom_region_bounds[3] &&
-        z >= zoom_region_bounds[4] && z <= zoom_region_bounds[5]) {
+    if (x > zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
+        y > zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
+        z > zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
     
       /* Which zoom TL cell are we in? */
-      cell_id = cell_getid(cdim, (int)((x - zoom_region_bounds[0]) * ih_x_zoom),
-      		                 (int)((y - zoom_region_bounds[2]) * ih_y_zoom),
-                           (int)((z - zoom_region_bounds[4]) * ih_z_zoom));
+      cell_id = cell_getid(cdim,
+      		                 ((x - zoom_region_bounds[0]) * ih_x_zoom),
+      		                 ((y - zoom_region_bounds[2]) * ih_y_zoom),
+                           ((z - zoom_region_bounds[4]) * ih_z_zoom));
 #ifdef SWIFT_DEBUG_CHECKS
       if (cell_id < 0 || cell_id >= cdim[0] * cdim[1] * cdim[2])
         error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
