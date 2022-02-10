@@ -103,7 +103,7 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
       /* Which zoom TL cell are we in? */
       const int zoom_i = (x - zoom_region_bounds[0]) / ih_x_zoom;
       const int zoom_j = (y - zoom_region_bounds[2]) / ih_y_zoom;
-      const int zoom_k = (z - zoom_region_bounds[4]) / ih_z_zoom
+      const int zoom_k = (z - zoom_region_bounds[4]) / ih_z_zoom;
       cell_id = cell_getid(cdim, zoom_i, zoom_j, zoom_k);
 
 #ifdef SWIFT_DEBUG_CHECKS
