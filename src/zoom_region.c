@@ -91,20 +91,21 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
         zoom_props->region_bounds[0], zoom_props->region_bounds[1],
         zoom_props->region_bounds[2], zoom_props->region_bounds[3],
         zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
-    const double ih_x_zoom = zoom_props->iwidth[0];
-    const double ih_y_zoom = zoom_props->iwidth[1];
-    const double ih_z_zoom = zoom_props->iwidth[2];
+    const double h_x_zoom = zoom_props->width[0];
+    const double h_y_zoom = zoom_props->width[1];
+    const double h_z_zoom = zoom_props->width[2];
 
     /* Are the passed coordinates within the zoom region? */
-    if (x > zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
-        y > zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
-        z > zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
+    if (x >= zoom_region_bounds[0] && x <= zoom_region_bounds[1] &&
+        y >= zoom_region_bounds[2] && y <= zoom_region_bounds[3] &&
+        z >= zoom_region_bounds[4] && z <= zoom_region_bounds[5]) {
     
       /* Which zoom TL cell are we in? */
-      cell_id = cell_getid(cdim,
-      		                 ((x - zoom_region_bounds[0]) * ih_x_zoom),
-      		                 ((y - zoom_region_bounds[2]) * ih_y_zoom),
-                           ((z - zoom_region_bounds[4]) * ih_z_zoom));
+      const int zoom_i = (x - zoom_region_bounds[0]) / ih_x_zoom;
+      const int zoom_j = (y - zoom_region_bounds[2]) / ih_y_zoom;
+      const int zoom_k = (z - zoom_region_bounds[4]) / ih_z_zoom
+      cell_id = cell_getid(cdim, zoom_i, zoom_j, zoom_k);
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (cell_id < 0 || cell_id >= cdim[0] * cdim[1] * cdim[2])
         error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
