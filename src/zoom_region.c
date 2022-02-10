@@ -96,9 +96,9 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
     const double ih_z_zoom = zoom_props->iwidth[2];
 
     /* Are the passed coordinates within the zoom region? */
-    if (x >= zoom_region_bounds[0] && x <= zoom_region_bounds[1] &&
-        y >= zoom_region_bounds[2] && y <= zoom_region_bounds[3] &&
-        z >= zoom_region_bounds[4] && z <= zoom_region_bounds[5]) {
+    if (x > zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
+        y > zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
+        z > zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
     
       /* Which zoom TL cell are we in? */
       const int zoom_i = (x - zoom_region_bounds[0]) * ih_x_zoom;
@@ -329,7 +329,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
         s->width[2] / s->zoom_props->width[2]);
   }
 
-  /* Set the number of zoom cells in a natural cell */
+  /* Set the number of zoom props */
   for (int l = 0; l < 6; l++) {
   	s->zoom_props->region_bounds[l] = zoom_region_bounds[l];
   }
