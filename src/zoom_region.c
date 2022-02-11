@@ -137,11 +137,12 @@ void construct_zoom_region(struct space *s, int verbose) {
 #ifdef WITH_ZOOM_REGION
   double new_zoom_boundary[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
   const size_t nr_gparts = s->nr_gparts;
+  const size_t nr_gparts = s->nr_parts;
   double mtot = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
   double widths[3] = {0.0, 0.0, 0.0};
 
-  /* Find the min/max location in each dimension for each mask particle, and their COM. */
+  /* Find the min/max location in each dimension for each mask gravity particle, and their COM. */
   for (size_t k = 0; k < nr_gparts; k++) {
     if (s->gparts[k].type != swift_type_dark_matter) continue;
 
@@ -162,6 +163,28 @@ void construct_zoom_region(struct space *s, int verbose) {
     com[0] += s->gparts[k].x[0] * s->gparts[k].mass;
     com[1] += s->gparts[k].x[1] * s->gparts[k].mass;
     com[2] += s->gparts[k].x[2] * s->gparts[k].mass;
+  }
+  
+  /* Now check the min/max location in each dimension for each mask hydro particle, and their COM. */
+  for (size_t k = 0; k < nr_parts; k++) {
+
+    if (s->parts[k].x[0] < new_zoom_boundary[0])
+      new_zoom_boundary[0] = s->parts[k].x[0];
+    if (s->parts[k].x[0] > new_zoom_boundary[1])
+      new_zoom_boundary[1] = s->parts[k].x[0];
+    if (s->parts[k].x[1] < new_zoom_boundary[2])
+      new_zoom_boundary[2] = s->parts[k].x[1];
+    if (s->parts[k].x[1] > new_zoom_boundary[3])
+      new_zoom_boundary[3] = s->parts[k].x[1];
+    if (s->parts[k].x[2] < new_zoom_boundary[4])
+      new_zoom_boundary[4] = s->parts[k].x[2];
+    if (s->parts[k].x[2] > new_zoom_boundary[5])
+      new_zoom_boundary[5] = s->parts[k].x[2];
+
+    mtot += s->parts[k].mass;
+    com[0] += s->parts[k].x[0] * s->parts[k].mass;
+    com[1] += s->parts[k].x[1] * s->parts[k].mass;
+    com[2] += s->parts[k].x[2] * s->parts[k].mass;
   }
 
 #ifdef WITH_MPI
