@@ -325,8 +325,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   }
 
   if (verbose) {
-  	  	message("tl_cell_offset: [%d]",
-        s->zoom_props->tl_cell_offset, );
+  	  	message("tl_cell_offset: %d", s->zoom_props->tl_cell_offset);
   	message("zoom_boundary: [%f-%f %f-%f %f-%f]",
         new_zoom_boundary[0], new_zoom_boundary[1],
         new_zoom_boundary[2], new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
