@@ -309,7 +309,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   	s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
     s->zoom_props->width[ijk] = s->zoom_props->dim[ijk] / s->cdim[ijk];
     s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
-    s->zoom_props->cdim[ijk] = cdim[ijk];
+    s->zoom_props->cdim[ijk] = s->cdim[ijk];
   }
 
   for (int l = 0; l < 6; l++) {
