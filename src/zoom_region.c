@@ -270,7 +270,7 @@ void construct_zoom_region(struct space *s, int verbose) {
 
 		/* If the upper boundary lies inside a natural cell we need to add the width of a natual cell,
 		 * if it's at the boundary we do not */
-		if ((double)(int)((mid_point + (max_width / 2)) * s->iwidth[ijk]) == ((mid_point + (max_width / 2)) * s->iwidth[ijk])) {
+		if ((int)((mid_point + (max_width / 2)) * s->iwidth[ijk]) == ((mid_point + (max_width / 2)) * s->iwidth[ijk])) {
 
 			/* Use this integer cell coordinate to define upper boundary */
 	    new_zoom_boundary[(ijk * 2) + 1] = ini_up_zoom_boundary * s->width[ijk];
