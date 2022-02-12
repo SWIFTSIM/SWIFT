@@ -107,7 +107,7 @@ int cell_getid_zoom(const int cdim[3], const double x, const double y,
       const int zoom_i = (x - zoom_region_bounds[0]) * ih_x_zoom;
       const int zoom_j = (y - zoom_region_bounds[2]) * ih_y_zoom;
       const int zoom_k = (z - zoom_region_bounds[4]) * ih_z_zoom;
-      cell_id = cell_getid(cdim, zoom_i, zoom_j, zoom_k);
+      cell_id = cell_getid(s->zoom_props->cdim, zoom_i, zoom_j, zoom_k);
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (cell_id < 0 || cell_id >= cdim[0] * cdim[1] * cdim[2])
@@ -141,7 +141,6 @@ void construct_zoom_region(struct space *s, int verbose) {
   double new_zoom_boundary[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
   const size_t nr_gparts = s->nr_gparts;
   const size_t nr_parts = s->nr_parts;
-  const int bkg_cell_offset = s->cdim[0] * s->cdim[1] * s->cdim[2];
   double mtot = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
   double widths[3] = {0.0, 0.0, 0.0};
@@ -376,95 +375,124 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   /* Loop over top level cells twice, first time for the zoom region, second for the natural cells. */
   for (int n = 0; n < 2; n++) {
 
-    /* Set the cell location and sizes. */
-    for (int i = 0; i < cdim[0]; i++) {
-      for (int j = 0; j < cdim[1]; j++) {
-        for (int k = 0; k < cdim[2]; k++) {
-          const size_t cid = cell_getid(cdim, i, j, k);
+    struct cell *restrict c;
+    if (n == 0) {
+      /* Set the cell location and sizes. */
+	    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+	      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+	        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+	          const size_t cid = cell_getid(s->zoom_props->cdim, i, j, k);
 
-          struct cell *restrict c;
-          if (n == 0) {
+			      /* First we must create the zoom cell and it's multipoles */
+			      c = &s->cells_top[cid];
+			      c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
+			      c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
+			      c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
+			      c->parent_tl_cid = cell_getid(cdim, (int)(c->loc[0] * s->iwidth[0]),
+			          (int)(c->loc[1] * s->iwidth[1]), (int)(c->loc[2] * s->iwidth[2]));
+			      c->width[0] = s->zoom_props->width[0];
+			      c->width[1] = s->zoom_props->width[1];
+			      c->width[2] = s->zoom_props->width[2];
+			      if (s->with_self_gravity)
+			        c->grav.multipole = &s->multipoles_top[cid];
+			      c->tl_cell_type = zoom_tl_cell;
+			      c->dmin = dmin_zoom;
+			      c->nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+			      c->depth = 0;
+				    c->split = 0;
+				    c->hydro.count = 0;
+				    c->grav.count = 0;
+				    c->stars.count = 0;
+				    c->sinks.count = 0;
+				    c->top = c;
+				    c->super = c;
+				    c->hydro.super = c;
+				    c->grav.super = c;
+				    c->hydro.ti_old_part = ti_current;
+				    c->grav.ti_old_part = ti_current;
+				    c->stars.ti_old_part = ti_current;
+				    c->sinks.ti_old_part = ti_current;
+				    c->black_holes.ti_old_part = ti_current;
+				    c->grav.ti_old_multipole = ti_current;
+#ifdef WITH_MPI
+				    c->mpi.tag = -1;
+				    c->mpi.recv = NULL;
+				    c->mpi.send = NULL;
+#endif
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+				    cell_assign_top_level_cell_index(c, s);
+#endif
+          }
+	      }
+	    }
+    } else {
+	    /* Set the cell location and sizes. */
+	    for (int i = 0; i < cdim[0]; i++) {
+	      for (int j = 0; j < cdim[1]; j++) {
+	        for (int k = 0; k < cdim[2]; k++) {
+	          const size_t cid = cell_getid(cdim, i, j, k);
 
-          	/* First we must create the zoom cell and it's multipoles */
-            c = &s->cells_top[cid];
-            c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
-            c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
-            c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
-            c->parent_tl_cid = cell_getid(cdim, (int)(c->loc[0] * s->iwidth[0]),
-            		(int)(c->loc[1] * s->iwidth[1]), (int)(c->loc[2] * s->iwidth[2]));
-            c->width[0] = s->zoom_props->width[0];
-            c->width[1] = s->zoom_props->width[1];
-            c->width[2] = s->zoom_props->width[2];
-            if (s->with_self_gravity)
-              c->grav.multipole = &s->multipoles_top[cid];
-            c->tl_cell_type = zoom_tl_cell;
-            c->dmin = dmin_zoom;
-            c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
+			      /* Natural top level cells. */
+			      c = &s->cells_top[cid + bkg_cell_offset];
+			      c->loc[0] = i * s->width[0];
+			      c->loc[1] = j * s->width[1];
+			      c->loc[2] = k * s->width[2];
+			      c->width[0] = s->width[0];
+			      c->width[1] = s->width[1];
+			      c->width[2] = s->width[2];
+			      c->dmin = dmin;
+			      c->nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
-          } else {
+			      if (s->with_self_gravity)
+			        c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
 
-          	/* Natural top level cells. */
-            c = &s->cells_top[cid + bkg_cell_offset];
-            c->loc[0] = i * s->width[0];
-            c->loc[1] = j * s->width[1];
-            c->loc[2] = k * s->width[2];
-            c->width[0] = s->width[0];
-            c->width[1] = s->width[1];
-            c->width[2] = s->width[2];
-            c->dmin = dmin;
-            c->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
-
-            if (s->with_self_gravity)
-              c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
-
-            /* if the cell lies within the zoom region we need to label it as void */
+			      /* if the cell lies within the zoom region we need to label it as void */
 				    if (c->loc[0] >= zoom_region_bounds[0] && c->loc[0] < zoom_region_bounds[1] &&
 				        c->loc[1] >= zoom_region_bounds[2] && c->loc[1] < zoom_region_bounds[3] &&
 				        c->loc[2] >= zoom_region_bounds[4] && c->loc[2] < zoom_region_bounds[5]) {
-				    	/* Tag this top level cell as part of the zoom region. */
-              c->tl_cell_type = void_tl_cell;
+				      /* Tag this top level cell as part of the zoom region. */
+			        c->tl_cell_type = void_tl_cell;
 
-              /* Assign the start and end indices for the zoom cells within this cell */
-              c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
+			        /* Assign the start and end indices for the zoom cells within this cell */
+			        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
 			        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
 			        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
 			        c->end_i = (c->loc[0] - zoom_region_bounds[0] + c->width[0]) * s->zoom_props->iwidth[0];
 			        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[1]) * s->zoom_props->iwidth[1];
 			        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[2]) * s->zoom_props->iwidth[2];
 				    } else {
-				    	c->tl_cell_type = tl_cell;
+				      c->tl_cell_type = tl_cell;
 				    }
-
-          }
-          c->depth = 0;
-          c->split = 0;
-          c->hydro.count = 0;
-          c->grav.count = 0;
-          c->stars.count = 0;
-          c->sinks.count = 0;
-          c->top = c;
-          c->super = c;
-          c->hydro.super = c;
-          c->grav.super = c;
-          c->hydro.ti_old_part = ti_current;
-          c->grav.ti_old_part = ti_current;
-          c->stars.ti_old_part = ti_current;
-          c->sinks.ti_old_part = ti_current;
-          c->black_holes.ti_old_part = ti_current;
-          c->grav.ti_old_multipole = ti_current;
+				    c->depth = 0;
+				    c->split = 0;
+				    c->hydro.count = 0;
+				    c->grav.count = 0;
+				    c->stars.count = 0;
+				    c->sinks.count = 0;
+				    c->top = c;
+				    c->super = c;
+				    c->hydro.super = c;
+				    c->grav.super = c;
+				    c->hydro.ti_old_part = ti_current;
+				    c->grav.ti_old_part = ti_current;
+				    c->stars.ti_old_part = ti_current;
+				    c->sinks.ti_old_part = ti_current;
+				    c->black_holes.ti_old_part = ti_current;
+				    c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
-          c->mpi.tag = -1;
-          c->mpi.recv = NULL;
-          c->mpi.send = NULL;
+				    c->mpi.tag = -1;
+				    c->mpi.recv = NULL;
+				    c->mpi.send = NULL;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-          cell_assign_top_level_cell_index(c, s);
+				    cell_assign_top_level_cell_index(c, s);
 #endif
 
-        }
-      }
-    }
-  }
+          }
+	      }
+	    }
+	  }
+	}
 
   /* Now find what cells neighbour the zoom region. */
   if (s->with_zoom_region) find_neighbouring_cells(s, gravity_properties, verbose);
@@ -1511,7 +1539,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data, int num_el
 	struct space *s = e->s;
 	struct scheduler *sched = &e->sched;
 	const int nodeID = e->nodeID;
-	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+	const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2]};
 	struct cell *cells = s->cells_top;
 	const double theta_crit = e->gravity_properties->theta_crit;
 
@@ -1859,7 +1887,7 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int *cdim = s->cdim;
+  const int *cdim = s->zoom_props->cdim;
   struct cell *cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
@@ -1994,7 +2022,7 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data, int num_elements
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int *cdim = s->cdim;
+  const int *cdim = s->zoom_props->cdim;
   struct cell *cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
