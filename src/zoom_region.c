@@ -142,7 +142,6 @@ void construct_zoom_region(struct space *s, int verbose) {
   double mtot = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
   double widths[3] = {0.0, 0.0, 0.0};
-  double midpoints[3] = {0.0, 0.0, 0.0};
 
   /* Find the min/max location in each dimension for each mask gravity particle, and their COM. */
   for (size_t k = 0; k < nr_gparts; k++) {
@@ -288,9 +287,9 @@ void construct_zoom_region(struct space *s, int verbose) {
   /* If this process has pushed the zoom region outside the bounds
    * of the box we need to stop and shift the ICs to avoid having
    * cells with unequal widths */
-  double shiftx = 0.;
-  double shifty = 0.;
-  double shiftz = 0.;
+  shiftx = 0.;
+  shifty = 0.;
+  shiftz = 0.;
   if ((new_zoom_boundary[0] < 0) || (new_zoom_boundary[1] > s->dim[0])
   || (new_zoom_boundary[2] < 0) || (new_zoom_boundary[3] > s->dim[1])
   || (new_zoom_boundary[4] < 0) || (new_zoom_boundary[5] > s->dim[2])) {
@@ -308,7 +307,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   s->zoom_props->nr_zoom_cells = s->width[0] / s->zoom_props->width[0];
   for (int ijk = 0; ijk < 3; ijk++) {
   	s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
-    s->zoom_props->width[ijk] = s->zoom_props->dim[ijk] / cdim[ijk];
+    s->zoom_props->width[ijk] = s->zoom_props->dim[ijk] / s->cdim[ijk];
     s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
     s->zoom_props->cdim[ijk] = cdim[ijk];
   }
@@ -318,9 +317,8 @@ void construct_zoom_region(struct space *s, int verbose) {
   }
 
   if (verbose) {
-  	message("com: [%f %f %f] initial_dim: [%f %f %f]", com[0], com[1], com[2]);
-    message("zoom_region_cent: [%f %f %f] zoom_boundary: [%f-%f %f-%f %f-%f]",
-        mid_points[0], mid_points[1], mid_points[2], new_zoom_boundary[0], new_zoom_boundary[1],
+  	message("com: [%f %f %f] zoom_boundary: [%f-%f %f-%f %f-%f]",
+        com[0], com[1], com[2], new_zoom_boundary[0], new_zoom_boundary[1],
         new_zoom_boundary[2], new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
     message("tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f] dim: [%f %f %f]",
         s->width[0], s->width[1], s->width[2],
