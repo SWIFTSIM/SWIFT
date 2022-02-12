@@ -201,12 +201,6 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
   if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
       cdim[2] < s->cdim[2]) {
 
-#ifdef WITH_ZOOM_REGION
-	  message("Constructing zoom region.");
-    /* Compute the bounds of the zoom region from the DM particles. */
-    if (s->with_zoom_region) construct_zoom_region(s, verbose);
-#endif
-
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
     message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
@@ -236,6 +230,12 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
       s->iwidth[k] = 1.0 / s->width[k];
     }
     const float dmin = min3(s->width[0], s->width[1], s->width[2]);
+
+#ifdef WITH_ZOOM_REGION
+	  message("Constructing zoom region.");
+    /* Compute the bounds of the zoom region from the DM particles. */
+    if (s->with_zoom_region) construct_zoom_region(s, verbose);
+#endif
 
     /* Allocate the highest level of cells. */
     s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
