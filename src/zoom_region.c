@@ -243,7 +243,7 @@ void construct_zoom_region(struct space *s, int verbose) {
 	
   	/* Find the bounding cells (including zoom boost factor) */
   	const double width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
-  	message("%f %d %d %d", width, (ijk * 2) + 1, ijk * 2, ijk);
+  	message("%f %f %f %f %f %f %d %d %d", width, s->iwidth[ijk], com[ijk] - (width / 2), com[ijk] + (width / 2), (com[ijk] - (width / 2)) * s->iwidth[ijk], (com[ijk] + (width / 2)) * s->iwidth[ijk], (ijk * 2) + 1, ijk * 2, ijk);
 		const int ijk_low_bound = (com[ijk] - (width / 2)) * s->iwidth[ijk];
 		const int ijk_up_bound = (com[ijk] + (width / 2)) * s->iwidth[ijk];
 		message("%d %d", ijk_low_bound, ijk_up_bound);
