@@ -245,7 +245,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   	const double width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
 		const int ijk_low_bound = (s->zoom_props->com[ijk] - (width / 2)) * s->iwidth[ijk];
 		const int ijk_up_bound = (s->zoom_props->com[ijk] + (width / 2)) * s->iwidth[ijk];
-		
+		message("%d %d", ijk_low_bound, ijk_up_bound);
 		/* Find the length of the region along this axis and assign it to array */
 		widths[ijk] = (ijk_up_bound + 1 - ijk_low_bound) * s->width[ijk];
 
