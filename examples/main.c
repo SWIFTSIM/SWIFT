@@ -1296,6 +1296,8 @@ int main(int argc, char *argv[]) {
       fflush(stdout);
     }
 
+    message("got here");
+
 	  /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));
     if (with_external_gravity)
@@ -1314,6 +1316,8 @@ int main(int argc, char *argv[]) {
     } else {
       pm_mesh_init_no_mesh(&mesh, s.dim);
     }
+
+	  message("got past mesh");
 
     /* Also update the total counts (in case of changes due to replication) */
     Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts + s.nr_sinks;
