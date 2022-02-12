@@ -60,6 +60,9 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     if (s->zoom_props == NULL)
       error("Error allocating memory for the zoom parameters.");
 
+    /* Set the number of zoom cells in a natural cell */
+    s->zoom_props->nr_zoom_cells = parser_get_opt_param_int(params, "ZoomRegion:zoom_cells_natural_cell", 4);
+
   }
 #endif
 }
