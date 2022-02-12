@@ -81,47 +81,27 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
     if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
         buff[k].x[2] != parts[k].x[2])
       error("Inconsistent buff contents.");
-    if (buff[k].x[0] < c->loc[0] || buff[k].x[0] >= (c->loc[0] + c->width[0]) || 
-        buff[k].x[1] < c->loc[1] || buff[k].x[1] >= (c->loc[1] + c->width[1]) || 
-        buff[k].x[2] < c->loc[2] || buff[k].x[2] >= (c->loc[2] + c->width[2]))
-    	error("Trying to split cell but part isn't in parent cell");
 
   }
   for (int k = 0; k < gcount; k++) {
     if (gbuff[k].x[0] != gparts[k].x[0] || gbuff[k].x[1] != gparts[k].x[1] ||
         gbuff[k].x[2] != gparts[k].x[2])
       error("Inconsistent gbuff contents.");
-    if (gbuff[k].x[0] < c->loc[0] || gbuff[k].x[0] >= (c->loc[0] + c->width[0]) || 
-        gbuff[k].x[1] < c->loc[1] || gbuff[k].x[1] >= (c->loc[1] + c->width[1]) || 
-        gbuff[k].x[2] < c->loc[2] || gbuff[k].x[2] >= (c->loc[2] + c->width[2]))
-    	error("Trying to split but gpart isn't in parent cell");
   }
   for (int k = 0; k < scount; k++) {
     if (sbuff[k].x[0] != sparts[k].x[0] || sbuff[k].x[1] != sparts[k].x[1] ||
         sbuff[k].x[2] != sparts[k].x[2])
       error("Inconsistent sbuff contents.");
-    if (sbuff[k].x[0] < c->loc[0] || sbuff[k].x[0] >= (c->loc[0] + c->width[0]) || 
-        sbuff[k].x[1] < c->loc[1] || sbuff[k].x[1] >= (c->loc[1] + c->width[1]) || 
-        sbuff[k].x[2] < c->loc[2] || sbuff[k].x[2] >= (c->loc[2] + c->width[2]))
-    	error("Trying to split but spart isn't in parent cell");
   }
   for (int k = 0; k < bcount; k++) {
     if (bbuff[k].x[0] != bparts[k].x[0] || bbuff[k].x[1] != bparts[k].x[1] ||
         bbuff[k].x[2] != bparts[k].x[2])
       error("Inconsistent bbuff contents.");
-    if (bbuff[k].x[0] < c->loc[0] || bbuff[k].x[0] >= (c->loc[0] + c->width[0]) || 
-        bbuff[k].x[1] < c->loc[1] || bbuff[k].x[1] >= (c->loc[1] + c->width[1]) || 
-        bbuff[k].x[2] < c->loc[2] || bbuff[k].x[2] >= (c->loc[2] + c->width[2]))
-    	error("Trying to split but bpart isn't in parent cell");
   }
   for (int k = 0; k < sink_count; k++) {
     if (sinkbuff[k].x[0] != sinks[k].x[0] ||
         sinkbuff[k].x[1] != sinks[k].x[1] || sinkbuff[k].x[2] != sinks[k].x[2])
       error("Inconsistent sinkbuff contents.");
-    if (sinkbuff[k].x[0] < c->loc[0] || sinkbuff[k].x[0] >= (c->loc[0] + c->width[0]) || 
-        sinkbuff[k].x[1] < c->loc[1] || sinkbuff[k].x[1] >= (c->loc[1] + c->width[1]) || 
-        sinkbuff[k].x[2] < c->loc[2] || sinkbuff[k].x[2] >= (c->loc[2] + c->width[2]))
-    	error("Trying to split but sink isn't in parent cell");
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
