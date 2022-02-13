@@ -244,8 +244,8 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
     /* Double the number of top level cells, 2nd copy becomes the background
      * cells and zoom cells are placed witin the first nr_cells. */
     if (s->with_zoom_region) {
-      s->tot_cells *= 2;
-      s->nr_cells *= 2;
+      s->tot_cells += s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
+      s->nr_cells += s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
     }
 #endif
 
