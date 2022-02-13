@@ -30,7 +30,7 @@ EXTRA_DIST += plot_task_dependencies.py \
               plot_task_level.py
 
 # Cell hierarchies
-EXTRA_DIST += make_cell_hierarchy.sh \
+EXTRA_DIST += make_cell_hierarchy.py \
               data/cell_hierarchy.html
 
 # Cell dumps
