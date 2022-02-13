@@ -4230,7 +4230,7 @@ void engine_maketasks(struct engine *e) {
 #ifdef WITH_ZOOM_REGION
 	  if (s->with_zoom_region) {
 		  threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper_with_zoom, NULL,
-		  		           s->zoom_props->tl_cell_offset, 1, threadpool_auto_chunk_size, e);
+		  		           s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
     } else {
 	  	threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
 	  			           s->nr_cells, 1, threadpool_auto_chunk_size, e);
@@ -4252,14 +4252,14 @@ void engine_maketasks(struct engine *e) {
 #ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
     	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells, NULL,
-										 s->zoom_props->tl_cell_offset, 1, threadpool_auto_chunk_size, e);
+										 s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
     	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_natural_cells, NULL,
-										 s->zoom_props->tl_cell_offset, 1, threadpool_auto_chunk_size, e);
+										 s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
       threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_with_zoom_diffsize, NULL,
-							 s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      		           s->nr_cells, 1, threadpool_auto_chunk_size, e);
     } else {
     	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-										 s->zoom_props->tl_cell_offset, 1, threadpool_auto_chunk_size, e);
+										 s->nr_cells, 1, threadpool_auto_chunk_size, e);
     }
 #else
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,

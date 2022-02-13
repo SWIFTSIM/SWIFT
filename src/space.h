@@ -365,7 +365,13 @@ struct zoom_region_properties {
 
 	/*! The number of zoom cells along an axis in a natural top level cell,
 	 * used to define zoom_cdim */
-	double nr_zoom_cells;
+	double nr_zoom_per_bkg_cells;
+
+	/*! Number of zoom cells */
+	int nr_zoom_cells;
+
+	/*! Number of natural/background cells */
+	int nr_bkg_cells;
 };
 
 /* Function prototypes. */
