@@ -317,9 +317,9 @@ void construct_zoom_region(struct space *s, int verbose) {
   for (int ijk = 0; ijk < 3; ijk++) {
   	s->zoom_props->width[ijk] = s->width[ijk] / s->zoom_props->nr_zoom_cells;
   	s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
-    s->zoom_props->width[ijk] = s->zoom_props->dim[ijk] / s->cdim[ijk];
+  	s->zoom_props->cdim[ijk] = s->zoom_props->dim[ijk] / s->width[ijk] * s->zoom_props->nr_zoom_cells;
+    s->zoom_props->width[ijk] = s->zoom_props->dim[ijk] / s->zoom_props->cdim[ijk];
     s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
-    s->zoom_props->cdim[ijk] = s->zoom_props->dim[ijk] / s->width[ijk] * s->zoom_props->nr_zoom_cells;
   }
 
   s->zoom_props->tl_cell_offset = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
