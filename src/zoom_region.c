@@ -539,6 +539,12 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Ensure all background cells are actually background cells */
+		    if (cells[cid].width[0] == s->zoom_props->width[0])
+		    	error("A zoom cell has been given a natural cell label!");
+#endif
+
         /* Only interested in cells hosting zoom top level cells. */
         if (cells[cid].tl_cell_type != void_tl_cell) continue;
 
@@ -1513,9 +1519,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data, int num
 					const struct gravity_tensors *multi_j = cj->grav.multipole;
 
 					if (multi_i == NULL && ci->nodeID != nodeID)
-						error("Multipole of ci was not exchanged properly via the proxies");
+						error("Multipole of ci was not exchanged properly via the proxies (nodeID=%d, ci->nodeID=%d)", nodeID, ci->nodeID);
 					if (multi_j == NULL && cj->nodeID != nodeID)
-						error("Multipole of cj was not exchanged properly via the proxies");
+						error("Multipole of cj was not exchanged properly via the proxies (nodeID=%d, cj->nodeID=%d)", nodeID, cj->nodeID);
 
 					/* Minimal distance between any pair of particles */
 					const double min_radius2 =
