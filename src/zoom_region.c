@@ -313,7 +313,10 @@ void construct_zoom_region(struct space *s, int verbose) {
     error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
   }
 
-  /* Write zoom region properties. */
+  /* Write space zoom region properties. */
+  for (int l = 0; l < 6; l++) {
+  	s->zoom_props->region_bounds[l] = new_zoom_boundary[l];
+  }
   for (int ijk = 0; ijk < 3; ijk++) {
   	s->zoom_props->width[ijk] = s->width[ijk] / s->zoom_props->nr_zoom_per_bkg_cells;
   	s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
@@ -321,26 +324,24 @@ void construct_zoom_region(struct space *s, int verbose) {
     s->zoom_props->width[ijk] = s->zoom_props->dim[ijk] / s->zoom_props->cdim[ijk];
     s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
   }
-
   s->zoom_props->tl_cell_offset = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
-
-  for (int l = 0; l < 6; l++) {
-  	s->zoom_props->region_bounds[l] = new_zoom_boundary[l];
-  }
+  s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
+  s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
   if (verbose) {
-  	  	message("tl_cell_offset: %d", s->zoom_props->tl_cell_offset);
+  	message("nr_zoom_cells: %d nr_bkg_cells: %d tl_cell_offset: %d", s->zoom_props->nr_zoom_cells,
+  			    s->zoom_props->nr_bkg_cells, s->zoom_props->tl_cell_offset);
   	message("zoom_boundary: [%f-%f %f-%f %f-%f]",
-        new_zoom_boundary[0], new_zoom_boundary[1],
-        new_zoom_boundary[2], new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
+            new_zoom_boundary[0], new_zoom_boundary[1],
+            new_zoom_boundary[2], new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
     message("dim: [%f %f %f] tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f]",
-        s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2],
-        s->width[0], s->width[1], s->width[2],
-        s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2]);
+            s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2],
+            s->width[0], s->width[1], s->width[2],
+            s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2]);
     message("nr_tl_cells_in_zoom_region: [%f %f %f] nr_zoom_cells_in_tl_cell: [%f %f %f]",
-        s->zoom_props->dim[0] / s->width[0], s->zoom_props->dim[1] / s->width[1], s->zoom_props->dim[2] / s->width[2],
-        s->width[0] / s->zoom_props->width[0], s->width[1] / s->zoom_props->width[1],
-        s->width[2] / s->zoom_props->width[2]);
+            s->zoom_props->dim[0] / s->width[0], s->zoom_props->dim[1] / s->width[1], s->zoom_props->dim[2] / s->width[2],
+            s->width[0] / s->zoom_props->width[0], s->width[1] / s->zoom_props->width[1],
+            s->width[2] / s->zoom_props->width[2]);
   }
 
 
