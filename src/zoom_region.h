@@ -5,6 +5,8 @@
 #ifndef SWIFT_ZOOM_H
 #define SWIFT_ZOOM_H
 
+/* Prototypes for zoom_region functions */
+
 void zoom_region_init(struct swift_params *params, struct space *s);
 int cell_getid_zoom(const int cdim[3], const double x, const double y,
                     const double z, const struct space *s,
@@ -16,9 +18,6 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
 double cell_min_dist2_diff_size(const struct cell *restrict ci,
                                 const struct cell *restrict cj,
                                 const int periodic, const double dim[3]);
-//void engine_make_self_gravity_tasks_mapper_between_toplevels(void *map_data,
-//                                                             int num_elements,
-//                                                             void *extra_data);
 double cell_min_dist2(const struct cell *restrict ci,
                       const struct cell *restrict cj, const int periodic,
                       const double dim[3]);
@@ -39,5 +38,10 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
                                                   void *extra_data);
 void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data, int num_elements,
                                                 void *extra_data);
+
+/* Prototypes for zoom_partition functions */
+
+static void pick_vector_zoom(struct space *s, int nregions, int *samplecells)
+static void split_vector_zoom(struct space *s, int nregions, int *samplecells)
 
 #endif /* SWIFT_ZOOM_H */

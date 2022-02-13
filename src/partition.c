@@ -62,6 +62,7 @@
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "zoom_region.h"
 
 /* Simple descriptions of initial partition types for reports. */
 const char *initial_partition_name[] = {
@@ -107,8 +108,39 @@ static int repart_init_fixed_costs(void);
  */
 static void pick_vector(struct space *s, int nregions, int *samplecells) {
 
+#ifdef WITH_ZOOM_REGION
+  if (s->with_zoom_region) {
+  	pick_vector_zoom(s, nregions, samplecells);
+  } else {
+  	/* Get length of space and divide up. */
+	  int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
+	  if (nregions > length) {
+	    error("Too few cells (%d) for this number of regions (%d)", length,
+	          nregions);
+	  }
+
+	  int step = length / nregions;
+	  int n = 0;
+	  int m = 0;
+	  int l = 0;
+		for (int i = 0; i < s->cdim[0]; i++) {
+		  for (int j = 0; j < s->cdim[1]; j++) {
+		    for (int k = 0; k < s->cdim[2]; k++) {
+		      if (n == 0 && l < nregions) {
+		        samplecells[m++] = i;
+		        samplecells[m++] = j;
+		        samplecells[m++] = k;
+		        l++;
+	        }
+	      n++;
+	      if (n == step) n = 0;
+	      }
+	    }
+	  }
+  }
+#else
   /* Get length of space and divide up. */
-  int length = 2 * s->cdim[0] * s->cdim[1] * s->cdim[2];
+  int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
   if (nregions > length) {
     error("Too few cells (%d) for this number of regions (%d)", length,
           nregions);
@@ -118,25 +150,6 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
   int n = 0;
   int m = 0;
   int l = 0;
-#ifdef WITH_ZOOM_REGION
-  for (int p = 0; p < 2; p++) {
-  	if (p == 1 && !s->with_zoom_region) continue;
-		for (int i = 0; i < s->cdim[0]; i++) {
-		  for (int j = 0; j < s->cdim[1]; j++) {
-		    for (int k = 0; k < s->cdim[2]; k++) {
-		      if (n == 0 && l < nregions) {
-		        samplecells[m++] = i;
-		        samplecells[m++] = j;
-		        samplecells[m++] = k;
-		        l++;
-          }
-        n++;
-        if (n == step) n = 0;
-        }
-      }
-    }
-  }
-#else
 	for (int i = 0; i < s->cdim[0]; i++) {
 	  for (int j = 0; j < s->cdim[1]; j++) {
 	    for (int k = 0; k < s->cdim[2]; k++) {
@@ -163,32 +176,35 @@ static void pick_vector(struct space *s, int nregions, int *samplecells) {
  * closest and apply the partition to the space.
  */
 static void split_vector(struct space *s, int nregions, int *samplecells) {
-  int n = 0;
+
 #ifdef WITH_ZOOM_REGION
-  for (int p = 0; p < 2; p++) {
-  	if (p == 1 && !s->with_zoom_region) continue;
-    for (int i = 0; i < s->cdim[0]; i++) {
-      for (int j = 0; j < s->cdim[1]; j++) {
-        for (int k = 0; k < s->cdim[2]; k++) {
-          int select = -1;
-          float rsqmax = FLT_MAX;
-          int m = 0;
-          for (int l = 0; l < nregions; l++) {
-            float dx = samplecells[m++] - i;
-            float dy = samplecells[m++] - j;
-            float dz = samplecells[m++] - k;
-            float rsq = (dx * dx + dy * dy + dz * dz);
-            if (rsq < rsqmax) {
-              rsqmax = rsq;
-              select = l;
-            }
-          }
-          s->cells_top[n++].nodeID = select;
-        }
-      }
-    }
+	if (s->with_zoom_region) {
+  	split_vector_zoom(s, nregions, samplecells);
+  } else {
+		int n = 0;
+	  for (int i = 0; i < s->cdim[0]; i++) {
+	  	for (int j = 0; j < s->cdim[1]; j++) {
+	  		for (int k = 0; k < s->cdim[2]; k++) {
+	  			int select = -1;
+	  			float rsqmax = FLT_MAX;
+	  			int m = 0;
+	  			for (int l = 0; l < nregions; l++) {
+	  				float dx = samplecells[m++] - i;
+	  				float dy = samplecells[m++] - j;
+	  				float dz = samplecells[m++] - k;
+	  				float rsq = (dx * dx + dy * dy + dz * dz);
+	  				if (rsq < rsqmax) {
+	  					rsqmax = rsq;
+	  					select = l;
+	  				}
+	  			}
+	  			s->cells_top[n++].nodeID = select;
+	  		}
+	  	}
+	  }
   }
 #else
+	int n = 0;
   for (int i = 0; i < s->cdim[0]; i++) {
       for (int j = 0; j < s->cdim[1]; j++) {
           for (int k = 0; k < s->cdim[2]; k++) {
