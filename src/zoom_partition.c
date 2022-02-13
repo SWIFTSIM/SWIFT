@@ -26,10 +26,10 @@
 
 #include <float.h>
 
-#include "cell.h"
-#include "gravity_properties.h"
-#include "engine.h"
-#include "proxy.h"
+//#include "cell.h"
+//#include "gravity_properties.h"
+//#include "engine.h"
+//#include "proxy.h"
 #include "space.h"
 #include "zoom_region.h"
 
@@ -54,7 +54,7 @@
  *  @param nregions the number of regions
  *  @param samplecells the list of sample cell positions, size of 3*nregions
  */
-static void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
+void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
 
   /* Get length of space and divide up. */
   int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
@@ -112,7 +112,7 @@ static void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
  * Using the sample positions as seeds pick cells that are geometrically
  * closest and apply the partition to the space.
  */
-static void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
+void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
 
 	/* Define variables for selection */
   int cid = 0;
