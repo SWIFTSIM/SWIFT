@@ -26,10 +26,10 @@
 
 #include <float.h>
 
-//#include "cell.h"
-//#include "gravity_properties.h"
-//#include "engine.h"
-//#include "proxy.h"
+#include "cell.h"
+#include "gravity_properties.h"
+#include "engine.h"
+#include "proxy.h"
 #include "partition.h"
 #include "space.h"
 #include "zoom_region.h"
@@ -101,7 +101,7 @@ void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
       }
     }
   }
-
+}
 #endif
 #endif
 
