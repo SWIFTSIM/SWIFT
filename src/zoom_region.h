@@ -5,8 +5,6 @@
 #ifndef SWIFT_ZOOM_H
 #define SWIFT_ZOOM_H
 
-/* Prototypes for zoom_region functions */
-
 void zoom_region_init(struct swift_params *params, struct space *s);
 int cell_getid_zoom(const int cdim[3], const double x, const double y,
                     const double z, const struct space *s,
@@ -38,9 +36,6 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
                                                   void *extra_data);
 void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data, int num_elements,
                                                 void *extra_data);
-
-/* Prototypes for zoom_partition functions */
-
 void pick_vector_zoom(struct space *s, int nregions, int *samplecells);
 void split_vector_zoom(struct space *s, int nregions, int *samplecells);
 
