@@ -41,7 +41,7 @@ void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data, int num_elements
 
 /* Prototypes for zoom_partition functions */
 
-void pick_vector_zoom(struct space *s, int nregions, int *samplecells)
-void split_vector_zoom(struct space *s, int nregions, int *samplecells)
+void pick_vector_zoom(struct space *s, int nregions, int *samplecells);
+void split_vector_zoom(struct space *s, int nregions, int *samplecells);
 
 #endif /* SWIFT_ZOOM_H */
