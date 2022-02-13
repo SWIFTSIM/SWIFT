@@ -30,6 +30,7 @@
 //#include "gravity_properties.h"
 //#include "engine.h"
 //#include "proxy.h"
+#include "partition.h"
 #include "space.h"
 #include "zoom_region.h"
 
