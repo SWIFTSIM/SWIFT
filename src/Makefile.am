@@ -145,6 +145,7 @@ AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES)
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
 AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
 AM_SOURCES += zoom_region.c
+AM_SOURCES += zoom_partition.c
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
