@@ -1389,11 +1389,10 @@ void engine_makeproxies_between_grids(struct engine *e) {
  * @param e The #engine.
  */
 void engine_makeproxies_with_zoom_region(struct engine *e) {
-
+#ifdef WITH_MPI
 	if (!e->s->with_zoom_region) {
 		engine_makeproxies(e);
 	} else {
-#ifdef WITH_MPI
 
 		/* Let's time this */
 	  const ticks tic = getticks();
