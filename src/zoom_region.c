@@ -373,127 +373,121 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 																				s->zoom_props->region_bounds[2], s->zoom_props->region_bounds[3],
 																				s->zoom_props->region_bounds[4], s->zoom_props->region_bounds[5]};
 
-  /* Loop over top level cells twice, first time for the zoom region, second for the natural cells. */
-  for (int n = 0; n < 2; n++) {
+  struct cell *restrict c;
 
-    struct cell *restrict c;
-    if (n == 0) {
-      /* Set the cell location and sizes. */
-	    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-	      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-	        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
-	          const size_t cid = cell_getid(s->zoom_props->cdim, i, j, k);
+  /* Loop over zoom cells and set locations and initial values */
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+        const size_t cid = cell_getid(s->zoom_props->cdim, i, j, k);
 
-			      /* First we must create the zoom cell and it's multipoles */
-			      c = &s->cells_top[cid];
-			      c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
-			      c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
-			      c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
-			      c->parent_tl_cid = cell_getid(cdim, (int)(c->loc[0] * s->iwidth[0]),
-			          (int)(c->loc[1] * s->iwidth[1]), (int)(c->loc[2] * s->iwidth[2]));
-			      c->width[0] = s->zoom_props->width[0];
-			      c->width[1] = s->zoom_props->width[1];
-			      c->width[2] = s->zoom_props->width[2];
-			      if (s->with_self_gravity)
-			        c->grav.multipole = &s->multipoles_top[cid];
-			      c->tl_cell_type = zoom_tl_cell;
-			      c->dmin = dmin_zoom;
-			      c->nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-			      c->depth = 0;
-				    c->split = 0;
-				    c->hydro.count = 0;
-				    c->grav.count = 0;
-				    c->stars.count = 0;
-				    c->sinks.count = 0;
-				    c->top = c;
-				    c->super = c;
-				    c->hydro.super = c;
-				    c->grav.super = c;
-				    c->hydro.ti_old_part = ti_current;
-				    c->grav.ti_old_part = ti_current;
-				    c->stars.ti_old_part = ti_current;
-				    c->sinks.ti_old_part = ti_current;
-				    c->black_holes.ti_old_part = ti_current;
-				    c->grav.ti_old_multipole = ti_current;
+	      /* Create the zoom cell and it's multipoles */
+	      c = &s->cells_top[cid];
+	      c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
+	      c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
+	      c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
+	      c->parent_tl_cid = cell_getid(cdim, (int)(c->loc[0] * s->iwidth[0]),
+	          (int)(c->loc[1] * s->iwidth[1]), (int)(c->loc[2] * s->iwidth[2]));
+	      c->width[0] = s->zoom_props->width[0];
+	      c->width[1] = s->zoom_props->width[1];
+	      c->width[2] = s->zoom_props->width[2];
+	      if (s->with_self_gravity)
+	        c->grav.multipole = &s->multipoles_top[cid];
+	      c->tl_cell_type = zoom_tl_cell;
+	      c->dmin = dmin_zoom;
+	      c->nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+	      c->depth = 0;
+		    c->split = 0;
+		    c->hydro.count = 0;
+		    c->grav.count = 0;
+		    c->stars.count = 0;
+		    c->sinks.count = 0;
+		    c->top = c;
+		    c->super = c;
+		    c->hydro.super = c;
+		    c->grav.super = c;
+		    c->hydro.ti_old_part = ti_current;
+		    c->grav.ti_old_part = ti_current;
+		    c->stars.ti_old_part = ti_current;
+		    c->sinks.ti_old_part = ti_current;
+		    c->black_holes.ti_old_part = ti_current;
+		    c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
-				    c->mpi.tag = -1;
-				    c->mpi.recv = NULL;
-				    c->mpi.send = NULL;
+		    c->mpi.tag = -1;
+		    c->mpi.recv = NULL;
+		    c->mpi.send = NULL;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-				    cell_assign_top_level_cell_index(c, s);
+		    cell_assign_top_level_cell_index(c, s);
 #endif
-          }
-	      }
-	    }
-    } else {
-	    /* Set the cell location and sizes. */
-	    for (int i = 0; i < cdim[0]; i++) {
-	      for (int j = 0; j < cdim[1]; j++) {
-	        for (int k = 0; k < cdim[2]; k++) {
-	          const size_t cid = cell_getid(cdim, i, j, k);
+      }
+    }
+  }
+  /* Loop over natural cells and set locations and initial values */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        const size_t cid = cell_getid(cdim, i, j, k);
 
-			      /* Natural top level cells. */
-			      c = &s->cells_top[cid + bkg_cell_offset];
-			      c->loc[0] = i * s->width[0];
-			      c->loc[1] = j * s->width[1];
-			      c->loc[2] = k * s->width[2];
-			      c->width[0] = s->width[0];
-			      c->width[1] = s->width[1];
-			      c->width[2] = s->width[2];
-			      c->dmin = dmin;
-			      c->nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+	      /* Natural top level cells. */
+	      c = &s->cells_top[cid + bkg_cell_offset];
+	      c->loc[0] = i * s->width[0];
+	      c->loc[1] = j * s->width[1];
+	      c->loc[2] = k * s->width[2];
+	      c->width[0] = s->width[0];
+	      c->width[1] = s->width[1];
+	      c->width[2] = s->width[2];
+	      c->dmin = dmin;
+	      c->nr_zoom_cells = s->zoom_props->nr_zoom_cells;
 
-			      if (s->with_self_gravity)
-			        c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
+	      if (s->with_self_gravity)
+	        c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
 
-			      /* if the cell lies within the zoom region we need to label it as void */
-				    if (c->loc[0] >= zoom_region_bounds[0] && c->loc[0] < zoom_region_bounds[1] &&
-				        c->loc[1] >= zoom_region_bounds[2] && c->loc[1] < zoom_region_bounds[3] &&
-				        c->loc[2] >= zoom_region_bounds[4] && c->loc[2] < zoom_region_bounds[5]) {
-				      /* Tag this top level cell as part of the zoom region. */
-			        c->tl_cell_type = void_tl_cell;
+	      /* if the cell lies within the zoom region we need to label it as void */
+		    if (c->loc[0] >= zoom_region_bounds[0] && c->loc[0] < zoom_region_bounds[1] &&
+		        c->loc[1] >= zoom_region_bounds[2] && c->loc[1] < zoom_region_bounds[3] &&
+		        c->loc[2] >= zoom_region_bounds[4] && c->loc[2] < zoom_region_bounds[5]) {
+		      /* Tag this top level cell as part of the zoom region. */
+	        c->tl_cell_type = void_tl_cell;
 
-			        /* Assign the start and end indices for the zoom cells within this cell */
-			        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
-			        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
-			        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
-			        c->end_i = (c->loc[0] - zoom_region_bounds[0] + c->width[0]) * s->zoom_props->iwidth[0];
-			        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[1]) * s->zoom_props->iwidth[1];
-			        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[2]) * s->zoom_props->iwidth[2];
-				    } else {
-				      c->tl_cell_type = tl_cell;
-				    }
-				    c->depth = 0;
-				    c->split = 0;
-				    c->hydro.count = 0;
-				    c->grav.count = 0;
-				    c->stars.count = 0;
-				    c->sinks.count = 0;
-				    c->top = c;
-				    c->super = c;
-				    c->hydro.super = c;
-				    c->grav.super = c;
-				    c->hydro.ti_old_part = ti_current;
-				    c->grav.ti_old_part = ti_current;
-				    c->stars.ti_old_part = ti_current;
-				    c->sinks.ti_old_part = ti_current;
-				    c->black_holes.ti_old_part = ti_current;
-				    c->grav.ti_old_multipole = ti_current;
+	        /* Assign the start and end indices for the zoom cells within this cell */
+	        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
+	        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
+	        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
+	        c->end_i = (c->loc[0] - zoom_region_bounds[0] + c->width[0]) * s->zoom_props->iwidth[0];
+	        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[1]) * s->zoom_props->iwidth[1];
+	        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[2]) * s->zoom_props->iwidth[2];
+		    } else {
+		      c->tl_cell_type = tl_cell;
+		    }
+		    c->depth = 0;
+		    c->split = 0;
+		    c->hydro.count = 0;
+		    c->grav.count = 0;
+		    c->stars.count = 0;
+		    c->sinks.count = 0;
+		    c->top = c;
+		    c->super = c;
+		    c->hydro.super = c;
+		    c->grav.super = c;
+		    c->hydro.ti_old_part = ti_current;
+		    c->grav.ti_old_part = ti_current;
+		    c->stars.ti_old_part = ti_current;
+		    c->sinks.ti_old_part = ti_current;
+		    c->black_holes.ti_old_part = ti_current;
+		    c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
-				    c->mpi.tag = -1;
-				    c->mpi.recv = NULL;
-				    c->mpi.send = NULL;
+		    c->mpi.tag = -1;
+		    c->mpi.recv = NULL;
+		    c->mpi.send = NULL;
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-				    cell_assign_top_level_cell_index(c, s);
+		    cell_assign_top_level_cell_index(c, s);
 #endif
 
-          }
-	      }
-	    }
-	  }
-	}
+      }
+    }
+  }
 
   /* Now find what cells neighbour the zoom region. */
   if (s->with_zoom_region) find_neighbouring_cells(s, gravity_properties, verbose);
@@ -677,7 +671,7 @@ double cell_min_dist2(const struct cell *restrict ci,
  * @param e The #engine.
  */
 void engine_makeproxies_natural_cells(struct engine *e) {
-
+#ifdef WITH_MPI
   /* Useful local information */
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
@@ -925,6 +919,7 @@ void engine_makeproxies_natural_cells(struct engine *e) {
       }
     }
   }
+#endif /* WITH_MPI */
 }
 
 /**
@@ -933,7 +928,7 @@ void engine_makeproxies_natural_cells(struct engine *e) {
  * @param e The #engine.
  */
 void engine_makeproxies_zoom_cells(struct engine *e) {
-
+#ifdef WITH_MPI
   /* Useful local information */
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
@@ -1164,6 +1159,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
       }
     }
   }
+#endif /* WITH_MPI */
 }
 
 /**
@@ -1174,7 +1170,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
  * @param e The #engine.
  */
 void engine_makeproxies_between_grids(struct engine *e) {
-
+#ifdef WITH_MPI
   /* Useful local information */
   const int nodeID = e->nodeID;
   const struct space *s = e->s;
@@ -1197,7 +1193,6 @@ void engine_makeproxies_between_grids(struct engine *e) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
@@ -1379,6 +1374,7 @@ void engine_makeproxies_between_grids(struct engine *e) {
       }
     }
   }
+#endif /* WITH_MPI */
 }
 
 /**
