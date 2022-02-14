@@ -40,11 +40,11 @@
  * @param e The #engine.
  */
 void engine_makeproxies(struct engine *e) {
+#ifdef WITH_MPI
 #ifdef WITH_ZOOM_REGION
     engine_makeproxies_with_zoom_region(e);
 #else
 
-#ifdef WITH_MPI
   /* Let's time this */
   const ticks tic = getticks();
 

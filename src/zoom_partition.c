@@ -42,7 +42,7 @@
 /*  Vectorisation support */
 /*  ===================== */
 
-#if defined(WITH_MPI)
+#ifdef WITH_MPI
 #ifdef WITH_ZOOM_REGION
 /**
  *  @brief Pick a number of cell positions from a vectorised list.
@@ -58,8 +58,7 @@
 void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
 
   /* Get length of space and divide up. */
-  int length = s->cdim[0] * s->cdim[1] * s->cdim[2];
-  length += s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
+  int length = (s->cdim[0] * s->cdim[1] * s->cdim[2]) + (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
   if (nregions > length) {
     error("Too few cells (%d) for this number of regions (%d)", length,
           nregions);
@@ -105,7 +104,7 @@ void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
 #endif
 #endif
 
-#if defined(WITH_MPI)
+#ifdef WITH_MPI
 #ifdef WITH_ZOOM_REGION
 /**
  * @brief Partition the space including the zoom cells.

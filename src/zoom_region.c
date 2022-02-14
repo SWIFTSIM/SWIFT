@@ -1448,29 +1448,26 @@ void engine_makeproxies_between_grids(struct engine *e) {
  */
 void engine_makeproxies_with_zoom_region(struct engine *e) {
 #ifdef WITH_MPI
-	if (!e->s->with_zoom_region) {
-		engine_makeproxies(e);
-	} else {
 
-		/* Let's time this */
-	  const ticks tic = getticks();
+	/* Let's time this */
+  const ticks tic = getticks();
 
-		/* Prepare the proxies and the proxy index. */
-	  if (e->proxy_ind == NULL)
-	    if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
-	      error("Failed to allocate proxy index.");
-	  for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
-	  e->nr_proxies = 0;
-		
-		engine_makeproxies_zoom_cells(e);
-	  engine_makeproxies_natural_cells(e);
-	  engine_makeproxies_between_grids(e);
+	/* Prepare the proxies and the proxy index. */
+  if (e->proxy_ind == NULL)
+    if ((e->proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
+      error("Failed to allocate proxy index.");
+  for (int k = 0; k < e->nr_nodes; k++) e->proxy_ind[k] = -1;
+  e->nr_proxies = 0;
 
-	  /* Be clear about the time */
-	  if (e->verbose)
-	    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-	            clocks_getunit());
-	}
+	engine_makeproxies_zoom_cells(e);
+  engine_makeproxies_natural_cells(e);
+  engine_makeproxies_between_grids(e);
+
+  /* Be clear about the time */
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
 #else
 	error("SWIFT was not compiled with MPI support.");
 #endif
@@ -1740,9 +1737,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data, int num_el
 					const struct gravity_tensors *multi_j = cj->grav.multipole;
 
 					if (multi_i == NULL && ci->nodeID != nodeID)
-						error("Multipole of ci was not exchanged properly via the proxies");
+						error("Multipole of ci was not exchanged properly via the proxies (nodeID=%d, ci->nodeID=%d)", nodeID, ci->nodeID);
 					if (multi_j == NULL && cj->nodeID != nodeID)
-						error("Multipole of cj was not exchanged properly via the proxies");
+						error("Multipole of cj was not exchanged properly via the proxies (nodeID=%d, cj->nodeID=%d)", nodeID, cj->nodeID);
 
 					/* Are the cells too close for a MM interaction ? */
 					if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -1910,9 +1907,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			const struct gravity_tensors *multi_j = cj->grav.multipole;
 
 			if (multi_i == NULL && ci->nodeID != nodeID)
-				error("Multipole of ci was not exchanged properly via the proxies");
+				error("Multipole of ci was not exchanged properly via the proxies (nodeID=%d, ci->nodeID=%d)", nodeID, ci->nodeID);
 			if (multi_j == NULL && cj->nodeID != nodeID)
-				error("Multipole of cj was not exchanged properly via the proxies");
+				error("Multipole of cj was not exchanged properly via the proxies (nodeID=%d, cj->nodeID=%d)", nodeID, cj->nodeID);
 
 			/* Minimal distance between any pair of particles */
 			const double min_radius2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
