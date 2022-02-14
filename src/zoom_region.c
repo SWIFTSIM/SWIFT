@@ -1849,7 +1849,8 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 	const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
 	/* Define neighbour loop variables */
-	int cjd_offset = 0;
+	int cjd_low = 0;
+	int cjd_high = bkg_cell_offset;
 
 	/* Loop through the elements, which are just byte offsets from NULL. */
 	for (int ind = 0; ind < num_elements; ind++) {
@@ -1877,13 +1878,15 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 
 		/* Get the loop range for the neighbouring cells */
 		if (ci->tl_cell_type <= 2) {
-			cjd_offset = 0;
+			cjd_low = 0;
+			cjd_high = bkg_cell_offset;
 		} else {
-			cjd_offset = bkg_cell_offset;
+			cjd_low = bkg_cell_offset;
+			cjd_high = s->nr_cells;
 		}
 
 		/* Loop over every other cell */
-		for (int cjd = 0 + cjd_offset; cjd < bkg_cell_offset + cjd_offset; cjd++) {
+		for (int cjd = cjd_low; cjd < cjd_high; cjd++) {
 
 			/* Get the cell */
 			struct cell *cj = &cells[cjd];
