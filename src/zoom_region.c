@@ -495,7 +495,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Lets check all the cells are in the right place with the correct widths */
-  debug_cell_type(s)
+  debug_cell_type(s);
 #endif
 
   /* Now find what cells neighbour the zoom region. */
@@ -522,7 +522,7 @@ static void debug_cell_type(struct space *s) {
 	/* Loop over all cells */
 	for (int cid = 0; cid < s->nr_cells; cid++) {
 
-		/* Ensure cell has be initialised */
+		/* Ensure the cell has been initialised */
 		if (cells[cid] == NULL)
 			error("Cell cid=%d has not been initialised!", cid);
 
