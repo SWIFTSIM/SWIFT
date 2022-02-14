@@ -678,12 +678,9 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const int periodic, const double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0]) error("x cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])",
-  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
-  if (ci->width[1] != cj->width[1]) error("y cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])",
-  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
-  if (ci->width[2] != cj->width[2]) error("z cells of different size!" (ci->width=[%f %f %f] cj->width=[%f %f %f])",
-  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
+  if (ci->width[0] != cj->width[0]) error("x cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])", ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
+  if (ci->width[1] != cj->width[1]) error("y cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])", ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
+  if (ci->width[2] != cj->width[2]) error("z cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])", ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
 #endif
 
   const double cix_min = ci->loc[0];
