@@ -304,8 +304,8 @@ void engine_makeproxies(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+#endif /* WITH_ZOOM_REGION */
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif /* WITH_MPI */
-#endif /* WITH_ZOOM_REGION */
 }
