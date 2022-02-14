@@ -148,10 +148,6 @@ static void debug_cell_type(struct space *s) {
 	/* Loop over all cells */
 	for (int cid = 0; cid < s->nr_cells; cid++) {
 
-		/* Ensure the cell has been initialised */
-		if (cells[cid] == NULL)
-			error("Cell cid=%d has not been initialised!", cid);
-
 		/* Check cell type */
 		if (cid < bkg_cell_offset && cells[cid].tl_cell_type != 3)
 			error("Cell has the wrong cell type for it's array position (cid=%d, c->tl_cell_type=%d, "
