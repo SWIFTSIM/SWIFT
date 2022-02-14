@@ -808,9 +808,6 @@ void engine_makeproxies_natural_cells(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
-        if (cid < bkg_cell_offset)
-        	message("Cell: cid=%d is a zoom cell but we are looping over naturals!", cid);
-
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
@@ -827,9 +824,6 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
-
-              if (cjd < bkg_cell_offset)
-			          message("Cell: cjd=%d is a zoom cell but we are looping over naturals!", cjd);
 
               /* Early abort  */
               if (cid >= cjd) continue;
@@ -1286,7 +1280,7 @@ void engine_makeproxies_between_grids(struct engine *e) {
 		for (int cjd = bkg_cell_offset; s->nr_cells; cjd++) {
 
 			/* We only want to consider background cells if they are neighbours */
-	    if (cells[cjd].tl_cell_type != tl_cell_neighbour) continue;
+	    if (cells[cjd].tl_cell_type != 1) continue;
 
       /* Early abort (both same node) */
       if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID)
