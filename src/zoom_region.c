@@ -1277,10 +1277,10 @@ void engine_makeproxies_between_grids(struct engine *e) {
     const int k = natural_tl_cid % cdim[2];
 
 		/* Loop over every cell in the natural grid */
-		for (int cjd = bkg_cell_offset; s->nr_cells; cjd++) {
+		for (int cjd = bkg_cell_offset; cjd < s->nr_cells; cjd++) {
 
 			/* We only want to consider background cells if they are neighbours */
-	    if (cells[cjd].tl_cell_type != 1) continue;
+	    if (cells[cjd].tl_cell_type != tl_cell_neighbour) continue;
 
       /* Early abort (both same node) */
       if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID)
