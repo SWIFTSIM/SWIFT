@@ -535,7 +535,7 @@ static void debug_cell_type(struct space *s) {
 				    "s->zoom_props->tl_cell_offset=%d)", cid, cells[cid].tl_cell_type, bkg_cell_offset);
 
 		/* Check cell widths */
-		for (ijk = 0, ijk < 3, ijk++) {
+		for (int ijk = 0; ijk < 3; ijk++) {
 			if (cid < bkg_cell_offset && cells[cid].width[ijk] != zoom_width[ijk])
 				error("Cell has the wrong cell width for it's array position (cid=%d, c->tl_cell_type=%d, "
 				      "s->zoom_props->tl_cell_offset=%d, c->width=[%f %f %f], "
