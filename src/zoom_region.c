@@ -325,7 +325,7 @@ void construct_zoom_region(struct space *s, int verbose) {
     s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
   }
   s->zoom_props->tl_cell_offset = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
-  s->zoom_props->nr_zoom_cells = s->zoom_props->tl_cell_offset;
+  s->zoom_props->nr_zoom_cells = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
   if (verbose) {
@@ -493,11 +493,65 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
     }
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Lets check all the cells are in the right place with the correct widths */
+  debug_cell_type(s)
+#endif
+
   /* Now find what cells neighbour the zoom region. */
   if (s->with_zoom_region) find_neighbouring_cells(s, gravity_properties, verbose);
 
 #endif
 }
+
+#ifdef WITH_ZOOM_REGION
+/**
+* @brief Run through all cells and ensure they have the correct cell type and width
+* for their position in s->cells_top.
+*
+* @param s The space.
+*/
+static void debug_cell_type(struct space *s) {
+
+	/* Get the cells array and cell properties */
+	struct cell *cells = s->cells_top;
+	const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+	const double *zoom_width = s->zoom_props->width;
+	const double *width = s->width;
+
+	/* Loop over all cells */
+	for (int cid = 0; cid < s->nr_cells; cid++) {
+
+		/* Ensure cell has be initialised */
+		if (cells[cid] == NULL)
+			error("Cell cid=%d has not been initialised!", cid);
+
+		/* Check cell type */
+		if (cid < bkg_cell_offset && cells[cid].tl_cell_type != 3)
+			error("Cell has the wrong cell type for it's array position (cid=%d, c->tl_cell_type=%d, "
+				    "s->zoom_props->tl_cell_offset=%d)", cid, cells[cid].tl_cell_type, bkg_cell_offset);
+				if (cid >= bkg_cell_offset && cells[cid].tl_cell_type == 3)
+			error("Cell has the wrong cell type for it's array position (cid=%d, c->tl_cell_type=%d, "
+				    "s->zoom_props->tl_cell_offset=%d)", cid, cells[cid].tl_cell_type, bkg_cell_offset);
+
+		/* Check cell widths */
+		for (ijk = 0, ijk < 3, ijk++) {
+			if (cid < bkg_cell_offset && cells[cid].width[ijk] != zoom_width[ijk])
+				error("Cell has the wrong cell width for it's array position (cid=%d, c->tl_cell_type=%d, "
+				      "s->zoom_props->tl_cell_offset=%d, c->width=[%f %f %f], "
+					    "s->zoom_props->width=[%f %f %f])", cid, cells[cid].tl_cell_type, bkg_cell_offset,
+				      cells[cid].width[0], cells[cid].width[1], cells[cid].width[2],
+				      s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2]);
+			if (cid >= bkg_cell_offset && cells[cid].width[ijk] != width[ijk])
+				error("Cell has the wrong cell width for it's array position (cid=%d, c->tl_cell_type=%d, "
+					    "s->zoom_props->tl_cell_offset=%d, c->width=[%f %f %f], "
+					    "s->zoom_props->width=[%f %f %f])", cid, cells[cid].tl_cell_type, bkg_cell_offset,
+					    cells[cid].width[0], cells[cid].width[1], cells[cid].width[2],
+				      s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2]);
+		}
+	}
+}
+#endif
 
 /**
  * @brief Find what TL cells surround the zoom region.
