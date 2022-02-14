@@ -366,9 +366,8 @@ void construct_zoom_region(struct space *s, int verbose) {
   }
   for (int ijk = 0; ijk < 3; ijk++) {
   	s->zoom_props->width[ijk] = s->width[ijk] / s->zoom_props->nr_zoom_per_bkg_cells;
-  	s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
-  	s->zoom_props->cdim[ijk] = s->zoom_props->dim[ijk] * s->iwidth[ijk] * s->zoom_props->nr_zoom_per_bkg_cells;
-    s->zoom_props->width[ijk] = s->zoom_props->dim[ijk] / s->zoom_props->cdim[ijk];
+  	s->zoom_props->dim[ijk] = new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2];
+  	s->zoom_props->cdim[ijk] = s->zoom_props->dim[ijk] * s->zoom_props->nr_zoom_per_bkg_cells * s->iwidth[ijk];
     s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
   }
   s->zoom_props->tl_cell_offset = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
@@ -389,7 +388,8 @@ void construct_zoom_region(struct space *s, int verbose) {
             s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
             s->width[0], s->width[1], s->width[2]);
     message("nr_tl_cells_in_zoom_region: [%f %f %f] nr_zoom_cells_in_tl_cell: [%f %f %f]",
-            s->zoom_props->dim[0] / s->width[0], s->zoom_props->dim[1] / s->width[1], s->zoom_props->dim[2] / s->width[2],
+            s->zoom_props->dim[0] * s->iwidth[0], s->zoom_props->dim[1] * s->iwidth[1],
+            s->zoom_props->dim[2] * s->iwidth[2],
             s->width[0] / s->zoom_props->width[0], s->width[1] / s->zoom_props->width[1],
             s->width[2] / s->zoom_props->width[2]);
   }
