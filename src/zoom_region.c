@@ -827,9 +827,9 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
-              
-              if (cid < bkg_cell_offset)
-			          message("Cell: cjd=%d is a zoom cell but we are looping over naturals!", cid);
+
+              if (cjd < bkg_cell_offset)
+			          message("Cell: cjd=%d is a zoom cell but we are looping over naturals!", cjd);
 
               /* Early abort  */
               if (cid >= cjd) continue;
