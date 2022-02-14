@@ -952,7 +952,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
               (rhoi + rhoj);
   float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
               (rhoi + rhoj);
-
 #endif
 
   /* In GDF we use average of Gi and Gj. Not actually kernel gradient if we use
