@@ -387,8 +387,7 @@ void construct_zoom_region(struct space *s, int verbose) {
     message("dim: [%f %f %f] tl_cell_width: [%f %f %f] zoom_cell_width: [%f %f %f]",
             s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2],
             s->width[0], s->width[1], s->width[2],
-            s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2],
-            s->width[0], s->width[1], s->width[2]);
+            s->zoom_props->width[0], s->zoom_props->width[1], s->zoom_props->width[2]);
     message("nr_tl_cells_in_zoom_region: [%f %f %f] nr_zoom_cells_in_tl_cell: [%f %f %f]",
             s->zoom_props->dim[0] * s->iwidth[0], s->zoom_props->dim[1] * s->iwidth[1],
             s->zoom_props->dim[2] * s->iwidth[2],
