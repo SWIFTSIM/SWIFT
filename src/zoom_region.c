@@ -366,10 +366,9 @@ void construct_zoom_region(struct space *s, int verbose) {
   }
   for (int ijk = 0; ijk < 3; ijk++) {
   	s->zoom_props->width[ijk] = s->width[ijk] / s->zoom_props->nr_zoom_per_bkg_cells;
+  	s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
   	s->zoom_props->dim[ijk] = s->zoom_props->region_bounds[(ijk * 2) + 1] - s->zoom_props->region_bounds[ijk * 2];
-  	const int nr_tl_cells_in_zoom_region = s->zoom_props->dim[ijk] * s->iwidth[ijk];
-  	s->zoom_props->cdim[ijk] = nr_tl_cells_in_zoom_region * s->zoom_props->nr_zoom_per_bkg_cells;
-    s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
+  	s->zoom_props->cdim[ijk] = s->zoom_props->dim[ijk] * s->zoom_props->iwidth[ijk];
   }
   s->zoom_props->tl_cell_offset = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_zoom_cells = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
