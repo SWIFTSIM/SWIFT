@@ -30,8 +30,8 @@ EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) \
 	$(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
 
 # MPI libraries.
-MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
-MPI_FLAGS = -DWITH_MPI $(PARMETIS_INCS) $(METIS_INCS)
+MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS) $(FFTW_MPI_LIBS)
+MPI_FLAGS = -DWITH_MPI $(PARMETIS_INCS) $(METIS_INCS) $(FFTW_MPI_INCS)
 
 # Programs.
 bin_PROGRAMS = swift
@@ -132,7 +132,8 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
              PMillennium/PMillennium-768/p-mill-768.yml \
              PMillennium/PMillennium-1536/p-mill-1536.yml \
 	     SantaBarbara/SantaBarbara-256/README SantaBarbara/SantaBarbara-256/getIC.sh SantaBarbara/SantaBarbara-256/santa_barbara.yml SantaBarbara/SantaBarbara-256/run.sh \
-	     SantaBarbara/SantaBarbara-128/README SantaBarbara/SantaBarbara-128/getIC.sh SantaBarbara/SantaBarbara-128/santa_barbara.yml SantaBarbara/SantaBarbara-128/run.sh
+	     SantaBarbara/SantaBarbara-128/README SantaBarbara/SantaBarbara-128/getIC.sh SantaBarbara/SantaBarbara-128/santa_barbara.yml SantaBarbara/SantaBarbara-128/run.sh \
+	     QuickLymanAlpha/getWiersmaTable.sh QuickLymanAlpha/getPloeckingerTable.sh QuickLymanAlpha/L050N0752/qla_50.yml QuickLymanAlpha/L050N0752/output_list.txt QuickLymanAlpha/L050N0752/getIC.sh QuickLymanAlpha/L050N0752/run.sh
 
 # Default parameter file
 EXTRA_DIST += parameter_example.yml

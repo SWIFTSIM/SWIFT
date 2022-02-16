@@ -938,6 +938,17 @@ void write_output_distributed(struct engine* e,
   MPI_Gather(N, swift_type_count, MPI_LONG_LONG_INT, N_counts, swift_type_count,
              MPI_LONG_LONG_INT, 0, comm);
 
+  /* Use a single Lustre stripe with a rank-based OST offset? */
+  if (e->snapshot_lustre_OST_count != 0) {
+    char string[1200];
+    sprintf(string, "lfs setstripe -c 1 -i %d %s",
+            (e->nodeID % e->snapshot_lustre_OST_count), fileName);
+    const int result = system(string);
+    if (result != 0) {
+      message("lfs setstripe command returned error code %d", result);
+    }
+  }
+
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
   h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);

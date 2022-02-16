@@ -215,6 +215,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 #if defined(HAVE_HDF5)
 
   /* Write scheme name */
+  /* ----------------- */
   if (rtp->hydro_controlled_injection) {
     io_write_attribute_s(h_grp, "RT Scheme",
                          RT_IMPLEMENTATION ", hydro controlled injection");
@@ -223,11 +224,12 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   }
 
   /* Write photon group counts */
+  /* ------------------------- */
   io_write_attribute_i(h_grp, "PhotonGroupNumber", RT_NGROUPS);
 
   /* Write photon group bin edges */
+  /* ---------------------------- */
   hid_t type = H5Tcopy(io_hdf5_type(FLOAT));
-  H5Tset_size(type, RT_NGROUPS);
 
   hsize_t dims[1] = {RT_NGROUPS};
   hid_t space = H5Screate_simple(1, dims, NULL);
@@ -269,6 +271,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   if (!with_rt) return;
 
   /* Write photon group names now */
+  /* ---------------------------- */
 
   /* Generate Energy Group names */
   char names_energy[RT_NGROUPS * RT_LABELS_SIZE];
@@ -316,6 +319,47 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   H5Dclose(dsetF);
 
   H5Tclose(type);
+
+  /* Write reduced speed of light */
+  /* ---------------------------- */
+  hid_t type2 = H5Tcopy(io_hdf5_type(FLOAT));
+
+  hsize_t dims2[1] = {1};
+  hid_t space2 = H5Screate_simple(1, dims2, NULL);
+  hid_t dset2 = H5Dcreate(h_grp, "ReducedLightspeed", type2, space2,
+                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset2, type2, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           &rt_params.reduced_speed_of_light);
+
+  /* Write unit conversion factors for this data set */
+  char buffer2[FIELD_BUFFER_SIZE] = {0};
+  units_cgs_conversion_string(buffer2, snapshot_units, UNIT_CONV_VELOCITY,
+                              /*scale_factor_exponent=*/0);
+  float baseUnitsExp2[5];
+  units_get_base_unit_exponents_array(baseUnitsExp2, UNIT_CONV_VELOCITY);
+  io_write_attribute_f(dset2, "U_M exponent", baseUnitsExp2[UNIT_MASS]);
+  io_write_attribute_f(dset2, "U_L exponent", baseUnitsExp2[UNIT_LENGTH]);
+  io_write_attribute_f(dset2, "U_t exponent", baseUnitsExp2[UNIT_TIME]);
+  io_write_attribute_f(dset2, "U_I exponent", baseUnitsExp2[UNIT_CURRENT]);
+  io_write_attribute_f(dset2, "U_T exponent", baseUnitsExp2[UNIT_TEMPERATURE]);
+  io_write_attribute_f(dset2, "h-scale exponent", 0.f);
+  io_write_attribute_f(dset2, "a-scale exponent", 0.f);
+  io_write_attribute_s(dset2, "Expression for physical CGS units", buffer2);
+
+  /* Write the actual number this conversion factor corresponds to */
+  const double factor2 =
+      units_cgs_conversion_factor(snapshot_units, UNIT_CONV_VELOCITY);
+  io_write_attribute_d(
+      dset2,
+      "Conversion factor to CGS (not including cosmological corrections)",
+      factor2);
+  io_write_attribute_d(
+      dset2,
+      "Conversion factor to physical CGS (including cosmological corrections)",
+      factor2 * pow(e->cosmology->a, 0.f));
+
+  H5Dclose(dset2);
+  H5Tclose(type2);
 
 #endif /* HAVE_HDF5 */
 }

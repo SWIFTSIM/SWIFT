@@ -292,6 +292,7 @@ Simulations using periodic boundary conditions use additional parameters for the
 Particle-Mesh part of the calculation. The last five are optional:
 
 * The number cells along each axis of the mesh :math:`N`: ``mesh_side_length``,
+* Whether or not to use a distributed mesh when running over MPI: ``distributed_mesh`` (default: ``0``),
 * The mesh smoothing scale in units of the mesh cell-size :math:`a_{\rm
   smooth}`: ``a_smooth`` (default: ``1.25``),
 * The scale above which the short-range forces are assumed to be 0 (in units of
@@ -305,6 +306,18 @@ For most runs, the default values can be used. Only the number of cells along
 each axis needs to be specified. The remaining three values are best described
 in the context of the full set of equations in the theory documents.
 
+By default, SWIFT will replicate the mesh on each MPI rank. This means that a
+single MPI reduction is used to ensure all ranks have a full copy of the density
+field. Each node then solves for the potential in Fourier space independently of
+the others. This is a fast option for small meshes. This technique is limited to
+mesh with sizes :math:`N<1291` due to the limitations of MPI. Larger meshes need
+to use the distributed version of the algorithm. The code then also needs to be
+compiled with ``--enable-mpi-mesh-gravity``. That algorithm is slower for small
+meshes but has no limits on the size of the mesh and truly huge Fourier
+transforms can be performed without any problems. The only limitation is the
+amount of memory on each node. The algorithm will use ``N^3 * 8 * 2 / M`` bytes
+on each of the ``M`` MPI ranks.
+
 As a summary, here are the values used for the EAGLE :math:`100^3~{\rm Mpc}^3`
 simulation:
 
@@ -316,7 +329,8 @@ simulation:
      MAC:                    adaptive
      theta_cr:               0.6
      epsilon_fmm:            0.001
-     mesh_side_length:       512
+     mesh_side_length:       2048
+     distributed_mesh:       0
      comoving_DM_softening:         0.0026994  # 0.7 proper kpc at z=2.8.
      max_physical_DM_softening:     0.0007     # 0.7 proper kpc
      comoving_baryon_softening:     0.0026994  # 0.7 proper kpc at z=2.8.
@@ -796,6 +810,19 @@ that can be used as if it was a non-distributed snapshot. In this case, the
 HDF5 library itself can figure out which file is needed when manipulating the
 snapshot.
 
+On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
+a good writing speed. If the parameter ``lustre_OST_count`` is set to the number
+of OSTs present on the system, then SWIFT will set the `stripe count` of each
+distributed file to `1` and set each file's `stripe index` to the MPI rank
+generating it modulo the OST count. If the parameter is not set then the files
+will be created with the default system policy (or whatever was set for the
+directory where the files are written). This parameter has no effect on
+non-Lustre file systems and no effect if distributed snapshots are not used.
+
+* The number of Lustre OSTs to distribute the single-striped distributed
+  snapshot files over: ``lustre_OST_count`` (default: ``0``)
+
+
 Users can optionally ask to randomly sub-sample the particles in the snapshots.
 This is specified for each particle type individually:
 
@@ -824,6 +851,18 @@ time spent deflating and inflating the data.  When compression is switched on
 the SHUFFLE filter is also applied to get higher compression rates. Note that up
 until HDF5 1.10.x this option is not available when using the MPI-parallel
 version of the i/o routines.
+
+When applying lossy compression (see :ref:`Compression_filters`), particles may
+be be getting positions that are marginally beyond the edge of the simulation
+volume. A small vector perpendicular to the edge can be added to the particles
+to alleviate this issue. This can be switched on by setting the parameter
+``use_delta_from_edge`` (default: ``0``) to ``1`` and the buffer size from the
+edge ``delta_from_edge`` (default: ``0.``). An example would be when using
+Mega-parsec as the base unit and using a filter rounding to the nearest 10
+parsec (``DScale5``). Adopting a buffer of 10pc (``delta_from_edge:1e-5``) would
+alleviate any possible issue of seeing particles beyond the simulation volume in
+the snapshots. In all practical applications the shift would be << than the
+softening.
 
 Users can run a program after a snapshot is dumped to disk using the following
 parameters:
@@ -877,6 +916,7 @@ would have:
      invoke_fof:          1
      compression:         3
      distributed:         1
+     lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
      UnitLength_in_cgs:   1.  # Use cm in outputs
      UnitMass_in_cgs:     1.  # Use grams in outputs
      UnitVelocity_in_cgs: 1.  # Use cm/s in outputs
@@ -1032,6 +1072,18 @@ the MPI-rank. SWIFT writes one file per MPI rank. If the ``save`` option has
 been activated, the previous set of restart files will be named
 ``basename_000000.rst.prev``.
 
+On Lustre filesystems [#f4]_ it is important to properly stripe files to achieve
+a good writing and reading speed. If the parameter ``lustre_OST_count`` is set
+to the number of OSTs present on the system, then SWIFT will set the `stripe
+count` of each restart file to `1` and set each file's `stripe index` to the MPI
+rank generating it modulo the OST count. If the parameter is not set then the
+files will be created with the default system policy (or whatever was set for
+the directory where the files are written). This parameter has no effect on
+non-Lustre file systems.
+
+* The number of Lustre OSTs to distribute the single-striped restart files over:
+  ``lustre_OST_count`` (default: ``0``)
+
 SWIFT can also be stopped by creating an empty file called ``stop`` in the
 directory where the restart files are written (i.e. the directory speicified by
 the parameter ``subdir``). This will make SWIFT dump a fresh set of restart file
@@ -1073,6 +1125,7 @@ hours after which a shell command will be run, one would use:
     delta_hours:        5.0
     stop_steps:         100
     max_run_time:       24.0       # In hours
+    lustre_OST_count:   48         # System has 48 Lustre OSTs to distribute the files over
     resubmit_on_exit:   1
     resubmit_command:   ./resub.sh
 
@@ -1539,4 +1592,7 @@ A complete specification of the model looks like
 
 .. [#f2] which would translate into a constant :math:`G_N=1.5517771\times10^{-9}~cm^{3}\,g^{-1}\,s^{-2}` if expressed in the CGS system.
 
-.. [#f3] The mapping is 0 --> gas, 1 --> dark matter, 2 --> background dark matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
+.. [#f3] The mapping is 0 --> gas, 1 --> dark matter, 2 --> background dark
+	 matter, 3 --> sinks, 4 --> stars, 5 --> black holes, 6 --> neutrinos.
+
+.. [#f4] https://wiki.lustre.org/Main_Page

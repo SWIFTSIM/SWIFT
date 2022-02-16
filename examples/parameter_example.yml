@@ -77,7 +77,8 @@ Stars:
   
 # Parameters for the self-gravity scheme
 Gravity:
-  mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh.
+  mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh (must be even).
+  distributed_mesh:              0         # (Optional) Are we using a distributed mesh when running over MPI (necessary for meshes > 1290^3)
   eta:                           0.025     # Constant dimensionless multiplier for time integration.
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
@@ -159,6 +160,9 @@ Snapshots:
   invoke_fof: 0           # (Optional) Call FOF every time a snapshot is written
   compression: 0          # (Optional) Set the level of GZIP compression of the HDF5 datasets [0-9]. 0 does no compression. The lossless compression is applied to *all* the fields.
   distributed: 0          # (Optional) When running over MPI, should each rank write a partial snapshot or do we want a single file? 1 implies one file per MPI rank.
+  lustre_OST_count:  0    # (Optional) If > 0, the number of lustre OSTs to distribure the single-striped files over. Has no effect on non-Lustre filesystems. Has an effect only on distributed snapshots.
+  use_delta_from_edge: 0  # (Optional) Should particles close to the box edge be moved back towards 0 by a vector perpendicular to the box edge? This is useful in cases where lossy compression moves particle beyond the edge.
+  delta_from_edge:     0. # (Optional) Norm of the vector to use when moving particles away from the edge
   UnitMass_in_cgs:     1  # (Optional) Unit system for the outputs (Grams)
   UnitLength_in_cgs:   1  # (Optional) Unit system for the outputs (Centimeters)
   UnitVelocity_in_cgs: 1  # (Optional) Unit system for the outputs (Centimeters per second)
@@ -216,6 +220,7 @@ Restarts:
   max_run_time:       24.0       # (optional) Maximal wall-clock time in hours. The application will exit when this limit is reached.
   resubmit_on_exit:   0          # (Optional) whether to run a command when exiting after the time limit has been reached.
   resubmit_command:   ./resub.sh # (Optional) Command to run when time limit is reached. Compulsory if resubmit_on_exit is switched on. Note potentially unsafe.
+  lustre_OST_count:  0           # (Optional) If > 0, the number of lustre OSTs to distribure the single-striped restart files over. Has no effect on non-Lustre filesystems.
 
 # Parameters governing domain decomposition
 DomainDecomposition:
@@ -662,6 +667,8 @@ DebugRT:
     all_parts_have_stars:  0          # Set to 1 to do additional tests that only work if all hydro particles have a star particle neighbour
 
 GEARRT:
+    f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
+    CFL_condition: 0.99                               # CFL condition for RT, independent of hydro
     photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N). Outer edges of zero and infinity are assumed.
     use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_per_s parameter
     star_emission_rates_LSol: [1., 1., 1., 1.]        # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set, in units of Solar Luminosity.

@@ -40,6 +40,8 @@
 #include "./cooling/grackle/cooling_struct.h"
 #elif defined(COOLING_QLA)
 #include "./cooling/QLA/cooling_struct.h"
+#elif defined(COOLING_QLA_EAGLE)
+#include "./cooling/QLA_EAGLE/cooling_struct.h"
 #elif defined(COOLING_EAGLE)
 #include "./cooling/EAGLE/cooling_struct.h"
 #elif defined(COOLING_COLIBRE)

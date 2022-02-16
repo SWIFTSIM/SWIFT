@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
 
 # ------------------------------------------------------------------------
 # Collection of sanity checks for the 'debug' RT scheme in swift.
@@ -201,7 +220,10 @@ def check_hydro_sanity(snapdata):
         # check that we didn't loose any radiation
         # --------------------------------------------------------------
         sum_gas_tot = gas.RadiationAbsorbedTot.sum()
-        sum_star_tot = stars.RadiationEmittedTot.sum()
+        if snap.has_stars:
+            sum_star_tot = stars.RadiationEmittedTot.sum()
+        else:
+            sum_star_tot = 0.0
 
         if sum_gas_tot != sum_star_tot:
             print("- checking hydro sanity pt2; snapshot", snap.snapnr)
@@ -225,24 +247,26 @@ def check_stars_sanity(snapdata):
     - total calls keep increasing?
     """
 
-    nsnaps = len(snapdata)
-    npart = snapdata[0].stars.coords.shape[0]
-
     print("Checking stars")
+
+    nsnaps = len(snapdata)
 
     # ----------------------------------------------
     #  check consistency of individual snapshots
     # ----------------------------------------------
     for snap in snapdata:
+        if not snap.has_stars:
+            continue
 
         this = snap.stars
+        nspart = snapdata[0].stars.coords.shape[0]
 
         if hydro_controlled_injection:
             if (this.EmissionRateSet != 1).any():
                 print("- checking stars sanity pt2", snap.snapnr)
                 print("--- Emisison Rates not consistent")
                 count = 0
-                for i in range(npart):
+                for i in range(nspart):
                     if this.EmissionRateSet[i] != 1:
                         count += 1
                         if print_diffs:

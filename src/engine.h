@@ -318,10 +318,13 @@ struct engine {
   float snapshot_subsample_fraction[swift_type_count];
   int snapshot_run_on_dump;
   int snapshot_distributed;
+  int snapshot_lustre_OST_count;
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
   struct unit_system *snapshot_units;
+  int snapshot_use_delta_from_edge;
+  double snapshot_delta_from_edge;
   int snapshot_output_count;
 
   /* Structure finding information */
@@ -506,6 +509,9 @@ struct engine {
 
   /* Whether to dump restart files after the last step. */
   int restart_onexit;
+
+  /* Number of Lustre OSTs on the system to use as rank-based striping offset */
+  int restart_lustre_OST_count;
 
   /* Name of the restart file. */
   const char *restart_file;

@@ -2186,6 +2186,19 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_fof) {
     if (e->ti_end_min > e->ti_next_fof && e->ti_next_fof > 0) {
       e->run_fof = 1;
+      e->forcerebuild = 1;
+    }
+  }
+
+  if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
+      e->mesh->ti_end_mesh_next == e->ti_current)
+    e->forcerebuild = 1;
+
+  /* Do we want a snapshot that will trigger a FOF call? */
+  if (e->ti_current + (e->ti_current - e->ti_old) > e->ti_next_snapshot &&
+      e->ti_next_snapshot > 0) {
+    if ((e->policy & engine_policy_fof) && e->snapshot_invoke_fof) {
+      e->forcerebuild = 1;
     }
   }
 
@@ -2852,10 +2865,18 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:compression", 0);
   e->snapshot_distributed =
       parser_get_opt_param_int(params, "Snapshots:distributed", 0);
+  e->snapshot_lustre_OST_count =
+      parser_get_opt_param_int(params, "Snapshots:lustre_OST_count", 0);
   e->snapshot_invoke_stf =
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
       parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
+  e->snapshot_use_delta_from_edge =
+      parser_get_opt_param_int(params, "Snapshots:use_delta_from_edge", 0);
+  if (e->snapshot_use_delta_from_edge) {
+    e->snapshot_delta_from_edge =
+        parser_get_param_double(params, "Snapshots:delta_from_edge");
+  }
   e->dump_catalogue_when_seeding =
       parser_get_opt_param_int(params, "FOF:dump_catalogue_when_seeding", 0);
   e->snapshot_units = (struct unit_system *)malloc(sizeof(struct unit_system));
@@ -3226,7 +3247,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
   const timebin_t bin = get_time_bin(new_dti);
 
-  if (new_dti != old_dti)
+  if (e->verbose && new_dti != old_dti)
     message("Mesh time-step changed to %e (time-bin %d)",
             get_timestep(bin, e->time_base), bin);
 

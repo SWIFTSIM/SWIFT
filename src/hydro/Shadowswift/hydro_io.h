@@ -121,6 +121,46 @@ INLINE static void convert_part_pos(const struct engine* e,
     ret[1] = p->x[1];
     ret[2] = p->x[2];
   }
+  if (e->snapshot_use_delta_from_edge) {
+    ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);
+    ret[1] = min(ret[1], s->dim[1] - e->snapshot_delta_from_edge);
+    ret[2] = min(ret[2], s->dim[2] - e->snapshot_delta_from_edge);
+  }
+}
+
+INLINE static void convert_part_vel(const struct engine* e,
+                                    const struct part* p,
+                                    const struct xpart* xp, float* ret) {
+
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const struct cosmology* cosmo = e->cosmology;
+  const integertime_t ti_current = e->ti_current;
+  const double time_base = e->time_base;
+
+  const integertime_t ti_beg = get_integer_time_begin(ti_current, p->time_bin);
+  const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
+
+  /* Get time-step since the last kick */
+  float dt_kick_grav, dt_kick_hydro;
+  if (with_cosmology) {
+    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
+    dt_kick_grav -=
+        cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
+    dt_kick_hydro = cosmology_get_hydro_kick_factor(cosmo, ti_beg, ti_current);
+    dt_kick_hydro -=
+        cosmology_get_hydro_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
+  } else {
+    dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
+    dt_kick_hydro = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
+  }
+
+  /* Extrapolate the velocites to the current time */
+  hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, ret);
+
+  /* Conversion from internal units to peculiar velocities */
+  ret[0] *= cosmo->a_inv;
+  ret[1] *= cosmo->a_inv;
+  ret[2] *= cosmo->a_inv;
 }
 
 /**
@@ -142,8 +182,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
       convert_part_pos, "Co-moving positions of the particles");
 
-  list[1] = io_make_output_field(
-      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, primitives.v,
+  list[1] = io_make_output_field_convert_part(
+      "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, parts, xparts,
+      convert_part_vel,
       "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
       "co-moving positions of the particles");
 

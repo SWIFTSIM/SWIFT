@@ -125,11 +125,8 @@ static void engine_do_unskip_stars(struct cell *c, struct engine *e,
   /* Ignore empty cells. */
   if (!non_empty) return;
 
-  const int ci_active =
-      cell_is_active_stars(c, e) ||
-      (with_star_formation && cell_is_active_hydro(c, e)) ||
-      (with_star_formation_sink &&
-       (cell_is_active_hydro(c, e) || cell_is_active_sinks(c, e)));
+  const int ci_active = cell_need_activating_stars(c, e, with_star_formation,
+                                                   with_star_formation_sink);
 
   /* Skip inactive cells. */
   if (!ci_active) return;

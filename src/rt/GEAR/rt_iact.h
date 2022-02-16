@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_GEAR_H
 #define SWIFT_RT_IACT_GEAR_H
 
+#include "rt_flux.h"
 #include "rt_gradients.h"
 
 /**
@@ -141,6 +142,140 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 #endif
+
+  /* Get r and 1/r. */
+  const float r = sqrtf(r2);
+  const float r_inv = 1.0f / r;
+
+  /* Initialize local variables */
+  float Bi[3][3];
+  float Bj[3][3];
+  for (int k = 0; k < 3; k++) {
+    for (int l = 0; l < 3; l++) {
+      Bi[k][l] = pi->geometry.matrix_E[k][l];
+      Bj[k][l] = pj->geometry.matrix_E[k][l];
+    }
+  }
+  const float Vi = pi->geometry.volume;
+  const float Vj = pj->geometry.volume;
+
+  /* Compute kernel of pi. */
+  float wi, wi_dx;
+  const float hi_inv = 1.0f / hi;
+  const float hi_inv_dim = pow_dimension(hi_inv);
+  const float xi = r * hi_inv;
+  kernel_deval(xi, &wi, &wi_dx);
+
+  /* Compute kernel of pj. */
+  float wj, wj_dx;
+  const float hj_inv = 1.0f / hj;
+  const float hj_inv_dim = pow_dimension(hj_inv);
+  const float xj = r * hj_inv;
+  kernel_deval(xj, &wj, &wj_dx);
+
+  /* Compute (square of) area */
+  /* eqn. (7) */
+  float Anorm2 = 0.0f;
+  float A[3];
+  if (hydro_part_geometry_well_behaved(pi) &&
+      hydro_part_geometry_well_behaved(pj)) {
+    /* in principle, we use Vi and Vj as weights for the left and right
+     * contributions to the generalized surface vector.
+     * However, if Vi and Vj are very different (because they have very
+     * different smoothing lengths), then the expressions below are more
+     * stable. */
+    float Xi = Vi;
+    float Xj = Vj;
+#ifdef GIZMO_VOLUME_CORRECTION
+    if (fabsf(Vi - Vj) / min(Vi, Vj) > 1.5f * hydro_dimension) {
+      Xi = (Vi * hj + Vj * hi) / (hi + hj);
+      Xj = Xi;
+    }
+#endif
+    for (int k = 0; k < 3; k++) {
+      /* we add a minus sign since dx is pi->x - pj->x */
+      A[k] = -Xi * (Bi[k][0] * dx[0] + Bi[k][1] * dx[1] + Bi[k][2] * dx[2]) *
+                 wi * hi_inv_dim -
+             Xj * (Bj[k][0] * dx[0] + Bj[k][1] * dx[1] + Bj[k][2] * dx[2]) *
+                 wj * hj_inv_dim;
+      Anorm2 += A[k] * A[k];
+    }
+  } else {
+    /* ill condition gradient matrix: revert to SPH face area */
+    const float hidp1 = pow_dimension_plus_one(hi_inv);
+    const float hjdp1 = pow_dimension_plus_one(hj_inv);
+    const float Anorm =
+        -(hidp1 * Vi * Vi * wi_dx + hjdp1 * Vj * Vj * wj_dx) * r_inv;
+    A[0] = -Anorm * dx[0];
+    A[1] = -Anorm * dx[1];
+    A[2] = -Anorm * dx[2];
+    Anorm2 = Anorm * Anorm * r2;
+  }
+
+  /* if the interface has no area, nothing happens and we return */
+  /* continuing results in dividing by zero and NaN's... */
+  if (Anorm2 == 0.0f) {
+    return;
+  }
+
+  /* Compute the area */
+  const float Anorm_inv = 1.0f / sqrtf(Anorm2);
+  const float Anorm = Anorm2 * Anorm_inv;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* For stability reasons, we do require A and dx to have opposite
+   * directions (basically meaning that the surface normal for the surface
+   * always points from particle i to particle j, as it would in a real
+   * moving-mesh code). If not, our scheme is no longer upwind and hence can
+   * become unstable. */
+  const float dA_dot_dx = A[0] * dx[0] + A[1] * dx[1] + A[2] * dx[2];
+  /* In GIZMO, Phil Hopkins reverts to an SPH integration scheme if this
+   * happens. We curently just ignore this case and display a message. */
+  const float rdim = pow_dimension(r);
+  if (dA_dot_dx > 1.e-6f * rdim) {
+    message("Ill conditioned gradient matrix (%g %g %g %g %g)!", dA_dot_dx,
+            Anorm, Vi, Vj, r);
+  }
+#endif
+
+  /* compute the normal vector of the interface */
+  const float n_unit[3] = {A[0] * Anorm_inv, A[1] * Anorm_inv,
+                           A[2] * Anorm_inv};
+
+  /* Compute interface position (relative to pi, since we don't need
+   * the actual position) eqn. (8) */
+  const float xfac = -hi / (hi + hj);
+  const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
+
+  struct rt_part_data *restrict rti = &pi->rt_data;
+  struct rt_part_data *restrict rtj = &pj->rt_data;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+
+    /* density state to be used to compute the flux */
+    float Ui[4], Uj[4];
+    rt_gradients_predict(pi, pj, Ui, Uj, g, dx, r, xij_i);
+
+    float totflux[4];
+
+    rt_compute_flux(Ui, Uj, n_unit, Anorm, totflux);
+
+    /* When solving the Riemann problem, we assume pi is left state, and
+     * pj is right state. The sign convention is that a positive total
+     * flux is subtracted from the left state, and added to the right
+     * state, based on how we chose the unit vector. By this convention,
+     * the time integration results in conserved += flux * dt */
+    rti->flux[g].energy -= totflux[0];
+    rti->flux[g].flux[0] -= totflux[1];
+    rti->flux[g].flux[1] -= totflux[2];
+    rti->flux[g].flux[2] -= totflux[3];
+    if (mode == 1) {
+      rtj->flux[g].energy += totflux[0];
+      rtj->flux[g].flux[0] += totflux[1];
+      rtj->flux[g].flux[1] += totflux[2];
+      rtj->flux[g].flux[2] += totflux[3];
+    }
+  }
 }
 
 /**
