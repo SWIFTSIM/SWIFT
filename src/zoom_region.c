@@ -305,11 +305,15 @@ void construct_zoom_region(struct space *s, int verbose) {
 
 	/* Find new boundaries and widths from the edge of natural cells that the high res particles populate */
   for (int ijk = 0; ijk < 3; ijk++) {
+
+  	/* Find the cell containing the centre of mass and centre on it's midpoint */
+  	const int cent_cell_ijk = (int)(s->zoom_props->com[ijk] * s->iwidth[ijk]);
+    const double mid_point = (cent_cell_ijk * s->width[ijk]) + (s->width[ijk] / 2);
 	
-  	/* Find the bounding cells (including zoom boost factor) */
+  	/* Find the bounding cells */
 //  	const double width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
-		const int ijk_low_bound = (com[ijk] - (max_width / 2)) * s->iwidth[ijk];
-		const int ijk_up_bound = (com[ijk] + (max_width / 2)) * s->iwidth[ijk];
+		const int ijk_low_bound = (mid_point - (max_width / 2)) * s->iwidth[ijk];
+		const int ijk_up_bound = (mid_point + (max_width / 2)) * s->iwidth[ijk];
 
 		/* Find the length of the region along this axis and assign it to array */
 		widths[ijk] = (ijk_up_bound + 1 - ijk_low_bound) * s->width[ijk];
