@@ -288,59 +288,66 @@ void construct_zoom_region(struct space *s, int verbose) {
   	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
   }
 
-	/* Find new boundaries and widths from the edge of natural cells that the high res particles populate */
+  /* Get the maximum axis length of the zoom region including boost factor. */
+  double max_width = 0;
   for (int ijk = 0; ijk < 3; ijk++) {
-	
-  	/* Find the bounding cells (including zoom boost factor) */
-  	const double width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
-		const int ijk_low_bound = (com[ijk] - (width / 2)) * s->iwidth[ijk];
-		const int ijk_up_bound = (com[ijk] + (width / 2)) * s->iwidth[ijk];
-
-		/* Find the length of the region along this axis and assign it to array */
-		widths[ijk] = (ijk_up_bound + 1 - ijk_low_bound) * s->width[ijk];
-
+      if ((new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor > max_width)
+          max_width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
   }
 
   if (verbose)
 	  message("initial_dim: [%f %f %f] initial_zoom_boundary: [%f-%f %f-%f %f-%f]",
-      widths[0], widths[1], widths[2], new_zoom_boundary[0], new_zoom_boundary[1],
-      new_zoom_boundary[2], new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
+      new_zoom_boundary[1] - new_zoom_boundary[0],
+      new_zoom_boundary[3] - new_zoom_boundary[2],
+      new_zoom_boundary[5] - new_zoom_boundary[4],
+      new_zoom_boundary[0], new_zoom_boundary[1], new_zoom_boundary[2],
+      new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
 
-  /* Get the maximum axis length of the zoom region. */
-  double max_width = 0;
+	/* Find new boundaries and widths from the edge of natural cells that the high res particles populate */
   for (int ijk = 0; ijk < 3; ijk++) {
-      if (widths[ijk] > max_width)
-          max_width = widths[ijk];
+	
+  	/* Find the bounding cells (including zoom boost factor) */
+//  	const double width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
+		const int ijk_low_bound = (com[ijk] - (max_width / 2)) * s->iwidth[ijk];
+		const int ijk_up_bound = (com[ijk] + (max_width / 2)) * s->iwidth[ijk];
+
+		/* Find the length of the region along this axis and assign it to array */
+		widths[ijk] = (ijk_up_bound + 1 - ijk_low_bound) * s->width[ijk];
+
+		/* Use this integer cell coordinate to define the boundaries */
+    new_zoom_boundary[ijk * 2] = ijk_low_bound * s->width[ijk];
+    new_zoom_boundary[(ijk * 2) + 1] = (iijk_up_bound + 1) + s->width[ijk];
+
   }
 
-  /* Find the new zoom region bounds for equal widths on all axes based on this maximum,
-   * centred on the central natural cell and with the zoom boundaries on natural cell boundaries */
-  for (int ijk = 0; ijk < 3; ijk++) {
-  	const int cent_cell_ijk = (int)(s->zoom_props->com[ijk] * s->iwidth[ijk]);
-    const double mid_point = (cent_cell_ijk * s->width[ijk]) + (s->width[ijk] / 2);
-  	
-		/* We have to ensure this mid point results in zoom boundaires at natural cell boundaries */
-		const int ini_low_zoom_boundary = (int)((mid_point - (max_width / 2)) * s->iwidth[ijk]);
-		const int ini_up_zoom_boundary = (int)((mid_point + (max_width / 2)) * s->iwidth[ijk]);
-
-		/* Use this integer cell coordinate to define lower boundary */
-    new_zoom_boundary[ijk * 2] = ini_low_zoom_boundary * s->width[ijk];
-
-		/* If the upper boundary lies inside a natural cell we need to add the width of a natual cell,
-		 * if it's at the boundary we do not */
-		if ((int)((mid_point + (max_width / 2)) * s->iwidth[ijk]) == ((mid_point + (max_width / 2)) * s->iwidth[ijk])) {
-
-			/* Use this integer cell coordinate to define upper boundary */
-	    new_zoom_boundary[(ijk * 2) + 1] = ini_up_zoom_boundary * s->width[ijk];
-
-		} else {
-
-			/* Use this integer cell coordinate to define upper boundary with an extra natural cell width */
-	    new_zoom_boundary[(ijk * 2) + 1] = (ini_up_zoom_boundary * s->width[ijk]) + s->width[ijk];
-
-		}
-
-  }
+//  /* Find the new zoom region bounds for equal widths on all axes based on this maximum,
+//   * centred on the central natural cell and with the zoom boundaries on natural cell boundaries */
+//  for (int ijk = 0; ijk < 3; ijk++) {
+//  	const int cent_cell_ijk = (int)(s->zoom_props->com[ijk] * s->iwidth[ijk]);
+//    const double mid_point = (cent_cell_ijk * s->width[ijk]) + (s->width[ijk] / 2);
+//
+//		/* We have to ensure this mid point results in zoom boundaires at natural cell boundaries */
+//		const int ini_low_zoom_boundary = (int)((mid_point - (max_width / 2)) * s->iwidth[ijk]);
+//		const int ini_up_zoom_boundary = (int)((mid_point + (max_width / 2)) * s->iwidth[ijk]);
+//
+//		/* Use this integer cell coordinate to define lower boundary */
+//    new_zoom_boundary[ijk * 2] = ini_low_zoom_boundary * s->width[ijk];
+//
+//		/* If the upper boundary lies inside a natural cell we need to add the width of a natual cell,
+//		 * if it's at the boundary we do not */
+//		if ((int)((mid_point + (max_width / 2)) * s->iwidth[ijk]) == ((mid_point + (max_width / 2)) * s->iwidth[ijk])) {
+//
+//			/* Use this integer cell coordinate to define upper boundary */
+//	    new_zoom_boundary[(ijk * 2) + 1] = ini_up_zoom_boundary * s->width[ijk];
+//
+//		} else {
+//
+//			/* Use this integer cell coordinate to define upper boundary with an extra natural cell width */
+//	    new_zoom_boundary[(ijk * 2) + 1] = (ini_up_zoom_boundary * s->width[ijk]) + s->width[ijk];
+//
+//		}
+//
+//  }
 
   /* If this process has pushed the zoom region outside the bounds
    * of the box we need to stop and shift the ICs to avoid having
@@ -367,8 +374,8 @@ void construct_zoom_region(struct space *s, int verbose) {
   for (int ijk = 0; ijk < 3; ijk++) {
   	s->zoom_props->width[ijk] = s->width[ijk] / s->zoom_props->nr_zoom_per_bkg_cells;
   	s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
-  	s->zoom_props->dim[ijk] = s->zoom_props->region_bounds[(ijk * 2) + 1] - s->zoom_props->region_bounds[ijk * 2];
-  	s->zoom_props->cdim[ijk] = s->zoom_props->dim[ijk] * s->zoom_props->iwidth[ijk];
+  	s->zoom_props->dim[ijk] = widths[ijk];
+  	s->zoom_props->cdim[ijk] = widths[ijk] * s->zoom_props->iwidth[ijk];
   }
   s->zoom_props->tl_cell_offset = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_zoom_cells = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
