@@ -1345,14 +1345,16 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
 __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     struct cell *c, const struct space *s) {
 
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+
 	/* Get some information from the space */
 	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 	const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   if (c->depth != 0) {
     error("assigning top level cell index to cell with depth > 0");
   } else {
+
 #ifdef WITH_ZOOM_REGION
 
   	/* Get some zoom information from the space */
