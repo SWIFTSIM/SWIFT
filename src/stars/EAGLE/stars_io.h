@@ -122,6 +122,15 @@ INLINE static void convert_spart_luminosities(const struct engine *e,
                          ret);
 }
 
+INLINE static void convert_spart_potential(const struct engine *e,
+                                           const struct spart *sp, float *ret) {
+
+  if (sp->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(sp->gpart);
+  else
+    ret[0] = 0.f;
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -134,7 +143,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          struct io_props *list, int *num_fields,
                                          const int with_cosmology) {
   /* Say how much we want to write */
-  *num_fields = 13;
+  *num_fields = 14;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -212,6 +221,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "have been divided by 3631 Jy already, i.e. they can be turned into "
       "absolute AB-magnitudes (rest-frame absolute maggies) directly by "
       "applying -2.5 log10(L) without additional corrections.");
+
+  list[13] = io_make_output_field_convert_spart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
+      convert_spart_potential, "Gravitational potentials of the particles");
 }
 
 /**
