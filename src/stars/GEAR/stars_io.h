@@ -107,6 +107,15 @@ INLINE static void convert_spart_vel(const struct engine *e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_spart_potential(const struct engine *e,
+                                           const struct spart *sp, float *ret) {
+
+  if (sp->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(sp->gpart);
+  else
+    ret[0] = 0.f;
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -120,7 +129,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 6;
+  *num_fields = 7;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -152,6 +161,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                    sparts, birth_time,
                                    "Times at which the stars were born");
   }
+
+  list[6] = io_make_output_field_convert_spart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
+      convert_spart_potential, "Gravitational potentials of the particles");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

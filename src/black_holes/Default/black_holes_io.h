@@ -106,6 +106,15 @@ INLINE static void convert_bpart_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_bpart_potential(const struct engine* e,
+                                           const struct bpart* bp, float* ret) {
+
+  if (bp->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(bp->gpart);
+  else
+    ret[0] = 0.f;
+}
+
 /**
  * @brief Specifies which b-particle fields to write to a dataset
  *
@@ -120,7 +129,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 5;
+  *num_fields = 6;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -142,6 +151,10 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, bparts, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+
+  list[5] = io_make_output_field_convert_bpart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
+      convert_bpart_potential, "Gravitational potentials of the particles");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
