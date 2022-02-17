@@ -404,9 +404,6 @@ struct counts_mapper_data {
     struct counts_mapper_data *mydata =                                        \
         (struct counts_mapper_data *)extra_data;                               \
     double size = mydata->size;                                                \
-    int *cdim = mydata->s->cdim;                                               \
-    double iwidth[3] = {mydata->s->iwidth[0], mydata->s->iwidth[1],            \
-                        mydata->s->iwidth[2]};                                 \
     double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
     double *lcounts = NULL;                                                    \
     int lcid = mydata->s->nr_cells;                                            \
@@ -418,7 +415,7 @@ struct counts_mapper_data {
         else if (parts[k].x[j] >= dim[j])                                      \
           parts[k].x[j] -= dim[j];                                             \
       }                                                                        \
-	    const int cid = cell_getid_pos(s, parts[k].x[0],                         \
+	    const int cid = cell_getid_pos(mydata->s, parts[k].x[0],                 \
 	        parts[k].x[1], parts[k].x[2]);                                       \
       if (cid > ucid) ucid = cid;                                              \
       if (cid < lcid) lcid = cid;                                              \
@@ -427,7 +424,7 @@ struct counts_mapper_data {
     if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
-	    const int cid = cell_getid_pos(s, parts[k].x[0],                         \
+	    const int cid = cell_getid_pos(mydata->s, parts[k].x[0],                 \
 	        parts[k].x[1], parts[k].x[2]);                                       \
       lcounts[cid - lcid] += size;                                             \
     }                                                                          \
