@@ -675,7 +675,7 @@ __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
                                                          const double z) {
 
 	/* Define variable to output */
-	const int cell_id;
+	int cell_id;
 
 #ifdef WITH_ZOOM_REGION
 	if (s->with_zoom_region) {
