@@ -565,15 +565,12 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
   /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
+
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    h_index[k] = cell_getid_zoom(cdim, p->x[0], p->x[1], p->x[2], s,
-                              p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-#else
-    h_index[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-#endif
+    h_index[k] = cell_getid_pos(s, p->x[0], p->x[1], p->x[2]);
+
     cell_part_counts[h_index[k]]++;
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[h_index[k]].nodeID != local_nodeID)
       error("Received part that does not belong to me (nodeID=%i).",
@@ -585,14 +582,11 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
   /* Assign each received spart to its cell. */
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
     const struct spart *const sp = &s->sparts[k];
-#ifdef WITH_ZOOM_REGION
-    s_index[k] = cell_getid_zoom(cdim, sp->x[0], sp->x[1], sp->x[2], s,
-                              sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
-#else
-    s_index[k] =
-        cell_getid(cdim, sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
-#endif
+
+    s_index[k] = cell_getid_pos(s, sp->x[0], sp->x[1], sp->x[2]);
+
     cell_spart_counts[s_index[k]]++;
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[s_index[k]].nodeID != local_nodeID)
       error("Received s-part that does not belong to me (nodeID=%i).",
@@ -604,14 +598,11 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
   /* Assign each received bpart to its cell. */
   for (size_t k = nr_bparts; k < s->nr_bparts; k++) {
     const struct bpart *const bp = &s->bparts[k];
-#ifdef WITH_ZOOM_REGION
-    b_index[k] = cell_getid_zoom(cdim, bp->x[0], bp->x[1], bp->x[2], s,
-                              bp->x[0] * ih[0], bp->x[1] * ih[1], bp->x[2] * ih[2]);
-#else
-    b_index[k] =
-        cell_getid(cdim, bp->x[0] * ih[0], bp->x[1] * ih[1], bp->x[2] * ih[2]);
-#endif
+
+    b_index[k] = cell_getid_pos(s, bp->x[0], bp->x[1], bp->x[2]);
+
     cell_bpart_counts[b_index[k]]++;
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[b_index[k]].nodeID != local_nodeID)
       error("Received s-part that does not belong to me (nodeID=%i).",
@@ -644,15 +635,7 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_ind = cell_getid_zoom(s->cdim, p->x[0], p->x[1], p->x[2], s,
-                              (int)(p->x[0] * s->iwidth[0]), (int)(p->x[1] * s->iwidth[1]),
-                              (int)(p->x[2] * s->iwidth[2]));
-#else
-    const int new_ind =
-        cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
-                   p->x[2] * s->iwidth[2]);
-#endif
+    const int new_ind = cell_getid_pos(s, p->x[0], p->x[1], p->x[2]);
 
     /* New cell of this part */
     const struct cell *c = &s->cells_top[new_ind];
@@ -680,15 +663,7 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_sind = cell_getid_zoom(s->cdim, sp->x[0], sp->x[1], sp->x[2], s,
-                              (int)(sp->x[0] * s->iwidth[0]), (int)(sp->x[1] * s->iwidth[1]),
-                              (int)(sp->x[2] * s->iwidth[2]));
-#else
-    const int new_sind =
-        cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
-                   sp->x[2] * s->iwidth[2]);
-#endif
+    const int new_sind = cell_getid_pos(s, sp->x[0], sp->x[1], sp->x[2]);
 
     /* New cell of this spart */
     const struct cell *c = &s->cells_top[new_sind];
@@ -716,15 +691,7 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_bind = cell_getid_zoom(s->cdim, bp->x[0], bp->x[1], bp->x[2], s,
-                              (int)(bp->x[0] * s->iwidth[0]), (int)(bp->x[1] * s->iwidth[1]),
-                              (int)(bp->x[2] * s->iwidth[2]));
-#else
-    const int new_bind =
-        cell_getid(s->cdim, bp->x[0] * s->iwidth[0], bp->x[1] * s->iwidth[1],
-                   bp->x[2] * s->iwidth[2]);
-#endif
+    const int new_bind = cell_getid_pos(s, bp->x[0], bp->x[1], bp->x[2]);
 
     /* New cell of this bpart */
     const struct cell *c = &s->cells_top[new_bind];
@@ -752,15 +719,7 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_bind = cell_getid_zoom(s->cdim, sink->x[0], sink->x[1], sink->x[2], s,
-                              (int)(sink->x[0] * s->iwidth[0]), (int)(sink->x[1] * s->iwidth[1]),
-                              (int)(sink->x[2] * s->iwidth[2]));
-#else
-    const int new_bind =
-        cell_getid(s->cdim, sink->x[0] * s->iwidth[0], sink->x[1] * s->iwidth[1],
-                   sink->x[2] * s->iwidth[2]);
-#endif
+    const int new_bind = cell_getid_pos(s, sink->x[0], sink->x[1], sink->x[2]);
 
     /* New cell of this sink */
     const struct cell *c = &s->cells_top[new_bind];
@@ -852,13 +811,9 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
   /* Assign each received gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
-#ifdef WITH_ZOOM_REGION
-    g_index[k] = cell_getid_zoom(cdim, p->x[0], p->x[1], p->x[2], s,
-                              p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-#else
-    g_index[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
-#endif
+
+    g_index[k] = cell_getid_pos(s, p->x[0], p->x[1], p->x[2]);
+
     cell_gpart_counts[g_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[g_index[k]].nodeID != s->e->nodeID)
@@ -896,14 +851,7 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_gind = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], s,
-                              (int)(gp->x[0] * s->iwidth[0]), (int)(gp->x[1] * s->iwidth[1]),
-                              (int)(gp->x[2] * s->iwidth[2]));
-#else
-    const int new_gind = cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
-                                    gp->x[2] * s->iwidth[2]);
-#endif
+    const int new_gind = cell_getid_pos(s, gp->x[0], gp->x[1], gp->x[2]);
 
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_gind];

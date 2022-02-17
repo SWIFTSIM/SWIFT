@@ -125,15 +125,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     if (pos_z == dim_z) pos_z = 0.0;
 
     /* Get its cell index */
-#ifdef WITH_ZOOM_REGION
-	  const int index = cell_getid_zoom(cdim, pos_x,
-	                                    pos_y, pos_z, s,
-	                                    (int)(pos_x * ih_x), (int)(pos_y * ih_y),
-                                      (int)(pos_z * ih_z));
-#else
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-#endif
+	  const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -259,13 +251,7 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     if (pos_z == dim_z) pos_z = 0.0;
 
     /* Get its cell index */
-#ifdef WITH_ZOOM_REGION
-    const int index = cell_getid_zoom(cdim, pos_x, pos_y, pos_z, s,
-                            (int)(pos_x * ih_x), (int)(pos_y * ih_y),
-                            (int)(pos_z * ih_z));
-#else  
-    const int index = cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-#endif
+    const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
 
 #if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
@@ -397,22 +383,14 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     if (pos_z == dim_z) pos_z = 0.0;
 
 	  /* Get its cell index */
-#ifdef WITH_ZOOM_REGION
-	  const int index = cell_getid_zoom(cdim, pos_x,
-	                                    pos_y, pos_z, s,
-	                                    pos_x * ih_x,
-	                                    pos_y * ih_y,
-	                                    pos_z * ih_z);
-#else
-	  const int index =
-			  cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-#endif
+	  const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
-
+#endif
+#ifdef SWIFT_DEBUG_CHECKS
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
@@ -533,22 +511,14 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     if (pos_z == dim_z) pos_z = 0.0;
 
 	  /* Get its cell index */
-#ifdef WITH_ZOOM_REGION
-	  const int index = cell_getid_zoom(cdim, pos_x,
-	                                    pos_y, pos_z, s,
-	                                    pos_x * ih_x,
-	                                    pos_y * ih_y,
-	                                    pos_z * ih_z);
-#else
-	  const int index =
-			  cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-#endif
+	  const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
     if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
-
+#endif
+#ifdef SWIFT_DEBUG_CHECKS
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
@@ -669,22 +639,14 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     if (pos_z == dim_z) pos_z = 0.0;
 
 	  /* Get its cell index */
-#ifdef WITH_ZOOM_REGION
-	  const int index = cell_getid_zoom(cdim, pos_x,
-	                                    pos_y, pos_z, s,
-	                                    pos_x * ih_x,
-	                                    pos_y * ih_y,
-	                                    pos_z * ih_z);
-#else
-	  const int index =
-			  cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
-#endif
+	  const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
+	  if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
-
+#endif
+#ifdef SWIFT_DEBUG_CHECKS
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,

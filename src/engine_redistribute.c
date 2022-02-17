@@ -251,7 +251,7 @@ struct redist_mapper_data {
   struct space *s;
   void *base;
 };
-#ifdef WITH_ZOOM_REGION
+
 /* Generic function for accumulating counts for TYPE parts. Note
  * we use a local counts array to avoid the atomic_add in the parts
  * loop. */
@@ -275,11 +275,8 @@ struct redist_mapper_data {
         else if (parts[k].x[j] >= s->dim[j])                               \
           parts[k].x[j] -= s->dim[j];                                      \
       }                                                                    \
-	    const int cid = cell_getid_zoom(s->cdim, parts[k].x[0],              \
-	        parts[k].x[1], parts[k].x[2], s,                                 \
-	        parts[k].x[0] * s->iwidth[0],                                    \
-	        parts[k].x[1] * s->iwidth[1],                                    \
-	        parts[k].x[2] * s->iwidth[2]);                                   \
+	    const int cid = cell_getid_pos(s, parts[k].x[0],                     \
+	        parts[k].x[1], parts[k].x[2]);                                   \
       dest[k] = s->cells_top[cid].nodeID;                                  \
       size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
       lcounts[ind] += 1;                                                   \
@@ -288,42 +285,6 @@ struct redist_mapper_data {
       atomic_add(&mydata->counts[k], lcounts[k]);                          \
     free(lcounts);                                                         \
   }
-#else
-/* Generic function for accumulating counts for TYPE parts. Note
- * we use a local counts array to avoid the atomic_add in the parts
- * loop. */
-#define ENGINE_REDISTRIBUTE_DEST_MAPPER(TYPE)                              \
-  engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements, \
-                                         void *extra_data) {               \
-    struct TYPE *parts = (struct TYPE *)map_data;                          \
-    struct redist_mapper_data *mydata =                                    \
-        (struct redist_mapper_data *)extra_data;                           \
-    struct space *s = mydata->s;                                           \
-    int *dest =                                                            \
-        mydata->dest + (ptrdiff_t)(parts - (struct TYPE *)mydata->base);   \
-    int *lcounts = NULL;                                                   \
-    if ((lcounts = (int *)calloc(                                          \
-             sizeof(int), mydata->nr_nodes * mydata->nr_nodes)) == NULL)   \
-      error("Failed to allocate counts thread-specific buffer");           \
-    for (int k = 0; k < num_elements; k++) {                               \
-      for (int j = 0; j < 3; j++) {                                        \
-        if (parts[k].x[j] < 0.0)                                           \
-          parts[k].x[j] += s->dim[j];                                      \
-        else if (parts[k].x[j] >= s->dim[j])                               \
-          parts[k].x[j] -= s->dim[j];                                      \
-      }                                                                    \
-      const int cid = cell_getid(s->cdim, parts[k].x[0] * s->iwidth[0],    \
-                                 parts[k].x[1] * s->iwidth[1],             \
-                                 parts[k].x[2] * s->iwidth[2]);            \
-      dest[k] = s->cells_top[cid].nodeID;                                  \
-      size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
-      lcounts[ind] += 1;                                                   \
-    }                                                                      \
-    for (int k = 0; k < (mydata->nr_nodes * mydata->nr_nodes); k++)        \
-      atomic_add(&mydata->counts[k], lcounts[k]);                          \
-    free(lcounts);                                                         \
-  }
-#endif /* WITH_ZOOM_REGION */
 
 /**
  * @brief Accumulate the counts of particles per cell.
@@ -730,14 +691,7 @@ void engine_redistribute(struct engine *e) {
       error("Inhibited particle found after sorting!");
 
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_cid = cell_getid_zoom(s->cdim, p->x[0], p->x[1], p->x[2], s,
-    		p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1], p->x[2] * s->iwidth[2]);
-#else
-    const int new_cid =
-        cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
-                   p->x[2] * s->iwidth[2]);
-#endif
+    const int new_cid = cell_getid_pos(s, p->x[0], p->x[1], p->x[2]);
 
     /* New cell of this part */
     const struct cell *c = &s->cells_top[new_cid];
@@ -873,14 +827,7 @@ void engine_redistribute(struct engine *e) {
       error("Inhibited particle found after sorting!");
     
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_cid = cell_getid_zoom(s->cdim, bp->x[0], bp->x[1], bp->x[2], s,
-    		bp->x[0] * s->iwidth[0], bp->x[1] * s->iwidth[1], bp->x[2] * s->iwidth[2]);
-#else
-    const int new_cid =
-        cell_getid(s->cdim, bp->x[0] * s->iwidth[0], bp->x[1] * s->iwidth[1],
-                   bp->x[2] * s->iwidth[2]);
-#endif
+    const int new_cid = cell_getid_pos(s, bp->x[0], bp->x[1], bp->x[2]);
 
     /* New cell of this bpart */
     const struct cell *c = &s->cells_top[new_cid];
@@ -944,14 +891,7 @@ void engine_redistribute(struct engine *e) {
       error("Inhibited particle found after sorting!");
 
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_cid = cell_getid_zoom(s->cdim, gp->x[0], gp->x[1], gp->x[2], s,
-    		gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1], gp->x[2] * s->iwidth[2]);
-#else
-    const int new_cid =
-        cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
-                   gp->x[2] * s->iwidth[2]);
-#endif
+    const int new_cid = cell_getid_pos(s, gp->x[0], gp->x[1], gp->x[2]);
 
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_cid];
@@ -1213,65 +1153,37 @@ void engine_redistribute(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all parts are in the right place. */
   for (size_t k = 0; k < nr_parts_new; k++) {
-#ifdef WITH_ZOOM_REGION
-    const int cid = cell_getid_zoom(s->cdim, s->parts[k].x[0], 
-    		s->parts[k].x[1], s->parts[k].x[2], s,
-    		s->parts[k].x[0] * s->iwidth[0], 
-    		s->parts[k].x[1] * s->iwidth[1], 
-    		s->parts[k].x[2] * s->iwidth[2]);
-#else
-    const int cid = cell_getid(s->cdim, s->parts[k].x[0] * s->iwidth[0],
-                               s->parts[k].x[1] * s->iwidth[1],
-                               s->parts[k].x[2] * s->iwidth[2]);
-#endif
+
+    const int cid = cell_getid_pos(s, s->parts[k].x[0],
+    		                           s->parts[k].x[1], s->parts[k].x[2]);
+
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
             cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_gparts_new; k++) {
-#ifdef WITH_ZOOM_REGION
-    const int cid = cell_getid_zoom(s->cdim, s->gparts[k].x[0], 
-    		s->gparts[k].x[1], s->gparts[k].x[2], s,
-    		s->gparts[k].x[0] * s->iwidth[0], 
-    		s->gparts[k].x[1] * s->iwidth[1], 
-    		s->gparts[k].x[2] * s->iwidth[2]);
-#else
-    const int cid = cell_getid(s->cdim, s->gparts[k].x[0] * s->iwidth[0],
-                               s->gparts[k].x[1] * s->iwidth[1],
-                               s->gparts[k].x[2] * s->iwidth[2]);
-#endif
+
+    const int cid = cell_getid_pos(s, s->gparts[k].x[0],
+    		                           s->gparts[k].x[1], s->gparts[k].x[2]);
+
     if (cells[cid].nodeID != nodeID)
       error("Received g-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_sparts_new; k++) {
-#ifdef WITH_ZOOM_REGION
-    const int cid = cell_getid_zoom(s->cdim, s->sparts[k].x[0], 
-    		s->sparts[k].x[1], s->sparts[k].x[2], s,
-    		s->sparts[k].x[0] * s->iwidth[0], 
-    		s->sparts[k].x[1] * s->iwidth[1], 
-    		s->sparts[k].x[2] * s->iwidth[2]);
-#else
-    const int cid = cell_getid(s->cdim, s->sparts[k].x[0] * s->iwidth[0],
-                               s->sparts[k].x[1] * s->iwidth[1],
-                               s->sparts[k].x[2] * s->iwidth[2]);
-#endif
+
+    const int cid = cell_getid_pos(s, s->sparts[k].x[0],
+    		                           s->sparts[k].x[1], s->sparts[k].x[2]);
+
     if (cells[cid].nodeID != nodeID)
       error("Received s-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_bparts_new; k++) {
-#ifdef WITH_ZOOM_REGION
-    const int cid = cell_getid_zoom(s->cdim, s->bparts[k].x[0], 
-    		s->bparts[k].x[1], s->bparts[k].x[2], s,
-    		s->bparts[k].x[0] * s->iwidth[0], 
-    		s->bparts[k].x[1] * s->iwidth[1], 
-    		s->bparts[k].x[2] * s->iwidth[2]);
-#else
-    const int cid = cell_getid(s->cdim, s->bparts[k].x[0] * s->iwidth[0],
-                               s->bparts[k].x[1] * s->iwidth[1],
-                               s->bparts[k].x[2] * s->iwidth[2]);
-#endif
+
+    const int cid = cell_getid_pos(s, s->bparts[k].x[0],
+    		                           s->bparts[k].x[1], s->bparts[k].x[2]);
+
     if (cells[cid].nodeID != nodeID)
       error("Received b-particle (%zu) that does not belong here (nodeID=%i).",
             k, cells[cid].nodeID);

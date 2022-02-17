@@ -74,58 +74,58 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
  * 
  * First see if the particle is within the zoom bounds, then find its TL cell. 
  *
- * @param cdim Cell dimentions of the TL grid (same for natural TL and zoom grid).
- * @param x, y, z Location of particle.
- * @param i, j, k Location of particle in the natural grid [0, cdim].
  * @param s The space.
+ * @param x, y, z Location of particle.
  */
-int cell_getid_zoom(const int cdim[3], const double x, const double y,
-                    const double z, const struct space *s,
-                    const int i, const int j, const int k) {
+int cell_getid_zoom(const struct space *s, const double x, const double y,
+                    const double z) {
 #ifdef WITH_ZOOM_REGION
   int cell_id;
 
-  if (s->with_zoom_region) {
+  /* Lets get some space information */
+  const int *cdim = s->cdim;
+  const double *iwidth = s->iwidth;
 
-    /* Properties of the zoom region. */
-    const struct zoom_region_properties *zoom_props = s->zoom_props;
-    const int bkg_cell_offset = zoom_props->tl_cell_offset;
-    const double zoom_region_bounds[6] = {
-        zoom_props->region_bounds[0], zoom_props->region_bounds[1],
-        zoom_props->region_bounds[2], zoom_props->region_bounds[3],
-        zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
-    const double ih_x_zoom = zoom_props->iwidth[0];
-    const double ih_y_zoom = zoom_props->iwidth[1];
-    const double ih_z_zoom = zoom_props->iwidth[2];
-    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2]};
+  /* Lets get some properties of the zoom region. */
+  const struct zoom_region_properties *zoom_props = s->zoom_props;
+  const int *zoom_cdim = zoom_props->cdim;
+  const double *zoom_iwidth = zoom_props->iwidth;
+  const int bkg_cell_offset = zoom_props->tl_cell_offset;
+  const double *zoom_region_bounds = zoom_props->region_bounds;
 
-    /* Are the passed coordinates within the zoom region? */
-    if (x >= zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
-        y >= zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
-        z >= zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
-    
-      /* Which zoom TL cell are we in? */
-      const int zoom_i = (x - zoom_region_bounds[0]) * ih_x_zoom;
-      const int zoom_j = (y - zoom_region_bounds[2]) * ih_y_zoom;
-      const int zoom_k = (z - zoom_region_bounds[4]) * ih_z_zoom;
-      cell_id = cell_getid(zoom_cdim, zoom_i, zoom_j, zoom_k);
+  /* Are the passed coordinates within the zoom region? */
+  if (x >= zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
+      y >= zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
+      z >= zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
+
+    /* Which zoom TL cell are we in? */
+    const int zoom_i = (x - zoom_region_bounds[0]) * zoom_iwidth[0];
+    const int zoom_j = (y - zoom_region_bounds[2]) * zoom_iwidth[1];
+    const int zoom_k = (z - zoom_region_bounds[4]) * zoom_iwidth[2];
+    cell_id = cell_getid(zoom_cdim, zoom_i, zoom_j, zoom_k);
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (cell_id < 0 || cell_id >= zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2])
-        error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
+    if (cell_id < 0 || cell_id >= zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2])
+      error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
 #endif
-    /* If not then treat it like normal, and find the natural TL cell. */
-    } else {
-        cell_id = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-    }
-  /* Normal non-zoom-region case. */
+
+  /* If not then treat it like normal, and find the natural TL cell. */
   } else {
-    cell_id = cell_getid(cdim, i, j, k);
+    const int i = x * iwidth[0];
+    const int j = y * iwidth[1];
+    const int k = z * iwidth[2];
+    cell_id = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cell_id < bkg_cell_offset || cell_id >= s->nr_cells)
+      error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
+#endif
+
   }
 
   return cell_id;
 #else
-  return 0;
+  error("Using cell_getid_zoom but compiled without zoom regions enabled!");
 #endif
 }
 
