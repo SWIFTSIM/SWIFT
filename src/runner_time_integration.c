@@ -456,7 +456,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
         if (p->ti_drift != p->ti_kick) error("Error integrating part in time. "
-																						 "(p->ti_drift=%d,  p->ti_kick=%d, e->ti_current=%d, p->x=[%f %f %f])",
+																						 "(p->ti_drift=%ll,  p->ti_kick=%ll, e->ti_current=%ll, p->x=[%f %f %f])",
 																						 p->ti_drift, p->ti_kick, e->ti_current, p->x[0], p->x[1], p->x[2]);
 #endif
 
