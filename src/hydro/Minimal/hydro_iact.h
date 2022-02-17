@@ -223,12 +223,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float pressurej = pj->force.pressure;
   float Bi[3];
   float Bj[3];
-  Bi[0] = pi->B[0];
-  Bi[1] = pi->B[1];
-  Bi[2] = pi->B[2];
-  Bj[0] = pj->B[0];
-  Bj[1] = pj->B[1];
-  Bj[2] = pj->B[2];
+  Bi[0] = pi->B[0] * rhoi;
+  Bi[1] = pi->B[1] * rhoi;
+  Bi[2] = pi->B[2] * rhoi;
+  Bj[0] = pj->B[0] * rhoj;
+  Bj[1] = pj->B[1] * rhoj;
+  Bj[2] = pj->B[2] * rhoj;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -257,10 +257,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float isoPj = pressurej + 0.5f * B2j / const_vacuum_permeability;
 
   /* B dot r. */
-  const float Bri = (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) /
-                    const_vacuum_permeability;
-  const float Brj = (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) /
-                    const_vacuum_permeability;
+  const float Bri = (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]);
+  const float Brj = (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]);
 
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
@@ -289,10 +287,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float c2effj = c2j + v_A2j;
   const float v_sig2i = 0.5f * (c2effi +
 			       sqrtf(c2effi * c2effi
- 			       - 4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) * const_vacuum_permeability / rhoi ));
+ 			       - 4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) / (const_vacuum_permeability * rhoi)));
   const float v_sig2j = 0.5f * (c2effj +
 			       sqrtf(c2effj * c2effj
- 			       - 4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) * const_vacuum_permeability / rhoj ));
+ 			       - 4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) / (const_vacuum_permeability * rhoj)));
   const float v_sig = sqrtf(v_sig2i) + sqrtf(v_sig2j) - const_viscosity_beta * mu_ij;
 
   /* Grab balsara switches */
@@ -300,8 +298,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float balsara_j = pj->force.balsara;
 
   /* Construct the full viscosity term */
+  const float v_sig_hydro = ci + cj - const_viscosity_beta * mu_ij;
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
+  const float visc = -0.25f * v_sig_hydro * (balsara_i + balsara_j) * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =
@@ -309,34 +308,46 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* SPH acceleration term in x direction, i_th particle */
   float sph_acc_term_i[3];
-  sph_acc_term_i[0] = (over_rho2_i * wi_dr * (isoPi * dx[0] - Bri * Bi[0] + Bri * Bi[0]) +
-                       over_rho2_j * wj_dr * (isoPj * dx[0] - Brj * (Bj[0] - Bi[0]))) *
+  sph_acc_term_i[0] = (over_rho2_i * wi_dr * (isoPi * dx[0] - Bri * Bi[0] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_i * wi_dr * Bri * Bi[0] / const_vacuum_permeability +
+                       over_rho2_j * wj_dr * (isoPj * dx[0] - Brj * Bj[0] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_j * wj_dr * Brj * Bi[0] / const_vacuum_permeability) *
                        r_inv;
 
   /* SPH acceleration term in y direction */
-  sph_acc_term_i[1] = (over_rho2_i * wi_dr * (isoPi * dx[1] - Bri * Bi[1] + Bri * Bi[1]) +
-                       over_rho2_j * wj_dr * (isoPj * dx[1] - Brj * (Bj[1] - Bi[1]))) *
+  sph_acc_term_i[1] = (over_rho2_i * wi_dr * (isoPi * dx[1] - Bri * Bi[1] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_i * wi_dr * Bri * Bi[1] / const_vacuum_permeability +
+                       over_rho2_j * wj_dr * (isoPj * dx[1] - Brj * Bj[1] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_j * wj_dr * Brj * Bi[1] / const_vacuum_permeability) *
                        r_inv;
 
   /* SPH acceleration term in z direction */
-  sph_acc_term_i[2] = (over_rho2_i * wi_dr * (isoPi * dx[2] - Bri * Bi[2] + Bri * Bi[2]) +
-                       over_rho2_j * wj_dr * (isoPj * dx[2] - Brj * (Bj[2] - Bi[2]))) *
+  sph_acc_term_i[2] = (over_rho2_i * wi_dr * (isoPi * dx[2] - Bri * Bi[2] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_i * wi_dr * Bri * Bi[2] / const_vacuum_permeability +
+                       over_rho2_j * wj_dr * (isoPj * dx[2] - Brj * Bj[2] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_j * wj_dr * Brj * Bi[2] / const_vacuum_permeability) *
                        r_inv;
 
   /* SPH acceleration term in x direction, j_th particle */
   float sph_acc_term_j[3];
-  sph_acc_term_j[0] = (over_rho2_j * wj_dr * ( - isoPj * dx[0] + Brj * Bj[0] - Brj * Bj[0]) +
-                       over_rho2_i * wi_dr * ( - isoPi * dx[0] + Bri * (Bi[0] - Bj[0]))) *
+  sph_acc_term_j[0] = (over_rho2_j * wj_dr * ( - isoPj * dx[0] + Brj * Bj[0] / const_vacuum_permeability)
+  							 - monopole_beta * over_rho2_j * wj_dr * Brj * Bj[0] / const_vacuum_permeability +
+                       over_rho2_i * wi_dr * ( - isoPi * dx[0] + Bri * Bi[0] / const_vacuum_permeability)
+                      - monopole_beta * over_rho2_i * wi_dr * Bri * Bj[0] / const_vacuum_permeability) *
                        r_inv;
 
   /* SPH acceleration term in y direction */
-  sph_acc_term_j[1] = (over_rho2_j * wj_dr * ( - isoPj * dx[1] + Brj * Bj[1] - Brj * Bj[1]) +
-                       over_rho2_i * wi_dr * ( - isoPi * dx[1] + Bri * (Bi[1] - Bj[1]))) *
+  sph_acc_term_j[1] = (over_rho2_j * wj_dr * ( - isoPj * dx[1] + Brj * Bj[1] / const_vacuum_permeability)
+  							 - monopole_beta * over_rho2_j * wj_dr * Brj * Bj[1] / const_vacuum_permeability +
+                       over_rho2_i * wi_dr * ( - isoPi * dx[1] + Bri * Bi[1] / const_vacuum_permeability)
+                      - monopole_beta * over_rho2_i * wi_dr * Bri * Bj[1] / const_vacuum_permeability) *
                        r_inv;
 
   /* SPH acceleration term in z direction */
-  sph_acc_term_j[2] = (over_rho2_j * wj_dr * ( - isoPj * dx[2] + Brj * Bj[2] - Brj * Bj[2]) +
-                       over_rho2_i * wi_dr * ( - isoPi * dx[2] + Bri * (Bi[2] - Bj[2]))) *
+  sph_acc_term_j[2] = (over_rho2_j * wj_dr * ( - isoPj * dx[2] + Brj * Bj[2] / const_vacuum_permeability)
+  							 - monopole_beta * over_rho2_j * wj_dr * Brj * Bj[2] / const_vacuum_permeability +
+                       over_rho2_i * wi_dr * ( - isoPi * dx[2] + Bri * Bi[2] / const_vacuum_permeability)
+                      - monopole_beta * over_rho2_i * wi_dr * Bri * Bj[2] / const_vacuum_permeability) *
                        r_inv;
 
 
@@ -378,24 +389,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
   pj->force.v_sig = max(pj->force.v_sig, v_sig);
 
-  /* Update the density squared estimate */
-  pi->rhosq += mj * rhoj * wi;
-  pj->rhosq += mi * rhoi * wj;
-
   /* */
-  const float dB_dt_pref_i = over_rho2_i * rhoi * wi_dr * r_inv;
-  const float dB_dt_pref_j = over_rho2_j * rhoj * wj_dr * r_inv;
+  const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
+  const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
 
   /* */
   float dB_dt_i[3];
-  dB_dt_i[0] = Bi[0] * dvdr - Bri * (pi->v[0] - pj->v[0]);
-  dB_dt_i[1] = Bi[1] * dvdr - Bri * (pi->v[1] - pj->v[1]);
-  dB_dt_i[2] = Bi[2] * dvdr - Bri * (pi->v[2] - pj->v[2]);
+  dB_dt_i[0] = - Bri * (pi->v[0] - pj->v[0]);
+  dB_dt_i[1] = - Bri * (pi->v[1] - pj->v[1]);
+  dB_dt_i[2] = - Bri * (pi->v[2] - pj->v[2]);
 
   float dB_dt_j[3];
-  dB_dt_j[0] = Bj[0] * dvdr - Brj * (pi->v[0] - pj->v[0]);
-  dB_dt_j[1] = Bj[1] * dvdr - Brj * (pi->v[1] - pj->v[1]);
-  dB_dt_j[2] = Bj[2] * dvdr - Brj * (pi->v[2] - pj->v[2]);
+  dB_dt_j[0] = - Brj * (pi->v[0] - pj->v[0]);
+  dB_dt_j[1] = - Brj * (pi->v[1] - pj->v[1]);
+  dB_dt_j[2] = - Brj * (pi->v[2] - pj->v[2]);
 
   /* */
   pi->B_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
@@ -448,12 +455,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float pressurej = pj->force.pressure;
   float Bi[3];
   float Bj[3];
-  Bi[0] = pi->B[0];
-  Bi[1] = pi->B[1];
-  Bi[2] = pi->B[2];
-  Bj[0] = pj->B[0];
-  Bj[1] = pj->B[1];
-  Bj[2] = pj->B[2];
+  Bi[0] = pi->B[0] * rhoi;
+  Bi[1] = pi->B[1] * rhoi;
+  Bi[2] = pi->B[2] * rhoi;
+  Bj[0] = pj->B[0] * rhoj;
+  Bj[1] = pj->B[1] * rhoj;
+  Bj[2] = pj->B[2] * rhoj;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -482,10 +489,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float isoPj = pressurej + 0.5f * B2j / const_vacuum_permeability;
 
   /* B dot r. */
-  const float Bri = (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]) /
-                    const_vacuum_permeability;
-  const float Brj = (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]) /
-                    const_vacuum_permeability;
+  const float Bri = (Bi[0]*dx[0] + Bi[1]*dx[1] + Bi[2]*dx[2]);
+  const float Brj = (Bj[0]*dx[0] + Bj[1]*dx[1] + Bj[2]*dx[2]);
 
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
@@ -514,10 +519,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float c2effj = c2j + v_A2j;
   const float v_sig2i = 0.5f * (c2effi +
 			       sqrtf(c2effi * c2effi
- 			       - 4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) * const_vacuum_permeability / rhoi ));
+ 			       - 4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) / (const_vacuum_permeability * rhoi)));
   const float v_sig2j = 0.5f * (c2effj +
 			       sqrtf(c2effj * c2effj
-  			       - 4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) * const_vacuum_permeability / rhoj ));
+  			       - 4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) / (const_vacuum_permeability * rhoj)));
   const float v_sig = sqrtf(v_sig2i) + sqrtf(v_sig2j) - const_viscosity_beta * mu_ij;
 
   /* Grab balsara switches */
@@ -525,28 +530,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float balsara_j = pj->force.balsara;
 
   /* Construct the full viscosity term */
+  const float v_sig_hydro = ci + cj - const_viscosity_beta * mu_ij;
   const float rho_ij = 0.5f * (rhoi + rhoj);
-  const float visc = -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
+  const float visc = -0.25f * v_sig_hydro * (balsara_i + balsara_j) * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =
       0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
 
-  /* SPH acceleration term in x direction */
+  /* SPH acceleration term in x direction, i_th particle */
   float sph_acc_term[3];
-  sph_acc_term[0] = (over_rho2_i * wi_dr * (isoPi * dx[0] - Bri * Bi[0] + Bri * Bi[0]) +
-                     over_rho2_j * wj_dr * (isoPj * dx[0] - Brj * (Bj[0] - Bi[0]))) *
-                    r_inv;
+  sph_acc_term[0] = (over_rho2_i * wi_dr * (isoPi * dx[0] - Bri * Bi[0] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_i * wi_dr * Bri * Bi[0] / const_vacuum_permeability +
+                       over_rho2_j * wj_dr * (isoPj * dx[0] - Brj * Bj[0] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_j * wj_dr * Brj * Bi[0] / const_vacuum_permeability) *
+                       r_inv;
 
   /* SPH acceleration term in y direction */
-  sph_acc_term[1] = (over_rho2_i * wi_dr * (isoPi * dx[1] - Bri * Bi[1] + Bri * Bi[1]) +
-                     over_rho2_j * wj_dr * (isoPj * dx[1] - Brj * (Bj[1] - Bi[1]))) *
-                    r_inv;
+  sph_acc_term[1] = (over_rho2_i * wi_dr * (isoPi * dx[1] - Bri * Bi[1] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_i * wi_dr * Bri * Bi[1] / const_vacuum_permeability +
+                       over_rho2_j * wj_dr * (isoPj * dx[1] - Brj * Bj[1] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_j * wj_dr * Brj * Bi[1] / const_vacuum_permeability) *
+                       r_inv;
 
   /* SPH acceleration term in z direction */
-  sph_acc_term[2] = (over_rho2_i * wi_dr * (isoPi * dx[2] - Bri * Bi[2] + Bri * Bi[2]) +
-                     over_rho2_j * wj_dr * (isoPj * dx[2] - Brj * (Bj[2] - Bi[2]))) *
-                    r_inv;
+  sph_acc_term[2] = (over_rho2_i * wi_dr * (isoPi * dx[2] - Bri * Bi[2] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_i * wi_dr * Bri * Bi[2] / const_vacuum_permeability +
+                       over_rho2_j * wj_dr * (isoPj * dx[2] - Brj * Bj[2] / const_vacuum_permeability)
+		                + monopole_beta * over_rho2_j * wj_dr * Brj * Bi[2] / const_vacuum_permeability) *
+                       r_inv;
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term[0] + mj * visc_acc_term * dx[0];
@@ -575,16 +587,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
 
-  pi->rhosq += mj * rhoj * wi;
-
   /* */
-  const float dB_dt_pref_i = over_rho2_i * rhoi * wi_dr * r_inv;
+  const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
 
   /* */
   float dB_dt_i[3];
-  dB_dt_i[0] = Bi[0] * dvdr - Bri * (pi->v[0] - pj->v[0]);
-  dB_dt_i[1] = Bi[1] * dvdr - Bri * (pi->v[1] - pj->v[1]);
-  dB_dt_i[2] = Bi[2] * dvdr - Bri * (pi->v[2] - pj->v[2]);
+  dB_dt_i[0] = - Bri * (pi->v[0] - pj->v[0]);
+  dB_dt_i[1] = - Bri * (pi->v[1] - pj->v[1]);
+  dB_dt_i[2] = - Bri * (pi->v[2] - pj->v[2]);
 
   /* */
   pi->B_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];

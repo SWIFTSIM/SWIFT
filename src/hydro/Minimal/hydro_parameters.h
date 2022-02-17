@@ -50,6 +50,8 @@
  * Beta is defined as in e.g. Price (2010) Eqn (103) */
 #define const_viscosity_beta 3.0f
 
+#define monopole_beta 1.0f
+
 /* The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the
  * hydro_props_default_viscosity_alpha in fixed schemes, and likely
