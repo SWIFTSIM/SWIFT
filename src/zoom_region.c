@@ -386,8 +386,9 @@ void construct_zoom_region(struct space *s, int verbose) {
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
   if (verbose) {
-  	message("zoom_cdim: [%d %d %d]", s->zoom_props->cdim[0],
-  			    s->zoom_props->cdim[1], s->zoom_props->cdim[2]);
+  	message("zoom_cdim: [%d %d %d] background_cdim [%d %d %d]", s->zoom_props->cdim[0],
+  			    s->zoom_props->cdim[1], s->zoom_props->cdim[2], s->cdim[0],
+  			    s->cdim[1], s->cdim[2]);
   	message("nr_zoom_cells: %d nr_bkg_cells: %d tl_cell_offset: %d", s->zoom_props->nr_zoom_cells,
   			    s->zoom_props->nr_bkg_cells, s->zoom_props->tl_cell_offset);
   	message("zoom_boundary: [%f-%f %f-%f %f-%f]",
@@ -595,6 +596,13 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
 
   int neighbour_count = 0;
   int void_count = 0;
+
+  /* Let's be verbose about this choice */
+  if (e->verbose)
+    message(
+        "Looking for neighbouring natural cells up to %d natural top-level cells away from the zoom region (delta_m=%d "
+        "delta_p=%d)",
+        delta_cells, delta_m, delta_p);
 
   /* Loop over each cell in the space to find the neighbouring top level cells
    * surrounding the zoom region. */
