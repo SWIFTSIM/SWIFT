@@ -320,7 +320,7 @@ void construct_zoom_region(struct space *s, int verbose) {
 
 		/* Use this integer cell coordinate to define the boundaries */
     new_zoom_boundary[ijk * 2] = ijk_low_bound * s->width[ijk];
-    new_zoom_boundary[(ijk * 2) + 1] = (ijk_up_bound + 1) + s->width[ijk];
+    new_zoom_boundary[(ijk * 2) + 1] = (ijk_up_bound + 1) * s->width[ijk];
 
   }
 
