@@ -367,6 +367,87 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
 #endif  // WITH_MPI
 
 /**
+ * @brief Recursively marks the task with index ta_index as a prior of the
+ * current task tb with index tb_index.
+ *
+ * @param s Scheduler.
+ * @param ta_index Task that is a prior of the given task.
+ * @param task_mask_array Array of all task masks. The mask for the task with
+ * index t_index is task_mask_array[t_index] and has size task_type_count *
+ * task_subtype_count.
+ * @param tb Task of which ta_index is a prior.
+ * @param tb_index Index of tb.
+ */
+void scheduler_task_mask_add_prior(struct scheduler *s, const int ta_index,
+                                   int *task_mask_array, const struct task *tb,
+                                   const int tb_index) {
+
+  const int mask_size = task_type_count * task_subtype_count;
+  int *task_mask = &task_mask_array[tb_index * mask_size];
+
+  if (!task_mask[ta_index]) {
+    task_mask[ta_index] = 1;
+    for (int i = 0; i < tb->nr_unlock_tasks; i++) {
+      const struct task *tc = tb->unlock_tasks[i];
+      const int tc_index = tc->type * task_subtype_count + tc->subtype;
+      scheduler_task_mask_add_prior(s, ta_index, task_mask_array, tc, tc_index);
+    }
+  }
+}
+
+void scheduler_create_task_masks(struct scheduler *s) {
+  const int mask_size = task_type_count * task_subtype_count;
+  const int mask_array_size = mask_size * mask_size;
+
+  int *task_mask_array = (int *)calloc(mask_array_size, sizeof(int));
+
+  /* loop over all tasks */
+  for (int i = 0; i < s->nr_tasks; i++) {
+    const struct task *ta = &s->tasks[i];
+    const int ta_index = ta->type * task_subtype_count + ta->subtype;
+
+    /* loop over task dependencies */
+    for (int j = 0; j < ta->nr_unlock_tasks; j++) {
+      const struct task *tb = ta->unlock_tasks[j];
+      const int tb_index = tb->type * task_subtype_count + tb->subtype;
+      scheduler_task_mask_add_prior(s, ta_index, task_mask_array, tb, tb_index);
+    }
+  }
+
+#ifdef WITH_MPI
+  if (engine_rank == 0)
+    MPI_Reduce(MPI_IN_PLACE, task_mask_array, mask_array_size, MPI_INT, MPI_MAX,
+               0, MPI_COMM_WORLD);
+  else
+    MPI_Reduce(task_mask_array, task_mask_array, mask_array_size, MPI_INT,
+               MPI_MAX, 0, MPI_COMM_WORLD);
+#endif
+
+  if (engine_rank == 0) {
+    char filename[50];
+    sprintf(filename, "task_masks.dat");
+    FILE *f = fopen(filename, "w");
+    if (f == NULL) error("Error opening dependency graph file.");
+    fprintf(f, "# name\tmask\n");
+    for (int itype = 0; itype < task_type_count; itype++) {
+      for (int istype = 0; istype < task_subtype_count; istype++) {
+        const int t_index = itype * task_subtype_count + istype;
+        char t_name[200];
+        task_get_full_name(itype, istype, t_name);
+        fprintf(f, "%s", t_name);
+        for (int im = 0; im < mask_size; im++) {
+          fprintf(f, "\t%i", task_mask_array[t_index * mask_size + im]);
+        }
+        fprintf(f, "\n");
+      }
+    }
+    fclose(f);
+  }
+
+  free(task_mask_array);
+}
+
+/**
  * @brief Write a csv file with the task dependencies.
  *
  * Run plot_task_dependencies.py for an example of how to use it
@@ -378,6 +459,8 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
  */
 void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
   const ticks tic = getticks();
+
+  scheduler_create_task_masks(s);
 
   /* Number of possible relations between tasks */
   const int nber_tasks = task_type_count * task_subtype_count;
