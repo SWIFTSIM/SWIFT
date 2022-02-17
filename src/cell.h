@@ -700,7 +700,7 @@ __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
 //	cell_id = cell_getid(s->cdim, i, j, k);
 //#endif
 //	return cell_id;
-	return cell_getid_zoom(s, x, y, z)
+	return cell_getid_zoom(s, x, y, z);
 }
 
 /**
