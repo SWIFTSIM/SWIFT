@@ -404,7 +404,7 @@ struct counts_mapper_data {
     struct counts_mapper_data *mydata =                                        \
         (struct counts_mapper_data *)extra_data;                               \
     double size = mydata->size;                                                \
-    struct space *s = mydata->s;
+    struct space *s = mydata->s;                                               \
     double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
     double *lcounts = NULL;                                                    \
     int lcid = mydata->s->nr_cells;                                            \
