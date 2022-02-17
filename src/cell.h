@@ -1385,15 +1385,14 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
 
-	/* Get some information from the space */
-	const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-	const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-
   if (c->depth != 0) {
     error("assigning top level cell index to cell with depth > 0");
   } else {
 
 #ifdef WITH_ZOOM_REGION
+
+  	/* Get some information from the space */
+	  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 
   	/* Get some zoom information from the space */
 		const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2]};
@@ -1415,6 +1414,11 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     /* in both cases, keep track of first prodigy index */
     atomic_inc(&last_leaf_cell_id);
 #else
+
+    /* Get some information from the space */
+	  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+    const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
+
     if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
     	      /* print warning only once */
       if (last_cell_id == 1ULL) {
