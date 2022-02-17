@@ -257,7 +257,7 @@ struct redist_mapper_data {
  * loop. */
 #define ENGINE_REDISTRIBUTE_DEST_MAPPER(TYPE)                              \
   engine_redistribute_dest_mapper_##TYPE(void *map_data, int num_elements, \
-                                         void *extra_data) {               \
+                                         void *extra_data) ({              \
     struct TYPE *parts = (struct TYPE *)map_data;                          \
     struct redist_mapper_data *mydata =                                    \
         (struct redist_mapper_data *)extra_data;                           \
@@ -275,8 +275,8 @@ struct redist_mapper_data {
         else if (parts[k].x[j] >= s->dim[j])                               \
           parts[k].x[j] -= s->dim[j];                                      \
       }                                                                    \
-	    const int cid = cell_getid_pos(s, parts[k].x[0],                     \
-	        parts[k].x[1], parts[k].x[2]);                                   \
+      const int cid = cell_getid_pos(s, parts[k].x[0],                     \
+                                     parts[k].x[1], parts[k].x[2]);        \
       dest[k] = s->cells_top[cid].nodeID;                                  \
       size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
       lcounts[ind] += 1;                                                   \
@@ -284,7 +284,7 @@ struct redist_mapper_data {
     for (int k = 0; k < (mydata->nr_nodes * mydata->nr_nodes); k++)        \
       atomic_add(&mydata->counts[k], lcounts[k]);                          \
     free(lcounts);                                                         \
-  }
+  })
 
 /**
  * @brief Accumulate the counts of particles per cell.
