@@ -1043,7 +1043,6 @@ void engine_redistribute(struct engine *e) {
   s->xparts = (struct xpart *)new_parts;
 
   /* Gravity particles. */
-  message("variables: g_counts=%d, s->gparts=%d, nr_gparts_new=%d, nr_nodes=%d, nodeID=%d", g_counts, s->gparts, nr_gparts_new, nr_nodes, nodeID);
   new_parts =
       engine_do_redistribute("gparts", g_counts, (char *)s->gparts,
                              nr_gparts_new, sizeof(struct gpart), gpart_align,
