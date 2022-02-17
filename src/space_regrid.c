@@ -165,17 +165,21 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
 
     int cid = 0;
 #ifdef WITH_ZOOM_REGION
-    for (int n = 0; n < 2; n++) {
-    	for (int i = 0; i < s->cdim[0]; i++) {
-    		for (int j = 0; j < s->cdim[1]; j++) {
-    			for (int k = 0; k < s->cdim[2]; k++) {
-	        	if (n == 0) {
-	        		cid = cell_getid(oldcdim, i, j, k);
-	        	} else {
-	        		cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->tl_cell_offset;
-	        	}
-	          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-	        }
+    /* First loop over zoom cells */
+    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+        	cid = cell_getid(oldcdim, i, j, k);
+          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+        }
+      }
+    }
+    /* Now lets do the natural cells */
+    for (int i = 0; i < s->cdim[0]; i++) {
+      for (int j = 0; j < s->cdim[1]; j++) {
+        for (int k = 0; k < s->cdim[2]; k++) {
+          cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->tl_cell_offset;
+          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
         }
       }
     }
