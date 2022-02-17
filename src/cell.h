@@ -674,32 +674,33 @@ __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
 		                                                     const double x, const double y,
                                                          const double z) {
 
-	/* Define variable to output */
-	int cell_id;
-
-#ifdef WITH_ZOOM_REGION
-	if (s->with_zoom_region) {
-
-	  /* Use the version that accounts for the zoom region */
-	  cell_id = cell_getid_zoom(s, x, y, z);
-
-	} else {
-
-		/* Zoom region isn't enabled so we can use the simple version */
-		const int i = x * s->iwidth[0];
-		const int j = y * s->iwidth[1];
-		const int k = z * s->iwidth[2];
-		cell_id = cell_getid(s->cdim, i, j, k);
-
-	}
-#else
-	/* Not compiled with zoom regions so we can use the simple version */
-	const int i = x * s->iwidth[0];
-	const int j = y * s->iwidth[1];
-	const int k = z * s->iwidth[2];
-	cell_id = cell_getid(s->cdim, i, j, k);
-#endif
-	return cell_id;
+//	/* Define variable to output */
+//	const int cell_id;
+//
+//#ifdef WITH_ZOOM_REGION
+//	if (s->with_zoom_region) {
+//
+//	  /* Use the version that accounts for the zoom region */
+//	  cell_id = cell_getid_zoom(s, x, y, z);
+//
+//	} else {
+//
+//		/* Zoom region isn't enabled so we can use the simple version */
+//		const int i = x * s->iwidth[0];
+//		const int j = y * s->iwidth[1];
+//		const int k = z * s->iwidth[2];
+//		cell_id = cell_getid(s->cdim, i, j, k);
+//
+//	}
+//#else
+//	/* Not compiled with zoom regions so we can use the simple version */
+//	const int i = x * s->iwidth[0];
+//	const int j = y * s->iwidth[1];
+//	const int k = z * s->iwidth[2];
+//	cell_id = cell_getid(s->cdim, i, j, k);
+//#endif
+//	return cell_id;
+	return cell_getid_zoom(s, x, y, z)
 }
 
 /**
@@ -716,9 +717,12 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const int periodic, const double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0]) error("x cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])", ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
-  if (ci->width[1] != cj->width[1]) error("y cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])", ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
-  if (ci->width[2] != cj->width[2]) error("z cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])", ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
+  if (ci->width[0] != cj->width[0]) error("x cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])",
+  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
+  if (ci->width[1] != cj->width[1]) error("y cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])",
+  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
+  if (ci->width[2] != cj->width[2]) error("z cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])",
+  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
 #endif
 
   const double cix_min = ci->loc[0];
