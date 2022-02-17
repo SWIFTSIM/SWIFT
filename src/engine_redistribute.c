@@ -756,14 +756,7 @@ void engine_redistribute(struct engine *e) {
       error("Inhibited particle found after sorting!");
     
     /* New cell index */
-#ifdef WITH_ZOOM_REGION
-    const int new_cid = cell_getid_zoom(s->cdim, sp->x[0], sp->x[1], sp->x[2], s,
-    		sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1], sp->x[2] * s->iwidth[2]);
-#else
-    const int new_cid =
-        cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
-                   sp->x[2] * s->iwidth[2]);
-#endif
+    const int new_cid = cell_getid_pos(s, sp->x[0], sp->x[1], sp->x[2]);
 
     /* New cell of this spart */
     const struct cell *c = &s->cells_top[new_cid];
