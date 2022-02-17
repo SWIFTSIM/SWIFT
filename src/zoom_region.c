@@ -311,7 +311,6 @@ void construct_zoom_region(struct space *s, int verbose) {
     const double mid_point = (cent_cell_ijk * s->width[ijk]) + (s->width[ijk] / 2);
 	
   	/* Find the bounding cells */
-//  	const double width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
 		const int ijk_low_bound = (mid_point - (max_width / 2)) * s->iwidth[ijk];
 		const int ijk_up_bound = (mid_point + (max_width / 2)) * s->iwidth[ijk];
 
@@ -323,35 +322,6 @@ void construct_zoom_region(struct space *s, int verbose) {
     new_zoom_boundary[(ijk * 2) + 1] = (ijk_up_bound + 1) * s->width[ijk];
 
   }
-
-//  /* Find the new zoom region bounds for equal widths on all axes based on this maximum,
-//   * centred on the central natural cell and with the zoom boundaries on natural cell boundaries */
-//  for (int ijk = 0; ijk < 3; ijk++) {
-//  	const int cent_cell_ijk = (int)(s->zoom_props->com[ijk] * s->iwidth[ijk]);
-//    const double mid_point = (cent_cell_ijk * s->width[ijk]) + (s->width[ijk] / 2);
-//
-//		/* We have to ensure this mid point results in zoom boundaires at natural cell boundaries */
-//		const int ini_low_zoom_boundary = (int)((mid_point - (max_width / 2)) * s->iwidth[ijk]);
-//		const int ini_up_zoom_boundary = (int)((mid_point + (max_width / 2)) * s->iwidth[ijk]);
-//
-//		/* Use this integer cell coordinate to define lower boundary */
-//    new_zoom_boundary[ijk * 2] = ini_low_zoom_boundary * s->width[ijk];
-//
-//		/* If the upper boundary lies inside a natural cell we need to add the width of a natual cell,
-//		 * if it's at the boundary we do not */
-//		if ((int)((mid_point + (max_width / 2)) * s->iwidth[ijk]) == ((mid_point + (max_width / 2)) * s->iwidth[ijk])) {
-//
-//			/* Use this integer cell coordinate to define upper boundary */
-//	    new_zoom_boundary[(ijk * 2) + 1] = ini_up_zoom_boundary * s->width[ijk];
-//
-//		} else {
-//
-//			/* Use this integer cell coordinate to define upper boundary with an extra natural cell width */
-//	    new_zoom_boundary[(ijk * 2) + 1] = (ini_up_zoom_boundary * s->width[ijk]) + s->width[ijk];
-//
-//		}
-//
-//  }
 
   /* If this process has pushed the zoom region outside the bounds
    * of the box we need to stop and shift the ICs to avoid having
@@ -1889,11 +1859,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
-//		/* If the cell is a natural cell and not a neighbour cell
-//		 * we don't need to do anything */
-//		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-//			continue;
-//		}
+		/* If the cell is a natural cell and not a neighbour cell
+		 * we don't need to do anything */
+		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
+			continue;
+		}
 
 		/* Get the loop range for the neighbouring cells */
 		if (ci->tl_cell_type <= 2) {
@@ -1910,10 +1880,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			/* Get the cell */
 			struct cell *cj = &cells[cjd];
 
-//			/* Skip non-neighbour natural cells. */
-//			if (cj->tl_cell_type != tl_cell_neighbour){
-//				continue;
-//			}
+			/* Skip non-neighbour natural cells. */
+			if (cj->tl_cell_type != tl_cell_neighbour){
+				continue;
+			}
 
 			/* Avoid empty cells and completely foreign pairs */
 			if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
