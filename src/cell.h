@@ -495,7 +495,6 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-int cell_getid_pos(const struct space *s, const double x, const double y, const double z);
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
                 struct cell_buff *buff, struct cell_buff *sbuff,
@@ -664,6 +663,44 @@ void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk);
+
+/**
+ * @brief Convert cell location to ID using a position.
+ *
+ * @param s The space.
+ * @param x, y, z Coordinates of particle/cell.
+ */
+__attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
+		                                                     const double x, const double y,
+                                                         const double z) {
+
+	/* Define variable to output */
+	int cell_id;
+
+#ifdef WITH_ZOOM_REGION
+	if (s->with_zoom_region) {
+
+	  /* Use the version that accounts for the zoom region */
+	  cell_id = cell_getid_zoom(s, x, y, z);
+
+	} else {
+
+		/* Zoom region isn't enabled so we can use the simple version */
+		const int i = x * s->iwidth[0];
+		const int j = y * s->iwidth[1];
+		const int k = z * s->iwidth[2];
+		cell_id = cell_getid(s->cdim, i, j, k);
+
+	}
+#else
+	/* Not compiled with zoom regions so we can use the simple version */
+	const int i = x * s->iwidth[0];
+	const int j = y * s->iwidth[1];
+	const int k = z * s->iwidth[2];
+	cell_id = cell_getid(s->cdim, i, j, k);
+#endif
+	return cell_id;
+}
 
 /**
  * @brief Compute the square of the minimal distance between any two points in
