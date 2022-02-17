@@ -83,15 +83,17 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
   int cell_id;
 
   /* Lets get some space information */
-  const int *cdim = s->cdim;
-  const double *iwidth = s->iwidth;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
   /* Lets get some properties of the zoom region. */
   const struct zoom_region_properties *zoom_props = s->zoom_props;
-  const int *zoom_cdim = zoom_props->cdim;
-  const double *zoom_iwidth = zoom_props->iwidth;
+  const int zoom_cdim[3] = {zoom_props->cdim[0], zoom_props->cdim[1], zoom_props->cdim[2]};
+  const double zoom_iwidth[3] = {zoom_props->iwidth[0], zoom_props->iwidth[1], zoom_props->iwidth[2]};
   const int bkg_cell_offset = zoom_props->tl_cell_offset;
-  const double *zoom_region_bounds = zoom_props->region_bounds;
+  const double zoom_region_bounds[6] = {zoom_props->region_bounds[0], zoom_props->region_bounds[1],
+																				zoom_props->region_bounds[2], zoom_props->region_bounds[3],
+																				zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
 
   /* Are the passed coordinates within the zoom region? */
   if (x >= zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
