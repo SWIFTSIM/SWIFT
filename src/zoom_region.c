@@ -598,7 +598,7 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
   int void_count = 0;
 
   /* Let's be verbose about this choice */
-  if (e->verbose)
+  if (verbose)
     message(
         "Looking for neighbouring natural cells up to %d natural top-level cells away from the zoom region (delta_m=%d "
         "delta_p=%d)",
