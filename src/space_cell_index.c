@@ -76,9 +76,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -127,13 +124,12 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Get its cell index */
 	  const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
 
-#ifdef SWIFT_DEBUG_CHECKS
-
-	  if (index < 0 || index >= s->nr_cells)
-
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
+	  if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
       error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
             cdim[1], cdim[2], pos_x, pos_y, pos_z);
-
+#endif
+#ifdef SWIFT_DEBUG_CHECKS
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
       error("Particle outside of simulation box. p->x=[%e %e %e]", pos_x, pos_y,
@@ -203,9 +199,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -335,9 +328,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -463,9 +453,6 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
@@ -591,9 +578,6 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(sizeof(int), s->nr_cells);
