@@ -143,19 +143,16 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
         "box sizes per time-step.\n");
 
 #ifdef WITH_ZOOM_REGION
-	/* We also need to do the same for the zoom region */
-	if (s->with_zoom_region) {
-	  /* Get the new putative cell dimensions. */
-	  const double wmax = max3(s->width[0], s->width[1], s->width[2]);
-	  const double zoom_cell_min = wmax / s->zoom_props->nr_zoom_per_bkg_cells;
-    const int zoom_cdim[3] = {
-        (int)floor(s->zoom_props->dim[0] /
-                   fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-        (int)floor(s->zoom_props->dim[1] /
-                   fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-        (int)floor(s->zoom_props->dim[2] /
-                   fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
-	}
+  /* Get the new putative cell dimensions. */
+  const double wmax = max3(s->width[0], s->width[1], s->width[2]);
+  const double zoom_cell_min = wmax / s->zoom_props->nr_zoom_per_bkg_cells;
+  const int zoom_cdim[3] = {
+      (int)floor(s->zoom_props->dim[0] /
+                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+      (int)floor(s->zoom_props->dim[1] /
+                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+      (int)floor(s->zoom_props->dim[2] /
+                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
 
 #endif
 
@@ -164,83 +161,53 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
  * Be prepared to do that. */
 #ifdef WITH_MPI
 #ifdef WITH_ZOOM_REGION
-  if (s->with_zoom_region) {
-	  double oldwidth[3] = {0., 0., 0.};
-	  double oldcdim[3] = {0., 0., 0.};
-	  double oldzoomwidth[3] = {0., 0., 0.};
-	  double oldzoomcdim[3] = {0., 0., 0.};
-	  int *oldnodeIDs = NULL;
-	  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ||
-	      zoom_cdim[0] < s->zoom_props->cdim[0] ||
-	      zoom_cdim[1] < s->zoom_props->cdim[1] ||
-	      zoom_cdim[2] < s->zoom_props->cdim[2]) {
+  double oldwidth[3] = {0., 0., 0.};
+  double oldcdim[3] = {0., 0., 0.};
+  double oldzoomwidth[3] = {0., 0., 0.};
+  double oldzoomcdim[3] = {0., 0., 0.};
+  int *oldnodeIDs = NULL;
+  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ||
+      zoom_cdim[0] < s->zoom_props->cdim[0] ||
+      zoom_cdim[1] < s->zoom_props->cdim[1] ||
+      zoom_cdim[2] < s->zoom_props->cdim[2]) {
 
-	    /* Capture state of current space. */
-	    oldcdim[0] = s->cdim[0];
-	    oldcdim[1] = s->cdim[1];
-	    oldcdim[2] = s->cdim[2];
-	    oldwidth[0] = s->width[0];
-	    oldwidth[1] = s->width[1];
-	    oldwidth[2] = s->width[2];
-	    oldzoomcdim[0] = s->zoom_props->cdim[0];
-	    oldzoomcdim[1] = s->zoom_props->cdim[1];
-	    oldzoomcdim[2] = s->zoom_props->cdim[2];
-	    oldzoomwidth[0] = s->zoom_props->width[0];
-	    oldzoomwidth[1] = s->zoom_props->width[1];
-	    oldzoomwidth[2] = s->zoom_props->width[2];
+    /* Capture state of current space. */
+    oldcdim[0] = s->cdim[0];
+    oldcdim[1] = s->cdim[1];
+    oldcdim[2] = s->cdim[2];
+    oldwidth[0] = s->width[0];
+    oldwidth[1] = s->width[1];
+    oldwidth[2] = s->width[2];
+    oldzoomcdim[0] = s->zoom_props->cdim[0];
+    oldzoomcdim[1] = s->zoom_props->cdim[1];
+    oldzoomcdim[2] = s->zoom_props->cdim[2];
+    oldzoomwidth[0] = s->zoom_props->width[0];
+    oldzoomwidth[1] = s->zoom_props->width[1];
+    oldzoomwidth[2] = s->zoom_props->width[2];
 
-	    if ((oldnodeIDs =
-	             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
-	      error("Failed to allocate temporary nodeIDs.");
+    if ((oldnodeIDs =
+             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
+      error("Failed to allocate temporary nodeIDs.");
 
-	    int cid = 0;
-	    /* First loop over zoom cells */
-	    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-	      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-	        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
-	          cid = cell_getid(oldcdim, i, j, k);
-	          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-	        }
-	      }
-	    }
-	    /* Now lets do the natural cells */
-	    for (int i = 0; i < s->cdim[0]; i++) {
-	      for (int j = 0; j < s->cdim[1]; j++) {
-	        for (int k = 0; k < s->cdim[2]; k++) {
-	          cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->tl_cell_offset;
-	          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-	        }
-	      }
-	    }
-	  }
-  } else {
-  	double oldwidth[3] = {0., 0., 0.};
-	  double oldcdim[3] = {0., 0., 0.};
-	  int *oldnodeIDs = NULL;
-	  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
-
-	    /* Capture state of current space. */
-	    oldcdim[0] = s->cdim[0];
-	    oldcdim[1] = s->cdim[1];
-	    oldcdim[2] = s->cdim[2];
-	    oldwidth[0] = s->width[0];
-	    oldwidth[1] = s->width[1];
-	    oldwidth[2] = s->width[2];
-
-	    if ((oldnodeIDs =
-	             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
-	      error("Failed to allocate temporary nodeIDs.");
-
-	    int cid = 0;
-	    for (int i = 0; i < s->cdim[0]; i++) {
-	      for (int j = 0; j < s->cdim[1]; j++) {
-	        for (int k = 0; k < s->cdim[2]; k++) {
-	          cid = cell_getid(oldcdim, i, j, k);
-	          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-	        }
-	      }
-	    }
-	  }
+    int cid = 0;
+    /* First loop over zoom cells */
+    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+          cid = cell_getid(oldcdim, i, j, k);
+          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+        }
+      }
+    }
+    /* Now lets do the natural cells */
+    for (int i = 0; i < s->cdim[0]; i++) {
+      for (int j = 0; j < s->cdim[1]; j++) {
+        for (int k = 0; k < s->cdim[2]; k++) {
+          cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->tl_cell_offset;
+          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+        }
+      }
+    }
   }
 #else
   double oldwidth[3] = {0., 0., 0.};
@@ -281,17 +248,12 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
   int need_upper_level_rebuild = 0;
   // tic = getticks();
 #ifdef WITH_ZOOM_REGION
-	if (s->with_zoom_region) {
-		if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-        cdim[2] < s->cdim[2] || zoom_cdim[0] < s->zoom_props->cdim[0] ||
-        zoom_cdim[1] < s->zoom_props->cdim[1] ||
-        zoom_cdim[2] < s->zoom_props->cdim[2])
-			need_upper_level_rebuild = 1;
-	} else {
-		if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-	      cdim[2] < s->cdim[2])
-			need_upper_level_rebuild = 1;
-	}
+	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
+      cdim[2] < s->cdim[2] ||
+      zoom_cdim[0] < s->zoom_props->cdim[0] ||
+      zoom_cdim[1] < s->zoom_props->cdim[1] ||
+      zoom_cdim[2] < s->zoom_props->cdim[2])
+		need_upper_level_rebuild = 1;
 #else
 	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
 	    cdim[2] < s->cdim[2])
