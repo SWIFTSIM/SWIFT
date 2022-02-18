@@ -25,6 +25,7 @@
 #include "entropy_floor.h"
 #include "equation_of_state.h"
 #include "gravity.h"
+#include "gravity_iact.h"
 #include "hydro.h"
 #include "random.h"
 #include "rays.h"
@@ -337,7 +338,30 @@ runner_iact_nonsym_bh_gas_swallow(
     }
 
     if (neighbour_is_slow_enough) {
-      const float potential = pj->black_holes_data.potential;
+      float potential = pj->black_holes_data.potential;
+
+      if (bh_props->correct_bh_potential_for_repositioning) {
+
+        /* Let's not include the contribution of the BH
+         * itself to the potential of the gas particle */
+
+        /* Note: This assumes the BH and gas have the same
+         * softening, which is currently true */
+        const float eps = gravity_get_softening(bi->gpart, grav_props);
+        const float eps2 = eps * eps;
+        const float eps_inv = 1.f / eps;
+        const float eps_inv3 = eps_inv * eps_inv * eps_inv;
+        const float BH_mass = bi->mass;
+
+        /* Compute the Newtonian or truncated potential the BH
+         * exherts onto the gas particle */
+        float dummy, pot_ij;
+        runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, BH_mass, &dummy,
+                                 &pot_ij);
+
+        /* Deduct the BH contribution */
+        potential -= pot_ij * grav_props->G_Newton;
+      }
 
       /* Is the potential lower? */
       if (potential < bi->reposition.min_potential) {
@@ -529,7 +553,27 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     }
 
     if (neighbour_is_slow_enough) {
-      const float potential = bj->reposition.potential;
+      float potential = bj->reposition.potential;
+
+      if (bh_props->correct_bh_potential_for_repositioning) {
+
+        /* Let's not include the contribution of the BH i
+         * to the potential of the BH j */
+        const float eps = gravity_get_softening(bi->gpart, grav_props);
+        const float eps2 = eps * eps;
+        const float eps_inv = 1.f / eps;
+        const float eps_inv3 = eps_inv * eps_inv * eps_inv;
+        const float BH_mass = bi->mass;
+
+        /* Compute the Newtonian or truncated potential the BH
+         * exherts onto the gas particle */
+        float dummy, pot_ij;
+        runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, BH_mass, &dummy,
+                                 &pot_ij);
+
+        /* Deduct the BH contribution */
+        potential -= pot_ij * grav_props->G_Newton;
+      }
 
       /* Is the potential lower? */
       if (potential < bi->reposition.min_potential) {
@@ -575,7 +619,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     /* Maximum velocity difference between BHs allowed to merge */
     float v2_threshold;
 
-    if (bh_props->merger_threshold_type == 0) {
+    if (bh_props->merger_threshold_type == BH_mergers_circular_velocity) {
 
       /* 'Old-style' merger threshold using circular velocity at the
        * edge of the more massive BH's kernel */
@@ -583,22 +627,23 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
     } else {
 
       /* Arguably better merger threshold using the escape velocity at
-       * the distance of the lower-mass BH */
-      const float r_12 = sqrt(r2);
+       * the distance between the BHs */
 
-      if ((bh_props->merger_threshold_type == 1) &&
-          (r_12 < grav_props->epsilon_baryon_cur)) {
+      if (bh_props->merger_threshold_type == BH_mergers_escape_velocity) {
 
-        /* If BHs are within softening range, take this into account */
-        const float w_grav =
-            kernel_grav_pot_eval(r_12 / grav_props->epsilon_baryon_cur);
-        const float r_mod = w_grav / grav_props->epsilon_baryon_cur;
-        v2_threshold = 2.f * G_Newton * M / (r_mod);
+        /* Standard formula (not softening BH interactions) */
+        v2_threshold = 2.f * G_Newton * M / sqrt(r2);
+      } else if (bh_props->merger_threshold_type ==
+                 BH_mergers_dynamical_escape_velocity) {
 
+        /* General two-body escape velocity based on dynamical masses */
+        v2_threshold = 2.f * G_Newton * (bi->mass + bj->mass) / sqrt(r2);
       } else {
-
-        /* Standard formula if BH interactions are not softened */
-        v2_threshold = 2.f * G_Newton * M / (r_12);
+        /* Cannot happen! */
+#ifdef SWIFT_DEBUG_CHECKS
+        error("Invalid choice of BH merger threshold type");
+#endif
+        v2_threshold = 0.f;
       }
     } /* Ends sections for different merger thresholds */
 
