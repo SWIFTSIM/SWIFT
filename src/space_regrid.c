@@ -143,26 +143,18 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
         "box sizes per time-step.\n");
 
 #ifdef WITH_ZOOM_REGION
-	/* We also need to do the same for the zoom region, but it is only meaningful
-	 * if the zoom region has already been constructed (i.e. s->cells_top != NULL). */
+	/* We also need to do the same for the zoom region */
 	if (s->with_zoom_region) {
-		if (s->cells_top != NULL) {
-			  /* Get the new putative cell dimensions. */
-			  const double wmax = max3(s->width[0], s->width[1], s->width[2]);
-			  const double zoom_cell_min = wmax / s->zoom_props->nr_zoom_per_bkg_cells;
-	      const int zoom_cdim[3] = {
-	      		(int)floor(s->zoom_props->dim[0] /
-	      		           fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-	      		(int)floor(s->zoom_props->dim[1] /
-	      		           fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-	      		(int)floor(s->zoom_props->dim[2] /
-	      		           fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
-		} else {
-			const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-														    s->zoom_props->cdim[2]};
-		}
-	} else {
-		const int zoom_cdim[3] = {0, 0, 0};
+	  /* Get the new putative cell dimensions. */
+	  const double wmax = max3(s->width[0], s->width[1], s->width[2]);
+	  const double zoom_cell_min = wmax / s->zoom_props->nr_zoom_per_bkg_cells;
+    const int zoom_cdim[3] = {
+        (int)floor(s->zoom_props->dim[0] /
+                   fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+        (int)floor(s->zoom_props->dim[1] /
+                   fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+        (int)floor(s->zoom_props->dim[2] /
+                   fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
 	}
 
 #endif
