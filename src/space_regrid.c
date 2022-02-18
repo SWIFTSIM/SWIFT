@@ -438,7 +438,7 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
 #else
       const int space_to_space_success = partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s);
 #endif
-      if (!space_to_space_sucess) {
+      if (!space_to_space_success) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
