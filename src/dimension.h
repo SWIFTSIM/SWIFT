@@ -178,72 +178,119 @@ __attribute__((always_inline)) INLINE static float pow_dimension_minus_one(
  * @brief Inverts the given dimension by dimension matrix (in place)
  *
  * @param A A 3x3 matrix of which we want to invert the top left dxd part
+ * @return Exit code: 0 for success, 1 if a singular matrix was detected.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline)) INLINE static int
 invert_dimension_by_dimension_matrix(float A[3][3]) {
 
 #if defined(HYDRO_DIMENSION_3D)
 
-  float detA, Ainv[3][3];
+  int pivot[3];
+  for (int i = 0; i < 3; i++) {
+    int imax = i;
+    float Smax = fabsf(A[imax][i]);
+    for (int j = i + 1; j < 3; j++) {
+      const float this_Smax = fabsf(A[j][i]);
+      if (this_Smax > Smax) {
+        Smax = this_Smax;
+        imax = j;
+      }
+    }
 
-  detA = A[0][0] * A[1][1] * A[2][2] + A[0][1] * A[1][2] * A[2][0] +
-         A[0][2] * A[1][0] * A[2][1] - A[0][2] * A[1][1] * A[2][0] -
-         A[0][1] * A[1][0] * A[2][2] - A[0][0] * A[1][2] * A[2][1];
+    if (Smax < 1.e-8f) {
+      /* singular matrix. Early abort */
+      for (int j = 0; j < 3; j++) {
+        for (int k = 0; k < 3; k++) {
+          A[j][k] = 0.0f;
+        }
+      }
+      return 1;
+    }
 
-  if (detA && !isnan(detA)) {
-    Ainv[0][0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / detA;
-    Ainv[0][1] = (A[0][2] * A[2][1] - A[0][1] * A[2][2]) / detA;
-    Ainv[0][2] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / detA;
-    Ainv[1][0] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / detA;
-    Ainv[1][1] = (A[0][0] * A[2][2] - A[0][2] * A[2][0]) / detA;
-    Ainv[1][2] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / detA;
-    Ainv[2][0] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / detA;
-    Ainv[2][1] = (A[0][1] * A[2][0] - A[0][0] * A[2][1]) / detA;
-    Ainv[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / detA;
-  } else {
-    Ainv[0][0] = 0.0f;
-    Ainv[0][1] = 0.0f;
-    Ainv[0][2] = 0.0f;
-    Ainv[1][0] = 0.0f;
-    Ainv[1][1] = 0.0f;
-    Ainv[1][2] = 0.0f;
-    Ainv[2][0] = 0.0f;
-    Ainv[2][1] = 0.0f;
-    Ainv[2][2] = 0.0f;
+    pivot[i] = imax;
+    if (i != imax) {
+      for (int j = 0; j < 3; j++) {
+        const float temp = A[i][j];
+        A[i][j] = A[imax][j];
+        A[imax][j] = temp;
+      }
+    }
+
+    const float Aii_inv = 1.0f / A[i][i];
+    for (int j = i + 1; j < 3; j++) {
+      A[j][i] *= Aii_inv;
+    }
+
+    for (int j = i + 1; j < 3; j++) {
+      for (int k = i + 1; k < 3; k++) {
+        A[j][k] -= A[j][i] * A[i][k];
+      }
+    }
   }
 
-  A[0][0] = Ainv[0][0];
-  A[0][1] = Ainv[0][1];
-  A[0][2] = Ainv[0][2];
-  A[1][0] = Ainv[1][0];
-  A[1][1] = Ainv[1][1];
-  A[1][2] = Ainv[1][2];
-  A[2][0] = Ainv[2][0];
-  A[2][1] = Ainv[2][1];
-  A[2][2] = Ainv[2][2];
+  for (int i = 0; i < 3; i++) {
+    A[i][i] = 1.0f / A[i][i];
+    for (int j = i + 1; j < 3; j++) {
+      float Aij = 0.0f;
+      for (int k = i; k < j; k++) {
+        Aij -= A[i][k] * A[k][j];
+      }
+      A[i][j] = Aij / A[j][j];
+    }
+  }
+
+  float work[3];
+  for (int jp1 = 3; jp1 > 0; jp1--) {
+    const int j = jp1 - 1;
+    for (int i = 0; i < jp1; i++) {
+      work[i] = A[i][j];
+    }
+    for (int i = jp1; i < 3; i++) {
+      work[i] = 0.0f;
+    }
+    for (int k = jp1; k < 3; k++) {
+      for (int i = 0; i < 3; i++) {
+        work[i] -= A[i][k] * A[k][j];
+      }
+    }
+    for (int i = 0; i < 3; i++) {
+      A[i][j] = work[i];
+    }
+  }
+
+  for (int jp1 = 3; jp1 > 0; jp1--) {
+    const int j = jp1 - 1;
+    const int jp = pivot[j];
+    if (jp != j) {
+      for (int i = 0; i < 3; i++) {
+        const float temp = A[i][j];
+        A[i][j] = A[i][jp];
+        A[i][jp] = temp;
+      }
+    }
+  }
+
+  return 0;
 
 #elif defined(HYDRO_DIMENSION_2D)
 
-  float detA, Ainv[2][2];
+  float Ainv[2][2];
 
-  detA = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+  const float detA = A[0][0] * A[1][1] - A[0][1] * A[1][0];
 
-  if (detA && !isnan(detA)) {
-    Ainv[0][0] = A[1][1] / detA;
-    Ainv[0][1] = -A[0][1] / detA;
-    Ainv[1][0] = -A[1][0] / detA;
-    Ainv[1][1] = A[0][0] / detA;
-  } else {
-    Ainv[0][0] = 0.0f;
-    Ainv[0][1] = 0.0f;
-    Ainv[1][0] = 0.0f;
-    Ainv[1][1] = 0.0f;
-  }
+  const float detAinv = (detA != 0.0f) ? 1.0f / detA : 0.0f;
+
+  Ainv[0][0] = A[1][1] * detAinv;
+  Ainv[0][1] = -A[0][1] * detAinv;
+  Ainv[1][0] = -A[1][0] * detAinv;
+  Ainv[1][1] = A[0][0] * detAinv;
 
   A[0][0] = Ainv[0][0];
   A[0][1] = Ainv[0][1];
   A[1][0] = Ainv[1][0];
   A[1][1] = Ainv[1][1];
+
+  return 0;
 
 #elif defined(HYDRO_DIMENSION_1D)
 
@@ -252,6 +299,8 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
   } else {
     A[0][0] = 0.0f;
   }
+
+  return 0;
 
 #else
 

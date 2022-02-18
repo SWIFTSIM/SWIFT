@@ -77,7 +77,7 @@ Di_material = {
     "SS08_water": Di_type["SESAME"] * type_factor + 3,  # Senft & Stewart (2008)
 }
 # Invert so the mat_id are the keys
-Di_mat_id = {mat_id: mat for mat, mat_id in Di_material.items()}
+Di_mat_id = {mat_id: mat for mat, mat_id in list(Di_material.items())}
 
 # Unit conversion
 Ba_to_Mbar = 1e-12

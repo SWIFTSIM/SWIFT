@@ -7,7 +7,7 @@ echo "Generating output"
 ./testSelectOutput 2>&1 | tee select_output.log
 
 echo "Checking output"
-python @srcdir@/testSelectOutput.py
+python3 @srcdir@/testSelectOutput.py
 
 rm -f testSelectOutput_0000.hdf5 testSelectOutput.xmf select_output.log
 

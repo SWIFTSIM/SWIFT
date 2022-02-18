@@ -52,7 +52,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;
@@ -145,7 +145,7 @@ hydro_gradients_nonsym_collect(float r2, const float *dx, float hi, float hj,
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
   float wi, wi_dx;
   const float hi_inv = 1.0f / hi;

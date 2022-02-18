@@ -32,7 +32,7 @@
 
 /* Local headers. */
 #include "riemann/riemann_hllc.h"
-#include "swift.h"
+#include "tools.h"
 
 const float max_abs_error = 1e-3f;
 const float max_rel_error = 1e-3f;
