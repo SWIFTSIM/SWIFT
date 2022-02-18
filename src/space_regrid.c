@@ -433,12 +433,8 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
             "global partition.");
 
 #ifdef WITH_ZOOM_REGION
-      if (s->with_zoom_region) {
-      	const int space_to_space_success = partition_space_to_space_zoom(oldwidth, oldcdim, oldzoomwidth,
-      			                                                             oldzoomcdim, oldnodeIDs, s);
-      } else {
-      	const int space_to_space_success = partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s);
-      }
+      const int space_to_space_success = partition_space_to_space_zoom(oldwidth, oldcdim, oldzoomwidth,
+                                                                       oldzoomcdim, oldnodeIDs, s);
 #else
       const int space_to_space_success = partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s);
 #endif
