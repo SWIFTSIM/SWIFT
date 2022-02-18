@@ -142,10 +142,115 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
         " - particles with velocities so large that they move by more than two "
         "box sizes per time-step.\n");
 
+#ifdef WITH_ZOOM_REGION
+	/* We also need to do the same for the zoom region, but it is only meaningful
+	 * if the zoom region has already been constructed (i.e. s->cells_top != NULL). */
+	if (s->with_zoom_region) {
+		if (s->cells_top != NULL) {
+			  /* Get the new putative cell dimensions. */
+			  const double wmax = max3(s->width[0], s->width[1], s->width[2]);
+			  const double zoom_cell_min = wmax / s->zoom_props->nr_zoom_per_bkg_cells;
+	      const int zoom_cdim[3] = {
+	      		(int)floor(s->zoom_props->dim[0] /
+	      		           fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+	      		(int)floor(s->zoom_props->dim[1] /
+	      		           fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+	      		(int)floor(s->zoom_props->dim[2] /
+	      		           fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
+		} else {
+			const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+														    s->zoom_props->cdim[2]};
+		}
+	} else {
+		const int zoom_cdim[3] = {0, 0, 0};
+	}
+
+#endif
+
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
 #ifdef WITH_MPI
+#ifdef WITH_ZOOM_REGION
+  if (s->with_zoom_region) {
+	  double oldwidth[3] = {0., 0., 0.};
+	  double oldcdim[3] = {0., 0., 0.};
+	  double oldzoomwidth[3] = {0., 0., 0.};
+	  double oldzoomcdim[3] = {0., 0., 0.};
+	  int *oldnodeIDs = NULL;
+	  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ||
+	      zoom_cdim[0] < s->zoom_props->cdim[0] ||
+	      zoom_cdim[1] < s->zoom_props->cdim[1] ||
+	      zoom_cdim[2] < s->zoom_props->cdim[2]) {
+
+	    /* Capture state of current space. */
+	    oldcdim[0] = s->cdim[0];
+	    oldcdim[1] = s->cdim[1];
+	    oldcdim[2] = s->cdim[2];
+	    oldwidth[0] = s->width[0];
+	    oldwidth[1] = s->width[1];
+	    oldwidth[2] = s->width[2];
+	    oldzoomcdim[0] = s->zoom_props->cdim[0];
+	    oldzoomcdim[1] = s->zoom_props->cdim[1];
+	    oldzoomcdim[2] = s->zoom_props->cdim[2];
+	    oldzoomwidth[0] = s->zoom_props->width[0];
+	    oldzoomwidth[1] = s->zoom_props->width[1];
+	    oldzoomwidth[2] = s->zoom_props->width[2];
+
+	    if ((oldnodeIDs =
+	             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
+	      error("Failed to allocate temporary nodeIDs.");
+
+	    int cid = 0;
+	    /* First loop over zoom cells */
+	    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+	      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+	        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+	          cid = cell_getid(oldcdim, i, j, k);
+	          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+	        }
+	      }
+	    }
+	    /* Now lets do the natural cells */
+	    for (int i = 0; i < s->cdim[0]; i++) {
+	      for (int j = 0; j < s->cdim[1]; j++) {
+	        for (int k = 0; k < s->cdim[2]; k++) {
+	          cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->tl_cell_offset;
+	          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+	        }
+	      }
+	    }
+	  }
+  } else {
+  	double oldwidth[3] = {0., 0., 0.};
+	  double oldcdim[3] = {0., 0., 0.};
+	  int *oldnodeIDs = NULL;
+	  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
+
+	    /* Capture state of current space. */
+	    oldcdim[0] = s->cdim[0];
+	    oldcdim[1] = s->cdim[1];
+	    oldcdim[2] = s->cdim[2];
+	    oldwidth[0] = s->width[0];
+	    oldwidth[1] = s->width[1];
+	    oldwidth[2] = s->width[2];
+
+	    if ((oldnodeIDs =
+	             (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
+	      error("Failed to allocate temporary nodeIDs.");
+
+	    int cid = 0;
+	    for (int i = 0; i < s->cdim[0]; i++) {
+	      for (int j = 0; j < s->cdim[1]; j++) {
+	        for (int k = 0; k < s->cdim[2]; k++) {
+	          cid = cell_getid(oldcdim, i, j, k);
+	          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+	        }
+	      }
+	    }
+	  }
+  }
+#else
   double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
@@ -164,26 +269,6 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
       error("Failed to allocate temporary nodeIDs.");
 
     int cid = 0;
-#ifdef WITH_ZOOM_REGION
-    /* First loop over zoom cells */
-    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
-        	cid = cell_getid(oldcdim, i, j, k);
-          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-        }
-      }
-    }
-    /* Now lets do the natural cells */
-    for (int i = 0; i < s->cdim[0]; i++) {
-      for (int j = 0; j < s->cdim[1]; j++) {
-        for (int k = 0; k < s->cdim[2]; k++) {
-          cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->tl_cell_offset;
-          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
-        }
-      }
-    }
-#else
     for (int i = 0; i < s->cdim[0]; i++) {
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
@@ -192,18 +277,35 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
         }
       }
     }
-#endif
   }
+#endif /* WITH_ZOOM_REGION */
 
   /* Are we about to allocate new top level cells without a regrid?
    * Can happen when restarting the application. */
   const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
-#endif
+#endif /* WITH_MPI */
 
   /* Do we need to re-build the upper-level cells? */
+  int need_upper_level_rebuild = 0;
   // tic = getticks();
-  if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-      cdim[2] < s->cdim[2]) {
+#ifdef WITH_ZOOM_REGION
+	if (s->with_zoom_region) {
+		if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
+        cdim[2] < s->cdim[2] || zoom_cdim[0] < s->zoom_props->cdim[0] ||
+        zoom_cdim[1] < s->zoom_props->cdim[1] ||
+        zoom_cdim[2] < s->zoom_props->cdim[2])
+			need_upper_level_rebuild = 1;
+	} else {
+		if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
+	      cdim[2] < s->cdim[2])
+			need_upper_level_rebuild = 1;
+	}
+#else
+	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
+	    cdim[2] < s->cdim[2])
+		need_upper_level_rebuild = 1;
+#endif
+	if (need_upper_level_rebuild) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -360,12 +462,11 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
           cell_assign_top_level_cell_index(c, s);
 #endif
         }
+		/* Be verbose about the change. */
+		if (verbose)
+			message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
+			        cdim[2]);
 #endif //WITH_ZOOM_REGION
-
-    /* Be verbose about the change. */
-    if (verbose)
-      message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
-              cdim[2]);
 
 #ifdef WITH_MPI
     if (oldnodeIDs != NULL) {
@@ -377,7 +478,17 @@ void space_regrid(struct space *s, struct gravity_props *gravity_properties, int
             "basic cell dimensions have increased - recalculating the "
             "global partition.");
 
-      if (!partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s)) {
+#ifdef WITH_ZOOM_REGION
+      if (s->with_zoom_region) {
+      	const int space_to_space_success = partition_space_to_space_zoom(oldwidth, oldcdim, oldzoomwidth,
+      			                                                             oldzoomcdim, oldnodeIDs, s);
+      } else {
+      	const int space_to_space_success = partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s);
+      }
+#else
+      const int space_to_space_success = partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s);
+#endif
+      if (!space_to_space_sucess) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");

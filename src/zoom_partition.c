@@ -39,6 +39,107 @@
 #include <mpi.h>
 #endif
 
+/**
+ * @brief Check if all regions have been assigned a node in the
+ *        cells of a space.
+ *
+ * @param s the space containing the cells to check.
+ * @param nregions number of regions expected.
+ * @param verbose if true report the missing regions.
+ * @return true if all regions have been found, false otherwise.
+ */
+static int check_complete(struct space *s, int verbose, int nregions) {
+
+	int *present = NULL;
+	if ((present = (int *)malloc(sizeof(int) * nregions)) == NULL)
+		error("Failed to allocate present array");
+
+	int failed = 0;
+	for (int i = 0; i < nregions; i++) present[i] = 0;
+	for (int i = 0; i < s->nr_cells; i++) {
+		if (s->cells_top[i].nodeID <= nregions)
+			present[s->cells_top[i].nodeID]++;
+		else
+			message("Bad nodeID: s->cells_top[%d].nodeID = %d", i,
+			        s->cells_top[i].nodeID);
+	}
+	for (int i = 0; i < nregions; i++) {
+		if (!present[i]) {
+			failed = 1;
+			if (verbose) message("Region %d is not present in partition", i);
+		}
+	}
+	free(present);
+	return (!failed);
+}
+
+/**
+ * @brief Partition a space of cells based on another space of cells.
+ *
+ * The two spaces are expected to be at different cell sizes, so what we'd
+ * like to do is assign the second space to geometrically closest nodes
+ * of the first, with the effect of minimizing particle movement when
+ * rebuilding the second space from the first.
+ *
+ * Since two spaces cannot exist simultaneously the old space is actually
+ * required in a decomposed state. These are the old cells sizes and counts
+ * per dimension, along with a list of the old nodeIDs. The old nodeIDs are
+ * indexed by the cellid (see cell_getid()), so should be stored that way.
+ *
+ * On exit the new space cells will have their nodeIDs assigned.
+ *
+ * @param oldh the cell dimensions of old space.
+ * @param oldcdim number of cells per dimension in old space.
+ * @param oldnodeIDs the nodeIDs of cells in the old space, indexed by old
+ *cellid.
+ * @param s the space to be partitioned.
+ *
+ * @return 1 if the new space contains nodeIDs from all nodes, 0 otherwise.
+ */
+int partition_space_to_space_zoom(double *oldh, double *oldcdim, double *oldzoomh,
+		                              double *oldzoomcdim, int *oldnodeIDs, struct space *s) {
+
+	/* Define the old tl_cell_offset */
+	const int old_bkg_cell_offset = oldzoomcdim[0] * oldzoomcdim[1] * oldzoomcdim[2];
+
+	/* Loop over all the new zoom cells. */
+	for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+		for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+			for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+
+				/* Scale indices to old cell space. */
+				const int ii = rint(i * s->zoom_props->iwidth[0] * oldzoomh[0]);
+				const int jj = rint(j * s->zoom_props->iwidth[1] * oldzoomh[1]);
+				const int kk = rint(k * s->zoom_props->iwidth[2] * oldzoomh[2]);
+
+				const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+				const int oldcid = cell_getid(oldzoomcdim, ii, jj, kk);
+				s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
+			}
+		}
+	}
+
+	/* Loop over all the new cells. */
+	for (int i = 0; i < s->cdim[0]; i++) {
+		for (int j = 0; j < s->cdim[1]; j++) {
+			for (int k = 0; k < s->cdim[2]; k++) {
+
+				/* Scale indices to old cell space. */
+				const int ii = rint(i * s->iwidth[0] * oldh[0]);
+				const int jj = rint(j * s->iwidth[1] * oldh[1]);
+				const int kk = rint(k * s->iwidth[2] * oldh[2]);
+
+				const int cid = cell_getid(s->cdim, i, j, k) + s->zoom_props->tl_cell_offset;
+				const int oldcid = cell_getid(oldcdim, ii, jj, kk) + old_bkg_cell_offset;
+				s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
+			}
+		}
+	}
+
+	/* Check we have all nodeIDs present in the resample. */
+	return check_complete(s, 1, s->e->nr_nodes);
+}
+
 /*  Vectorisation support */
 /*  ===================== */
 

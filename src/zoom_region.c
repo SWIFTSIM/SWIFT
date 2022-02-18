@@ -358,7 +358,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
   if (verbose) {
-  	message("zoom_cdim: [%d %d %d] background_cdim [%d %d %d]", s->zoom_props->cdim[0],
+  	message("set cell dimensions to zoom_cdim=[%d %d %d] background_cdim=[%d %d %d]", s->zoom_props->cdim[0],
   			    s->zoom_props->cdim[1], s->zoom_props->cdim[2], s->cdim[0],
   			    s->cdim[1], s->cdim[2]);
   	message("nr_zoom_cells: %d nr_bkg_cells: %d tl_cell_offset: %d", s->zoom_props->nr_zoom_cells,
