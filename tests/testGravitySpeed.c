@@ -55,11 +55,16 @@ void make_cell(struct cell *c, int N, const double loc[3], double width,
   c->grav.ti_beg_max = 1;
   c->grav.ti_old_part = 1;
   c->grav.ti_old_multipole = 1;
+  c->grav.ti_end_min = 8;
 
   /* Create the particles */
   c->grav.count = N;
   c->grav.count_total = N;
-  c->grav.parts = (struct gpart *)malloc(N * sizeof(struct gpart));
+  c->grav.parts = NULL;
+  if (posix_memalign((void **)&c->grav.parts, part_align,
+                     N * sizeof(struct gpart)) != 0) {
+    error("couldn't allocate particles, no. of particles: %d", (int)N);
+  }
   bzero(c->grav.parts, N * sizeof(struct gpart));
   for (int i = 0.; i < N; ++i) {
 
@@ -124,6 +129,8 @@ int main(int argc, char *argv[]) {
   struct engine e;
   e.mesh = &mesh;
   e.max_active_bin = 56;
+  e.time = 0.1f;
+  e.ti_current = 1;
   e.gravity_properties = &grav_props;
 
   /* Construct a runner */

@@ -1,5 +1,5 @@
 #!/bin/bash
 
-python @srcdir@/makeInput.py
+python3 @srcdir@/makeInput.py
 ./testReading
 
