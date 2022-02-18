@@ -7,10 +7,25 @@ rm -f brute_force_pair_active.dat swift_dopair_active.dat
 echo "Running ./testActivePair -n 6 -r 1 -d 0 -f active"
 
 ./testActivePair -n 6 -r 1 -d 0 -f active
+if [ $? -ne 0 ]
+then
+  echo "Test failed"
+  exit 1
+fi
 
-python @srcdir@/difffloat.py brute_force_pair_active.dat swift_dopair_active.dat @srcdir@/tolerance_pair_active.dat
+python3 @srcdir@/difffloat.py brute_force_pair_active.dat swift_dopair_active.dat @srcdir@/tolerance_pair_active.dat
+if [ $? -ne 0 ]
+then
+  echo "Accuracy test failed"
+  exit 1
+fi
 
-python @srcdir@/difffloat.py brute_force_dopair2_active.dat swift_dopair2_force_active.dat @srcdir@/tolerance_pair_force_active.dat
+python3 @srcdir@/difffloat.py brute_force_dopair2_active.dat swift_dopair2_force_active.dat @srcdir@/tolerance_pair_force_active.dat
+if [ $? -ne 0 ]
+then
+  echo "Accuracy test failed"
+  exit 1
+fi
 
 rm -f brute_force_pair_active.dat swift_dopair_active.dat
 
@@ -18,9 +33,24 @@ rm -f brute_force_pair_active.dat swift_dopair_active.dat
 echo "Running ./testActivePair -n 6 -r 1 -d 0 -f active -s 1506434777"
 
 ./testActivePair -n 6 -r 1 -d 0 -f active -s 1506434777
+if [ $? -ne 0 ]
+then
+  echo "Test failed"
+  exit 1
+fi
 
-python @srcdir@/difffloat.py brute_force_pair_active.dat swift_dopair_active.dat @srcdir@/tolerance_pair_active.dat
+python3 @srcdir@/difffloat.py brute_force_pair_active.dat swift_dopair_active.dat @srcdir@/tolerance_pair_active.dat
+if [ $? -ne 0 ]
+then
+  echo "Accuracy test failed"
+  exit 1
+fi
 
-python @srcdir@/difffloat.py brute_force_dopair2_active.dat swift_dopair2_force_active.dat @srcdir@/tolerance_pair_force_active.dat
+python3 @srcdir@/difffloat.py brute_force_dopair2_active.dat swift_dopair2_force_active.dat @srcdir@/tolerance_pair_force_active.dat
+if [ $? -ne 0 ]
+then
+  echo "Accuracy test failed"
+  exit 1
+fi
 
 exit $?
