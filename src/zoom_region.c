@@ -1881,8 +1881,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			/* Get the cell */
 			struct cell *cj = &cells[cjd];
 
-			/* Skip non-neighbour natural cells. */
-			if (cj->tl_cell_type != tl_cell_neighbour){
+			/* If the cell is a natural cell and not a neighbour cell
+			 * we don't need to do anything */
+			if ((cj->tl_cell_type <= 2) && (cj->tl_cell_type != tl_cell_neighbour)) {
 				continue;
 			}
 
