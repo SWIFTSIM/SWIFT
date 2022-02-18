@@ -11,7 +11,7 @@ do
 
     if [ -e brute_force_periodic_BC_perturbed.dat ]
     then
-	if python @srcdir@/difffloat.py brute_force_periodic_BC_perturbed.dat swift_periodic_BC_perturbed.dat @srcdir@/tolerance_periodic_BC_perturbed.dat
+	if python3 @srcdir@/difffloat.py brute_force_periodic_BC_perturbed.dat swift_periodic_BC_perturbed.dat @srcdir@/tolerance_periodic_BC_perturbed.dat
 	then
 	    echo "Accuracy test passed"
 	else

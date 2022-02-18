@@ -102,7 +102,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
   const float xij_j_norm =
       sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
 
-  const float r_inv = 1.f / r;
+  const float r_inv = (r > 0.0f) ? 1.0f / r : 0.0f;
 
   dWi[0] = hydro_slope_limit_face_quantity(Wi[0], Wj[0], Wi[0] + dWi[0],
                                            xij_i_norm, r_inv);

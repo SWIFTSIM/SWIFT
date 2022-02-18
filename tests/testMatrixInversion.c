@@ -119,9 +119,9 @@ int main(int argc, char* argv[]) {
   multiply_matrices(A, B, C);
 
   if (!is_unit_matrix(C)) {
-    print_matrix(A, "A");
-    print_matrix(B, "B");
-    print_matrix(C, "C");
+    print_matrix(A, "A - Inverse matrix");
+    print_matrix(B, "B - Original matrix");
+    print_matrix(C, "C - Multiplication (should be unit matrix)");
     error("Inverted matrix is wrong!");
   }
 

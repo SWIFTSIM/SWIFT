@@ -60,7 +60,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
+  struct cell *cell = NULL;
+  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+    error("Couldn't allocate the cell");
+  }
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->hydro.parts, part_align,
@@ -95,7 +98,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         part->id = ++(*partId);
 
 /* Set the mass */
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -106,7 +109,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 
 #else
         part->mass = density * volume / count;
-#endif /* GIZMO_MFV_SPH */
+#endif
 
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)
@@ -118,6 +121,13 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;
         part->entropy_one_over_gamma = 1.f;
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+        part->conserved.energy = 1.f;
+#endif
+
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+        struct xpart dummy_xp;
+        hydro_first_init_part(part, &dummy_xp);
 #endif
 
         /* Set the time-bin */
@@ -149,6 +159,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->hydro.super = cell;
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
   cell->nodeID = NODE_ID;
@@ -172,6 +183,10 @@ void clean_up(struct cell *ci) {
 void zero_particle_fields_density(struct cell *c, const struct cosmology *cosmo,
                                   const struct hydro_props *hydro_props) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+    c->hydro.parts[pid].geometry.wcorr = 1.0f;
+#endif
+
     hydro_init_part(&c->hydro.parts[pid], NULL);
   }
 }
@@ -202,8 +217,12 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
     p->density.rho_dh = 0.f;
     p->density.wcount = 48.f / (kernel_norm * pow_dimension(p->h));
     p->density.wcount_dh = 0.f;
+#if defined(MINIMAL_SPH)
+    p->force.v_sig = hydro_get_comoving_soundspeed(p);
+#else
     p->viscosity.v_sig = hydro_get_comoving_soundspeed(p);
 #endif /* MINIMAL */
+#endif /* MINIMAL, SPHENIX, PHANTOM, GASOLINE */
 #ifdef HOPKINS_PE_SPH
     p->rho = 1.f;
     p->rho_bar = 1.f;
@@ -223,12 +242,24 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
 #endif /* PRESSURE-ENERGY */
 #if defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH)
     /* Initialise viscosity variables */
+#if defined(SPHENIX_SPH)
     p->force.pressure = hydro_get_comoving_pressure(p);
+#endif
     p->viscosity.alpha = 0.8;
     p->viscosity.div_v = 0.f;
     p->viscosity.div_v_previous_step = 0.f;
     p->viscosity.v_sig = hydro_get_comoving_soundspeed(p);
 #endif /* ANARCHY_PU_SPH viscosity variables */
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+    const float E[3][3] = {
+        {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        p->geometry.matrix_E[i][j] = E[i][j];
+      }
+    }
+    p->geometry.volume = 1.0f;
+#endif
 
     /* And prepare for a round of force tasks. */
     hydro_prepare_force(p, xp, cosmo, hydro_props, 0.);
@@ -242,6 +273,12 @@ void zero_particle_fields_force(struct cell *c, const struct cosmology *cosmo,
 void end_calculation_density(struct cell *c, const struct cosmology *cosmo) {
   for (int pid = 0; pid < c->hydro.count; pid++) {
     hydro_end_density(&c->hydro.parts[pid], cosmo);
+
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+    /* undo the artificial correction that was applied to wcount */
+    c->hydro.parts[pid].density.wcount /= c->hydro.parts[pid].geometry.wcorr;
+    c->hydro.parts[pid].density.wcount_dh /= c->hydro.parts[pid].geometry.wcorr;
+#endif
 
     /* Recover the common "Neighbour number" definition */
     c->hydro.parts[pid].density.wcount *= pow_dimension(c->hydro.parts[pid].h);

@@ -17,12 +17,12 @@ Units:
 
 Redshift:
   output_list_on:      1  # (Optional) Enable the output list
-  output_list:         output_list_redshift.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  output_list:         @srcdir@/output_list_redshift.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 Time:
   output_list_on:      1  # (Optional) Enable the output list
-  output_list:         output_list_time.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  output_list:         @srcdir@/output_list_time.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
 
 ScaleFactor:
   output_list_on:      1  # (Optional) Enable the output list
-  output_list:         output_list_scale_factor.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
+  output_list:         @srcdir@/output_list_scale_factor.txt # (Optional) File containing the output times (see documentation in "Parameter File" section)
