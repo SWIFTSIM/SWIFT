@@ -68,10 +68,10 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
 	if (s->with_zoom_region) {
     space_regrid_zoom(s, gravity_properties, verbose);
 	} else {
-		space_regrid(s, gravity_properties, verbose);
+		space_regrid(s, verbose);
 	}
 #else
-  space_regrid(s, gravity_properties, verbose);
+  space_regrid(s, verbose);
 #endif
 
   /* Allocate extra space for particles that will be created */

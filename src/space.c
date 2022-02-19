@@ -1453,10 +1453,10 @@ void space_init(struct space *s, struct swift_params *params,
 	if (s->with_zoom_region) {
     if (!dry_run) space_regrid_zoom(s, gravity_properties, verbose);
 	} else {
-		if (!dry_run) space_regrid(s, gravity_properties, verbose);
+		if (!dry_run) space_regrid(s, verbose);
 	}
 #else
-	if (!dry_run) space_regrid(s, gravity_properties, verbose);
+	if (!dry_run) space_regrid(s, verbose);
 #endif
 
   /* Compute the max id for the generation of unique id. */
