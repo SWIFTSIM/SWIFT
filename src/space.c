@@ -1449,7 +1449,15 @@ void space_init(struct space *s, struct swift_params *params,
   }
 
   /* Build the cells recursively. */
-  if (!dry_run) space_regrid(s, gravity_properties, verbose);
+#ifdef WITH_ZOOM_REGION
+	if (s->with_zoom_region) {
+    if (!dry_run) space_regrid_zoom(s, gravity_properties, verbose);
+	} else {
+		if (!dry_run) space_regrid(s, gravity_properties, verbose);
+	}
+#else
+	if (!dry_run) space_regrid(s, gravity_properties, verbose);
+#endif
 
   /* Compute the max id for the generation of unique id. */
   if (create_sparts) {

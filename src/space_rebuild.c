@@ -64,7 +64,15 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
 #endif
 
   /* Re-grid if necessary, or just re-set the cell data. */
+#ifdef WITH_ZOOM_REGION
+	if (s->with_zoom_region) {
+    space_regrid_zoom(s, gravity_properties, verbose);
+	} else {
+		space_regrid(s, gravity_properties, verbose);
+	}
+#else
   space_regrid(s, gravity_properties, verbose);
+#endif
 
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);

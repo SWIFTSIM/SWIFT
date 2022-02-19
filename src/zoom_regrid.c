@@ -3,6 +3,8 @@
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
+ *               2016 John A. Regan (john.a.regan@durham.ac.uk)
+ *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -27,16 +29,19 @@
 
 /* Local headers. */
 #include "cell.h"
+#include "gravity_properties.h"
 #include "engine.h"
 #include "scheduler.h"
+#include "zoom_region.h"
 
+#ifdef WITH_ZOOM_REGION
 /**
  * @brief Re-build the top-level cell grid.
  *
  * @param s The #space.
  * @param verbose Print messages to stdout or not.
  */
-void space_regrid(struct space *s, int verbose) {
+void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties, int verbose) {
 
 	const size_t nr_parts = s->nr_parts;
 	const size_t nr_sparts = s->nr_sparts;
@@ -45,9 +50,13 @@ void space_regrid(struct space *s, int verbose) {
 	const ticks tic = getticks();
 	const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-	/* Run through the cells and get the current h_max. */
+	/* Run through the cells and get the current h_max, when using a zoom region
+	 * the initial h_max needs to be set by the zoom cells. */
 	// tic = getticks();
-	float h_max = s->cell_min / kernel_gamma / space_stretch;
+	const double wmax = max3(s->width[0], s->width[1], s->width[2]);
+	const double zoom_cell_min = wmax / s->zoom_props->nr_zoom_per_bkg_cells;
+	float h_max = zoom_cell_min / kernel_gamma / space_stretch;
+	float nat_h_max = s->cell_min / kernel_gamma / space_stretch;
 	if (nr_parts > 0) {
 
 		/* Can we use the list of local non-empty top-level cells? */
@@ -115,26 +124,16 @@ void space_regrid(struct space *s, int verbose) {
     h_max = buff;
   }
 #endif
-	if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
+	if (verbose) message("h_max is %.3e (zoom_cell_min=%.3e).", h_max, zoom_cell_min);
 
 	/* Get the new putative cell dimensions. */
 	const int cdim[3] = {
 			(int)floor(s->dim[0] /
-			           fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+			           fmax(nat_h_max * kernel_gamma * space_stretch, s->cell_min)),
 			(int)floor(s->dim[1] /
-			           fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+			           fmax(nat_h_max * kernel_gamma * space_stretch, s->cell_min)),
 			(int)floor(s->dim[2] /
-			           fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
-
-	/* check that we have at least 1 cell in each dimension */
-	if (cdim[0] == 0 || cdim[1] == 0 || cdim[2] == 0) {
-		error(
-				"Top level cell dimension of size 0 detected (cdim = [%i %i "
-				"%i])!\nThis usually indicates a problem with the initial smoothing "
-				"lengths of the particles, e.g. a smoothing length that is comparable "
-				"in size to the box size.",
-				cdim[0], cdim[1], cdim[2]);
-	}
+			           fmax(nat_h_max * kernel_gamma * space_stretch, s->cell_min))};
 
 	/* Check if we have enough cells for periodicity. */
 	if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
@@ -150,14 +149,30 @@ void space_regrid(struct space *s, int verbose) {
 				" - particles with velocities so large that they move by more than two "
 				"box sizes per time-step.\n");
 
+	/* Get the new putative cell dimensions.
+	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
+	 * using the recalculated natural cell width *** */
+  const int zoom_natcell_cdim[3] = {
+      (int)floor(s->width[0] /
+                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+      (int)floor(s->width[1] /
+                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+      (int)floor(s->width[2] /
+                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
+
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
 #ifdef WITH_MPI
-	double oldwidth[3] = {0., 0., 0.};
+  double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
+  double oldzoomwidth[3] = {0., 0., 0.};
+  double oldzoomcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
-  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
+  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ||
+      zoom_natcell_cdim[0] < s->zoom_props->nr_zoom_per_bkg_cells ||
+      zoom_natcell_cdim[1] < s->zoom_props->nr_zoom_per_bkg_cells ||
+      zoom_natcell_cdim[2] < s->zoom_props->nr_zoom_per_bkg_cells) {
 
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
@@ -166,16 +181,32 @@ void space_regrid(struct space *s, int verbose) {
     oldwidth[0] = s->width[0];
     oldwidth[1] = s->width[1];
     oldwidth[2] = s->width[2];
+    oldzoomcdim[0] = s->zoom_props->cdim[0];
+    oldzoomcdim[1] = s->zoom_props->cdim[1];
+    oldzoomcdim[2] = s->zoom_props->cdim[2];
+    oldzoomwidth[0] = s->zoom_props->width[0];
+    oldzoomwidth[1] = s->zoom_props->width[1];
+    oldzoomwidth[2] = s->zoom_props->width[2];
 
     if ((oldnodeIDs =
              (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate temporary nodeIDs.");
 
     int cid = 0;
+    /* First loop over zoom cells */
+    for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+      for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+        for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+          cid = cell_getid(oldcdim, i, j, k);
+          oldnodeIDs[cid] = s->cells_top[cid].nodeID;
+        }
+      }
+    }
+    /* Now lets do the natural cells */
     for (int i = 0; i < s->cdim[0]; i++) {
       for (int j = 0; j < s->cdim[1]; j++) {
         for (int k = 0; k < s->cdim[2]; k++) {
-          cid = cell_getid(oldcdim, i, j, k);
+          cid = cell_getid(oldcdim, i, j, k) + s->zoom_props->tl_cell_offset;
           oldnodeIDs[cid] = s->cells_top[cid].nodeID;
         }
       }
@@ -185,18 +216,15 @@ void space_regrid(struct space *s, int verbose) {
   /* Are we about to allocate new top level cells without a regrid?
    * Can happen when restarting the application. */
   const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
-#endif
+#endif /* WITH_MPI */
 
 	/* Do we need to re-build the upper-level cells? */
 	// tic = getticks();
 	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-	    cdim[2] < s->cdim[2]) {
-
-/* Be verbose about this. */
-#ifdef SWIFT_DEBUG_CHECKS
-		message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
-    fflush(stdout);
-#endif
+      cdim[2] < s->cdim[2] ||
+      zoom_natcell_cdim[0] < s->zoom_props->nr_zoom_per_bkg_cells ||
+      zoom_natcell_cdim[1] < s->zoom_props->nr_zoom_per_bkg_cells ||
+      zoom_natcell_cdim[2] < s->zoom_props->nr_zoom_per_bkg_cells) {
 
 		/* Free the old cells, if they were allocated. */
 		if (s->cells_top != NULL) {
@@ -222,8 +250,27 @@ void space_regrid(struct space *s, int verbose) {
 		}
 		const float dmin = min3(s->width[0], s->width[1], s->width[2]);
 
+		/* Lets recalculate the number of zoom cells in a natural cell */
+		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
+		s->zoom_props->nr_zoom_per_bkg_cells = min3(zoom_natcell_cdim[0], zoom_natcell_cdim[1], zoom_natcell_cdim[2]);
+
+		if (verbose) message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
+				                 old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
+
+		message("Constructing zoom region.");
+    /* Compute the bounds of the zoom region from the DM particles. */
+    construct_zoom_region(s, verbose);
+
+    /* Be verbose about this. */
+#ifdef SWIFT_DEBUG_CHECKS
+		message("(re)griding space cdim=(%d %d %d) zoom_cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2],
+				    s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
+    fflush(stdout);
+#endif
+
 		/* Allocate the highest level of cells. */
-		s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
+		s->tot_cells = s->nr_cells = (cdim[0] * cdim[1] * cdim[2]) +
+				                         (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
 
 		if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
 		                   s->nr_cells * sizeof(struct cell)) != 0)
@@ -290,50 +337,8 @@ void space_regrid(struct space *s, int verbose) {
 				error("Failed to init spinlock for star formation (spart).");
 		}
 
-		/* Set the cell location and sizes. */
-		for (int i = 0; i < cdim[0]; i++)
-			for (int j = 0; j < cdim[1]; j++)
-				for (int k = 0; k < cdim[2]; k++) {
-					const size_t cid = cell_getid(cdim, i, j, k);
-					struct cell *restrict c = &s->cells_top[cid];
-					c->loc[0] = i * s->width[0];
-					c->loc[1] = j * s->width[1];
-					c->loc[2] = k * s->width[2];
-					c->width[0] = s->width[0];
-					c->width[1] = s->width[1];
-					c->width[2] = s->width[2];
-					c->dmin = dmin;
-					c->depth = 0;
-					c->split = 0;
-					c->hydro.count = 0;
-					c->grav.count = 0;
-					c->stars.count = 0;
-					c->sinks.count = 0;
-					c->top = c;
-					c->super = c;
-					c->hydro.super = c;
-					c->grav.super = c;
-					c->hydro.ti_old_part = ti_current;
-					c->grav.ti_old_part = ti_current;
-					c->stars.ti_old_part = ti_current;
-					c->sinks.ti_old_part = ti_current;
-					c->black_holes.ti_old_part = ti_current;
-					c->grav.ti_old_multipole = ti_current;
-#ifdef WITH_MPI
-					c->mpi.tag = -1;
-          c->mpi.recv = NULL;
-          c->mpi.send = NULL;
-#endif  // WITH_MPI
-					if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-					cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
-#endif
-				}
-
-		/* Be verbose about the change. */
-		if (verbose)
-			message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
-			        cdim[2]);
+		/* Construct both grids of cells */
+		construct_tl_cells_with_zoom_region(s, cdim, dmin, ti_current, gravity_properties, verbose);
 
 #ifdef WITH_MPI
 		if (oldnodeIDs != NULL) {
@@ -345,7 +350,8 @@ void space_regrid(struct space *s, int verbose) {
             "basic cell dimensions have increased - recalculating the "
             "global partition.");
 
-      if (!partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s)) {
+      if (!partition_space_to_space_zoom(oldwidth, oldcdim, oldzoomwidth,
+      		                               oldzoomcdim, oldnodeIDs, s)) {
 
         /* Failed, try another technique that requires no settings. */
         message("Failed to get a new partition, trying less optimal method");
@@ -399,3 +405,4 @@ void space_regrid(struct space *s, int verbose) {
 		message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
 		        clocks_getunit());
 }
+#endif /* WITH_ZOOM_REGION */

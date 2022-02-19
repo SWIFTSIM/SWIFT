@@ -35,9 +35,15 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
                                                   void *extra_data);
 void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data, int num_elements,
                                                 void *extra_data);
+/* Parition prototypes */
+
 int partition_space_to_space_zoom(double *oldh, double *oldcdim, double *oldzoomh,
 		                              double *oldzoomcdim, int *oldnodeIDs, struct space *s);
 void pick_vector_zoom(struct space *s, int nregions, int *samplecells);
 void split_vector_zoom(struct space *s, int nregions, int *samplecells);
+
+/* Regrid prototypes */
+
+void space_regrid_zoom(struct space *s, struct gravity_props *p, int verbose);
 
 #endif /* SWIFT_ZOOM_H */
