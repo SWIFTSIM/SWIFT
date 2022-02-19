@@ -152,17 +152,9 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	 * we can just use the input from s->zoom_props->nr_zoom_per_bkg_cells
 	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
 	 * using the recalculated natural cell width *** */
-	int zoom_natcell_cdim[3] = {s->zoom_props->nr_zoom_per_bkg_cells,
-												      s->zoom_props->nr_zoom_per_bkg_cells,
-												      s->zoom_props->nr_zoom_per_bkg_cells};
+	int zoom_natcell_cdim = s->zoom_props->nr_zoom_per_bkg_cells;
 	if (s->cells_top != NULL) {
-		  zoom_natcell_cdim[3] = {
-      (int)floor(s->width[0] /
-                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-      (int)floor(s->width[1] /
-                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-      (int)floor(s->width[2] /
-                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
+		  zoom_natcell_cdim = (int)floor(s->cell_min / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 	}
 
 /* In MPI-Land, changing the top-level cell size requires that the
@@ -175,9 +167,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
   double oldzoomcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ||
-      zoom_natcell_cdim[0] < s->zoom_props->nr_zoom_per_bkg_cells ||
-      zoom_natcell_cdim[1] < s->zoom_props->nr_zoom_per_bkg_cells ||
-      zoom_natcell_cdim[2] < s->zoom_props->nr_zoom_per_bkg_cells) {
+      zoom_natcell_cdim < s->zoom_props->nr_zoom_per_bkg_cells) {
 
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
@@ -227,9 +217,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	// tic = getticks();
 	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
       cdim[2] < s->cdim[2] ||
-      zoom_natcell_cdim[0] < s->zoom_props->nr_zoom_per_bkg_cells ||
-      zoom_natcell_cdim[1] < s->zoom_props->nr_zoom_per_bkg_cells ||
-      zoom_natcell_cdim[2] < s->zoom_props->nr_zoom_per_bkg_cells) {
+      zoom_natcell_cdim < s->zoom_props->nr_zoom_per_bkg_cells) {
 
 		/* Free the old cells, if they were allocated. */
 		if (s->cells_top != NULL) {
@@ -257,7 +245,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 
 		/* Lets recalculate the number of zoom cells in a natural cell */
 		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-		s->zoom_props->nr_zoom_per_bkg_cells = min3(zoom_natcell_cdim[0], zoom_natcell_cdim[1], zoom_natcell_cdim[2]);
+		s->zoom_props->nr_zoom_per_bkg_cells = zoom_natcell_cdim;
 
 		if (verbose) message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
 				                 old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
