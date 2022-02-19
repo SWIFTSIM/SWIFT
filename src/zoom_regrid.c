@@ -149,24 +149,19 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 				"box sizes per time-step.\n");
 
 	/* Get the new putative zoom cell dimensions. If this is the initial construction
-	 * we have to use the naive natural cell width (s->cell_min)
+	 * we can just use the input from s->zoom_props->nr_zoom_per_bkg_cells
 	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
 	 * using the recalculated natural cell width *** */
+	int zoom_natcell_cdim[3] = {s->zoom_props->nr_zoom_per_bkg_cells,
+												      s->zoom_props->nr_zoom_per_bkg_cells,
+												      s->zoom_props->nr_zoom_per_bkg_cells};
 	if (s->cells_top != NULL) {
-		  const int zoom_natcell_cdim[3] = {
+		  zoom_natcell_cdim[3] = {
       (int)floor(s->width[0] /
                  fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
       (int)floor(s->width[1] /
                  fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
       (int)floor(s->width[2] /
-                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
-	} else {
-		  const int zoom_natcell_cdim[3] = {
-      (int)floor(s->cell_min /
-                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-      (int)floor(s->cell_min /
-                 fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-      (int)floor(s->cell_min /
                  fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
 	}
 
