@@ -51,7 +51,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
 	/* Run through the cells and get the current h_max, when using a zoom region
-	 * the initial h_max needs to be set by the zoom cells. */
+	 * h_max needs to be set by the zoom cells. */
 	// tic = getticks();
 	const double zoom_cell_min = s->cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
 	float h_max = zoom_cell_min / kernel_gamma / space_stretch;
@@ -148,8 +148,8 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 				" - particles with velocities so large that they move by more than two "
 				"box sizes per time-step.\n");
 
-	/* Get the new putative zoom cell dimensions. If this is the initial construction
-	 * we can just use the input from s->zoom_props->nr_zoom_per_bkg_cells
+	/* Get the new putative zoom cell dimensions. We can initially use the
+	 * input from s->zoom_props->nr_zoom_per_bkg_cells
 	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
 	 * using the recalculated natural cell width *** */
 	int zoom_natcell_cdim = s->zoom_props->nr_zoom_per_bkg_cells;
@@ -245,10 +245,11 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 
 		/* Lets recalculate the number of zoom cells in a natural cell */
 		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-		s->zoom_props->nr_zoom_per_bkg_cells = zoom_natcell_cdim;
+		s->zoom_props->nr_zoom_per_bkg_cells = (int)floor(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 
-		if (verbose) message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
-				                 old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
+		if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
+			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
+					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
 
 		message("Constructing zoom region.");
     /* Compute the bounds of the zoom region from the DM particles. */
