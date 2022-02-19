@@ -264,7 +264,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
     /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
 		message("(re)griding space cdim=(%d %d %d) zoom_cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2],
-				    s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
+				    s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2]);
     fflush(stdout);
 #endif
 
