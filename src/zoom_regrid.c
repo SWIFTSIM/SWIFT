@@ -53,11 +53,8 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	/* Run through the cells and get the current h_max, when using a zoom region
 	 * h_max needs to be set by the zoom cells. */
 	// tic = getticks();
-	if (s->e != NULL) {
-		const double nat_cell_min = min3(s->width[0], s->width[1], s->width[2]);
-	} else {
-		const double nat_cell_min = s->cell_min;
-  }
+	double nat_cell_min = s->cell_min;
+	if (s->e != NULL) nat_cell_min = min3(s->width[0], s->width[1], s->width[2]);
 	const double zoom_cell_min = nat_cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
 	double h_max = zoom_cell_min / kernel_gamma / space_stretch;
 	float nat_h_max = s->cell_min / kernel_gamma / space_stretch;
