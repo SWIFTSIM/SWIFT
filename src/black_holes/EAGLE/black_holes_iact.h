@@ -52,7 +52,7 @@
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_density(
-    const float r2, const float *dx, const float hi, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct bpart *bi, const struct part *pj, const struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
@@ -273,7 +273,7 @@ runner_iact_nonsym_bh_gas_density(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_swallow(
-    const float r2, const float *dx, const float hi, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     struct bpart *bi, struct part *pj, struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
@@ -499,7 +499,7 @@ runner_iact_nonsym_bh_gas_swallow(
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
+runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
                                  const float hi, const float hj,
                                  struct bpart *bi, struct bpart *bj,
                                  const struct cosmology *cosmo,
@@ -690,7 +690,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float *dx,
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_feedback(
-    const float r2, const float *dx, const float hi, const float hj,
+    const float r2, const float dx[3], const float hi, const float hj,
     const struct bpart *bi, struct part *pj, struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,

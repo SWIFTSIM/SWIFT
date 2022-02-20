@@ -89,7 +89,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
         const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                               (float)(pj->x[1] - c->loc[1]),
                               (float)(pj->x[2] - c->loc[2])};
-        float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -145,7 +145,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
       const float bjx[3] = {(float)(bj->x[0] - c->loc[0]),
                             (float)(bj->x[1] - c->loc[1]),
                             (float)(bj->x[2] - c->loc[2])};
-      float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
+      const float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -243,7 +243,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
         const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                               (float)(pj->x[1] - cj->loc[1]),
                               (float)(pj->x[2] - cj->loc[2])};
-        float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -299,7 +299,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float bjx[3] = {(float)(bj->x[0] - cj->loc[0]),
                             (float)(bj->x[1] - cj->loc[1]),
                             (float)(bj->x[2] - cj->loc[2])};
-      float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
+      const float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -412,8 +412,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
-      float dx[3] = {(float)(bix - pjx), (float)(biy - pjy),
-                     (float)(biz - pjz)};
+      const float dx[3] = {(float)(bix - pjx), (float)(biy - pjy),
+                           (float)(biz - pjz)};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -490,7 +490,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
       const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
                             (float)(pj->x[1] - ci->loc[1]),
                             (float)(pj->x[2] - ci->loc[2])};
-      float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+      const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
