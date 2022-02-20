@@ -252,10 +252,9 @@ runner_iact_nonsym_bh_gas_density(
 }
 
 /**
- * @brief Swallowing interaction between two particles (non-symmetric).
+ * @brief Repositioning interaction between two particles (non-symmetric).
  *
- * Function used to flag the gas particles that will be swallowed
- * by the black hole particle.
+ * Function used to identify the gas particle that this BH may move towards.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -272,9 +271,9 @@ runner_iact_nonsym_bh_gas_density(
  * @param time Current physical time in the simulation.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_gas_swallow(
+runner_iact_nonsym_bh_gas_repos(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct bpart *bi, struct part *pj, struct xpart *xpj,
+    struct bpart *bi, const struct part *pj, const struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct black_holes_props *bh_props,
@@ -287,11 +286,8 @@ runner_iact_nonsym_bh_gas_swallow(
    * to r2 / sqrtf(r2) because of 1 / 0 behaviour. */
   const float r = sqrtf(r2);
   const float hi_inv = 1.0f / hi;
-  const float hi_inv_dim = pow_dimension(hi_inv);
   const float ui = r * hi_inv;
   kernel_eval(ui, &wi);
-
-  /* Start by checking the repositioning criteria */
 
   /* (Square of) Max repositioning distance allowed based on the softening */
   const float max_dist_repos2 =
@@ -374,7 +370,49 @@ runner_iact_nonsym_bh_gas_swallow(
       }
     }
   }
+}
 
+/**
+ * @brief Swallowing interaction between two particles (non-symmetric).
+ *
+ * Function used to flag the gas particles that will be swallowed
+ * by the black hole particle.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param bi First particle (black hole).
+ * @param pj Second particle (gas)
+ * @param xpj The extended data of the second particle.
+ * @param with_cosmology Are we doing a cosmological run?
+ * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param bh_props The properties of the BH scheme
+ * @param ti_current Current integer time value (for random numbers).
+ * @param time Current physical time in the simulation.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_gas_swallow(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct bpart *bi, struct part *pj, struct xpart *xpj,
+    const int with_cosmology, const struct cosmology *cosmo,
+    const struct gravity_props *grav_props,
+    const struct black_holes_props *bh_props,
+    const struct entropy_floor_properties *floor_props,
+    const integertime_t ti_current, const double time) {
+
+  float wi;
+
+  /* Compute the kernel function; note that r cannot be optimised
+   * to r2 / sqrtf(r2) because of 1 / 0 behaviour. */
+  const float r = sqrtf(r2);
+  const float hi_inv = 1.0f / hi;
+  const float hi_inv_dim = pow_dimension(hi_inv);
+  const float ui = r * hi_inv;
+  kernel_eval(ui, &wi);
+
+  /* Start by checking the repositioning criteria */
   /* Check if the BH needs to be fed. If not, we're done here */
   const float bh_mass_deficit = bi->subgrid_mass - bi->mass_at_start_of_step;
   if (bh_mass_deficit <= 0.f) return;
@@ -484,8 +522,7 @@ runner_iact_nonsym_bh_gas_swallow(
 /**
  * @brief Swallowing interaction between two BH particles (non-symmetric).
  *
- * Function used to flag the BH particles that will be swallowed
- * by the black hole particle.
+ * Function used to identify the BH particle that this BH may move towards.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -499,13 +536,13 @@ runner_iact_nonsym_bh_gas_swallow(
  * @param ti_current Current integer time value (for random numbers).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
-                                 const float hi, const float hj,
-                                 struct bpart *bi, struct bpart *bj,
-                                 const struct cosmology *cosmo,
-                                 const struct gravity_props *grav_props,
-                                 const struct black_holes_props *bh_props,
-                                 const integertime_t ti_current) {
+runner_iact_nonsym_bh_bh_repos(const float r2, const float dx[3],
+                               const float hi, const float hj, struct bpart *bi,
+                               const struct bpart *bj,
+                               const struct cosmology *cosmo,
+                               const struct gravity_props *grav_props,
+                               const struct black_holes_props *bh_props,
+                               const integertime_t ti_current) {
 
   /* Compute relative peculiar velocity between the two BHs
    * Recall that in SWIFT v is (v_pec * a) */
@@ -586,6 +623,42 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
       }
     }
   }
+}
+
+/**
+ * @brief Swallowing interaction between two BH particles (non-symmetric).
+ *
+ * Function used to flag the BH particles that will be swallowed
+ * by the black hole particle.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param bi First particle (black hole).
+ * @param bj Second particle (black hole)
+ * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param bh_props The properties of the BH scheme
+ * @param ti_current Current integer time value (for random numbers).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
+                                 const float hi, const float hj,
+                                 struct bpart *bi, struct bpart *bj,
+                                 const struct cosmology *cosmo,
+                                 const struct gravity_props *grav_props,
+                                 const struct black_holes_props *bh_props,
+                                 const integertime_t ti_current) {
+
+  /* Compute relative peculiar velocity between the two BHs
+   * Recall that in SWIFT v is (v_pec * a) */
+  const float delta_v[3] = {bi->v[0] - bj->v[0], bi->v[1] - bj->v[1],
+                            bi->v[2] - bj->v[2]};
+  const float v2 = delta_v[0] * delta_v[0] + delta_v[1] * delta_v[1] +
+                   delta_v[2] * delta_v[2];
+
+  const float v2_pec = v2 * cosmo->a2_inv;
 
   /* Find the most massive of the two BHs */
   float M = bi->subgrid_mass;
