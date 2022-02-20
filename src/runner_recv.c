@@ -46,7 +46,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
                          int timer) {
 #ifdef WITH_MPI
 
-  const struct part *restrict parts = c->hydro.parts;
+  struct part *restrict parts = c->hydro.parts;
   const size_t nr_parts = c->hydro.count;
   const integertime_t ti_current = r->e->ti_current;
   const timebin_t max_active_bin = r->e->max_active_bin;
@@ -75,6 +75,7 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_min = min(time_bin_min, parts[k].time_bin);
       time_bin_max = max(time_bin_max, parts[k].time_bin);
       h_max = max(h_max, parts[k].h);
+      parts[k].gpart = NULL;
       if (parts[k].time_bin <= max_active_bin)
         h_max_active = max(h_max_active, parts[k].h);
     }
@@ -235,6 +236,7 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_min = min(time_bin_min, sparts[k].time_bin);
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
       h_max = max(h_max, sparts[k].h);
+      sparts[k].gpart = NULL;
       if (sparts[k].time_bin <= max_active_bin)
         h_max_active = max(h_max_active, sparts[k].h);
     }
@@ -324,6 +326,7 @@ void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_min = min(time_bin_min, bparts[k].time_bin);
       time_bin_max = max(time_bin_max, bparts[k].time_bin);
       h_max = max(h_max, bparts[k].h);
+      bparts[k].gpart = NULL;
       if (bparts[k].time_bin <= max_active_bin)
         h_max_active = max(h_max_active, bparts[k].h);
     }
