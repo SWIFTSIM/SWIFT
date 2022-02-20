@@ -2229,7 +2229,7 @@ void engine_step(struct engine *e) {
     e->forcerebuild = 1;
 
   /* Trigger a FOF black hole seeding? */
-  if (e->policy & engine_policy_fof) {
+  if (e->policy & engine_policy_fof && !e->restarting) {
     if (e->ti_end_min > e->ti_next_fof && e->ti_next_fof > 0) {
       e->run_fof = 1;
       e->forcerebuild = 1;
