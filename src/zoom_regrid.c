@@ -53,8 +53,13 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	/* Run through the cells and get the current h_max, when using a zoom region
 	 * h_max needs to be set by the zoom cells. */
 	// tic = getticks();
-	const double zoom_cell_min = s->cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
-	float h_max = zoom_cell_min / kernel_gamma / space_stretch;
+	if (s->e != NULL) {
+		const double nat_cell_min = min3(s->width[0], s->width[1], s->width[2]);
+	} else {
+		const double nat_cell_min = s->cell_min;
+  }
+	const double zoom_cell_min = nat_cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
+	double h_max = zoom_cell_min / kernel_gamma / space_stretch;
 	float nat_h_max = s->cell_min / kernel_gamma / space_stretch;
 	if (nr_parts > 0) {
 
@@ -152,9 +157,13 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	 * input from s->zoom_props->nr_zoom_per_bkg_cells
 	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
 	 * using the recalculated natural cell width *** */
-	int zoom_natcell_cdim = s->zoom_props->nr_zoom_per_bkg_cells;
-	if (s->cells_top != NULL) {
-		  zoom_natcell_cdim = (int)floor(s->cell_min / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+	int zoom_natcell_cdim[3] = {s->zoom_props->nr_zoom_per_bkg_cells,
+														  s->zoom_props->nr_zoom_per_bkg_cells,
+														  s->zoom_props->nr_zoom_per_bkg_cells};
+	if (s->e != NULL) {
+		for (int ijk = 0; ijk < 3; ijk++) {
+		  zoom_natcell_cdim[ijk] = (int)floor(s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+		  }
 	}
 
 /* In MPI-Land, changing the top-level cell size requires that the
@@ -167,7 +176,9 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
   double oldzoomcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ||
-      zoom_natcell_cdim < s->zoom_props->nr_zoom_per_bkg_cells) {
+      zoom_natcell_cdim[0] < s->zoom_props->nr_zoom_per_bkg_cells ||
+      zoom_natcell_cdim[1] < s->zoom_props->nr_zoom_per_bkg_cells ||
+      zoom_natcell_cdim[2] < s->zoom_props->nr_zoom_per_bkg_cells) {
 
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
@@ -217,7 +228,9 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	// tic = getticks();
 	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
       cdim[2] < s->cdim[2] ||
-      zoom_natcell_cdim < s->zoom_props->nr_zoom_per_bkg_cells) {
+      zoom_natcell_cdim[0] < s->zoom_props->nr_zoom_per_bkg_cells ||
+      zoom_natcell_cdim[1] < s->zoom_props->nr_zoom_per_bkg_cells ||
+      zoom_natcell_cdim[2] < s->zoom_props->nr_zoom_per_bkg_cells) {
 
 		/* Free the old cells, if they were allocated. */
 		if (s->cells_top != NULL) {
@@ -241,15 +254,17 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 			s->width[k] = s->dim[k] / cdim[k];
 			s->iwidth[k] = 1.0 / s->width[k];
 		}
-		const float dmin = min3(s->width[0], s->width[1], s->width[2]);
+		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
 
 		/* Lets recalculate the number of zoom cells in a natural cell */
-		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-		s->zoom_props->nr_zoom_per_bkg_cells = (int)floor(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+		if (s->e != NULL) {
+			const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
+			s->zoom_props->nr_zoom_per_bkg_cells = (int)floor(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 
-		if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
-			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
-					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
+			if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
+				message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
+						    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
+		}
 
 		message("Constructing zoom region.");
     /* Compute the bounds of the zoom region from the DM particles. */
