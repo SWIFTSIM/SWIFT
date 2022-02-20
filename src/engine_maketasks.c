@@ -4147,6 +4147,8 @@ void engine_make_fof_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   ticks tic = getticks();
 
+  if (e->restarting) error("Running FOF on a restart step!");
+
   /* Construct a FOF loop over neighbours */
   if (e->policy & engine_policy_fof)
     threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
