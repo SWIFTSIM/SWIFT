@@ -118,7 +118,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
    how large the largest cell should be. */
 #ifdef WITH_MPI
 	{
-    float buff;
+    double buff;
     if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
       error("Failed to aggregate the rebuild flag across nodes.");
