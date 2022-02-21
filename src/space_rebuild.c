@@ -930,7 +930,6 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
         (c->black_holes.count > 0) || (c->sinks.count > 0);
 
     if (is_local) {
-	    message("c->nodeID=%d, engine_rank=%d", c->nodeID, engine_rank);
       c->hydro.parts = finger;
       c->hydro.xparts = xfinger;
       c->grav.parts = gfinger;
