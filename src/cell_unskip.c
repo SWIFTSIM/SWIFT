@@ -258,7 +258,8 @@ void cell_activate_cooling(struct cell *c, struct scheduler *s,
  */
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s) {
 
-  /* Early abort? */
+  /* Early abort?
+   * We can stop if there is no gas as none of it will turn into stars */
   if (c->hydro.count == 0) return;
 
   if (c == c->hydro.super) {

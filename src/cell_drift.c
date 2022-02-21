@@ -38,6 +38,70 @@
 #include "tracers.h"
 
 /**
+ * @brief Recursively set the hydro's ti_old_part to the current time.
+ *
+ * @param c The cell to update.
+ * @param ti The current integer time.
+ */
+void cell_set_ti_old_part(struct cell *c, const integertime_t ti) {
+
+  c->hydro.ti_old_part = ti;
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) cell_set_ti_old_part(c->progeny[k], ti);
+    }
+  }
+}
+
+/**
+ * @brief Recursively set the gravity's ti_old_part to the current time.
+ *
+ * @param c The cell to update.
+ * @param ti The current integer time.
+ */
+void cell_set_ti_old_gpart(struct cell *c, const integertime_t ti) {
+
+  c->grav.ti_old_part = ti;
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) cell_set_ti_old_gpart(c->progeny[k], ti);
+    }
+  }
+}
+
+/**
+ * @brief Recursively set the stars' ti_old_part to the current time.
+ *
+ * @param c The cell to update.
+ * @param ti The current integer time.
+ */
+void cell_set_ti_old_spart(struct cell *c, const integertime_t ti) {
+
+  c->stars.ti_old_part = ti;
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) cell_set_ti_old_spart(c->progeny[k], ti);
+    }
+  }
+}
+
+/**
+ * @brief Recursively set the black holes' ti_old_part to the current time.
+ *
+ * @param c The cell to update.
+ * @param ti The current integer time.
+ */
+void cell_set_ti_old_bpart(struct cell *c, const integertime_t ti) {
+
+  c->black_holes.ti_old_part = ti;
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) cell_set_ti_old_bpart(c->progeny[k], ti);
+    }
+  }
+}
+
+/**
  * @brief Recursively drifts the #part in a cell hierarchy.
  *
  * @param c The #cell.
@@ -77,7 +141,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force) {
     cell_clear_flag(c, cell_flag_do_hydro_drift | cell_flag_do_hydro_sub_drift);
 
     /* Update the time of the last drift */
-    c->hydro.ti_old_part = ti_current;
+    cell_set_ti_old_part(c, ti_current);
 
     return;
   }
@@ -304,7 +368,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force) {
     cell_clear_flag(c, cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift);
 
     /* Update the time of the last drift */
-    c->grav.ti_old_part = ti_current;
+    cell_set_ti_old_gpart(c, ti_current);
 
     return;
   }
@@ -457,7 +521,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force) {
     cell_clear_flag(c, cell_flag_do_stars_drift | cell_flag_do_stars_sub_drift);
 
     /* Update the time of the last drift */
-    c->stars.ti_old_part = ti_current;
+    cell_set_ti_old_spart(c, ti_current);
 
     return;
   }
@@ -644,7 +708,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force) {
     cell_clear_flag(c, cell_flag_do_bh_drift | cell_flag_do_bh_sub_drift);
 
     /* Update the time of the last drift */
-    c->black_holes.ti_old_part = ti_current;
+    cell_set_ti_old_bpart(c, ti_current);
 
     return;
   }
