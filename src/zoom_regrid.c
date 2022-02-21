@@ -118,7 +118,6 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
    how large the largest cell should be. */
 #ifdef WITH_MPI
 	{
-		message("h_max=%f", h_max);
     float buff;
     if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
