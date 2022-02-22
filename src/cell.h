@@ -1404,10 +1404,10 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
     	/* print warning only once */
       if (last_cell_id == 1ULL) {
         message(
-            "WARNING: Got > (%d x %d x %d) top level cells. "
+            "WARNING: Got (%d x %d x %d + %d x %d x %d) top level cells. "
             "Cell IDs are only guaranteed to be "
             "reproduceably unique if count is < 32^3",
-            cdim[0], cdim[1], cdim[2]);
+            cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1], zoom_cdim[2]);
       }
       /* Do this in same line. Otherwise, bad things happen. */
       c->cellID = atomic_inc(&last_cell_id);
