@@ -92,7 +92,6 @@ class Rundata(object):
     def __init__(self):
         self.units = None
 
-        self.hydro_controlled_injection = False
         self.use_const_emission_rate = False
         self.has_stars = False  # assume we don't have stars, check while reading in
 
@@ -202,9 +201,6 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
                 ]
             else:
                 quit()
-
-    if "hydro controlled" in scheme:
-        rundata.hydro_controlled_injection = True
 
     rundata.reduced_speed_of_light = firstfile.metadata.reduced_lightspeed
 

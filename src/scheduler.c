@@ -1558,8 +1558,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_force ||
                  t->subtype == task_subtype_limiter)
           cost = 1.f * (wscale * count_i) * count_i;
-        else if (t->subtype == task_subtype_rt_inject)
-          cost = 1.f * wscale * scount_i * count_i;
         else if (t->subtype == task_subtype_rt_gradient)
           cost = 1.f * wscale * count_i * count_i;
         else if (t->subtype == task_subtype_rt_transport)
@@ -1637,8 +1635,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           else
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
 
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_j;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -1719,8 +1715,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           } else {
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           }
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_j;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -1755,8 +1749,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_transport) {

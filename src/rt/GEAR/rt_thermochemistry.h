@@ -91,20 +91,6 @@ static void rt_do_thermochemistry(struct part* restrict p,
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
 
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  if (p->rt_data.debug_kicked != 1)
-    error("Trying to do thermochemistry on unkicked particle %lld (count=%d)",
-          p->id, p->rt_data.debug_kicked);
-  if (!p->rt_data.debug_injection_done)
-    error("Trying to do thermochemistry when injection step hasn't been done");
-  if (!p->rt_data.debug_gradients_done)
-    error("Trying to do thermochemistry when gradient step hasn't been done");
-  if (!p->rt_data.debug_transport_done)
-    error("Trying to do thermochemistry when transport step hasn't been done");
-
-  p->rt_data.debug_thermochem_done += 1;
-#endif
-
   /* Nothing to do here? */
   if (rt_props->skip_thermochemistry) return;
   if (dt == 0.) return;

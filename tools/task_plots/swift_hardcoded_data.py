@@ -114,7 +114,6 @@ SUBTYPES = [
     "do_bh_swallow",
     "bh_feedback",
     "sink_merger",
-    "rt_inject",
     "sink_compute_formation",
     "sink_accretion",
     "rt_gradient",

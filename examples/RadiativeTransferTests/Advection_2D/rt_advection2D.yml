@@ -39,7 +39,7 @@ InitialConditions:
   periodic:   1                    # peridoc ICs
 
 Scheduler:
-  max_top_level_cells: 128
+  max_top_level_cells: 32
 
 # Parameters for the self-gravity scheme
 Gravity:
