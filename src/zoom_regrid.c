@@ -54,7 +54,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	 * h_max needs to be set by the zoom cells. */
 	// tic = getticks();
 	double nat_cell_min = s->cell_min;
-	if (s->e != NULL) nat_cell_min = min3(s->width[0], s->width[1], s->width[2]);
+	if (s->cells_top != NULL) nat_cell_min = min3(s->width[0], s->width[1], s->width[2]);
 	const double zoom_cell_min = nat_cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
 	float h_max = zoom_cell_min / kernel_gamma / space_stretch;
 	float nat_h_max = s->cell_min / kernel_gamma / space_stretch;
@@ -150,6 +150,20 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 				" - particles with velocities so large that they move by more than two "
 				"box sizes per time-step.\n");
 
+	/* Lets set some useful space information if we need to */
+	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
+      cdim[2] < s->cdim[2] {
+
+		/* Set the new cell dimensions. */
+		for (int k = 0; k < 3; k++) {
+			s->cdim[k] = cdim[k];
+			s->width[k] = s->dim[k] / cdim[k];
+			s->iwidth[k] = 1.0 / s->width[k];
+
+		}
+		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
+	}
+
 	/* Get the new putative zoom cell dimensions. We can initially use the
 	 * input from s->zoom_props->nr_zoom_per_bkg_cells
 	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
@@ -157,11 +171,9 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	int zoom_natcell_cdim[3] = {s->zoom_props->nr_zoom_per_bkg_cells,
 														  s->zoom_props->nr_zoom_per_bkg_cells,
 														  s->zoom_props->nr_zoom_per_bkg_cells};
-	if (s->e != NULL) {
-		for (int ijk = 0; ijk < 3; ijk++) {
-		  zoom_natcell_cdim[ijk] = (int)floor(s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
-		  }
-	}
+	for (int ijk = 0; ijk < 3; ijk++) {
+	  zoom_natcell_cdim[ijk] = (int)floor(s->iwidth[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+	  }
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
@@ -245,23 +257,13 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		 * memory while copying the particle arrays. */
 		if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
-		/* Set the new cell dimensions only if smaller. */
-		for (int k = 0; k < 3; k++) {
-			s->cdim[k] = cdim[k];
-			s->width[k] = s->dim[k] / cdim[k];
-			s->iwidth[k] = 1.0 / s->width[k];
-		}
-		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
-
 		/* Lets recalculate the number of zoom cells in a natural cell */
-		if (s->e != NULL) {
-			const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-			s->zoom_props->nr_zoom_per_bkg_cells = (int)floor(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
+		s->zoom_props->nr_zoom_per_bkg_cells = (int)(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 
-			if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
-				message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
-						    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
-		}
+		if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
+			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
+					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
 
 		message("Constructing zoom region.");
     /* Compute the bounds of the zoom region from the DM particles. */

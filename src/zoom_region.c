@@ -194,6 +194,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   double mtot = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
   double widths[3] = {0.0, 0.0, 0.0};
+  int nr_nat_cells_in_zoom[3] = {0, 0, 0};
 
   /* Find the min/max location in each dimension for each mask gravity particle, and their COM. */
   for (size_t k = 0; k < nr_gparts; k++) {
@@ -317,7 +318,8 @@ void construct_zoom_region(struct space *s, int verbose) {
 		const int ijk_up_bound = (mid_point + (max_width / 2)) * s->iwidth[ijk];
 
 		/* Find the length of the region along this axis and assign it to array */
-		widths[ijk] = (ijk_up_bound + 1 - ijk_low_bound) * s->width[ijk];
+		nr_nat_cells_in_zoom[ijk] = ijk_up_bound + 1 - ijk_low_bound
+		widths[ijk] = nr_nat_cells_in_zoom[ijk] * s->width[ijk];
 
 		/* Use this integer cell coordinate to define the boundaries */
     new_zoom_boundary[ijk * 2] = ijk_low_bound * s->width[ijk];
@@ -351,7 +353,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   	s->zoom_props->width[ijk] = s->width[ijk] / s->zoom_props->nr_zoom_per_bkg_cells;
   	s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
   	s->zoom_props->dim[ijk] = widths[ijk];
-  	s->zoom_props->cdim[ijk] = widths[ijk] * s->zoom_props->iwidth[ijk];
+  	s->zoom_props->cdim[ijk] = nr_nat_cells_in_zoom[ijk] * s->zoom_props->nr_zoom_per_bkg_cells;
   }
   s->zoom_props->tl_cell_offset = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_zoom_cells = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
