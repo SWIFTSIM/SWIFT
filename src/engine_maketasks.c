@@ -4343,6 +4343,12 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
 
+#ifdef WITH_ZOOM_REGION
+	/* Add drift tasks for particles which have wandered out of the zoom region */
+	threadpool_map(&e->threadpool, engine_make_drift_tasks_for_wanderers_mapper, cells,
+	               nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
+#endif
+
   tic2 = getticks();
 
   /* Run through the tasks and make force tasks for each density task.

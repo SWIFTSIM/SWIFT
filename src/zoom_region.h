@@ -33,6 +33,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
                                                               void *extra_data);
 void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elements,
                                                   void *extra_data);
+void engine_make_drift_tasks_for_wanderers(struct engine *e, struct cell *c);
+void engine_make_drift_tasks_for_wanderers_mapper(void *map_data, int num_elements,
+                                                  void *extra_data);
 void engine_make_fofloop_tasks_mapper_with_zoom(void *map_data, int num_elements,
                                                 void *extra_data);
 /* Parition prototypes */

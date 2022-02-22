@@ -488,9 +488,9 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 	        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
 	        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
 	        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
-	        c->end_i = (c->loc[0] - zoom_region_bounds[0] + c->width[0]) * s->zoom_props->iwidth[0];
-	        c->end_j = (c->loc[1] - zoom_region_bounds[2] + c->width[1]) * s->zoom_props->iwidth[1];
-	        c->end_k = (c->loc[2] - zoom_region_bounds[4] + c->width[2]) * s->zoom_props->iwidth[2];
+	        c->end_i = c->start_i + s->zoom_props->nr_zoom_per_bkg_cells;
+	        c->end_j = c->start_j + s->zoom_props->nr_zoom_per_bkg_cells;
+	        c->end_k = c->start_k + s->zoom_props->nr_zoom_per_bkg_cells;
 		    } else {
 		      c->tl_cell_type = tl_cell;
 		    }
@@ -1510,7 +1510,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data, int num
 	for (int ind = 0; ind < num_elements; ind++) {
 
 		/* Get the cell index, including background cell offset. */
-		const int cid = (size_t)(map_data) + ind +  + bkg_cell_offset;
+		const int cid = (size_t)(map_data) + ind + bkg_cell_offset;
 
 		/* Integer indices of the cell in the top-level grid */
 		const int i = (cid - bkg_cell_offset) / (cdim[1] * cdim[2]);
@@ -2113,6 +2113,78 @@ void engine_make_hydroloop_tasks_mapper_with_zoom(void *map_data, int num_elemen
         }
       }
     }
+  }
+}
+
+/**
+ * @brief Constructs the top-level drift tasks for natural cells that now contain
+ * particles requiring a drift after they leave the natural cells.
+ *
+ * NOTE: if hydro tasks are created for the entire box then this will be
+ * unnecessary and can be removed!
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ */
+void engine_make_drift_tasks_for_wanderers(struct engine *e, struct cell *c) {
+
+  struct scheduler *s = &e->sched;
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_black_holes = (e->policy & engine_policy_black_holes);
+
+  /* Local tasks only... */
+  if (c->nodeID == e->nodeID) {
+
+  	/* Lets do the wandering hydro particles */
+  	if (c->hydro.count > 0) {
+  		/* Add the drift task. */
+  	  c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
+  			                                 task_subtype_none, 0, 0, c, NULL);
+
+  	  /* Add the task finishing the force calculation */
+  	  c->hydro.end_force = scheduler_addtask(s, task_type_end_hydro_force,
+  			                                     task_subtype_none, 0, 0, c, NULL);
+  	}
+    /* Lets do the wandering stars */
+    if (with_stars && c->stars.count > 0) {
+      c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
+                                         task_subtype_none, 0, 0, c, NULL);
+      scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+    }
+
+    /* Lets do the wandering sinks */
+    if (with_sinks && c->sinks.count > 0) {
+      c->sinks.drift = scheduler_addtask(s, task_type_drift_sink,
+                                         task_subtype_none, 0, 0, c, NULL);
+      scheduler_addunlock(s, c->sinks.drift, c->super->kick2);
+    }
+
+    /* Lets do the wandering black holes */
+    if (with_black_holes) {
+    	if (c->black_holes.count > 0) {
+    		c->black_holes.drift = scheduler_addtask(s, task_type_drift_bpart, task_subtype_none, 0, 0, c, NULL);
+        scheduler_addunlock(s, c->black_holes.drift, c->super->kick2);
+    	}
+    }
+  }
+}
+
+void engine_make_drift_tasks_for_wanderers_mapper(void *map_data, int num_elements,
+                                                  void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  const int with_hydro = (e->policy & engine_policy_hydro);
+
+  for (int ind = 0; ind < num_elements; ind++) {
+  	struct cell *c = &((struct cell *)map_data)[ind];
+
+  	/* Skip zoom cells and void cells as we only care about the background cells */
+		if (c->tl_cell_type == zoom_tl_cell || c->tl_cell_type == void_tl_cell) continue;
+
+    /* Add the drift tasks */
+    if (with_hydro)
+      engine_make_drift_tasks_for_wanderers(e, c);
   }
 }
 
