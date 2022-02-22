@@ -152,7 +152,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 
 	/* Lets set some useful space information if we need to */
 	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-      cdim[2] < s->cdim[2] {
+      cdim[2] < s->cdim[2]) {
 
 		/* Set the new cell dimensions. */
 		for (int k = 0; k < 3; k++) {
