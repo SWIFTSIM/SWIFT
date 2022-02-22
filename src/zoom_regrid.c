@@ -170,7 +170,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 														  s->zoom_props->nr_zoom_per_bkg_cells,
 														  s->zoom_props->nr_zoom_per_bkg_cells};
 	for (int ijk = 0; ijk < 3; ijk++) {
-	  zoom_natcell_cdim[ijk] = (int)floor(s->iwidth[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+	  zoom_natcell_cdim[ijk] = (int)floor(s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 	  }
 
 /* In MPI-Land, changing the top-level cell size requires that the
