@@ -159,9 +159,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 			s->cdim[k] = cdim[k];
 			s->width[k] = s->dim[k] / cdim[k];
 			s->iwidth[k] = 1.0 / s->width[k];
-
 		}
-		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
 	}
 
 	/* Get the new putative zoom cell dimensions. We can initially use the
@@ -258,6 +256,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
 		/* Lets recalculate the number of zoom cells in a natural cell */
+		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
 		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
 		s->zoom_props->nr_zoom_per_bkg_cells = (int)(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 
