@@ -262,17 +262,58 @@ def check_all_stars_is_equal(snapdata):
         # Smoothing Lengths
         if not skip_sml:
 
-            diff = np.abs((ref.gas.h - compare.gas.h) / ref.gas.h)
+            diff = np.abs((ref.stars.h - compare.stars.h) / ref.stars.h)
             if (diff > float_comparison_tolerance).any():
                 print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
                 print("--- Smoothing Lengths vary")
                 if print_diffs:
                     for i in range(npart):
-                        if ((ref.gas.h[i] - compare.gas.h[i]) / ref.gas.h[i]).any():
-                            print(ref.gas.h[i], "|", compare.gas.h[i])
+                        if (
+                            (ref.stars.h[i] - compare.stars.h[i]) / ref.stars.h[i]
+                        ).any():
+                            print(ref.stars.h[i], "|", compare.stars.h[i])
 
                 if break_on_diff:
                     quit()
+
+        # Check all emission rates are set everywhere
+        fishy = ref.stars.EmissionRateSet != compare.stars.EmissionRateSet
+        if fishy.any():
+
+            print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
+            print("--- EmissionRateSet vary")
+            if print_diffs:
+                for i in range(npart):
+                    if ref.stars.EmissionRateSet[i] != compare.stars.EmissionRateSet[i]:
+                        print(
+                            ref.stars.EmissionRateSet[i],
+                            "|",
+                            compare.stars.EmissionRateSet[i],
+                        )
+
+            if break_on_diff:
+                quit()
+
+        # Check all emitted radiation is equal
+        fishy = ref.stars.InjectionInteractions != compare.stars.InjectionInteractions
+        if fishy.any():
+
+            print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
+            print("--- InjectionInteractions vary")
+            if print_diffs:
+                for i in range(npart):
+                    if (
+                        ref.stars.InjectionInteractions[i]
+                        != compare.stars.InjectionInteractions[i]
+                    ):
+                        print(
+                            ref.stars.InjectionInteractions[i],
+                            "|",
+                            compare.stars.InjectionInteractions[i],
+                        )
+
+            if break_on_diff:
+                quit()
 
     return
 
