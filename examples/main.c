@@ -1813,7 +1813,7 @@ int main(int argc, char *argv[]) {
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_rt) rt_clean(e.rt_props);
+  if (with_rt) rt_clean(e.rt_props, restart);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   free(output_options);

@@ -754,7 +754,7 @@ void space_synchronize_particle_positions(struct space *s) {
 
 void space_convert_rt_star_quantities_after_zeroth_step_mapper(
     void *restrict map_data, int scount, void *restrict extra_data) {
-
+#ifdef SWIFT_RT_DEBUG_CHECKS
   struct spart *restrict sparts = (struct spart *)map_data;
   const struct engine *restrict e = (struct engine *)extra_data;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
@@ -787,11 +787,13 @@ void space_convert_rt_star_quantities_after_zeroth_step_mapper(
                                    e->rt_props, e->physical_constants,
                                    e->internal_units);
   }
+#endif
 }
 
 void space_convert_rt_hydro_quantities_after_zeroth_step_mapper(
     void *restrict map_data, int count, void *restrict extra_data) {
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
   struct part *restrict parts = (struct part *)map_data;
   const struct engine *restrict e = (struct engine *)extra_data;
   const struct rt_props *restrict rt_props = e->rt_props;
@@ -803,39 +805,26 @@ void space_convert_rt_hydro_quantities_after_zeroth_step_mapper(
     if (parts[k].time_bin <= num_time_bins)
       rt_init_part_after_zeroth_step(p, rt_props);
   }
+#endif
 }
 
 /**
  * @brief Initializes values of radiative transfer data for particles
  * that needs to be set before the first actual step is done, but will
  * be reset in forthcoming steps when the corresponding particle is
- * active.
- * In hydro controlled injection, in particular we need the stellar
- * emisison rates to be set from the start, not only after the stellar
- * particle has been active. This function requires that the time bins
- * for star particles have been set already and is called after the
- * zeroth time step.
- * In either star controlled injection or hydro controlled injection,
- * for the debug RT scheme some data fields need to be reset after the
- * zeroth step. In particular the interaction count between stars and
- * hydro particles needs to be reset to zero; Otherwise only the active
- * particles/stars will be reset when called in their respective ghosts,
- * while the others remain nonzero, such that the respective sums over
- * all hydro particles and the sum over all star particles won't be
- * equal any longer.
- * TODO MLADEN: Clean this up once you finish with the hydro/star
- * controlled injection and debugging mode.
+ * active. It used to be necessary for a "hydro controlled injection"
+ * idea where the star time steps were necessary to be known, now it's
+ * only used to set up debugging checks correctly.
  *
  * @param s The #space.
  * @param verbose Are we talkative?
  */
 void space_convert_rt_quantities_after_zeroth_step(struct space *s,
                                                    int verbose) {
-
-  const struct rt_props *rt_props = s->e->rt_props;
+#ifdef SWIFT_RT_DEBUG_CHECKS
   const ticks tic = getticks();
 
-  if (s->nr_parts > 0 && rt_props->convert_parts_after_zeroth_step)
+  if (s->nr_parts > 0)
     /* Particle loop. Reset hydro particle values so we don't inject too much
      * radiation into the gas, and other initialisations after zeroth step. */
     threadpool_map(&s->e->threadpool,
@@ -843,7 +832,7 @@ void space_convert_rt_quantities_after_zeroth_step(struct space *s,
                    s->parts, s->nr_parts, sizeof(struct part),
                    threadpool_auto_chunk_size, /*extra_data=*/s->e);
 
-  if (s->nr_sparts > 0 && rt_props->convert_stars_after_zeroth_step)
+  if (s->nr_sparts > 0)
     /* Star particle loop. Hydro controlled injection requires star particles
      * to have their emission rates computed and ready for interactions. */
     threadpool_map(&s->e->threadpool,
@@ -854,6 +843,7 @@ void space_convert_rt_quantities_after_zeroth_step(struct space *s,
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+#endif
 }
 
 void space_convert_quantities_mapper(void *restrict map_data, int count,

@@ -56,6 +56,10 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
                                  const struct phys_const* phys_const,
                                  const struct unit_system* internal_units) {
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  sp->rt_data.debug_emission_rate_set += 1;
+#endif
+
   /* Skip initial fake time-step */
   if (dt == 0.0l) return;
 
@@ -98,10 +102,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
-  p->rt_data.debug_iact_stars_inject_prep = 0;
 
-  /* skip this for GEAR */
-  /* p->rt_data.debug_injection_check = 0; */
   p->rt_data.debug_calls_iact_gradient_interaction = 0;
   p->rt_data.debug_calls_iact_transport_interaction = 0;
 
@@ -134,14 +135,13 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
-  p->rt_data.debug_iact_stars_inject_prep_tot = 0ULL;
 #endif
 }
 
 /**
  * @brief Initialises particle quantities that can't be set
  * otherwise before the zeroth step is finished. E.g. because
- * they require the particle density to be known.
+ * they require the particle density and time step to be known.
  *
  * @param p particle to work on
  * @param rt_props RT properties struct
@@ -154,7 +154,14 @@ rt_init_part_after_zeroth_step(struct part* restrict p,
   /* If we're running with debugging checks on, reset debugging
    * counters and flags in particular after the zeroth step so
    * that the checks work as intended. */
+  rt_init_part(p);
   rt_reset_part(p);
+  /* Since the inject_prep has been moved to the density loop, the
+   * initialization at startup is messing with the total counters for stars
+   * because the density is called, but not the force-and-kick tasks. So reset
+   * the total counters here as well so that they will match the star counters.
+   */
+  p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 #endif
 }
 
@@ -171,6 +178,22 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
   for (int i = 0; i < 8; i++) {
     sp->rt_data.octant_weights[i] = 0.f;
   }
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* reset this here as well as in the rt_debugging_checks_end_of_step()
+   * routine to test task dependencies are done right */
+  sp->rt_data.debug_iact_hydro_inject_prep = 0;
+  sp->rt_data.debug_iact_hydro_inject = 0;
+  sp->rt_data.debug_emission_rate_set = 0;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    sp->rt_data.debug_injected_energy[g] = 0.f;
+  }
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    sp->rt_data.emission_this_step[g] = 0.f;
+  }
+  sp->rt_data.debug_psi_sum = 0.f;
+#endif
 }
 
 /**
@@ -188,21 +211,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
   for (int g = 0; g < RT_NGROUPS; g++) {
     sp->rt_data.emission_this_step[g] = 0.f;
   }
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* reset this here as well as in the rt_debugging_checks_end_of_step()
-   * routine to test task dependencies are done right */
-  sp->rt_data.debug_iact_hydro_inject = 0;
-  sp->rt_data.debug_iact_hydro_inject_prep = 0;
-
-  sp->rt_data.debug_emission_rate_set = 0;
-  /* skip this for GEAR */
-  /* sp->rt_data.debug_injection_check = 0; */
-
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    sp->rt_data.debug_injected_energy[g] = 0.f;
-  }
-#endif
 }
 
 /**
@@ -226,7 +234,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
 /**
  * @brief Initialises particle quantities that can't be set
  * otherwise before the zeroth step is finished. E.g. because
- * they require the star density to be known.
+ * they require the star density and time step to be known.
  * @param sp star particle to work on
  * @param time current system time
  * @param star_age age of the star *at the end of the step*
@@ -246,14 +254,14 @@ rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
   /* If we're running with debugging checks on, reset debugging
    * counters and flags in particular after the zeroth step so
    * that the checks work as intended. */
+  rt_init_spart(sp);
   rt_reset_spart(sp);
+  /* Since the inject_prep has been moved to the density loop, the
+   * initialization at startup is messing with the total counters because
+   * the density is called, but not the force-and-kick tasks. So reset
+   * the total counters here as well. */
+  sp->rt_data.debug_radiation_emitted_tot = 0ULL;
 #endif
-
-  /* If we're running with star controlled injection, we don't
-   * need to compute the stellar emission rates here now. */
-  if (rt_props->hydro_controlled_injection)
-    rt_compute_stellar_emission_rate(sp, time, star_age, dt, rt_props,
-                                     phys_const, internal_units);
 }
 
 /**
@@ -280,7 +288,7 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
  *
- * @param sp The star particle to work on
+ * @param sp The #spart.
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     struct spart* sp) {
@@ -530,6 +538,20 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us, const double dt) {
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (p->rt_data.debug_kicked != 1)
+    error("Trying to do thermochemistry on unkicked particle %lld (count=%d)",
+          p->id, p->rt_data.debug_kicked);
+  if (!p->rt_data.debug_injection_done)
+    error("Trying to do thermochemistry when injection step hasn't been done");
+  if (!p->rt_data.debug_gradients_done)
+    error("Trying to do thermochemistry when gradient step hasn't been done");
+  if (!p->rt_data.debug_transport_done)
+    error("Trying to do thermochemistry when transport step hasn't been done");
+
+  p->rt_data.debug_thermochem_done += 1;
+#endif
+
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
 
@@ -632,20 +654,25 @@ __attribute__((always_inline)) INLINE static void rt_prepare_force(
  * @brief Clean the allocated memory inside the RT properties struct.
  *
  * @param props the #rt_props.
+ * @param restart did we restart?
  */
 __attribute__((always_inline)) INLINE static void rt_clean(
-    struct rt_props* props) {
+    struct rt_props* props, int restart) {
 
-  /* Clean up grackle data. This is a call to a grackle function */
-  _free_chemistry_data(&props->grackle_chemistry_data,
-                       props->grackle_chemistry_rates);
+  /* If we were restarting, free-ing manually will lead to
+   * segfaults since we didn't malloc the stuff */
+  if (!restart) {
+    /* Clean up grackle data. This is a call to a grackle function */
+    _free_chemistry_data(&props->grackle_chemistry_data,
+                         props->grackle_chemistry_rates);
 
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    free(props->energy_weighted_cross_sections[g]);
-    free(props->number_weighted_cross_sections[g]);
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      free(props->energy_weighted_cross_sections[g]);
+      free(props->number_weighted_cross_sections[g]);
+    }
+    free(props->energy_weighted_cross_sections);
+    free(props->number_weighted_cross_sections);
   }
-  free(props->energy_weighted_cross_sections);
-  free(props->number_weighted_cross_sections);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   fclose(props->conserved_energy_filep);

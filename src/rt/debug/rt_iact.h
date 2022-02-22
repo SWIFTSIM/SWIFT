@@ -44,14 +44,11 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
                                      const float hi, const float hj,
-                                     struct spart *si, struct part *pj,
+                                     struct spart *si, const struct part *pj,
                                      const struct cosmology *cosmo,
                                      const struct rt_props *rt_props) {
 
   si->rt_data.debug_iact_hydro_inject_prep += 1;
-  si->rt_data.debug_iact_hydro_inject_prep_tot += 1ULL;
-  pj->rt_data.debug_iact_stars_inject_prep += 1;
-  pj->rt_data.debug_iact_stars_inject_prep_tot += 1ULL;
 }
 
 /**
@@ -70,38 +67,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
     struct spart *restrict si, struct part *restrict pj, float a, float H) {
 
+  /* If the star doesn't have any neighbours, we
+   * have nothing to do here. */
+  if (si->density.wcount == 0.f) return;
+
   if (si->rt_data.debug_iact_hydro_inject_prep == 0)
     error(
-        "Injecting energy from star that wasn't called"
-        " during injection prep");
-  if (pj->rt_data.debug_iact_stars_inject_prep == 0) {
+        "Injecting energy from star that wasn't called during injection prep");
 
-    const float hig2 = hi * hi * kernel_gamma2;
-    const float res = sqrtf(r2 / hig2);
-    error(
-        "Injecting energy into part that wasn't called"
-        " during injection prep: sID %lld pID %lld r/H_s %.6f",
-        si->id, pj->id, res);
-  }
+  if (!si->rt_data.debug_emission_rate_set)
+    error("Injecting energy from star without setting emission rate");
 
   si->rt_data.debug_iact_hydro_inject += 1;
   si->rt_data.debug_radiation_emitted_tot += 1ULL;
 
   pj->rt_data.debug_iact_stars_inject += 1;
   pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
-
-  /* Attempt to catch race condition/dependency error */
-  if (si->rt_data.debug_iact_hydro_inject_prep <
-      si->rt_data.debug_iact_hydro_inject)
-    error(
-        "Star interacts with more particles during"
-        " injection than during injection prep");
-
-  if (pj->rt_data.debug_iact_stars_inject_prep <
-      pj->rt_data.debug_iact_stars_inject)
-    error(
-        "Part interacts with more stars during"
-        " injection than during injection prep");
 }
 
 /**

@@ -244,7 +244,7 @@ def check_injection(snapdata, rundata):
             np.zeros(rundata.ngroups, dtype=np.float64) * unyt.erg
         )
 
-    if rundata.use_const_emission_rate and not rundata.hydro_controlled_injection:
+    if rundata.use_const_emission_rate:
         if len(snapdata) <= 2:
             # because it's useless to check only snap_0000
             print("Check 1b: You need at least 2 snapshots to do this particular test")
@@ -324,7 +324,7 @@ def check_injection(snapdata, rundata):
     # Create additional plots?
     # --------------------------------
 
-    if rundata.use_const_emission_rate and not rundata.hydro_controlled_injection:
+    if rundata.use_const_emission_rate:
         if not skip_plots and len(energies_for_plot) > 2:
             # Show me the plot that the injected energy
             # is correctly bounded

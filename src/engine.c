@@ -1119,12 +1119,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   }
 #endif
   if (e->policy & engine_policy_rt) {
-    /* inject: 1 self + (3^3-1)/2 = 26/2 = 13 pairs  |   14
-     * gradient: 1 self + 13 pairs                   | + 14
+    /* gradient: 1 self + 13 pairs                   |   14
      * transport: 1 self + 13 pairs                  | + 14
      * implicits: in + out, transport_out            | +  3
      * others: ghost1, ghost2, thermochemistry       | +  3 */
-    n1 += 48;
+    n1 += 34;
   }
 
 #ifdef WITH_MPI
@@ -1627,7 +1626,6 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_part_prep1 ||
         t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
-        t->subtype == task_subtype_rt_inject ||
         t->subtype == task_subtype_rt_gradient ||
         t->subtype == task_subtype_rt_transport)
       t->skip = 1;
@@ -1929,8 +1927,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   TIMER_TOC2(timer_runners);
 
   /* Initialise additional RT data now that time bins are set */
+#ifdef SWIFT_RT_DEBUG_CHECKS
   if (e->policy & engine_policy_rt)
     space_convert_rt_quantities_after_zeroth_step(e->s, e->verbose);
+#endif
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
@@ -2439,12 +2439,6 @@ void engine_step(struct engine *e) {
   space_check_unskip_flags(e->s);
 #endif
 
-#if defined(SWIFT_RT_DEBUG_CHECKS)
-  /* if we're running the debug RT scheme, do some checks after every step */
-  if (e->policy & engine_policy_rt)
-    rt_debugging_checks_end_of_step(e, e->verbose);
-#endif
-
   /* Compute the local accumulated deadtime. */
   const ticks deadticks = (e->nr_threads * e->sched.deadtime.waiting_ticks) -
                           e->sched.deadtime.active_ticks;
@@ -2481,6 +2475,13 @@ void engine_step(struct engine *e) {
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
   engine_check_for_dumps(e);
+
+#if defined(SWIFT_RT_DEBUG_CHECKS)
+  /* if we're running the debug RT scheme, do some checks after every step.
+   * Do this after the output so we can safely reset debugging checks now. */
+  if (e->policy & engine_policy_rt)
+    rt_debugging_checks_end_of_step(e, e->verbose);
+#endif
 
   TIMER_TOC2(timer_step);
 
