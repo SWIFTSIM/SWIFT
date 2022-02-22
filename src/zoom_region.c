@@ -318,7 +318,7 @@ void construct_zoom_region(struct space *s, int verbose) {
 		const int ijk_up_bound = (mid_point + (max_width / 2)) * s->iwidth[ijk];
 
 		/* Find the length of the region along this axis and assign it to array */
-		nr_nat_cells_in_zoom[ijk] = ijk_up_bound + 1 - ijk_low_bound
+		nr_nat_cells_in_zoom[ijk] = ijk_up_bound + 1 - ijk_low_bound;
 		widths[ijk] = nr_nat_cells_in_zoom[ijk] * s->width[ijk];
 
 		/* Use this integer cell coordinate to define the boundaries */
