@@ -168,11 +168,6 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		}
 	}
 
-	message("h_max=%f,  kernel_gamma=%f, space_stretch=%f, h_max * kernel_gamma * space_stretch=%f, zoom_cell_min=%f, max=%f", h_max, kernel_gamma, space_stretch, h_max * kernel_gamma * space_stretch, zoom_cell_min, fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
-	for (int ijk = 0; ijk < 3; ijk++) {
-    message("ijk=%d, s->width[ijk]=%f, s->width[ijk] / (h_max * kernel_gamma * space_stretch)=%f, s->width[ijk] / zoom_cell_min=%f", ijk, s->width[ijk],  s->width[ijk] / (h_max * kernel_gamma * space_stretch), s->width[ijk] / zoom_cell_min);
-    message("s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)=%f, floor(s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))=%f", s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min), floor(s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)));
-  }
 	/* Get the new putative zoom cell dimensions. We can initially use the
 	 * input from s->zoom_props->nr_zoom_per_bkg_cells
 	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
@@ -271,9 +266,13 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
 		s->zoom_props->nr_zoom_per_bkg_cells = (int)(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 
+		/* Handle the extreme edge case where the zoom region is removed by setting nr_zoom_per_bkg_cells = 1. */
+		if (s->zoom_props->nr_zoom_per_bkg_cells == 1) s->zoom_props->nr_zoom_per_bkg_cells = 2;
+
 		if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
-			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d)",
-					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells);
+			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d, old_cell_width=%f, new_cell_width=%f)",
+					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells, 
+					    zoom_cell_min, fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 
 		message("Constructing zoom region.");
     /* Compute the bounds of the zoom region from the DM particles. */
