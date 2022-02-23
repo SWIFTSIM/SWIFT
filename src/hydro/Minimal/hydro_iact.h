@@ -223,12 +223,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float pressurej = pj->force.pressure;
   float Bi[3];
   float Bj[3];
-  Bi[0] = pi->B[0] * rhoi;
-  Bi[1] = pi->B[1] * rhoi;
-  Bi[2] = pi->B[2] * rhoi;
-  Bj[0] = pj->B[0] * rhoj;
-  Bj[1] = pj->B[1] * rhoj;
-  Bj[2] = pj->B[2] * rhoj;
+  Bi[0] = pi->B_over_rho[0] * rhoi;
+  Bi[1] = pi->B_over_rho[1] * rhoi;
+  Bi[2] = pi->B_over_rho[2] * rhoi;
+  Bj[0] = pj->B_over_rho[0] * rhoj;
+  Bj[1] = pj->B_over_rho[1] * rhoj;
+  Bj[2] = pj->B_over_rho[2] * rhoj;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -436,13 +436,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   dB_dt_j[2] = - Brj * (pi->v[2] - pj->v[2]);
 
   /* */
-  pi->B_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
-  pi->B_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
-  pi->B_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
+  pi->B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
+  pi->B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
+  pi->B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
-  pj->B_dt[0] += mi * dB_dt_pref_j * dB_dt_j[0];
-  pj->B_dt[1] += mi * dB_dt_pref_j * dB_dt_j[1];
-  pj->B_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
+  pj->B_over_rho_dt[0] += mi * dB_dt_pref_j * dB_dt_j[0];
+  pj->B_over_rho_dt[1] += mi * dB_dt_pref_j * dB_dt_j[1];
+  pj->B_over_rho_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
 }
 
 /**
@@ -486,12 +486,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float pressurej = pj->force.pressure;
   float Bi[3];
   float Bj[3];
-  Bi[0] = pi->B[0] * rhoi;
-  Bi[1] = pi->B[1] * rhoi;
-  Bi[2] = pi->B[2] * rhoi;
-  Bj[0] = pj->B[0] * rhoj;
-  Bj[1] = pj->B[1] * rhoj;
-  Bj[2] = pj->B[2] * rhoj;
+  Bi[0] = pi->B_over_rho[0] * rhoi;
+  Bi[1] = pi->B_over_rho[1] * rhoi;
+  Bi[2] = pi->B_over_rho[2] * rhoi;
+  Bj[0] = pj->B_over_rho[0] * rhoj;
+  Bj[1] = pj->B_over_rho[1] * rhoj;
+  Bj[2] = pj->B_over_rho[2] * rhoj;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -666,9 +666,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   dB_dt_i[2] = - Bri * (pi->v[2] - pj->v[2]);
 
   /* */
-  pi->B_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
-  pi->B_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
-  pi->B_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
+  pi->B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
+  pi->B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
+  pi->B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */

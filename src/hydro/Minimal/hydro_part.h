@@ -67,7 +67,7 @@ struct xpart {
   float u_full;
 
   /*! Magnetic flux density at the full step. */
-  float B_full[3];
+  float B_over_rho_full[3];
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -125,11 +125,11 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Particle magnetic flux density. */
-  float B[3];
+  /*! Particle magnetic flux density over density. */
+  float B_over_rho[3];
 
   /*! Time derivative of the magnetic field. */
-  float B_dt[3];
+  float B_over_rho_dt[3];
 
   /*! Monopole term in momentum equation. */
   float B_mon;

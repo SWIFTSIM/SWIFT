@@ -70,7 +70,7 @@ INLINE static void hydro_read_particles(struct part* parts,
   list[7] = io_make_input_field("Density", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
-                                UNIT_CONV_MAGNETIC_FIELD, parts, B);
+                                UNIT_CONV_MAGNETIC_FIELD, parts, B_over_rho);
 }
 
 INLINE static void convert_S(const struct engine* e, const struct part* p,
@@ -83,6 +83,14 @@ INLINE static void convert_P(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
   ret[0] = hydro_get_comoving_pressure(p);
+}
+
+INLINE static void convert_B(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+
+  ret[0] = p->B_over_rho[0] * p->rho;
+  ret[1] = p->B_over_rho[1] * p->rho;
+  ret[2] = p->B_over_rho[2] * p->rho;
 }
 
 INLINE static void convert_part_pos(const struct engine* e,
@@ -222,17 +230,17 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
       xparts, convert_P, "Co-moving pressures of the particles");
 
-  list[9] = io_make_output_field("MagneticFluxDensity", FLOAT, 3,
-                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B,
-                                  "Magnetic flux density of the particles");
-
-  list[10] = io_make_output_field("Acceleration", FLOAT, 3,
+  list[9] = io_make_output_field("Accelerations", FLOAT, 3,
                                   UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
                                   "Acceleration of the particles");
 
-  list[11] = io_make_output_field("MonopoleTerm", FLOAT, 1,
+  list[10] = io_make_output_field("MonopoleTerm", FLOAT, 1,
 				  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B_mon,
 				  "Monopole term associated to particle");
+
+  list[11] = io_make_output_field_convert_part("MagneticFluxDensities", FLOAT, 3,
+					       UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, xparts,
+					       convert_B, "Magnetic flux densities of the particles");
 }
 
 /**

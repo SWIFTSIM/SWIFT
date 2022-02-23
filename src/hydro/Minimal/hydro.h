@@ -674,9 +674,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.h_dt = 0.0f;
   p->force.v_sig = 2.f * p->force.soundspeed;
 
-  p->B_dt[0] = 0.0f;
-  p->B_dt[1] = 0.0f;
-  p->B_dt[2] = 0.0f;
+  p->B_over_rho_dt[0] = 0.0f;
+  p->B_over_rho_dt[1] = 0.0f;
+  p->B_over_rho_dt[2] = 0.0f;
 
   p->B_mon = 0.0f;
 }
@@ -702,9 +702,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->u = xp->u_full;
 
   /* Re-set the predicted magnetic flux densities */
-  p->B[0] = xp->B_full[0];
-  p->B[1] = xp->B_full[1];
-  p->B[2] = xp->B_full[2];
+  p->B_over_rho[0] = xp->B_over_rho_full[0];
+  p->B_over_rho[1] = xp->B_over_rho_full[1];
+  p->B_over_rho[2] = xp->B_over_rho_full[2];
 
   /* Re-compute the pressure */
   const float pressure = gas_pressure_from_internal_energy(p->rho, p->u);
@@ -746,9 +746,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->u += p->u_dt * dt_therm;
 
   /* Predict the magnetic flux density */
-  p->B[0] += p->B_dt[0] * dt_therm;
-  p->B[1] += p->B_dt[1] * dt_therm;
-  p->B[2] += p->B_dt[2] * dt_therm;
+  p->B_over_rho[0] += p->B_over_rho_dt[0] * dt_therm;
+  p->B_over_rho[1] += p->B_over_rho_dt[1] * dt_therm;
+  p->B_over_rho[2] += p->B_over_rho_dt[2] * dt_therm;
 
   const float h_inv = 1.f / p->h;
 
@@ -838,9 +838,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   const float delta_u = p->u_dt * dt_therm;
 
   /* Integrate the magnetic flux density forward in time */
-  const float delta_Bx = p->B_dt[0] * dt_therm;
-  const float delta_By = p->B_dt[1] * dt_therm;
-  const float delta_Bz = p->B_dt[2] * dt_therm;
+  const float delta_Bx = p->B_over_rho_dt[0] * dt_therm;
+  const float delta_By = p->B_over_rho_dt[1] * dt_therm;
+  const float delta_Bz = p->B_over_rho_dt[2] * dt_therm;
 
   /* Integrate the internal energy forward in time */
   // const float delta_u = p->u_dt * dt_therm;
@@ -849,9 +849,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
 
   /* Do not decrease the magnetic flux density by more than a factor of 2*/
-  xp->B_full[0] = xp->B_full[0] + delta_Bx;
-  xp->B_full[1] = xp->B_full[1] + delta_By;
-  xp->B_full[2] = xp->B_full[2] + delta_Bz;
+  xp->B_over_rho_full[0] = xp->B_over_rho_full[0] + delta_Bx;
+  xp->B_over_rho_full[1] = xp->B_over_rho_full[1] + delta_By;
+  xp->B_over_rho_full[2] = xp->B_over_rho_full[2] + delta_Bz;
 
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
@@ -910,6 +910,11 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
+
+  /* Convert B into B/rho */
+  p->B_over_rho[0] /= p->rho;
+  p->B_over_rho[1] /= p->rho;
+  p->B_over_rho[2] /= p->rho;
 }
 
 /**
@@ -930,9 +935,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
-  xp->B_full[0] = p->B[0];
-  xp->B_full[1] = p->B[1];
-  xp->B_full[2] = p->B[2];
+  xp->B_over_rho_full[0] = p->B_over_rho[0];
+  xp->B_over_rho_full[1] = p->B_over_rho[1];
+  xp->B_over_rho_full[2] = p->B_over_rho[2];
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);
