@@ -125,9 +125,6 @@ struct part {
   /*! Particle density. */
   float rho;
 
-  /*! Particle density squared. */
-  float rhosq;
-
   /*! Particle magnetic flux density. */
   float B[3];
 

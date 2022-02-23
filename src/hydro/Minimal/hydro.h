@@ -814,8 +814,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
   const float h_inv_dim = pow_dimension(h_inv);
 
   p->force.h_dt *= h * hydro_dimension_inv;
-  p->rhosq += p->mass * p->rho * kernel_root;
-  p->rhosq *= h_inv_dim;
 }
 
 /**
