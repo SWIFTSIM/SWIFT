@@ -381,6 +381,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   sph_acc_term_j[2] -= monopole_beta * over_rho2_i * wi_dr * permeability_inv * Bri * r_inv * Bj[2];
   sph_acc_term_j[2] -= monopole_beta * over_rho2_j * wj_dr * permeability_inv * Brj * r_inv * Bj[2];
   
+
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * sph_acc_term_i[0] + mj * visc_acc_term * dx[0];
   pi->a_hydro[1] -= mj * sph_acc_term_i[1] + mj * visc_acc_term * dx[1];
@@ -394,7 +395,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float B_mon_i = (over_rho2_i * wi_dr * Bri + over_rho2_j * wj_dr * Brj) * r_inv;
   float B_mon_j = (over_rho2_i * wi_dr * Bri + over_rho2_j * wj_dr * Brj) * r_inv;
   pi->B_mon += mj * B_mon_i;
-  pj->B_mon += mi * B_mon_j;
+  pj->B_mon -= mi * B_mon_j;
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = pressurei * over_rho2_i * dvdr * r_inv * wi_dr;
