@@ -168,6 +168,8 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		}
 	}
 
+	mesage("h_max=%f,  kernel_gamma=%f, space_stretch=%f, h_max * kernel_gamma * space_stretch=%f, zoom_cell_min=%f, max=%f", h_max, kernel_gamma, space_stretch, h_max * kernel_gamma * space_stretch, zoom_cell_min, fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+
 	/* Get the new putative zoom cell dimensions. We can initially use the
 	 * input from s->zoom_props->nr_zoom_per_bkg_cells
 	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
