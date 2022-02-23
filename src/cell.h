@@ -629,6 +629,18 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const int use_rebuild_data, const int is_tree_walk);
 
 /**
+ * @brief Does a #cell contain no particle at all.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_empty(
+    const struct cell *c) {
+
+  return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
+          c->black_holes.count == 0 && c->sinks.count == 0);
+}
+
+/**
  * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size
  *
