@@ -788,7 +788,17 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
 
         /* Too much particle movement? */
-        if (cell_need_rebuild_for_hydro_pair(ci, cj)) *rebuild_space = 1;
+        if (cell_need_rebuild_for_hydro_pair(ci, cj)) {
+
+          rebuild = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Ensure we are not rebuilding on a zoom and natural cell pair */
+        if (ci->tl_cell_offset <= 2 || cj->tl_cell_offset <= 2)
+          error("We just decided to rebuild based on a hydro zoom and natural cell pair. "
+                "This should never happen!")
+#endif
+        }
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */

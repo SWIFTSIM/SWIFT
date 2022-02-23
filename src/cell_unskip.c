@@ -1629,7 +1629,17 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (t->type == task_type_pair || t->type == task_type_sub_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_hydro_pair(ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_hydro_pair(ci, cj)) {
+
+        rebuild = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Ensure we are not rebuilding on a zoom and natural cell pair */
+        if (ci->tl_cell_offset <= 2 || cj->tl_cell_offset <= 2)
+          error("We just decided to rebuild based on a hydro zoom and natural cell pair. "
+                "This should never happen!")
+#endif
+      }
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
