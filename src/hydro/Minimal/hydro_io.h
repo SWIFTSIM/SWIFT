@@ -231,16 +231,16 @@ INLINE static void hydro_write_particles(const struct part* parts,
       xparts, convert_P, "Co-moving pressures of the particles");
 
   list[9] = io_make_output_field("Accelerations", FLOAT, 3,
-                                  UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
-                                  "Acceleration of the particles");
+                                 UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
+                                 "Acceleration of the particles");
 
   list[10] = io_make_output_field("MonopoleTerm", FLOAT, 1,
-				  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B_mon,
-				  "Monopole term associated to particle");
+                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B_mon,
+                                  "Monopole term associated to particle");
 
-  list[11] = io_make_output_field_convert_part("MagneticFluxDensities", FLOAT, 3,
-					       UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, xparts,
-					       convert_B, "Magnetic flux densities of the particles");
+  list[11] = io_make_output_field_convert_part(
+      "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
+      xparts, convert_B, "Magnetic flux densities of the particles");
 }
 
 /**

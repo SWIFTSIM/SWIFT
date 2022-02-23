@@ -235,8 +235,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                   "Acceleration of the particles");
 
   list[12] = io_make_output_field("MonopoleTerm", FLOAT, 1,
-				  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B_mon,
-				  "Monopole term associated to particle");
+                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B_mon,
+                                  "Monopole term associated to particle");
 }
 
 /**
