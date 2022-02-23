@@ -3888,11 +3888,13 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     const int type = cell_type_pairs[k].type;
 
 #ifdef WITH_MPI
-    /* Add the timestep exchange task */
-    struct task *tend = scheduler_addtask(
-        &e->sched, task_type_send, task_subtype_tend, ci->mpi.tag, 0, ci, cj);
-    scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
-    engine_addlink(e, &ci->mpi.send, tend);
+    if (!cell_is_empty(ci)) {
+      /* Add the timestep exchange task */
+      struct task *tend = scheduler_addtask(
+          &e->sched, task_type_send, task_subtype_tend, ci->mpi.tag, 0, ci, cj);
+      scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
+      engine_addlink(e, &ci->mpi.send, tend);
+    }
 #endif
 
     /* Add the send tasks for the cells in the proxy that have a hydro
@@ -3952,9 +3954,11 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
 
 #ifdef WITH_MPI
     /* Add the timestep exchange task */
-    tend = scheduler_addtask(&e->sched, task_type_recv, task_subtype_tend,
-                             ci->mpi.tag, 0, ci, NULL);
-    engine_addlink(e, &ci->mpi.recv, tend);
+    if (!cell_is_empty(ci)) {
+      tend = scheduler_addtask(&e->sched, task_type_recv, task_subtype_tend,
+                               ci->mpi.tag, 0, ci, NULL);
+      engine_addlink(e, &ci->mpi.recv, tend);
+    }
 #endif
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
