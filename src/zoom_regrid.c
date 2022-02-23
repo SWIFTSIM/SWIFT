@@ -65,6 +65,10 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 			for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
 				const struct cell *c =
 						&s->cells_top[s->local_cells_with_particles_top[k]];
+
+				/* We only want to consider zoom cells to avoid over inflating the smoothing length */
+				if (c->tl_cell_type != zoom_tl_cell) continue;
+
 				if (c->hydro.h_max > h_max) {
 					h_max = c->hydro.h_max;
 				}
@@ -81,8 +85,10 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 
 			/* Can we instead use all the top-level cells? */
 		} else if (s->cells_top != NULL) {
-			for (int k = 0; k < s->nr_cells; k++) {
+			/* We only want to consider zoom cells to avoid over inflating the smoothing length */
+			for (int k = s->zoom_props->tl_cell_offset; k < s->nr_cells; k++) {
 				const struct cell *c = &s->cells_top[k];
+
 				if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
 					h_max = c->hydro.h_max;
 				}
