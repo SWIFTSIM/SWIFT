@@ -790,7 +790,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         /* Too much particle movement? */
         if (cell_need_rebuild_for_hydro_pair(ci, cj)) {
 
-          rebuild = 1;
+          *rebuild_space = 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure we are not rebuilding on a zoom and natural cell pair */
