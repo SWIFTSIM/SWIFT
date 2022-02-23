@@ -674,8 +674,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->force.h_dt = 0.0f;
   p->force.v_sig = 2.f * p->force.soundspeed;
 
-  p->rhosq = 0.f;
-
   p->B_dt[0] = 0.0f;
   p->B_dt[1] = 0.0f;
   p->B_dt[2] = 0.0f;
@@ -810,8 +808,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   /* Some smoothing length multiples. */
   const float h = p->h;
-  const float h_inv = 1.0f / h; /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv);
 
   p->force.h_dt *= h * hydro_dimension_inv;
 }
