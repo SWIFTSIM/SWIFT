@@ -131,7 +131,7 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 	  if (index >= s->zoom_props->tl_cell_offset) {
 	    /* For this we need to get the xpart from the space and the cell. */
 	    struct xpart *restrict xp = &xparts[k];
-	    struct cell *c = s->cells_top[index];
+	    struct cell *c = &s->cells_top[index];
 	    cell_convert_part_to_gpart(s->e, c, p, xp);
 	  }
 #endif
