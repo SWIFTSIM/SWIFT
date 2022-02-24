@@ -129,9 +129,10 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 	  /* If this part has wandered into a background cell we need to
 	   * convert it into a dark matter particle. */
 	  if (index >= s->zoom_props->tl_cell_offset) {
-	    /* For this we need to get the xpart from the space */
+	    /* For this we need to get the xpart from the space and the cell. */
 	    struct xpart *restrict xp = &xparts[k];
-	    cell_convert_part_to_gpart(s->e, s->cells_top[index], p, xp);
+	    struct cell *c = s->cells_top[index];
+	    cell_convert_part_to_gpart(s->e, c, p, xp);
 	  }
 #endif
 #if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
