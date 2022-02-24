@@ -93,11 +93,14 @@ time = sim.metadata.t.value
 
 data = dict(
     x=sim.gas.coordinates.value[:, 0],
-    v=sim.gas.velocities.value[:, 0],
+    vx=sim.gas.velocities.value[:, 0],
+    vy=sim.gas.velocities.value[:, 1],
+    vz=sim.gas.velocities.value[:, 2],
     u=sim.gas.internal_energies.value,
     #S=sim.gas.entropies.value,
-    B=sim.gas.magnetic_flux_density.value[:,1] * sim.gas.densities.value,
-    #B_mon=sim.gas.monopole_term.value,
+    Bx=sim.gas.magnetic_flux_densities.value[:,0],
+    By=sim.gas.magnetic_flux_densities.value[:,1],
+    Bz=sim.gas.magnetic_flux_densities.value[:,2],
     P=sim.gas.pressures.value,
     rho=sim.gas.densities.value,
     y=sim.gas.coordinates.value[:, 1],
@@ -124,29 +127,31 @@ mask = np.logical_and(ref["x"] < np.max(data["x"]), ref["x"] > np.min(data["x"])
 ref = {k: v[mask] for k, v in ref.items()}
 
 # Now we can do the plotting.
-fig, ax = plt.subplots(2, 3, figsize=(6.974, 6.974 * (2.0 / 3.0)))
+fig, ax = plt.subplots(2, 4, figsize=(6.974, 6.974 * (2.0 / 3.0)))
 ax = ax.flatten()
 
 # These are stored in priority order
 plot = dict(
-    v="Velocity ($v_x$)",
+    vx="Velocity ($v_x$)",
+    vy="Velocity ($v_y$)",
     u="Internal Energy ($u$)",
     rho=r"Density ($\rho$)",
     P="Pressure ($P$)",
     diff=r"100$\times$ Diffusion Coefficient ($\alpha_D$)",
     visc=r"Viscosity Coefficient ($\alpha_V$)",
     #S="Entropy ($A$)",
-    B="Magnetic Flux Density ($B_x$)",
+    Bx="Magnetic Flux Density ($B_x$)",
+    By="Magnetic Flux Density ($B_y$)",
     #B_mon="Monopole Term"
 )
 
-log = dict(v=False, u=False, B=False, P=False, rho=False, visc=False, diff=False)
-ylim = dict(v=(-0.05, 1.0), diff=(0.0, None), visc=(0.0, None))
+log = dict(vx=False, vy=False, u=False, Bx=False, By=False, P=False, rho=False, visc=False, diff=False)
+ylim = dict(v=(-0.05, 1.0), diff=(0.0, None), visc=(0.0, None), Bx=(0., 1.), By=(-1.2, 1.2))
 
 current_axis = 0
 
 for key, label in plot.items():
-    if current_axis > 5:
+    if current_axis > 8:
         break
     else:
         axis = ax[current_axis]
