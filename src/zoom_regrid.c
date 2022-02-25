@@ -267,7 +267,12 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		s->zoom_props->nr_zoom_per_bkg_cells = (int)(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 
 		/* Handle the extreme edge case where the zoom region is removed by setting nr_zoom_per_bkg_cells = 1. */
-		if (s->zoom_props->nr_zoom_per_bkg_cells == 1) s->zoom_props->nr_zoom_per_bkg_cells = 2;
+		if (s->zoom_props->nr_zoom_per_bkg_cells == 1) {
+		  error("Zoom cell width set to the background cell width! Either:\n"
+          "- h_max is too large allowing smoothing lengths of order the natrual cell width.\n"
+          "- max_top_level_cells is too large.\n"
+          "- A zoom region is not required.");
+		}
 
 		if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
 			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d, old_cell_width=%f, new_cell_width=%f)",
