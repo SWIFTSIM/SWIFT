@@ -169,16 +169,12 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	}
 
 	/* Get the new putative zoom cell dimensions. We can initially use the
-	 * input from s->zoom_props->nr_zoom_per_bkg_cells
-	 * *** NOTE: should we move to a full box hydro zoom this needs to be done
-	 * using the recalculated natural cell width *** */
-	int zoom_natcell_cdim[3] = {s->zoom_props->nr_zoom_per_bkg_cells,
-														  s->zoom_props->nr_zoom_per_bkg_cells,
-														  s->zoom_props->nr_zoom_per_bkg_cells};
-	for (int ijk = 0; ijk < 3; ijk++) {
-	  zoom_natcell_cdim[ijk] = (int)(s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
-	  message("zoom_cell_width=%f, float_zoom_natcell_cdim[ijk]=%f zoom_natcell_cdim[ijk]=%d", fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min), s->width[ijk] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min), zoom_natcell_cdim[ijk]);
-	  }
+	 * input from s->zoom_props->nr_zoom_per_bkg_cells.
+	 * NOTE: s->width has to be cast to float otherwise we get weird
+	 * rounding that can lead to guanranteed zoom reconstruction. */
+	const int zoom_natcell_cdim[3] = {(int)((float)s->width[0] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min),
+														        (int)((float)s->width[1] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min),
+														        (int)((float)s->width[2] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)};
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
