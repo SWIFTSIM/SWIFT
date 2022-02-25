@@ -64,7 +64,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     s->zoom_props->nr_zoom_per_bkg_cells = parser_get_opt_param_int(params, "ZoomRegion:zoom_cells_natural_cell", 4);
 
     /* Initialise the number of wanders (unused if with_hydro == False)*/
-    if (with_hydro) s->zoom_props->nr_wanderers = 0;
+    if (s->with_hydro) s->zoom_props->nr_wanderers = 0;
 
   }
 #endif
