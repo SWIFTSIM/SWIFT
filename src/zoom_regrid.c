@@ -172,9 +172,9 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	 * input from s->zoom_props->nr_zoom_per_bkg_cells.
 	 * NOTE: s->width has to be cast to float otherwise we get weird
 	 * rounding that can lead to guanranteed zoom reconstruction. */
-	const int zoom_natcell_cdim[3] = {(int)((float)s->width[0] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min),
-														        (int)((float)s->width[1] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min),
-														        (int)((float)s->width[2] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)};
+	const int zoom_natcell_cdim[3] = {(int)((float)s->width[0] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+														        (int)((float)s->width[1] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+														        (int)((float)s->width[2] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
