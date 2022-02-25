@@ -53,9 +53,9 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	/* Run through the cells and get the current h_max, when using a zoom region
 	 * h_max needs to be set by the zoom cells. */
 	// tic = getticks();
-	double nat_cell_min = s->cell_min;
+	float nat_cell_min = s->cell_min;
 	if (s->cells_top != NULL) nat_cell_min = min3(s->width[0], s->width[1], s->width[2]);
-	const double zoom_cell_min = nat_cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
+	const float zoom_cell_min = nat_cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
 	float h_max = zoom_cell_min / kernel_gamma / space_stretch;
 	float nat_h_max = s->cell_min / kernel_gamma / space_stretch;
 	if (nr_parts > 0) {
@@ -266,8 +266,6 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		const float new_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
 		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
 		s->zoom_props->nr_zoom_per_bkg_cells = (int)(dmin / new_zoom_width);
-    message("dmin / new_zoom_width=%f, (int)(dmin / new_zoom_width))=%d",
-            dmin / new_zoom_width, (int)(dmin / new_zoom_width));
 
 		/* Handle the extreme edge case where the zoom region is removed by setting nr_zoom_per_bkg_cells = 1. */
 		if (s->zoom_props->nr_zoom_per_bkg_cells == 1) {
