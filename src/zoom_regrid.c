@@ -262,6 +262,8 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
 		/* Lets recalculate the number of zoom cells in a natural cell */
+		message("dmin * new_zoom_iwidth=%f, (int)(dmin * new_zoom_iwidth))=%d",
+		    dmin * new_zoom_iwidth, (int)(dmin * new_zoom_iwidth));
 		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
 		const double new_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
 		const double new_zoom_iwidth = 1 / new_zoom_width;
