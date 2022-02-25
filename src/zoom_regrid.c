@@ -263,8 +263,10 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 
 		/* Lets recalculate the number of zoom cells in a natural cell */
 		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
+		const double new_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
+		const double new_zoom_iwidth = 1 / new_zoom_width;
 		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-		s->zoom_props->nr_zoom_per_bkg_cells = (int)(dmin / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+		s->zoom_props->nr_zoom_per_bkg_cells = (int)(dmin * new_zoom_iwidth);
 
 		/* Handle the extreme edge case where the zoom region is removed by setting nr_zoom_per_bkg_cells = 1. */
 		if (s->zoom_props->nr_zoom_per_bkg_cells == 1) {
@@ -277,7 +279,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
 			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d, old_cell_width=%f, new_cell_width=%f)",
 					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells,
-					    zoom_cell_min, fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
+					    zoom_cell_min, new_zoom_width);
 
 		message("Constructing zoom region.");
     /* Compute the bounds of the zoom region from the DM particles. */
