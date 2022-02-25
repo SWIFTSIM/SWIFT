@@ -271,7 +271,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 
 		if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
 			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d, old_cell_width=%f, new_cell_width=%f)",
-					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells, 
+					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells,
 					    zoom_cell_min, fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min));
 
 		message("Constructing zoom region.");
