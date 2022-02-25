@@ -383,7 +383,6 @@ void construct_zoom_region(struct space *s, int verbose) {
             (int)(s->width[2] * s->zoom_props->iwidth[2]));
   }
 
-
 #endif
 }
 
