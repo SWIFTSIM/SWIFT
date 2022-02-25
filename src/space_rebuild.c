@@ -984,6 +984,10 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
 	          bkg_cell_particles);
 	  message("Have %d local particles in zoom cells",
 	          zoom_cell_particles);
+
+	  /* Lets report how many wanderers have been removed */
+	  if (s->with_hydro && s->zoom_props->nr_wanderers > 0)
+	    message("Converted %d wandering particles to dark matter thus far", s->zoom_props->nr_wanderers);
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's

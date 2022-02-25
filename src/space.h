@@ -372,6 +372,9 @@ struct zoom_region_properties {
 
 	/*! Number of natural/background cells */
 	int nr_bkg_cells;
+
+  /*! Number of particles that have left the zoom region and been converted to dark matter */
+  int nr_wanderers;
 };
 
 /* Function prototypes. */
