@@ -55,8 +55,8 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	// tic = getticks();
 	float nat_cell_min = s->cell_min;
 	if (s->cells_top != NULL) nat_cell_min = min3(s->width[0], s->width[1], s->width[2]);
-	const float zoom_cell_min = nat_cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
-	float h_max = zoom_cell_min / kernel_gamma / space_stretch;
+	const double zoom_cell_min = nat_cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
+	double h_max = zoom_cell_min / kernel_gamma / space_stretch;
 	float nat_h_max = s->cell_min / kernel_gamma / space_stretch;
 	if (nr_parts > 0) {
 
@@ -172,9 +172,9 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	 * input from s->zoom_props->nr_zoom_per_bkg_cells.
 	 * NOTE: s->width has to be cast to float otherwise we get weird
 	 * rounding that can lead to guanranteed zoom reconstruction. */
-	const int zoom_natcell_cdim[3] = {(int)((float)s->width[0] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-														        (int)((float)s->width[1] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-														        (int)((float)s->width[2] / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
+	const int zoom_natcell_cdim[3] = {(int)((s->width[0] + 0.5) / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+														        (int)((s->width[1] + 0.5) / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+														        (int)((s->width[2] + 0.5) / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
@@ -259,10 +259,10 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
 		/* Lets recalculate the number of zoom cells in a natural cell */
-		const float dmin = min3(s->width[0], s->width[1], s->width[2]);
-		const float new_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
+		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
+		const double new_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
 		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-		s->zoom_props->nr_zoom_per_bkg_cells = (int)(dmin / new_zoom_width);
+		s->zoom_props->nr_zoom_per_bkg_cells = (int)((dmin + 0.5) / new_zoom_width);
 
 		/* Handle the extreme edge case where the zoom region is removed by setting nr_zoom_per_bkg_cells = 1. */
 		if (s->zoom_props->nr_zoom_per_bkg_cells == 1) {
