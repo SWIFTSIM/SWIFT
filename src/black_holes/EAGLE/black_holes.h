@@ -131,6 +131,12 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->accreted_angular_momentum[0] = 0.f;
   bp->accreted_angular_momentum[1] = 0.f;
   bp->accreted_angular_momentum[2] = 0.f;
+  bp->swallowed_angular_momentum_from_gas[0] = 0.f;
+  bp->swallowed_angular_momentum_from_gas[1] = 0.f;
+  bp->swallowed_angular_momentum_from_gas[2] = 0.f;
+  bp->accreted_angular_momentum_from_gas[0] = 0.f;
+  bp->accreted_angular_momentum_from_gas[1] = 0.f;
+  bp->accreted_angular_momentum_from_gas[2] = 0.f;
   bp->last_repos_vel = 0.f;
   bp->num_ngbs_to_heat = props->num_ngbs_to_heat; /* Filler value */
   bp->dt_heat = 0.f;
@@ -399,6 +405,13 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
   bp->swallowed_angular_momentum[1] +=
       gas_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
   bp->swallowed_angular_momentum[2] +=
+      gas_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+
+  bp->swallowed_angular_momentum_from_gas[0] +=
+      gas_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
+  bp->swallowed_angular_momentum_from_gas[1] +=
+      gas_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
+  bp->swallowed_angular_momentum_from_gas[2] +=
       gas_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
 
   /* Update the BH momentum */
@@ -879,6 +892,13 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   bp->accreted_angular_momentum[2] +=
       bp->circular_velocity_gas[2] * mass_rate * dt / bp->h;
 
+  bp->accreted_angular_momentum_from_gas[0] +=
+      bp->circular_velocity_gas[0] * mass_rate * dt / bp->h;
+  bp->accreted_angular_momentum_from_gas[1] +=
+      bp->circular_velocity_gas[1] * mass_rate * dt / bp->h;
+  bp->accreted_angular_momentum_from_gas[2] +=
+      bp->circular_velocity_gas[2] * mass_rate * dt / bp->h;
+
   /* Below we compute energy required to have a feedback event(s)
    * Note that we have subtracted the particles we swallowed from the ngb_mass
    * and num_ngbs accumulators. */
@@ -1290,10 +1310,19 @@ INLINE static void black_holes_create_from_gas(
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
   chemistry_bpart_from_part(bp_chem, p_chem, gas_mass);
 
-  /* No swallowed angular momentum */
+  /* No swallowed or accreted angular momentum */
   bp->swallowed_angular_momentum[0] = 0.f;
   bp->swallowed_angular_momentum[1] = 0.f;
   bp->swallowed_angular_momentum[2] = 0.f;
+  bp->accreted_angular_momentum[0] = 0.f;
+  bp->accreted_angular_momentum[1] = 0.f;
+  bp->accreted_angular_momentum[2] = 0.f;
+  bp->swallowed_angular_momentum_from_gas[0] = 0.f;
+  bp->swallowed_angular_momentum_from_gas[1] = 0.f;
+  bp->swallowed_angular_momentum_from_gas[2] = 0.f;
+  bp->accreted_angular_momentum_from_gas[0] = 0.f;
+  bp->accreted_angular_momentum_from_gas[1] = 0.f;
+  bp->accreted_angular_momentum_from_gas[2] = 0.f;
 
   /* Last time this BH had a high Eddington fraction */
   bp->last_high_Eddington_fraction_scale_factor = -1.f;
