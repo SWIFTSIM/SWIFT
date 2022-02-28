@@ -312,9 +312,9 @@ void construct_zoom_region(struct space *s, int verbose) {
 	/* Find new boundaries and widths from the edge of natural cells that the high res particles populate */
   for (int ijk = 0; ijk < 3; ijk++) {
 
-  	/* Find the cell containing the centre of mass and centre on it's midpoint */
-  	const int cent_cell_ijk = (int)(s->zoom_props->com[ijk] * s->iwidth[ijk]);
-    const double mid_point = (cent_cell_ijk * s->width[ijk]) + (s->width[ijk] / 2);
+  	/* Centre on mid point of this axis */
+  	const double dim_ijk = new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[(ijk * 2)];
+    const double mid_point = new_zoom_boundary[(ijk * 2) + 1] - (dim_ijk / 2);
 	
   	/* Find the bounding cells */
 		const int ijk_low_bound = (mid_point - (max_width / 2)) * s->iwidth[ijk];
@@ -1866,11 +1866,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 		/* Skip cells without gravity particles */
 		if (ci->grav.count == 0) continue;
 
-//		/* If the cell is a natural cell and not a neighbour cell
-//		 * we don't need to do anything */
-//		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-//			continue;
-//		}
+		/* If the cell is a natural cell and not a neighbour cell
+		 * we don't need to do anything */
+		if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
+			continue;
+		}
 
 		/* Get the loop range for the neighbouring cells */
 		if (ci->tl_cell_type <= 2) {
@@ -1887,11 +1887,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(void *map_data,
 			/* Get the cell */
 			struct cell *cj = &cells[cjd];
 
-//			/* If the cell is a natural cell and not a neighbour cell
-//			 * we don't need to do anything */
-//			if ((cj->tl_cell_type <= 2) && (cj->tl_cell_type != tl_cell_neighbour)) {
-//				continue;
-//			}
+			/* If the cell is a natural cell and not a neighbour cell
+			 * we don't need to do anything */
+			if ((cj->tl_cell_type <= 2) && (cj->tl_cell_type != tl_cell_neighbour)) {
+				continue;
+			}
 
 			/* Avoid empty cells and completely foreign pairs */
 			if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
