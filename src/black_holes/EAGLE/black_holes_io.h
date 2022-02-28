@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Coypright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *               2022 Edo Altamura      (edoardo.altamura@manchester.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -170,7 +171,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 44;
+  *num_fields = 46;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -286,7 +287,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "SwallowedAngularMomenta", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
       bparts, swallowed_angular_momentum,
       "Physical angular momenta that the black holes have accumulated by "
-      "swallowing gas particles.");
+      "swallowing gas or black-hole particles.");
 
   list[18] = io_make_output_field_convert_bpart(
       "GasRelativeVelocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, bparts,
@@ -454,6 +455,18 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[43] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
       convert_bpart_potential, "Gravitational potentials of the particles");
+
+  list[44] = io_make_output_field(
+      "SwallowedAngularMomentaFromGas", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
+      bparts, swallowed_angular_momentum_from_gas,
+      "Physical angular momenta that the black holes have accumulated by "
+      "swallowing gas particles.");
+
+  list[45] = io_make_output_field(
+      "AccretedAngularMomentaFromGas", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
+      bparts, accreted_angular_momentum_from_gas,
+      "Physical angular momenta that the black holes have accreted from nearby "
+      "gas particles (using sub-grid model).");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 
