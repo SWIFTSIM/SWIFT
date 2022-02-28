@@ -171,6 +171,12 @@ struct bpart {
   /*! Total (physical) angular momentum accumulated from subgrid accretion */
   float accreted_angular_momentum[3];
 
+  /*! Total (physical) angular momentum accumulated by swallowing gas particles only */
+  float swallowed_angular_momentum_from_gas[3];
+
+  /*! Total (physical) angular momentum accumulated from subgrid accretion (gas particles only)*/
+  float accreted_angular_momentum_from_gas[3];
+
   /*! Instantaneous temperature increase for feedback */
   float AGN_delta_T;
 
