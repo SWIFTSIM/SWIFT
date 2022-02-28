@@ -172,9 +172,10 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	 * input from s->zoom_props->nr_zoom_per_bkg_cells.
 	 * NOTE: s->width has to be cast to float otherwise we get weird
 	 * rounding that can lead to guanranteed zoom reconstruction. */
-	const int zoom_natcell_cdim[3] = {(int)floor((s->width[0] + 0.5) / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-														        (int)floor((s->width[1] + 0.5) / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-														        (int)floor((s->width[2] + 0.5) / fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
+	const double new_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
+	const int zoom_natcell_cdim[3] = {(int)floor((s->width[0] + 0.5 * new_zoom_width) / new_zoom_width),
+														        (int)floor((s->width[1] + 0.5 * new_zoom_width) / new_zoom_width),
+														        (int)floor((s->width[2] + 0.5 * new_zoom_width) / new_zoom_width)};
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
@@ -262,7 +263,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
 		const double new_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
 		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-		s->zoom_props->nr_zoom_per_bkg_cells = (int)floor((dmin + 0.5) / new_zoom_width);
+		s->zoom_props->nr_zoom_per_bkg_cells = (int)floor((dmin + 0.5 * new_zoom_width) / new_zoom_width);
 
 		/* Handle the extreme edge case where the zoom region is removed by setting nr_zoom_per_bkg_cells = 1. */
 		if (s->zoom_props->nr_zoom_per_bkg_cells == 1) {
