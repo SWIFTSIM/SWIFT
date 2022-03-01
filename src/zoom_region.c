@@ -376,22 +376,17 @@ void construct_zoom_region(struct space *s, int verbose) {
   }
   
   /* This width has to divide the full parent box by an odd integer to ensure the two grids line up.
-   * NOTE: assumes box dimensions are equal!
-   * TODO: This needs to be refined for zooms which produce huge numbers of background cells */
+   * NOTE: assumes box dimensions are equal! */
   int nr_zoom_regions = (int)(s->dim[0] / max_width);
   if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
   max_width = s->dim[0] / nr_zoom_regions;
   
   /* Find the new boundaries with this extra width and boost factor. */
   for (int ijk = 0; ijk < 3; ijk++) {
-
-  	/* Centre on mid point of the high res particles */
-  	const double ijk_dim = new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[(ijk * 2)];
-    const double mid_point = new_zoom_boundary[(ijk * 2) + 1] - (ijk_dim / 2);
     
     /* Set the new boundaries. */
-    s->zoom_props->region_bounds[(ijk * 2)] = mid_point - (max_width / 2);
-    s->zoom_props->region_bounds[(ijk * 2) + 1] = mid_point + (max_width / 2);
+    s->zoom_props->region_bounds[(ijk * 2)] = (s->dim[ijk] / 2) - (max_width / 2);
+    s->zoom_props->region_bounds[(ijk * 2) + 1] = (s->dim[ijk] / 2) + (max_width / 2);
   }
   
   /* Let's set what we know about the zoom region. */
@@ -401,7 +396,8 @@ void construct_zoom_region(struct space *s, int verbose) {
   	s->zoom_props->dim[ijk] = max_width;
   }
   
-  /* Now we can define the background grid. */
+  /* Now we can define the background grid.
+  * TODO: This needs to be refined for zooms which produce huge numbers of background cells */
   for (int ijk = 0; ijk < 3; ijk++) {
     s->width[ijk] = s->zoom_props->dim[ijk] / s->zoom_props->nr_bkg_cells_per_zoom_dim;
     s->iwidth[ijk] = 1.0 / s->width[ijk];
