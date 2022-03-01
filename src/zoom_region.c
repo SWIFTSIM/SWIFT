@@ -54,17 +54,72 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
 
   /* If so... */
   if (s->with_zoom_region) {
+
     /* Zoom region properties are stored in a structure. */
     s->zoom_props = (struct zoom_region_properties *)malloc(
         sizeof(struct zoom_region_properties));
     if (s->zoom_props == NULL)
       error("Error allocating memory for the zoom parameters.");
 
-    /* Set the number of zoom cells in a natural cell */
-    s->zoom_props->nr_zoom_per_bkg_cells = parser_get_opt_param_int(params, "ZoomRegion:zoom_cells_natural_cell", 4);
+    /* Set the zoom cdim. */
+    s->zoom_props->cdim[0] = parser_get_opt_param_int(params, "ZoomRegion:max_top_level_zoom_cells", 16);
+    s->zoom_props->cdim[1] = parser_get_opt_param_int(params, "ZoomRegion:max_top_level_zoom_cells", 16);
+    s->zoom_props->cdim[2] = parser_get_opt_param_int(params, "ZoomRegion:max_top_level_zoom_cells", 16);
+
+    /* Set the initial number of zoom cells in a natural cell. */
+    s->zoom_props->nr_bkg_cells_per_zoom_dim = parser_get_opt_param_int(params, "ZoomRegion:bkg_cell_ratio", 1);
+    s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0] / s->zoom_props->nr_bkg_cells_per_zoom_dim;
 
     /* Initialise the number of wanders (unused if with_hydro == False)*/
-    if (s->with_hydro) s->zoom_props->nr_wanderers = 0;
+    s->zoom_props->nr_wanderers = 0;
+    
+    /* TODO: Shift particles. */
+
+    /* Get an initial dimension for the zoom region. */
+    double new_zoom_boundary[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
+    const size_t nr_gparts = s->nr_gparts;
+
+    /* Find the min/max location in each dimension for each mask gravity particle, and their COM. */
+    for (size_t k = 0; k < nr_gparts; k++) {
+      if (s->gparts[k].type != swift_type_dark_matter) continue;
+
+      if (s->gparts[k].x[0] < new_zoom_boundary[0])
+        new_zoom_boundary[0] = s->gparts[k].x[0];
+      if (s->gparts[k].x[0] > new_zoom_boundary[1])
+        new_zoom_boundary[1] = s->gparts[k].x[0];
+      if (s->gparts[k].x[1] < new_zoom_boundary[2])
+        new_zoom_boundary[2] = s->gparts[k].x[1];
+      if (s->gparts[k].x[1] > new_zoom_boundary[3])
+        new_zoom_boundary[3] = s->gparts[k].x[1];
+      if (s->gparts[k].x[2] < new_zoom_boundary[4])
+        new_zoom_boundary[4] = s->gparts[k].x[2];
+      if (s->gparts[k].x[2] > new_zoom_boundary[5])
+        new_zoom_boundary[5] = s->gparts[k].x[2];
+    }
+
+
+#ifdef WITH_MPI
+    /* Share answers amoungst nodes. */
+
+    /* Boundary. */
+    MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[0], 1, MPI_DOUBLE, MPI_MIN,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[1], 1, MPI_DOUBLE, MPI_MAX,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[2], 1, MPI_DOUBLE, MPI_MIN,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[3], 1, MPI_DOUBLE, MPI_MAX,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[4], 1, MPI_DOUBLE, MPI_MIN,
+                  MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &new_zoom_boundary[5], 1, MPI_DOUBLE, MPI_MAX,
+                  MPI_COMM_WORLD);
+#endif
+
+    /* Set the initial dimensions. */
+    for (int ijk = 0; ijk < 3; ijk++) {
+      s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
+    }
 
   }
 #endif
@@ -293,14 +348,7 @@ void construct_zoom_region(struct space *s, int verbose) {
 		if (new_zoom_boundary[5] > s->dim[0]) shiftz = s->dim[2] - new_zoom_boundary[5] - s->width[2];
   	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
   }
-
-  /* Get the maximum axis length of the zoom region including boost factor. */
-  double max_width = 0;
-  for (int ijk = 0; ijk < 3; ijk++) {
-      if ((new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor > max_width)
-          max_width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
-  }
-
+  
   if (verbose)
 	  message("initial_dim: [%f %f %f] initial_zoom_boundary: [%f-%f %f-%f %f-%f]",
       new_zoom_boundary[1] - new_zoom_boundary[0],
@@ -309,55 +357,58 @@ void construct_zoom_region(struct space *s, int verbose) {
       new_zoom_boundary[0], new_zoom_boundary[1], new_zoom_boundary[2],
       new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
 
-	/* Find new boundaries and widths from the edge of natural cells that the high res particles populate */
+  /* Get the maximum axis length of the zoom region including boost factor. */
+  double max_width = 0;
+  for (int ijk = 0; ijk < 3; ijk++) {
+      if ((new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor > max_width)
+          max_width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
+  }
+  
+  /* This width has to divide the full parent box to ensure the background grid lines up. 
+   * NOTE: assumes box dimensions are equal! */
+  const double extra_width = (s->dim[0] / max_width) - (int)(s->dim[0] / max_width;
+  max_width += extra_width;
+  
+  /* Find the new boundaries with this extra width and boost factor. */
   for (int ijk = 0; ijk < 3; ijk++) {
 
-  	/* Centre on mid point of this axis */
-  	const double dim_ijk = new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[(ijk * 2)];
-    const double mid_point = new_zoom_boundary[(ijk * 2) + 1] - (dim_ijk / 2);
-	
-  	/* Find the bounding cells */
-		const int ijk_low_bound = (mid_point - (max_width / 2)) * s->iwidth[ijk];
-		const int ijk_up_bound = (mid_point + (max_width / 2)) * s->iwidth[ijk];
-
-		/* Find the length of the region along this axis and assign it to array */
-		nr_nat_cells_in_zoom[ijk] = ijk_up_bound + 1 - ijk_low_bound;
-		widths[ijk] = nr_nat_cells_in_zoom[ijk] * s->width[ijk];
-
-		/* Use this integer cell coordinate to define the boundaries */
-    new_zoom_boundary[ijk * 2] = ijk_low_bound * s->width[ijk];
-    new_zoom_boundary[(ijk * 2) + 1] = (ijk_up_bound + 1) * s->width[ijk];
-
+  	/* Centre on mid point of the high res particles */
+  	const double ijk_dim = new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[(ijk * 2)];
+    const double mid_point = new_zoom_boundary[(ijk * 2) + 1] - (ijk_dim / 2);
+    
+    /* Set the new boundaries. */
+    s->zoom_props->region_bounds[(ijk * 2)] = mid_point - (max_width / 2);
+    s->zoom_props->region_bounds[(ijk * 2) + 1] = mid_point + (max_width / 2);
   }
-
-  /* If this process has pushed the zoom region outside the bounds
-   * of the box we need to stop and shift the ICs to avoid having
-   * cells with unequal widths */
-  shiftx = 0.;
-  shifty = 0.;
-  shiftz = 0.;
-  if ((new_zoom_boundary[0] < 0) || (new_zoom_boundary[1] > s->dim[0])
-  || (new_zoom_boundary[2] < 0) || (new_zoom_boundary[3] > s->dim[1])
-  || (new_zoom_boundary[4] < 0) || (new_zoom_boundary[5] > s->dim[2])) {
-		if (new_zoom_boundary[0] < 0) shiftx = -new_zoom_boundary[0] + s->width[0];
-		if (new_zoom_boundary[2] < 0) shifty = -new_zoom_boundary[2] + s->width[1];
-		if (new_zoom_boundary[4] < 0) shiftz = -new_zoom_boundary[4] + s->width[2];
-		if (new_zoom_boundary[1] > s->dim[0]) shiftx = s->dim[0] - new_zoom_boundary[1] - s->width[0];
-		if (new_zoom_boundary[3] > s->dim[0]) shifty = s->dim[1] - new_zoom_boundary[3] - s->width[1];
-		if (new_zoom_boundary[5] > s->dim[0]) shiftz = s->dim[2] - new_zoom_boundary[5] - s->width[2];
-    error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
-  }
-
-  /* Write space zoom region properties. */
-  for (int l = 0; l < 6; l++) {
-  	s->zoom_props->region_bounds[l] = new_zoom_boundary[l];
-  }
+  
+  /* Let's set what we know about the zoom region. */
   for (int ijk = 0; ijk < 3; ijk++) {
-  	s->zoom_props->width[ijk] = s->width[ijk] / s->zoom_props->nr_zoom_per_bkg_cells;
+  	s->zoom_props->width[ijk] = max_width / s->zoom_props->cdim[ijk];
   	s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
-  	s->zoom_props->dim[ijk] = widths[ijk];
-  	s->zoom_props->cdim[ijk] = nr_nat_cells_in_zoom[ijk] * s->zoom_props->nr_zoom_per_bkg_cells;
+  	s->zoom_props->dim[ijk] = max_width;
   }
+  
+  /* Now we can define the background grid. */
+  for (int ijk = 0; ijk < 3; ijk++) {
+    s->width[ijk] = s->zoom_props->dim[ijk] / s->zoom_props->nr_bkg_cells_per_zoom_dim;
+    s->iwidth[ijk] = 1.0 / s->width[ijk];
+    s->cdim[ijk] = (int)floor((s->dim[ijk] + 0.5 * s->width[ijk]) * s->iwidth[ijk]);
+  }
+
+  	/* Check if we have enough cells for periodicity. */
+	if (s->periodic && (s->cdim[0] < 3 || s->cdim[1] < 3 || s->cdim[2] < 3))
+		error(
+				"Must have at least 3 cells in each spatial dimension when periodicity "
+				"is switched on.\nThis error is often caused by any of the "
+				"followings:\n"
+				" - too few particles to generate a sensible grid,\n"
+				" - the initial value of 'Scheduler:max_top_level_cells' is too "
+				"small,\n"
+				" - the (minimal) time-step is too large leading to particles with "
+				"predicted smoothing lengths too large for the box size,\n"
+				" - particles with velocities so large that they move by more than two "
+				"box sizes per time-step.\n");
+  
   s->zoom_props->tl_cell_offset = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_zoom_cells = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];

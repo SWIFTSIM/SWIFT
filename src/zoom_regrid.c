@@ -53,11 +53,10 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	/* Run through the cells and get the current h_max, when using a zoom region
 	 * h_max needs to be set by the zoom cells. */
 	// tic = getticks();
-	float nat_cell_min = s->cell_min;
-	if (s->cells_top != NULL) nat_cell_min = min3(s->width[0], s->width[1], s->width[2]);
-	const double zoom_cell_min = nat_cell_min / s->zoom_props->nr_zoom_per_bkg_cells;
+	const double zoom_cell_min = min3(s->zoom_props->width[0],
+	                                  s->zoom_props->width[1],
+	                                  s->zoom_props->width[2]);
 	double h_max = zoom_cell_min / kernel_gamma / space_stretch;
-	float nat_h_max = s->cell_min / kernel_gamma / space_stretch;
 	if (nr_parts > 0) {
 
 		/* Can we use the list of local non-empty top-level cells? */
@@ -133,49 +132,13 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 #endif
 	if (verbose) message("h_max is %.3e (zoom_cell_min=%.3e).", h_max, zoom_cell_min);
 
-	/* Get the new putative cell dimensions. */
-	const int cdim[3] = {
-			(int)floor(s->dim[0] /
-			           fmax(nat_h_max * kernel_gamma * space_stretch, s->cell_min)),
-			(int)floor(s->dim[1] /
-			           fmax(nat_h_max * kernel_gamma * space_stretch, s->cell_min)),
-			(int)floor(s->dim[2] /
-			           fmax(nat_h_max * kernel_gamma * space_stretch, s->cell_min))};
-
-	/* Check if we have enough cells for periodicity. */
-	if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
-		error(
-				"Must have at least 3 cells in each spatial dimension when periodicity "
-				"is switched on.\nThis error is often caused by any of the "
-				"followings:\n"
-				" - too few particles to generate a sensible grid,\n"
-				" - the initial value of 'Scheduler:max_top_level_cells' is too "
-				"small,\n"
-				" - the (minimal) time-step is too large leading to particles with "
-				"predicted smoothing lengths too large for the box size,\n"
-				" - particles with velocities so large that they move by more than two "
-				"box sizes per time-step.\n");
-
-	/* Lets set some useful space information if we need to */
-	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-      cdim[2] < s->cdim[2]) {
-
-		/* Set the new cell dimensions. */
-		for (int k = 0; k < 3; k++) {
-			s->cdim[k] = cdim[k];
-			s->width[k] = s->dim[k] / cdim[k];
-			s->iwidth[k] = 1.0 / s->width[k];
-		}
-	}
-
-	/* Get the new putative zoom cell dimensions. We can initially use the
-	 * input from s->zoom_props->nr_zoom_per_bkg_cells.
-	 * NOTE: s->width has to be cast to float otherwise we get weird
-	 * rounding that can lead to guanranteed zoom reconstruction. */
-	const double ini_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
-	const int zoom_natcell_cdim[3] = {(int)floor((s->width[0] + 0.5 * ini_zoom_width) / ini_zoom_width),
-														        (int)floor((s->width[1] + 0.5 * ini_zoom_width) / ini_zoom_width),
-														        (int)floor((s->width[2] + 0.5 * ini_zoom_width) / ini_zoom_width)};
+	/* Get the new putative zoom cell dimensions. */
+	const int zoom_cdim[3] = {(int)floor(s->zoom_props->dim[0] /
+                            fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+                            (int)floor(s->zoom_props->dim[1] /
+                            fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
+                            (int)floor(s->zoom_props->dim[2] /
+                            fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.
@@ -186,10 +149,9 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
   double oldzoomwidth[3] = {0., 0., 0.};
   double oldzoomcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
-  if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2] ||
-      zoom_natcell_cdim[0] < s->zoom_props->nr_zoom_per_bkg_cells ||
-      zoom_natcell_cdim[1] < s->zoom_props->nr_zoom_per_bkg_cells ||
-      zoom_natcell_cdim[2] < s->zoom_props->nr_zoom_per_bkg_cells) {
+  if (zoom_cdim[0] < s->zoom_props->cdim[0] ||
+      zoom_cdim[1] < s->zoom_props->cdim[1] ||
+      zoom_cdim[2] < s->zoom_props->cdim[2]) {
 
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
@@ -237,11 +199,10 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 
 	/* Do we need to re-build the upper-level cells? */
 	// tic = getticks();
-	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-      cdim[2] < s->cdim[2] ||
-      zoom_natcell_cdim[0] < s->zoom_props->nr_zoom_per_bkg_cells ||
-      zoom_natcell_cdim[1] < s->zoom_props->nr_zoom_per_bkg_cells ||
-      zoom_natcell_cdim[2] < s->zoom_props->nr_zoom_per_bkg_cells) {
+	if (s->cells_top == NULL ||
+      zoom_cdim[0] < s->zoom_props->cdim[0] ||
+      zoom_cdim[1] < s->zoom_props->cdim[1] ||
+      zoom_cdim[2] < s->zoom_props->cdim[2]) {
 
 		/* Free the old cells, if they were allocated. */
 		if (s->cells_top != NULL) {
@@ -259,38 +220,25 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		 * memory while copying the particle arrays. */
 		if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
-		/* Lets recalculate the number of zoom cells in a natural cell */
-		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
-		const double new_zoom_width = fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min);
-		const int old_nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-		s->zoom_props->nr_zoom_per_bkg_cells = (int)floor((dmin + 0.5 * new_zoom_width) / new_zoom_width);
-
-		/* Handle the extreme edge case where the zoom region is removed by setting nr_zoom_per_bkg_cells = 1. */
-		if (s->zoom_props->nr_zoom_per_bkg_cells == 1) {
-		  error("Zoom cell width set to the background cell width! Either:\n"
-          "- h_max is too large allowing smoothing lengths of order the natrual cell width.\n"
-          "- max_top_level_cells is too large.\n"
-          "- A zoom region is not required.");
-		}
-
-		if (verbose && (old_nr_zoom_per_bkg_cells != s->zoom_props->nr_zoom_per_bkg_cells))
-			message("recalculating nr_zoom_per_bkg_cells (old=%d, new=%d, old_cell_width=%f, new_cell_width=%f)",
-					    old_nr_zoom_per_bkg_cells, s->zoom_props->nr_zoom_per_bkg_cells,
-					    zoom_cell_min, new_zoom_width);
+		/* Setting the new zoom cdim. */
+    for (int ijk = 0; ijk < 3; ijk++) {
+      s->zoom_props->cdim[ijk] = zoom_cdim[ijk];
+    }
 
 		message("Constructing zoom region.");
-    /* Compute the bounds of the zoom region from the DM particles. */
+    /* Compute the bounds of the zoom region from the DM particles
+     * and define the background cells based on this. */
     construct_zoom_region(s, verbose);
 
     /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
-		message("(re)griding space cdim=(%d %d %d) zoom_cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2],
+		message("(re)griding space cdim=(%d %d %d) zoom_cdim=(%d %d %d)", s->cdim[0], s->cdim[1], s->cdim[2],
 				    s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2]);
     fflush(stdout);
 #endif
 
 		/* Allocate the highest level of cells. */
-		s->tot_cells = s->nr_cells = (cdim[0] * cdim[1] * cdim[2]) +
+		s->tot_cells = s->nr_cells = (s->cdim[0] * s->cdim[1] * s->cdim[2]) +
 				                         (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
 
 		if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
@@ -359,7 +307,8 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		}
 
 		/* Construct both grids of cells */
-		construct_tl_cells_with_zoom_region(s, cdim, dmin, ti_current, gravity_properties, verbose);
+		const double dmin = min3(s->width[0], s->width[1], s->width[2]);
+		construct_tl_cells_with_zoom_region(s, s->cdim, dmin, ti_current, gravity_properties, verbose);
 
 #ifdef WITH_MPI
 		if (oldnodeIDs != NULL) {
