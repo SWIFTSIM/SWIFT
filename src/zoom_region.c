@@ -366,6 +366,9 @@ void construct_zoom_region(struct space *s, int verbose) {
    * NOTE: assumes box dimensions are equal! */
   const double extra_width = (s->dim[0] / max_width) - (int)(s->dim[0] / max_width);
   max_width += extra_width;
+
+  if (verbose)
+    message("Increasing zoom region width by %f to %f", extra_width, max_width);
   
   /* Find the new boundaries with this extra width and boost factor. */
   for (int ijk = 0; ijk < 3; ijk++) {
