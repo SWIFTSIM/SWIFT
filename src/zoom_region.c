@@ -129,17 +129,19 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     double shiftx = 0.;
     double shifty = 0.;
     double shiftz = 0.;
-    if ((s->zoom_props->dim[0] > s->dim[0] / 2) || (s->zoom_props->dim[1] > s->dim[1] / 2) ||
+    if ((s->zoom_props->dim[0] > s->dim[0] / 2) ||
+        (s->zoom_props->dim[1] > s->dim[1] / 2) ||
         (s->zoom_props->dim[2] > s->dim[2] / 2)) {
       if (s->zoom_props->dim[0] > s->dim[0] / 2) shiftx = s->dim[0] / 2;
       if (s->zoom_props->dim[1] > s->dim[1] / 2) shifty = s->dim[1] / 2;
       if (s->zoom_props->dim[2] > s->dim[2] / 2) shiftz = s->dim[2] / 2;
-      error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
+      error("Zoom region extends beyond the boundaries of the box. "
+            "Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
     }
 
     /* Calculate the shift needed to place the mid point of the high res particles at the centre of the box.
      * This shift is applied in space_init in space.c */
-    const double box_mid[3] = {s->dim[0], s->dim[1], s->dim[2]};
+    const double box_mid[3] = {s->dim[0] / 2, s->dim[1] / 2, s->dim[2] / 2};
     for (int ijk = 0; ijk < 3; ijk++) {
       s->zoom_props->zoom_shift[ijk] = box_mid[ijk] - midpoint[ijk];
     }
