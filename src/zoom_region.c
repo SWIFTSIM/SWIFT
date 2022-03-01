@@ -67,7 +67,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
                                                       space_max_top_level_cells_default);
 
     /* Extract the zoom width boost factor (used to define the buffer around the zoom region). */
-    s->zoom_props->zoom_boost_factor = parser_get_opt_param_int(params, "ZoomRegion:zoom_boost_factor", 1.1);
+    s->zoom_props->zoom_boost_factor = parser_get_opt_param_float(params, "ZoomRegion:zoom_boost_factor", 1.1);
 
     /* Set the initial number of zoom cells in a natural cell. */
     s->zoom_props->nr_bkg_cells_per_zoom_dim = parser_get_opt_param_int(params, "ZoomRegion:bkg_cell_ratio", 1);
@@ -75,11 +75,10 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
 
     /* Initialise the number of wanders (unused if with_hydro == False)*/
     s->zoom_props->nr_wanderers = 0;
-    
-    /* TODO: Shift particles. */
 
     /* Get an initial dimension for the zoom region. */
     double new_zoom_boundary[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
+    double midpoint[3] = {0.0, 0.0, 0.0};
     const size_t nr_gparts = s->nr_gparts;
 
     /* Find the min/max location in each dimension for each mask gravity particle, and their COM. */
@@ -119,9 +118,18 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
                   MPI_COMM_WORLD);
 #endif
 
-    /* Set the initial dimensions. */
+    /* Set the initial dimensions and midpoint. */
     for (int ijk = 0; ijk < 3; ijk++) {
-      s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * s->zoom_props->zoom_boost_factor;
+      s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2])
+                                * s->zoom_props->zoom_boost_factor;
+      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (s->zoom_props->dim[ijk] / 2)
+    }
+
+    /* TODO: Shift particles. */
+    /* Shift the particles such that the mid point of the high res particles is at the centre of the box. */
+    const double box_mid[3] = {s->dim[0], s->dim[1], s->dim[2]};
+    for (int ijk = 0; ijk < 3; ijk++) {
+      s->zoom_props->zoom_shift[ijk] = box_mid[ijk] - midpoint[ijk];
     }
 
   }
