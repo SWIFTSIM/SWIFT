@@ -121,7 +121,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     for (int ijk = 0; ijk < 3; ijk++) {
       s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2])
                                 * s->zoom_props->zoom_boost_factor;
-      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (s->zoom_props->dim[ijk] / 2)
+      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (s->zoom_props->dim[ijk] / 2);
     }
 
     /* Throw an error if the zoom region extends over the box boundries.
@@ -143,10 +143,8 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     for (int ijk = 0; ijk < 3; ijk++) {
       s->zoom_props->zoom_shift[ijk] = box_mid[ijk] - midpoint[ijk];
     }
-
-    if (verbose)
-      message("Need to shift the box by [%e, %e, %e] to centre the zoom region", s->zoom_props->zoom_shift[0],
-              s->zoom_props->zoom_shift[1], s->zoom_props->zoom_shift[2]);
+    message("Need to shift the box by [%e, %e, %e] to centre the zoom region", s->zoom_props->zoom_shift[0],
+            s->zoom_props->zoom_shift[1], s->zoom_props->zoom_shift[2]);
 
   }
 #endif
