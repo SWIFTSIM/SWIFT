@@ -342,6 +342,9 @@ struct space {
 
 struct zoom_region_properties {
 
+  /*! The factor used to define the buffer zone size around the zoom region. */
+  float zoom_boost_factor;
+
   /*! Centre of mass of the zoom region. */
   double com[3];
 

@@ -38,9 +38,6 @@
 #include <mpi.h>
 #endif
 
-/* Define some values, shouldn't need to change these. */
-#define zoom_boost_factor 1.1 // Multiply zoom region by this to give a buffer.
-
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the zoom_region struct.
  *
@@ -68,6 +65,9 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
                                                       space_max_top_level_cells_default);
     s->zoom_props->cdim[2] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                                       space_max_top_level_cells_default);
+
+    /* Extract the zoom width boost factor (used to define the buffer around the zoom region). */
+    s->zoom_props->zoom_boost_factor = parser_get_opt_param_int(params, "ZoomRegion:zoom_boost_factor", 1.1);
 
     /* Set the initial number of zoom cells in a natural cell. */
     s->zoom_props->nr_bkg_cells_per_zoom_dim = parser_get_opt_param_int(params, "ZoomRegion:bkg_cell_ratio", 1);
@@ -121,7 +121,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
 
     /* Set the initial dimensions. */
     for (int ijk = 0; ijk < 3; ijk++) {
-      s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
+      s->zoom_props->dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * s->zoom_props->zoom_boost_factor;
     }
 
   }
@@ -361,8 +361,8 @@ void construct_zoom_region(struct space *s, int verbose) {
   /* Get the maximum axis length of the zoom region including boost factor. */
   double max_width = 0;
   for (int ijk = 0; ijk < 3; ijk++) {
-      if ((new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor > max_width)
-          max_width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * zoom_boost_factor;
+      if ((new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * s->zoom_props->zoom_boost_factor > max_width)
+          max_width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * s->zoom_props->zoom_boost_factor;
   }
   
   /* This width has to divide the full parent box to ensure the background grid lines up. 
