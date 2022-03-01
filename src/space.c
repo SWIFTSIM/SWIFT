@@ -1289,10 +1289,21 @@ void space_init(struct space *s, struct swift_params *params,
     message("Imposing a BH smoothing length of %e", s->initial_bpart_h);
   }
 
+#ifdef WITH_ZOOM_REGION
+  /* Init the zoom region. */
+  zoom_region_init(params, s);
+#endif
+
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
+#ifdef WITH_ZOOM_REGION
+  /* Include the zoom region shift. (Calculated in zoom_region_init)*/
+  shift[0] += s->zoom_props->zoom_shift[0];
+  shift[1] += s->zoom_props->zoom_shift[1];
+  shift[2] += s->zoom_props->zoom_shift[2];
+#endif
   if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {
@@ -1430,12 +1441,6 @@ void space_init(struct space *s, struct swift_params *params,
         "Increase 'Scheduler:cell_extra_sparts'.");
   }
 
-
-#ifdef WITH_ZOOM_REGION
-  /* Init the zoom region. */
-  zoom_region_init(params, s);
-#endif
-
   if (with_sink && space_extra_gparts == 0) {
     error(
         "Running with star formation from sink but without spare g-particles. "
@@ -1450,11 +1455,13 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Build the cells recursively. */
 #ifdef WITH_ZOOM_REGION
-	if (s->with_zoom_region) {
-    if (!dry_run) space_regrid_zoom(s, gravity_properties, verbose);
-	} else {
-		if (!dry_run) space_regrid(s, verbose);
-	}
+  if (!dry_run) {
+    if (s->with_zoom_region) {
+	    space_regrid_zoom(s, gravity_properties, verbose);
+	  } else {
+		  space_regrid(s, verbose);
+	  }
+  }
 #else
 	if (!dry_run) space_regrid(s, verbose);
 #endif

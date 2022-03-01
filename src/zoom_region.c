@@ -70,7 +70,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     s->zoom_props->zoom_boost_factor = parser_get_opt_param_float(params, "ZoomRegion:zoom_boost_factor", 1.1);
 
     /* Set the initial number of zoom cells in a natural cell. */
-    s->zoom_props->nr_bkg_cells_per_zoom_dim = parser_get_opt_param_int(params, "ZoomRegion:bkg_cell_ratio", 1);
+    s->zoom_props->nr_bkg_cells_per_zoom_dim = parser_get_opt_param_float(params, "ZoomRegion:bkg_cell_ratio", 1);
     s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0] / s->zoom_props->nr_bkg_cells_per_zoom_dim;
 
     /* Initialise the number of wanders (unused if with_hydro == False)*/
@@ -99,7 +99,6 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
         new_zoom_boundary[5] = s->gparts[k].x[2];
     }
 
-
 #ifdef WITH_MPI
     /* Share answers amoungst nodes. */
 
@@ -125,12 +124,29 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
       midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (s->zoom_props->dim[ijk] / 2)
     }
 
-    /* TODO: Shift particles. */
-    /* Shift the particles such that the mid point of the high res particles is at the centre of the box. */
+    /* Throw an error if the zoom region extends over the box boundries.
+     * TODO: This could be fixed automatically! */
+    double shiftx = 0.;
+    double shifty = 0.;
+    double shiftz = 0.;
+    if ((s->zoom_props->dim[0] > s->dim[0] / 2) || (s->zoom_props->dim[1] > s->dim[1] / 2) ||
+        (s->zoom_props->dim[2] > s->dim[2] / 2)) {
+      if (s->zoom_props->dim[0] > s->dim[0] / 2) shiftx = s->dim[0] / 2;
+      if (s->zoom_props->dim[1] > s->dim[1] / 2) shifty = s->dim[1] / 2;
+      if (s->zoom_props->dim[2] > s->dim[2] / 2) shiftz = s->dim[2] / 2;
+      error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
+    }
+
+    /* Calculate the shift needed to place the mid point of the high res particles at the centre of the box.
+     * This shift is applied in space_init in space.c */
     const double box_mid[3] = {s->dim[0], s->dim[1], s->dim[2]};
     for (int ijk = 0; ijk < 3; ijk++) {
       s->zoom_props->zoom_shift[ijk] = box_mid[ijk] - midpoint[ijk];
     }
+
+    if (verbose)
+      message("Need to shift the box by [%e, %e, %e] to centre the zoom region", s->zoom_props->zoom_shift[0],
+              s->zoom_props->zoom_shift[1], s->zoom_props->zoom_shift[2]);
 
   }
 #endif
@@ -341,22 +357,6 @@ void construct_zoom_region(struct space *s, int verbose) {
 
   if (verbose)
 	  message("com: [%f %f %f]", com[0], com[1], com[2]);
-
-  /* Ensure the zoom region does not extend over the edge of the box at this initial point */
-  double shiftx = 0.;
-  double shifty = 0.;
-  double shiftz = 0.;
-  if ((new_zoom_boundary[0] < 0) || (new_zoom_boundary[1] > s->dim[0])
-  || (new_zoom_boundary[2] < 0) || (new_zoom_boundary[3] > s->dim[1])
-  || (new_zoom_boundary[4] < 0) || (new_zoom_boundary[5] > s->dim[2])) {
-		if (new_zoom_boundary[0] < 0) shiftx = -new_zoom_boundary[0] + s->width[0];
-		if (new_zoom_boundary[2] < 0) shifty = -new_zoom_boundary[2] + s->width[1];
-		if (new_zoom_boundary[4] < 0) shiftz = -new_zoom_boundary[4] + s->width[2];
-		if (new_zoom_boundary[1] > s->dim[0]) shiftx = s->dim[0] - new_zoom_boundary[1] - s->width[0];
-		if (new_zoom_boundary[3] > s->dim[0]) shifty = s->dim[1] - new_zoom_boundary[3] - s->width[1];
-		if (new_zoom_boundary[5] > s->dim[0]) shiftz = s->dim[2] - new_zoom_boundary[5] - s->width[2];
-  	error("Zoom region extends beyond the boundaries of the box. Shift the ICs by [%f, %f, %f]", shiftx, shifty, shiftz);
-  }
   
   if (verbose)
 	  message("initial_dim: [%f %f %f] initial_zoom_boundary: [%f-%f %f-%f %f-%f]",
@@ -373,13 +373,12 @@ void construct_zoom_region(struct space *s, int verbose) {
           max_width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * s->zoom_props->zoom_boost_factor;
   }
   
-  /* This width has to divide the full parent box to ensure the background grid lines up. 
-   * NOTE: assumes box dimensions are equal! */
-  const double extra_width = (s->dim[0] / max_width) - (int)(s->dim[0] / max_width);
-  max_width += extra_width;
-
-  if (verbose)
-    message("Increasing zoom region width by %f to %f", extra_width, max_width);
+  /* This width has to divide the full parent box by an odd integer to ensure the two grids line up.
+   * NOTE: assumes box dimensions are equal!
+   * TODO: This needs to be refined for zooms which produce huge numbers of background cells */
+  int nr_zoom_regions = (int)(s->dim[0] / max_width);
+  if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
+  max_width = s->dim[0] / nr_zoom_regions;
   
   /* Find the new boundaries with this extra width and boost factor. */
   for (int ijk = 0; ijk < 3; ijk++) {

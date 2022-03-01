@@ -360,6 +360,9 @@ struct zoom_region_properties {
   /*! Space dimensions in number of top level zoom cells. */
   int cdim[3];
 
+  /*! Shift applied to particles to centre the high res particles in the box. */
+  double zoom_shift[3];
+
   /*! Vector outlining the zoom region boundaries. */
   double region_bounds[6];
 
