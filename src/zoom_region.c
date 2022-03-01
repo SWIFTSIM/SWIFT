@@ -251,8 +251,6 @@ void construct_zoom_region(struct space *s, int verbose) {
 //  const size_t nr_parts = s->nr_parts;
   double mtot = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
-  double widths[3] = {0.0, 0.0, 0.0};
-  int nr_nat_cells_in_zoom[3] = {0, 0, 0};
 
   /* Find the min/max location in each dimension for each mask gravity particle, and their COM. */
   for (size_t k = 0; k < nr_gparts; k++) {
@@ -366,7 +364,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   
   /* This width has to divide the full parent box to ensure the background grid lines up. 
    * NOTE: assumes box dimensions are equal! */
-  const double extra_width = (s->dim[0] / max_width) - (int)(s->dim[0] / max_width;
+  const double extra_width = (s->dim[0] / max_width) - (int)(s->dim[0] / max_width);
   max_width += extra_width;
   
   /* Find the new boundaries with this extra width and boost factor. */
