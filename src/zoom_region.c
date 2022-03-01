@@ -62,9 +62,12 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
       error("Error allocating memory for the zoom parameters.");
 
     /* Set the zoom cdim. */
-    s->zoom_props->cdim[0] = parser_get_opt_param_int(params, "ZoomRegion:max_top_level_zoom_cells", 16);
-    s->zoom_props->cdim[1] = parser_get_opt_param_int(params, "ZoomRegion:max_top_level_zoom_cells", 16);
-    s->zoom_props->cdim[2] = parser_get_opt_param_int(params, "ZoomRegion:max_top_level_zoom_cells", 16);
+    s->zoom_props->cdim[0] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                                      space_max_top_level_cells_default);
+    s->zoom_props->cdim[1] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                                      space_max_top_level_cells_default);
+    s->zoom_props->cdim[2] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                                      space_max_top_level_cells_default);
 
     /* Set the initial number of zoom cells in a natural cell. */
     s->zoom_props->nr_bkg_cells_per_zoom_dim = parser_get_opt_param_int(params, "ZoomRegion:bkg_cell_ratio", 1);
