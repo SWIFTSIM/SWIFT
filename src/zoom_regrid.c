@@ -55,7 +55,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	// tic = getticks();
 	const double zoom_cell_min = min3(s->zoom_props->dim[0] / s->zoom_props->cdim[0],
 	                                  s->zoom_props->dim[1] / s->zoom_props->cdim[1],
-	                                  s->zoom_props->dim[2] / s->zoom_props->cdim[2];
+	                                  s->zoom_props->dim[2] / s->zoom_props->cdim[2]);
 	double h_max = zoom_cell_min / kernel_gamma / space_stretch;
 	if (nr_parts > 0) {
 
