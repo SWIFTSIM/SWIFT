@@ -144,7 +144,7 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
       s->zoom_props->zoom_shift[ijk] = box_mid[ijk] - midpoint[ijk];
     }
     message("box_mid = [%f %f %f] midpoint = [%f %f %f]", box_mid[0], box_mid[1], box_mid[2],
-            midpoint[0], midpoint[1], midpoint[2])
+            midpoint[0], midpoint[1], midpoint[2]);
     message("Need to shift the box by [%e, %e, %e] to centre the zoom region", s->zoom_props->zoom_shift[0],
             s->zoom_props->zoom_shift[1], s->zoom_props->zoom_shift[2]);
 
