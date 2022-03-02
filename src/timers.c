@@ -30,6 +30,7 @@
 
 /* Local includes. */
 #include "clocks.h"
+#include "error.h"
 
 /* The timers. */
 ticks timers[timer_count];
@@ -124,10 +125,6 @@ const char* timers_names[timer_count] = {
     "fof_self",
     "fof_pair",
     "drift_sink",
-    "doself_rt_inject",
-    "dopair_rt_inject",
-    "dosub_self_rt_inject",
-    "dosub_pair_rt_inject",
     "rt_ghost1",
     "rt_ghost2",
     "doself_rt_gradient",
@@ -176,6 +173,7 @@ void timers_open_file(int rank) {
   char buff[100];
   sprintf(buff, "timers_%d.txt", rank);
   timers_file = fopen(buff, "w");
+  if (timers_file == NULL) error("Could not create file '%s'.", buff);
 
   fprintf(timers_file, "# timers: \n# step |");
   for (int k = 0; k < timer_count; k++)

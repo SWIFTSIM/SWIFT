@@ -50,6 +50,7 @@
 #include "fof.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "potential.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "space.h"
@@ -674,6 +675,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
           /* Some values need to be reset in the Gizmo case. */
           hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
                               e->hydro_properties, 0);
+          rt_prepare_force(p);
 #endif
         }
 #endif
@@ -1011,6 +1013,11 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
   const struct engine *e = r->e;
   const int count = c->hydro.count;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  struct rt_props *rt_props = e->rt_props;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct unit_system *us = e->internal_units;
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1026,12 +1033,14 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 
     /* const struct cosmology *cosmo = e->cosmology; */
     struct part *restrict parts = c->hydro.parts;
+    struct xpart *restrict xparts = c->hydro.xparts;
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* Skip inhibited parts */
       if (part_is_inhibited(p, e)) continue;
@@ -1060,7 +1069,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       rt_finalise_transport(p, dt);
 
       /* And finally do thermochemistry */
-      rt_tchem(p);
+      rt_tchem(p, xp, rt_props, cosmo, hydro_props, phys_const, us, dt);
     }
   }
 

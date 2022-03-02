@@ -29,6 +29,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "gravity.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -115,17 +116,22 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
     double time, const struct external_potential* potential,
     const struct phys_const* const phys_const, struct gpart* g) {
 
+  const float G = phys_const->const_newton_G;
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-  const float r2_plus_epsilon2_inv =
-      1.f / (dx * dx + dy * dy + dz * dz + potential->epsilon2);
+  const float r2_plus_epsilon2 =
+      dx * dx + dy * dy + dz * dz + potential->epsilon2;
+  const float r2_plus_epsilon2_inv = 1.f / r2_plus_epsilon2;
 
-  const float term = -potential->vrot2_over_G * r2_plus_epsilon2_inv;
+  const float acc = -potential->vrot2_over_G * r2_plus_epsilon2_inv;
+  const float pot = -potential->vrot2_over_G * logf(sqrtf(r2_plus_epsilon2)) /
+                    (4. * M_PI * G);
 
-  g->a_grav[0] += term * dx;
-  g->a_grav[1] += term * dy;
-  g->a_grav[2] += term * dz;
+  g->a_grav[0] += acc * dx;
+  g->a_grav[1] += acc * dy;
+  g->a_grav[2] += acc * dz;
+  gravity_add_comoving_potential(g, pot);
 }
 
 /**
@@ -148,7 +154,7 @@ external_gravity_get_potential_energy(
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
 
-  return 0.5f * potential->vrot * potential->vrot *
+  return potential->vrot * potential->vrot *
          logf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
 }
 
@@ -182,8 +188,8 @@ static INLINE void potential_init_backend(
 
   potential->vrot =
       parser_get_param_double(parameter_file, "IsothermalPotential:vrot");
-  potential->timestep_mult = parser_get_param_float(
-      parameter_file, "IsothermalPotential:timestep_mult");
+  potential->timestep_mult = parser_get_opt_param_float(
+      parameter_file, "IsothermalPotential:timestep_mult", FLT_MAX);
   const double epsilon =
       parser_get_param_double(parameter_file, "IsothermalPotential:epsilon");
   potential->vrot2_over_G =

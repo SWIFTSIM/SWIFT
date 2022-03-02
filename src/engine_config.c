@@ -60,8 +60,16 @@ extern int engine_max_parts_per_cooling;
  */
 static void *engine_dumper_poll(void *p) {
   struct engine *e = (struct engine *)p;
+
+#ifdef WITH_MPI
+  char dumpfile[10];
+  snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
+#else
+  const char *dumpfile = ".dump";
+#endif
+
   while (1) {
-    if (access(".dump", F_OK) == 0) {
+    if (access(dumpfile, F_OK) == 0) {
 
       /* OK, do our work. */
       message("Dumping engine tasks in step: %d", e->step);
@@ -82,7 +90,7 @@ static void *engine_dumper_poll(void *p) {
       scheduler_dump_queues(e);
 
       /* Delete the file. */
-      unlink(".dump");
+      unlink(dumpfile);
       message("Dumping completed");
       fflush(stdout);
     }
@@ -108,9 +116,16 @@ static void *engine_dumper_poll(void *p) {
 static void engine_dumper_init(struct engine *e) {
   pthread_t dumper;
 
+#ifdef WITH_MPI
+  char dumpfile[10];
+  snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
+#else
+  const char *dumpfile = ".dump";
+#endif
+
   /* Make sure the .dump file is not present, that is bad when starting up. */
   struct stat buf;
-  if (stat(".dump", &buf) == 0) unlink(".dump");
+  if (stat(dumpfile, &buf) == 0) unlink(dumpfile);
 
   /* Thread does not exit, so nothing to do but create it. */
   pthread_create(&dumper, NULL, &engine_dumper_poll, e);
@@ -182,45 +197,6 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Welcome message */
   if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
-
-  if (!restart && e->total_nr_neutrino_gparts > 0) {
-    /* For diagnostics, collect the range of neutrino masses in eV */
-    float neutrino_mass_min = FLT_MAX;
-    float neutrino_mass_max = -FLT_MAX;
-
-    if (e->s->nr_gparts > 0) {
-      for (size_t k = 0; k < e->s->nr_gparts; k++) {
-        if (e->s->gparts[k].type == swift_type_neutrino) {
-          struct gpart *gp = &e->s->gparts[k];
-          float neutrino_mass = gp->mass;
-          if (neutrino_mass > neutrino_mass_max)
-            neutrino_mass_max = neutrino_mass;
-          if (neutrino_mass < neutrino_mass_min)
-            neutrino_mass_min = neutrino_mass;
-        }
-      }
-
-      float min_max_mass[2] = {neutrino_mass_min, neutrino_mass_max};
-
-#ifdef WITH_MPI
-      min_max_mass[1] = -min_max_mass[1];
-
-      MPI_Allreduce(MPI_IN_PLACE, min_max_mass, 2, MPI_FLOAT, MPI_MIN,
-                    MPI_COMM_WORLD);
-
-      min_max_mass[1] = -min_max_mass[1];
-#endif
-
-      if (e->nodeID == 0) {
-        float mass_mult = e->neutrino_mass_conversion_factor;
-        float deg_nu_tot = e->cosmology->deg_nu_tot;
-        message("Neutrino mass multiplier: %.5e eV / U_M", mass_mult);
-        message("Neutrino simulation particle masses in range: [%.4f, %.4f] eV",
-                min_max_mass[0] * mass_mult / deg_nu_tot,
-                min_max_mass[1] * mass_mult / deg_nu_tot);
-      }
-    }
-  }
 
   /* Get the number of queues */
   int nr_queues =
@@ -400,10 +376,15 @@ void engine_config(int restart, int fof, struct engine *e,
 
     if (nodeID == 0) {
       FILE *ranklog = NULL;
-      if (restart)
+      if (restart) {
         ranklog = fopen("rank_hostname.log", "a");
-      else
+        if (ranklog == NULL)
+          error("Could not create file 'rank_hostname.log'.");
+      } else {
         ranklog = fopen("rank_hostname.log", "w");
+        if (ranklog == NULL)
+          error("Could not open file 'rank_hostname.log' for writing.");
+      }
 
       /* Write the header every restart-cycle. It does not hurt. */
       fprintf(ranklog, "# step rank hostname\n");
@@ -480,10 +461,11 @@ void engine_config(int restart, int fof, struct engine *e,
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
-              "[%s] %6s\n",
+              "[%s] %6s %s [%s]\n",
               "Step", "Time", "Scale-factor", "Redshift", "Time-step",
               "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
-              "b-Updates", "Wall-clock time", clocks_getunit(), "Props");
+              "b-Updates", "Wall-clock time", clocks_getunit(), "Props",
+              "Dead time", clocks_getunit());
       fflush(e->file_timesteps);
     }
 

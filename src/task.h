@@ -67,6 +67,7 @@ enum task_types {
   task_type_timestep,
   task_type_timestep_limiter,
   task_type_timestep_sync,
+  task_type_collect,
   task_type_send,
   task_type_recv,
   task_type_pack,
@@ -127,11 +128,7 @@ enum task_subtypes {
   task_subtype_limiter,
   task_subtype_grav,
   task_subtype_external_grav,
-  task_subtype_tend_part,
-  task_subtype_tend_gpart,
-  task_subtype_tend_spart,
-  task_subtype_tend_sink,
-  task_subtype_tend_bpart,
+  task_subtype_tend,
   task_subtype_xv,
   task_subtype_rho,
   task_subtype_part_swallow,
@@ -155,7 +152,6 @@ enum task_subtypes {
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
   task_subtype_sink_merger,
-  task_subtype_rt_inject,
   task_subtype_sink_compute_formation,
   task_subtype_sink_accretion,
   task_subtype_rt_gradient,
@@ -307,6 +303,7 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
                      float dump_tasks_threshold, int header, int allranks);
 void task_dump_active(struct engine *e);
 void task_get_full_name(int type, int subtype, char *name);
+void task_create_name_files(const char *file_prefix);
 void task_get_group_name(int type, int subtype, char *cluster);
 enum task_categories task_get_category(const struct task *t);
 

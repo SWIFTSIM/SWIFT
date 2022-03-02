@@ -28,6 +28,30 @@
  */
 
 /**
+ * @brief Preparation step for injection to gather necessary data.
+ * This function gets called during the feedback force loop.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle.
+ * @param pj Second (gas) particle (not updated).
+ * @param cosmo The cosmological model.
+ * @param rt_props Properties of the RT scheme.
+ */
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
+                                     const float hi, const float hj,
+                                     struct spart *si, const struct part *pj,
+                                     const struct cosmology *cosmo,
+                                     const struct rt_props *rt_props) {
+
+  si->rt_data.debug_iact_hydro_inject_prep += 1;
+}
+
+/**
  * @brief Injection step interaction between star and hydro particles.
  *
  * @param r2 Comoving square distance between the two particles.
@@ -42,6 +66,17 @@
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
     struct spart *restrict si, struct part *restrict pj, float a, float H) {
+
+  /* If the star doesn't have any neighbours, we
+   * have nothing to do here. */
+  if (si->density.wcount == 0.f) return;
+
+  if (si->rt_data.debug_iact_hydro_inject_prep == 0)
+    error(
+        "Injecting energy from star that wasn't called during injection prep");
+
+  if (!si->rt_data.debug_emission_rate_set)
+    error("Injecting energy from star without setting emission rate");
 
   si->rt_data.debug_iact_hydro_inject += 1;
   si->rt_data.debug_radiation_emitted_tot += 1ULL;
@@ -70,16 +105,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
+  if (pi->rt_data.debug_kicked != 1)
+    error("Trying to iact transport with unkicked particle %lld (count=%d)",
+          pi->id, pi->rt_data.debug_kicked);
+
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do iact transport when "
         "finalise injection count is %d",
         pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called iact transport on particle "
-        "with iact gradient count 0");
 
   if (pi->rt_data.debug_gradients_done != 1)
     error(
@@ -91,16 +125,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   if (mode == 1) {
 
+    if (pj->rt_data.debug_kicked != 1)
+      error("Trying to iact transport with unkicked particle %lld (count=%d)",
+            pj->id, pj->rt_data.debug_kicked);
+
     if (pj->rt_data.debug_injection_done != 1)
       error(
           "Trying to do iact transport when "
           "finalise injection count is %d",
           pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_calls_iact_gradient == 0)
-      error(
-          "Called iact transport on particle "
-          "with iact gradient count 0");
 
     if (pj->rt_data.debug_gradients_done != 1)
       error(

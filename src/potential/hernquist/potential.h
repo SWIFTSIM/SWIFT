@@ -27,6 +27,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "gravity.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -138,14 +139,18 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   const float dz = g->x[2] - potential->x[2];
 
   /* Calculate the acceleration */
-  const float r = sqrtf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
+  const float r2 = dx * dx + dy * dy + dz * dz + potential->epsilon2;
+  const float r = sqrtf(r2);
   const float r_plus_a_inv = 1.f / (r + potential->al);
   const float r_plus_a_inv2 = r_plus_a_inv * r_plus_a_inv;
-  const float term = -potential->mass * r_plus_a_inv2 / r;
 
-  g->a_grav[0] += term * dx;
-  g->a_grav[1] += term * dy;
-  g->a_grav[2] += term * dz;
+  const float acc = -potential->mass * r_plus_a_inv2 / r;
+  const float pot = -potential->mass * r_plus_a_inv;
+
+  g->a_grav[0] += acc * dx;
+  g->a_grav[1] += acc * dy;
+  g->a_grav[2] += acc * dz;
+  gravity_add_comoving_potential(g, pot);
 }
 
 /**
@@ -167,7 +172,7 @@ external_gravity_get_potential_energy(
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
-  const float r = sqrtf(dx * dx + dy * dy + dz * dz);
+  const float r = sqrtf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
   const float r_plus_alinv = 1.f / (r + potential->al);
   return -phys_const->const_newton_G * potential->mass * r_plus_alinv;
 }

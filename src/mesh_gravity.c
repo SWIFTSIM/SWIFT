@@ -39,6 +39,7 @@
 #include "kernel_long_gravity.h"
 #include "mesh_gravity_mpi.h"
 #include "mesh_gravity_patch.h"
+#include "neutrino.h"
 #include "part.h"
 #include "restart.h"
 #include "row_major_id.h"
@@ -131,10 +132,12 @@ __attribute__((always_inline)) INLINE static void CIC_set(
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
+ * @param nu_model Struct with neutrino constants
  */
 INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
                                      const int N, const double fac,
-                                     const double dim[3]) {
+                                     const double dim[3],
+                                     const struct neutrino_model* nu_model) {
 
   /* Box wrap the multipole's position */
   const double pos_x = box_wrap(gp->x[0], 0., dim[0]);
@@ -166,10 +169,16 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
   if (k < 0 || k >= N) error("Invalid gpart position in z");
 #endif
 
+  /* Compute weight (for neutrino delta-f weighting) */
+  double weight = 1.0;
+  if (gp->type == swift_type_neutrino)
+    gpart_neutrino_weight_mesh_only(gp, nu_model, &weight);
+
   const double mass = gp->mass;
+  const double value = mass * weight;
 
   /* CIC ! */
-  CIC_set(rho, N, i, j, k, tx, ty, tz, dx, dy, dz, mass);
+  CIC_set(rho, N, i, j, k, tx, ty, tz, dx, dy, dz, value);
 }
 
 /**
@@ -181,9 +190,11 @@ INLINE static void gpart_to_mesh_CIC(const struct gpart* gp, double* rho,
  * @param N the size of the mesh along one axis.
  * @param fac The width of a mesh cell.
  * @param dim The dimensions of the simulation box.
+ * @param nu_model Struct with neutrino constants
  */
 void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
-                            const double fac, const double dim[3]) {
+                            const double fac, const double dim[3],
+                            const struct neutrino_model* nu_model) {
 
   const int gcount = c->grav.count;
   const struct gpart* gparts = c->grav.parts;
@@ -191,7 +202,7 @@ void cell_gpart_to_mesh_CIC(const struct cell* c, double* rho, const int N,
   /* Assign all the gpart of that cell to the mesh */
   for (int i = 0; i < gcount; ++i) {
     if (gparts[i].time_bin == time_bin_inhibited) continue;
-    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, nu_model);
   }
 }
 
@@ -207,6 +218,7 @@ struct cic_mapper_data {
   double fac;
   double dim[3];
   float const_G;
+  struct neutrino_model* nu_model;
 };
 
 void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
@@ -216,13 +228,14 @@ void gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+  const struct neutrino_model* nu_model = data->nu_model;
 
   /* Pointer to the chunk to be processed */
   const struct gpart* gparts = (const struct gpart*)map_data;
 
   for (int i = 0; i < num; ++i) {
     if (gparts[i].time_bin == time_bin_inhibited) continue;
-    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim);
+    gpart_to_mesh_CIC(&gparts[i], rho, N, fac, dim, nu_model);
   }
 }
 
@@ -242,6 +255,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   const int N = data->N;
   const double fac = data->fac;
   const double dim[3] = {data->dim[0], data->dim[1], data->dim[2]};
+  const struct neutrino_model* nu_model = data->nu_model;
 
   /* Pointer to the chunk to be processed */
   int* local_cells = (int*)map_data;
@@ -258,7 +272,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
     const struct cell* c = &cells[local_cells[i]];
 
     /* Assign this cell's content to the mesh */
-    cell_gpart_to_mesh_CIC(c, rho, N, fac, dim);
+    cell_gpart_to_mesh_CIC(c, rho, N, fac, dim, nu_model);
   }
 }
 
@@ -735,6 +749,18 @@ void compute_potential_distributed(struct pm_mesh* mesh, const struct space* s,
 
   tic = getticks();
 
+  /* If using linear response neutrinos, apply to local slice of the MPI mesh */
+  if (s->e->neutrino_properties->use_linear_response) {
+    neutrino_response_compute(s, mesh, tp, frho_slice, local_0_start, local_n0,
+                              verbose);
+
+    if (verbose)
+      message("Applying neutrino response took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    tic = getticks();
+  }
+
   /* Carry out the reverse MPI Fourier transform */
   fftw_plan mpi_inverse_plan = fftw_mpi_plan_dft_c2r_3d(
       N, N, N, frho_slice, rho_slice, MPI_COMM_WORLD,
@@ -842,6 +868,12 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   /* Zero everything */
   bzero(rho, N * N * N * sizeof(double));
 
+  /* Gather some neutrino constants if using delta-f weighting on the mesh */
+  struct neutrino_model nu_model;
+  bzero(&nu_model, sizeof(struct neutrino_model));
+  if (s->e->neutrino_properties->use_delta_f_mesh_only)
+    gather_neutrino_consts(s, &nu_model);
+
   /* Gather the mesh shared information to be used by the threads */
   struct cic_mapper_data data;
   data.cells = s->cells_top;
@@ -853,6 +885,7 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   data.dim[1] = dim[1];
   data.dim[2] = dim[2];
   data.const_G = 0.f;
+  data.nu_model = &nu_model;
 
   if (nr_local_cells == 0) {
 
@@ -915,6 +948,18 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
+
+  /* If using linear response neutrinos, apply the response to the mesh */
+  if (s->e->neutrino_properties->use_linear_response) {
+    neutrino_response_compute(s, mesh, tp, frho, /*slice_offset=*/0,
+                              /*slice_width=*/N, verbose);
+
+    if (verbose)
+      message("Applying neutrino response took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    tic = getticks();
+  }
 
   /* Fourier transform to come back from magic-land */
   fftw_execute(inverse_plan);

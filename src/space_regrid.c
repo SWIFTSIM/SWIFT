@@ -115,40 +115,41 @@ void space_regrid(struct space *s, int verbose) {
     h_max = buff;
   }
 #endif
-	if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
-	/* Get the new putative cell dimensions. */
-	const int cdim[3] = {
-			(int)floor(s->dim[0] /
-			           fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-			(int)floor(s->dim[1] /
-			           fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
-			(int)floor(s->dim[2] /
-			           fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
+  if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
-	/* check that we have at least 1 cell in each dimension */
-	if (cdim[0] == 0 || cdim[1] == 0 || cdim[2] == 0) {
-		error(
-				"Top level cell dimension of size 0 detected (cdim = [%i %i "
-				"%i])!\nThis usually indicates a problem with the initial smoothing "
-				"lengths of the particles, e.g. a smoothing length that is comparable "
-				"in size to the box size.",
-				cdim[0], cdim[1], cdim[2]);
-	}
+  /* Get the new putative cell dimensions. */
+  const int cdim[3] = {
+      (int)floor(s->dim[0] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      (int)floor(s->dim[1] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
+      (int)floor(s->dim[2] /
+                 fmax(h_max * kernel_gamma * space_stretch, s->cell_min))};
 
-	/* Check if we have enough cells for periodicity. */
-	if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
-		error(
-				"Must have at least 3 cells in each spatial dimension when periodicity "
-				"is switched on.\nThis error is often caused by any of the "
-				"followings:\n"
-				" - too few particles to generate a sensible grid,\n"
-				" - the initial value of 'Scheduler:max_top_level_cells' is too "
-				"small,\n"
-				" - the (minimal) time-step is too large leading to particles with "
-				"predicted smoothing lengths too large for the box size,\n"
-				" - particles with velocities so large that they move by more than two "
-				"box sizes per time-step.\n");
+  /* check that we have at least 1 cell in each dimension */
+  if (cdim[0] == 0 || cdim[1] == 0 || cdim[2] == 0) {
+    error(
+        "Top level cell dimension of size 0 detected (cdim = [%i %i "
+        "%i])!\nThis usually indicates a problem with the initial smoothing "
+        "lengths of the particles, e.g. a smoothing length that is comparable "
+        "in size to the box size.",
+        cdim[0], cdim[1], cdim[2]);
+  }
+
+  /* Check if we have enough cells for periodicity. */
+  if (s->periodic && (cdim[0] < 3 || cdim[1] < 3 || cdim[2] < 3))
+    error(
+        "Must have at least 3 cells in each spatial dimension when periodicity "
+        "is switched on.\nThis error is often caused by any of the "
+        "followings:\n"
+        " - too few particles to generate a sensible grid,\n"
+        " - the initial value of 'Scheduler:max_top_level_cells' is too "
+        "small,\n"
+        " - the (minimal) time-step is too large leading to particles with "
+        "predicted smoothing lengths too large for the box size,\n"
+        " - particles with velocities so large that they move by more than two "
+        "box sizes per time-step.\n");
 
 /* In MPI-Land, changing the top-level cell size requires that the
  * global partition is recomputed and the particles redistributed.

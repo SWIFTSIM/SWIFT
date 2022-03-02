@@ -17,12 +17,14 @@
  *
  ******************************************************************************/
 
+/* Config parameters. */
+#include "../config.h"
+
 /* Some standard headers. */
 #include <fenv.h>
 #include <math.h>
 
 /* Includes. */
-#include "../config.h"
 #include "swift.h"
 
 #define N_CHECK 20
@@ -101,7 +103,7 @@ int main(int argc, char *argv[]) {
   const int rows = 51;
   const int cols = 3;
   double CLASS_table[rows * cols];
-  FILE *stream = fopen("testNeutrinoCosmology.dat", "r");
+  FILE *stream = fopen(argv[1], "r");
   if (stream == NULL) error("Could not open reference solution file!");
   char line[1024];
   int row = 0;

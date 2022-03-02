@@ -29,6 +29,7 @@
 
 /* Local includes. */
 #include "error.h"
+#include "gravity.h"
 #include "parser.h"
 #include "part.h"
 #include "physical_constants.h"
@@ -118,6 +119,7 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   g->a_grav[0] += -potential->mass * dx * rinv3;
   g->a_grav[1] += -potential->mass * dy * rinv3;
   g->a_grav[2] += -potential->mass * dz * rinv3;
+  gravity_add_comoving_potential(g, -potential->mass * rinv);
 }
 
 /**
@@ -173,8 +175,8 @@ static INLINE void potential_init_backend(
   /* Read the other parameters of the model */
   potential->mass =
       parser_get_param_double(parameter_file, "PointMassPotential:mass");
-  potential->timestep_mult = parser_get_param_float(
-      parameter_file, "PointMassPotential:timestep_mult");
+  potential->timestep_mult = parser_get_opt_param_float(
+      parameter_file, "PointMassPotential:timestep_mult", FLT_MAX);
 }
 
 /**

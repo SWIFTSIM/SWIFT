@@ -48,7 +48,6 @@ struct task;
 #define TASK_LOOP_STARS_PREP2 10
 #define TASK_LOOP_RT_GRADIENT 11
 #define TASK_LOOP_RT_TRANSPORT 12
-#define TASK_LOOP_RT_INJECT 13
 
 /**
  * @brief A struct representing a runner's thread and its data.
@@ -72,6 +71,9 @@ struct runner {
 
   /*! The particle gravity_cache of cell cj. */
   struct gravity_cache cj_gravity_cache;
+
+  /*! Time this runner was active during the last engine_launch. */
+  ticks active_time;
 
 #ifdef WITH_VECTORIZATION
 
@@ -111,6 +113,7 @@ void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep(struct runner *r, struct cell *c, int timer);
+void runner_do_timestep_collect(struct runner *r, struct cell *c, int timer);
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer);
 void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
@@ -151,5 +154,8 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
                               const int timer);
 void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer);
 void *runner_main(void *data);
+
+ticks runner_get_active_time(const struct runner *restrict r);
+void runner_reset_active_time(struct runner *restrict r);
 
 #endif /* SWIFT_RUNNER_H */

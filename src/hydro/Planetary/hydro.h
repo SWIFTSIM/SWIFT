@@ -544,6 +544,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo) {
 
+  /* no warning, since this happens often */
+
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
@@ -614,14 +616,29 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    *
    * f_ij = 1.f - grad_h_term_i / m_j */
   const float common_factor = p->h * hydro_dimension_inv / p->density.wcount;
-  float grad_h_term;
 
+  float grad_h_term;
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.999f * hydro_props->h_max) {
     grad_h_term = 0.f;
+    /* no warning for this scheme, since this happens quite often */
   } else {
-    grad_h_term = common_factor * p->density.rho_dh /
-                  (1.f + common_factor * p->density.wcount_dh);
+    const float grad_W_term = common_factor * p->density.wcount_dh;
+    if (grad_W_term < -0.9999f) {
+      /* if we get here, we either had very small neighbour contributions
+         (which should be treated as a no neighbour case in the ghost) or
+        a very weird particle distribution (e.g. particles sitting on
+         top of each other). Either way, we cannot use the normal
+         expression, since that would lead to overflow or excessive round
+         off and cause excessively high accelerations in the force loop */
+      grad_h_term = 0.f;
+      warning(
+          "grad_W_term very small for particle with ID %lld (h: %g, wcount: "
+          "%g, wcount_dh: %g).",
+          p->id, p->h, p->density.wcount, p->density.wcount_dh);
+    } else {
+      grad_h_term = common_factor * p->density.rho_dh / (1.f + grad_W_term);
+    }
   }
 
   /* Compute the Balsara switch */

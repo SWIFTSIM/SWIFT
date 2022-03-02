@@ -29,6 +29,59 @@
  */
 
 /**
+ * @brief Preparation step for injection to gather necessary data.
+ * This function gets called during the feedback force loop.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle.
+ * @param pj Second (gas) particle (not updated).
+ * @param cosmo The cosmological model.
+ * @param rt_props Properties of the RT scheme.
+ */
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
+                                     const float hi, const float hj,
+                                     struct spart *si, const struct part *pj,
+                                     const struct cosmology *cosmo,
+                                     const struct rt_props *rt_props) {
+
+  /* If the star doesn't have any neighbours, we
+   * have nothing to do here. */
+  if (si->density.wcount == 0.f) return;
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  si->rt_data.debug_iact_hydro_inject_prep += 1;
+#endif
+
+  /* Compute the weight of the neighbouring particle */
+  const float hi_inv = 1.f / hi;
+  const float r = sqrtf(r2);
+  const float xi = r * hi_inv;
+  float wi;
+  kernel_eval(xi, &wi);
+  const float hi_inv_dim = pow_dimension(hi_inv);
+  /* psi(x_star - x_gas, h_star) */
+  /* Note: skip the devision by si->density.wcount here. It'll cancel out by the
+   * normalization anyway, and furthermore now that the injection prep is done
+   * during the star density loop, si->density.wcount won't be computed at this
+   * stage yet. */
+  const float psi = wi * hi_inv_dim;
+
+  /* Now add that weight to the appropriate octant */
+  int octant_index = 0;
+
+  if (dx[0] > 0.f) octant_index += 1;
+  if (dx[1] > 0.f) octant_index += 2;
+  if (dx[2] > 0.f) octant_index += 4;
+
+  si->rt_data.octant_weights[octant_index] += psi;
+}
+
+/**
  * @brief Injection step interaction between star and hydro particles.
  *
  * @param r2 Comoving square distance between the two particles.
@@ -44,39 +97,102 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
     struct spart *restrict si, struct part *restrict pj, float a, float H) {
 
+  /* If the star doesn't have any neighbours, we
+   * have nothing to do here. */
+  if (si->density.wcount == 0.f) return;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
+
+  /* Do some checks and increase neighbour counts
+   * before other potential early exits */
+  if (si->rt_data.debug_iact_hydro_inject_prep == 0)
+    error(
+        "Injecting energy from star that wasn't called during injection prep");
+
+  if (!si->rt_data.debug_emission_rate_set)
+    error("Injecting energy from star without setting emission rate");
+
   si->rt_data.debug_iact_hydro_inject += 1;
   si->rt_data.debug_radiation_emitted_tot += 1ULL;
 
   pj->rt_data.debug_iact_stars_inject += 1;
   pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
+
 #endif
 
-  /* If the star doesn't have any neighbours, we
-   * have nothing to do here. */
-  if (si->density.wcount == 0.f) return;
-
-  float wi;
-  const float r = sqrtf(r2);
+  /* Compute the weight of the neighbouring particle */
   const float hi_inv = 1.f / hi;
+  const float r = sqrtf(r2);
   const float xi = r * hi_inv;
+  float wi;
   kernel_eval(xi, &wi);
   const float hi_inv_dim = pow_dimension(hi_inv);
   /* psi(x_star - x_gas, h_star) */
-  const float psi = wi * hi_inv_dim / si->density.wcount;
+  /* Skip the division by si->density.wcount to remain consistent */
+  const float psi = wi * hi_inv_dim;
 
-  /* TODO: this is done differently for RT_HYDRO_CONTROLLED_INJECTION */
+#if defined(HYDRO_DIMENSION_3D)
+  const int maxind = 8;
+#elif defined(HYDRO_DIMENSION_2D)
+  const int maxind = 4;
+#elif defined(HYDRO_DIMENSION_1D)
+  const int maxind = 2;
+#endif
+
+  /* Get weight for particle, including isotropy correction */
+  float nonempty_octants = 0.f;
+
+  for (int i = 0; i < maxind; i++) {
+    if (si->rt_data.octant_weights[i] > 0.f) nonempty_octants += 1.f;
+  }
+
+  int octant_index = 0;
+  if (dx[0] > 0.f) octant_index += 1;
+  if (dx[1] > 0.f) octant_index += 2;
+  if (dx[2] > 0.f) octant_index += 4;
+
+  const float octw = si->rt_data.octant_weights[octant_index];
+  /* We might end up in this scenario due to roundoff errors */
+  if (psi == 0.f || octw == 0.f) return;
+
+  const float weight = psi / (nonempty_octants * octw);
+
+  const float minus_r_inv = -1.f / r;
+  const float n_unit[3] = {dx[0] * minus_r_inv, dx[1] * minus_r_inv,
+                           dx[2] * minus_r_inv};
+  const float Vinv = 1.f / pj->geometry.volume;
+
+  /* Nurse, the patient is ready now */
   for (int g = 0; g < RT_NGROUPS; g++) {
-    pj->rt_data.conserved[g].energy += si->rt_data.emission_this_step[g] * psi;
+    /* Inject energy. */
+    const float injected_energy_density =
+        si->rt_data.emission_this_step[g] * weight * Vinv;
+    pj->rt_data.radiation[g].energy_density += injected_energy_density;
+
+    /* Inject flux. */
+    /* We assume the path from the star to the gas is optically thin */
+    const float injected_flux =
+        injected_energy_density * rt_params.reduced_speed_of_light;
+    pj->rt_data.radiation[g].flux[0] += injected_flux * n_unit[0];
+    pj->rt_data.radiation[g].flux[1] += injected_flux * n_unit[1];
+    pj->rt_data.radiation[g].flux[2] += injected_flux * n_unit[2];
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Take note how much energy we actually injected */
   for (int g = 0; g < RT_NGROUPS; g++) {
-    float res = si->rt_data.emission_this_step[g] * psi;
-    si->rt_data.debug_injected_energy[g] += res;
-    si->rt_data.debug_injected_energy_tot[g] += res;
+    const float injected_energy = si->rt_data.emission_this_step[g] * weight;
+    if (isinf(injected_energy) || isnan(injected_energy))
+      error(
+          "Injecting abnormal energy spart %lld part %lld group %d | %.6e %.6e "
+          "%.6e",
+          si->id, pj->id, g, injected_energy, weight,
+
+          si->rt_data.emission_this_step[g]);
+    si->rt_data.debug_injected_energy[g] += injected_energy;
+    si->rt_data.debug_injected_energy_tot[g] += injected_energy;
   }
+  si->rt_data.debug_psi_sum += psi;
 #endif
 }
 
@@ -101,16 +217,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     struct part *restrict pj, float a, float H, int mode) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  if (pi->rt_data.debug_kicked != 1)
+    error("Trying to iact transport with unkicked particle %lld (count=%d)",
+          pi->id, pi->rt_data.debug_kicked);
+
   if (pi->rt_data.debug_injection_done != 1)
     error(
         "Trying to do iact transport when "
         "finalise injection count is %d",
         pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called iact transport on particle "
-        "with iact gradient count 0");
 
   if (pi->rt_data.debug_gradients_done != 1)
     error(
@@ -122,16 +237,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   if (mode == 1) {
 
+    if (pj->rt_data.debug_kicked != 1)
+      error("Trying to iact transport with unkicked particle %lld (count=%d)",
+            pj->id, pj->rt_data.debug_kicked);
+
     if (pj->rt_data.debug_injection_done != 1)
       error(
           "Trying to do iact transport when "
           "finalise injection count is %d",
           pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_calls_iact_gradient == 0)
-      error(
-          "Called iact transport on particle "
-          "with iact gradient count 0");
 
     if (pj->rt_data.debug_gradients_done != 1)
       error(
@@ -252,9 +366,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   for (int g = 0; g < RT_NGROUPS; g++) {
 
-    /* density state to be used to compute the flux */
+    /* radiation state to be used to compute the flux */
     float Ui[4], Uj[4];
     rt_gradients_predict(pi, pj, Ui, Uj, g, dx, r, xij_i);
+
+    /* For first order method, skip the gradients */
+    /* float Ui[4], Uj[4]; */
+    /* rt_part_get_radiation_state_vector(pi, g, Ui); */
+    /* rt_part_get_radiation_state_vector(pj, g, Uj); */
+    /* No need to check for unphysical quantities, they
+     * haven't been touched since
+     * rt_injection_update_photon_densities */
 
     float totflux[4];
 
@@ -264,7 +386,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
      * pj is right state. The sign convention is that a positive total
      * flux is subtracted from the left state, and added to the right
      * state, based on how we chose the unit vector. By this convention,
-     * the time integration results in conserved += flux * dt */
+     * the time integration results in conserved quantity += flux * dt */
     rti->flux[g].energy -= totflux[0];
     rti->flux[g].flux[0] -= totflux[1];
     rti->flux[g].flux[1] -= totflux[2];

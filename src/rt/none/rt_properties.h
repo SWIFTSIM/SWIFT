@@ -27,12 +27,7 @@
 /**
  * @brief Properties of the 'none' radiative transfer model
  */
-struct rt_props {
-
-  /* Are we running with hydro or star controlled injection?
-   * This is added to avoid #ifdef macros as far as possible */
-  int hydro_controlled_injection;
-};
+struct rt_props {};
 
 /**
  * @brief Print the RT model.
@@ -61,12 +56,6 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     struct rt_props* rtp, const struct phys_const* phys_const,
     const struct unit_system* us, struct swift_params* params,
     struct cosmology* cosmo) {
-
-#ifdef RT_HYDRO_CONTROLLED_INJECTION
-  rtp->hydro_controlled_injection = 1;
-#else
-  rtp->hydro_controlled_injection = 0;
-#endif
 
   /* After initialisation, print params to screen */
   rt_props_print(rtp);

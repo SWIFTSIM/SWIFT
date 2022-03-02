@@ -113,24 +113,6 @@ def check_all_hydro_is_equal(snapdata):
                 if break_on_diff:
                     quit()
 
-        # Calls to star interactions
-        if (ref.gas.RTStarIact != compare.gas.RTStarIact).any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            print("--- Calls to star interactions vary")
-
-            if print_diffs:
-                for i in range(npart):
-                    if ref.gas.RTStarIact[i] != compare.gas.RTStarIact[i]:
-                        print(
-                            "-----",
-                            ref.gas.IDs[i],
-                            ref.gas.RTStarIact[i],
-                            compare.gas.RTStarIact[i],
-                        )
-
-            if break_on_diff:
-                quit()
-
         # Photon number updates
         if (ref.gas.InjectionDone != compare.gas.InjectionDone).any():
             print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
@@ -148,22 +130,6 @@ def check_all_hydro_is_equal(snapdata):
 
             if break_on_diff:
                 quit()
-
-        # Gradient Loop Calls
-        fishy = ref.gas.RTCallsIactGradient != compare.gas.RTCallsIactGradient
-        if fishy.any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            account_for_sml_diff = np.count_nonzero(
-                np.logical_and(fishy, sml_outside_tolerance)
-            )
-            print(
-                "--- Calls to iact gradient loop: count differ: {0:8d} / {1:8d};".format(
-                    np.count_nonzero(fishy), npart
-                ),
-                "After removing ones with acceptable h differences: {0:8d}".format(
-                    account_for_sml_diff
-                ),
-            )
 
         # Gradient Loop Interaction Calls
         fishy = (
@@ -202,22 +168,6 @@ def check_all_hydro_is_equal(snapdata):
 
                 if break_on_diff:
                     quit()
-
-        # Transport Loop Calls
-        fishy = ref.gas.RTCallsIactTransport != compare.gas.RTCallsIactTransport
-        if fishy.any():
-            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
-            account_for_sml_diff = np.count_nonzero(
-                np.logical_and(fishy, sml_outside_tolerance)
-            )
-            print(
-                "--- Calls to iact transport: count differ: {0:8d} / {1:8d}; ".format(
-                    np.count_nonzero(fishy), npart
-                ),
-                "After removing ones with acceptable h differences: {0:8d}".format(
-                    account_for_sml_diff
-                ),
-            )
 
         # Transport Loop Interaction Calls
         fishy = (
@@ -288,6 +238,9 @@ def check_all_stars_is_equal(snapdata):
 
     for compare in snapdata[1:]:
 
+        if not compare.has_stars:
+            continue
+
         # Coordinates
         if not skip_coords:
 
@@ -309,17 +262,58 @@ def check_all_stars_is_equal(snapdata):
         # Smoothing Lengths
         if not skip_sml:
 
-            diff = np.abs((ref.gas.h - compare.gas.h) / ref.gas.h)
+            diff = np.abs((ref.stars.h - compare.stars.h) / ref.stars.h)
             if (diff > float_comparison_tolerance).any():
                 print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
                 print("--- Smoothing Lengths vary")
                 if print_diffs:
                     for i in range(npart):
-                        if ((ref.gas.h[i] - compare.gas.h[i]) / ref.gas.h[i]).any():
-                            print(ref.gas.h[i], "|", compare.gas.h[i])
+                        if (
+                            (ref.stars.h[i] - compare.stars.h[i]) / ref.stars.h[i]
+                        ).any():
+                            print(ref.stars.h[i], "|", compare.stars.h[i])
 
                 if break_on_diff:
                     quit()
+
+        # Check all emission rates are set everywhere
+        fishy = ref.stars.EmissionRateSet != compare.stars.EmissionRateSet
+        if fishy.any():
+
+            print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
+            print("--- EmissionRateSet vary")
+            if print_diffs:
+                for i in range(npart):
+                    if ref.stars.EmissionRateSet[i] != compare.stars.EmissionRateSet[i]:
+                        print(
+                            ref.stars.EmissionRateSet[i],
+                            "|",
+                            compare.stars.EmissionRateSet[i],
+                        )
+
+            if break_on_diff:
+                quit()
+
+        # Check all emitted radiation is equal
+        fishy = ref.stars.InjectionInteractions != compare.stars.InjectionInteractions
+        if fishy.any():
+
+            print("- Comparing stars", ref.snapnr, "->", compare.snapnr)
+            print("--- InjectionInteractions vary")
+            if print_diffs:
+                for i in range(npart):
+                    if (
+                        ref.stars.InjectionInteractions[i]
+                        != compare.stars.InjectionInteractions[i]
+                    ):
+                        print(
+                            ref.stars.InjectionInteractions[i],
+                            "|",
+                            compare.stars.InjectionInteractions[i],
+                        )
+
+            if break_on_diff:
+                quit()
 
     return
 

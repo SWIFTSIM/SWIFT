@@ -60,8 +60,11 @@ struct star_formation {
    * Jeans criterion (at power 2/3). */
   float n_jeans_2_3;
 
-  /*! Maximal temperature for forming a star. */
+  /*! Maximal gas temperature for forming a star. */
   float maximal_temperature;
+
+  /*! Minimal gas density for forming a star. */
+  float density_threashold;
 
   /*! Star formation efficiency. */
   float star_formation_efficiency;

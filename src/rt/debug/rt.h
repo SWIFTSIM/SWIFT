@@ -20,8 +20,6 @@
 #define SWIFT_RT_DEBUG_H
 
 #include "rt_debugging.h"
-#include "rt_stellar_emission_rate.h"
-#include "rt_thermochemistry.h"
 
 /**
  * @file src/rt/debug/rt.h
@@ -29,9 +27,40 @@
  */
 
 /**
+ * @brief Compute the photon emission rates for this stellar particle.
+ *        This function is called every time the spart is being reset
+ *        (during start-up and during stars ghost if spart is active)
+ *        and assumes that the photon emission rate is an intrinsic
+ *        stellar property, i.e. doesn't depend on the environment.
+ *
+ * @param sp star particle to work on
+ * @param time current system time
+ * @param star_age age of the star *at the end of the step*
+ * @param dt star time step
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param internal_units struct holding internal units
+ */
+__attribute__((always_inline)) INLINE static void
+rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
+                                 double star_age, double dt,
+                                 const struct rt_props* rt_props,
+                                 const struct phys_const* phys_const,
+                                 const struct unit_system* internal_units) {
+
+  sp->rt_data.debug_emission_rate_set += 1;
+
+  /* rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age,
+   * rt_props, */
+  /*                              phys_const, internal_units); */
+}
+
+/**
  * @brief Initialisation of the RT density loop related particle data.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
  * are both called individually.
+ *
+ * @param p Particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {}
@@ -39,9 +68,10 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
 /**
  * @brief Reset of the RT hydro particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
- * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_part is made in space_convert_rt_quantities() after
- * the zeroth time step is finished.
+ * are both called individually. Also an extra call to rt_reset_part is made
+ * in space_convert_rt_quantities_after_zeroth_step().
+ *
+ * @param p the particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
     struct part* restrict p) {
@@ -50,12 +80,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
 
-  p->rt_data.debug_calls_iact_gradient = 0;
-  p->rt_data.debug_calls_iact_transport = 0;
-  p->rt_data.debug_injection_check = 0;
   p->rt_data.debug_calls_iact_gradient_interaction = 0;
   p->rt_data.debug_calls_iact_transport_interaction = 0;
 
+  p->rt_data.debug_kicked = 0;
   p->rt_data.debug_injection_done = 0;
   p->rt_data.debug_gradients_done = 0;
   p->rt_data.debug_transport_done = 0;
@@ -64,9 +92,11 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
 
 /**
  * @brief First initialisation of the RT hydro particle data.
+ *
+ * @param p particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p) {
+    struct part* restrict p, const struct rt_props* restrict rt_props) {
 
   rt_init_part(p);
   rt_reset_part(p);
@@ -74,41 +104,99 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 }
 
 /**
+ * @brief Initialises particle quantities that can't be set
+ * otherwise before the zeroth step is finished. E.g. because
+ * they require the particle density and time step to be known.
+ *
+ * @param p particle to work on
+ * @param rt_props RT properties struct
+ */
+__attribute__((always_inline)) INLINE static void
+rt_init_part_after_zeroth_step(struct part* restrict p,
+                               const struct rt_props* rt_props) {
+
+  /* If we're running with debugging checks on, reset debugging
+   * counters and flags in particular after the zeroth step so
+   * that the checks work as intended. */
+  rt_init_part(p);
+  rt_reset_part(p);
+  /* Since the inject_prep has been moved to the density loop, the
+   * initialization at startup is messing with the total counters for stars
+   * because the density is called, but not the force-and-kick tasks. So reset
+   * the total counters here as well so that they will match the star counters.
+   */
+  p->rt_data.debug_radiation_absorbed_tot = 0ULL;
+}
+
+/**
  * @brief Initialisation of the RT density loop related star particle data.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
  * are both called individually.
+ *
+ * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+
+  /* reset this here as well as in the rt_debugging_checks_end_of_step()
+   * routine to test task dependencies are done right */
+  sp->rt_data.debug_iact_hydro_inject_prep = 0;
+  sp->rt_data.debug_iact_hydro_inject = 0;
+  sp->rt_data.debug_emission_rate_set = 0;
+}
 
 /**
  * @brief Reset of the RT star particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
- * are both called individually. Also, if debugging checks are active, an
- * extra call to rt_reset_spart is made in space_convert_rt_quantities() after
- * the zeroth time step is finished.
+ * are both called individually. Also an extra call to rt_reset_spart is made
+ * in space_convert_rt_quantities_after_zeroth_step().
+ *
+ * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_spart(
-    struct spart* restrict sp) {
-
-  /* reset everything */
-
-  /* reset this here as well as in the rt_debugging_checks_end_of_step()
-   * routine to test task dependencies are done right */
-  sp->rt_data.debug_iact_hydro_inject = 0;
-
-  sp->rt_data.debug_emission_rate_set = 0;
-  sp->rt_data.debug_injection_check = 0;
-}
+    struct spart* restrict sp) {}
 
 /**
  * @brief First initialisation of the RT star particle data.
+ *
+ * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {
 
   rt_init_spart(sp);
   rt_reset_spart(sp);
+  sp->rt_data.debug_radiation_emitted_tot = 0ULL;
+}
+
+/**
+ * @brief Initialises particle quantities that can't be set
+ * otherwise before the zeroth step is finished. E.g. because
+ * they require the star density and time step to be known.
+ * @param sp star particle to work on
+ * @param time current system time
+ * @param star_age age of the star *at the end of the step*
+ * @param dt star time step
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param internal_units struct holding internal units
+ */
+__attribute__((always_inline)) INLINE static void
+rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
+                               double star_age, double dt,
+                               const struct rt_props* rt_props,
+                               const struct phys_const* phys_const,
+                               const struct unit_system* internal_units) {
+
+  /* If we're running with debugging checks on, reset debugging
+   * counters and flags in particular after the zeroth step so
+   * that the checks work as intended. */
+  rt_init_spart(sp);
+  rt_reset_spart(sp);
+  /* Since the inject_prep has been moved to the density loop, the
+   * initialization at startup is messing with the total counters because
+   * the density is called, but not the force-and-kick tasks. So reset
+   * the total counters here as well. */
   sp->rt_data.debug_radiation_emitted_tot = 0ULL;
 }
 
@@ -134,10 +222,25 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
 /**
  * @brief Exception handle a star part not having any neighbours in ghost task
  *
- * @param p The #part.
+ * @param sp The #spart.
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
     struct spart* sp){};
+
+/**
+ * @brief Do checks/conversions on particles on startup.
+ *
+ * @param p The particle to work on
+ * @param rtp The RT properties struct
+ * @param phys_const physical constants struct
+ * @param us unit_system struct
+ * @param cosmo cosmology struct
+ */
+__attribute__((always_inline)) INLINE static void rt_convert_quantities(
+    struct part* restrict p, const struct rt_props* rt_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo) {}
 
 /**
  * @brief Computes the next radiative transfer time step size
@@ -155,7 +258,26 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
 }
 
 /**
- * @brief Compute the time-step length for an RT step of a particle.
+ * @brief Computes the next radiative transfer time step size
+ * of a given star particle (during timestep tasks).
+ *
+ * @param sp spart to work on
+ * @param rt_props the RT properties struct
+ * @param cosmo the cosmology
+ */
+__attribute__((always_inline)) INLINE static float rt_compute_spart_timestep(
+    const struct spart* restrict sp, const struct rt_props* restrict rt_props,
+    const struct cosmology* restrict cosmo) {
+
+  return FLT_MAX;
+}
+
+/**
+ * @brief Compute the time-step length for an RT step of a particle from given
+ * integer times ti_beg and ti_end. This time-step length is then used to
+ * compute the actual time integration of the transport/force step and the
+ * thermochemistry. This is not used to determine the time-step length during
+ * the time-step tasks.
  *
  * @param ti_beg Start of the time-step (on the integer time-line).
  * @param ti_end End of the time-step (on the integer time-line).
@@ -173,60 +295,18 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
 }
 
 /**
- * @brief Update the photon number of a particle, i.e. compute
- *  E^{n+1} = E^n + dt * dE_* / dt. This function finalises
- *  the injection step.
+ * @brief This function finalises the injection step.
  *
  * @param p particle to work on
  * @param props struct #rt_props that contains global RT properties
  */
-__attribute__((always_inline)) INLINE static void
-rt_injection_update_photon_density(struct part* restrict p,
-                                   struct rt_props* props) {
+__attribute__((always_inline)) INLINE static void rt_finalise_injection(
+    struct part* restrict p, struct rt_props* props) {
 
-  if (props->debug_do_all_parts_have_stars_checks &&
-      p->rt_data.debug_injection_check != 1)
-    error("called ghost1 when injection check count is %d; ID=%lld",
-          p->rt_data.debug_injection_check, p->id);
+  if (p->rt_data.debug_kicked != 1)
+    error("called rt_ghost1 when particle %lld is unkicked (count=%d)", p->id,
+          p->rt_data.debug_kicked);
   p->rt_data.debug_injection_done += 1;
-}
-
-/**
- * @brief Compute the photon emission rates for this stellar particle
- *        This function is called every time the spart is being reset
- *        (during start-up and during stars ghost if spart is active)
- *        and assumes that the photon emission rate is an intrinsic
- *        stellar property, i.e. doesn't depend on the environment.
- *
- * @param sp star particle to work on
- * @param time current system time
- * @param star_age age of the star *at the end of the step*
- * @param dt star time step
- * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param internal_units struct holding internal units
- */
-__attribute__((always_inline)) INLINE static void
-rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
-                                 double star_age, double dt,
-                                 const struct rt_props* rt_props,
-                                 const struct phys_const* phys_const,
-                                 const struct unit_system* internal_units) {
-
-  /* Skip initial fake time-step */
-  if (dt == 0.0l) return;
-
-  if (time == 0.l) {
-    /* if function is called before the first actual step, time is still
-     * at zero unless specified otherwise in parameter file.*/
-    star_age = dt;
-  }
-
-  /* now get the emission rates */
-  double star_age_begin_of_step = star_age - dt;
-  star_age_begin_of_step = max(0.l, star_age_begin_of_step);
-  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
-                               phys_const, internal_units);
 }
 
 /**
@@ -237,17 +317,16 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
     struct part* restrict p) {
 
+  if (p->rt_data.debug_kicked != 1)
+    error("called finalise gradient when particle %lld is unkicked (count=%d)",
+          p->id, p->rt_data.debug_kicked);
+
   if (p->rt_data.debug_injection_done != 1)
     error(
         "Called finalise gradient on particle "
         "where injection count = %d",
         p->rt_data.debug_injection_done);
 
-  if (p->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called finalise gradient on particle "
-        "with iact gradient count = %d",
-        p->rt_data.debug_calls_iact_gradient);
   if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
     message(
         "WARNING: Called finalise gradient on particle "
@@ -266,6 +345,10 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt) {
 
+  if (p->rt_data.debug_kicked != 1)
+    error("called finalise transport when particle %lld is unkicked (count=%d)",
+          p->id, p->rt_data.debug_kicked);
+
   if (p->rt_data.debug_injection_done != 1)
     error(
         "Trying to do finalise_transport when "
@@ -278,17 +361,6 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
         "rt_finalise_gradient count is %d",
         p->rt_data.debug_gradients_done);
 
-  if (p->rt_data.debug_calls_iact_gradient == 0)
-    error(
-        "Called finalise transport on particle "
-        "with iact gradient count = %d",
-        p->rt_data.debug_calls_iact_gradient);
-
-  if (p->rt_data.debug_calls_iact_transport == 0)
-    error(
-        "Called finalise transport on particle "
-        "with iact transport count = %d",
-        p->rt_data.debug_calls_iact_transport);
   if (p->rt_data.debug_calls_iact_transport_interaction == 0)
     message(
         "WARNING: Called finalise transport on particle "
@@ -303,20 +375,80 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
  *
  * This function wraps around rt_do_thermochemistry function.
  *
- * @param p particle to work on
+ * @param p Particle to work on.
+ * @param xp Pointer to the particle' extended data.
+ * @param rt_props RT properties struct
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static void rt_tchem(
-    struct part* restrict p) {
+    struct part* restrict p, struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us, const double dt) {
 
-  rt_do_thermochemistry(p);
+  if (p->rt_data.debug_kicked != 1)
+    error("Trying to do thermochemistry on unkicked particle %lld (count=%d)",
+          p->id, p->rt_data.debug_kicked);
+  if (!p->rt_data.debug_injection_done)
+    error("Trying to do thermochemistry when injection step hasn't been done");
+  if (!p->rt_data.debug_gradients_done)
+    error("Trying to do thermochemistry when gradient step hasn't been done");
+  if (!p->rt_data.debug_transport_done)
+    error("Trying to do thermochemistry when transport step hasn't been done");
+
+  p->rt_data.debug_thermochem_done += 1;
+
+  /* rt_do_thermochemistry(p); */
 }
+
+/**
+ * @brief Extra operations done during the kick.
+ *
+ * @param p Particle to act upon.
+ * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
+ * @param dt_grav Gravity time-step @f$\frac{dt}{a}@f$.
+ * @param dt_hydro Hydro acceleration time-step
+ * @f$\frac{dt}{a^{3(\gamma{}-1)}}@f$.
+ * @param dt_kick_corr Gravity correction time-step @f$adt@f$.
+ * @param cosmo Cosmology.
+ * @param hydro_props Additional hydro properties.
+ */
+__attribute__((always_inline)) INLINE static void rt_kick_extra(
+    struct part* p, float dt_therm, float dt_grav, float dt_hydro,
+    float dt_kick_corr, const struct cosmology* cosmo,
+    const struct hydro_props* hydro_props) {
+
+  /* Don't account for timestep_sync backward kicks */
+  if (dt_therm >= 0.f && dt_grav >= 0.f && dt_hydro >= 0.f &&
+      dt_kick_corr >= 0.f) {
+    p->rt_data.debug_kicked += 1;
+  }
+}
+
+/**
+ * @brief Prepare a particle for the !HYDRO! force calculation.
+ * E.g. for the meshless schemes, we need to take into account the
+ * mass fluxes of the constituent species between particles.
+ * NOTE: don't call this during rt_init_part or rt_reset_part,
+ * follow the hydro_prepare_force logic.
+ *
+ * @param p particle to work on
+ **/
+__attribute__((always_inline)) INLINE static void rt_prepare_force(
+    struct part* p) {}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.
  *
  * @param props the #rt_props.
+ * @param restart did we restart?
  */
 __attribute__((always_inline)) INLINE static void rt_clean(
-    struct rt_props* props) {}
+    struct rt_props* props, int restart) {}
 
 #endif /* SWIFT_RT_DEBUG_H */

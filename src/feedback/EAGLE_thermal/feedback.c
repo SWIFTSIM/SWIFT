@@ -276,7 +276,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 #ifdef SWIFT_DEBUG_CHECKS
   if (age < 0.f) error("Negative age for a star.");
 
-  if (sp->count_since_last_enrichment != 0)
+  if (sp->count_since_last_enrichment != 0 && engine_current_step > 0)
     error("Computing feedback on a star that should not");
 #endif
 
@@ -753,12 +753,16 @@ void feedback_props_init(struct feedback_props* fp,
   const double s_n = 1.0 / (M_LN10 * fp->n_n);
   const double s_Z = 1.0 / (M_LN10 * fp->n_Z);
 
-  message("Feedback model is EAGLE (%s)", energy_fraction);
-  message("Feedback energy fraction min=%f, max=%f", fp->f_E_min, fp->f_E_max);
-  message("Feedback energy fraction powers: n_n=%f, n_Z=%f", fp->n_n, fp->n_Z);
-  message("Feedback energy fraction widths: s_n=%f, s_Z=%f", s_n, s_Z);
-  message("Feedback energy fraction pivots: Z_0=%f, n_0_cgs=%f", fp->Z_0,
-          fp->n_0_cgs);
+  if (engine_rank == 0) {
+    message("Feedback model is EAGLE (%s)", energy_fraction);
+    message("Feedback energy fraction min=%f, max=%f", fp->f_E_min,
+            fp->f_E_max);
+    message("Feedback energy fraction powers: n_n=%f, n_Z=%f", fp->n_n,
+            fp->n_Z);
+    message("Feedback energy fraction widths: s_n=%f, s_Z=%f", s_n, s_Z);
+    message("Feedback energy fraction pivots: Z_0=%f, n_0_cgs=%f", fp->Z_0,
+            fp->n_0_cgs);
+  }
 }
 
 /**

@@ -29,7 +29,6 @@
 import sys
 import os
 import swiftsimio
-import numpy as np
 import gc
 from matplotlib import pyplot as plt
 import matplotlib as mpl
@@ -84,21 +83,6 @@ def get_snapshot_list(snapshot_basename="output"):
     return snaplist
 
 
-def remove_zeros(arr):
-    """
-    Remove zeroes so lognormal color schemes
-    are possible
-    """
-    z = arr == 0.0
-    nonz = np.logical_not(z)
-    if nonz.any():
-        minval = arr[nonz].min()
-    else:
-        minval = 1e-3
-    arr[z] = minval * 1e-3
-    return arr
-
-
 def set_colorbar(ax, im):
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -134,8 +118,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
         # add mass weights to remove surface density dependence in images
         new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
         en = getattr(data.gas.photon_energies, "group" + str(g + 1))
-        en = remove_zeros(en)
-        en *= data.gas.masses
+        en = en * data.gas.masses
         setattr(data.gas, new_attribute_str, en)
 
         if plot_all_data:
@@ -146,11 +129,10 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                     "mass_weighted_radiation_flux" + str(g + 1) + direction
                 )
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
-                f = remove_zeros(f)
                 f *= data.gas.masses
                 setattr(data.gas, new_attribute_str, f)
 
-    # get mass surface density projection that we'll use to remove density dependence in  impage
+    # get mass surface density projection that we'll use to remove density dependence in image
     mass_map = swiftsimio.visualisation.projection.project_gas(
         data, project="masses", **projection_kwargs
     )
@@ -166,7 +148,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             photon_map = swiftsimio.visualisation.projection.project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
-            photon_map /= mass_map
+            photon_map = photon_map / mass_map
 
             ax = fig.add_subplot(ngroups, 3, g * 3 + 1)
             if energy_boundaries is not None:
@@ -184,7 +166,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             photon_map = swiftsimio.visualisation.projection.project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
-            photon_map /= mass_map
+            photon_map = photon_map / mass_map
 
             ax = fig.add_subplot(ngroups, 3, g * 3 + 2)
             if flux_boundaries is not None:
@@ -202,7 +184,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             photon_map = swiftsimio.visualisation.projection.project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
-            photon_map /= mass_map
+            photon_map = photon_map / mass_map
 
             ax = fig.add_subplot(ngroups, 3, g * 3 + 3)
             im = ax.imshow(photon_map.T, **imshow_kwargs)
@@ -224,7 +206,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             photon_map = swiftsimio.visualisation.projection.project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
-            photon_map /= mass_map
+            photon_map = photon_map / mass_map
 
             ax = fig.add_subplot(1, ngroups, g + 1)
             if energy_boundaries is not None:
@@ -288,7 +270,6 @@ def get_minmax_vals(snaplist):
             dirmin = []
             dirmax = []
             for direction in ["X", "Y"]:
-                new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 dirmin.append(f.min())
                 dirmax.append(f.max())

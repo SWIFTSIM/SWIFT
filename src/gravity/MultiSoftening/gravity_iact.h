@@ -141,7 +141,7 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
 __attribute__((always_inline, nonnull)) INLINE static void
 runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
                          const float r2, const float h, const float h_inv,
-                         const struct multipole *m, float *f_x,
+                         const struct multipole *m, float *restrict f_x,
                          float *restrict f_y, float *restrict f_z,
                          float *restrict pot) {
 

@@ -263,7 +263,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 #ifdef SWIFT_DEBUG_CHECKS
   if (age < 0.f) error("Negative age for a star.");
 
-  if (sp->count_since_last_enrichment != 0)
+  if (sp->count_since_last_enrichment != 0 && engine_current_step > 0)
     error("Computing feedback on a star that should not");
 #endif
 
@@ -683,7 +683,7 @@ void feedback_props_init(struct feedback_props* fp,
    * mass bins used in IMF  */
   compute_ejecta(fp);
 
-  message("initialized stellar feedback");
+  if (engine_rank == 0) message("initialized stellar feedback");
 }
 
 /**

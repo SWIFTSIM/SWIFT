@@ -24,23 +24,23 @@ import h5py
 # capabilities of the code
 
 # Parameters
-gamma = 5. / 3.    # Gas adiabatic index
+gamma = 5.0 / 3.0  # Gas adiabatic index
 
-fileName = "vacuum.hdf5" 
+fileName = "vacuum.hdf5"
 
-#---------------------------------------------------
+# ---------------------------------------------------
 glass = h5py.File("glassCube_64.hdf5", "r")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:,:]
+pos = glass["/PartType0/Coordinates"][:, :]
 h = glass["/PartType0/SmoothingLength"][:] * 0.3
 
 # Shrink the glass to half its size, move it to the centre of the box, and
 # clone it in the y and z directions
-pos = 0.5 * pos + np.array([0.25, 0., 0.])
+pos = 0.5 * pos + np.array([0.25, 0.0, 0.0])
 h *= 0.5
-pos = np.append(pos, pos + np.array([0., 0.5, 0.]), axis = 0)
-pos = np.append(pos, pos + np.array([0., 0., 0.5]), axis = 0)
+pos = np.append(pos, pos + np.array([0.0, 0.5, 0.0]), axis=0)
+pos = np.append(pos, pos + np.array([0.0, 0.0, 0.5]), axis=0)
 h = np.append(h, h)
 h = np.append(h, h)
 
@@ -53,18 +53,18 @@ ids = np.linspace(1, numPart, numPart)
 m = np.zeros(numPart)
 u = np.zeros(numPart)
 
-m[:] = 1. * vol / numPart
-u[:] = 1. / (1. * (gamma - 1.))
+m[:] = 1.0 * vol / numPart
+u[:] = 1.0 / (1.0 * (gamma - 1.0))
 
-#--------------------------------------------------
+# --------------------------------------------------
 
-#File
-file = h5py.File(fileName, 'w')
+# File
+file = h5py.File(fileName, "w")
 
 # Header
 grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [1., 1., 1.]
-grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
+grp.attrs["BoxSize"] = [1.0, 1.0, 1.0]
+grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["Time"] = 0.0
@@ -73,21 +73,21 @@ grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 grp.attrs["Flag_Entropy_ICs"] = 0
 grp.attrs["Dimension"] = 3
 
-#Units
+# Units
 grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.
-grp.attrs["Unit mass in cgs (U_M)"] = 1.
-grp.attrs["Unit time in cgs (U_t)"] = 1.
-grp.attrs["Unit current in cgs (U_I)"] = 1.
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.
+grp.attrs["Unit length in cgs (U_L)"] = 1.0
+grp.attrs["Unit mass in cgs (U_M)"] = 1.0
+grp.attrs["Unit time in cgs (U_t)"] = 1.0
+grp.attrs["Unit current in cgs (U_I)"] = 1.0
+grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
-#Particle group
+# Particle group
 grp = file.create_group("/PartType0")
-grp.create_dataset('Coordinates', data=pos, dtype='d')
-grp.create_dataset('Velocities', data=v, dtype='f')
-grp.create_dataset('Masses', data=m, dtype='f')
-grp.create_dataset('SmoothingLength', data=h, dtype='f')
-grp.create_dataset('InternalEnergy', data=u, dtype='f')
-grp.create_dataset('ParticleIDs', data=ids, dtype='L')
+grp.create_dataset("Coordinates", data=pos, dtype="d")
+grp.create_dataset("Velocities", data=v, dtype="f")
+grp.create_dataset("Masses", data=m, dtype="f")
+grp.create_dataset("SmoothingLength", data=h, dtype="f")
+grp.create_dataset("InternalEnergy", data=u, dtype="f")
+grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 
 file.close()

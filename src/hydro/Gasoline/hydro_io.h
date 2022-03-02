@@ -179,7 +179,8 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          const struct xpart* xparts,
                                          struct io_props* list,
                                          int* num_fields) {
-  *num_fields = 12;
+  *num_fields = 14;
+
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
       "Coordinates", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f, parts, xparts,
@@ -239,10 +240,16 @@ INLINE static void hydro_write_particles(const struct part* parts,
                            "Physical shock indicators (D in the paper) created "
                            "from the velocity tensor.");
 
-  list[11] = io_make_output_field(
+  /* Units and cosmology TBD */
+  list[12] = io_make_output_field(
       "DiffusionRates", FLOAT, 1, UNIT_CONV_THERMAL_DIFFUSIVITY, 0.f, parts,
       diffusion.rate,
       "Physical diffusion rates calculated from the shear tensor.");
+
+  list[13] = io_make_output_field_convert_part(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
+      convert_part_potential,
+      "Co-moving gravitational potential at position of the particles");
 }
 
 /**

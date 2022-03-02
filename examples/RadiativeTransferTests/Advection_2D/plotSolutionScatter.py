@@ -29,7 +29,6 @@
 import sys
 import os
 import swiftsimio
-import numpy as np
 import gc
 from matplotlib import pyplot as plt
 import matplotlib as mpl
@@ -87,22 +86,11 @@ def get_snapshot_list(snapshot_basename="output"):
     return snaplist
 
 
-def set_colorbar(ax, im):
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    plt.colorbar(im, cax=cax)
-    return
-
-
-def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
+def plot_photons(filename):
     """
     Create the actual plot.
 
     filename: file to work with
-    energy_boundaries:  list of [E_min, E_max] for each photon group. 
-                        If none, limits are set automatically.
-    flux_boundaries:    list of [F_min, F_max] for each photon group. 
-                        If none, limits are set automatically.
     """
 
     print("working on", filename)
@@ -124,7 +112,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
         if plot_all_data:
             # prepare also the fluxes
-            #  for direction in ["X", "Y", "Z"]:
             for direction in ["X", "Y"]:
                 new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
@@ -204,78 +191,9 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     return
 
 
-def get_minmax_vals(snaplist):
-    """
-    Find minimal and maximal values for energy and flux
-    so you can fix axes limits over all snapshots
-
-    snaplist: list of snapshot filenames
-
-    returns:
-
-    energy_boundaries: list of [E_min, E_max] for each photon group
-    flux_boundaries: list of [Fx_min, Fy_max] for each photon group
-    """
-
-    emins = []
-    emaxs = []
-    fmins = []
-    fmaxs = []
-
-    for filename in snaplist:
-
-        data = swiftsimio.load(filename)
-        meta = data.metadata
-
-        ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
-        emin_group = []
-        emax_group = []
-        fluxmin_group = []
-        fluxmax_group = []
-
-        for g in range(ngroups):
-            en = getattr(data.gas.photon_energies, "group" + str(g + 1))
-            emin_group.append(en.min())
-            emax_group.append(en.max())
-
-            dirmin = []
-            dirmax = []
-            for direction in ["X", "Y"]:
-                new_attribute_str = "radiation_flux" + str(g + 1) + direction
-                f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
-                dirmin.append(f.min())
-                dirmax.append(f.max())
-            fluxmin_group.append(min(dirmin))
-            fluxmax_group.append(max(dirmax))
-
-        emins.append(emin_group)
-        emaxs.append(emax_group)
-        fmins.append(fluxmin_group)
-        fmaxs.append(fluxmax_group)
-
-    energy_boundaries = []
-    flux_boundaries = []
-    for g in range(ngroups):
-        emin = min([emins[f][g] for f in range(len(snaplist))])
-        emax = max([emaxs[f][g] for f in range(len(snaplist))])
-        energy_boundaries.append([emin, emax])
-        fmin = min([fmins[f][g] for f in range(len(snaplist))])
-        fmax = max([fmaxs[f][g] for f in range(len(snaplist))])
-        flux_boundaries.append([fmin, fmax])
-
-    return energy_boundaries, flux_boundaries
-
-
 if __name__ == "__main__":
 
     snaplist = get_snapshot_list(snapshot_base)
-    if fancy:
-        energy_boundaries, flux_boundaries = get_minmax_vals(snaplist)
-    else:
-        energy_boundaries = None
-        flux_boundaries = None
 
     for f in snaplist:
-        plot_photons(
-            f, energy_boundaries=energy_boundaries, flux_boundaries=flux_boundaries
-        )
+        plot_photons(f)

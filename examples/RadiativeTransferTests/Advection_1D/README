@@ -13,8 +13,13 @@ This way, you can test multiple initial condition scenarios simultaneously.
 There are no stars to act as sources. Also make sure that you choose your
 photon frequencies in a way that doesn't interact with gas!
 
-The ICs are created to be compatible with GEAR_RT. Recommended configuration:
-`--with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none`
+The ICs are created to be compatible with GEAR_RT and SPHM1RT. Recommended configuration:
+GEAR_RT:
+`--with-rt=GEAR_3 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=MACH_INSTALL_PREFIX`
+
+SPHM1RT:
+`--with-rt=SPHM1RT_3 --with-hydro-dimension=1 --with-stars=basic`
+Note that in SPHM1RT any (SPH) hydro scheme is compatible.
 
 Note that if you want to use a reduced speed of light for this test, you also 
 need to adapt the fluxes in the initial conditions! They are generated assuming

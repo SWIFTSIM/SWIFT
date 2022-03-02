@@ -38,7 +38,8 @@ INLINE static void convert_gpart_vi(const struct engine* e,
                                     const struct gpart* gp, float* ret) {
 
   /* When we are running with the delta-f method, resample the momentum */
-  if (e->neutrino_properties->use_delta_f) {
+  if (e->neutrino_properties->use_delta_f ||
+      e->neutrino_properties->use_delta_f_mesh_only) {
     /* Retrieve physical constants, including the neutrino mass array */
     const double a_scale = e->cosmology->a;
     const double N_nu = e->cosmology->N_nu;
@@ -82,6 +83,7 @@ INLINE static void convert_gpart_mnu(const struct engine* e,
 
   /* Resample if running with the delta-f method or neutrino ic generation */
   if (e->neutrino_properties->use_delta_f ||
+      e->neutrino_properties->use_delta_f_mesh_only ||
       e->neutrino_properties->generate_ics) {
 
     /* Use a particle id dependent seed (sum of global seed and ID) */
@@ -107,6 +109,34 @@ INLINE static void convert_gpart_mnu(const struct engine* e,
 }
 
 /**
+ * @brief Obtain the statistical delta-f weight of a neutrino
+ *
+ * @param e The engine of the run
+ * @param gp The neutrino gpart in question
+ * @param ret Output
+ */
+INLINE static void convert_gpart_weight(const struct engine* e,
+                                        const struct gpart* gp, double* ret) {
+
+  /* Resample if running with the delta-f method or neutrino ic generation */
+  if (e->neutrino_properties->use_delta_f ||
+      e->neutrino_properties->use_delta_f_mesh_only) {
+
+    /* Gather neutrino constants */
+    struct neutrino_model nu_model;
+    gather_neutrino_consts(e->s, &nu_model);
+
+    /* Compute the weight */
+    double mass, weight;
+    gpart_neutrino_mass_weight(gp, &nu_model, &mass, &weight);
+
+    ret[0] = weight;
+  } else {
+    ret[0] = 1.0;
+  }
+}
+
+/**
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param gparts The particle array.
@@ -126,7 +156,11 @@ __attribute__((always_inline)) INLINE static int neutrino_write_particles(
       "MicroscopicMasses", DOUBLE, 1, UNIT_CONV_MASS, 0.f, gparts,
       convert_gpart_mnu, "Microscopic masses of individual neutrino particles");
 
-  return 2;
+  list[2] = io_make_output_field_convert_gpart(
+      "Weights", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
+      convert_gpart_weight, "Statistical weights of neutrino particles");
+
+  return 3;
 }
 
 #endif /* SWIFT_DEFAULT_NEUTRINO_IO_H */

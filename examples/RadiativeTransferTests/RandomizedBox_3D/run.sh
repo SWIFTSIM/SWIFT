@@ -2,14 +2,27 @@
 
 # make run.sh fail if a subcommand fails
 set -e
+set -o pipefail
 
 if [ ! -f 'randomized-sine.hdf5' ]; then
     echo "Generating ICs"
     python3 makeIC.py
 fi
 
+cmd=../../swift
+if [ $# -gt 0 ]; then
+    case "$1" in 
+    g | gdb)
+        cmd='gdb --args ../../swift'
+        ;;
+    *)
+        echo unknown cmdline param, running without gdb
+        ;;
+    esac
+fi
+
 # Run SWIFT with RT
-../../swift \
+$cmd \
     --hydro \
     --threads=9 \
     --verbose=0  \

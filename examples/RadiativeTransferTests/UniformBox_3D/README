@@ -29,4 +29,3 @@ Tl;dr:
       GEAR scheme with debugging checks enabled
     - `./rt_sanity_checks-GEAR.py` is made to work on any run with the GEAR
       scheme and debugging checks enabled.
-

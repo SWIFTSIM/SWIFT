@@ -39,13 +39,19 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
   struct spart *restrict sparts = (struct spart *)map_data;
   const struct engine *restrict e = (struct engine *)extra_data;
 
-  int emission_sum = 0;
-  unsigned long long emission_sum_tot = 0;
+  unsigned long long emission_sum_this_step = 0ULL;
+  unsigned long long emission_sum_tot = 0ULL;
+  float emitted_energy[RT_NGROUPS];
+  for (int g = 0; g < RT_NGROUPS; g++) emitted_energy[g] = 0.f;
 
   for (int k = 0; k < scount; k++) {
+
     struct spart *restrict sp = &sparts[k];
-    emission_sum += sp->rt_data.debug_iact_hydro_inject;
+    emission_sum_this_step += sp->rt_data.debug_iact_hydro_inject;
     emission_sum_tot += sp->rt_data.debug_radiation_emitted_tot;
+    /* Reset all values here in case stars won't be active next step */
+    sp->rt_data.debug_iact_hydro_inject = 0;
+    sp->rt_data.debug_iact_hydro_inject_prep = 0;
 
     for (int g = 0; g < RT_NGROUPS; g++) {
       /* also check now that we actually injected the correct
@@ -58,25 +64,41 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
         float diff = 1.f - sp->rt_data.emission_this_step[g] /
                                sp->rt_data.debug_injected_energy[g];
 
-        if (fabs(diff) > 1e-3) {
-          message(
-              "Incorrect injection ID %lld: "
-              "group %d expected %.3g got %.3g diff %.3g",
-              sp->id, g, sp->rt_data.emission_this_step[g],
-              sp->rt_data.debug_injected_energy[g], diff);
+        if (fabsf(diff) > 1e-4) {
+          /* Dividing the total into several parts and summing them up again
+           * while hoping to obtain the same results may lead to diappointment
+           * due to roundoff errors. Check that the sum of the individual
+           * weights and the ones we collected for the injection are close
+           * enough. */
+          float psi_sum_now = 0.f;
+          for (int i = 0; i < 8; i++)
+            psi_sum_now += sp->rt_data.octant_weights[i];
+          float diff_weights = 1.f - sp->rt_data.debug_psi_sum / psi_sum_now;
+          if (fabsf(diff_weights) > 1e-4)
+            message(
+                "Incorrect injection ID %lld: "
+                "group %d expected %.3g got %.3g diff %.3g diff_weights %.3g",
+                sp->id, g, sp->rt_data.emission_this_step[g],
+                sp->rt_data.debug_injected_energy[g], diff, diff_weights);
         }
       }
+      emitted_energy[g] += sp->rt_data.debug_injected_energy[g];
     }
 
-    /* reset stuff such that it is set even if the star particle
-     * isn't active in the next step */
-    sp->rt_data.debug_iact_hydro_inject = 0;
     for (int g = 0; g < RT_NGROUPS; g++) {
       sp->rt_data.debug_injected_energy[g] = 0.f;
     }
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      sp->rt_data.emission_this_step[g] = 0.f;
+    }
   }
-  atomic_add(&e->rt_props->debug_radiation_emitted_this_step, emission_sum);
+
+  atomic_add(&e->rt_props->debug_radiation_emitted_this_step,
+             emission_sum_this_step);
   atomic_add(&e->rt_props->debug_radiation_emitted_tot, emission_sum_tot);
+  for (int g = 0; g < RT_NGROUPS; g++)
+    atomic_add_f(&e->rt_props->debug_total_star_emitted_energy[g],
+                 emitted_energy[g]);
 }
 
 /**
@@ -89,17 +111,34 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
   struct part *restrict parts = (struct part *)map_data;
   const struct engine *restrict e = (struct engine *)extra_data;
 
-  int absorption_sum = 0;
-  unsigned long long absorption_sum_tot = 0;
+  unsigned long long absorption_sum_this_step = 0ULL;
+  unsigned long long absorption_sum_tot = 0ULL;
+  float energy_sum[RT_NGROUPS];
+  for (int g = 0; g < RT_NGROUPS; g++) energy_sum[g] = 0.f;
+
   for (int k = 0; k < count; k++) {
+
     struct part *restrict p = &parts[k];
-    absorption_sum += p->rt_data.debug_iact_stars_inject;
+    absorption_sum_this_step += p->rt_data.debug_iact_stars_inject;
     absorption_sum_tot += p->rt_data.debug_radiation_absorbed_tot;
     /* Reset all values here in case particles won't be active next step */
     p->rt_data.debug_iact_stars_inject = 0;
+
+    /* Sum up total energies for budget */
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      energy_sum[g] +=
+          p->rt_data.radiation[g].energy_density * p->geometry.volume;
+    }
   }
-  atomic_add(&e->rt_props->debug_radiation_absorbed_this_step, absorption_sum);
+
+  atomic_add(&e->rt_props->debug_radiation_absorbed_this_step,
+             absorption_sum_this_step);
   atomic_add(&e->rt_props->debug_radiation_absorbed_tot, absorption_sum_tot);
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    atomic_add_f(&(e->rt_props->debug_total_radiation_conserved_energy[g]),
+                 energy_sum[g]);
+  }
 }
 
 /**
@@ -107,19 +146,33 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
  * particles and do whatever checks for this particular time step you
  * want done.
  *
- * @param s The #space.
+ * @param e The #engine.
  * @param verbose Are we talkative?
  */
 __attribute__((always_inline)) INLINE static void
 rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
 
-  const ticks tic = getticks();
   struct space *s = e->s;
   if (!(e->policy & engine_policy_rt)) return;
+#ifdef WITH_MPI
+  /* Since we aren't sending data back, none of these checks will
+   * pass a run over MPI. */
+  return;
+#endif
 
-  /* reset values before the particle loops */
+  const ticks tic = getticks();
+
+  /* reset values before the particle loops.
+   * reset total counts as well. We track the totals since the beginning
+   * of time in particles individually. */
   e->rt_props->debug_radiation_emitted_this_step = 0ULL;
   e->rt_props->debug_radiation_absorbed_this_step = 0ULL;
+  e->rt_props->debug_radiation_emitted_tot = 0ULL;
+  e->rt_props->debug_radiation_absorbed_tot = 0ULL;
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    e->rt_props->debug_total_radiation_conserved_energy[g] = 0.f;
+    e->rt_props->debug_total_star_emitted_energy[g] = 0.f;
+  }
 
   /* hydro particle loop */
   if (s->nr_parts > 0)
@@ -140,74 +193,41 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
        e->rt_props->debug_radiation_absorbed_tot))
     error(
         "Emitted and absorbed radiation vary.\n"
-        "  This step: star emission %12d; gas absorption %12d\n"
+        "  This step: star emission %12lld; gas absorption %12lld\n"
         "Since start: star emission %12lld; gas absorption %12lld",
         e->rt_props->debug_radiation_emitted_this_step,
         e->rt_props->debug_radiation_absorbed_this_step,
         e->rt_props->debug_radiation_emitted_tot,
         e->rt_props->debug_radiation_absorbed_tot);
 
+  /* Write down energy budget for this timestep. */
+  if (e->step > 1) {
+    fprintf(e->rt_props->conserved_energy_filep, "\n");
+  } else {
+    fprintf(e->rt_props->conserved_energy_filep, "# nstars: %lld\n",
+            e->total_nr_sparts);
+  }
+  fprintf(e->rt_props->conserved_energy_filep, "%6d %12.6e ", e->step, e->time);
+  for (int g = 0; g < RT_NGROUPS; g++)
+    fprintf(e->rt_props->conserved_energy_filep, "%12.6e ",
+            e->rt_props->debug_total_radiation_conserved_energy[g]);
+
+  if (e->step > 1) {
+    fprintf(e->rt_props->star_emitted_energy_filep, "\n");
+  } else {
+    fprintf(e->rt_props->star_emitted_energy_filep, "# nstars: %lld\n",
+            e->total_nr_sparts);
+  }
+  fprintf(e->rt_props->star_emitted_energy_filep, "%6d %12.6e ", e->step,
+          e->time);
+  for (int g = 0; g < RT_NGROUPS; g++)
+    fprintf(e->rt_props->star_emitted_energy_filep, "%12.6e ",
+            e->rt_props->debug_total_star_emitted_energy[g]);
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
 
-/**
- * @brief This function is intended for debugging purposes only. It is called
- * during the self injection tasks, (regardless whether the particle actually
- * has neighbours to interact with) and intended to mark star or gas particles
- * to have been called during the step so further checks can be performed
- * further down the task system.
- *
- * @param p Hydro particle.
- */
-__attribute__((always_inline)) INLINE static void
-rt_debugging_check_injection_part(struct part *restrict p,
-                                  struct rt_props *props) {
-
-  /* skip this for GEAR */
-  /* if (props->do_all_parts_have_stars_checks) */
-  /*   p->rt_data.debug_injection_check += 1; */
-}
-
-/**
- * @brief This function is intended for debugging purposes only. It is called
- * during the self injection tasks, (regardless whether the particle actually
- * has neighbours to interact with) and intended to mark star or gas particles
- * to have been called during the step so further checks can be performed
- * further down the task system.
- *
- * @param s Star particle.
- */
-__attribute__((always_inline)) INLINE static void
-rt_debugging_check_injection_spart(struct spart *restrict s,
-                                   struct rt_props *props) {
-
-  /* skip this for GEAR */
-  /* if (props->do_all_parts_have_stars_checks) */
-  /*   s->rt_data.debug_injection_check += 1; */
-}
-
-/**
- * @brief Mark that a particle has been called during the gradient calls
- *
- * @param p Particle
- */
-__attribute__((always_inline)) INLINE static void
-rt_debugging_count_gradient_call(struct part *restrict p) {
-
-  p->rt_data.debug_calls_iact_gradient += 1;
-}
-
-/**
- * @brief Mark that a particle has been called during the transport calls
- *
- * @param p Particle
- */
-__attribute__((always_inline)) INLINE static void
-rt_debugging_count_transport_call(struct part *restrict p) {
-
-  p->rt_data.debug_calls_iact_transport += 1;
-}
 #endif /* SWIFT_RT_DEBUG_CHECKS */
 #endif /* SWIFT_RT_DEBUGGING_GEAR_H */

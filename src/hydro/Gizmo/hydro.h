@@ -250,41 +250,50 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->geometry.volume = volume;
 
   /* we multiply with the smoothing kernel normalization */
-  p->geometry.matrix_E[0][0] = ihdim * p->geometry.matrix_E[0][0];
-  p->geometry.matrix_E[0][1] = ihdim * p->geometry.matrix_E[0][1];
-  p->geometry.matrix_E[0][2] = ihdim * p->geometry.matrix_E[0][2];
-  p->geometry.matrix_E[1][0] = ihdim * p->geometry.matrix_E[1][0];
-  p->geometry.matrix_E[1][1] = ihdim * p->geometry.matrix_E[1][1];
-  p->geometry.matrix_E[1][2] = ihdim * p->geometry.matrix_E[1][2];
-  p->geometry.matrix_E[2][0] = ihdim * p->geometry.matrix_E[2][0];
-  p->geometry.matrix_E[2][1] = ihdim * p->geometry.matrix_E[2][1];
-  p->geometry.matrix_E[2][2] = ihdim * p->geometry.matrix_E[2][2];
+  p->geometry.matrix_E[0][0] *= ihdim;
+  p->geometry.matrix_E[0][1] *= ihdim;
+  p->geometry.matrix_E[0][2] *= ihdim;
+  p->geometry.matrix_E[1][0] *= ihdim;
+  p->geometry.matrix_E[1][1] *= ihdim;
+  p->geometry.matrix_E[1][2] *= ihdim;
+  p->geometry.matrix_E[2][0] *= ihdim;
+  p->geometry.matrix_E[2][1] *= ihdim;
+  p->geometry.matrix_E[2][2] *= ihdim;
 
   /* normalise the centroids for MFV */
   hydro_velocities_normalise_centroid(p, p->density.wcount);
 
   /* Check the condition number to see if we have a stable geometry. */
-  float condition_number_E = 0.0f;
-  int i, j;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      condition_number_E +=
-          p->geometry.matrix_E[i][j] * p->geometry.matrix_E[i][j];
-    }
+  const float condition_number_E =
+      p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
+      p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
+      p->geometry.matrix_E[0][2] * p->geometry.matrix_E[0][2] +
+      p->geometry.matrix_E[1][0] * p->geometry.matrix_E[1][0] +
+      p->geometry.matrix_E[1][1] * p->geometry.matrix_E[1][1] +
+      p->geometry.matrix_E[1][2] * p->geometry.matrix_E[1][2] +
+      p->geometry.matrix_E[2][0] * p->geometry.matrix_E[2][0] +
+      p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
+      p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
+
+  float condition_number = 0.0f;
+  if (invert_dimension_by_dimension_matrix(p->geometry.matrix_E) != 0) {
+    /* something went wrong in the inversion; force bad condition number */
+    condition_number = const_gizmo_max_condition_number + 1.0f;
+  } else {
+    const float condition_number_Einv =
+        p->geometry.matrix_E[0][0] * p->geometry.matrix_E[0][0] +
+        p->geometry.matrix_E[0][1] * p->geometry.matrix_E[0][1] +
+        p->geometry.matrix_E[0][2] * p->geometry.matrix_E[0][2] +
+        p->geometry.matrix_E[1][0] * p->geometry.matrix_E[1][0] +
+        p->geometry.matrix_E[1][1] * p->geometry.matrix_E[1][1] +
+        p->geometry.matrix_E[1][2] * p->geometry.matrix_E[1][2] +
+        p->geometry.matrix_E[2][0] * p->geometry.matrix_E[2][0] +
+        p->geometry.matrix_E[2][1] * p->geometry.matrix_E[2][1] +
+        p->geometry.matrix_E[2][2] * p->geometry.matrix_E[2][2];
+
+    condition_number =
+        hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
   }
-
-  invert_dimension_by_dimension_matrix(p->geometry.matrix_E);
-
-  float condition_number_Einv = 0.0f;
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      condition_number_Einv +=
-          p->geometry.matrix_E[i][j] * p->geometry.matrix_E[i][j];
-    }
-  }
-
-  const float condition_number =
-      hydro_dimension_inv * sqrtf(condition_number_E * condition_number_Einv);
 
   if (condition_number > const_gizmo_max_condition_number &&
       p->geometry.wcorr > const_gizmo_min_wcorr) {
@@ -319,16 +328,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   float W[5];
 
   W[0] = Q[0] * volume_inv;
-  if (Q[0] == 0.0f) {
-    W[1] = 0.;
-    W[2] = 0.;
-    W[3] = 0.;
-  } else {
-    const float m_inv = 1.0f / Q[0];
-    W[1] = Q[1] * m_inv;
-    W[2] = Q[2] * m_inv;
-    W[3] = Q[3] * m_inv;
-  }
+  const float m_inv = (Q[0] != 0.0f) ? 1.0f / Q[0] : 0.0f;
+  W[1] = Q[1] * m_inv;
+  W[2] = Q[2] * m_inv;
+  W[3] = Q[3] * m_inv;
 
 #ifdef EOS_ISOTHERMAL_GAS
   /* although the pressure is not formally used anywhere if an isothermal eos
@@ -376,6 +379,11 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+
+  warning(
+      "Gas particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      p->id, h, p->density.wcount);
 
   /* Re-set problematic values */
   p->density.wcount = kernel_root * h_inv_dim;

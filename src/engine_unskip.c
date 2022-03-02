@@ -28,7 +28,6 @@
 #include "active.h"
 #include "cell.h"
 #include "memswap.h"
-#include "rt_active.h"
 
 /* Load the profiler header, if needed. */
 #ifdef WITH_PROFILER
@@ -261,7 +260,7 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Do we have work to do? */
-  if (!rt_should_do_unskip_cell(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse */
   if (c->split) {
@@ -409,6 +408,8 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
+    if (cell_is_empty(c)) continue;
+
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||
         (with_ext_grav && c->nodeID == nodeID &&
@@ -417,12 +418,18 @@ void engine_unskip(struct engine *e) {
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_sinks && cell_is_active_sinks(c, e)) ||
         (with_black_holes && cell_is_active_black_holes(c, e)) ||
-        (with_rt && rt_should_do_unskip_cell(c, e))) {
+        (with_rt && cell_is_active_hydro(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
     }
+
+    /* Activate the top-level timestep exchange */
+#ifdef WITH_MPI
+    scheduler_activate_all_subtype(&e->sched, c->mpi.send, task_subtype_tend);
+    scheduler_activate_all_subtype(&e->sched, c->mpi.recv, task_subtype_tend);
+#endif
   }
 
   /* What kind of tasks do we have? */
@@ -501,61 +508,4 @@ void engine_unskip(struct engine *e) {
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
-}
-
-void engine_unskip_timestep_communications_mapper(void *map_data,
-                                                  int num_elements,
-                                                  void *extra_data) {
-  /* Unpack the data */
-  struct scheduler *s = (struct scheduler *)extra_data;
-  struct task *const tasks = (struct task *)map_data;
-  const int nr_tasks = num_elements;
-
-  /* Unskip the tasks in this part of the array */
-  for (int i = 0; i < nr_tasks; ++i) {
-
-    struct task *const t = &tasks[i];
-
-    if (t->type == task_type_send || t->type == task_type_recv) {
-
-      if (t->subtype == task_subtype_tend_part ||
-          t->subtype == task_subtype_tend_gpart) {
-
-        scheduler_activate(s, t);
-      }
-    }
-  }
-}
-
-/**
- * @brief Blindly unskips all the tend communications for #part and #gpart.
- *
- * This function is only necessary when running with the time-step limiter
- * or the time-step synchronization policy as the time-steps of inactive
- * sections of the tree might have been changed by these tasks.
- *
- * @param e The #engine.
- */
-void engine_unskip_timestep_communications(struct engine *e) {
-
-#ifdef WITH_MPI
-
-  const ticks tic = getticks();
-
-  struct scheduler *s = &e->sched;
-  struct task *tasks = e->sched.tasks;
-  const int nr_tasks = e->sched.nr_tasks;
-
-  /* Activate all the part and gpart ti_end tasks */
-  threadpool_map(&e->threadpool, engine_unskip_timestep_communications_mapper,
-                 tasks, nr_tasks, sizeof(struct task),
-                 threadpool_auto_chunk_size, s);
-
-  if (e->verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
 }

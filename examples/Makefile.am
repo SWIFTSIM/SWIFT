@@ -25,9 +25,8 @@ AM_CFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/argparse $(HDF5_CPPFLAGS) \
 AM_LDFLAGS = $(HDF5_LDFLAGS)
 
 # Extra libraries.
-EXTRA_LIBS = $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) \
-	$(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) \
-	$(VELOCIRAPTOR_LIBS) $(GSL_LIBS)
+EXTRA_LIBS = $(GSL_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) \
+	$(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS) $(FFTW_MPI_LIBS)
@@ -66,22 +65,22 @@ endif
 # Sources for swift
 swift_SOURCES = main.c
 swift_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS) $(LD_CSDS)
+swift_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(VELOCIRAPTOR_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
 
 # Sources for swift_mpi, do we need an affinity policy for MPI?
 swift_mpi_SOURCES = main.c
 swift_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
+swift_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
 
 # Sources for fof
 fof_SOURCES = main_fof.c
 fof_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-fof_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(EXTRA_LIBS) $(LD_CSDS)
+fof_LDADD =  ../src/.libs/libswiftsim.a ../argparse/.libs/libargparse.a $(VELOCIRAPTOR_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
 
 # Sources for fof_mpi, do we need an affinity policy for MPI?
 fof_mpi_SOURCES = main_fof.c
 fof_mpi_CFLAGS = $(MYFLAGS) $(AM_CFLAGS) $(MPI_FLAGS) -DENGINE_POLICY="engine_policy_keep $(ENGINE_POLICY_SETAFFINITY)"
-fof_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
+fof_mpi_LDADD =  ../src/.libs/libswiftsim_mpi.a ../argparse/.libs/libargparse.a $(MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(EXTRA_LIBS) $(LD_CSDS)
 
 # Scripts to generate ICs
 EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py Cooling/CoolingBox/makeIC.py Cooling/CoolingBox/run.sh Cooling/CoolingBox/getGlass.sh \

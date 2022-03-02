@@ -26,73 +26,52 @@
 
 /**
  * @brief check for and correct if needed unphysical
- * values for a photon density state
+ * values for a radiation state.
  *
- * @param energy pointer to the photon energy density
- * @param flux pointer to the photon flux density
- * @param c integer identifier where this function was called from
+ * @param energy_density pointer to the radiation energy density
+ * @param flux pointer to radiation flux (3 dimensional)
+ * @param e_old energy density before change to check. Set = 0 if not available
+ * @param callloc integer indentifier where this function was called from
  */
-__attribute__((always_inline)) INLINE static void rt_check_unphysical_density(
-    float* energy, float* flux, int c) {
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
+    float* energy_density, float* flux, const float e_old, int callloc) {
 
+  /* Check for negative energies */
+  /* Note to self for printouts: Maximal allowable F = E * c.
+   * In some cases, e.g. while cooling, we don't modify the fluxes,
+   * so you can get an estimate of what the photon energy used to be
+   * by dividing the printed out fluxes by the speed of light in
+   * code units */
 #ifdef SWIFT_DEBUG_CHECKS
-  if (*energy < 0.f && fabs(*energy) > 1.e-1)
-    message("Fixing unphysical energy case%d %.3g | %.3g %.3g %.3g", c, *energy,
-            flux[0], flux[1], flux[2]);
+  float ratio = 2.;
+  if (e_old != 0.f) ratio = fabsf(*energy_density / e_old);
+  /* callloc = 1 is gradient extrapolation. Don't print out those. */
+  if (*energy_density < -1e-2f && fabsf(ratio - 1.f) > 1.e-3f && callloc != 1)
+    message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e | %.6e",
+            callloc, *energy_density, flux[0], flux[1], flux[2], ratio);
 #endif
-  if (*energy <= 0.f) {
-    *energy = 0.f;
+  if (isinf(*energy_density) || isnan(*energy_density))
+    error("Got inf/nan radiation energy case %d | %.6e | %.6e %.6e %.6e",
+          callloc, *energy_density, flux[0], flux[1], flux[2]);
+
+  if (*energy_density <= 0.f) {
+    *energy_density = 0.f;
     flux[0] = 0.f;
     flux[1] = 0.f;
     flux[2] = 0.f;
     return;
   }
 
-  /* const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] *
-   * flux[2]; */
-  /* const float flux_norm = sqrtf(flux2); */
-  /* const float flux_max = rt_params.reduced_speed_of_light * *energy; */
-  /* if (flux_norm > flux_max) { */
-  /*   const float correct = flux_max / flux_norm; */
-  /*   flux[0] *= correct; */
-  /*   flux[1] *= correct; */
-  /*   flux[2] *= correct; */
-  /* } */
-}
-
-/**
- * @brief check for and correct if needed unphysical
- * values for a photon conserved state
- *
- * @param energy pointer to the photon energy
- * @param flux pointer to photon fluxes (3 dimensional)
- */
-__attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
-    float* energy, float* flux) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (*energy < 0.f && fabs(*energy) > 1.e-1)
-    message("Fixing unphysical energy %.3g | %.3g %.3g %.3g", *energy, flux[0],
-            flux[1], flux[2]);
-#endif
-  if (*energy <= 0.f) {
-    *energy = 0.f;
-    flux[0] = 0.f;
-    flux[1] = 0.f;
-    flux[2] = 0.f;
-    return;
+  /* Check for too high fluxes */
+  const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
+  const float flux_norm = sqrtf(flux2);
+  const float flux_max = rt_params.reduced_speed_of_light * *energy_density;
+  if (flux_norm > flux_max) {
+    const float correct = flux_max / flux_norm;
+    flux[0] *= correct;
+    flux[1] *= correct;
+    flux[2] *= correct;
   }
-
-  /* const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] *
-   * flux[2]; */
-  /* const float flux_norm = sqrtf(flux2); */
-  /* const float flux_max = rt_params.reduced_speed_of_light * *energy; */
-  /* if (flux_norm > flux_max) { */
-  /*   const float correct = flux_max / flux_norm; */
-  /*   flux[0] *= correct; */
-  /*   flux[1] *= correct; */
-  /*   flux[2] *= correct; */
-  /* } */
 }
 
 /**
@@ -105,10 +84,11 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_conserved(
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 
+#ifdef SWIFT_DEBUG_CHECKS
   int nans = 0;
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 3; j++) {
-      if (flux[i][j] != flux[i][j]) {
+      if (isnan(flux[i][j])) {
         nans += 1;
         break;
       }
@@ -123,13 +103,63 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
         flux[0][0], flux[0][1], flux[0][2], flux[1][0], flux[1][1], flux[1][2],
         flux[2][0], flux[2][1], flux[2][2], flux[3][0], flux[3][1], flux[3][2]);
   }
+#endif
 
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 3; j++) {
-      if (flux[i][j] != flux[i][j]) {
+      if (isnan(flux[i][j])) {
         flux[i][j] = 0.f;
       }
     }
   }
 }
+
+/**
+ * @brief check whether gas species mass fractions have physical
+ * values and correct small errors if necessary.
+ *
+ * @param p particle to work on
+ */
+__attribute__((always_inline)) INLINE static void
+rt_check_unphysical_mass_fractions(struct part* restrict p) {
+
+  if (p->rt_data.tchem.mass_fraction_HI < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HI < -1e4)
+      message("WARNING: Got negative HI mass fraction?");
+    p->rt_data.tchem.mass_fraction_HI = 0.f;
+  }
+  if (p->rt_data.tchem.mass_fraction_HII < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HII < -1e4)
+      message("WARNING: Got negative HII mass fraction?");
+    p->rt_data.tchem.mass_fraction_HII = 0.f;
+  }
+  if (p->rt_data.tchem.mass_fraction_HeI < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HeI < -1e4)
+      message("WARNING: Got negative HeI mass fraction?");
+    p->rt_data.tchem.mass_fraction_HeI = 0.f;
+  }
+  if (p->rt_data.tchem.mass_fraction_HeII < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HeII < -1e4)
+      message("WARNING: Got negative HeII mass fraction?");
+    p->rt_data.tchem.mass_fraction_HeII = 0.f;
+  }
+  if (p->rt_data.tchem.mass_fraction_HeIII < 0.f) {
+    if (p->rt_data.tchem.mass_fraction_HeIII < -1e4)
+      message("WARNING: Got negative HeIII mass fraction?");
+    p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+  }
+
+  const float XHI = p->rt_data.tchem.mass_fraction_HI;
+  const float XHII = p->rt_data.tchem.mass_fraction_HII;
+  const float XHeI = p->rt_data.tchem.mass_fraction_HeI;
+  const float XHeII = p->rt_data.tchem.mass_fraction_HeII;
+  const float XHeIII = p->rt_data.tchem.mass_fraction_HeIII;
+
+  const float Xtot = XHI + XHII + XHeI + XHeII + XHeIII;
+
+  /* Make sure we sum up to 1. TODO: Assuming we have no metals. */
+  if (fabsf(Xtot - 1.f) > 1e-3)
+    error("Got total mass fraction of gas = %.6g", Xtot);
+}
+
 #endif /* SWIFT_RT_UNPHYSICAL_GEAR_H */

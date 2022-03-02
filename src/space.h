@@ -85,6 +85,8 @@ extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
 extern int space_extra_sinks;
+extern double engine_redistribute_alloc_margin;
+extern double engine_foreign_alloc_margin;
 
 /**
  * @brief The space in which the cells and particles reside.
@@ -457,8 +459,10 @@ void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
-void space_convert_rt_quantities(struct space *s, int verbose);
+void space_convert_rt_quantities_after_zeroth_step(struct space *s,
+                                                   int verbose);
 void space_convert_quantities(struct space *s, int verbose);
+void space_convert_rt_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);

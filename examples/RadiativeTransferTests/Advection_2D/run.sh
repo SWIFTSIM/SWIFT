@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# exit if anything fails
+set -e
+set -o pipefail
+
  # Generate the initial conditions if they are not present.
 if [ ! -e glassPlane_128.hdf5 ]
 then
@@ -9,7 +13,7 @@ fi
 if [ ! -e advection_2D.hdf5 ]
 then
     echo "Generating initial conditions for the 2D RT advection example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT with RT
@@ -21,6 +25,7 @@ fi
     --stars \
     --feedback \
     --external-gravity \
+    -e \
     ./rt_advection2D.yml 2>&1 | tee output.log
 
 python3 ./plotSolution.py

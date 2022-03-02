@@ -27,17 +27,11 @@
 /* Additional RT data in hydro particle struct */
 struct rt_part_data {
 
-  /* conserved state vector */
+  /* Radiation state vector. */
   struct {
-    float energy;
+    float energy_density;
     float flux[3];
-  } conserved[RT_NGROUPS];
-
-  /* density state vector */
-  struct {
-    float energy;
-    float flux[3];
-  } density[RT_NGROUPS];
+  } radiation[RT_NGROUPS];
 
   /* Fluxes in the conservation law sense */
   struct {
@@ -45,12 +39,12 @@ struct rt_part_data {
     float flux[3];
   } flux[RT_NGROUPS];
 
-  /* gradients of densities */
+  /* gradients of the radiation state. */
   /* for the flux[3][3] quantity:
    *    first index: x, y, z coordinate of the flux.
    *    Second index: gradient along x, y, z direction. */
   struct {
-    float energy[3];
+    float energy_density[3];
     float flux[3][3];
   } gradient[RT_NGROUPS];
 
@@ -66,27 +60,61 @@ struct rt_part_data {
   /*   [> float maxr; [> just use the hydro one <] <] */
   /* } limiter[RT_NGROUPS]; */
 
+  /* Data for thermochemistry */
+  struct {
+    float mass_fraction_HI;         /* mass fraction taken by HI */
+    float mass_fraction_HII;        /* mass fraction taken by HII */
+    float mass_fraction_HeI;        /* mass fraction taken by HeI */
+    float mass_fraction_HeII;       /* mass fraction taken by HeII */
+    float mass_fraction_HeIII;      /* mass fraction taken by HeIII */
+    float number_density_electrons; /* number density of electrons */
+  } tchem;
+
+  /* Keep track of the actual mass fluxes of the gas species */
+  struct {
+    float HI;    /* mass fraction taken by HI */
+    float HII;   /* mass fraction taken by HII */
+    float HeI;   /* mass fraction taken by HeI */
+    float HeII;  /* mass fraction taken by HeII */
+    float HeIII; /* mass fraction taken by HeIII */
+  } mass_flux;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* debugging data to store during entire run */
-  unsigned long long
-      debug_radiation_absorbed_tot; /* how much radiation this part received
-                                    from stars during total lifetime */
+
+  /*! how much radiation this part received from stars during total lifetime */
+  unsigned long long debug_radiation_absorbed_tot;
 
   /* data to store during one time step */
-  int debug_iact_stars_inject;    /* how many stars this part interacted with */
-  int debug_calls_iact_gradient;  /* calls from gradient interaction loop */
-  int debug_calls_iact_transport; /* calls from transport interaction loop */
-  /* skip this for GEAR */
-  /* int debug_injection_check;   [> called in a self/rt_injection task? <] */
-  /* calls from gradient interaction loop in actual function */
+
+  /*! how many stars this part interacted with during injection*/
+  /* Note: It's useless to write this in outputs, as it gets reset
+   * at the end of every step. */
+  int debug_iact_stars_inject;
+
+  /*! calls from gradient interaction loop in actual function */
   int debug_calls_iact_gradient_interaction;
-  /* calls from transport interaction loop in actual function */
+
+  /*! calls from transport interaction loop in actual function */
   int debug_calls_iact_transport_interaction;
 
-  int debug_injection_done;  /* calls from ghost1 tasks */
-  int debug_gradients_done;  /* finalised computing gradients? */
-  int debug_transport_done;  /* transport step done? */
-  int debug_thermochem_done; /* thermochemistry done? */
+  /* Task completion flags */
+
+  /*! part got kicked? */
+  int debug_kicked;
+
+  /*! calls from ghost1 tasks */
+  int debug_injection_done;
+
+  /*! finalised computing gradients? */
+  int debug_gradients_done;
+
+  /*! transport step done? */
+  int debug_transport_done;
+
+  /*! thermochemistry done? */
+  int debug_thermochem_done;
+
 #endif
 };
 
@@ -95,30 +123,39 @@ struct rt_spart_data {
 
   /* Stellar energy emission that will be injected in to gas.
    * Total energy, not density, not rate! */
-  /* TODO: keep this also for RT_HYDRO_CONTROLLED_INJECTION and
-   * store results with each hydro-star interaction in here */
   float emission_this_step[RT_NGROUPS];
+
+  /*! Neighbour weigths in each octant surrounding the star */
+  float octant_weights[8];
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* data to store during entire run */
-  unsigned long long
-      debug_radiation_emitted_tot; /* how much radiation this star emitted
-                                      during total lifetime */
+
+  /*! how much radiation this star emitted during total lifetime */
+  unsigned long long debug_radiation_emitted_tot;
 
   /* data to store during one time step */
-  int debug_iact_hydro_inject; /* how many hydro particles this particle
-                                  interacted with */
-  int debug_emission_rate_set; /* stellar photon emisison rate computed? */
-  /* skip this for GEAR */
-  /* int debug_injection_check; [> called in a self/rt_injection task? <] */
 
-  float debug_injected_energy[RT_NGROUPS];     /* how much energy this star
-                                                  particle actually has injected
-                                                  into the gas */
-  float debug_injected_energy_tot[RT_NGROUPS]; /* how much energy this star
-                                              particle actually has injected
-                                              into the gas over the entire
-                                              run*/
+  /*! how many hydro particles this particle interacted with
+   * during injection */
+  int debug_iact_hydro_inject;
+
+  /*! how many hydro particles this particle interacted with
+   * during injection prep*/
+  int debug_iact_hydro_inject_prep;
+
+  /*! stellar photon emisison rate computed? */
+  int debug_emission_rate_set;
+
+  /*! how much energy this star particle actually has injected into the gas */
+  float debug_injected_energy[RT_NGROUPS];
+
+  /*! how much energy this star particle actually has injected into the gas over
+   * the entire run*/
+  float debug_injected_energy_tot[RT_NGROUPS];
+
+  /*! sum up total weights used during injection to compare consistency */
+  float debug_psi_sum;
 #endif
 };
 

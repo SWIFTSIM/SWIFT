@@ -1239,7 +1239,7 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
  * @param cj The second cell to interact.
  */
 struct task *scheduler_addtask(struct scheduler *s, enum task_types type,
-                               enum task_subtypes subtype, int flags,
+                               enum task_subtypes subtype, long long flags,
                                int implicit, struct cell *ci, struct cell *cj) {
   /* Get the next free task. */
   const int ind = atomic_inc(&s->tasks_next);
@@ -1558,8 +1558,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_force ||
                  t->subtype == task_subtype_limiter)
           cost = 1.f * (wscale * count_i) * count_i;
-        else if (t->subtype == task_subtype_rt_inject)
-          cost = 1.f * wscale * scount_i * count_i;
         else if (t->subtype == task_subtype_rt_gradient)
           cost = 1.f * wscale * count_i * count_i;
         else if (t->subtype == task_subtype_rt_transport)
@@ -1637,8 +1635,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           else
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
 
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_j;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -1719,8 +1715,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           } else {
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           }
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_j;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -1755,8 +1749,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -2042,27 +2034,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to accept elements */
 
-        if (t->subtype == task_subtype_tend_part) {
+        if (t->subtype == task_subtype_tend) {
 
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_tend_gpart) {
-
-          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_tend_spart) {
-
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
-          buff = t->buff = malloc(count);
-
-        } else if (t->subtype == task_subtype_tend_bpart) {
-
-          count = size =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
+          count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_part_swallow) {
@@ -2160,33 +2134,11 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
 
-        if (t->subtype == task_subtype_tend_part) {
+        if (t->subtype == task_subtype_tend) {
 
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_hydro);
+          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
           buff = t->buff = malloc(size);
-          cell_pack_end_step_hydro(t->ci, (struct pcell_step_hydro *)buff);
-
-        } else if (t->subtype == task_subtype_tend_gpart) {
-
-          size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_step_grav);
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_grav(t->ci, (struct pcell_step_grav *)buff);
-
-        } else if (t->subtype == task_subtype_tend_spart) {
-
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_stars);
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_stars(t->ci, (struct pcell_step_stars *)buff);
-
-        } else if (t->subtype == task_subtype_tend_bpart) {
-
-          size = count =
-              t->ci->mpi.pcell_size * sizeof(struct pcell_step_black_holes);
-          buff = t->buff = malloc(size);
-          cell_pack_end_step_black_holes(t->ci,
-                                         (struct pcell_step_black_holes *)buff);
+          cell_pack_end_step(t->ci, (struct pcell_step *)buff);
 
         } else if (t->subtype == task_subtype_part_swallow) {
 
@@ -2531,6 +2483,7 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
   struct task *t, *tasks = s->tasks;
 
   FILE *file = fopen(fileName, "w");
+  if (file == NULL) error("Could not create file '%s'.", fileName);
 
   fprintf(file, "# Rank  Name  Subname  unlocks  waits\n");
 
@@ -2668,6 +2621,7 @@ void scheduler_dump_queues(struct engine *e) {
 #endif
 
   FILE *file_thread = fopen(dumpfile, "w");
+  if (file_thread == NULL) error("Could not create file '%s'.", dumpfile);
   fprintf(file_thread, "# rank queue index type subtype weight\n");
   for (int l = 0; l < s->nr_queues; l++) {
     queue_dump(engine_rank, l, file_thread, &s->queues[l]);

@@ -40,6 +40,12 @@ enum AGN_feedback_models {
   AGN_minimum_density_model   /*< Minimum-density model of AGN feedback */
 };
 
+enum BH_merger_thresholds {
+  BH_mergers_circular_velocity,        /*< v_circ at separation, as in EAGLE */
+  BH_mergers_escape_velocity,          /*< v_esc at separation */
+  BH_mergers_dynamical_escape_velocity /*< combined v_esc_dyn at separation */
+};
+
 /**
  * @brief Properties of black holes and AGN feedback in the EAGEL model.
  */
@@ -228,6 +234,9 @@ struct black_holes_props {
   /*! Repositioning velocity scaling with gas density */
   float reposition_exponent_n_H;
 
+  /*! Correct potential of BH? */
+  int correct_bh_potential_for_repositioning;
+
   /* ---- Properties of the merger model ---------- */
 
   /*! Mass ratio above which a merger is considered 'minor' */
@@ -236,8 +245,8 @@ struct black_holes_props {
   /*! Mass ratio above which a merger is considered 'major' */
   float major_merger_threshold;
 
-  /*! Type of merger threshold (0: standard, 1: improved) */
-  int merger_threshold_type;
+  /*! Type of merger threshold */
+  enum BH_merger_thresholds merger_threshold_type;
 
   /*! Maximal distance over which BHs merge, in units of softening length */
   float max_merging_distance_ratio;
@@ -381,9 +390,18 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->use_nibbling = parser_get_param_int(params, "EAGLEAGN:use_nibbling");
   if (bp->use_nibbling) {
-    bp->min_gas_mass_for_nibbling =
-        parser_get_param_float(params, "EAGLEAGN:min_gas_mass_for_nibbling");
+    bp->min_gas_mass_for_nibbling = parser_get_param_float(
+        params, "EAGLEAGN:min_gas_mass_for_nibbling_Msun");
     bp->min_gas_mass_for_nibbling *= phys_const->const_solar_mass;
+
+    if ((bp->min_gas_mass_for_nibbling < 1e-5 * bp->subgrid_seed_mass) ||
+        (bp->min_gas_mass_for_nibbling > 1e5 * bp->subgrid_seed_mass)) {
+      error(
+          "The BH seeding mass and minimal gas mass for nibbling differ by "
+          "more "
+          "than 10^5. That is probably indicating a typo in the parameter "
+          "file.");
+    }
   }
 
   bp->with_fixed_T_near_EoS =
@@ -532,6 +550,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
         params, "EAGLEAGN:reposition_exponent_n_H", 1.0);
   }
 
+  bp->correct_bh_potential_for_repositioning =
+      parser_get_param_int(params, "EAGLEAGN:with_potential_correction");
+
   /* Merger parameters ------------------------------------- */
 
   bp->minor_merger_threshold =
@@ -540,8 +561,19 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->major_merger_threshold =
       parser_get_param_float(params, "EAGLEAGN:threshold_major_merger");
 
-  bp->merger_threshold_type =
-      parser_get_param_int(params, "EAGLEAGN:merger_threshold_type");
+  char temp2[40];
+  parser_get_param_string(params, "EAGLEAGN:merger_threshold_type", temp2);
+  if (strcmp(temp2, "CircularVelocity") == 0)
+    bp->merger_threshold_type = BH_mergers_circular_velocity;
+  else if (strcmp(temp2, "EscapeVelocity") == 0)
+    bp->merger_threshold_type = BH_mergers_escape_velocity;
+  else if (strcmp(temp2, "DynamicalEscapeVelocity") == 0)
+    bp->merger_threshold_type = BH_mergers_dynamical_escape_velocity;
+  else
+    error(
+        "The BH merger model must be either CircularVelocity, EscapeVelocity, "
+        "or DynamicalEscapeVelocity, not %s",
+        temp2);
 
   bp->max_merging_distance_ratio =
       parser_get_param_float(params, "EAGLEAGN:merger_max_distance_ratio");

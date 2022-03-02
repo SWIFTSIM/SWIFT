@@ -37,10 +37,12 @@ Here the :math:`x, y` are simple weights that should never have the pressure flo
 
 
 
+.. _gear_grackle_cooling:
+
 Cooling: Grackle
 ~~~~~~~~~~~~~~~~
    
-Grackle is a chemistry and cooling library presented in `B. Smith et al. 2016 <https://arxiv.org/abs/1610.09591>`_ 
+Grackle is a chemistry and cooling library presented in `B. Smith et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S>`_ 
 (do not forget to cite if used).  Four different modes are available:
 equilibrium, 6 species network (H, H\\( ^+ \\), e\\( ^- \\), He, He\\( ^+ \\)
 and He\\( ^{++} \\)), 9 species network (adds H\\(^-\\), H\\(_2\\) and

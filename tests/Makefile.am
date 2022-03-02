@@ -34,7 +34,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
 	testCbrt testCosmology testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology testNeutrinoFermiDirac \
+        testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
 	testLog testDistance
 
 # List of test programs to compile
@@ -177,4 +177,4 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS.sh testEOS_plot.sh \
 	     test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
 	     star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-	     testNeutrinoCosmology.dat
+	     testNeutrinoCosmology.dat testNeutrinoCosmology.sh

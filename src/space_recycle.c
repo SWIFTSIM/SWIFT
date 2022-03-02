@@ -158,6 +158,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->timestep = NULL;
     c->timestep_limiter = NULL;
     c->timestep_sync = NULL;
+    c->timestep_collect = NULL;
     c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
     c->sinks.drift = NULL;
@@ -199,7 +200,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ti_end_min = -1;
     c->black_holes.ti_end_min = -1;
     c->hydro.rt_in = NULL;
-    c->hydro.rt_inject = NULL;
     c->hydro.rt_ghost1 = NULL;
     c->hydro.rt_gradient = NULL;
     c->hydro.rt_ghost2 = NULL;
