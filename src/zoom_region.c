@@ -80,22 +80,38 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     double midpoint[3] = {0.0, 0.0, 0.0};
     const size_t nr_gparts = s->nr_gparts;
 
+    /* Get the shift from the ICs since this hasn't been applied yet. */
+    double shift[3] = {0.0, 0.0, 0.0};
+    parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
+                                    shift);
+
     /* Find the min/max location in each dimension for each mask gravity particle, and their COM. */
     for (size_t k = 0; k < nr_gparts; k++) {
       if (s->gparts[k].type != swift_type_dark_matter) continue;
 
-      if (s->gparts[k].x[0] < new_zoom_boundary[0])
-        new_zoom_boundary[0] = s->gparts[k].x[0];
-      if (s->gparts[k].x[0] > new_zoom_boundary[1])
-        new_zoom_boundary[1] = s->gparts[k].x[0];
-      if (s->gparts[k].x[1] < new_zoom_boundary[2])
-        new_zoom_boundary[2] = s->gparts[k].x[1];
-      if (s->gparts[k].x[1] > new_zoom_boundary[3])
-        new_zoom_boundary[3] = s->gparts[k].x[1];
-      if (s->gparts[k].x[2] < new_zoom_boundary[4])
-        new_zoom_boundary[4] = s->gparts[k].x[2];
-      if (s->gparts[k].x[2] > new_zoom_boundary[5])
-        new_zoom_boundary[5] = s->gparts[k].x[2];
+      const double x = s->gparts[k].x[0] + shift[0];
+      const double y = s->gparts[k].x[1] + shift[1];
+      const double z = s->gparts[k].x[2] + shift[2];
+
+      /* Wrap if periodic. */
+      if (s->periodic) {
+        box_wrap(x, 0.0, s->dim[0])
+        box_wrap(y, 0.0, s->dim[1])
+        box_wrap(z, 0.0, s->dim[2])
+      }
+
+      if (x < new_zoom_boundary[0])
+        new_zoom_boundary[0] = x;
+      if (x > new_zoom_boundary[1])
+        new_zoom_boundary[1] = x;
+      if (y < new_zoom_boundary[2])
+        new_zoom_boundary[2] = y;
+      if (y > new_zoom_boundary[3])
+        new_zoom_boundary[3] = y;
+      if (z < new_zoom_boundary[4])
+        new_zoom_boundary[4] = z;
+      if (z > new_zoom_boundary[5])
+        new_zoom_boundary[5] = z;
     }
 
 #ifdef WITH_MPI
