@@ -987,7 +987,7 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
 
 	  /* Lets report how many wanderers have been removed */
 	  if (s->with_hydro && s->zoom_props->nr_wanderers > 0)
-	    message("Converted %d wandering particles to dark matter thus far", s->zoom_props->nr_wanderers);
+	    message("Converted %zu wandering particles to dark matter thus far", s->zoom_props->nr_wanderers);
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's
