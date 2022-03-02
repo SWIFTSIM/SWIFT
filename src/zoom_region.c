@@ -95,9 +95,9 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
 
       /* Wrap if periodic. */
       if (s->periodic) {
-        box_wrap(x, 0.0, s->dim[0])
-        box_wrap(y, 0.0, s->dim[1])
-        box_wrap(z, 0.0, s->dim[2])
+        box_wrap(x, 0.0, s->dim[0]);
+        box_wrap(y, 0.0, s->dim[1]);
+        box_wrap(z, 0.0, s->dim[2]);
       }
 
       if (x < new_zoom_boundary[0])
