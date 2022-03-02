@@ -373,9 +373,6 @@ struct zoom_region_properties {
 	 * used to define zoom_cdim */
 	int nr_zoom_per_bkg_cells;
 
-  /*! The ratio between background cell width and zoom region dim */
-  double nr_bkg_cells_per_zoom_dim;
-
 	/*! Number of zoom cells */
 	int nr_zoom_cells;
 

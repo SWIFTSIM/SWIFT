@@ -69,14 +69,13 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     /* Extract the zoom width boost factor (used to define the buffer around the zoom region). */
     s->zoom_props->zoom_boost_factor = parser_get_opt_param_float(params, "ZoomRegion:zoom_boost_factor", 1.1);
 
-    /* Set the initial number of zoom cells in a natural cell. */
-    s->zoom_props->nr_bkg_cells_per_zoom_dim = parser_get_opt_param_float(params, "ZoomRegion:bkg_cell_ratio", 1);
-    s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0] / s->zoom_props->nr_bkg_cells_per_zoom_dim;
+    /* Set the number of zoom cells in a natural cell. */
+    s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
 
     /* Initialise the number of wanders (unused if with_hydro == False)*/
     s->zoom_props->nr_wanderers = 0;
 
-    /* Get an initial dimension for the zoom region. */
+    /* Get an initial dimension for the zoom region and its geometric mid point. */
     double new_zoom_boundary[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
     double midpoint[3] = {0.0, 0.0, 0.0};
     const size_t nr_gparts = s->nr_gparts;
@@ -277,7 +276,6 @@ void construct_zoom_region(struct space *s, int verbose) {
 #ifdef WITH_ZOOM_REGION
   double new_zoom_boundary[6] = {1e20, -1e20, 1e20, -1e20, 1e20, -1e20};
   const size_t nr_gparts = s->nr_gparts;
-//  const size_t nr_parts = s->nr_parts;
   double mtot = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
 
@@ -303,28 +301,6 @@ void construct_zoom_region(struct space *s, int verbose) {
     com[1] += s->gparts[k].x[1] * s->gparts[k].mass;
     com[2] += s->gparts[k].x[2] * s->gparts[k].mass;
   }
-  
-//  /* Now check the min/max location in each dimension for each mask hydro particle, and their COM. */
-//  for (size_t k = 0; k < nr_parts; k++) {
-//
-//    if (s->parts[k].x[0] < new_zoom_boundary[0])
-//      new_zoom_boundary[0] = s->parts[k].x[0];
-//    if (s->parts[k].x[0] > new_zoom_boundary[1])
-//      new_zoom_boundary[1] = s->parts[k].x[0];
-//    if (s->parts[k].x[1] < new_zoom_boundary[2])
-//      new_zoom_boundary[2] = s->parts[k].x[1];
-//    if (s->parts[k].x[1] > new_zoom_boundary[3])
-//      new_zoom_boundary[3] = s->parts[k].x[1];
-//    if (s->parts[k].x[2] < new_zoom_boundary[4])
-//      new_zoom_boundary[4] = s->parts[k].x[2];
-//    if (s->parts[k].x[2] > new_zoom_boundary[5])
-//      new_zoom_boundary[5] = s->parts[k].x[2];
-//
-//    mtot += s->parts[k].mass;
-//    com[0] += s->parts[k].x[0] * s->parts[k].mass;
-//    com[1] += s->parts[k].x[1] * s->parts[k].mass;
-//    com[2] += s->parts[k].x[2] * s->parts[k].mass;
-//  }
 
 #ifdef WITH_MPI
   /* Share answers amoungst nodes. */
@@ -399,7 +375,7 @@ void construct_zoom_region(struct space *s, int verbose) {
   /* Now we can define the background grid.
   * TODO: This needs to be refined for zooms which produce huge numbers of background cells */
   for (int ijk = 0; ijk < 3; ijk++) {
-    s->width[ijk] = s->zoom_props->dim[ijk] / s->zoom_props->nr_bkg_cells_per_zoom_dim;
+    s->width[ijk] = s->zoom_props->dim[ijk];
     s->iwidth[ijk] = 1.0 / s->width[ijk];
     s->cdim[ijk] = (int)floor((s->dim[ijk] + 0.5 * s->width[ijk]) * s->iwidth[ijk]);
   }
@@ -539,24 +515,17 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 	      c->width[2] = s->width[2];
 	      c->dmin = dmin;
 	      c->nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
-
 	      if (s->with_self_gravity)
 	        c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
-
 	      /* if the cell lies within the zoom region we need to label it as void */
-		    if (c->loc[0] >= zoom_region_bounds[0] && c->loc[0] < zoom_region_bounds[1] &&
-		        c->loc[1] >= zoom_region_bounds[2] && c->loc[1] < zoom_region_bounds[3] &&
-		        c->loc[2] >= zoom_region_bounds[4] && c->loc[2] < zoom_region_bounds[5]) {
+		    if (c->loc[0] + (c->width[0] / 2) > zoom_region_bounds[0] &&
+		        c->loc[0] + (c->width[0] / 2) < zoom_region_bounds[1] &&
+		        c->loc[1] + (c->width[1] / 2) > zoom_region_bounds[2] &&
+		        c->loc[1] + (c->width[1] / 2) < zoom_region_bounds[3] &&
+		        c->loc[2] + (c->width[2] / 2) > zoom_region_bounds[4] &&
+		        c->loc[2] + (c->width[2] / 2) < zoom_region_bounds[5]) {
 		      /* Tag this top level cell as part of the zoom region. */
 	        c->tl_cell_type = void_tl_cell;
-
-	        /* Assign the start and end indices for the zoom cells within this cell */
-	        c->start_i = (c->loc[0] - zoom_region_bounds[0]) * s->zoom_props->iwidth[0];
-	        c->start_j = (c->loc[1] - zoom_region_bounds[2]) * s->zoom_props->iwidth[1];
-	        c->start_k = (c->loc[2] - zoom_region_bounds[4]) * s->zoom_props->iwidth[2];
-	        c->end_i = c->start_i + s->zoom_props->nr_zoom_per_bkg_cells;
-	        c->end_j = c->start_j + s->zoom_props->nr_zoom_per_bkg_cells;
-	        c->end_k = c->start_k + s->zoom_props->nr_zoom_per_bkg_cells;
 		    } else {
 		      c->tl_cell_type = tl_cell;
 		    }
