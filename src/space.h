@@ -344,6 +344,9 @@ struct space {
 
 struct zoom_region_properties {
 
+  /*! Are we refining the background cells? */
+  int refine_bkg;
+
   /*! The factor used to define the buffer zone size around the zoom region. */
   float zoom_boost_factor;
 
@@ -371,6 +374,9 @@ struct zoom_region_properties {
   /*! Offset in the top level cell list background/natural cells start from. */
   int tl_cell_offset;
 
+  /*! The ijk integer coordinates of the zoom region's background cell. */
+  int zoom_cell_ijk[3];
+
 	/*! The number of zoom cells along an axis in a natural top level cell,
 	 * used to define zoom_cdim */
 	int nr_zoom_per_bkg_cells;
@@ -382,7 +388,7 @@ struct zoom_region_properties {
 	int nr_bkg_cells;
 
   /*! Number of particles that have left the zoom region and been converted to dark matter */
-  int nr_wanderers;
+  size_t nr_wanderers;
 };
 
 /* Function prototypes. */

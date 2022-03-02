@@ -58,6 +58,9 @@ void zoom_region_init(struct swift_params *params, struct space *s) {
     if (s->zoom_props == NULL)
       error("Error allocating memory for the zoom parameters.");
 
+    /* Are refining the background cells? */
+    s->zoom_props->refine_bkg = parser_get_opt_param_int(params, "ZoomRegion:enable_bkg_refinement", 1);
+
     /* Set the zoom cdim. */
     s->zoom_props->cdim[0] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                                       space_max_top_level_cells_default);
@@ -372,6 +375,17 @@ void construct_zoom_region(struct space *s, int verbose) {
   int nr_zoom_regions = (int)(s->dim[0] / max_width);
   if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
   max_width = s->dim[0] / nr_zoom_regions;
+
+  /* Do we want to refine the background cells? */
+  if (s->zoom_props->refine_bkg && nr_zoom_regions >= s->zoom_props->cdim[0]) {
+    nr_zoom_regions = s->zoom_props->cdim[0];
+    if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
+    if (verbose) {
+      const float new_zoom_boost_factor = (s->dim[0] / nr_zoom_regions) / (max_width / s->zoom_props->zoom_boost_factor);
+      message("Have increased zoom_boost_factor from %f to %f", s->zoom_props->zoom_boost_factor, new_zoom_boost_factor);
+    }
+    max_width = s->dim[0] / nr_zoom_regions;
+  }
   
   /* Find the new boundaries with this extra width and boost factor. */
   for (int ijk = 0; ijk < 3; ijk++) {
