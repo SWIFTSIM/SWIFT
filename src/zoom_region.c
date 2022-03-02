@@ -200,10 +200,15 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 																				zoom_props->region_bounds[2], zoom_props->region_bounds[3],
 																				zoom_props->region_bounds[4], zoom_props->region_bounds[5]};
 
+  /* Get the background cell ijk coordinates. */
+  const int bkg_i = x * iwidth[0];
+  const int bkg_j = y * iwidth[1];
+  const int bkg_k = z * iwidth[2];
+
   /* Are the passed coordinates within the zoom region? */
-  if (x >= zoom_region_bounds[0] && x < zoom_region_bounds[1] &&
-      y >= zoom_region_bounds[2] && y < zoom_region_bounds[3] &&
-      z >= zoom_region_bounds[4] && z < zoom_region_bounds[5]) {
+  if (bkg_i == s->zoom_props->zoom_cell_ijk[0] &&
+      bkg_j == s->zoom_props->zoom_cell_ijk[1] &&
+      bkg_k == s->zoom_props->zoom_cell_ijk[2]) {
 
     /* Which zoom TL cell are we in? */
     const int zoom_i = (x - zoom_region_bounds[0]) * zoom_iwidth[0];
@@ -218,10 +223,7 @@ int cell_getid_zoom(const struct space *s, const double x, const double y,
 
   /* If not then treat it like normal, and find the natural TL cell. */
   } else {
-    const int i = x * iwidth[0];
-    const int j = y * iwidth[1];
-    const int k = z * iwidth[2];
-    cell_id = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+    cell_id = cell_getid(cdim, bkg_i, bkg_j, bkg_k) + bkg_cell_offset;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_id < bkg_cell_offset || cell_id >= s->nr_cells)
@@ -402,12 +404,12 @@ void construct_zoom_region(struct space *s, int verbose) {
   	s->zoom_props->dim[ijk] = max_width;
   }
   
-  /* Now we can define the background grid.
-  * TODO: This needs to be refined for zooms which produce huge numbers of background cells */
+  /* Now we can define the background grid and zoom region's background ijk. */
   for (int ijk = 0; ijk < 3; ijk++) {
     s->width[ijk] = s->zoom_props->dim[ijk];
     s->iwidth[ijk] = 1.0 / s->width[ijk];
     s->cdim[ijk] = (int)floor((s->dim[ijk] + 0.5 * s->width[ijk]) * s->iwidth[ijk]);
+    s->zoom_props->zoom_cell_ijk[ijk] = (int)floor(s->cdim[ijk] / 2);
   }
 
   	/* Check if we have enough cells for periodicity. */
@@ -428,10 +430,13 @@ void construct_zoom_region(struct space *s, int verbose) {
   s->zoom_props->nr_zoom_cells = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
+  /* Lets report what we have constructed. */
   if (verbose) {
   	message("set cell dimensions to zoom_cdim=[%d %d %d] background_cdim=[%d %d %d]", s->zoom_props->cdim[0],
   			    s->zoom_props->cdim[1], s->zoom_props->cdim[2], s->cdim[0],
   			    s->cdim[1], s->cdim[2]);
+  	message("zoom region located in cell [%d %d %d]", s->zoom_props->zoom_cell_ijk[0],
+  			    s->zoom_props->zoom_cell_ijk[1], s->zoom_props->zoom_cell_ijk[2]);
   	message("nr_zoom_cells: %d nr_bkg_cells: %d tl_cell_offset: %d", s->zoom_props->nr_zoom_cells,
   			    s->zoom_props->nr_bkg_cells, s->zoom_props->tl_cell_offset);
   	message("zoom_boundary: [%f-%f %f-%f %f-%f]",
@@ -547,18 +552,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 	      c->nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
 	      if (s->with_self_gravity)
 	        c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
-	      /* if the cell lies within the zoom region we need to label it as void */
-		    if (c->loc[0] + (c->width[0] / 2) > zoom_region_bounds[0] &&
-		        c->loc[0] + (c->width[0] / 2) < zoom_region_bounds[1] &&
-		        c->loc[1] + (c->width[1] / 2) > zoom_region_bounds[2] &&
-		        c->loc[1] + (c->width[1] / 2) < zoom_region_bounds[3] &&
-		        c->loc[2] + (c->width[2] / 2) > zoom_region_bounds[4] &&
-		        c->loc[2] + (c->width[2] / 2) < zoom_region_bounds[5]) {
-		      /* Tag this top level cell as part of the zoom region. */
-	        c->tl_cell_type = void_tl_cell;
-		    } else {
-		      c->tl_cell_type = tl_cell;
-		    }
+	      c->tl_cell_type = tl_cell;
 		    c->depth = 0;
 		    c->split = 0;
 		    c->hydro.count = 0;
@@ -587,6 +581,14 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
       }
     }
   }
+
+  /* We need to label the zoom region's background cell as void. */
+  const size_t void_cid = cell_getid(cdim,
+                                     s->zoom_props->zoom_cell_ijk[0],
+                                     s->zoom_props->zoom_cell_ijk[1],
+                                     s->zoom_props->zoom_cell_ijk[2]);
+  c = &s->cells_top[void_cid + bkg_cell_offset];
+  c->tl_cell_type = void_tl_cell;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Lets check all the cells are in the right place with the correct widths */
