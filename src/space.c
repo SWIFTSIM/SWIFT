@@ -1341,7 +1341,7 @@ void space_init(struct space *s, struct swift_params *params,
 
 #ifdef WITH_ZOOM_REGION
   /* Init the zoom region. */
-  zoom_region_init(params, s);
+  zoom_region_init(params, s, verbose);
 #endif
 
   /* Apply shift */
