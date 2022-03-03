@@ -368,12 +368,12 @@ void construct_zoom_region(struct space *s, int verbose) {
       new_zoom_boundary[0], new_zoom_boundary[1], new_zoom_boundary[2],
       new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
 
-  /* Get the maximum axis length of the zoom region including boost factor. */
-  double max_width = 0;
-  for (int ijk = 0; ijk < 3; ijk++) {
-      if ((new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * s->zoom_props->zoom_boost_factor > max_width)
-          max_width = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]) * s->zoom_props->zoom_boost_factor;
-  }
+  /* Compute maximum side length of the zoom region, need zoom boundary to be symetric. */
+  const double max_width = max3(new_zoom_boundary[1]-new_zoom_boundary[0],
+                                new_zoom_boundary[3]-new_zoom_boundary[2],
+                                new_zoom_boundary[5]-new_zoom_boundary[4])
+                                    * s->zoom_props->zoom_boost_factor;
+
   
   /* This width has to divide the full parent box by an odd integer to ensure the two grids line up.
    * NOTE: assumes box dimensions are equal! */
@@ -385,14 +385,16 @@ void construct_zoom_region(struct space *s, int verbose) {
   if (s->zoom_props->refine_bkg && nr_zoom_regions >= s->zoom_props->cdim[0]) {
     nr_zoom_regions = s->zoom_props->cdim[0];
     if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-    if (verbose) {
-      const float new_zoom_boost_factor = (s->dim[0] / nr_zoom_regions) / (max_width / s->zoom_props->zoom_boost_factor);
-      message("Have increased zoom_boost_factor from %f to %f", s->zoom_props->zoom_boost_factor, new_zoom_boost_factor);
-    }
+    const float new_zoom_boost_factor = (s->dim[0] / nr_zoom_regions) / (max_width / s->zoom_props->zoom_boost_factor);
     max_width = s->dim[0] / nr_zoom_regions;
+    if (verbose)
+      message("Have increased zoom_boost_factor from %f to %f",
+              s->zoom_props->zoom_boost_factor, new_zoom_boost_factor);
+    s->zoom_props->zoom_boost_factor = new_zoom_boost_factor
   }
   
-  /* Find the new boundaries with this extra width and boost factor. */
+  /* Find the new boundaries with this extra width and boost factor.
+   * The zoom region is already centred on the middle of the box */
   for (int ijk = 0; ijk < 3; ijk++) {
     
     /* Set the new boundaries. */
