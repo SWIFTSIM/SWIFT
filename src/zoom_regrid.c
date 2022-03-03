@@ -58,6 +58,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	                                  dmax / s->zoom_props->cdim[1],
 	                                  dmax / s->zoom_props->cdim[2]);
 	double h_max = zoom_cell_min / kernel_gamma / space_stretch;
+	message("zoom_cell_min= %f, kernel_gamma= %f, space_stretch= %f h_max= %f", zoom_cell_min, kernel_gamma, space_stretch, h_max);
 	if (nr_parts > 0) {
 
 		/* Can we use the list of local non-empty top-level cells? */
