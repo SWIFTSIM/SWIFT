@@ -42,10 +42,12 @@
 #endif
 
 void lightcone_map_init(struct lightcone_map *map, const int nside,
-                        const pixel_index_t total_nr_pix, const pixel_index_t pix_per_rank,
+                        const pixel_index_t total_nr_pix,
+                        const pixel_index_t pix_per_rank,
                         const pixel_index_t local_nr_pix,
-                        const pixel_index_t local_pix_offset, const double r_min,
-                        const double r_max, struct lightcone_map_type type) {
+                        const pixel_index_t local_pix_offset,
+                        const double r_min, const double r_max,
+                        struct lightcone_map_type type) {
 
   /*Store number of pixels in the map etc */
   map->nside = nside;
@@ -252,7 +254,8 @@ void lightcone_map_write(struct lightcone_map *map, const hid_t loc_id,
 
   /* Write attributes */
   io_write_attribute_i(dset_id, "nside", map->nside);
-  io_write_attribute_ll(dset_id, "number_of_pixels", (long long) map->total_nr_pix);
+  io_write_attribute_ll(dset_id, "number_of_pixels",
+                        (long long)map->total_nr_pix);
   io_write_attribute_s(dset_id, "pixel_ordering_scheme", "ring");
   io_write_attribute_d(dset_id, "comoving_inner_radius",
                        map->r_min * length_conversion_factor);

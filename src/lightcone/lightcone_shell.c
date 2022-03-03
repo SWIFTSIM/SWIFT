@@ -33,8 +33,8 @@
 #include "cosmology.h"
 #include "engine.h"
 #include "exchange_structs.h"
-#include "lightcone/healpix_util.h"
 #include "hydro.h"
+#include "lightcone/healpix_util.h"
 
 /* This object's header. */
 #include "lightcone/lightcone_shell.h"
@@ -405,7 +405,8 @@ struct buffer_block_info {
 };
 
 #ifdef HAVE_CHEALPIX
-static int pixel_to_rank(int comm_size, pixel_index_t pix_per_rank, pixel_index_t pixel) {
+static int pixel_to_rank(int comm_size, pixel_index_t pix_per_rank,
+                         pixel_index_t pixel) {
   int rank = pixel / pix_per_rank;
   if (rank >= comm_size) rank = comm_size - 1;
   return rank;
@@ -480,27 +481,30 @@ static void count_elements_to_send_mapper(void *map_data, int num_elements,
 
       /* Determine which MPI ranks this contribution needs to go to */
       pixel_index_t first_pixel, last_pixel;
-        
-      /* Compute search radius: the angle at which the kernel function reaches zero */
+
+      /* Compute search radius: the angle at which the kernel function reaches
+       * zero */
       const double search_radius = radius * kernel_gamma;
-      if(search_radius < max_pixrad) {
-          
-        /* If the radius is small, we'll just assign the contribution to one pixel */
+      if (search_radius < max_pixrad) {
+
+        /* If the radius is small, we'll just assign the contribution to one
+         * pixel */
         first_pixel = last_pixel = angle_to_pixel(shell->nside, theta, phi);
-        
+
       } else {
 
         /* If the radius is large we will update a range of pixels */
         double vec[3];
         ang2vec(theta, phi, vec);
         pixel_index_t pix_min, pix_max;
-        healpix_query_disc_range(shell->nside, vec, search_radius,
-                                 &pix_min, &pix_max, NULL, NULL);
+        healpix_query_disc_range(shell->nside, vec, search_radius, &pix_min,
+                                 &pix_max, NULL, NULL);
         first_pixel = pix_min;
-        last_pixel  = pix_max;
+        last_pixel = pix_max;
       }
-      
-      first_dest[i] = pixel_to_rank(comm_size, shell->pix_per_rank, first_pixel);
+
+      first_dest[i] =
+          pixel_to_rank(comm_size, shell->pix_per_rank, first_pixel);
       last_dest[i] = pixel_to_rank(comm_size, shell->pix_per_rank, last_pixel);
 
       /* Update the counts for this block */
@@ -618,7 +622,7 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
 
   /* Get maximum radius of any pixel in the map */
   const double max_pixrad = healpix_max_pixrad(shell->nside);
- 
+
   /* Find the array of updates to apply to the healpix maps */
   union lightcone_map_buffer_entry *update_data =
       (union lightcone_map_buffer_entry *)map_data;
@@ -684,51 +688,57 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
         const double search_radius = radius * kernel_gamma;
         healpix_query_disc_range(shell->nside, part_vec, search_radius,
                                  &pix_min, &pix_max, &nr_ranges, &range);
-        
+
         /* Compute total weight of pixels to update */
         double total_weight = 0;
-        for(int range_nr=0; range_nr < nr_ranges; range_nr +=1) {
-          for(pixel_index_t pix=range[range_nr].first; pix<=range[range_nr].last; pix+=1) {
-            
+        for (int range_nr = 0; range_nr < nr_ranges; range_nr += 1) {
+          for (pixel_index_t pix = range[range_nr].first;
+               pix <= range[range_nr].last; pix += 1) {
+
             /* Get vector at the centre of this pixel */
             double pixel_vec[3];
             pix2vec_ring64(shell->nside, pix, pixel_vec);
 
             /* Find angle between this pixel centre and the particle.
-               Dot product may be a tiny bit greater than one due to rounding error */
-            const double dp = (pixel_vec[0]*part_vec[0] +
-                               pixel_vec[1]*part_vec[1] +
-                               pixel_vec[2]*part_vec[2]);
+               Dot product may be a tiny bit greater than one due to rounding
+               error */
+            const double dp =
+                (pixel_vec[0] * part_vec[0] + pixel_vec[1] * part_vec[1] +
+                 pixel_vec[2] * part_vec[2]);
             const double angle = dp < 1.0 ? acos(dp) : 0.0;
-            
+
             /* Evaluate the kernel at this radius */
-            total_weight += projected_kernel_eval(kernel_table, angle/radius);
+            total_weight += projected_kernel_eval(kernel_table, angle / radius);
           }
         }
 
         /* Update the pixels */
-        for(int range_nr=0; range_nr < nr_ranges; range_nr +=1) {
-          for(pixel_index_t pix=range[range_nr].first; pix<=range[range_nr].last; pix+=1) {
-            
+        for (int range_nr = 0; range_nr < nr_ranges; range_nr += 1) {
+          for (pixel_index_t pix = range[range_nr].first;
+               pix <= range[range_nr].last; pix += 1) {
+
             /* Check if this pixel is stored locally */
             pixel_index_t global_pix = pix;
             if ((global_pix >= local_pix_offset) &&
                 (global_pix < local_pix_offset + local_nr_pix)) {
-                
+
               /* Get vector at the centre of this pixel */
               double pixel_vec[3];
               pix2vec_ring64(shell->nside, pix, pixel_vec);
 
               /* Find angle between this pixel centre and the particle.
-                 Dot product may be a tiny bit greater than one due to rounding error */
-              const double dp = (pixel_vec[0]*part_vec[0] +
-                                 pixel_vec[1]*part_vec[1] +
-                                 pixel_vec[2]*part_vec[2]);
+                 Dot product may be a tiny bit greater than one due to rounding
+                 error */
+              const double dp =
+                  (pixel_vec[0] * part_vec[0] + pixel_vec[1] * part_vec[1] +
+                   pixel_vec[2] * part_vec[2]);
               const double angle = dp < 1.0 ? acos(dp) : 0.0;
-              
+
               /* Evaluate the kernel at this radius */
-              const double weight = projected_kernel_eval(kernel_table, angle/radius) / total_weight;
-              
+              const double weight =
+                  projected_kernel_eval(kernel_table, angle / radius) /
+                  total_weight;
+
               /* Find local index of the pixel to update */
               const pixel_index_t local_pix = global_pix - local_pix_offset;
 
@@ -737,16 +747,16 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
                 const int map_index = part_type->map_index[j];
                 const double buffered_value = value[j].f;
                 const double fac_inv =
-                  shell->map[map_index].buffer_scale_factor_inv;
+                    shell->map[map_index].buffer_scale_factor_inv;
                 const double value_to_add = buffered_value * fac_inv;
                 atomic_add_d(&shell->map[map_index].data[local_pix],
                              value_to_add * weight);
               } /* Next smoothed map */
             }
           } /* Next pixel in this range */
-        } /* Next range of pixels */
+        }   /* Next range of pixels */
 
-          /* Free array of pixel ranges */
+        /* Free array of pixel ranges */
         free(range);
 
       } /* if nr_smoothed_maps > 0*/
@@ -810,8 +820,8 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
  */
 void lightcone_shell_flush_map_updates_for_type(
     struct lightcone_shell *shell, struct threadpool *tp,
-    struct lightcone_particle_type *part_type,
-    int ptype, const double max_map_update_send_size_mb,
+    struct lightcone_particle_type *part_type, int ptype,
+    const double max_map_update_send_size_mb,
     struct projected_kernel_table *kernel_table, int verbose) {
 
   int comm_rank = 0, comm_size = 1;
@@ -1029,9 +1039,9 @@ void lightcone_shell_flush_map_updates(
 
   for (int ptype = 0; ptype < swift_type_count; ptype += 1) {
     if ((shell->nr_maps > 0) && (part_type[ptype].nr_maps > 0)) {
-      lightcone_shell_flush_map_updates_for_type(
-          shell, tp, part_type, ptype, max_map_update_send_size_mb,
-          kernel_table, verbose);
+      lightcone_shell_flush_map_updates_for_type(shell, tp, part_type, ptype,
+                                                 max_map_update_send_size_mb,
+                                                 kernel_table, verbose);
     }
   }
 }

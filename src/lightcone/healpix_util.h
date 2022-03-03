@@ -5,8 +5,8 @@
  * 3.80 library (see http://healpix.sourceforge.net):
  *
  *  Copyright (C) 1997-2013 Krzysztof M. Gorski, Eric Hivon,
- *                          Benjamin D. Wandelt, Anthony J. Banday, 
- *                          Matthias Bartelmann, Hans K. Eriksen, 
+ *                          Benjamin D. Wandelt, Anthony J. Banday,
+ *                          Matthias Bartelmann, Hans K. Eriksen,
  *                          Frode K. Hansen, Martin Reinecke
  *
  * Translated and modified for SWIFT by John Helly:

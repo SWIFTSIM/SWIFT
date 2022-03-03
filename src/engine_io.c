@@ -91,8 +91,8 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
 #endif
-      
-        /* Free the foreign particles to get more breathing space. */
+
+      /* Free the foreign particles to get more breathing space. */
 #ifdef WITH_MPI
       if (e->free_foreign_when_dumping_restart)
         space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
