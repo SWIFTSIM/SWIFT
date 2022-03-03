@@ -31,6 +31,8 @@
 #include "entropy_floor.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "lightcone/lightcone_crossing.h"
+#include "lightcone/lightcone_replications.h"
 #include "part.h"
 #include "sink.h"
 #include "stars.h"
@@ -48,7 +50,8 @@
 __attribute__((always_inline)) INLINE static void drift_gpart(
     struct gpart *restrict gp, double dt_drift, integertime_t ti_old,
     integertime_t ti_current, const struct gravity_props *grav_props,
-    const struct engine *e) {
+    const struct engine *e, struct replication_list *replication_list,
+    const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gp->time_bin == time_bin_not_created) {
@@ -88,12 +91,36 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
   }
 #endif
 
+#ifdef WITH_LIGHTCONE
+  /* Store initial position and velocity for lightcone check after the drift */
+  const double x[3] = {gp->x[0], gp->x[1], gp->x[2]};
+  const float v_full[3] = {gp->v_full[0], gp->v_full[1], gp->v_full[2]};
+#endif
+
   /* Drift... */
   gp->x[0] += gp->v_full[0] * dt_drift;
   gp->x[1] += gp->v_full[1] * dt_drift;
   gp->x[2] += gp->v_full[2] * dt_drift;
 
   gravity_predict_extra(gp, grav_props);
+
+#ifdef WITH_LIGHTCONE
+  /* Check for lightcone crossing */
+  switch (gp->type) {
+    case swift_type_dark_matter:
+    case swift_type_dark_matter_background:
+    case swift_type_neutrino:
+      /* This particle has no *part counterpart, so check for lightcone crossing
+       * here */
+      lightcone_check_particle_crosses(e, replication_list, x, v_full, gp,
+                                       dt_drift, ti_old, ti_current, cell_loc);
+      break;
+    default:
+      /* Particle has a counterpart or is of a type not supported in lightcones
+       */
+      break;
+  }
+#endif
 }
 
 /**
@@ -114,9 +141,12 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
 __attribute__((always_inline)) INLINE static void drift_part(
     struct part *restrict p, struct xpart *restrict xp, double dt_drift,
     double dt_kick_hydro, double dt_kick_grav, double dt_therm,
-    integertime_t ti_old, integertime_t ti_current,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct entropy_floor_properties *floor) {
+    integertime_t ti_old, integertime_t ti_current, const struct engine *e,
+    struct replication_list *replication_list, const double cell_loc[3]) {
+
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct entropy_floor_properties *floor = e->entropy_floor;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (p->ti_drift != ti_old)
@@ -141,6 +171,12 @@ __attribute__((always_inline)) INLINE static void drift_part(
     xp->v_full[1] = 0.f;
     xp->v_full[2] = 0.f;
   }
+#endif
+
+#ifdef WITH_LIGHTCONE
+  /* Store initial position and velocity for lightcone check after the drift */
+  const double x[3] = {p->x[0], p->x[1], p->x[2]};
+  const float v_full[3] = {xp->v_full[0], xp->v_full[1], xp->v_full[2]};
 #endif
 
   /* Drift... */
@@ -179,6 +215,13 @@ __attribute__((always_inline)) INLINE static void drift_part(
     p->v[2] = 0.f;
   }
 #endif
+
+#ifdef WITH_LIGHTCONE
+  /* Check if the particle crossed the lightcone */
+  if (p->gpart)
+    lightcone_check_particle_crosses(e, replication_list, x, v_full, p->gpart,
+                                     dt_drift, ti_old, ti_current, cell_loc);
+#endif
 }
 
 /**
@@ -191,7 +234,8 @@ __attribute__((always_inline)) INLINE static void drift_part(
  */
 __attribute__((always_inline)) INLINE static void drift_spart(
     struct spart *restrict sp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current) {
+    integertime_t ti_current, const struct engine *e,
+    struct replication_list *replication_list, const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->ti_drift != ti_old)
@@ -219,6 +263,12 @@ __attribute__((always_inline)) INLINE static void drift_spart(
   }
 #endif
 
+#ifdef WITH_LIGHTCONE
+  /* Store initial position and velocity for lightcone check after the drift */
+  const double x[3] = {sp->x[0], sp->x[1], sp->x[2]};
+  const float v_full[3] = {sp->v[0], sp->v[1], sp->v[2]};
+#endif
+
   /* Drift... */
   sp->x[0] += sp->v[0] * dt_drift;
   sp->x[1] += sp->v[1] * dt_drift;
@@ -233,6 +283,13 @@ __attribute__((always_inline)) INLINE static void drift_spart(
     sp->x_diff[k] -= dx;
     sp->x_diff_sort[k] -= dx;
   }
+
+#ifdef WITH_LIGHTCONE
+  /* Check for lightcone crossing */
+  if (sp->gpart)
+    lightcone_check_particle_crosses(e, replication_list, x, v_full, sp->gpart,
+                                     dt_drift, ti_old, ti_current, cell_loc);
+#endif
 }
 
 /**
@@ -245,7 +302,8 @@ __attribute__((always_inline)) INLINE static void drift_spart(
  */
 __attribute__((always_inline)) INLINE static void drift_bpart(
     struct bpart *restrict bp, double dt_drift, integertime_t ti_old,
-    integertime_t ti_current) {
+    integertime_t ti_current, const struct engine *e,
+    struct replication_list *replication_list, const double cell_loc[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (bp->ti_drift != ti_old)
@@ -273,6 +331,12 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
   }
 #endif
 
+#ifdef WITH_LIGHTCONE
+  /* Store initial position and velocity for lightcone check after the drift */
+  const double x[3] = {bp->x[0], bp->x[1], bp->x[2]};
+  const float v_full[3] = {bp->v[0], bp->v[1], bp->v[2]};
+#endif
+
   /* Drift... */
   bp->x[0] += bp->v[0] * dt_drift;
   bp->x[1] += bp->v[1] * dt_drift;
@@ -286,6 +350,13 @@ __attribute__((always_inline)) INLINE static void drift_bpart(
     const float dx = bp->v[k] * dt_drift;
     bp->x_diff[k] -= dx;
   }
+
+#ifdef WITH_LIGHTCONE
+  /* Check for lightcone crossing */
+  if (bp->gpart)
+    lightcone_check_particle_crosses(e, replication_list, x, v_full, bp->gpart,
+                                     dt_drift, ti_old, ti_current, cell_loc);
+#endif
 }
 
 /**

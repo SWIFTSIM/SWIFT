@@ -667,6 +667,11 @@ Neutrino:
   fixed_bg_density: 1                            # For linear response neutrinos, whether to use a fixed present-day background density
   use_model_none: 0                              # Option to use no neutrino model
 
+# Parameters related to extra i/o (X-ray emmisivity)  ----------------------------
+
+XrayEmissivity:
+  xray_table_path:         ./X_Ray_tables.hdf5   # Path to the X-ray emissivity tables
+  
 # Parameters related to the sink particles ---------------------------------------
 
 # Default sink particles
@@ -709,3 +714,49 @@ SPHM1RT:
     photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]   # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=SPHM1RT_N). Outer edges of zero and infinity are assumed.
 
 
+# Parameters related to lightcones  -----------------------------------------------
+# Parameters in the LightconeCommon section apply to all lightcones but can be overridden in the LightconeX sections.
+# Up to 8 Lightcone sections named Lightcone0 to Lightcone7 may be present.
+LightconeCommon:
+
+  subdir:            lightcones   # All lightcone output is written to this directory
+  buffer_chunk_size: 10000        # Particles and map updates are buffered in a linked list of chunks of this size
+
+  z_range_for_DM:     [0.0, 0.05] # Output redshift range for dark matter
+  z_range_for_Gas:    [0.0, 0.05] # Output redshift range for gas
+  z_range_for_Stars:  [0.0, 0.05] # Output redshift range for stars
+  z_range_for_BH:     [0.0, 0.05] # Output redshift range for black holes
+
+  max_particles_buffered: 100000  # Output particles if buffer size reaches this value
+  max_updates_buffered:   100000  # Flush map updates if buffer size reaches this value
+  hdf5_chunk_size:        16384   # Chunk size for HDF5 particle and healpix map datasets
+
+  nside:                512                    # Healpix resolution parameter
+  radius_file:          ./shell_redshifts.txt  # Redshifts of shells for healpix maps
+  max_map_update_send_size_mb: 16.0            # Apply map updates over mutliple iterations to limit memory overhead
+  map_names_file:       ./map_types.txt        # List of types of healpix maps to make
+
+  distributed_maps:   1           # Split maps over multiple files (1) or use collective I/O to write one file (0)
+
+  particles_lossy_compression: 0  # Apply lossy compression to lightcone particles
+  particles_gzip_level:        6  # Apply lossless (deflate) compression to lightcone particles
+  maps_gzip_level:             6  # Apply lossless (deflate) compression to healpix maps
+
+# Parameters specific to lightcone 0 - any lightcone parameters not found here are taken from LightconeCommon, above,
+# except for 'enabled' and 'basename'.
+Lightcone0:
+  enabled: 1                                           # Enable this lightcone
+  basename: lightcone0                                 # Base name of this lighcone's output files
+  observer_position: [35.561875, 35.561875, 35.561875] # Location of the observer in this lightcone
+
+# Parameters specific to lightcone 1 - any lightcone parameters not found here are taken from LightconeCommon, above,
+# except for 'enabled' and 'basename'.
+Lightcone1:
+  enabled: 1
+  basename: lightcone1
+  observer_position: [35.561875, 35.561875, 35.561875]
+
+  gas_filtering_enabled:      1      # Enable filtering out of certain gas particles from particle outputs
+  min_z_for_gas_filtering:    0.025  # Filter gas particles above this redshift, output all below
+  min_temp_for_filtered_gas:  1.0e5  # Above min_z_for_gas_filtering only output gas with temperature above this
+  min_nh_for_filtered_gas:    1.0e-6 # Above min_z_for_gas_filtering only output gas with nh/(1+z)^4 above this

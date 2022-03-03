@@ -1,0 +1,16 @@
+TotalMass                        on
+DarkMatterMass                   on
+SmoothedGasMass                  on
+UnsmoothedGasMass                on
+StellarMass                      on
+BlackHoleMass                    on
+StarFormationRate                on
+XrayErositaLowIntrinsicPhotons   on
+XrayErositaLowIntrinsicEnergies  on
+XrayErositaHighIntrinsicPhotons  on
+XrayErositaHighIntrinsicEnergies on
+XrayROSATIntrinsicPhotons        on
+XrayROSATIntrinsicEnergies       on
+ComptonY                         on
+DopplerB                         on
+DM                               on

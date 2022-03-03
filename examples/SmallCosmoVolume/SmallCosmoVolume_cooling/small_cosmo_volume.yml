@@ -41,6 +41,7 @@ SPH:
 
 # Parameters governing the snapshots
 Snapshots:
+  subdir:              snapshots
   basename:            snap
   delta_time:          1.02
   scale_factor_first:  0.02
