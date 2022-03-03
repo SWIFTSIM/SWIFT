@@ -23,6 +23,9 @@
 
 /* Local includes */
 #include "fermi_dirac.h"
+#include "io_properties.h"
+#include "lightcone/lightcone.h"
+#include "lightcone/lightcone_map_types.h"
 #include "neutrino.h"
 #include "neutrino_properties.h"
 
@@ -162,5 +165,38 @@ __attribute__((always_inline)) INLINE static int neutrino_write_particles(
 
   return 3;
 }
+
+/*
+  Lightcone map of neutrino mass perturbation
+*/
+
+int lightcone_map_neutrino_mass_type_contributes(int ptype);
+double lightcone_map_neutrino_mass_get_value(
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
+
+static const struct lightcone_map_type neutrino_lightcone_map_types[] = {
+    {
+        .name = "NeutrinoMass",
+        .update_map = lightcone_map_neutrino_mass_get_value,
+        .ptype_contributes = lightcone_map_neutrino_mass_type_contributes,
+        .baseline_func = lightcone_map_neutrino_baseline_value,
+        .units = UNIT_CONV_MASS,
+        .smoothing = map_unsmoothed,
+        .compression = compression_write_lossless,
+        .buffer_scale_factor = 1.0,
+    },
+    {
+        /* NULL functions indicate end of array */
+        .name = "",
+        .update_map = NULL,
+        .ptype_contributes = NULL,
+        .baseline_func = NULL,
+        .units = UNIT_CONV_NO_UNITS,
+        .smoothing = map_unsmoothed,
+        .compression = compression_write_lossless,
+        .buffer_scale_factor = 1.0,
+    },
+};
 
 #endif /* SWIFT_DEFAULT_NEUTRINO_IO_H */

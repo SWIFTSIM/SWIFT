@@ -213,6 +213,9 @@ struct cosmology {
   /*! Log of final expansion factor */
   double log_a_end;
 
+  /*! Speed of light (internal units) */
+  double const_speed_light_c;
+
   /*! Drift factor interpolation table */
   double *drift_fac_interp_table;
 
@@ -230,6 +233,18 @@ struct cosmology {
 
   /*! Scale factor interpolation table */
   double *scale_factor_interp_table;
+
+  /*! Comoving distance interpolation table */
+  double *comoving_distance_interp_table;
+
+  /*! Comoving distance from present day (a=1) to a_end */
+  double comoving_distance_interp_table_offset;
+
+  /*! Comoving distance from a_start to a_end */
+  double comoving_distance_start_to_end;
+
+  /*! Comoving distance inverse interpolation table */
+  double *comoving_distance_inverse_interp_table;
 
   /*! Massive neutrino density interpolation table at early times */
   double *neutrino_density_early_table;
@@ -278,6 +293,12 @@ double cosmology_get_timebase(struct cosmology *c,
                               const integertime_t ti_current);
 
 double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
+
+double cosmology_get_comoving_distance(const struct cosmology *c,
+                                       const double a);
+
+double cosmology_scale_factor_at_comoving_distance(const struct cosmology *c,
+                                                   double r);
 
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
 void cosmology_init(struct swift_params *params, const struct unit_system *us,
