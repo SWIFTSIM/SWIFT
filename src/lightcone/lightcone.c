@@ -22,11 +22,11 @@
 
 /* Some standard headers. */
 #include <hdf5.h>
+#include <limits.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
-#include <limits.h>
 
 /* HEALPix C API */
 #ifdef HAVE_CHEALPIX
@@ -664,9 +664,11 @@ void lightcone_init(struct lightcone_props *props, const int index,
 
   /* Check the number of healpix pixels doesn't overflow pixel_index_t */
   const unsigned long long nside_ull = props->nside;
-  const unsigned long long npix_ull = 12ull*nside_ull*nside_ull;
-  if(npix_ull > MAX_PIXEL_INDEX)
-    error("Number of HEALPix pixels is to large for pixel_index_t (see lightcone/pixel_index.h)");
+  const unsigned long long npix_ull = 12ull * nside_ull * nside_ull;
+  if (npix_ull > MAX_PIXEL_INDEX)
+    error(
+        "Number of HEALPix pixels is to large for pixel_index_t (see "
+        "lightcone/pixel_index.h)");
 
   /* Set up the array of lightcone shells for this lightcone */
   const pixel_index_t total_nr_pix = nside2npix64(props->nside);
@@ -794,7 +796,6 @@ void lightcone_init(struct lightcone_props *props, const int index,
   error("Need HEALPix C API to make lightcones");
 #endif
 }
-
 
 /**
  * @brief Return the name of a lightcone particle output file
@@ -991,7 +992,8 @@ void lightcone_flush_map_updates(struct lightcone_props *props,
   /* Apply updates to all current shells */
   for (int shell_nr = 0; shell_nr < props->nr_shells; shell_nr += 1) {
     if (props->shell[shell_nr].state == shell_current) {
-      lightcone_shell_flush_map_updates(&props->shell[shell_nr], tp, props->part_type,
+      lightcone_shell_flush_map_updates(&props->shell[shell_nr], tp,
+                                        props->part_type,
                                         props->max_map_update_send_size_mb,
                                         &props->kernel_table, props->verbose);
     }
@@ -1064,10 +1066,10 @@ void lightcone_dump_completed_shells(struct lightcone_props *props,
 
         /* Apply any buffered updates for this shell, if we didn't already */
         if (need_flush) {
-            lightcone_shell_flush_map_updates(
-                &props->shell[shell_nr], tp, props->part_type,
-                props->max_map_update_send_size_mb, &props->kernel_table,
-                props->verbose);
+          lightcone_shell_flush_map_updates(
+              &props->shell[shell_nr], tp, props->part_type,
+              props->max_map_update_send_size_mb, &props->kernel_table,
+              props->verbose);
         }
 
         /* Set the baseline value for the maps */

@@ -86,10 +86,12 @@ struct lightcone_map {
 };
 
 void lightcone_map_init(struct lightcone_map *map, const int nside,
-                        const pixel_index_t total_nr_pix, const pixel_index_t pix_per_rank,
+                        const pixel_index_t total_nr_pix,
+                        const pixel_index_t pix_per_rank,
                         const pixel_index_t local_nr_pix,
-                        const pixel_index_t local_pix_offset, const double r_min,
-                        const double r_max, struct lightcone_map_type type);
+                        const pixel_index_t local_pix_offset,
+                        const double r_min, const double r_max,
+                        struct lightcone_map_type type);
 
 void lightcone_map_clean(struct lightcone_map *map);
 
