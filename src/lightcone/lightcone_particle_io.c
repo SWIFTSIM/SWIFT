@@ -399,7 +399,7 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
       xp->v_full[0] / a_cross;  // TODO: extrapolate velocities to a_cross?
   data->vel[1] = xp->v_full[1] / a_cross;
   data->vel[2] = xp->v_full[2] / a_cross;
-  data->mass = p->mass;
+  data->mass = hydro_get_mass(p);
   data->a = a_cross;
   data->h = p->h;
   data->rho = p->rho;
