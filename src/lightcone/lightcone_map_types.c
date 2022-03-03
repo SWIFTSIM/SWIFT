@@ -97,7 +97,7 @@ double lightcone_map_total_mass_get_value(
   switch (gp->type) {
     case swift_type_gas: {
       const struct part *p = &parts[-gp->id_or_neg_offset];
-      return p->mass;
+      return hydro_get_mass(p);
     } break;
     case swift_type_stars: {
       const struct spart *sp = &sparts[-gp->id_or_neg_offset];
@@ -172,7 +172,7 @@ double lightcone_map_gas_mass_get_value(
   switch (gp->type) {
     case swift_type_gas: {
       const struct part *p = &parts[-gp->id_or_neg_offset];
-      return p->mass;
+      return hydro_get_mass(p);
     } break;
     default:
       error("lightcone map function called on wrong particle type");
