@@ -369,10 +369,10 @@ void construct_zoom_region(struct space *s, int verbose) {
       new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
 
   /* Compute maximum side length of the zoom region, need zoom boundary to be symetric. */
-  const double max_width = max3(new_zoom_boundary[1]-new_zoom_boundary[0],
-                                new_zoom_boundary[3]-new_zoom_boundary[2],
-                                new_zoom_boundary[5]-new_zoom_boundary[4])
-                                    * s->zoom_props->zoom_boost_factor;
+  double max_width = max3(new_zoom_boundary[1]-new_zoom_boundary[0],
+                          new_zoom_boundary[3]-new_zoom_boundary[2],
+                          new_zoom_boundary[5]-new_zoom_boundary[4])
+                              * s->zoom_props->zoom_boost_factor;
 
   
   /* This width has to divide the full parent box by an odd integer to ensure the two grids line up.
