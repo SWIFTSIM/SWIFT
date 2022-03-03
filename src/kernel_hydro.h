@@ -318,6 +318,44 @@ __attribute__((always_inline)) INLINE static void kernel_eval(
 }
 
 /**
+ * @brief Computes the kernel function in double precision.
+ *
+ * Required for computing the projected kernel because rounding
+ * error causes problems for the GSL integration function if
+ * we evaluate in single precision.
+ *
+ * The kernel function needs to be mutliplied by \f$h^{-d}\f$,
+ * where \f$d\f$ is the dimensionality of the problem.
+ *
+ * Returns 0 if \f$u > \gamma = H/h\f$
+ *
+ * @param u The ratio of the distance to the smoothing length \f$u = x/h\f$.
+ * @param W (return) The value of the kernel function \f$W(x,h)\f$.
+ */
+__attribute__((always_inline)) INLINE static void kernel_eval_double(
+    double u, double *restrict W) {
+
+  /* Go to the range [0,1[ from [0,H[ */
+  const double x = u * kernel_gamma_inv;
+
+  /* Pick the correct branch of the kernel */
+  const int temp = (int)(x * kernel_ivals_f);
+  const int ind = temp > kernel_ivals ? kernel_ivals : temp;
+  const float *const coeffs = &kernel_coeffs[ind * (kernel_degree + 1)];
+
+  /* First two terms of the polynomial ... */
+  double w = ((double)coeffs[0]) * x + ((double)coeffs[1]);
+
+  /* ... and the rest of them */
+  for (int k = 2; k <= kernel_degree; k++) w = x * w + ((double)coeffs[k]);
+
+  w = max(w, 0.);
+
+  /* Return everything */
+  *W = w * ((double)kernel_constant) * ((double)kernel_gamma_inv_dim);
+}
+
+/**
  * @brief Computes the kernel function derivative.
  *
  * The kernel function needs to be mutliplied by \f$h^{-d}\f$ and the gradient

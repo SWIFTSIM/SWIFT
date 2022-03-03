@@ -38,6 +38,7 @@
 #include "black_holes_io.h"
 #include "chemistry_io.h"
 #include "cooling_io.h"
+#include "extra_io.h"
 #include "feedback.h"
 #include "fof_io.h"
 #include "gravity_io.h"
@@ -539,6 +540,7 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
       H5Gcreate(h_grp, "NamedColumns", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp_columns < 0) error("Error while creating named columns group");
   entropy_floor_write_flavour(h_grp);
+  extra_io_write_flavour(h_grp, h_grp_columns);
   cooling_write_flavour(h_grp, h_grp_columns, e->cooling_func);
   chemistry_write_flavour(h_grp, h_grp_columns, e);
   tracers_write_flavour(h_grp);
@@ -1691,6 +1693,8 @@ void io_select_hydro_fields(const struct part* const parts,
   if (with_rt) {
     *num_fields += rt_write_particles(parts, list + *num_fields);
   }
+  *num_fields += extra_io_write_particles(parts, xparts, list + *num_fields,
+                                          with_cosmology);
 }
 
 /**
@@ -1793,6 +1797,8 @@ void io_select_star_fields(const struct spart* const sparts,
   if (with_rt) {
     *num_fields += rt_write_stars(sparts, list + *num_fields);
   }
+  *num_fields +=
+      extra_io_write_sparticles(sparts, list + *num_fields, with_cosmology);
 }
 
 /**
@@ -1821,4 +1827,6 @@ void io_select_bh_fields(const struct bpart* const bparts,
   if (with_stf) {
     *num_fields += velociraptor_write_bparts(bparts, list + *num_fields);
   }
+  *num_fields +=
+      extra_io_write_bparticles(bparts, list + *num_fields, with_cosmology);
 }

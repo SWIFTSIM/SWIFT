@@ -501,6 +501,10 @@ int main(int argc, char *argv[]) {
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
 
+  struct lightcone_array_props lightcone_array_properties;
+  lightcone_array_properties.nr_lightcones = 0;
+  engine.lightcone_array_properties = &lightcone_array_properties;
+
   /* Construct some cells */
   struct cell *cells[dim * dim * dim];
   static long long partId = 0;
