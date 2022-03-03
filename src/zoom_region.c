@@ -302,7 +302,8 @@ void construct_zoom_region(struct space *s, int verbose) {
   double mtot = 0.0;
   double com[3] = {0.0, 0.0, 0.0};
 
-  /* Find the min/max location in each dimension for each mask gravity particle, and their COM. */
+  /* Find the min/max location in each dimension for each mask gravity particle, and their COM.
+   * *** NOTE: for now this is done both at initialisation and then redone if there is a re-construction. *** */
   for (size_t k = 0; k < nr_gparts; k++) {
     if (s->gparts[k].type != swift_type_dark_matter) continue;
 
@@ -413,6 +414,11 @@ void construct_zoom_region(struct space *s, int verbose) {
     s->cdim[ijk] = (int)floor((s->dim[ijk] + 0.5 * s->width[ijk]) * s->iwidth[ijk]);
     s->zoom_props->zoom_cell_ijk[ijk] = (int)floor(s->cdim[ijk] / 2);
   }
+
+  /* Resize the top level cells in the space. */
+  const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
+  s->cell_min = 0.99 * dmax / n_background_cells;
+
 
   	/* Check if we have enough cells for periodicity. */
 	if (s->periodic && (s->cdim[0] < 3 || s->cdim[1] < 3 || s->cdim[2] < 3))
