@@ -610,6 +610,10 @@ int main(int argc, char *argv[]) {
   struct runner runner;
   runner.e = &engine;
 
+  struct lightcone_array_props lightcone_array_properties;
+  lightcone_array_properties.nr_lightcones = 0;
+  engine.lightcone_array_properties = &lightcone_array_properties;
+
   /* Construct some cells */
   struct cell *cells[125];
   struct cell *inner_cells[27];

@@ -27,6 +27,7 @@ difference is the parameter file that will need to be adapted for SWIFT.
    FriendsOfFriends/index
    VELOCIraptorInterface/index
    LineOfSights/index
+   LightCones/index
    EquationOfState/index
    ExternalPotentials/index
    Neutrinos/index
