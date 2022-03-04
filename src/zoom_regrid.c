@@ -57,7 +57,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	const double zoom_cell_min = min3(dmax / s->zoom_props->cdim[0],
 	                                  dmax / s->zoom_props->cdim[1],
 	                                  dmax / s->zoom_props->cdim[2]);
-	double h_max = zoom_cell_min / kernel_gamma / space_stretch;
+	float h_max = zoom_cell_min / kernel_gamma / space_stretch;
 	message("zoom_cell_min= %f, kernel_gamma= %f, space_stretch= %f h_max= %f", zoom_cell_min, kernel_gamma, space_stretch, h_max);
 	if (nr_parts > 0) {
 
@@ -125,7 +125,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
    how large the largest cell should be. */
 #ifdef WITH_MPI
 	{
-    double buff;
+    float buff;
     if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
       error("Failed to aggregate the rebuild flag across nodes.");
