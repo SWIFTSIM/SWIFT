@@ -50,21 +50,21 @@ void exchange_structs(size_t *nr_send, void *sendbuf, size_t *nr_recv,
   MPI_Comm_rank(MPI_COMM_WORLD, &nodeID);
 
   /* Compute send offsets */
-  size_t *send_offset = malloc(nr_nodes * sizeof(size_t));
+  size_t *send_offset = (size_t *)malloc(nr_nodes * sizeof(size_t));
   send_offset[0] = 0;
   for (int i = 1; i < nr_nodes; i += 1) {
     send_offset[i] = send_offset[i - 1] + nr_send[i - 1];
   }
 
   /* Compute receive offsets */
-  size_t *recv_offset = malloc(nr_nodes * sizeof(size_t));
+  size_t *recv_offset = (size_t *)malloc(nr_nodes * sizeof(size_t));
   recv_offset[0] = 0;
   for (int i = 1; i < nr_nodes; i += 1) {
     recv_offset[i] = recv_offset[i - 1] + nr_recv[i - 1];
   }
 
   /* Allocate request objects (one send and receive per node) */
-  MPI_Request *request = malloc(2 * sizeof(MPI_Request) * nr_nodes);
+  MPI_Request *request = (MPI_Request *)malloc(2 * sizeof(MPI_Request) * nr_nodes);
 
   /* Make type to communicate the struct */
   MPI_Datatype value_mpi_type;
