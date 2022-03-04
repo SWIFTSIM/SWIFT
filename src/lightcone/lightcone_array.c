@@ -70,8 +70,8 @@ void lightcone_array_init(struct lightcone_array_props *props,
     message("found %d lightcones to generate", props->nr_lightcones);
 
   /* Allocate array of lightcones */
-  props->lightcone =
-      malloc(sizeof(struct lightcone_props) * props->nr_lightcones);
+  props->lightcone = (struct lightcone_props *)malloc(
+      sizeof(struct lightcone_props) * props->nr_lightcones);
   if (!props->lightcone) error("Failed to allocate lightcone array");
 
   /* Initialise lightcones */
@@ -131,8 +131,8 @@ void lightcone_array_struct_restore(struct lightcone_array_props *props,
   restart_read_blocks((void *)props, sizeof(struct lightcone_array_props), 1,
                       stream, NULL, "lightcone_array_props");
 
-  props->lightcone =
-      malloc(sizeof(struct lightcone_props) * props->nr_lightcones);
+  props->lightcone = (struct lightcone_props *)malloc(
+      sizeof(struct lightcone_props) * props->nr_lightcones);
   if (!props->lightcone) error("Failed to allocate lightcone array");
 
   for (int i = 0; i < props->nr_lightcones; i += 1)
@@ -231,8 +231,8 @@ struct replication_list *lightcone_array_refine_replications(
   const int nr_lightcones = props->nr_lightcones;
 
   /* Allocate a replication list for each lightcone */
-  struct replication_list *lists =
-      malloc(sizeof(struct replication_list) * nr_lightcones);
+  struct replication_list *lists = (struct replication_list *)malloc(
+      sizeof(struct replication_list) * nr_lightcones);
 
   /* Loop over lightcones */
   for (int lightcone_nr = 0; lightcone_nr < nr_lightcones; lightcone_nr += 1) {
