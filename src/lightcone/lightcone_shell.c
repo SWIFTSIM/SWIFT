@@ -72,8 +72,8 @@ static void read_shell_radii(const struct cosmology *cosmo,
   rewind(fd);
 
   /* Allocate output array */
-  struct lightcone_shell *shell =
-      malloc(sizeof(struct lightcone_shell) * (nr_lines - 1));
+  struct lightcone_shell *shell = (struct lightcone_shell *)malloc(
+      sizeof(struct lightcone_shell) * (nr_lines - 1));
 
   /* Check header */
   enum shell_units units = not_known;
@@ -185,7 +185,8 @@ struct lightcone_shell *lightcone_shell_array_init(
 #ifdef WITH_MPI
   MPI_Bcast(&nr_shells, 1, MPI_INT, 0, MPI_COMM_WORLD);
   if (engine_rank != 0)
-    shell = malloc(sizeof(struct lightcone_shell) * nr_shells);
+    shell = (struct lightcone_shell *)malloc(sizeof(struct lightcone_shell) *
+                                             nr_shells);
   MPI_Bcast(shell, sizeof(struct lightcone_shell) * nr_shells, MPI_BYTE, 0,
             MPI_COMM_WORLD);
 #endif
@@ -207,7 +208,8 @@ struct lightcone_shell *lightcone_shell_array_init(
   /* Allocate lightcone_map structs for each shell */
   for (int shell_nr = 0; shell_nr < nr_shells; shell_nr += 1) {
     shell[shell_nr].nr_maps = nr_maps;
-    shell[shell_nr].map = malloc(nr_maps * sizeof(struct lightcone_map));
+    shell[shell_nr].map =
+        (struct lightcone_map *)malloc(nr_maps * sizeof(struct lightcone_map));
   }
 
   int comm_rank = 0, comm_size = 1;
@@ -332,15 +334,16 @@ struct lightcone_shell *lightcone_shell_array_restore(
     size_t elements_per_block) {
 
   /* Restore the array of lightcone_shell structs */
-  struct lightcone_shell *shell =
-      malloc(sizeof(struct lightcone_shell) * nr_shells);
+  struct lightcone_shell *shell = (struct lightcone_shell *)malloc(
+      sizeof(struct lightcone_shell) * nr_shells);
   restart_read_blocks((void *)shell, sizeof(struct lightcone_shell), nr_shells,
                       stream, NULL, "lightcone_shells");
 
   /* Restore the lightcone maps associated with each shell */
   for (int shell_nr = 0; shell_nr < nr_shells; shell_nr += 1) {
     const int nr_maps = shell[shell_nr].nr_maps;
-    shell[shell_nr].map = malloc(sizeof(struct lightcone_map) * nr_maps);
+    shell[shell_nr].map =
+        (struct lightcone_map *)malloc(sizeof(struct lightcone_map) * nr_maps);
     for (int map_nr = 0; map_nr < nr_maps; map_nr += 1) {
       lightcone_map_struct_restore(&shell[shell_nr].map[map_nr], stream);
     }
@@ -853,19 +856,20 @@ void lightcone_shell_flush_map_updates_for_type(
   }
 
   /* Allocate array with counts and offsets for each block */
-  struct buffer_block_info *block_info =
-      malloc(sizeof(struct buffer_block_info) * nr_blocks);
+  struct buffer_block_info *block_info = (struct buffer_block_info *)malloc(
+      sizeof(struct buffer_block_info) * nr_blocks);
 
   /* Initialize array of blocks */
   nr_blocks = 0;
   block = buffer->first_block;
   while (block) {
     block_info[nr_blocks].block = block;
-    block_info[nr_blocks].count = malloc(sizeof(size_t) * comm_size);
-    block_info[nr_blocks].offset = malloc(sizeof(size_t) * comm_size);
+    block_info[nr_blocks].count = (size_t *)malloc(sizeof(size_t) * comm_size);
+    block_info[nr_blocks].offset = (size_t *)malloc(sizeof(size_t) * comm_size);
     block_info[nr_blocks].first_dest =
-        malloc(sizeof(int) * block->num_elements);
-    block_info[nr_blocks].last_dest = malloc(sizeof(int) * block->num_elements);
+        (int *)malloc(sizeof(int) * block->num_elements);
+    block_info[nr_blocks].last_dest =
+        (int *)malloc(sizeof(int) * block->num_elements);
     nr_blocks += 1;
     block = block->next;
   }
@@ -909,7 +913,7 @@ void lightcone_shell_flush_map_updates_for_type(
                    &mapper_data);
 
     /* Find total number of elements to go to each rank */
-    size_t *send_count = malloc(sizeof(size_t) * comm_size);
+    size_t *send_count = (size_t *)malloc(sizeof(size_t) * comm_size);
     for (int i = 0; i < comm_size; i += 1) send_count[i] = 0;
     for (int block_nr = 0; block_nr < nr_blocks_iter; block_nr += 1) {
       for (int i = 0; i < comm_size; i += 1)
@@ -918,7 +922,7 @@ void lightcone_shell_flush_map_updates_for_type(
 
     /* Find offset to the first element to go to each rank if we sort them by
      * destination */
-    size_t *send_offset = malloc(sizeof(size_t) * comm_size);
+    size_t *send_offset = (size_t *)malloc(sizeof(size_t) * comm_size);
     send_offset[0] = 0;
     for (int i = 1; i < comm_size; i += 1) {
       send_offset[i] = send_offset[i - 1] + send_count[i - 1];
@@ -947,7 +951,8 @@ void lightcone_shell_flush_map_updates_for_type(
 
     /* Allocate the send buffer */
     union lightcone_map_buffer_entry *sendbuf =
-        malloc(part_type[ptype].buffer_element_size * total_nr_send);
+        (union lightcone_map_buffer_entry *)malloc(
+            part_type[ptype].buffer_element_size * total_nr_send);
     mapper_data.sendbuf = sendbuf;
 
     /* Populate the send buffer */
@@ -956,7 +961,7 @@ void lightcone_shell_flush_map_updates_for_type(
                    &mapper_data);
 
     /* Determine number of elements to receive */
-    size_t *recv_count = malloc(comm_size * sizeof(size_t));
+    size_t *recv_count = (size_t *)malloc(comm_size * sizeof(size_t));
     MPI_Alltoall(send_count, sizeof(size_t), MPI_BYTE, recv_count,
                  sizeof(size_t), MPI_BYTE, MPI_COMM_WORLD);
     size_t total_nr_recv = 0;
@@ -964,7 +969,8 @@ void lightcone_shell_flush_map_updates_for_type(
 
     /* Allocate receive buffer */
     union lightcone_map_buffer_entry *recvbuf =
-        malloc(part_type[ptype].buffer_element_size * total_nr_recv);
+        (union lightcone_map_buffer_entry *)malloc(
+            part_type[ptype].buffer_element_size * total_nr_recv);
 
     /* Exchange data */
     exchange_structs(send_count, sendbuf, recv_count, recvbuf,

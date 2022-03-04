@@ -107,7 +107,7 @@ void projected_kernel_init(struct projected_kernel_table *tab) {
 
   /* Allocate storage */
   tab->n = PROJECTED_KERNEL_NTAB;
-  tab->value = malloc(sizeof(double) * tab->n);
+  tab->value = (double *)malloc(sizeof(double) * tab->n);
 
   /* Determine range to tabulate */
   tab->u_max = kernel_gamma;

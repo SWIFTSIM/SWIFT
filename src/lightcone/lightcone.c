@@ -319,7 +319,8 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
                       NULL, "lightcone_props");
 
   /* Read in the map types */
-  props->map_type = malloc(sizeof(struct lightcone_map_type) * props->nr_maps);
+  props->map_type = (struct lightcone_map_type *)malloc(
+      sizeof(struct lightcone_map_type) * props->nr_maps);
   restart_read_blocks((void *)props->map_type,
                       sizeof(struct lightcone_map_type), props->nr_maps, stream,
                       NULL, "lightcone_props");
@@ -332,7 +333,7 @@ void lightcone_struct_restore(struct lightcone_props *props, FILE *stream) {
    * Restore these. */
   for (int ptype = 0; ptype < swift_type_count; ptype += 1) {
     struct lightcone_particle_type *this_type = &(props->part_type[ptype]);
-    this_type->map_index = malloc(sizeof(int) * this_type->nr_maps);
+    this_type->map_index = (int *)malloc(sizeof(int) * this_type->nr_maps);
     restart_read_blocks((void *)this_type->map_index, sizeof(int),
                         this_type->nr_maps, stream, NULL, "lightcone_props");
   }
@@ -628,7 +629,7 @@ void lightcone_init(struct lightcone_props *props, const int index,
     }
 
     /* Store indexes of maps to update for this particle type */
-    this_type->map_index = malloc(sizeof(int) * this_type->nr_maps);
+    this_type->map_index = (int *)malloc(sizeof(int) * this_type->nr_maps);
     this_type->nr_maps = 0;
     this_type->nr_smoothed_maps = 0;
     this_type->nr_unsmoothed_maps = 0;
@@ -1592,7 +1593,8 @@ void lightcone_buffer_map_update(struct lightcone_props *props,
 
       /* Allocate storage for updates and set particle coordinates and radius */
       union lightcone_map_buffer_entry *data =
-          malloc(part_type_info->buffer_element_size);
+          (union lightcone_map_buffer_entry *)malloc(
+              part_type_info->buffer_element_size);
       data[0].i = angle_to_int(theta);
       data[1].i = angle_to_int(phi);
       data[2].f = radius;
@@ -1687,7 +1689,7 @@ void lightcone_write_index(struct lightcone_props *props,
 #endif
 
   /* Collect current file index on each rank */
-  int *current_file_on_rank = malloc(sizeof(int) * comm_size);
+  int *current_file_on_rank = (int *)malloc(sizeof(int) * comm_size);
 #ifdef WITH_MPI
   MPI_Gather(&props->current_file, 1, MPI_INT, current_file_on_rank, 1, MPI_INT,
              0, MPI_COMM_WORLD);
@@ -1736,8 +1738,8 @@ void lightcone_write_index(struct lightcone_props *props,
     /* Write the number of shells and their radii */
     const int nr_shells = props->nr_shells;
     io_write_attribute_i(group_id, "nr_shells", nr_shells);
-    double *shell_inner_radii = malloc(sizeof(double) * nr_shells);
-    double *shell_outer_radii = malloc(sizeof(double) * nr_shells);
+    double *shell_inner_radii = (double *)malloc(sizeof(double) * nr_shells);
+    double *shell_outer_radii = (double *)malloc(sizeof(double) * nr_shells);
     for (int i = 0; i < nr_shells; i += 1) {
       shell_inner_radii[i] = props->shell[i].rmin * length_conversion_factor;
       shell_outer_radii[i] = props->shell[i].rmax * length_conversion_factor;

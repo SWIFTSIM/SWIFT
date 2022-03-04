@@ -70,7 +70,8 @@ void lightcone_io_field_list_append(struct lightcone_io_field_list *list,
                                     char *compression) {
 
   /* Make the new lightcone_io_field struct */
-  struct lightcone_io_field *r = malloc(sizeof(struct lightcone_io_field));
+  struct lightcone_io_field *r =
+      (struct lightcone_io_field *)malloc(sizeof(struct lightcone_io_field));
   bzero(r, sizeof(struct lightcone_io_field));
   strcpy(r->name, name);
   r->type = type;
@@ -806,7 +807,7 @@ void lightcone_write_particles(struct lightcone_props *props,
           units_conversion_factor(internal_units, snapshot_units, f->units);
 
       /* Allocate output buffer */
-      char *outbuf = malloc(num_to_write * field_size);
+      char *outbuf = (char *)malloc(num_to_write * field_size);
       if (!outbuf) error("Unable to allocate lightcone output buffer");
       char *outptr = outbuf;
 

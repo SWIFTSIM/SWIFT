@@ -114,8 +114,8 @@ static struct particle_buffer_block *allocate_block(
   const size_t elements_per_block = buffer->elements_per_block;
 
   /* Allocate the struct */
-  struct particle_buffer_block *block = (struct particle_buffer_block *)
-      malloc(sizeof(struct particle_buffer_block));
+  struct particle_buffer_block *block = (struct particle_buffer_block *)malloc(
+      sizeof(struct particle_buffer_block));
   if (!block)
     error("Failed to allocate new particle buffer block: %s", buffer->name);
 

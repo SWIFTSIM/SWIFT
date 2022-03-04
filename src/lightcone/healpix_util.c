@@ -218,7 +218,8 @@ void healpix_query_disc_range(int nside, double vec[3], double radius,
   int nout_max = 2 * (irmax - irmin + 1);
   if (nout_max < 1) nout_max = 1;
   if (nr_ranges && range) {
-    *range = malloc(nout_max * sizeof(struct pixel_range));
+    *range =
+        (struct pixel_range *)malloc(nout_max * sizeof(struct pixel_range));
   }
 
   /* Will return min and max pixel indexes in the disk */
