@@ -365,6 +365,9 @@ struct zoom_region_properties {
   /*! Space dimensions in number of top level zoom cells. */
   int cdim[3];
 
+  /*! The minimum top-level zoom cell width allowed. */
+  double cell_min;
+
   /*! Shift applied to particles to centre the high res particles in the box. */
   double zoom_shift[3];
 

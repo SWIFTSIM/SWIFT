@@ -170,6 +170,10 @@ void zoom_region_init(struct swift_params *params, struct space *s, int verbose)
               s->zoom_props->zoom_shift[1], s->zoom_props->zoom_shift[2]);
     }
 
+    /* Set the minimum allowed zoom cell width. */
+    const double zoom_dmax = max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
+    s->zoom_props->cell_min = 0.99 * zoom_dmax / s->zoom_props->cdim[0];
+
   }
 #endif
 }
@@ -369,7 +373,7 @@ void construct_zoom_region(struct space *s, int verbose) {
       new_zoom_boundary[3], new_zoom_boundary[4], new_zoom_boundary[5]);
 
   /* Compute maximum side length of the zoom region, need zoom boundary to be symetric. */
-  double max_width = max3(new_zoom_boundary[1]-new_zoom_boundary[0],
+  double max_dim = max3(new_zoom_boundary[1]-new_zoom_boundary[0],
                           new_zoom_boundary[3]-new_zoom_boundary[2],
                           new_zoom_boundary[5]-new_zoom_boundary[4])
                               * s->zoom_props->zoom_boost_factor;
@@ -377,16 +381,16 @@ void construct_zoom_region(struct space *s, int verbose) {
   
   /* This width has to divide the full parent box by an odd integer to ensure the two grids line up.
    * NOTE: assumes box dimensions are equal! */
-  int nr_zoom_regions = (int)(s->dim[0] / max_width);
+  int nr_zoom_regions = (int)(s->dim[0] / max_dim);
   if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-  max_width = s->dim[0] / nr_zoom_regions;
+  max_dim = s->dim[0] / nr_zoom_regions;
 
   /* Do we want to refine the background cells? */
   if (s->zoom_props->refine_bkg && nr_zoom_regions >= s->zoom_props->cdim[0]) {
     nr_zoom_regions = s->zoom_props->cdim[0];
     if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-    const float new_zoom_boost_factor = (s->dim[0] / nr_zoom_regions) / (max_width / s->zoom_props->zoom_boost_factor);
-    max_width = s->dim[0] / nr_zoom_regions;
+    const float new_zoom_boost_factor = (s->dim[0] / nr_zoom_regions) / (max_dim / s->zoom_props->zoom_boost_factor);
+    max_dim = s->dim[0] / nr_zoom_regions;
     if (verbose)
       message("Have increased zoom_boost_factor from %f to %f",
               s->zoom_props->zoom_boost_factor, new_zoom_boost_factor);
@@ -398,16 +402,19 @@ void construct_zoom_region(struct space *s, int verbose) {
   for (int ijk = 0; ijk < 3; ijk++) {
     
     /* Set the new boundaries. */
-    s->zoom_props->region_bounds[(ijk * 2)] = (s->dim[ijk] / 2) - (max_width / 2);
-    s->zoom_props->region_bounds[(ijk * 2) + 1] = (s->dim[ijk] / 2) + (max_width / 2);
+    s->zoom_props->region_bounds[(ijk * 2)] = (s->dim[ijk] / 2) - (max_dim / 2);
+    s->zoom_props->region_bounds[(ijk * 2) + 1] = (s->dim[ijk] / 2) + (max_dim / 2);
   }
   
   /* Let's set what we know about the zoom region. */
   for (int ijk = 0; ijk < 3; ijk++) {
-  	s->zoom_props->width[ijk] = max_width / s->zoom_props->cdim[ijk];
+  	s->zoom_props->width[ijk] = max_dim / s->zoom_props->cdim[ijk];
   	s->zoom_props->iwidth[ijk] = 1 / s->zoom_props->width[ijk];
-  	s->zoom_props->dim[ijk] = max_width;
+  	s->zoom_props->dim[ijk] = max_dim;
   }
+
+  /* Overwrite the minimum allowed zoom cell width. */
+  s->zoom_props->cell_min = 0.99 * max_dim / s->zoom_props->cdim[0];
   
   /* Now we can define the background grid and zoom region's background ijk. */
   for (int ijk = 0; ijk < 3; ijk++) {
@@ -420,7 +427,6 @@ void construct_zoom_region(struct space *s, int verbose) {
   /* Resize the top level cells in the space. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
   s->cell_min = 0.99 * dmax / nr_zoom_regions;
-
 
   	/* Check if we have enough cells for periodicity. */
 	if (s->periodic && (s->cdim[0] < 3 || s->cdim[1] < 3 || s->cdim[2] < 3))
