@@ -47,65 +47,66 @@ enum xray_band_types {
 /**
  * @brief The general properties required for the extra i/o fields.
  */
+
+struct xray_properties {
+
+  /* Element masses for the chemistry elements (cgs) */
+  float *element_mass;
+
+  /* Temperature bins from xray table (cgs) */
+  float *Temperatures;
+
+  /* Density bins from xray table (physical cgs) */
+  float *Densities;
+
+  /* Helium fraction bins from xray table */
+  float *He_bins;
+
+  /* Redshift bins from xray table */
+  float *Redshifts;
+
+  /* Solar metallicites from xray table */
+  float *Solar_metallicity;
+
+  /* Log of solar metallicites from xray table */
+  float *Log10_solar_metallicity;
+
+  /* Integrated photon emissivity in the erosita-low band (0.2-2.3 keV)
+   * (physical) */
+  float *emissivity_erosita_low_intrinsic_photons;
+
+  /* Integrated photon emissivity in the erosita-high band (2.3-8.0 keV)
+   * (physical) */
+  float *emissivity_erosita_high_intrinsic_photons;
+
+  /* Integrated photon emissivity in the ROSAT band (0.5-2.0 keV) (physical)
+   */
+  float *emissivity_ROSAT_intrinsic_photons;
+
+  /* Integrated emissivity in the erosita-low band (0.2-2.3 keV)
+   * (physical) */
+  float *emissivity_erosita_low_intrinsic_energies;
+
+  /* Integrated emissivity in the erosita-high band (2.3-8.0 keV)
+   * (physical) */
+  float *emissivity_erosita_high_intrinsic_energies;
+
+  /* Integrated emissivity in the ROSAT band (0.5-2.0 keV) (physical)
+   */
+  float *emissivity_ROSAT_intrinsic_energies;
+
+  /* Path to the xray table */
+  char xray_table_path[500];
+
+  /* Photon emissivity unit conversion factor */
+  double xray_photon_emissivity_unit_conversion;
+
+  /* Energy emissivity unit conversion factor */
+  double xray_energy_emissivity_unit_conversion;
+};
+
 struct extra_io_properties {
-
-  struct xray_properties {
-
-    /* Element masses for the chemistry elements (cgs) */
-    float *element_mass;
-
-    /* Temperature bins from xray table (cgs) */
-    float *Temperatures;
-
-    /* Density bins from xray table (physical cgs) */
-    float *Densities;
-
-    /* Helium fraction bins from xray table */
-    float *He_bins;
-
-    /* Redshift bins from xray table */
-    float *Redshifts;
-
-    /* Solar metallicites from xray table */
-    float *Solar_metallicity;
-
-    /* Log of solar metallicites from xray table */
-    float *Log10_solar_metallicity;
-
-    /* Integrated photon emissivity in the erosita-low band (0.2-2.3 keV)
-     * (physical) */
-    float *emissivity_erosita_low_intrinsic_photons;
-
-    /* Integrated photon emissivity in the erosita-high band (2.3-8.0 keV)
-     * (physical) */
-    float *emissivity_erosita_high_intrinsic_photons;
-
-    /* Integrated photon emissivity in the ROSAT band (0.5-2.0 keV) (physical)
-     */
-    float *emissivity_ROSAT_intrinsic_photons;
-
-    /* Integrated emissivity in the erosita-low band (0.2-2.3 keV)
-     * (physical) */
-    float *emissivity_erosita_low_intrinsic_energies;
-
-    /* Integrated emissivity in the erosita-high band (2.3-8.0 keV)
-     * (physical) */
-    float *emissivity_erosita_high_intrinsic_energies;
-
-    /* Integrated emissivity in the ROSAT band (0.5-2.0 keV) (physical)
-     */
-    float *emissivity_ROSAT_intrinsic_energies;
-
-    /* Path to the xray table */
-    char xray_table_path[500];
-
-    /* Photon emissivity unit conversion factor */
-    double xray_photon_emissivity_unit_conversion;
-
-    /* Energy emissivity unit conversion factor */
-    double xray_energy_emissivity_unit_conversion;
-
-  } xray_data;
+  struct xray_properties xray_data;
 };
 
 /**
