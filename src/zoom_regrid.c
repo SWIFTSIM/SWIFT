@@ -134,11 +134,11 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 	const double dmax = max3(s->zoom_props->dim[0],
 	                         s->zoom_props->dim[1],
 	                         s->zoom_props->dim[2]);
-	const int zoom_cdim[3] = {(int)floor(dmax /
+	const int zoom_cdim[3] = {(int)floor((dmax + 0.01 * zoom_cell_min) /
                             fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-                            (int)floor(dmax /
+                            (int)floor((dmax + 0.01 * zoom_cell_min) /
                             fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min)),
-                            (int)floor(dmax /
+                            (int)floor((dmax + 0.01 * zoom_cell_min) /
                             fmax(h_max * kernel_gamma * space_stretch, zoom_cell_min))};
 
 /* In MPI-Land, changing the top-level cell size requires that the
