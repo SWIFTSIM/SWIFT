@@ -177,7 +177,7 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
     for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
       for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
         for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
-          cid = cell_getid(oldcdim, i, j, k);
+          cid = cell_getid(oldzoomcdim, i, j, k);
           oldnodeIDs[cid] = s->cells_top[cid].nodeID;
         }
       }
