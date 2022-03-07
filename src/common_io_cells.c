@@ -499,10 +499,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const int zoom_cdim[3
   if (nr_cells == 0) return;
 
   double cell_width[3] = {width[0], width[1], width[2]};
+  double zoom_cell_width[3] = {0.0, 0.0, 0.0};
 
 #ifdef WITH_ZOOM_REGION
   if (with_zoom)
-    double zoom_cell_width[3] = {zoom_width[0], zoom_width[1], zoom_width[2]};
+    zoom_cell_width[3] = {zoom_width[0], zoom_width[1], zoom_width[2]};
 #endif
 
   /* Temporary memory for the cell-by-cell information */
