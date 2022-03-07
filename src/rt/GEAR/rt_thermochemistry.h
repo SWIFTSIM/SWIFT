@@ -154,9 +154,12 @@ static void rt_do_thermochemistry(struct part* restrict p,
   particle_grackle_data.metal_density = NULL;
 
   /* solve chemistry */
-  if (!local_solve_chemistry(
-          &rt_props->grackle_chemistry_data, rt_props->grackle_chemistry_rates,
-          &rt_props->grackle_units, &particle_grackle_data, dt))
+  /* Note: grackle_rates is a global variable defined by grackle itself.
+   * Using a manually allocd and initialized variable here fails with MPI
+   * for some reason. */
+  if (local_solve_chemistry(&rt_props->grackle_chemistry_data, &grackle_rates,
+                            &rt_props->grackle_units, &particle_grackle_data,
+                            dt) == 0)
     error("Error in solve_chemistry.");
 
   /* update particle internal energy. Grackle had access by reference

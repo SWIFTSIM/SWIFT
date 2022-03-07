@@ -111,15 +111,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   if (pi->rt_data.debug_injection_done != 1)
     error(
-        "Trying to do iact transport when "
-        "finalise injection count is %d",
-        pi->rt_data.debug_injection_done);
+        "Part %lld trying to do iact transport when "
+        "injection_done count is %d",
+        pi->id, pi->rt_data.debug_injection_done);
 
   if (pi->rt_data.debug_gradients_done != 1)
     error(
-        "Trying to do iact transport when "
-        "rt_finalise_gradient count is %d",
-        pi->rt_data.debug_gradients_done);
+        "Part %lld trying to do iact transport when "
+        "gradients_done count is %d",
+        pi->id, pi->rt_data.debug_gradients_done);
 
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
@@ -131,15 +131,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
     if (pj->rt_data.debug_injection_done != 1)
       error(
-          "Trying to do iact transport when "
-          "finalise injection count is %d",
-          pj->rt_data.debug_injection_done);
+          "Part %lld Trying to do iact transport when "
+          "injection_done count is %d",
+          pj->id, pj->rt_data.debug_injection_done);
 
     if (pj->rt_data.debug_gradients_done != 1)
       error(
-          "Trying to do iact transport when "
-          "rt_finalise_gradient count is %d",
-          pj->rt_data.debug_gradients_done);
+          "Part %lld Trying to do iact transport when "
+          "gradients_done count is %d",
+          pj->id, pj->rt_data.debug_gradients_done);
 
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
