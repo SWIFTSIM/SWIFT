@@ -107,9 +107,10 @@ void io_write_code_description(hid_t h_file);
 void io_write_engine_policy(hid_t h_file, const struct engine* e);
 void io_write_part_type_names(hid_t h_grp);
 
-void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const int zoom_cdim[3], const double dim[3],
                            const struct cell* cells_top, const int nr_cells,
-                           const double width[3], const int nodeID,
+                           const int nr_zoomcells, const int nr_bkgcells,
+                           const double width[3], const double zoom_width[3], const int nodeID,
                            const int distributed,
                            const int subsample[swift_type_count],
                            const float subsample_fraction[swift_type_count],
@@ -118,7 +119,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const long long global_offsets[swift_type_count],
                            const int num_fields[swift_type_count],
                            const struct unit_system* internal_units,
-                           const struct unit_system* snapshot_units);
+                           const struct unit_system* snapshot_units, const int with_zoom);
 
 void io_read_unit_system(hid_t h_file, struct unit_system* ic_units,
                          const struct unit_system* internal_units,

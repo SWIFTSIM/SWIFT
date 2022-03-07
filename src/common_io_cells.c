@@ -449,9 +449,15 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
  *
  * @param h_grp the hdf5 group to write to.
  * @param cdim The number of top-level cells along each axis.
+ * @param zoom_cdim The number of top-level zoom cells along each axis. (only used with zoom region)
  * @param dim The box size.
  * @param cells_top The top-level cells.
  * @param nr_cells The number of top-level cells.
+ * @param nr_zoomcells The number of top-level zoom cells. (only used with zoom region)
+ * @param nr_bkgcells The number of top-level background cells. (only used with zoom region)
+ * @param width The width of a top-level cell.
+ * @param zoom_width The width of a top-level zoom cell. (only used with zoom region)
+ * @param nodeID This node's MPI rank.
  * @param distributed Is this a distributed snapshot?
  * @param subsample Are we subsampling the different particle types?
  * @param subsample_fraction The fraction of particles to keep when subsampling.
@@ -462,10 +468,12 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The internal unit system.
  * @param snapshot_units The snapshot unit system.
+ * @param with_zoom Flag for whether we're running with a zoom region. (only used with zoom region)
  */
-void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
+void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const int zoom_cdim[3], const double dim[3],
                            const struct cell* cells_top, const int nr_cells,
-                           const double width[3], const int nodeID,
+                           const int nr_zoomcells, const int nr_bkgcells,
+                           const double width[3], const double zoom_width[3], const int nodeID,
                            const int distributed,
                            const int subsample[swift_type_count],
                            const float subsample_fraction[swift_type_count],
@@ -474,7 +482,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const long long global_offsets[swift_type_count],
                            const int num_fields[swift_type_count],
                            const struct unit_system* internal_units,
-                           const struct unit_system* snapshot_units) {
+                           const struct unit_system* snapshot_units, const int with_zoom) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (distributed) {
@@ -491,6 +499,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   if (nr_cells == 0) return;
 
   double cell_width[3] = {width[0], width[1], width[2]};
+
+#ifdef WITH_ZOOM_REGION
+  if (with_zoom)
+    double zoom_cell_width[3] = {zoom_width[0], zoom_width[1], zoom_width[2]};
+#endif
 
   /* Temporary memory for the cell-by-cell information */
   double* centres = NULL;
@@ -554,9 +567,9 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     if (cells_top[i].nodeID == nodeID) {
 
       /* Centre of each cell */
-      centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
-      centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
-      centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
+      centres[i * 3 + 0] = cells_top[i].loc[0] + cells_top[i].width[0] * 0.5;
+      centres[i * 3 + 1] = cells_top[i].loc[1] + cells_top[i].width[1] * 0.5;
+      centres[i * 3 + 2] = cells_top[i].loc[2] + cells_top[i].width[2] * 0.5;
 
       /* Finish by box wrapping to match what is done to the particles */
       centres[i * 3 + 0] = box_wrap(centres[i * 3 + 0], 0.0, dim[0]);
@@ -701,6 +714,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       cell_width[0] *= factor;
       cell_width[1] *= factor;
       cell_width[2] *= factor;
+#ifdef WITH_ZOOM_REGION
+      zoom_cell_width[0] *= factor;
+      zoom_cell_width[1] *= factor;
+      zoom_cell_width[2] *= factor;
+#endif
     }
 
     /* Write some meta-information first */
@@ -710,6 +728,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     io_write_attribute(h_subgrp, "nr_cells", INT, &nr_cells, 1);
     io_write_attribute(h_subgrp, "size", DOUBLE, cell_width, 3);
     io_write_attribute(h_subgrp, "dimension", INT, cdim, 3);
+#ifdef WITH_ZOOM_REGION
+    if (with_zoom) {
+      io_write_attribute(h_subgrp, "nr_zoomcells", INT, &nr_zoomcells, 1);
+      io_write_attribute(h_subgrp, "nr_bkgcells", INT, &nr_bkgcells, 1);
+      io_write_attribute(h_subgrp, "zoom_size", DOUBLE, zoom_cell_width, 3);
+      io_write_attribute(h_subgrp, "zoom_dimension", INT, zoom_cdim, 3);
+    }
+#endif
     H5Gclose(h_subgrp);
 
     /* Write the centres to the group */

@@ -1077,11 +1077,27 @@ void write_output_single(struct engine* e,
   if (h_grp < 0) error("Error while creating cells group");
 
   /* Write the location of the particles in the arrays */
-  io_write_cell_offsets(h_grp, e->s->cdim, e->s->dim, e->s->cells_top,
-                        e->s->nr_cells, e->s->width, e->nodeID,
-                        /*distributed=*/0, subsample, subsample_fraction,
+#ifdef WITH_ZOOM_REGION
+  if (e->s->with_zoom_region) {
+    io_write_cell_offsets(h_grp, e->s->cdim, e->s->zoom_props->cdim, e->s->dim, e->s->cells_top,
+                        e->s->nr_cells, e->s->zoom_props->nr_zoom_cells, e->s->zoom_props->nr_bkg_cells, e->s->width,
+                        e->s->zoom_props->width, mpi_rank, /*distributed=*/0, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
-                        numFields, internal_units, snapshot_units);
+                        numFields, internal_units, snapshot_units, /*with_zoom=*/1);
+  } else {
+    io_write_cell_offsets(h_grp, e->s->cdim, /*zoom_cdim=*/NULL, e->s->dim, e->s->cells_top,
+                        e->s->nr_cells, /*nr_zoomcells=*/NULL, /*nr_bkgcells=*/NULL, e->s->width,
+                        /*zoom_width=*/NULL, mpi_rank, /*distributed=*/0, subsample, subsample_fraction,
+                        e->snapshot_output_count, N_total, global_offsets,
+                        numFields, internal_units, snapshot_units, /*with_zoom=*/0);
+  }
+#else
+  io_write_cell_offsets(h_grp, e->s->cdim, /*zoom_cdim=*/NULL, e->s->dim, e->s->cells_top,
+                        e->s->nr_cells, /*nr_zoomcells=*/NULL, /*nr_bkgcells=*/NULL, e->s->width,
+                        /*zoom_width=*/NULL, mpi_rank, /*distributed=*/0, subsample, subsample_fraction,
+                        e->snapshot_output_count, N_total, global_offsets,
+                        numFields, internal_units, snapshot_units, /*with_zoom=*/0);
+#endif
   H5Gclose(h_grp);
 
   /* Loop over all particle types */
