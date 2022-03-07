@@ -483,6 +483,87 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
 }
 
 /**
+ * @brief Add send tasks for the RT pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ * @param t_rt_gradient The send_rt_gradient #task, if it has already been
+ * created.
+ * @param t_rt_transport The send_rt_transport #task, if it has already been
+ * created.
+ */
+void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
+                             struct task *t_rt_gradient,
+                             struct task *t_rt_transport) {
+
+#ifdef WITH_MPI
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
+
+  /* Check if any of the density tasks are for the target node. */
+  for (l = ci->hydro.density; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+
+    /* Create the tasks and their dependencies? */
+    if (t_rt_gradient == NULL) {
+
+      /* Make sure this cell is tagged. */
+      cell_ensure_tagged(ci);
+
+      t_rt_gradient = scheduler_addtask(
+          s, task_type_send, task_subtype_rt_gradient, ci->mpi.tag, 0, ci, cj);
+      t_rt_transport = scheduler_addtask(
+          s, task_type_send, task_subtype_rt_transport, ci->mpi.tag, 0, ci, cj);
+
+      /* The send_gradient task depends on the cell's ghost1 task. */
+      scheduler_addunlock(s, ci->hydro.super->hydro.rt_ghost1, t_rt_gradient);
+
+      /* The send_transport task depends on the cell's ghost2 task. */
+      scheduler_addunlock(s, ci->hydro.super->hydro.rt_ghost2, t_rt_transport);
+
+      /* Safety measure: collect dependencies and make sure data is sent before
+       * modifying it */
+      scheduler_addunlock(s, t_rt_gradient, ci->hydro.super->hydro.rt_ghost2);
+
+      /* Safety measure: collect dependencies and make sure data is sent before
+       * modifying it */
+      scheduler_addunlock(s, t_rt_transport,
+                          ci->hydro.super->hydro.rt_transport_out);
+
+      /* Drift before you send. Especially intended to cover inactive cells
+       * being sent. */
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_gradient);
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_transport);
+    }
+
+    /* Add them to the local cell. */
+    engine_addlink(e, &ci->mpi.send, t_rt_gradient);
+    engine_addlink(e, &ci->mpi.send, t_rt_transport);
+  }
+
+  /* Recurse? */
+  if (ci->split)
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_rt(e, ci->progeny[k], cj, t_rt_gradient,
+                                t_rt_transport);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Add recv tasks for hydro pairs to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -917,6 +998,78 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_gravity(e, c->progeny[k], t_grav, tend);
 
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add recv tasks for RT pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ * @param t_rt_gradient The recv_rt_gradient #task, if it has already been
+ * created.
+ * @param t_rt_transport The recv_rt_transport #task, if it has already been
+ * created.
+ * @param tend The top-level time-step communication #task.
+ */
+void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
+                             struct task *t_rt_gradient,
+                             struct task *t_rt_transport, struct task *tend) {
+
+#ifdef WITH_MPI
+  struct scheduler *s = &e->sched;
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Have we reached a level where there are any hydro tasks ? */
+  if (t_rt_gradient == NULL && c->hydro.density != NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure this cell has a valid tag. */
+    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+    /* Create the tasks. */
+    t_rt_gradient = scheduler_addtask(
+        s, task_type_recv, task_subtype_rt_gradient, c->mpi.tag, 0, c, NULL);
+    t_rt_transport = scheduler_addtask(
+        s, task_type_recv, task_subtype_rt_transport, c->mpi.tag, 0, c, NULL);
+
+    /* Make sure the second receive doens't get enqueued before the first one is
+     * done */
+    scheduler_addunlock(s, t_rt_gradient, t_rt_transport);
+  }
+
+  if (t_rt_gradient != NULL) {
+    engine_addlink(e, &c->mpi.recv, t_rt_gradient);
+    engine_addlink(e, &c->mpi.recv, t_rt_transport);
+
+    if (c->hydro.sorts != NULL) {
+      scheduler_addunlock(s, c->hydro.sorts, t_rt_transport);
+    }
+
+    for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
+      /* RT gradient tasks mustn't run before we receive necessary data */
+      scheduler_addunlock(s, t_rt_gradient, l->t);
+      scheduler_addunlock(s, l->t, t_rt_transport);
+    }
+
+    for (struct link *l = c->hydro.rt_transport; l != NULL; l = l->next) {
+      /* RT transport tasks mustn't run before we receive necessary data */
+      scheduler_addunlock(s, t_rt_transport, l->t);
+      /* add dependency for the timestep communication tasks */
+      scheduler_addunlock(s, l->t, tend);
+    }
+  }
+  /* Recurse? */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_addtasks_recv_rt(e, c->progeny[k], t_rt_gradient, t_rt_transport,
+                                tend);
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -3927,6 +4080,10 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
       engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
+
+    if ((e->policy & engine_policy_rt) && (type & proxy_cell_type_hydro))
+      engine_addtasks_send_rt(e, ci, cj, /*t_rt_gradient=*/NULL,
+                              /*t_rt_transport=*/NULL);
   }
 }
 
@@ -3992,6 +4149,12 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     if ((e->policy & engine_policy_self_gravity) &&
         (type & proxy_cell_type_gravity))
       engine_addtasks_recv_gravity(e, ci, /*t_grav=*/NULL, tend);
+
+    /* Add the recv tasks for the cells in the proxy that have an RT
+     * connection. */
+    if ((e->policy & engine_policy_rt) && (type & proxy_cell_type_hydro))
+      engine_addtasks_recv_rt(e, ci, /*t_rt_gradient=*/NULL,
+                              /*t_rt_transport=*/NULL, tend);
   }
 }
 

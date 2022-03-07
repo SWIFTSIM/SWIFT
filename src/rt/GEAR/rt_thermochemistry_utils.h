@@ -111,6 +111,7 @@ __attribute__((always_inline)) INLINE static void
 rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
                                gr_float species_densities[6]) {
 
+  /* TODO: check units here */
   species_densities[0] = p->rt_data.tchem.mass_fraction_HI * rho;
   species_densities[1] = p->rt_data.tchem.mass_fraction_HII * rho;
   species_densities[2] = p->rt_data.tchem.mass_fraction_HeI * rho;
