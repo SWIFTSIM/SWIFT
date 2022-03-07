@@ -64,7 +64,8 @@ void exchange_structs(size_t *nr_send, void *sendbuf, size_t *nr_recv,
   }
 
   /* Allocate request objects (one send and receive per node) */
-  MPI_Request *request = (MPI_Request *)malloc(2 * sizeof(MPI_Request) * nr_nodes);
+  MPI_Request *request =
+      (MPI_Request *)malloc(2 * sizeof(MPI_Request) * nr_nodes);
 
   /* Make type to communicate the struct */
   MPI_Datatype value_mpi_type;
