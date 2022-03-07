@@ -450,15 +450,15 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
 
   if (p->rt_data.debug_injection_done != 1)
     error(
-        "Called finalise gradient on particle "
-        "where injection count = %d",
-        p->rt_data.debug_injection_done);
+        "Called finalise gradient on particle %lld"
+        "where injection_done count = %d",
+        p->id, p->rt_data.debug_injection_done);
 
   if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
     message(
-        "WARNING: Called finalise gradient on particle "
+        "WARNING: Called finalise gradient on particle %lld"
         "with iact gradient count from rt_iact = %d",
-        p->rt_data.debug_calls_iact_gradient_interaction);
+        p->id, p->rt_data.debug_calls_iact_gradient_interaction);
 
   p->rt_data.debug_gradients_done += 1;
 #endif
@@ -482,21 +482,21 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   if (p->rt_data.debug_injection_done != 1)
     error(
-        "Trying to do finalise_transport when "
-        "injection count is %d",
-        p->rt_data.debug_injection_done);
+        "Trying to do finalise_transport on particle %lld when "
+        "injection_done count is %d",
+        p->id, p->rt_data.debug_injection_done);
 
   if (p->rt_data.debug_gradients_done != 1)
     error(
-        "Trying to do finalise_transport when "
-        "rt_finalise_gradient count is %d",
-        p->rt_data.debug_gradients_done);
+        "Trying to do finalise_transport on particle %lld when "
+        "gradients_done count is %d",
+        p->id, p->rt_data.debug_gradients_done);
 
   if (p->rt_data.debug_calls_iact_transport_interaction == 0)
     message(
-        "WARNING: Called finalise transport on particle "
+        "WARNING: Called finalise transport on particle %lld"
         "with iact transport count from rt_iact = %d",
-        p->rt_data.debug_calls_iact_transport_interaction);
+        p->id, p->rt_data.debug_calls_iact_transport_interaction);
 
   p->rt_data.debug_transport_done += 1;
 #endif
@@ -540,14 +540,19 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (p->rt_data.debug_kicked != 1)
-    error("Trying to do thermochemistry on unkicked particle %lld (count=%d)",
-          p->id, p->rt_data.debug_kicked);
-  if (!p->rt_data.debug_injection_done)
-    error("Trying to do thermochemistry when injection step hasn't been done");
-  if (!p->rt_data.debug_gradients_done)
-    error("Trying to do thermochemistry when gradient step hasn't been done");
-  if (!p->rt_data.debug_transport_done)
-    error("Trying to do thermochemistry when transport step hasn't been done");
+    error(
+        "Part %lld trying to do thermochemistry on unkicked particle "
+        "(count=%d)",
+        p->id, p->rt_data.debug_kicked);
+  if (p->rt_data.debug_injection_done != 1)
+    error("Part %lld trying to do thermochemistry when injection_done != 1: %d",
+          p->id, p->rt_data.debug_injection_done);
+  if (p->rt_data.debug_gradients_done != 1)
+    error("Part %lld trying to do thermochemistry when gradients_done != 1: %d",
+          p->id, p->rt_data.debug_gradients_done);
+  if (p->rt_data.debug_transport_done != 1)
+    error("Part %lld trying to do thermochemistry when transport_done != 1: %d",
+          p->id, p->rt_data.debug_transport_done);
 
   p->rt_data.debug_thermochem_done += 1;
 #endif
@@ -662,9 +667,11 @@ __attribute__((always_inline)) INLINE static void rt_clean(
   /* If we were restarting, free-ing manually will lead to
    * segfaults since we didn't malloc the stuff */
   if (!restart) {
+    /* TODO: clean this up in a later MR once grackle is properly
+     * cleaned up and MPI issues are resolved. */
     /* Clean up grackle data. This is a call to a grackle function */
-    _free_chemistry_data(&props->grackle_chemistry_data,
-                         props->grackle_chemistry_rates);
+    /* _free_chemistry_data(&grackle_chemistry_data, */
+    /*                      props->grackle_chemistry_rates); */
 
     for (int g = 0; g < RT_NGROUPS; g++) {
       free(props->energy_weighted_cross_sections[g]);
@@ -675,8 +682,10 @@ __attribute__((always_inline)) INLINE static void rt_clean(
   }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+#ifndef WITH_MPI
   fclose(props->conserved_energy_filep);
   fclose(props->star_emitted_energy_filep);
+#endif
 #endif
 }
 

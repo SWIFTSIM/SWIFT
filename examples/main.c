@@ -614,6 +614,8 @@ int main(int argc, char *argv[]) {
         "chosen\n");
   }
   if (with_rt && !with_stars) {
+    /* In principle we can run without stars, but I don't trust the user to
+     * remember to add the flag every time they want to run RT. */
     error(
         "Error: Cannot use radiative transfer without stars, --stars must be "
         "chosen\n");
@@ -627,10 +629,6 @@ int main(int argc, char *argv[]) {
     error("Error: Cannot use radiative transfer and cooling simultaneously");
   }
 
-#ifdef WITH_MPI
-  /* Temporary, this will be removed in due time */
-  error("Error: Cannot use radiative transfer with MPI\n");
-#endif
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
