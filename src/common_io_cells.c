@@ -503,7 +503,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const int zoom_cdim[3
 
 #ifdef WITH_ZOOM_REGION
   if (with_zoom)
-    for (ijk = 0; ijk < 3; ijk++)
+    for (int ijk = 0; ijk < 3; ijk++)
       zoom_cell_width[ijk] = zoom_width[ijk];
 #endif
 
