@@ -105,9 +105,10 @@ struct rt_props {
   /*! grackle chemistry data */
   chemistry_data grackle_chemistry_data;
 
+  /* TODO: cleanup later with all other grackle stuff */
   /*! grackle chemistry data storage
    * (needed for local function calls) */
-  chemistry_data_storage* grackle_chemistry_rates;
+  /* chemistry_data_storage* grackle_chemistry_rates; */
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* radiation emitted by stars this step. This is not really a property,
@@ -145,9 +146,9 @@ struct rt_props {
  * @param rtp #rt_props struct
  * @param mode open files with this mode. "w" for new file, "a" for append.
  **/
+#ifdef SWIFT_RT_DEBUG_CHECKS
 static void rt_props_open_debugging_files(struct rt_props* rtp,
                                           const char* mode) {
-#ifdef SWIFT_RT_DEBUG_CHECKS
 #ifdef WITH_MPI
   return;
 #endif
@@ -173,8 +174,8 @@ static void rt_props_open_debugging_files(struct rt_props* rtp,
       fprintf(files[f], "\n");
     }
   }
-#endif
 };
+#endif
 
 /**
  * @brief initialize grackle during rt_props_init
@@ -184,6 +185,11 @@ static void rt_props_open_debugging_files(struct rt_props* rtp,
  **/
 __attribute__((always_inline)) INLINE static void rt_props_init_grackle(
     struct rt_props* rtp, const struct unit_system* us) {
+
+  /* TODO: cleanup later with all other grackle stuff */
+  /* #ifdef SWIFT_RT_DEBUG_CHECKS */
+  /*   grackle_verbose = 1; */
+  /* #endif */
 
   /* Initialize units */
   /* ---------------- */
@@ -204,7 +210,11 @@ __attribute__((always_inline)) INLINE static void rt_props_init_grackle(
   /* -------------------- */
   /* More details on https://grackle.readthedocs.io/en/latest/Parameters.html */
 
-  rtp->grackle_chemistry_data = _set_default_chemistry_parameters();
+  /* TODO: cleanup later with all other grackle stuff */
+  /* rtp->grackle_chemistry_data = _set_default_chemistry_parameters(); */
+  if (set_default_chemistry_parameters(&rtp->grackle_chemistry_data) == 0) {
+    error("Error in set_default_chemistry_parameters.");
+  }
   /* chemistry on */
   rtp->grackle_chemistry_data.use_grackle = 1;
   /* cooling on */
@@ -232,14 +242,16 @@ __attribute__((always_inline)) INLINE static void rt_props_init_grackle(
   rtp->grackle_chemistry_data.HydrogenFractionByMass =
       rtp->hydrogen_mass_fraction;
 
+  /* TODO: cleanup later with all other grackle stuff */
   /* Initialize the chemistry_data_storage object to be
    * able to use local functions */
-  chemistry_data_storage* chem_data_storage =
-      malloc(sizeof(chemistry_data_storage));
-  rtp->grackle_chemistry_rates = chem_data_storage;
-  if (!_initialize_chemistry_data(&rtp->grackle_chemistry_data,
-                                  rtp->grackle_chemistry_rates,
-                                  &rtp->grackle_units)) {
+  /* chemistry_data_storage* chem_data_storage = */
+  /*     malloc(sizeof(chemistry_data_storage)); */
+  /* rtp->grackle_chemistry_rates = chem_data_storage; */
+  /* if (!_initialize_chemistry_data(&rtp->grackle_chemistry_data, */
+  /*                                 rtp->grackle_chemistry_rates, */
+  /*                                 &rtp->grackle_units)) { */
+  if (initialize_chemistry_data(&rtp->grackle_units) == 0) {
     error("Error in _initialize_chemistry_data");
   }
 }

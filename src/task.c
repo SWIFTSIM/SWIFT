@@ -1228,10 +1228,18 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       strcpy(cluster, "BHFeedback");
       break;
     case task_subtype_rt_gradient:
-      strcpy(cluster, "RTgradient");
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "RTgradient");
+      }
       break;
     case task_subtype_rt_transport:
-      strcpy(cluster, "RTtransport");
+      if (type == task_type_send || type == task_type_recv) {
+        strcpy(cluster, "None");
+      } else {
+        strcpy(cluster, "RTtransport");
+      }
       break;
     case task_subtype_sink_compute_formation:
       strcpy(cluster, "SinkFormation");
