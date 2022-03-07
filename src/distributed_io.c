@@ -1084,14 +1084,14 @@ void write_output_distributed(struct engine* e,
                         numFields, internal_units, snapshot_units, /*with_zoom=*/1);
   } else {
     io_write_cell_offsets(h_grp, e->s->cdim, /*zoom_cdim=*/NULL, e->s->dim, e->s->cells_top,
-                        e->s->nr_cells, /*nr_zoomcells=*/NULL, /*nr_bkgcells=*/NULL, e->s->width,
+                        e->s->nr_cells, /*nr_zoomcells=*/0, /*nr_bkgcells=*/e->s->nr_cells, e->s->width,
                         /*zoom_width=*/NULL, mpi_rank, /*distributed=*/1, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
                         numFields, internal_units, snapshot_units, /*with_zoom=*/0);
   }
 #else
   io_write_cell_offsets(h_grp, e->s->cdim, /*zoom_cdim=*/NULL, e->s->dim, e->s->cells_top,
-                        e->s->nr_cells, /*nr_zoomcells=*/NULL, /*nr_bkgcells=*/NULL, e->s->width,
+                        e->s->nr_cells, /*nr_zoomcells=*/0, /*nr_bkgcells=*/e->s->nr_cells, e->s->width,
                         /*zoom_width=*/NULL, mpi_rank, /*distributed=*/1, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
                         numFields, internal_units, snapshot_units, /*with_zoom=*/0);
