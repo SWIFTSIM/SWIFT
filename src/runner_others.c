@@ -1022,7 +1022,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 

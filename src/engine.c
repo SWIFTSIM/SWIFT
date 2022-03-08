@@ -2131,7 +2131,7 @@ void cell_update_rt_step(struct cell *c, const struct engine *e,
     
   }
 
-  if (cell_is_active_rt(c, e)) {
+  if (cell_is_rt_active(c, e)) {
 
     
     c->hydro.ti_rt_end_min += step_size;

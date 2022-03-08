@@ -144,6 +144,22 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
   return (c->black_holes.ti_old_part == e->ti_current);
 }
 
+/**
+ * @brief Check that the #part in a #cell have been drifted to the current time.
+ * This is just a prototype function to keep the iact functions clean. As we 
+ * don't care about the drifts during the RT subcycling, this always just 
+ * returns true.
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_are_part_drifted_rt(
+    const struct cell *c, const struct engine *e) {
+
+  return 1;
+}
+
 /* Are cells / particles active for regular tasks ? */
 
 /**
@@ -168,7 +184,7 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
   return (c->hydro.ti_end_min == e->ti_current);
 }
 
-__attribute__((always_inline)) INLINE static int cell_is_active_rt(
+__attribute__((always_inline)) INLINE static int cell_is_rt_active(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS

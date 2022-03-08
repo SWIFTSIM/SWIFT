@@ -2770,8 +2770,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
 #endif
-    const int ci_active = cell_is_active_rt(ci, e);
-    const int cj_active = (cj != NULL) && cell_is_active_rt(cj, e);
+    const int ci_active = cell_is_rt_active(ci, e);
+    const int cj_active = (cj != NULL) && cell_is_rt_active(cj, e);
 
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
@@ -2886,8 +2886,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
     const int cj_nodeID = nodeID;
 #endif
 
-    const int ci_active = cell_is_active_rt(ci, e);
-    const int cj_active = ((cj != NULL) && cell_is_active_rt(cj, e));
+    const int ci_active = cell_is_rt_active(ci, e);
+    const int cj_active = ((cj != NULL) && cell_is_rt_active(cj, e));
 
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
@@ -2907,7 +2907,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
 
   /* Unskip all the other task types */
 
-  if (cell_is_active_rt(c, e)) {
+  if (cell_is_rt_active(c, e)) {
     if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
     if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
     if (c->hydro.rt_ghost2 != NULL) scheduler_activate(s, c->hydro.rt_ghost2);

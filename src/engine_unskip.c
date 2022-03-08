@@ -261,7 +261,7 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Do we have work to do? */
-  if (!cell_is_active_rt(c, e)) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   /* Recurse */
   if (c->split) {
@@ -548,7 +548,7 @@ void engine_unskip_sub_cycle(struct engine *e) {
 
     if (cell_is_empty(c)) continue;
 
-    if (cell_is_active_rt(c, e)) {
+    if (cell_is_rt_active(c, e)) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
