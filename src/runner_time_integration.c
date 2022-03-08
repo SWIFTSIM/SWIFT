@@ -713,7 +713,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
-
+	p->rt_data.time_bin = get_time_bin(ti_rt_new_step);
+	
         /* Update the tracers properties */
         tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
                                with_cosmology, e->cosmology,
