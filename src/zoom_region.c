@@ -172,7 +172,7 @@ void zoom_region_init(struct swift_params *params, struct space *s, int verbose)
     /* Get the initial dimensions and midpoint. */
     double ini_dim[3] = {0.0, 0.0, 0.0};
     for (int ijk = 0; ijk < 3; ijk++) {
-      double ini_dim = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
+      ini_dim = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
       midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (ini_dim / 2);
     }
 
@@ -241,7 +241,6 @@ void zoom_region_init(struct swift_params *params, struct space *s, int verbose)
     /* Find the new boundaries with this extra width and boost factor.
      * The zoom region is already centred on the middle of the box */
     for (int ijk = 0; ijk < 3; ijk++) {
-
       /* Set the new boundaries. */
       s->zoom_props->region_bounds[(ijk * 2)] = (s->dim[ijk] / 2) - (max_dim / 2);
       s->zoom_props->region_bounds[(ijk * 2) + 1] = (s->dim[ijk] / 2) + (max_dim / 2);
@@ -379,7 +378,7 @@ static void debug_cell_type(struct space *s) {
 void construct_zoom_region(struct space *s, int verbose) {
 #ifdef WITH_ZOOM_REGION
   /* Get the width of the zoom region, zoom dims are equal. */
-  double zoom_dim = s->zoom_props->dim[0];
+  const double zoom_dim = s->zoom_props->dim[0];
   
   /* Let's set what we know about the zoom region. */
   for (int ijk = 0; ijk < 3; ijk++) {
@@ -401,6 +400,7 @@ void construct_zoom_region(struct space *s, int verbose) {
 
   /* Resize the top level cells in the space. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
+  const int nr_zoom_regions = dmax / zoom_dim;
   s->cell_min = 0.99 * dmax / nr_zoom_regions;
 
   /* Check we have enough cells for periodicity. */
