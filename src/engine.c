@@ -2201,6 +2201,28 @@ int engine_step(struct engine *e) {
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
+
+  const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_old;
+  const int nr_rt_cycles = (e->ti_end_min - e->ti_old) / rt_step_size;
+  message("NR cycles: %d", nr_rt_cycles);
+
+  for (int sub_cycle = 0; sub_cycle < nr_rt_cycles - 1; ++sub_cycle) {
+    
+    e->ti_current = e->ti_old + (sub_cycle + 1) * rt_step_size;
+    e->max_active_bin = get_max_active_bin(e->ti_current);
+    e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_current - rt_step_size);
+
+    // think cosmology one day
+    e->time = e->ti_current * e->time_base + e->time_begin;
+    e->time_old = (e->ti_current - rt_step_size) * e->time_base + e->time_begin;
+    e->time_step = rt_step_size * e->time_base;
+
+    message("cycle %d time=%e", sub_cycle, e->time);
+    engine_unskip(e);
+    engine_print_task_counts(e);
+    engine_launch(e, "cycles");
+  }
+
   e->ti_current = e->ti_end_min;
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
   e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
@@ -2208,9 +2230,6 @@ int engine_step(struct engine *e) {
   engine_current_step = e->step;
   e->step_props = engine_step_prop_none;
 
-  const int nr_rt_cycles = (e->ti_current - e->ti_old) / (e->ti_rt_end_min - e->ti_old);
-  message("NR cycles: %d", nr_rt_cycles);
-  
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
 
