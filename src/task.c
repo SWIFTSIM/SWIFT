@@ -122,6 +122,7 @@ const char *taskID_names[task_type_count] = {
     "rt_ghost2",
     "rt_transport_out",
     "rt_tchem",
+    "rt_advance_cell_time",
 };
 
 /* Sub-task type names. */

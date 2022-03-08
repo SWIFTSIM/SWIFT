@@ -1663,8 +1663,12 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         c->hydro.rt_tchem = scheduler_addtask(s, task_type_rt_tchem,
                                               task_subtype_none, 0, 0, c, NULL);
 
+        /* Advance cell time for subcycling */
+        c->hydro.rt_advance_cell_time = scheduler_addtask(s, task_type_rt_advance_cell_time,
+                                              task_subtype_none, 0, 0, c, NULL);
         scheduler_addunlock(s, c->hydro.rt_transport_out, c->hydro.rt_tchem);
-        scheduler_addunlock(s, c->hydro.rt_tchem, c->hydro.rt_out);
+        scheduler_addunlock(s, c->hydro.rt_tchem, c->hydro.rt_advance_cell_time);
+        scheduler_addunlock(s, c->hydro.rt_advance_cell_time, c->hydro.rt_out);
       }
 
       /* Subgrid tasks: black hole feedback */

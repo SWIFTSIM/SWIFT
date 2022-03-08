@@ -140,6 +140,7 @@ enum {
   timer_dosub_self_rt_transport,
   timer_dosub_pair_rt_transport,
   timer_do_rt_tchem,
+  timer_do_rt_advance_cell_time,
   timer_count,
 };
 
