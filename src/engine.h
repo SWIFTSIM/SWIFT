@@ -212,6 +212,12 @@ struct engine {
   /* Maximal hydro ti_beg for the next time-step */
   integertime_t ti_hydro_beg_max;
 
+  /* Minimal rt ti_end for the next time-step */
+  integertime_t ti_rt_end_min;
+
+  /* Maximal rt ti_beg for the next time-step */
+  integertime_t ti_rt_beg_max;
+  
   /* Minimal gravity ti_end for the next time-step */
   integertime_t ti_gravity_end_min;
 
