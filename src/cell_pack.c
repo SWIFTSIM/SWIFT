@@ -47,6 +47,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->sinks.r_cut_max = c->sinks.r_cut_max;
 
   pc->hydro.ti_end_min = c->hydro.ti_end_min;
+  pc->hydro.ti_rt_end_min = c->hydro.ti_rt_end_min;
   pc->grav.ti_end_min = c->grav.ti_end_min;
   pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->sinks.ti_end_min = c->sinks.ti_end_min;
@@ -204,6 +205,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->sinks.r_cut_max = pc->sinks.r_cut_max;
 
   c->hydro.ti_end_min = pc->hydro.ti_end_min;
+  c->hydro.ti_rt_end_min = pc->hydro.ti_rt_end_min;
   c->grav.ti_end_min = pc->grav.ti_end_min;
   c->stars.ti_end_min = pc->stars.ti_end_min;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
@@ -340,6 +342,7 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
 
   /* Pack this cell's data. */
   pcells[0].hydro.ti_end_min = c->hydro.ti_end_min;
+  pcells[0].hydro.ti_rt_end_min = c->hydro.ti_rt_end_min;
   pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
 
   pcells[0].grav.ti_end_min = c->grav.ti_end_min;
@@ -381,6 +384,7 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
 
   /* Unpack this cell's data. */
   c->hydro.ti_end_min = pcells[0].hydro.ti_end_min;
+  c->hydro.ti_rt_end_min = pcells[0].hydro.ti_rt_end_min;
   c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
 
   c->grav.ti_end_min = pcells[0].grav.ti_end_min;
