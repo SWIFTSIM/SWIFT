@@ -2119,6 +2119,26 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
 
+void cell_update_rt_step(struct cell *c, const struct engine *e,
+			 integertime_t step_size) {
+
+
+  if (c->split) {
+
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL)
+	cell_update_rt_step(c->progeny[k], e, step_size);
+    
+  }
+
+  if (cell_is_active_rt(c, e)) {
+
+    
+    c->hydro.ti_rt_end_min += step_size;
+      
+  }
+}
+
 /**
  * @brief Let the #engine loose to compute the forces.
  *
@@ -2208,6 +2228,7 @@ int engine_step(struct engine *e) {
 
   for (int sub_cycle = 0; sub_cycle < nr_rt_cycles - 1; ++sub_cycle) {
     
+    //e->ti_old = e->ti_current;
     e->ti_current = e->ti_old + (sub_cycle + 1) * rt_step_size;
     e->max_active_bin = get_max_active_bin(e->ti_current);
     e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_current - rt_step_size);
@@ -2221,6 +2242,9 @@ int engine_step(struct engine *e) {
     engine_unskip_sub_cycle(e);
     engine_print_task_counts(e);
     engine_launch(e, "cycles");
+
+    for (int i = 0; i <  e->s->nr_cells; ++i)
+      cell_update_rt_step(&e->s->cells_top[i], e, rt_step_size);
   }
 
   e->ti_current = e->ti_end_min;
