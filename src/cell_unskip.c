@@ -2749,14 +2749,15 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
-
-  /* Note: we only get this far if engine_policy_rt is flagged. */
-
+int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycle) {
+ 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0; /* TODO: implement rebuild conditions? */
 
+  /* Note: we only get this far if engine_policy_rt is flagged. */
+  if (!(e->policy & engine_policy_rt)) error("Unskipping RT tasks without RT");
+  
   for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
 
     struct task *t = l->t;
@@ -2769,19 +2770,21 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
     const int ci_nodeID = nodeID;
     const int cj_nodeID = nodeID;
 #endif
-    const int ci_active = cell_is_active_hydro(ci, e);
-    const int cj_active = (cj != NULL) && cell_is_active_hydro(cj, e);
+    const int ci_active = cell_is_active_rt(ci, e);
+    const int cj_active = (cj != NULL) && cell_is_active_rt(cj, e);
 
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
 
-      /* Activate hydro drift */
-      if (t->type == task_type_self) {
+      if (!sub_cycle) {
+      
+	/* Activate hydro drift */
+	if (t->type == task_type_self || t->type == task_type_sub_self) {
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
       }
-
-      else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+	
+	else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
         atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
         atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
@@ -2789,12 +2792,14 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
         cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
         /* Activate the drift tasks. */
-        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+        if (ci_nodeID == nodeID && !sub_cycle) cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID && !sub_cycle) cell_activate_drift_part(cj, s);
 
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);
         cell_activate_hydro_sorts(cj, t->flags, s);
+      }
+
       }
     }
 
@@ -2881,8 +2886,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
     const int cj_nodeID = nodeID;
 #endif
 
-    const int ci_active = cell_is_active_hydro(ci, e);
-    const int cj_active = ((cj != NULL) && cell_is_active_hydro(cj, e));
+    const int ci_active = cell_is_active_rt(ci, e);
+    const int cj_active = ((cj != NULL) && cell_is_active_rt(cj, e));
 
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
@@ -2902,7 +2907,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
 
   /* Unskip all the other task types */
 
-  if (cell_is_active_hydro(c, e)) {
+  if (cell_is_active_rt(c, e)) {
     if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
     if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
     if (c->hydro.rt_ghost2 != NULL) scheduler_activate(s, c->hydro.rt_ghost2);

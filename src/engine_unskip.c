@@ -248,7 +248,8 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
  * @param c The cell.
  * @param e The engine.
  */
-static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
+static void engine_do_unskip_rt(struct cell *c, struct engine *e,
+				const int sub_cycle) {
 
   /* Note: we only get this far if engine_policy_rt is flagged. */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -260,20 +261,20 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Do we have work to do? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_active_rt(c, e)) return;
 
   /* Recurse */
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        engine_do_unskip_rt(cp, e);
+        engine_do_unskip_rt(cp, e, sub_cycle);
       }
     }
   }
 
   /* Unskip any active tasks. */
-  const int forcerebuild = cell_unskip_rt_tasks(c, &e->sched);
+  const int forcerebuild = cell_unskip_rt_tasks(c, &e->sched, sub_cycle);
   if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
 
@@ -364,7 +365,7 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
         if (!(e->policy & engine_policy_rt))
           error("Trying to unskip radiative transfer tasks in a non-rt run!");
 #endif
-        engine_do_unskip_rt(c, e);
+        engine_do_unskip_rt(c, e, /*sub_cycle=*/0);
         break;
       default:
 #ifdef SWIFT_DEBUG_CHECKS
@@ -504,6 +505,67 @@ void engine_unskip(struct engine *e) {
   if (multiplier > 1) {
     free(local_active_cells);
   }
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
+				       void *extra_data) {
+  /* Unpack the meta data */
+  struct unskip_data *data = (struct unskip_data *)extra_data;
+  struct engine *e = data->e;
+  struct cell *const cells_top = e->s->cells_top;
+
+  /* The current chunk of active cells */
+  const int *const local_cells = (int *)map_data;
+
+  /* Loop over this thread's chunk of cells to unskip */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Handle on the cell */
+    struct cell *const c = &cells_top[local_cells[ind]];
+
+    engine_do_unskip_rt(c, e, /*sub_cycle=*/1);
+  }
+}
+
+
+void engine_unskip_sub_cycle(struct engine *e) {
+
+  const ticks tic = getticks();
+  struct space *s = e->s;
+  const int with_rt = e->policy & engine_policy_rt;
+
+  if (!with_rt) error("Unskipping sub-cycles when running without RT!");
+  
+  /* Move the active local cells to the top of the list. */
+  int *local_cells = e->s->local_cells_with_tasks_top;
+  int num_active_cells = 0;
+  for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
+    struct cell *c = &s->cells_top[local_cells[k]];
+
+    if (cell_is_empty(c)) continue;
+
+    if (cell_is_active_rt(c, e)) {
+
+      if (num_active_cells != k)
+        memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
+      num_active_cells += 1;      
+    }
+  }
+
+  struct unskip_data data;
+  bzero(&data, sizeof(struct unskip_data));
+  data.e = e;
+  data.list_base = local_cells;
+  data.num_active_cells = num_active_cells;
+  data.multiplier = 1;
+
+  /* Activate all the regular tasks */
+  threadpool_map(&e->threadpool, engine_do_unskip_sub_cycle_mapper, local_cells,
+                 num_active_cells, sizeof(int), /*chunk=*/1, &data);  
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
