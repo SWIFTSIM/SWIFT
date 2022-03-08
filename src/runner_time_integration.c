@@ -672,6 +672,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       b_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
@@ -706,6 +707,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         /* Get new time-step */
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
 
+	/* Get RT time-step size (note <= hydro step size) */
+	const integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
+	
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
@@ -723,6 +727,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
         ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
 
+	ti_rt_end_min = min(ti_current + ti_rt_new_step, ti_rt_end_min);
+	ti_rt_beg_max = max(ti_current + ti_rt_new_step, ti_rt_beg_max);
+	
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
 
@@ -1041,6 +1048,9 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
 
+	ti_rt_end_min = min(cp->hydro.ti_rt_end_min, ti_rt_end_min);
+	ti_rt_beg_max = max(cp->hydro.ti_rt_beg_max, ti_rt_beg_max);
+	
         ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
 
@@ -1067,6 +1077,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->hydro.ti_rt_end_min = ti_rt_end_min;
+  c->hydro.ti_rt_beg_max = ti_rt_beg_max;
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;

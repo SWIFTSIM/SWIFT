@@ -181,6 +181,12 @@ struct cell_hydro {
    */
   integertime_t ti_beg_max;
 
+  /*! Minimum end of (integer) time step in this cell for RT tasks. */
+  integertime_t ti_rt_end_min;
+
+  /*! Maximum beginning of (integer) time step in this cell for RT tasks. */
+  integertime_t ti_rt_beg_max;
+  
   /*! Spin lock for various uses (#part case). */
   swift_lock_type lock;
 

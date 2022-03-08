@@ -218,6 +218,21 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 }
 
 /**
+ * @brief Compute the new (integer) time-step of a given #part
+ *
+ * @param p The #part.
+ * @param xp The #xpart partner of p.
+ * @param e The #engine (used to get some constants).
+ */
+__attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
+    const struct part *restrict p, const struct xpart *restrict xp,
+    const struct engine *restrict e) {
+
+  /* TODO: Mladen */
+  return get_part_timestep(p, xp, e) / 4;
+}
+
+/**
  * @brief Compute the new (integer) time-step of a given #spart
  *
  * @param sp The #spart.
