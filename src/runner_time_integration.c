@@ -1131,6 +1131,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   size_t b_updated = 0;
   size_t si_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
@@ -1147,7 +1148,9 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
 
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-      ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+      ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);      
+      ti_rt_end_min = min(cp->hydro.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(cp->hydro.ti_rt_beg_max, ti_rt_beg_max);
       ti_grav_end_min = min(ti_grav_end_min, cp->grav.ti_end_min);
       ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
       ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
@@ -1177,6 +1180,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->hydro.ti_rt_end_min = ti_rt_end_min;
+  c->hydro.ti_rt_beg_max = ti_rt_beg_max;
   c->grav.ti_end_min = ti_grav_end_min;
   c->grav.ti_beg_max = ti_grav_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
