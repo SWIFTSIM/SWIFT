@@ -173,7 +173,7 @@ void zoom_region_init(struct swift_params *params, struct space *s, int verbose)
     double ini_dim[3] = {0.0, 0.0, 0.0};
     for (int ijk = 0; ijk < 3; ijk++) {
       ini_dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
-      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (ini_dim / 2);
+      midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (ini_dim[ijk] / 2);
     }
 
     /* Throw an error if the zoom region extends over the box boundries.
