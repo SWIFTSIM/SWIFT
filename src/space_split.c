@@ -75,6 +75,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   float sinks_h_max_active = 0.f;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
@@ -305,8 +306,10 @@ void space_split_recursive(struct space *s, struct cell *c,
         sinks_h_max_active =
             max(sinks_h_max_active, cp->sinks.r_cut_max_active);
 
-        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
+        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);	
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+	ti_rt_end_min = min(ti_rt_end_min, cp->hydro.ti_rt_end_min);
+	ti_rt_beg_max = max(ti_rt_beg_max, cp->hydro.ti_rt_beg_max);
         ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
@@ -468,13 +471,19 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* When does this particle's time-step start and end? */
       const timebin_t time_bin = parts[k].time_bin;
+      const timebin_t time_bin_rt = parts[k].rt_data.time_bin;
       const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
+      const integertime_t ti_rt_end = get_integer_time_end(ti_current, time_bin_rt);
+      const integertime_t ti_rt_beg = get_integer_time_begin(ti_current, time_bin_rt);
 
       ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
       ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
       ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
 
+      ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
+      ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
+      
       h_max = max(h_max, parts[k].h);
 
       if (part_is_active(&parts[k], e))
@@ -635,6 +644,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->hydro.h_max_active = h_max_active;
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->hydro.ti_rt_end_min = ti_rt_end_min;
+  c->hydro.ti_rt_beg_max = ti_rt_beg_max;
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
