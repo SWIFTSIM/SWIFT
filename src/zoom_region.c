@@ -206,7 +206,7 @@ void zoom_region_init(struct swift_params *params, struct space *s, int verbose)
 
     /* Let's shift the COM.
      * NOTE: boundaries are recalculated relative to box centre later. */
-    for (int ijk = 0; ijk < 3; ijk++) s->zoom_props->com[ijk] += shift;
+    for (int ijk = 0; ijk < 3; ijk++) s->zoom_props->com[ijk] += s->zoom_props->zoom_shift[ijk];
 
     /* Compute maximum side length of the zoom region, we need zoom dim to be equal. */
     double max_dim = max3(ini_dim[0], ini_dim[1], ini_dim[2]) * s->zoom_props->zoom_boost_factor;
