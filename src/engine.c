@@ -2218,7 +2218,7 @@ int engine_step(struct engine *e) {
     e->time_step = rt_step_size * e->time_base;
 
     message("cycle %d time=%e", sub_cycle, e->time);
-    engine_unskip(e);
+    engine_unskip_sub_cycle(e);
     engine_print_task_counts(e);
     engine_launch(e, "cycles");
   }
