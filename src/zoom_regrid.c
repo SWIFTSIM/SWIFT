@@ -154,6 +154,8 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
       zoom_cdim[1] < s->zoom_props->cdim[1] ||
       zoom_cdim[2] < s->zoom_props->cdim[2]) {
 
+    error("Regridding is currently not supported, decrease h_max!!");
+
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
     oldcdim[1] = s->cdim[1];
