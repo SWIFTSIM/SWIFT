@@ -244,6 +244,9 @@ void zoom_region_init(struct swift_params *params, struct space *s, int verbose)
       /* Set the new boundaries. */
       s->zoom_props->region_bounds[(ijk * 2)] = (s->dim[ijk] / 2) - (max_dim / 2);
       s->zoom_props->region_bounds[(ijk * 2) + 1] = (s->dim[ijk] / 2) + (max_dim / 2);
+
+      /* Set the reigon dim. */
+      s->zoom_props->dim[ijk] = max_dim;
     }
 
     /* Set the minimum allowed zoom cell width. */
