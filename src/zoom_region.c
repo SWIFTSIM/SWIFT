@@ -172,7 +172,7 @@ void zoom_region_init(struct swift_params *params, struct space *s, int verbose)
     /* Get the initial dimensions and midpoint. */
     double ini_dim[3] = {0.0, 0.0, 0.0};
     for (int ijk = 0; ijk < 3; ijk++) {
-      ini_dim = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
+      ini_dim[ijk] = (new_zoom_boundary[(ijk * 2) + 1] - new_zoom_boundary[ijk * 2]);
       midpoint[ijk] = new_zoom_boundary[(ijk * 2) + 1] - (ini_dim / 2);
     }
 
