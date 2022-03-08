@@ -2757,6 +2757,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
 
   /* Note: we only get this far if engine_policy_rt is flagged. */
   if (!(e->policy & engine_policy_rt)) error("Unskipping RT tasks without RT");
+
+  message("hello");
   
   for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
 
