@@ -2208,6 +2208,9 @@ int engine_step(struct engine *e) {
   engine_current_step = e->step;
   e->step_props = engine_step_prop_none;
 
+  const int nr_rt_cycles = (e->ti_current - e->ti_old) / (e->ti_rt_end_min - e->ti_old);
+  message("NR cycles: %d", nr_rt_cycles);
+  
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
 
