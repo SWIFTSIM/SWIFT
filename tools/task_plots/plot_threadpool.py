@@ -320,7 +320,7 @@ if not args.nolegend:
     ax.legend(shadow=True, loc='center left', bbox_to_anchor=(1, 0.5), mode="expand", ncol=5
     )
     box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width, box.height * 0.8])
+    # ax.set_position([box.x0, box.y0, box.width, box.height * 0.8])
 
 # Start and end of time-step
 real_start_t = (mintic_step - tic_step) / CPU_CLOCK
