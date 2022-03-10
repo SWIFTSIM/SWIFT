@@ -334,7 +334,7 @@ if expand == 1:
     ax.set_ylabel("Thread ID", labelpad=0)
 else:
     ax.set_ylabel("Thread ID * " + str(expand), labelpad=0)
-ax.set_yticks(pl.array(list(range(nthread))), True)
+ax.set_yticks(pl.array(list(range(nthread))), minor=True)
 
 loc = plticker.MultipleLocator(base=expand)
 ax.yaxis.set_major_locator(loc)
