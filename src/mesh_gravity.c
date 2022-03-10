@@ -899,9 +899,24 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
 
     /* Do a parallel CIC mesh assignment of the gparts but only using
      * the local top-level cells */
+#ifdef WITH_ZOOM_REGION
+    if (s->with_zoom_region) {
+      threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)s->zoom_props->local_bkg_cells_top,
+                     s->zoom_props->nr_local_bkg_cells, sizeof(int), threadpool_uniform_chunk_size,
+                     (void*)&data);
+      threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)s->zoom_props->local_zoom_cells_top,
+                     s->zoom_props->nr_local_zoom_cells, sizeof(int), threadpool_uniform_chunk_size,
+                     (void*)&data);
+    } else {
+      threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
+           nr_local_cells, sizeof(int), threadpool_uniform_chunk_size,
+           (void*)&data);
+    }
+#else
     threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
                    nr_local_cells, sizeof(int), threadpool_uniform_chunk_size,
                    (void*)&data);
+#endif
   }
 
   if (verbose)
@@ -1002,9 +1017,24 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
 
     /* Do a parallel CIC mesh interpolation onto the gparts but only using
        the local top-level cells */
+#ifdef WITH_ZOOM_REGION
+    if (s->with_zoom_region) {
+      threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)s->zoom_props->local_bkg_cells_top,
+                     s->zoom_props->nr_local_bkg_cells, sizeof(int), threadpool_uniform_chunk_size,
+                     (void*)&data);
+      threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)s->zoom_props->local_zoom_cells_top,
+                     s->zoom_props->nr_local_zoom_cells, sizeof(int), threadpool_uniform_chunk_size,
+                     (void*)&data);
+    } else {
+      threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
+           nr_local_cells, sizeof(int), threadpool_uniform_chunk_size,
+           (void*)&data);
+    }
+#else
     threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
                    nr_local_cells, sizeof(int), threadpool_uniform_chunk_size,
                    (void*)&data);
+#endif
   }
 
   if (verbose)

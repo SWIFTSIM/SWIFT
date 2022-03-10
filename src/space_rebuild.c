@@ -947,12 +947,16 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       c->sinks.count_total = c->sinks.count + space_extra_sinks;
       c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
 
-      /* Add the number of particles to the cell counter */
-      if (c->tl_cell_type <= 2) {
-	      bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
-      } else {
-	      zoom_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
+#ifdef WITH_ZOOM_REGION
+      if (s->with_zoom_region) {
+        /* Add the number of particles to the cell counter */
+        if (c->tl_cell_type <= 2) {
+          bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
+        } else {
+          zoom_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
+        }
       }
+#endif
 
       finger = &finger[c->hydro.count_total];
       xfinger = &xfinger[c->hydro.count_total];
@@ -964,6 +968,23 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       /* Add this cell to the list of local cells */
       s->local_cells_top[s->nr_local_cells] = k;
       s->nr_local_cells++;
+#ifdef WITH_ZOOM_REGION
+      if (s->with_zoom_region) {
+
+        /* Add this cell to the appropriate list of local cells */
+        if (c->tl_cell_type == zoom_tl_cell) {
+
+          s->zoom_props->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
+          s->zoom_props->nr_local_zoom_cells++;
+
+        } else if (c->tl_cell_type == tl_cell || c->tl_cell_type == tl_cell_neighbour) {
+
+          s->zoom_props->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
+          s->zoom_props->nr_local_bkg_cells++;
+
+        }
+      }
+#endif
     }
 
     if (is_local && has_particles) {
@@ -980,10 +1001,14 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
             s->nr_cells);
     message("hooking up cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
-	  message("Have %d local particles in background cells",
-	          bkg_cell_particles);
-	  message("Have %d local particles in zoom cells",
-	          zoom_cell_particles);
+#ifdef WITH_ZOOM_REGION
+    if (s->with_zoom_region) {
+      message("Have %d local particles in background cells",
+              bkg_cell_particles);
+      message("Have %d local particles in zoom cells",
+              zoom_cell_particles);
+    }
+#endif
 
 	  /* Lets report how many wanderers have been removed */
 	  if (s->with_hydro && s->zoom_props->nr_wanderers > 0)
