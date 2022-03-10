@@ -912,6 +912,12 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
   s->nr_cells_with_particles = 0;
   s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
+#ifdef WITH_ZOOM_REGION
+  if (s->with_zoom_region) {
+    s->zoom_props->nr_local_zoom_cells = 0;
+    s->zoom_props->nr_local_bkg_cells = 0;
+  }
+#endif
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
