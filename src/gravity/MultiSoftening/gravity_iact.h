@@ -44,12 +44,12 @@
  * @param pot_ij (return) The potential.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-runner_iact_grav_pp_full(const float r2, const float h2, const float h_inv,
-                         const float h_inv3, const float mass,
-                         float *restrict f_ij, float *restrict pot_ij) {
+runner_iact_grav_pp_full(const MyFloat r2, const MyFloat h2, const MyFloat h_inv,
+                         const MyFloat h_inv3, const MyFloat mass,
+                         MyFloat *restrict f_ij, MyFloat *restrict pot_ij) {
 
   /* Get the inverse distance */
-  const float r_inv = 1.f / sqrtf(r2 + FLT_MIN);
+  const MyFloat r_inv = 1. / sqrt(r2 + FLT_MIN);
 
   /* Should we soften ? */
   if (r2 >= h2) {
@@ -60,8 +60,8 @@ runner_iact_grav_pp_full(const float r2, const float h2, const float h_inv,
 
   } else {
 
-    const float r = r2 * r_inv;
-    const float ui = r * h_inv;
+    const MyFloat r = r2 * r_inv;
+    const float ui = (float)(r * h_inv);
     const float W_f_ij = kernel_grav_force_eval(ui);
     const float W_pot_ij = kernel_grav_pot_eval(ui);
 
@@ -88,14 +88,14 @@ runner_iact_grav_pp_full(const float r2, const float h2, const float h_inv,
  * @param pot_ij (return) The potential.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
-                              const float h_inv3, const float mass,
-                              const float r_s_inv, float *restrict f_ij,
-                              float *restrict pot_ij) {
+runner_iact_grav_pp_truncated(const MyFloat r2, const MyFloat h2, const MyFloat h_inv,
+                              const MyFloat h_inv3, const MyFloat mass,
+                              const float r_s_inv, MyFloat *restrict f_ij,
+                              MyFloat *restrict pot_ij) {
 
   /* Get the inverse distance */
-  const float r_inv = 1.f / sqrtf(r2 + FLT_MIN);
-  const float r = r2 * r_inv;
+  const MyFloat r_inv = 1. / sqrt(r2 + FLT_MIN);
+  const MyFloat r = r2 * r_inv;
 
   /* Should we soften ? */
   if (r2 >= h2) {
@@ -106,7 +106,7 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
 
   } else {
 
-    const float ui = r * h_inv;
+    const float ui = (float)(r * h_inv);
     const float W_f_ij = kernel_grav_force_eval(ui);
     const float W_pot_ij = kernel_grav_pot_eval(ui);
 

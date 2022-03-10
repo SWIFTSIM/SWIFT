@@ -218,21 +218,21 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
       error("Adding forces to an un-initialised gpart.");
 #endif
 
-    const float x_i = gpi->x[0];
-    const float y_i = gpi->x[1];
-    const float z_i = gpi->x[2];
+    const MyFloat x_i = gpi->x[0];
+    const MyFloat y_i = gpi->x[1];
+    const MyFloat z_i = gpi->x[2];
     const float h_i = gravity_get_softening(gpi, grav_props);
 
     /* Local accumulators for the acceleration and potential */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    MyFloat a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Now, we can start the interactions for that particle */
 
     /* Distance to the Multipole */
     const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
-    const float dx_multi = CoM_j[0] - x_i;
-    const float dy_multi = CoM_j[1] - y_i;
-    const float dz_multi = CoM_j[2] - z_i;
+    const float dx_multi = CoM_j[0] - (float)x_i;
+    const float dy_multi = CoM_j[1] - (float)y_i;
+    const float dz_multi = CoM_j[2] - (float)z_i;
 
     const float r2_multi =
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
@@ -280,25 +280,25 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
         if (gpart_is_inhibited(gpj, e)) continue;
 
         /* Get info about j */
-        const float x_j = gpj->x[0];
-        const float y_j = gpj->x[1];
-        const float z_j = gpj->x[2];
-        const float mass_j = gpj->mass;
+        const MyFloat x_j = gpj->x[0];
+        const MyFloat y_j = gpj->x[1];
+        const MyFloat z_j = gpj->x[2];
+        const MyFloat mass_j = gpj->mass;
         const float h_j = gravity_get_softening(gpj, grav_props);
 
         /* Compute the pairwise distance.
            Note: no need for box wrap here! This is non-periodic */
-        const float dx = x_j - x_i;
-        const float dy = y_j - y_i;
-        const float dz = z_j - z_i;
+        const MyFloat dx = x_j - x_i;
+        const MyFloat dy = y_j - y_i;
+        const MyFloat dz = z_j - z_i;
 
-        const float r2 = dx * dx + dy * dy + dz * dz;
+        const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
         /* Pick the maximal softening length of i and j */
         const float h = max(h_i, h_j);
-        const float h2 = h * h;
-        const float h_inv = 1.f / h;
-        const float h_inv_3 = h_inv * h_inv * h_inv;
+        const MyFloat h2 = h * h;
+        const MyFloat h_inv = 1. / h;
+        const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (gpj->time_bin == time_bin_not_created) {
@@ -314,7 +314,7 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
 #endif
 
         /* Interact! */
-        float f_ij, pot_ij;
+        MyFloat f_ij, pot_ij;
         runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij,
                                  &pot_ij);
 
@@ -410,21 +410,21 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
       error("Adding forces to an un-initialised gpart.");
 #endif
 
-    const float x_i = gpi->x[0];
-    const float y_i = gpi->x[1];
-    const float z_i = gpi->x[2];
+    const MyFloat x_i = gpi->x[0];
+    const MyFloat y_i = gpi->x[1];
+    const MyFloat z_i = gpi->x[2];
     const float h_i = gravity_get_softening(gpi, grav_props);
 
     /* Local accumulators for the acceleration and potential */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    MyFloat a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Now, we can start the interactions for that particle */
 
     /* Distance to the Multipole */
     const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
-    float dx_multi = CoM_j[0] - x_i;
-    float dy_multi = CoM_j[1] - y_i;
-    float dz_multi = CoM_j[2] - z_i;
+    float dx_multi = CoM_j[0] - (float)x_i;
+    float dy_multi = CoM_j[1] - (float)y_i;
+    float dz_multi = CoM_j[2] - (float)z_i;
 
     /* Apply periodic BCs */
     dx_multi = nearestf(dx_multi, dim[0]);
@@ -477,10 +477,10 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         if (gpart_is_inhibited(gpj, e)) continue;
 
         /* Get info about j */
-        const float x_j = gpj->x[0];
-        const float y_j = gpj->x[1];
-        const float z_j = gpj->x[2];
-        const float mass_j = gpj->mass;
+        const MyFloat x_j = gpj->x[0];
+        const MyFloat y_j = gpj->x[1];
+        const MyFloat z_j = gpj->x[2];
+        const MyFloat mass_j = gpj->mass;
         const float h_j = gravity_get_softening(gpj, grav_props);
 
         /* Compute the pairwise distance.
@@ -494,13 +494,13 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         dy = nearestf(dy, dim[1]);
         dz = nearestf(dz, dim[2]);
 
-        const float r2 = dx * dx + dy * dy + dz * dz;
+        const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
         /* Pick the maximal softening length of i and j */
         const float h = max(h_i, h_j);
-        const float h2 = h * h;
-        const float h_inv = 1.f / h;
-        const float h_inv_3 = h_inv * h_inv * h_inv;
+        const MyFloat h2 = h * h;
+        const MyFloat h_inv = 1. / h;
+        const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (gpj->time_bin == time_bin_not_created) {
@@ -516,8 +516,8 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
 #endif
 
         /* Interact! */
-        float f_ij, pot_ij;
-        runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
+        MyFloat f_ij, pot_ij;
+        runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, (MyFloat)r_s_inv,
                                       &f_ij, &pot_ij);
 
         /* Store it back */
@@ -600,36 +600,36 @@ static INLINE void runner_dopair_grav_pp_full(
       error("Inactive particle went through the cache");
 #endif
 
-    const float x_i = ci_cache->x[pid];
-    const float y_i = ci_cache->y[pid];
-    const float z_i = ci_cache->z[pid];
-    const float h_i = ci_cache->epsilon[pid];
+    const MyFloat x_i = ci_cache->x[pid];
+    const MyFloat y_i = ci_cache->y[pid];
+    const MyFloat z_i = ci_cache->z[pid];
+    const MyFloat h_i = ci_cache->epsilon[pid];
 
     /* Local accumulators for the acceleration and potential */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    MyFloat a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, cj_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded_j, VEC_SIZE);
 
     /* Loop over every particle in the other cell. */
     for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
 
       /* Get info about j */
-      const float x_j = cj_cache->x[pjd];
-      const float y_j = cj_cache->y[pjd];
-      const float z_j = cj_cache->z[pjd];
-      const float mass_j = cj_cache->m[pjd];
-      const float h_j = cj_cache->epsilon[pjd];
+      const MyFloat x_j = cj_cache->x[pjd];
+      const MyFloat y_j = cj_cache->y[pjd];
+      const MyFloat z_j = cj_cache->z[pjd];
+      const MyFloat mass_j = cj_cache->m[pjd];
+      const MyFloat h_j = cj_cache->epsilon[pjd];
 
       /* Compute the pairwise distance. */
-      float dx = x_j - x_i;
-      float dy = y_j - y_i;
-      float dz = z_j - z_i;
+      MyFloat dx = x_j - x_i;
+      MyFloat dy = y_j - y_i;
+      MyFloat dz = z_j - z_i;
 
       /* Correct for periodic BCs */
       if (periodic) {
@@ -638,13 +638,13 @@ static INLINE void runner_dopair_grav_pp_full(
         dz = nearestf(dz, dim[2]);
       }
 
-      const float r2 = dx * dx + dy * dy + dz * dz;
+      const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
       /* Pick the maximal softening length of i and j */
       const float h = max(h_i, h_j);
-      const float h2 = h * h;
-      const float h_inv = 1.f / h;
-      const float h_inv_3 = h_inv * h_inv * h_inv;
+      const MyFloat h2 = h * h;
+      const MyFloat h_inv = 1. / h;
+      const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* The gravity_cache are sometimes allocated with more
@@ -682,7 +682,7 @@ static INLINE void runner_dopair_grav_pp_full(
 #endif
 
       /* Interact! */
-      float f_ij, pot_ij;
+      MyFloat f_ij, pot_ij;
       runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij, &pot_ij);
 
       /* Store it back */
@@ -767,49 +767,49 @@ static INLINE void runner_dopair_grav_pp_truncated(
       error("Inactive particle went through the cache");
 #endif
 
-    const float x_i = ci_cache->x[pid];
-    const float y_i = ci_cache->y[pid];
-    const float z_i = ci_cache->z[pid];
-    const float h_i = ci_cache->epsilon[pid];
+    const MyFloat x_i = ci_cache->x[pid];
+    const MyFloat y_i = ci_cache->y[pid];
+    const MyFloat z_i = ci_cache->z[pid];
+    const MyFloat h_i = ci_cache->epsilon[pid];
 
     /* Local accumulators for the acceleration and potential */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    MyFloat a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(float, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, cj_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, cj_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded_j, VEC_SIZE);
 
     /* Loop over every particle in the other cell. */
     for (int pjd = 0; pjd < gcount_padded_j; pjd++) {
 
       /* Get info about j */
-      const float x_j = cj_cache->x[pjd];
-      const float y_j = cj_cache->y[pjd];
-      const float z_j = cj_cache->z[pjd];
-      const float mass_j = cj_cache->m[pjd];
-      const float h_j = cj_cache->epsilon[pjd];
+      const MyFloat x_j = cj_cache->x[pjd];
+      const MyFloat y_j = cj_cache->y[pjd];
+      const MyFloat z_j = cj_cache->z[pjd];
+      const MyFloat mass_j = cj_cache->m[pjd];
+      const MyFloat h_j = cj_cache->epsilon[pjd];
 
       /* Compute the pairwise distance. */
-      float dx = x_j - x_i;
-      float dy = y_j - y_i;
-      float dz = z_j - z_i;
+      MyFloat dx = x_j - x_i;
+      MyFloat dy = y_j - y_i;
+      MyFloat dz = z_j - z_i;
 
       /* Correct for periodic BCs */
       dx = nearestf(dx, dim[0]);
       dy = nearestf(dy, dim[1]);
       dz = nearestf(dz, dim[2]);
 
-      const float r2 = dx * dx + dy * dy + dz * dz;
+      const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
       /* Pick the maximal softening length of i and j */
       const float h = max(h_i, h_j);
-      const float h2 = h * h;
-      const float h_inv = 1.f / h;
-      const float h_inv_3 = h_inv * h_inv * h_inv;
+      const MyFloat h2 = h * h;
+      const MyFloat h_inv = 1. / h;
+      const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* The gravity_cache are sometimes allocated with more
@@ -847,8 +847,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
 #endif
 
       /* Interact! */
-      float f_ij, pot_ij;
-      runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
+      MyFloat f_ij, pot_ij;
+      runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, (MyFloat)r_s_inv,
                                     &f_ij, &pot_ij);
 
       /* Store it back */
@@ -913,15 +913,15 @@ static INLINE void runner_dopair_grav_pm_full(
     const struct cell *restrict cj) {
 
   /* Make the compiler understand we are in happy vectorization land */
-  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, epsilon, ci_cache->epsilon,
+  swift_declare_aligned_ptr(MyFloat, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, epsilon, ci_cache->epsilon,
                             SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_x, ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_x, ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, ci_cache->active,
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, use_mpole, ci_cache->use_mpole,
@@ -1064,15 +1064,15 @@ static INLINE void runner_dopair_grav_pm_truncated(
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
-  swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, epsilon, ci_cache->epsilon,
+  swift_declare_aligned_ptr(MyFloat, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, y, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, z, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, epsilon, ci_cache->epsilon,
                             SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_x, ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_x, ci_cache->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_y, ci_cache->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_z, ci_cache->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, pot, ci_cache->pot, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, ci_cache->active,
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, use_mpole, ci_cache->use_mpole,
@@ -1504,20 +1504,20 @@ static INLINE void runner_doself_grav_pp_full(
     /* Skip inactive particles */
     if (!ci_cache->active[pid]) continue;
 
-    const float x_i = ci_cache->x[pid];
-    const float y_i = ci_cache->y[pid];
-    const float z_i = ci_cache->z[pid];
-    const float h_i = ci_cache->epsilon[pid];
+    const MyFloat x_i = ci_cache->x[pid];
+    const MyFloat y_i = ci_cache->y[pid];
+    const MyFloat z_i = ci_cache->z[pid];
+    const MyFloat h_i = ci_cache->epsilon[pid];
 
     /* Local accumulators for the acceleration */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    MyFloat a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, ci_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
     /* Loop over every other particle in the cell. */
@@ -1527,24 +1527,24 @@ static INLINE void runner_doself_grav_pp_full(
       if (pid == pjd) continue;
 
       /* Get info about j */
-      const float x_j = ci_cache->x[pjd];
-      const float y_j = ci_cache->y[pjd];
-      const float z_j = ci_cache->z[pjd];
-      const float mass_j = ci_cache->m[pjd];
-      const float h_j = ci_cache->epsilon[pjd];
+      const MyFloat x_j = ci_cache->x[pjd];
+      const MyFloat y_j = ci_cache->y[pjd];
+      const MyFloat z_j = ci_cache->z[pjd];
+      const MyFloat mass_j = ci_cache->m[pjd];
+      const MyFloat h_j = ci_cache->epsilon[pjd];
 
       /* Compute the pairwise (square) distance. */
       /* Note: no need for periodic wrapping inside a cell */
-      const float dx = x_j - x_i;
-      const float dy = y_j - y_i;
-      const float dz = z_j - z_i;
-      const float r2 = dx * dx + dy * dy + dz * dz;
+      const MyFloat dx = x_j - x_i;
+      const MyFloat dy = y_j - y_i;
+      const MyFloat dz = z_j - z_i;
+      const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
       /* Pick the maximal softening length of i and j */
       const float h = max(h_i, h_j);
-      const float h2 = h * h;
-      const float h_inv = 1.f / h;
-      const float h_inv_3 = h_inv * h_inv * h_inv;
+      const MyFloat h2 = h * h;
+      const MyFloat h_inv = 1. / h;
+      const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* The gravity_cache are sometimes allocated with more
@@ -1582,7 +1582,7 @@ static INLINE void runner_doself_grav_pp_full(
 #endif
 
       /* Interact! */
-      float f_ij, pot_ij;
+      MyFloat f_ij, pot_ij;
       runner_iact_grav_pp_full(r2, h2, h_inv, h_inv_3, mass_j, &f_ij, &pot_ij);
 
       /* Store it back */
@@ -1652,20 +1652,20 @@ static INLINE void runner_doself_grav_pp_truncated(
     /* Skip inactive particles */
     if (!ci_cache->active[pid]) continue;
 
-    const float x_i = ci_cache->x[pid];
-    const float y_i = ci_cache->y[pid];
-    const float z_i = ci_cache->z[pid];
-    const float h_i = ci_cache->epsilon[pid];
+    const MyFloat x_i = ci_cache->x[pid];
+    const MyFloat y_i = ci_cache->y[pid];
+    const MyFloat z_i = ci_cache->z[pid];
+    const MyFloat h_i = ci_cache->epsilon[pid];
 
     /* Local accumulators for the acceleration and potential */
-    float a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    MyFloat a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
 
     /* Make the compiler understand we are in happy vectorization land */
-    swift_align_information(float, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
-    swift_align_information(float, ci_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->y, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->z, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->m, SWIFT_CACHE_ALIGNMENT);
+    swift_align_information(MyFloat, ci_cache->epsilon, SWIFT_CACHE_ALIGNMENT);
     swift_assume_size(gcount_padded, VEC_SIZE);
 
     /* Loop over every other particle in the cell. */
@@ -1675,25 +1675,25 @@ static INLINE void runner_doself_grav_pp_truncated(
       if (pid == pjd) continue;
 
       /* Get info about j */
-      const float x_j = ci_cache->x[pjd];
-      const float y_j = ci_cache->y[pjd];
-      const float z_j = ci_cache->z[pjd];
-      const float mass_j = ci_cache->m[pjd];
-      const float h_j = ci_cache->epsilon[pjd];
+      const MyFloat x_j = ci_cache->x[pjd];
+      const MyFloat y_j = ci_cache->y[pjd];
+      const MyFloat z_j = ci_cache->z[pjd];
+      const MyFloat mass_j = ci_cache->m[pjd];
+      const MyFloat h_j = ci_cache->epsilon[pjd];
 
       /* Compute the pairwise (square) distance. */
       /* Note: no need for periodic wrapping inside a cell */
-      const float dx = x_j - x_i;
-      const float dy = y_j - y_i;
-      const float dz = z_j - z_i;
+      const MyFloat dx = x_j - x_i;
+      const MyFloat dy = y_j - y_i;
+      const MyFloat dz = z_j - z_i;
 
-      const float r2 = dx * dx + dy * dy + dz * dz;
+      const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
       /* Pick the maximal softening length of i and j */
       const float h = max(h_i, h_j);
-      const float h2 = h * h;
-      const float h_inv = 1.f / h;
-      const float h_inv_3 = h_inv * h_inv * h_inv;
+      const MyFloat h2 = h * h;
+      const MyFloat h_inv = 1. / h;
+      const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* The gravity_cache are sometimes allocated with more
@@ -1731,8 +1731,8 @@ static INLINE void runner_doself_grav_pp_truncated(
 #endif
 
       /* Interact! */
-      float f_ij, pot_ij;
-      runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, r_s_inv,
+      MyFloat f_ij, pot_ij;
+      runner_iact_grav_pp_truncated(r2, h2, h_inv, h_inv_3, mass_j, (MyFloat)r_s_inv,
                                     &f_ij, &pot_ij);
 
       /* Store it back */

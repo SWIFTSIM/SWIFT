@@ -163,7 +163,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const int cond_2 =
         props->use_tree_below_softening || max_softening * max_softening < r2;
 
-    return cond_1 && cond_2;
+    return cond_1 && cond_2 && 0;
   }
 }
 
@@ -278,7 +278,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const int cond_2 =
         props->use_tree_below_softening || max_softening * max_softening < r2;
 
-    return cond_1 && cond_2;
+    return cond_1 && cond_2 && 0;
   }
 }
 

@@ -38,31 +38,31 @@
 struct gravity_cache {
 
   /*! #gpart x position. */
-  float *restrict x SWIFT_CACHE_ALIGN;
+  MyFloat *restrict x SWIFT_CACHE_ALIGN;
 
   /*! #gpart y position. */
-  float *restrict y SWIFT_CACHE_ALIGN;
+  MyFloat *restrict y SWIFT_CACHE_ALIGN;
 
   /*! #gpart z position. */
-  float *restrict z SWIFT_CACHE_ALIGN;
+  MyFloat *restrict z SWIFT_CACHE_ALIGN;
 
   /*! #gpart softening length. */
-  float *restrict epsilon SWIFT_CACHE_ALIGN;
+  MyFloat *restrict epsilon SWIFT_CACHE_ALIGN;
 
   /*! #gpart mass. */
-  float *restrict m SWIFT_CACHE_ALIGN;
+  MyFloat *restrict m SWIFT_CACHE_ALIGN;
 
   /*! #gpart x acceleration. */
-  float *restrict a_x SWIFT_CACHE_ALIGN;
+  MyFloat *restrict a_x SWIFT_CACHE_ALIGN;
 
   /*! #gpart y acceleration. */
-  float *restrict a_y SWIFT_CACHE_ALIGN;
+  MyFloat *restrict a_y SWIFT_CACHE_ALIGN;
 
   /*! #gpart z acceleration. */
-  float *restrict a_z SWIFT_CACHE_ALIGN;
+  MyFloat *restrict a_z SWIFT_CACHE_ALIGN;
 
   /*! #gpart potential. */
-  float *restrict pot SWIFT_CACHE_ALIGN;
+  MyFloat *restrict pot SWIFT_CACHE_ALIGN;
 
   /*! Is this #gpart active ? */
   int *restrict active SWIFT_CACHE_ALIGN;
@@ -112,7 +112,7 @@ static INLINE void gravity_cache_init(struct gravity_cache *c,
 
   /* Size of the gravity cache */
   const int padded_count = count - (count % VEC_SIZE) + VEC_SIZE;
-  const size_t sizeBytesF = padded_count * sizeof(float);
+  const size_t sizeBytesF = padded_count * sizeof(MyFloat);
   const size_t sizeBytesI = padded_count * sizeof(int);
 
   /* Delete old stuff if any */
@@ -163,17 +163,17 @@ INLINE static void gravity_cache_zero_output(struct gravity_cache *c,
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
-  swift_declare_aligned_ptr(float, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_y, c->a_y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_z, c->a_z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, pot, c->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_y, c->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_z, c->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, pot, c->pot, SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Zero everything */
-  bzero(a_x, gcount_padded * sizeof(float));
-  bzero(a_y, gcount_padded * sizeof(float));
-  bzero(a_z, gcount_padded * sizeof(float));
-  bzero(pot, gcount_padded * sizeof(float));
+  bzero(a_x, gcount_padded * sizeof(MyFloat));
+  bzero(a_y, gcount_padded * sizeof(MyFloat));
+  bzero(a_z, gcount_padded * sizeof(MyFloat));
+  bzero(pot, gcount_padded * sizeof(MyFloat));
 }
 
 /**
@@ -214,11 +214,11 @@ INLINE static void gravity_cache_populate(
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
-  swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, z, c->z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, x, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, y, c->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, z, c->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, m, c->m, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, use_mpole, c->use_mpole,
                             SWIFT_CACHE_ALIGNMENT);
@@ -230,9 +230,9 @@ INLINE static void gravity_cache_populate(
 #endif
   for (int i = 0; i < gcount; ++i) {
 
-    x[i] = (float)(gparts[i].x[0] - shift[0]);
-    y[i] = (float)(gparts[i].x[1] - shift[1]);
-    z[i] = (float)(gparts[i].x[2] - shift[2]);
+    x[i] = (MyFloat)(gparts[i].x[0] - shift[0]);
+    y[i] = (MyFloat)(gparts[i].x[1] - shift[1]);
+    z[i] = (MyFloat)(gparts[i].x[2] - shift[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -251,9 +251,9 @@ INLINE static void gravity_cache_populate(
     }
 
     /* Distance to the CoM of the other cell. */
-    float dx = x[i] - CoM[0];
-    float dy = y[i] - CoM[1];
-    float dz = z[i] - CoM[2];
+    float dx = (float)x[i] - CoM[0];
+    float dy = (float)y[i] - CoM[1];
+    float dz = (float)z[i] - CoM[2];
 
     /* Apply periodic BC */
     if (periodic) {
@@ -274,10 +274,10 @@ INLINE static void gravity_cache_populate(
 
   /* Particles used for padding should get impossible positions
    * that have a reasonable magnitude. We use the cell width for this */
-  const float pos_padded[3] = {-2.f * (float)cell->width[0],
-                               -2.f * (float)cell->width[1],
-                               -2.f * (float)cell->width[2]};
-  const float eps_padded = epsilon[0];
+  const MyFloat pos_padded[3] = {-2. * (MyFloat)cell->width[0],
+                               -2. * (MyFloat)cell->width[1],
+                               -2. * (MyFloat)cell->width[2]};
+  const MyFloat eps_padded = epsilon[0];
 
   /* Pad the caches */
   for (int i = gcount; i < gcount_padded; ++i) {
@@ -322,19 +322,19 @@ INLINE static void gravity_cache_populate_no_mpole(
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
-  swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, z, c->z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, x, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, y, c->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, z, c->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, m, c->m, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded, VEC_SIZE);
 
   /* Fill the input caches */
   for (int i = 0; i < gcount; ++i) {
-    x[i] = (float)(gparts[i].x[0] - shift[0]);
-    y[i] = (float)(gparts[i].x[1] - shift[1]);
-    z[i] = (float)(gparts[i].x[2] - shift[2]);
+    x[i] = (MyFloat)(gparts[i].x[0] - shift[0]);
+    y[i] = (MyFloat)(gparts[i].x[1] - shift[1]);
+    z[i] = (MyFloat)(gparts[i].x[2] - shift[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -359,10 +359,10 @@ INLINE static void gravity_cache_populate_no_mpole(
 
   /* Particles used for padding should get impossible positions
    * that have a reasonable magnitude. We use the cell width for this */
-  const float pos_padded[3] = {-2.f * (float)cell->width[0],
-                               -2.f * (float)cell->width[1],
-                               -2.f * (float)cell->width[2]};
-  const float eps_padded = epsilon[0];
+  const MyFloat pos_padded[3] = {-2. * (MyFloat)cell->width[0],
+                               -2. * (MyFloat)cell->width[1],
+                               -2. * (MyFloat)cell->width[2]};
+  const MyFloat eps_padded = epsilon[0];
 
   /* Pad the caches */
   for (int i = gcount; i < gcount_padded; ++i) {
@@ -411,11 +411,11 @@ INLINE static void gravity_cache_populate_all_mpole(
 #endif
 
   /* Make the compiler understand we are in happy vectorization land */
-  swift_declare_aligned_ptr(float, x, c->x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, y, c->y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, z, c->z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, m, c->m, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, x, c->x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, y, c->y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, z, c->z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, epsilon, c->epsilon, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, m, c->m, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, use_mpole, c->use_mpole,
                             SWIFT_CACHE_ALIGNMENT);
@@ -423,9 +423,9 @@ INLINE static void gravity_cache_populate_all_mpole(
 
   /* Fill the input caches */
   for (int i = 0; i < gcount; ++i) {
-    x[i] = (float)(gparts[i].x[0]);
-    y[i] = (float)(gparts[i].x[1]);
-    z[i] = (float)(gparts[i].x[2]);
+    x[i] = (MyFloat)(gparts[i].x[0]);
+    y[i] = (MyFloat)(gparts[i].x[1]);
+    z[i] = (MyFloat)(gparts[i].x[2]);
     epsilon[i] = gravity_get_softening(&gparts[i], grav_props);
     m[i] = gparts[i].mass;
     active[i] = (int)(gparts[i].time_bin <= max_active_bin);
@@ -433,9 +433,9 @@ INLINE static void gravity_cache_populate_all_mpole(
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Distance to the CoM of the other cell. */
-    float dx = x[i] - CoM[0];
-    float dy = y[i] - CoM[1];
-    float dz = z[i] - CoM[2];
+    float dx = (float)x[i] - CoM[0];
+    float dy = (float)y[i] - CoM[1];
+    float dz = (float)z[i] - CoM[2];
 
     /* Apply periodic BC */
     if (periodic) {
@@ -456,10 +456,10 @@ INLINE static void gravity_cache_populate_all_mpole(
 
   /* Particles used for padding should get impossible positions
    * that have a reasonable magnitude. We use the cell width for this */
-  const float pos_padded[3] = {-2.f * (float)cell->width[0],
-                               -2.f * (float)cell->width[1],
-                               -2.f * (float)cell->width[2]};
-  const float eps_padded = epsilon[0];
+  const MyFloat pos_padded[3] = {-2. * (MyFloat)cell->width[0],
+                               -2. * (MyFloat)cell->width[1],
+                               -2. * (MyFloat)cell->width[2]};
+  const MyFloat eps_padded = epsilon[0];
 
   /* Pad the caches */
   for (int i = gcount; i < gcount_padded; ++i) {
@@ -490,10 +490,10 @@ INLINE static void gravity_cache_write_back(const struct gravity_cache *c,
                                             const int gcount) {
 
   /* Make the compiler understand we are in happy vectorization land */
-  swift_declare_aligned_ptr(float, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_y, c->a_y, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, a_z, c->a_z, SWIFT_CACHE_ALIGNMENT);
-  swift_declare_aligned_ptr(float, pot, c->pot, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_x, c->a_x, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_y, c->a_y, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, a_z, c->a_z, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(MyFloat, pot, c->pot, SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(int, active, c->active, SWIFT_CACHE_ALIGNMENT);
 
   /* Write stuff back to the particles */
