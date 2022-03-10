@@ -900,7 +900,7 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
     /* Do a parallel CIC mesh assignment of the gparts but only using
      * the local top-level cells */
     threadpool_map(tp, cell_gpart_to_mesh_CIC_mapper, (void*)local_cells,
-                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                   nr_local_cells, sizeof(int), threadpool_uniform_chunk_size,
                    (void*)&data);
   }
 
@@ -1003,7 +1003,7 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
     /* Do a parallel CIC mesh interpolation onto the gparts but only using
        the local top-level cells */
     threadpool_map(tp, cell_mesh_to_gpart_CIC_mapper, (void*)local_cells,
-                   nr_local_cells, sizeof(int), threadpool_auto_chunk_size,
+                   nr_local_cells, sizeof(int), threadpool_uniform_chunk_size,
                    (void*)&data);
   }
 

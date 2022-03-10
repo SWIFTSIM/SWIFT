@@ -733,7 +733,7 @@ void space_split(struct space *s, int verbose) {
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+                 threadpool_uniform_chunk_size, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
