@@ -318,7 +318,7 @@ if not args.nolegend:
     ax.fill_between([0, 0], nthread + 0.5, nthread + nrow + 0.5, facecolor="white")
     ax.set_ylim(0, nthread + 0.5)
     ax.legend(
-        loc="upper center", shadow=True, bbox_to_anchor=(0.0, 1.05, 1.0, 0.2), ncol=7, fontsize=9
+        loc="upper center", shadow=True, bbox_to_anchor=(0.0, 1.1, 1.0, 0.2), ncol=6, fontsize=9
     )
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width, box.height * 0.7])
