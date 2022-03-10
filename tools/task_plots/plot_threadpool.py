@@ -321,7 +321,7 @@ if not args.nolegend:
         loc="upper center", shadow=True, bbox_to_anchor=(0.0, 1.1, 1.0, 0.2), ncol=6, fontsize=9
     )
     box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width, box.height * 0.7])
+    ax.set_position([box.x0, box.y0, box.width, box.height * 0.6])
 
 # Start and end of time-step
 real_start_t = (mintic_step - tic_step) / CPU_CLOCK
