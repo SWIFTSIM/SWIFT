@@ -30,6 +30,35 @@
  */
 
 /**
+ * @brief This resets particle carried quantities after each subcycling
+ * step such that the internal checks are still consistent.
+ * @param p the particle to work on
+ */
+__attribute__((always_inline)) INLINE static void rt_debugging_count_subcycle(
+    struct part* restrict p) {
+  p->rt_data.debug_nsubcycles += 1;
+}
+
+/**
+ * @brief This resets particle carried quantities after each subcycling
+ * step such that the internal checks are still consistent.
+ * @param p the particle to work on
+ */
+__attribute__((always_inline)) INLINE static void rt_debugging_reset_each_subcycle(
+    struct part* restrict p) {
+
+  /* skip this for GEAR */
+  p->rt_data.debug_calls_iact_gradient_interaction = 0;
+  p->rt_data.debug_calls_iact_transport_interaction = 0;
+
+  p->rt_data.debug_injection_done = 0;
+  p->rt_data.debug_gradients_done = 0;
+  p->rt_data.debug_transport_done = 0;
+  p->rt_data.debug_thermochem_done = 0;
+}
+
+
+/**
  * @brief Debugging checks loop over all star particles after each time step
  */
 static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,

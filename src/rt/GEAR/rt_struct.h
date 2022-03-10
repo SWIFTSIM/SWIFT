@@ -115,6 +115,9 @@ struct rt_part_data {
   /*! thermochemistry done? */
   int debug_thermochem_done;
 
+  /* Subcycling flags */
+  /*! How many times was this particle subcycled this step */
+  int debug_nsubcycles;
 #endif
 };
 

@@ -104,14 +104,9 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
 
-  p->rt_data.debug_calls_iact_gradient_interaction = 0;
-  p->rt_data.debug_calls_iact_transport_interaction = 0;
-
+  p->rt_data.debug_nsubcycles = 0;
   p->rt_data.debug_kicked = 0;
-  p->rt_data.debug_injection_done = 0;
-  p->rt_data.debug_gradients_done = 0;
-  p->rt_data.debug_transport_done = 0;
-  p->rt_data.debug_thermochem_done = 0;
+  rt_debugging_reset_each_subcycle(p);
 #endif
 
   rt_gradients_init(p);

@@ -66,6 +66,11 @@ struct rt_part_data {
 
   /*! Time-bin this particle uses for RT interactions */
   timebin_t time_bin;
+
+  /* Subcycling flags */
+
+  /*! How many times was this particle subcycled this step */
+  int debug_nsubcycles;
 };
 
 /* Additional RT data in star particle struct */
