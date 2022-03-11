@@ -729,11 +729,28 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
-
+#ifdef WITH_ZOOM_REGION
+  if (s->with_zoom_region) {
+    threadpool_map(&s->e->threadpool, space_split_mapper,
+                 s->zoom_props->local_bkg_cells_with_particles_top,
+                 s->zoom_props->nr_local_bkg_cells_with_particles, sizeof(int),
+                 threadpool_uniform_chunk_size, s);
+    threadpool_map(&s->e->threadpool, space_split_mapper,
+                 s->zoom_props->local_zoom_cells_with_particles_top,
+                 s->zoom_props->nr_local_zoom_cells_with_particles, sizeof(int),
+                 threadpool_uniform_chunk_size, s);
+  } else{
+    threadpool_map(&s->e->threadpool, space_split_mapper,
+                 s->local_cells_with_particles_top,
+                 s->nr_local_cells_with_particles, sizeof(int),
+                 threadpool_uniform_chunk_size, s);
+  }
+# else
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_uniform_chunk_size, s);
+#endif
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
