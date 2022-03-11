@@ -214,6 +214,8 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 			swift_free("local_cells_top", s->local_cells_top);
 			swift_free("local_zoom_cells_top", s->zoom_props->local_zoom_cells_top);
 			swift_free("local_bkg_cells_top", s->zoom_props->local_bkg_cells_top);
+			swift_free("local_zoom_cells_with_particles_top", s->zoom_props->local_zoom_cells_with_particles_top);
+			swift_free("local_bkg_cell_with_particless_top", s->zoom_props->local_bkg_cells_with_particles_top);
 			swift_free("cells_with_particles_top", s->cells_with_particles_top);
 			swift_free("local_cells_with_particles_top",
 			           s->local_cells_with_particles_top);
@@ -277,6 +279,18 @@ void space_regrid_zoom(struct space *s, struct gravity_props *gravity_properties
 		                   SWIFT_STRUCT_ALIGNMENT, s->zoom_props->nr_bkg_cells * sizeof(int)) != 0)
 			error("Failed to allocate indices of local top-level background cells.");
 		bzero(s->zoom_props->local_bkg_cells_top, s->zoom_props->nr_bkg_cells * sizeof(int));
+
+				/* Allocate the indices of local zoom cells with particles */
+		if (swift_memalign("local_zoom_cells_with_particles_top", (void **)&s->zoom_props->local_zoom_cells_with_particles_top,
+		                   SWIFT_STRUCT_ALIGNMENT, s->zoom_props->nr_zoom_cells * sizeof(int)) != 0)
+			error("Failed to allocate indices of local top-level zoom cells with particles.");
+		bzero(s->zoom_props->local_zoom_cells_with_particles_top, s->zoom_props->nr_zoom_cells * sizeof(int));
+
+		/* Allocate the indices of local bkg cells with particles */
+		if (swift_memalign("local_bkg_cells_with_particles_top", (void **)&s->zoom_props->local_bkg_cells_with_particles_top,
+		                   SWIFT_STRUCT_ALIGNMENT, s->zoom_props->nr_bkg_cells * sizeof(int)) != 0)
+			error("Failed to allocate indices of local top-level background cells with particles.");
+		bzero(s->zoom_props->local_bkg_cells_with_particles_top, s->zoom_props->nr_bkg_cells * sizeof(int));
 
 		/* Allocate the indices of local cells with tasks */
 		if (swift_memalign("local_cells_with_tasks_top",

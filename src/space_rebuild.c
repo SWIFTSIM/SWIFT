@@ -916,6 +916,8 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
   if (s->with_zoom_region) {
     s->zoom_props->nr_local_zoom_cells = 0;
     s->zoom_props->nr_local_bkg_cells = 0;
+    s->zoom_props->nr_local_zoom_cells_with_particles = 0;
+    s->zoom_props->nr_local_bkg_cells_with_particles = 0;
   }
 #endif
   for (int k = 0; k < s->nr_cells; k++) {
@@ -998,6 +1000,23 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       /* Add this cell to the list of non-empty cells */
       s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
       s->nr_local_cells_with_particles++;
+#ifdef WITH_ZOOM_REGION
+      if (s->with_zoom_region) {
+
+        /* Add this cell to the appropriate list of local cells */
+        if (c->tl_cell_type == zoom_tl_cell) {
+
+          s->zoom_props->local_zoom_cells_with_particles_top[s->zoom_props->nr_local_zoom_cells_with_particles] = k;
+          s->zoom_props->nr_local_zoom_cells_with_particles++;
+
+        } else if (c->tl_cell_type == tl_cell || c->tl_cell_type == tl_cell_neighbour) {
+
+          s->zoom_props->local_bkg_cells_with_particles_top[s->zoom_props->nr_local_bkg_cells_with_particles] = k;
+          s->zoom_props->nr_local_bkg_cells_with_particles++;
+
+        }
+      }
+#endif
     }
   }
   if (verbose) {
