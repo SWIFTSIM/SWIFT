@@ -400,7 +400,7 @@ struct zoom_region_properties {
   int nr_local_bkg_cells;
 
   /*! The indices of the *local* top-level background cells */
-  int *local_bkg_cells_with_particles_top;
+  int *local_bkg_cells_top;
 
   /*! Number of *local* top-level zoom cells */
   int nr_local_zoom_cells_with_particles;
