@@ -1014,14 +1014,6 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       message("Have %d local particles in zoom cells",
               zoom_cell_particles);
     }
-    /* Shuffle local zoom cells for more efficient threading. */
-    srand((unsigned)time(NULL));
-    for (int i = 0; i < s->zoom_props->nr_local_zoom_cells - 1; i++) {
-        size_t j = i + rand() / (RAND_MAX / (s->zoom_props->nr_local_zoom_cells - 1) + 1);
-        int cid = s->zoom_props->local_zoom_cells_top[j];
-        s->zoom_props->local_zoom_cells_top[j] = s->zoom_props->local_zoom_cells_top[i];
-        s->zoom_props->local_zoom_cells_top[i] = cid;
-    }
 #endif
 
 	  /* Lets report how many wanderers have been removed */
