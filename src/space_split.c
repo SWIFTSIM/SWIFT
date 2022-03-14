@@ -76,6 +76,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_rt_min_step_size = max_nr_timesteps;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
@@ -310,6 +311,7 @@ void space_split_recursive(struct space *s, struct cell *c,
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
 	ti_rt_end_min = min(ti_rt_end_min, cp->hydro.ti_rt_end_min);
 	ti_rt_beg_max = max(ti_rt_beg_max, cp->hydro.ti_rt_beg_max);
+  ti_rt_min_step_size = min(ti_rt_min_step_size, cp->hydro.ti_rt_min_step_size);
         ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
@@ -476,6 +478,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
       const integertime_t ti_rt_end = get_integer_time_end(ti_current, time_bin_rt);
       const integertime_t ti_rt_beg = get_integer_time_begin(ti_current, time_bin_rt);
+      const integertime_t ti_rt_step = get_integer_timestep(time_bin_rt);
 
       ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
       ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
@@ -483,6 +486,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       ti_rt_end_min = min(ti_rt_end_min, ti_rt_end);
       ti_rt_beg_max = max(ti_rt_beg_max, ti_rt_beg);
+      ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_step);
       
       h_max = max(h_max, parts[k].h);
 
@@ -646,6 +650,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->hydro.ti_beg_max = ti_hydro_beg_max;
   c->hydro.ti_rt_end_min = ti_rt_end_min;
   c->hydro.ti_rt_beg_max = ti_rt_beg_max;
+  c->hydro.ti_rt_min_step_size = ti_rt_min_step_size;
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;

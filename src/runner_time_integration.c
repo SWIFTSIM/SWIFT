@@ -673,6 +673,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_rt_min_step_size = max_nr_timesteps;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
@@ -730,6 +731,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
 	ti_rt_end_min = min(ti_current + ti_rt_new_step, ti_rt_end_min);
 	ti_rt_beg_max = max(ti_current + ti_rt_new_step, ti_rt_beg_max);
+  ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_new_step);
 	
         /* What is the next starting point for this cell ? */
         ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
@@ -1051,6 +1053,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
 	ti_rt_end_min = min(cp->hydro.ti_rt_end_min, ti_rt_end_min);
 	ti_rt_beg_max = max(cp->hydro.ti_rt_beg_max, ti_rt_beg_max);
+  ti_rt_min_step_size = min(cp->hydro.ti_rt_min_step_size, ti_rt_min_step_size);
 	
         ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
@@ -1080,6 +1083,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   c->hydro.ti_beg_max = ti_hydro_beg_max;
   c->hydro.ti_rt_end_min = ti_rt_end_min;
   c->hydro.ti_rt_beg_max = ti_rt_beg_max;
+  c->hydro.ti_rt_min_step_size = ti_rt_min_step_size;
+  if (ti_rt_min_step_size == 0) message("Cell %lld got new rt step size = 0", c->cellID);
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;

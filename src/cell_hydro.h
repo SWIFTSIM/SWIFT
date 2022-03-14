@@ -190,6 +190,9 @@ struct cell_hydro {
   /*! Maximum beginning of (integer) time step in this cell for RT tasks. */
   integertime_t ti_rt_beg_max;
   
+  /*! Minimum (integer) time step size in this cell for RT tasks. */
+  integertime_t ti_rt_min_step_size;
+  
   /*! Spin lock for various uses (#part case). */
   swift_lock_type lock;
 

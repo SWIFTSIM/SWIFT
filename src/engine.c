@@ -1691,6 +1691,8 @@ void engine_skip_drift(struct engine *e) {
 void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
 
+  message("------------- Called engine_launch call=%s", call);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
   space_reset_task_counters(e->s);
@@ -2134,9 +2136,9 @@ void cell_update_rt_step(struct cell *c, const struct engine *e,
 
   if (cell_is_rt_active(c, e)) {
 
-    
+
     c->hydro.ti_rt_end_min += step_size;
-      
+ 
   }
 }
 
@@ -2220,34 +2222,63 @@ int engine_step(struct engine *e) {
   if (e->restarting) space_rebuild(e->s, 0, e->verbose);
   if (e->restarting) engine_io(e);
 
+
+
+
+
   /* Move forward in time */
+  /* NEED THIS EVEN WITHOUT SUBCYCLING */
   e->ti_old = e->ti_current;
 
-  const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_old;
-  const int nr_rt_cycles = (e->ti_end_min - e->ti_old) / rt_step_size;
-  message("NR cycles: %d", nr_rt_cycles);
 
-  for (int sub_cycle = 0; sub_cycle < nr_rt_cycles - 1; ++sub_cycle) {
-    
-    //e->ti_old = e->ti_current;
-    e->ti_current = e->ti_old + (sub_cycle + 1) * rt_step_size;
-    e->max_active_bin = get_max_active_bin(e->ti_current);
-    e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_current - rt_step_size);
 
-    // think cosmology one day
-    e->time = e->ti_current * e->time_base + e->time_begin;
-    e->time_old = (e->ti_current - rt_step_size) * e->time_base + e->time_begin;
-    e->time_step = rt_step_size * e->time_base;
+/*  */
+/*   const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_old; */
+/*   const int nr_rt_cycles = (e->ti_end_min - e->ti_old) / rt_step_size; */
+/*   message("NR cycles: %d | current %lld end_min %lld", nr_rt_cycles, e->ti_current, e->ti_end_min); */
+/*  */
+/*   for (int sub_cycle = 0; sub_cycle < nr_rt_cycles - 1; ++sub_cycle) { */
+/*  */
+/*     //e->ti_old = e->ti_current; */
+/*     e->ti_current = e->ti_old + (sub_cycle + 1) * rt_step_size; */
+/*     e->max_active_bin = get_max_active_bin(e->ti_current); */
+/*     e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_current - rt_step_size); */
+/*  */
+/*     // think cosmology one day */
+/*     e->time = e->ti_current * e->time_base + e->time_begin; */
+/*     e->time_old = (e->ti_current - rt_step_size) * e->time_base + e->time_begin; */
+/*     e->time_step = rt_step_size * e->time_base; */
+/*  */
+/*     message("cycle %d time=%e", sub_cycle, e->time); */
+/*     engine_unskip_sub_cycle(e); */
+/*     [> engine_print_task_counts(e); <] */
+/*     engine_launch(e, "cycles"); */
+/*  */
+/*     [> for (int i = 0; i <  e->s->nr_cells; ++i) <] */
+/*     [>   cell_update_rt_step(&e->s->cells_top[i], e, rt_step_size); <] */
+/*   } */
+/*  */
 
-    message("cycle %d time=%e", sub_cycle, e->time);
-    engine_unskip_sub_cycle(e);
-    engine_print_task_counts(e);
-    engine_launch(e, "cycles");
 
-    for (int i = 0; i <  e->s->nr_cells; ++i)
-      cell_update_rt_step(&e->s->cells_top[i], e, rt_step_size);
-  }
 
+
+
+
+#if defined(SWIFT_RT_DEBUG_CHECKS)
+  /* TODO: clean this up */
+  /* if we're running the debug RT scheme, do some checks after every step.
+   * Do this after the output so we can safely reset debugging checks now. */
+  /* if (e->policy & engine_policy_rt){ */
+  /*   message("RUNNING RT DEBUGGING CHECKS END OF STEP"); */
+  /*   rt_debugging_checks_end_of_step(e, e->verbose); */
+  /* } */
+#endif
+
+
+
+
+
+  message("Updating ti_current from %lld to %lld", e->ti_current, e->ti_end_min);
   e->ti_current = e->ti_end_min;
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
   e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
@@ -2576,6 +2607,51 @@ int engine_step(struct engine *e) {
       (e->collect_group1.sink_updated == e->total_nr_sinks) &&
       (e->collect_group1.b_updated == e->total_nr_bparts))
     e->ti_earliest_undrifted = e->ti_current;
+
+
+
+
+
+  /* RT "subcycling" */
+  /* Move forward in time */
+  e->ti_old = e->ti_current;
+
+  fflush(stdout);
+  message("check1 %lld %lld | %lld", e->ti_rt_end_min, e->ti_old, e->ti_rt_end_min - e->ti_old);
+  fflush(stdout);
+  message("check2 %lld %lld | %lld", e->ti_end_min, e->ti_old, e->ti_end_min - e->ti_old);
+  fflush(stdout);
+
+  const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_old;
+  /* When we arrive at the final step, the rt_step_size can be == 0 */
+  const int nr_rt_cycles = rt_step_size > 0 ? (e->ti_end_min - e->ti_old) / rt_step_size : 0;
+  message("NR cycles: %d | current %lld end_min %lld", nr_rt_cycles, e->ti_current, e->ti_end_min);
+  fflush(stdout);
+
+  for (int sub_cycle = 0; sub_cycle < nr_rt_cycles - 1; ++sub_cycle) {
+
+    //e->ti_old = e->ti_current;
+    e->ti_current = e->ti_old + (sub_cycle + 1) * rt_step_size;
+    e->max_active_bin = get_max_active_bin(e->ti_current);
+    e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_current - rt_step_size);
+
+    // think cosmology one day
+    e->time = e->ti_current * e->time_base + e->time_begin;
+    e->time_old = (e->ti_current - rt_step_size) * e->time_base + e->time_begin;
+    e->time_step = rt_step_size * e->time_base;
+
+    message("cycle %d time=%e", sub_cycle, e->time);
+    engine_unskip_sub_cycle(e);
+    engine_print_task_counts(e);
+    engine_launch(e, "cycles");
+
+    /* for (int i = 0; i <  e->s->nr_cells; ++i) */
+    /*   cell_update_rt_step(&e->s->cells_top[i], e, rt_step_size); */
+  }
+
+
+
+
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all cells have correct time-step information */
