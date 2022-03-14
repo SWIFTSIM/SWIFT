@@ -351,6 +351,16 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_rt) scheduler_activate(s, t);
       }
 
+      else if (t_type == task_type_self && t_subtype == task_subtype_rt_gradient) {
+        cell_activate_drift_part(ci, s);
+        if (ci_active_rt && !ci_active_hydro) message("CELL RT ACTIVE BUT NOT HYDRO ACTIVE???");
+      }
+
+      else if (t_type == task_type_sub_self && t_subtype == task_subtype_rt_gradient) {
+        cell_activate_subcell_hydro_tasks(ci, NULL, s, /*sub_cycle=*/0);
+        if (ci_active_rt && !ci_active_hydro) message("CELL RT ACTIVE BUT NOT HYDRO ACTIVE???");
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       else {
         error("Invalid task type / sub-type encountered");
@@ -764,6 +774,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* RT gradient and transport tasks */
       else if (t_subtype == task_subtype_rt_gradient) {
+
         /* We only want to activate the task if the cell is active and is
            going to update some gas on the *local* node */
 
@@ -774,6 +785,32 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            * Therefore all the (subcell) sorts and drifts should already have
            * been activated properly in the hydro part of the activation. */
           scheduler_activate(s, t);
+
+
+          /* Set the correct sorting flags */
+          if (t_type == task_type_pair) {
+
+            /* Store some values. */
+            atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+            atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+            ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+            cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+            /* Activate the hydro drift tasks. */
+            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+            /* Check the sorts and activate them if needed. */
+            cell_activate_hydro_sorts(ci, t->flags, s);
+            cell_activate_hydro_sorts(cj, t->flags, s);
+
+          }
+
+          /* Store current values of dx_max and h_max. */
+          else if (t_type == task_type_sub_pair) {
+            cell_activate_subcell_rt_tasks(t->ci, t->cj, s,
+                                              with_timestep_limiter);
+          }
         }
       }
 

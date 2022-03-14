@@ -1339,10 +1339,15 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Have the cells been sorted? */
   if (!(ci->hydro.sorted & (1 << sid)) ||
       ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
-    error("Interacting unsorted cells.");
+    error("Interacting unsorted cells %lld -> %lld. %d %d sid=%d", 
+        ci->cellID, cj->cellID, 
+        !(ci->hydro.sorted & (1 << sid)), 
+        sid,
+        ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin
+        );
   if (!(cj->hydro.sorted & (1 << sid)) ||
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
-    error("Interacting unsorted cells.");
+    error("Interacting unsorted cells %lld -> %lld.", cj->cellID, ci->cellID);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Pick-out the sorted lists. */
