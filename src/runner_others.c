@@ -1047,7 +1047,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
       /* Finish the force loop */
       const integertime_t ti_current = e->ti_current;
@@ -1133,18 +1133,18 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer)
       /* if (p->rt_data.debug_kicked != 1) */
       /*   error("Trying to do rescheduling on unkicked particle %lld (count=%d)", */
       /*         p->id, p->rt_data.debug_kicked); */
-      /* if (p->rt_data.debug_injection_done != 1) */
-      /*   error("Trying to do rescheduling on particle %lld with injection_done count=%d",  */
-      /*         p->id, p->rt_data.debug_injection_done); */
-      /* if (p->rt_data.debug_gradients_done != 1) */
-      /*   error("Trying to do rescheduling on particle %lld with gradients_done count=%d",  */
-      /*         p->id, p->rt_data.debug_gradients_done); */
-      /* if (p->rt_data.debug_transport_done != 1) */
-      /*   error("Trying to do rescheduling on particle %lld with with transport_done count=%d",  */
-      /*         p->id, p->rt_data.debug_transport_done); */
-      /* if (p->rt_data.debug_thermochem_done != 1) */
-      /*   error("Trying to do rescheduling on particle %lld with with thermochem_done count=%d",  */
-      /*         p->id, p->rt_data.debug_thermochem_done); */
+      if (p->rt_data.debug_injection_done != 1)
+        error("Trying to do rescheduling on particle %lld with injection_done count=%d",
+              p->id, p->rt_data.debug_injection_done);
+      if (p->rt_data.debug_gradients_done != 1)
+        error("Trying to do rescheduling on particle %lld with gradients_done count=%d",
+              p->id, p->rt_data.debug_gradients_done);
+      if (p->rt_data.debug_transport_done != 1)
+        error("Trying to do rescheduling on particle %lld with with transport_done count=%d",
+              p->id, p->rt_data.debug_transport_done);
+      if (p->rt_data.debug_thermochem_done != 1)
+        error("Trying to do rescheduling on particle %lld with with thermochem_done count=%d",
+              p->id, p->rt_data.debug_thermochem_done);
 
       /* Don't reset quantities at the end of the subcycling this step. */
       /* TODO: skip this on the last subcycling step so proper checks at the 

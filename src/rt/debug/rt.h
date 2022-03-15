@@ -20,6 +20,7 @@
 #define SWIFT_RT_DEBUG_H
 
 #include "rt_debugging.h"
+#define PROBLEMPART 36102
 
 /**
  * @file src/rt/debug/rt.h
@@ -82,6 +83,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   p->rt_data.debug_iact_stars_inject = 0;
 
   p->rt_data.debug_nsubcycles = 0;
+  if (p->id == PROBLEMPART) message("Resetting kick %d", PROBLEMPART);
   p->rt_data.debug_kicked = 0;
   rt_debugging_reset_each_subcycle(p);
 }
@@ -311,9 +313,13 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
 __attribute__((always_inline)) INLINE static void rt_finalise_injection(
     struct part* restrict p, struct rt_props* props) {
 
-  if (p->rt_data.debug_kicked != 1)
-    error("called rt_ghost1 when particle %lld is unkicked (count=%d)", p->id,
-          p->rt_data.debug_kicked);
+  if (p->rt_data.debug_kicked != 1 && p->rt_data.debug_nsubcycles == 0)
+    error("called rt_ghost1 on particle %lld with wrong kick count=%d cycle=%d", p->id,
+          p->rt_data.debug_kicked, p->rt_data.debug_nsubcycles);
+  if (p->rt_data.debug_kicked != 2 && p->rt_data.debug_nsubcycles > 0)
+    error("called rt_ghost1 on particle %lld with wrong kick count=%d cycle=%d", p->id,
+          p->rt_data.debug_kicked, p->rt_data.debug_nsubcycles);
+
   p->rt_data.debug_injection_done += 1;
 }
 
@@ -326,9 +332,12 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
     struct part* restrict p, const struct cosmology* cosmo) {
 
-  if (p->rt_data.debug_kicked != 1)
-    error("called finalise gradient when particle %lld is unkicked (count=%d)",
-          p->id, p->rt_data.debug_kicked);
+  if (p->rt_data.debug_kicked != 1 && p->rt_data.debug_nsubcycles == 0)
+    error("called rt_end_gradient on particle %lld with wrong kick count=%d cycle=%d", p->id,
+          p->rt_data.debug_kicked, p->rt_data.debug_nsubcycles);
+  if (p->rt_data.debug_kicked != 2 && p->rt_data.debug_nsubcycles > 0)
+    error("called rt_end_gradient on particle %lld with wrong kick count=%d cycle=%d", p->id,
+          p->rt_data.debug_kicked, p->rt_data.debug_nsubcycles);
 
   if (p->rt_data.debug_injection_done != 1)
     error(
@@ -356,9 +365,12 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt,
     const struct cosmology* restrict cosmo) {
 
-  if (p->rt_data.debug_kicked != 1)
-    error("called finalise transport when particle %lld is unkicked (count=%d)",
-          p->id, p->rt_data.debug_kicked);
+  if (p->rt_data.debug_kicked != 1 && p->rt_data.debug_nsubcycles == 0)
+    error("called rt_finalise_transport on particle %lld with wrong kick count=%d cycle=%d", p->id,
+          p->rt_data.debug_kicked, p->rt_data.debug_nsubcycles);
+  if (p->rt_data.debug_kicked != 2 && p->rt_data.debug_nsubcycles > 0)
+    error("called rt_finalise_transport on particle %lld with wrong kick count=%d cycle=%d", p->id,
+          p->rt_data.debug_kicked, p->rt_data.debug_nsubcycles);
 
   if (p->rt_data.debug_injection_done != 1)
     error(
@@ -402,11 +414,13 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us, const double dt) {
 
-  if (p->rt_data.debug_kicked != 1)
-    error(
-        "Part %lld trying to do thermochemistry on unkicked particle "
-        "(count=%d)",
-        p->id, p->rt_data.debug_kicked);
+  if (p->rt_data.debug_kicked != 1 && p->rt_data.debug_nsubcycles == 0)
+    error("called rt_tchem on particle %lld with wrong kick count=%d cycle=%d", p->id,
+          p->rt_data.debug_kicked, p->rt_data.debug_nsubcycles);
+  if (p->rt_data.debug_kicked != 2 && p->rt_data.debug_nsubcycles > 0)
+    error("called rt_tchem on particle %lld with wrong kick count=%d cycle=%d", p->id,
+          p->rt_data.debug_kicked, p->rt_data.debug_nsubcycles);
+
   if (p->rt_data.debug_injection_done != 1)
     error("Part %lld trying to do thermochemistry when injection_done != 1: %d",
           p->id, p->rt_data.debug_injection_done);
@@ -439,12 +453,12 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
 
-  if (p->id == 29538) message("called 29538 in kick");
+  if (p->id == PROBLEMPART) message("called %d in kick", PROBLEMPART);
   /* Don't account for timestep_sync backward kicks */
   if (dt_therm >= 0.f && dt_grav >= 0.f && dt_hydro >= 0.f &&
       dt_kick_corr >= 0.f) {
     p->rt_data.debug_kicked += 1;
-    if (p->id == 29538) message("kicked 29538");
+    if (p->id == PROBLEMPART) message("kicking %d ", PROBLEMPART);
   }
 }
 

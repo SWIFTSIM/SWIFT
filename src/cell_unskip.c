@@ -1452,6 +1452,9 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
   ci->hydro.h_max_old = ci->hydro.h_max;
 
+  const int ci_active = cell_is_rt_active(ci, e);
+  const int cj_active = ((cj != NULL) && cell_is_rt_active(ci, e));
+
   if (cj != NULL) {
     cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
     cj->hydro.h_max_old = cj->hydro.h_max;
@@ -1460,7 +1463,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
   /* Self interaction? */
   if (cj == NULL) {
     /* Do anything? */
-    if (ci->hydro.count == 0 || !cell_is_rt_active(ci, e)) return;
+    if (ci->hydro.count == 0 || !ci_active) return;
 
     /* Recurse? */
     if (cell_can_recurse_in_self_hydro_task(ci)) {
@@ -1484,7 +1487,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
   /* Otherwise, pair interation */
   else {
     /* Should we even bother? */
-    if (!cell_is_rt_active(ci, e) && !cell_is_rt_active(cj, e)) return;
+    if (!ci_active && !cj_active) return;
     if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
     /* Get the orientation of the pair. */
@@ -1505,7 +1508,18 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
     }
 
     /* Otherwise, activate the sorts and drifts. */
-    else if (cell_is_rt_active(ci, e) || cell_is_rt_active(cj, e)) {
+    else if (ci_active || cj_active){
+
+#ifdef SWIFT_DEBUG_CHECKS
+    const int ci_active_hydro = cell_is_active_hydro(ci, e);
+    const int cj_active_hydro = (cj != NULL) && cell_is_active_hydro(cj, e);
+    if (!sub_cycle){
+      /* If we keep e->ti_current and e->ti_current_subcycle separate, this
+       * check should pass also when sub_cycle = 1 */
+      if (ci_active && !ci_active_hydro) error("Got a cell active for RT but not hydro");
+      if (cj_active && !cj_active_hydro) error("Got a cell active for RT but not hydro");
+    }
+#endif
       /* We are going to interact this pair, so store some values. */
       atomic_or(&ci->hydro.requires_sorts, 1 << sid);
       atomic_or(&cj->hydro.requires_sorts, 1 << sid);
@@ -2866,6 +2880,17 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
     const int ci_active = cell_is_rt_active(ci, e);
     const int cj_active = (cj != NULL) && cell_is_rt_active(cj, e);
 
+#ifdef SWIFT_DEBUG_CHECKS
+    const int ci_active_hydro = cell_is_active_hydro(ci, e);
+    const int cj_active_hydro = (cj != NULL) && cell_is_active_hydro(cj, e);
+    if (!sub_cycle){
+      /* If we keep e->ti_current and e->ti_current_subcycle separate, this
+       * check should pass also when sub_cycle = 1 */
+      if (ci_active && !ci_active_hydro) error("Got a cell active for RT but not hydro");
+      if (cj_active && !cj_active_hydro) error("Got a cell active for RT but not hydro");
+    }
+#endif
+
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
@@ -2988,6 +3013,16 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
 
     const int ci_active = cell_is_rt_active(ci, e);
     const int cj_active = ((cj != NULL) && cell_is_rt_active(cj, e));
+#ifdef SWIFT_DEBUG_CHECKS
+    const int ci_active_hydro = cell_is_active_hydro(ci, e);
+    const int cj_active_hydro = (cj != NULL) && cell_is_active_hydro(cj, e);
+    if (!sub_cycle){
+      /* If we keep e->ti_current and e->ti_current_subcycle separate, this
+       * check should pass also when sub_cycle = 1 */
+      if (ci_active && !ci_active_hydro) error("Got a cell active for RT but not hydro");
+      if (cj_active && !cj_active_hydro) error("Got a cell active for RT but not hydro");
+    }
+#endif
 
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
@@ -3008,6 +3043,14 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
   /* Unskip all the other task types */
 
   if (cell_is_rt_active(c, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!sub_cycle){
+      /* If we keep e->ti_current and e->ti_current_subcycle separate, this
+       * check should pass also when sub_cycle = 1 */
+      if (!cell_is_active_hydro(c, e)) error("Got a cell active for RT but not hydro");
+    }
+#endif
+
     if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
     if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
     if (c->hydro.rt_ghost2 != NULL) scheduler_activate(s, c->hydro.rt_ghost2);

@@ -211,8 +211,6 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
 
-  if (c->cellID == 194) message("Called 194");
-
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->hydro.do_sort;
   if (cleanup) {
@@ -349,11 +347,8 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   /* Otherwise, just sort. */
   else {
 
-if (c->cellID == 74) message("Check1 74");
-
     /* Reset the sort distance */
     if (c->hydro.sorted == 0) {
-if (c->cellID == 74) message("Check2 74 flags=%d", flags);
 #ifdef SWIFT_DEBUG_CHECKS
       if (xparts != NULL && c->nodeID != engine_rank)
         error("Have non-NULL xparts in foreign cell");

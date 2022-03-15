@@ -186,6 +186,7 @@ struct engine {
   /* The current system time. */
   double time;
   integertime_t ti_current;
+  integertime_t ti_current_subcycle;
 
   /* The earliest time any particle may still need to be drifted from */
   integertime_t ti_earliest_undrifted;

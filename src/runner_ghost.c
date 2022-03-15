@@ -19,6 +19,8 @@
  *
  ******************************************************************************/
 
+#define PROBLEMPART 36102
+
 /* Config parameters. */
 #include <config.h>
 
@@ -1139,7 +1141,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       error("Can't allocate memory for left.");
     if ((right = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
       error("Can't allocate memory for right.");
-    for (int k = 0; k < c->hydro.count; k++)
+    for (int k = 0; k < c->hydro.count; k++){
       if (part_is_active(&parts[k], e)) {
         pid[count] = k;
         h_0[count] = parts[k].h;
@@ -1147,6 +1149,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         right[count] = hydro_h_max;
         ++count;
       }
+      if (parts[k].id == PROBLEMPART) message("check1");
+    }
 
     /* While there are particles that need to be updated... */
     for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
@@ -1169,6 +1173,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Is this part within the timestep? */
         if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
 #endif
+
+        if (p->id == PROBLEMPART) message("check2");
 
         /* Get some useful values */
         const float h_init = h_0[i];
@@ -1607,7 +1613,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
       rt_finalise_injection(p, e->rt_props);
     }
@@ -1652,7 +1658,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
       rt_end_gradient(p, cosmo);
     }

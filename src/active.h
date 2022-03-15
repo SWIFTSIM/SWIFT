@@ -196,7 +196,7 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
         e->ti_current * e->time_base, e->cosmology->a, c->nodeID);
 #endif
 
-  return (c->hydro.ti_rt_end_min == e->ti_current);
+  return (c->hydro.ti_rt_end_min == e->ti_current_subcycle);
 }
 
 /**

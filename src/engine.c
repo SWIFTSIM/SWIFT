@@ -2279,6 +2279,8 @@ int engine_step(struct engine *e) {
 
 
   message("Updating ti_current from %lld to %lld", e->ti_current, e->ti_end_min);
+e->ti_current_subcycle = e->ti_end_min;
+ 
   e->ti_current = e->ti_end_min;
   e->max_active_bin = get_max_active_bin(e->ti_end_min);
   e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old);
@@ -2616,12 +2618,6 @@ int engine_step(struct engine *e) {
   /* Move forward in time */
   e->ti_old = e->ti_current;
 
-  fflush(stdout);
-  message("check1 %lld %lld | %lld", e->ti_rt_end_min, e->ti_old, e->ti_rt_end_min - e->ti_old);
-  fflush(stdout);
-  message("check2 %lld %lld | %lld", e->ti_end_min, e->ti_old, e->ti_end_min - e->ti_old);
-  fflush(stdout);
-
   const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_old;
   /* When we arrive at the final step, the rt_step_size can be == 0 */
   const int nr_rt_cycles = rt_step_size > 0 ? (e->ti_end_min - e->ti_old) / rt_step_size : 0;
@@ -2631,13 +2627,14 @@ int engine_step(struct engine *e) {
   for (int sub_cycle = 0; sub_cycle < nr_rt_cycles - 1; ++sub_cycle) {
 
     //e->ti_old = e->ti_current;
-    e->ti_current = e->ti_old + (sub_cycle + 1) * rt_step_size;
-    e->max_active_bin = get_max_active_bin(e->ti_current);
-    e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_current - rt_step_size);
+    /* e->ti_current = e->ti_old + (sub_cycle + 1) * rt_step_size; */
+    e->ti_current_subcycle = e->ti_current + (sub_cycle + 1) * rt_step_size;
+    e->max_active_bin = get_max_active_bin(e->ti_current_subcycle);
+    e->min_active_bin = get_min_active_bin(e->ti_current_subcycle, e->ti_current_subcycle - rt_step_size);
 
     // think cosmology one day
-    e->time = e->ti_current * e->time_base + e->time_begin;
-    e->time_old = (e->ti_current - rt_step_size) * e->time_base + e->time_begin;
+    e->time = e->ti_current_subcycle * e->time_base + e->time_begin;
+    e->time_old = (e->ti_current_subcycle - rt_step_size) * e->time_base + e->time_begin;
     e->time_step = rt_step_size * e->time_base;
 
     message("cycle %d time=%e", sub_cycle, e->time);

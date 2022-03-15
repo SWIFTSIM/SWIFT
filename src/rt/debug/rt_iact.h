@@ -107,9 +107,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
-  if (pi->rt_data.debug_kicked != 1)
-    error("Trying to iact transport with unkicked particle %lld (count=%d)",
-          pi->id, pi->rt_data.debug_kicked);
+  if (pi->rt_data.debug_kicked != 1 && pi->rt_data.debug_nsubcycles == 0)
+    error("called rt_transport on particle %lld with wrong kick count=%d cycle=%d", pi->id,
+          pi->rt_data.debug_kicked, pi->rt_data.debug_nsubcycles);
+  if (pi->rt_data.debug_kicked != 2 && pi->rt_data.debug_nsubcycles > 0)
+    error("called rt_transport on particle %lld with wrong kick count=%d cycle=%d", pi->id,
+          pi->rt_data.debug_kicked, pi->rt_data.debug_nsubcycles);
 
   if (pi->rt_data.debug_injection_done != 1)
     error(
@@ -127,9 +130,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
 
   if (mode == 1) {
 
-    if (pj->rt_data.debug_kicked != 1)
-      error("Trying to iact transport with unkicked particle %lld (count=%d)",
-            pj->id, pj->rt_data.debug_kicked);
+    if (pj->rt_data.debug_kicked != 1 && pj->rt_data.debug_nsubcycles == 0)
+      error("called rt_transport on particle %lld with wrong kick count=%d cycle=%d", pj->id,
+            pj->rt_data.debug_kicked, pj->rt_data.debug_nsubcycles);
+    if (pj->rt_data.debug_kicked != 2 && pj->rt_data.debug_nsubcycles > 0)
+      error("called rt_transport on particle %lld with wrong kick count=%d cycle=%d", pj->id,
+            pj->rt_data.debug_kicked, pj->rt_data.debug_nsubcycles);
 
     if (pj->rt_data.debug_injection_done != 1)
       error(

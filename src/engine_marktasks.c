@@ -94,6 +94,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci->nodeID != nodeID) error("Non-local self task found");
 #endif
+
       const int ci_active_hydro = cell_is_active_hydro(ci, e);
       const int ci_active_gravity = cell_is_active_gravity(ci, e);
       const int ci_active_black_holes = cell_is_active_black_holes(ci, e);
@@ -102,6 +103,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_stars = cell_need_activating_stars(
           ci, e, with_star_formation, with_star_formation_sink);
       const int ci_active_rt = cell_is_rt_active(ci, e);
+      if (ci_active_rt && !ci_active_hydro) error("Got cell active RT but not hydro");
 
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {
@@ -808,8 +810,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Store current values of dx_max and h_max. */
           else if (t_type == task_type_sub_pair) {
-            cell_activate_subcell_rt_tasks(t->ci, t->cj, s,
-                                              with_timestep_limiter);
+            cell_activate_subcell_rt_tasks(t->ci, t->cj, s, /*sub_cycle=*/0);
           }
         }
       }
