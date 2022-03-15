@@ -178,6 +178,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
                          e->hydro_properties, e->chemistry, p);
 
   /* Get the RT timestep */
+  /* TODO: BEFORE MR: remove this later */
   float new_dt_radiation = FLT_MAX;
   if (e->policy & engine_policy_rt)
     new_dt_radiation = rt_compute_timestep(
@@ -228,8 +229,77 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
     const struct part *restrict p, const struct xpart *restrict xp,
     const struct engine *restrict e) {
 
-  /* TODO: Mladen */
-  return get_part_timestep(p, xp, e) / 4;
+  /* This part is identical to get_part_timestep                            */
+  /* ---------------------------------------------------------------------- */
+  /* Compute the next timestep (hydro condition) */
+  const float new_dt_hydro =
+      hydro_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
+
+  /* Compute the next timestep (cooling condition) */
+  float new_dt_cooling = FLT_MAX;
+  if (e->policy & engine_policy_cooling)
+    new_dt_cooling =
+        cooling_timestep(e->cooling_func, e->physical_constants, e->cosmology,
+                         e->internal_units, e->hydro_properties, p, xp);
+
+  /* Compute the next timestep (gravity condition) */
+  float new_dt_grav = FLT_MAX, new_dt_self_grav = FLT_MAX,
+        new_dt_ext_grav = FLT_MAX;
+  if (p->gpart != NULL) {
+
+    if (e->policy & engine_policy_external_gravity)
+      new_dt_ext_grav = external_gravity_timestep(
+          e->time, e->external_potential, e->physical_constants, p->gpart);
+
+    if (e->policy & engine_policy_self_gravity)
+      new_dt_self_grav = gravity_compute_timestep_self(
+          p->gpart, p->a_hydro, e->gravity_properties, e->cosmology);
+
+    new_dt_grav = min(new_dt_self_grav, new_dt_ext_grav);
+  }
+
+  /* Compute the next timestep (chemistry condition, e.g. diffusion) */
+  const float new_dt_chemistry =
+      chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units,
+                         e->hydro_properties, e->chemistry, p);
+
+  /* Get the RT timestep */
+  float new_dt_radiation = FLT_MAX;
+  if (e->policy & engine_policy_rt)
+    new_dt_radiation = rt_compute_timestep(p, e->rt_props, e->cosmology);
+
+  float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav,
+                      new_dt_chemistry, new_dt_radiation);
+
+  /* Limit change in smoothing length */
+  const float dt_h_change =
+      (p->force.h_dt != 0.0f)
+          ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
+          : FLT_MAX;
+
+  new_dt = min(new_dt, dt_h_change);
+
+  /* Apply the maximal displacement constraint (FLT_MAX if non-cosmological)*/
+  new_dt = min(new_dt, e->dt_max_RMS_displacement);
+
+  /* Apply cosmology correction (This is 1 if non-cosmological) */
+  new_dt *= e->cosmology->time_step_factor;
+
+  /* Limit timestep within the allowed range */
+  new_dt = min(new_dt, e->dt_max);
+
+  if (new_dt < e->dt_min)
+    error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
+          new_dt, e->dt_min);
+
+  /* ---------------------------------------------------------------------- */
+  /* Here we need to replace e->ti_current */
+  const integertime_t new_dti = make_integer_timestep(
+      new_dt, p->rt_data.time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current_subcycle,
+      e->time_base_inv) / 4;
+  /* TODO: don't forget to remove /4 */
+
+  return new_dti;
 }
 
 /**

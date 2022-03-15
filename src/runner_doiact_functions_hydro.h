@@ -30,6 +30,7 @@
 /* RT specific function calls */
 #define PART_IS_ACTIVE part_is_rt_active
 #define CELL_IS_ACTIVE cell_is_rt_active
+/* TODO: do we still need this? */
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted_rt
 #else
 /* default hydro behaviour */
@@ -1702,14 +1703,6 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
                                   t_current, cosmo, with_cosmology);
 #endif
           } else {
-            if(pj->id == 1546) message("HOHO1 %d %d | %d %d | %d %d", 
-                  part_is_active(pj, e), part_is_rt_active(pj, e), 
-                  part_is_active(pi, e), part_is_rt_active(pi, e), 
-                  PART_IS_ACTIVE(pj, e), PART_IS_ACTIVE(pi, e));
-            if(pi->id == 1546) message("HOHO2 %d %d | %d %d | %d %d", 
-                  part_is_active(pi, e), part_is_rt_active(pi, e), 
-                  part_is_active(pj, e), part_is_rt_active(pj, e), 
-                  PART_IS_ACTIVE(pi, e), PART_IS_ACTIVE(pj, e));
             IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
             IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)

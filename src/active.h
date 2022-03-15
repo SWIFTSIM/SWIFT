@@ -157,6 +157,7 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
 __attribute__((always_inline)) INLINE static int cell_are_part_drifted_rt(
     const struct cell *c, const struct engine *e) {
 
+  /* TODO */
   return 1;
 }
 
@@ -184,6 +185,16 @@ __attribute__((always_inline)) INLINE static int cell_is_active_hydro(
   return (c->hydro.ti_end_min == e->ti_current);
 }
 
+/**
+ * @brief Does a cell contain any particle finishing their RT time-step now ?
+ * NOTE: this is used to check for activity while the tasks are running, but
+ * not whether a task should be unskipped.
+ * TODO BEFORE MR: Check this comment
+ *
+ * @param c The #cell.
+ * @param e The #engine containing information about the current time.
+ * @return 1 if the #cell contains at least an active particle, 0 otherwise.
+ */
 __attribute__((always_inline)) INLINE static int cell_is_rt_active(
     const struct cell *c, const struct engine *e) {
 
@@ -196,6 +207,7 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
         e->ti_current * e->time_base, e->cosmology->a, c->nodeID);
 #endif
 
+  /* if (c->cellID == 123) message("Cell %lld active check: %lld %lld %d", c->cellID, c->hydro.ti_rt_end_min, e->ti_current_subcycle, c->hydro.ti_rt_end_min == e->ti_current_subcycle); */
   return (c->hydro.ti_rt_end_min == e->ti_current_subcycle);
 }
 

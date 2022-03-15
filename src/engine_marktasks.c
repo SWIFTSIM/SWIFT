@@ -103,7 +103,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       const int ci_active_stars = cell_need_activating_stars(
           ci, e, with_star_formation, with_star_formation_sink);
       const int ci_active_rt = cell_is_rt_active(ci, e);
-      if (ci_active_rt && !ci_active_hydro) error("Got cell active RT but not hydro");
 
       /* Activate the hydro drift */
       if (t_type == task_type_self && t_subtype == task_subtype_density) {

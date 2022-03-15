@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_DEBUG_H
 #define SWIFT_RT_IACT_DEBUG_H
 
+#include "rt_debugging.h"
 #include "rt_gradients.h"
 
 /**
@@ -69,8 +70,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     struct spart *restrict si, struct part *restrict pj, float a, float H,
     const struct rt_props *rt_props) {
 
-  /* If the star doesn't have any neighbours, we
-   * have nothing to do here. */
+  /* If the star doesn't have any neighbours, we have nothing to do here. */
   if (si->density.wcount == 0.f) return;
 
   if (si->rt_data.debug_iact_hydro_inject_prep == 0)
@@ -107,48 +107,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
-  if (pi->rt_data.debug_kicked != 1 && pi->rt_data.debug_nsubcycles == 0)
-    error("called rt_transport on particle %lld with wrong kick count=%d cycle=%d", pi->id,
-          pi->rt_data.debug_kicked, pi->rt_data.debug_nsubcycles);
-  if (pi->rt_data.debug_kicked != 2 && pi->rt_data.debug_nsubcycles > 0)
-    error("called rt_transport on particle %lld with wrong kick count=%d cycle=%d", pi->id,
-          pi->rt_data.debug_kicked, pi->rt_data.debug_nsubcycles);
+  const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
 
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Part %lld trying to do iact transport when "
-        "injection_done count is %d",
-        pi->id, pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_gradients_done != 1)
-    error(
-        "Part %lld trying to do iact transport when "
-        "gradients_done count is %d",
-        pi->id, pi->rt_data.debug_gradients_done);
+  rt_debug_sequence_check(pi, 3, func_name);
 
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
-
-    if (pj->rt_data.debug_kicked != 1 && pj->rt_data.debug_nsubcycles == 0)
-      error("called rt_transport on particle %lld with wrong kick count=%d cycle=%d", pj->id,
-            pj->rt_data.debug_kicked, pj->rt_data.debug_nsubcycles);
-    if (pj->rt_data.debug_kicked != 2 && pj->rt_data.debug_nsubcycles > 0)
-      error("called rt_transport on particle %lld with wrong kick count=%d cycle=%d", pj->id,
-            pj->rt_data.debug_kicked, pj->rt_data.debug_nsubcycles);
-
-    if (pj->rt_data.debug_injection_done != 1)
-      error(
-          "Part %lld Trying to do iact transport when "
-          "injection_done count is %d",
-          pj->id, pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_gradients_done != 1)
-      error(
-          "Part %lld Trying to do iact transport when "
-          "gradients_done count is %d",
-          pj->id, pj->rt_data.debug_gradients_done);
-
+    rt_debug_sequence_check(pj, 3, func_name);
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 }

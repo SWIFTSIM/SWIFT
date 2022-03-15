@@ -148,6 +148,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_rt = (e->policy & engine_policy_rt);
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
   const integertime_t ti_old_part = c->hydro.ti_old_part;
@@ -257,6 +258,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current, e, replication_list, c->loc);
+
+      if (with_rt) rt_drift_part(p, dt_drift);
 
       /* Update the tracers properties */
       tracers_after_drift(p, xp, e->internal_units, e->physical_constants,

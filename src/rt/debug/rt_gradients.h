@@ -19,6 +19,8 @@
 #ifndef SWIFT_RT_GRADIENTS_DEBUG_H
 #define SWIFT_RT_GRADIENTS_DEBUG_H
 
+#include "rt_debugging.h"
+
 /**
  * @file src/rt/debug/rt_gradients.h
  * @brief Main header file for the debug radiative transfer scheme gradients
@@ -38,35 +40,10 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     float r2, const float dx[3], float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
-  if (pi->rt_data.debug_kicked != 1 && pi->rt_data.debug_nsubcycles == 0)
-    error("called symmetric iact_gradient on particle %lld with wrong kick count=%d cycle=%d", pi->id,
-          pi->rt_data.debug_kicked, pi->rt_data.debug_nsubcycles);
-  if (pi->rt_data.debug_kicked != 2 && pi->rt_data.debug_nsubcycles > 0)
-    error("called symmetric iact_gradient on particle %lld with wrong kick count=%d cycle=%d", pi->id,
-          pi->rt_data.debug_kicked, pi->rt_data.debug_nsubcycles);
-
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do symmetric iact gradient when finalise injection count is "
-        "%d ID %lld",
-        pi->rt_data.debug_injection_done, pi->id);
-
-
-  if (pj->rt_data.debug_kicked != 1 && pj->rt_data.debug_nsubcycles == 0)
-    error("called symmetric iact_gradient on particle %lld with wrong kick count=%d cycle=%d", pj->id,
-          pj->rt_data.debug_kicked, pj->rt_data.debug_nsubcycles);
-  if (pj->rt_data.debug_kicked != 2 && pj->rt_data.debug_nsubcycles > 0)
-    error("called symmetric iact_gradient on particle %lld with wrong kick count=%d cycle=%d", pj->id,
-          pj->rt_data.debug_kicked, pj->rt_data.debug_nsubcycles);
-
-  if (pj->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do symmetric iact gradient when finalise injection count is "
-        "%d ID %lld",
-        pj->rt_data.debug_injection_done, pj->id);
+  rt_debug_sequence_check(pi, 2, __func__);
+  rt_debug_sequence_check(pj, 2, __func__);
 
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;
-
   pj->rt_data.debug_calls_iact_gradient_interaction += 1;
 }
 
@@ -84,19 +61,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     float r2, const float dx[3], float hi, float hj, struct part *restrict pi,
     struct part *restrict pj) {
 
-  if (pi->rt_data.debug_kicked != 1 && pi->rt_data.debug_nsubcycles == 0)
-    error("called nonsym iact_gradient on particle %lld with wrong kick count=%d cycle=%d", pi->id,
-          pi->rt_data.debug_kicked, pi->rt_data.debug_nsubcycles);
-  if (pi->rt_data.debug_kicked != 2 && pi->rt_data.debug_nsubcycles > 0)
-    error("called nonsym iact_gradient on particle %lld with wrong kick count=%d cycle=%d", pi->id,
-          pi->rt_data.debug_kicked, pi->rt_data.debug_nsubcycles);
-
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do nonsym iact gradients when finalise injection count is "
-        "%d ID %lld",
-        pi->rt_data.debug_injection_done, pi->id);
-
+  rt_debug_sequence_check(pi, 2, __func__);
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;
 }
 

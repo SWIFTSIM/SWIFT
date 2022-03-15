@@ -144,6 +144,11 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
+      if (p->id == 1546) message("check part %lld HA %d RTA %d SC %d | cell %lld HA %d RTA %d", 
+          p->id, part_is_active(p, e), part_is_rt_active(p, e), p->rt_data.debug_nsubcycles, 
+          c->cellID, cell_is_active_hydro(c, e), cell_is_rt_active(c, e)
+      );
+
       /* If particle needs to be kicked */
       if (part_is_starting(p, e)) {
 
@@ -416,6 +421,11 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
+      if (p->id == 1546) message("check part %lld HA %d RTA %d SC %d | cell %lld HA %d RTA %d", 
+          p->id, part_is_active(p, e), part_is_rt_active(p, e), p->rt_data.debug_nsubcycles, 
+          c->cellID, cell_is_active_hydro(c, e), cell_is_rt_active(c, e)
+      );
+
       /* If particle needs to be kicked */
       if (part_is_active(p, e)) {
 
@@ -636,6 +646,7 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_current_subcycle = e->ti_current_subcycle;
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
   const struct unit_system *us = e->internal_units;
@@ -703,14 +714,34 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         if (ti_end != ti_current)
           error("Computing time-step of rogue particle.");
+
+        if (e->policy & engine_policy_rt) {
+          const integertime_t ti_rt_end = 
+            get_integer_time_end(ti_current_subcycle, p->rt_data.time_bin);
+            if (ti_rt_end != ti_current_subcycle) 
+                error("Computing RT time-step of rogue particle");
+        }
 #endif
 
         /* Get new time-step */
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
 
 	/* Get RT time-step size (note <= hydro step size) */
+  /* TODO: enforce <= hydro step size */
 	const integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
+  if (c->cellID == 123) message("Got new RT time step %lld for part %lld ", p->id, ti_rt_new_step);
 	
+if (p->id == 1546) 
+    message("Timestep active change: ID %lld HY end %lld new step %lld time bin old %d time bin new %d RT new step %lld time bin old %d time bin new %d", 
+    p->id, 
+    ti_end, 
+    ti_new_step, 
+    p->time_bin, 
+    get_time_bin(ti_new_step), 
+    ti_rt_new_step, 
+    p->rt_data.time_bin, 
+    get_time_bin(ti_rt_new_step));
+
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
@@ -729,8 +760,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
         ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
 
-	ti_rt_end_min = min(ti_current + ti_rt_new_step, ti_rt_end_min);
-	ti_rt_beg_max = max(ti_current + ti_rt_new_step, ti_rt_beg_max);
+	ti_rt_end_min = min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min);
+	ti_rt_beg_max = max(ti_current_subcycle + ti_rt_new_step, ti_rt_beg_max);
   ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_new_step);
 	
         /* What is the next starting point for this cell ? */
@@ -1081,10 +1112,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
+  if (c->cellID == 123) message("Got ti_rt_end_min %lld, was %lld", ti_rt_end_min, c->hydro.ti_rt_end_min);
   c->hydro.ti_rt_end_min = ti_rt_end_min;
   c->hydro.ti_rt_beg_max = ti_rt_beg_max;
   c->hydro.ti_rt_min_step_size = ti_rt_min_step_size;
-  if (ti_rt_min_step_size == 0) message("Cell %lld got new rt step size = 0", c->cellID);
+  if (ti_rt_min_step_size == 0) error("Cell %lld got new rt step size = 0", c->cellID);
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;

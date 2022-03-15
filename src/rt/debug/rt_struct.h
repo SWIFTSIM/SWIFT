@@ -52,6 +52,11 @@ struct rt_part_data {
   /*! part got kicked? */
   int debug_kicked;
 
+  /*! part got drifted? */
+  /* Note: This gets reset for each particle after each step 
+   * and subcycle via the debugging routines. */
+  int debug_drifted;
+
   /*! calls from ghost1 tasks */
   int debug_injection_done;
 
@@ -69,8 +74,20 @@ struct rt_part_data {
 
   /* Subcycling flags */
 
-  /*! How many times was this particle subcycled this step */
+  /*! Current subcycle wrt (last) hydro step */
   int debug_nsubcycles;
+
+  /*! Is this particle active in hydro in this main step? */
+  /* Don't reset this in any task. */
+  int debug_hydro_active;
+
+  /*! Was the particle radioactive during the main step? */
+  /* Don't reset this in any task. */
+  int debug_rt_active_on_main_step;
+
+  /*! Was the particle radioactive during the main step? */
+  /* Don't reset this in any task. */
+  int debug_rt_zeroth_cycle_on_main_step;
 };
 
 /* Additional RT data in star particle struct */

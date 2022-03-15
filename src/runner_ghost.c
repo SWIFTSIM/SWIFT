@@ -19,8 +19,6 @@
  *
  ******************************************************************************/
 
-#define PROBLEMPART 36102
-
 /* Config parameters. */
 #include <config.h>
 
@@ -1141,7 +1139,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       error("Can't allocate memory for left.");
     if ((right = (float *)malloc(sizeof(float) * c->hydro.count)) == NULL)
       error("Can't allocate memory for right.");
-    for (int k = 0; k < c->hydro.count; k++){
+    for (int k = 0; k < c->hydro.count; k++)
       if (part_is_active(&parts[k], e)) {
         pid[count] = k;
         h_0[count] = parts[k].h;
@@ -1149,8 +1147,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         right[count] = hydro_h_max;
         ++count;
       }
-      if (parts[k].id == PROBLEMPART) message("check1");
-    }
 
     /* While there are particles that need to be updated... */
     for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
@@ -1173,8 +1169,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Is this part within the timestep? */
         if (!part_is_active(p, e)) error("Ghost applied to inactive particle");
 #endif
-
-        if (p->id == PROBLEMPART) message("check2");
 
         /* Get some useful values */
         const float h_init = h_0[i];
@@ -1593,6 +1587,9 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (count == 0) return;
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (c->cellID == 123) message("Cell %lld active? %d %d", c->cellID, cell_is_active_hydro(c, e), cell_is_rt_active(c, e));
+#endif
   if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
@@ -1615,6 +1612,19 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
       /* Skip inactive parts */
       if (!part_is_rt_active(p, e)) continue;
 
+      /* First reset everything that needs to be reset for the following
+       * subcycle */
+      rt_reset_part_each_subcycle(p);
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+      if (p->id == 1546) message("check part %lld %d %d %d | cell %lld %d %d", 
+          p->id, part_is_active(p, e), part_is_rt_active(p, e), p->rt_data.debug_nsubcycles, 
+          c->cellID, cell_is_active_hydro(c, e), cell_is_rt_active(c, e)
+      );
+
+#endif
+
+      /* Now finish up injection */
       rt_finalise_injection(p, e->rt_props);
     }
   }
