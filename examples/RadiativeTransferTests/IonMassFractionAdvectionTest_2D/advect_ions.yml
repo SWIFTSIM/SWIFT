@@ -39,9 +39,6 @@ InitialConditions:
   file_name:  ./advect_ions.hdf5     # The file to read
   periodic:   1                      # periodic ICs. Keep them periodic so we don't loose photon energy.
 
-Scheduler:
-  max_top_level_cells: 12
-
 GEARRT:
     f_reduce_c: 1.e-5                                 # reduce the speed of light for the RT solver by multiplying c with this factor
     CFL_condition: 0.9
