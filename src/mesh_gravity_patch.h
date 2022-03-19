@@ -25,6 +25,7 @@
 
 /* Includes. */
 #include "align.h"
+#include "atomic.h"
 #include "error.h"
 #include "inline.h"
 
@@ -165,6 +166,24 @@ __attribute__((always_inline)) INLINE static void pm_mesh_patch_CIC_set(
   mesh[pm_mesh_patch_index(patch, i + 1, j + 0, k + 1)] += value * dx * ty * dz;
   mesh[pm_mesh_patch_index(patch, i + 1, j + 1, k + 0)] += value * dx * dy * tz;
   mesh[pm_mesh_patch_index(patch, i + 1, j + 1, k + 1)] += value * dx * dy * dz;
+}
+
+INLINE static void pm_add_patch_to_global_mesh(
+    double *mesh, const struct pm_mesh_patch *patch) {
+
+  const int N = patch->N;
+
+  for (int i = patch->mesh_min[0]; i < patch->mesh_max[0]; ++i) {
+    for (int j = patch->mesh_min[1]; j < patch->mesh_max[1]; ++j) {
+      for (int k = patch->mesh_min[2]; k < patch->mesh_max[2]; ++k) {
+
+        atomic_add_d(&mesh[i * N * N + j * N + k],
+
+                     patch->mesh[i * patch->mesh_size[1] * patch->mesh_size[2] +
+                                 j * patch->mesh_size[2] + k]);
+      }
+    }
+  }
 }
 
 #endif
