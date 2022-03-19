@@ -28,6 +28,7 @@
 #include "atomic.h"
 #include "error.h"
 #include "inline.h"
+#include "row_major_id.h"
 
 /* Forward declarations */
 struct cell;
@@ -173,14 +174,18 @@ INLINE static void pm_add_patch_to_global_mesh(
 
   const int N = patch->N;
 
-  for (int i = patch->mesh_min[0]; i < patch->mesh_max[0]; ++i) {
-    for (int j = patch->mesh_min[1]; j < patch->mesh_max[1]; ++j) {
-      for (int k = patch->mesh_min[2]; k < patch->mesh_max[2]; ++k) {
+  for (int i = 0; i < patch->mesh_size[0]; ++i) {
+    for (int j = 0; j < patch->mesh_size[1]; ++j) {
+      for (int k = 0; k < patch->mesh_size[2]; ++k) {
 
-        atomic_add_d(&mesh[i * N * N + j * N + k],
+        const int ii = i + patch->mesh_min[0];
+        const int jj = j + patch->mesh_min[1];
+        const int kk = k + patch->mesh_min[2];
 
-                     patch->mesh[i * patch->mesh_size[1] * patch->mesh_size[2] +
-                                 j * patch->mesh_size[2] + k]);
+        const int patch_index = pm_mesh_patch_index(patch, i, j, k);
+        const int mesh_index = row_major_id_periodic(ii, jj, kk, N);
+
+        atomic_add_d(&mesh[mesh_index], patch->mesh[patch_index]);
       }
     }
   }
