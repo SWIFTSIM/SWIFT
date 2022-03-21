@@ -695,10 +695,10 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
   FILE *file_swift = fopen(file_name_swift, "w");
   if (file_swift == NULL) error("Could not create file '%s'.", file_name_swift);
   fprintf(file_swift, "# Gravity accuracy test - SWIFT FORCES\n");
-  fprintf(file_swift, "# G= %16.8e\n", e->physical_constants->const_newton_G);
+  fprintf(file_swift, "# G= %16.16e\n", e->physical_constants->const_newton_G);
   fprintf(file_swift, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
   fprintf(file_swift, "# periodic= %d\n", s->periodic);
-  fprintf(file_swift, "# theta= %16.8e\n", e->gravity_properties->theta_crit);
+  fprintf(file_swift, "# theta= %16.16e\n", e->gravity_properties->theta_crit);
   fprintf(file_swift, "# Git Branch: %s\n", git_branch());
   fprintf(file_swift, "# Git Revision: %s\n", git_revision());
   fprintf(file_swift,
@@ -730,9 +730,9 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
 
       fprintf(file_swift,
-              "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-              "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-              "%16.8e %16.8e %16.8e %16lld %16lld %16lld %16lld\n",
+              "%18lld %16.16e %16.16e %16.16e %16.16e %16.16e %16.16e %16.16e %16.16e "
+              "%16.16e %16.16e %16.16e %16.16e %16.16e %16.16e %16.16e %16.16e %16.16e "
+              "%16.16e %16.16e %16.16e %16lld %16lld %16lld %16lld\n",
               id, gpi->x[0], gpi->x[1], gpi->x[2],
               gpi->a_grav[0] + gpi->a_grav_mesh[0],
               gpi->a_grav[1] + gpi->a_grav_mesh[1],
@@ -766,7 +766,7 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
     if (file_exact == NULL)
       error("Could not create file '%s'.", file_name_exact);
     fprintf(file_exact, "# Gravity accuracy test - EXACT FORCES\n");
-    fprintf(file_exact, "# G= %16.8e\n", e->physical_constants->const_newton_G);
+    fprintf(file_exact, "# G= %16.16e\n", e->physical_constants->const_newton_G);
     fprintf(file_exact, "# N= %d\n", SWIFT_GRAVITY_FORCE_CHECKS);
     fprintf(file_exact, "# periodic= %d\n", s->periodic);
     fprintf(file_exact, "# Git Branch: %s\n", git_branch());
@@ -797,8 +797,8 @@ void gravity_exact_force_check(struct space *s, const struct engine *e,
       /* Is the particle was active and part of the subset to be tested ? */
       if (id % SWIFT_GRAVITY_FORCE_CHECKS == 0 && gpart_is_starting(gpi, e)) {
         fprintf(file_exact,
-                "%18lld %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e %16.8e "
-                "%16.8e %16.8e %16.8e %16.8e %16.8e %16.8e\n",
+                "%18lld %16.16e %16.16e %16.16e %16.16e %16.16e %16.16e %16.16e "
+                "%16.16e %16.16e %16.16e %16.16e %16.16e %16.16e\n",
                 id, gpi->x[0], gpi->x[1], gpi->x[2], gpi->a_grav_exact[0],
                 gpi->a_grav_exact[1], gpi->a_grav_exact[2],
                 gpi->potential_exact, gpi->a_grav_exact_short[0],

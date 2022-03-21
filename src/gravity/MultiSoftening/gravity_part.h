@@ -101,9 +101,9 @@ struct gpart {
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
 
   /* Acceleration taken from each component of the tree */
-  float a_grav_p2p[3];
-  float a_grav_m2p[3];
-  float a_grav_m2l[3];
+  MyFloat a_grav_p2p[3];
+  MyFloat a_grav_m2p[3];
+  MyFloat a_grav_m2l[3];
 
   /* Brute-force particle accelerations */
   double a_grav_exact[3];

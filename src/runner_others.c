@@ -713,7 +713,7 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
     const struct space *s = e->s;
     const int periodic = s->periodic;
-    const float G_newton = e->physical_constants->const_newton_G;
+    const MyFloat G_newton = e->physical_constants->const_newton_G;
 
     /* Potential normalisation in the case of periodic gravity */
     float potential_normalisation = 0.;

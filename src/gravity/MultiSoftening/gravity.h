@@ -230,7 +230,7 @@ __attribute__((always_inline)) INLINE static void gravity_init_gpart(
  * @param with_self_gravity Are we running with self-gravity?
  */
 __attribute__((always_inline)) INLINE static void gravity_end_force(
-    struct gpart* gp, const float const_G, const float potential_normalisation,
+    struct gpart* gp, const MyFloat const_G, const float potential_normalisation,
     const int periodic, const int with_self_gravity) {
 
   /* Apply the periodic correction to the peculiar potential */
@@ -240,17 +240,17 @@ __attribute__((always_inline)) INLINE static void gravity_end_force(
 
   /* Add back the long-range forces
    * Note that the mesh gravity had been multiplied by G. We undo this here. */
-  float a_grav[3];
-  a_grav[0] = gp->a_grav[0] + gp->a_grav_mesh[0] / const_G;
-  a_grav[1] = gp->a_grav[1] + gp->a_grav_mesh[1] / const_G;
-  a_grav[2] = gp->a_grav[2] + gp->a_grav_mesh[2] / const_G;
+  MyFloat a_grav[3];
+  a_grav[0] = gp->a_grav[0]; //+ gp->a_grav_mesh[0] / const_G;
+  a_grav[1] = gp->a_grav[1]; //+ gp->a_grav_mesh[1] / const_G;
+  a_grav[2] = gp->a_grav[2]; //+ gp->a_grav_mesh[2] / const_G;
 
   /* Record the norm of the acceleration for the adaptive opening criteria.
    * Will always be an (active) timestep behind. */
-  const float old_a_grav_norm =
+  const MyFloat old_a_grav_norm =
       a_grav[0] * a_grav[0] + a_grav[1] * a_grav[1] + a_grav[2] * a_grav[2];
 
-  gp->old_a_grav_norm = sqrtf(old_a_grav_norm);
+  gp->old_a_grav_norm = sqrt(old_a_grav_norm);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (with_self_gravity && gp->old_a_grav_norm == 0.f)
