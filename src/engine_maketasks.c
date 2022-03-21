@@ -1785,6 +1785,9 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
     }
   }
 
+  delta_m = cdim[0];
+  delta_p = cdim[0];
+
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 

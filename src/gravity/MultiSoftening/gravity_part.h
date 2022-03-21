@@ -36,7 +36,7 @@ struct gpart {
   float v_full[3];
 
   /*! Particle acceleration from the tree. */
-  float a_grav[3];
+  MyFloat a_grav[3];
 
   /*! Particle acceleration from the mesh. */
   float a_grav_mesh[3];

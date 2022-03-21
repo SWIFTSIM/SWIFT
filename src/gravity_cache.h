@@ -201,7 +201,7 @@ INLINE static void gravity_cache_populate(
     const timebin_t max_active_bin, const int allow_mpole, const int periodic,
     const float dim[3], struct gravity_cache *c,
     const struct gpart *restrict gparts, const int gcount,
-    const int gcount_padded, const double shift[3], const float CoM[3],
+    const int gcount_padded, const double shift[3], const MyFloat CoM[3],
     const struct gravity_tensors *multipole, const struct cell *cell,
     const struct gravity_props *grav_props) {
 
@@ -251,9 +251,9 @@ INLINE static void gravity_cache_populate(
     }
 
     /* Distance to the CoM of the other cell. */
-    float dx = (float)x[i] - CoM[0];
-    float dy = (float)y[i] - CoM[1];
-    float dz = (float)z[i] - CoM[2];
+    MyFloat dx = x[i] - CoM[0];
+    MyFloat dy = y[i] - CoM[1];
+    MyFloat dz = z[i] - CoM[2];
 
     /* Apply periodic BC */
     if (periodic) {
@@ -285,7 +285,7 @@ INLINE static void gravity_cache_populate(
     y[i] = pos_padded[1];
     z[i] = pos_padded[2];
     epsilon[i] = eps_padded;
-    m[i] = 0.f;
+    m[i] = 0.;
     active[i] = 0;
     use_mpole[i] = 0;
   }
@@ -399,7 +399,7 @@ INLINE static void gravity_cache_populate_all_mpole(
     const timebin_t max_active_bin, const int periodic, const float dim[3],
     struct gravity_cache *c, const struct gpart *restrict gparts,
     const int gcount, const int gcount_padded, const struct cell *cell,
-    const float CoM[3], const struct gravity_tensors *multipole,
+    const MyFloat CoM[3], const struct gravity_tensors *multipole,
     const struct gravity_props *grav_props) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -433,9 +433,9 @@ INLINE static void gravity_cache_populate_all_mpole(
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Distance to the CoM of the other cell. */
-    float dx = (float)x[i] - CoM[0];
-    float dy = (float)y[i] - CoM[1];
-    float dz = (float)z[i] - CoM[2];
+    float dx = (float)x[i] - (float)CoM[0];
+    float dy = (float)y[i] - (float)CoM[1];
+    float dz = (float)z[i] - (float)CoM[2];
 
     /* Apply periodic BC */
     if (periodic) {

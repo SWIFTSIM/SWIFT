@@ -75,4 +75,12 @@ __attribute__((always_inline, const)) INLINE static float nearestf(
               : ((dx < -0.5f * box_size) ? (dx + box_size) : dx));
 }
 
+__attribute__((always_inline, const)) INLINE static MyFloat nearestmf(
+    const MyFloat dx, const MyFloat box_size) {
+
+  return ((dx > 0.5 * box_size)
+              ? (dx - box_size)
+              : ((dx < -0.5 * box_size) ? (dx + box_size) : dx));
+}
+
 #endif /* SWIFT_PERIODIC_H */
