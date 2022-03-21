@@ -87,6 +87,7 @@
 #include "output_options.h"
 #include "partition.h"
 #include "potential.h"
+#include "pressure_floor.h"
 #include "profiler.h"
 #include "proxy.h"
 #include "restart.h"
