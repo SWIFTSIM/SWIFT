@@ -47,6 +47,8 @@ float supernovae_ii_get_ejected_mass_fraction_processed_from_integral(
     const struct supernovae_ii *snii, float log_m1, float log_m2);
 float supernovae_ii_get_ejected_mass_fraction_processed_from_raw(
     const struct supernovae_ii *snii, float log_m);
+float supernovae_ii_get_energy_from_progenitor_mass(
+    const struct supernovae_ii *snii, float mass);
 void supernovae_ii_read_yields_array(
     struct supernovae_ii *snii, struct interpolation_1d *interp_raw,
     struct interpolation_1d *interp_int, const struct stellar_model *sm,
@@ -63,7 +65,8 @@ void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
                                     struct swift_params *params,
                                     const char *filename);
 void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
-                        const struct stellar_model *sm);
+                        const struct stellar_model *sm,
+                        const struct unit_system *us);
 void supernovae_ii_dump(const struct supernovae_ii *snii, FILE *stream,
                         const struct stellar_model *sm);
 void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,

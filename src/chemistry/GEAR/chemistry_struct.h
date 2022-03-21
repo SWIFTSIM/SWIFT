@@ -19,6 +19,8 @@
 #ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_H
 #define SWIFT_CHEMISTRY_STRUCT_GEAR_H
 
+#define GEAR_LABELS_SIZE 10  // redumndant with the one defined in
+
 /**
  * @brief Global chemical abundance information.
  */
@@ -29,6 +31,9 @@ struct chemistry_global_data {
 
   /* Solar mass abundances read from the chemistry table */
   float solar_abundances[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Name of the different elements */
+  char elements_name[GEAR_CHEMISTRY_ELEMENT_COUNT * GEAR_LABELS_SIZE];
 };
 
 /**
