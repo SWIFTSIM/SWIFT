@@ -70,14 +70,14 @@ INLINE static void extra_io_struct_restore(struct extra_io_properties* props,
 /* In this case there are no extra lightcone map types */
 static const struct lightcone_map_type extra_lightcone_map_types[] = {
     {
-        .name = "",
-        .update_map = NULL,
-        .ptype_contributes = NULL,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_NO_UNITS,
-        .smoothing = map_unsmoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "",
+        /* .update_map */ = NULL,
+        /* .ptype_contributes */ = NULL,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_NO_UNITS,
+        /* .smoothing = */ map_unsmoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
 };
 
