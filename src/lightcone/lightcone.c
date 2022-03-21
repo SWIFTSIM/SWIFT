@@ -97,7 +97,8 @@ static void read_map_types_file(const char *map_types_file, int *nr_map_types,
     rewind(fd);
 
     /* Allocate output arrays */
-    *map_types = (struct lightcone_map_type *) calloc(nr_lines, sizeof(struct lightcone_map_type));
+    *map_types = (struct lightcone_map_type *)calloc(
+        nr_lines, sizeof(struct lightcone_map_type));
 
     /* Read lines */
     for (int i = 0; i < nr_lines; i += 1) {
@@ -122,7 +123,8 @@ static void read_map_types_file(const char *map_types_file, int *nr_map_types,
 #ifdef WITH_MPI
   MPI_Bcast(&map_type_nr, 1, MPI_INT, 0, MPI_COMM_WORLD);
   if (engine_rank != 0)
-    *map_types = (struct lightcone_map_type *) calloc(map_type_nr, sizeof(struct lightcone_map_type));
+    *map_types = (struct lightcone_map_type *)calloc(
+        map_type_nr, sizeof(struct lightcone_map_type));
   MPI_Bcast(*map_types, sizeof(struct lightcone_map_type) * map_type_nr,
             MPI_BYTE, 0, MPI_COMM_WORLD);
 #endif

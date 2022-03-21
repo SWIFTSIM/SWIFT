@@ -125,7 +125,7 @@ double lightcone_map_sfr_get_value(
     const struct engine *e, const struct lightcone_props *lightcone_props,
     const struct gpart *gp, const double a_cross, const double x_cross[3]);
 
-/* 
+/*
    This associates map names to the appropriate update function and unit info.
 
    Note that field designators are commented out here so that the code will
@@ -167,7 +167,8 @@ static const struct lightcone_map_type lightcone_map_types[] = {
     {
         /* .name = */ "DarkMatterMass",
         /* .update_map = */ lightcone_map_dark_matter_mass_get_value,
-        /* .ptype_contributes = */ lightcone_map_dark_matter_mass_type_contributes,
+        /* .ptype_contributes = */
+        lightcone_map_dark_matter_mass_type_contributes,
         /* .baseline_func = */ NULL,
         /* .units = */ UNIT_CONV_MASS,
         /* .smoothing = */ map_unsmoothed,
@@ -187,7 +188,8 @@ static const struct lightcone_map_type lightcone_map_types[] = {
     {
         /* .name = */ "BlackHoleMass",
         /* .update_map = */ lightcone_map_black_hole_mass_get_value,
-        /* .ptype_contributes = */ lightcone_map_black_hole_mass_type_contributes,
+        /* .ptype_contributes = */
+        lightcone_map_black_hole_mass_type_contributes,
         /* .baseline_func = */ NULL,
         /* .units = */ UNIT_CONV_MASS,
         /* .smoothing = */ map_unsmoothed,
