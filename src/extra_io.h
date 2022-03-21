@@ -71,8 +71,8 @@ INLINE static void extra_io_struct_restore(struct extra_io_properties* props,
 static const struct lightcone_map_type extra_lightcone_map_types[] = {
     {
         /* .name = */ "",
-        /* .update_map */ = NULL,
-        /* .ptype_contributes */ = NULL,
+        /* .update_map = */ NULL,
+        /* .ptype_contributes = */ NULL,
         /* .baseline_func = */ NULL,
         /* .units = */ UNIT_CONV_NO_UNITS,
         /* .smoothing = */ map_unsmoothed,
