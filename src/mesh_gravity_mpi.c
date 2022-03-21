@@ -33,6 +33,7 @@
 #include "debug.h"
 #include "engine.h"
 #include "error.h"
+#include "exchange_structs.h"
 #include "lock.h"
 #include "mesh_gravity_patch.h"
 #include "mesh_gravity_sort.h"
@@ -252,106 +253,6 @@ void mesh_patches_to_sorted_array(const struct pm_mesh_patch *local_patches,
 
   /* quick check... */
   if (count != size) error("Error flattening the mesh patches!");
-}
-
-/**
- * @brief Given an array of structs of size element_size, send
- * nr_send[i] elements to each node i. Allocates the receive
- * buffer recvbuf to the appropriate size and returns its size
- * in nr_recv_tot.
- *
- * TODO: can/should we replace this with a call to engine_do_redistribute()?
- *
- * @param nr_send Number of elements to send to each node
- * @param nr_recv Number of elements to receive from each node
- * @param sendbuf The elements to send
- * @param recvbuf The output buffer
- *
- */
-void exchange_structs(size_t *nr_send, char *sendbuf, size_t *nr_recv,
-                      char *recvbuf, size_t element_size) {
-
-#if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
-
-  /* Determine rank, number of ranks */
-  int nr_nodes, nodeID;
-  MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes);
-  MPI_Comm_rank(MPI_COMM_WORLD, &nodeID);
-
-  /* Compute send offsets */
-  size_t *send_offset = (size_t *)malloc(nr_nodes * sizeof(size_t));
-  send_offset[0] = 0;
-  for (int i = 1; i < nr_nodes; i++) {
-    send_offset[i] = send_offset[i - 1] + nr_send[i - 1];
-  }
-
-  /* Compute receive offsets */
-  size_t *recv_offset = (size_t *)malloc(nr_nodes * sizeof(size_t));
-  recv_offset[0] = 0;
-  for (int i = 1; i < nr_nodes; i++) {
-    recv_offset[i] = recv_offset[i - 1] + nr_recv[i - 1];
-  }
-
-  /* Allocate request objects (one send and receive per node) */
-  MPI_Request *request =
-      (MPI_Request *)malloc(2 * sizeof(MPI_Request) * nr_nodes);
-
-  /* Make type to communicate mesh_key_value struct */
-  MPI_Datatype mesh_key_value_mpi_type;
-  if (MPI_Type_contiguous(element_size, MPI_BYTE, &mesh_key_value_mpi_type) !=
-          MPI_SUCCESS ||
-      MPI_Type_commit(&mesh_key_value_mpi_type) != MPI_SUCCESS) {
-    error("Failed to create MPI type for mesh_key_value struct.");
-  }
-
-  /*
-   * Post the send operations. This is an alltoallv really but
-   * we want to avoid the limits imposed by int counts and offsets
-   * in MPI_Alltoallv.
-   */
-  for (int i = 0; i < nr_nodes; i++) {
-    if (nr_send[i] > 0) {
-
-      /* TODO: handle very large messages */
-      if (nr_send[i] > INT_MAX)
-        error("exchange_structs() fails if nr_send > INT_MAX!");
-
-      MPI_Isend(&(sendbuf[send_offset[i] * element_size]), (int)nr_send[i],
-                mesh_key_value_mpi_type, i, 0, MPI_COMM_WORLD, &(request[i]));
-    } else {
-      request[i] = MPI_REQUEST_NULL;
-    }
-  }
-
-  /* Post the receives */
-  for (int i = 0; i < nr_nodes; i++) {
-    if (nr_recv[i] > 0) {
-
-      /* TODO: handle very large messages */
-      if (nr_recv[i] > INT_MAX)
-        error("exchange_structs() fails if nr_recv > INT_MAX!");
-
-      MPI_Irecv(&(recvbuf[recv_offset[i] * element_size]), (int)nr_recv[i],
-                mesh_key_value_mpi_type, i, 0, MPI_COMM_WORLD,
-                &(request[i + nr_nodes]));
-    } else {
-      request[i + nr_nodes] = MPI_REQUEST_NULL;
-    }
-  }
-
-  /* Wait for everything to complete */
-  MPI_Waitall(2 * nr_nodes, request, MPI_STATUSES_IGNORE);
-
-  /* Done with the MPI type */
-  MPI_Type_free(&mesh_key_value_mpi_type);
-
-  /* Tidy up */
-  free(recv_offset);
-  free(send_offset);
-  free(request);
-#else
-  error("FFTW MPI not found - unable to use distributed mesh");
-#endif
 }
 
 /**

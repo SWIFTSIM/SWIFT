@@ -72,4 +72,6 @@ labels = [
     ["csds_log_all_particles:", 0],
     ["csds_ensure_size:", 0],
     ["csds_init:", 0],
+    ["Applying lightcone map updates", 0],
+    ["Flushing particle buffers", 0],
 ]

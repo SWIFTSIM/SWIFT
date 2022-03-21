@@ -2762,103 +2762,159 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
   const int nodeID = e->nodeID;
   int rebuild = 0; /* TODO: implement rebuild conditions? */
 
-  if (c->nodeID == nodeID) {
+  for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
 
-    for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
-      /* TODO: all the MPI checks */
-      /* I assume that all hydro related subcell unskipping/activation necessary
-       * here is being done in the hydro part of cell_unskip */
-
-      struct task *t = l->t;
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
 #ifdef WITH_MPI
-      const int ci_nodeID = ci->nodeID;
-      const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
 #else
-      const int ci_nodeID = nodeID;
-      const int cj_nodeID = nodeID;
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
 #endif
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) && cell_is_active_hydro(cj, e);
 
-      const int ci_active = cell_is_active_hydro(ci, e);
-      const int cj_active = ((cj != NULL) && cell_is_active_hydro(cj, e));
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
 
-      if (t->type == task_type_self || t->type == task_type_sub_self) {
-        if (ci_active) scheduler_activate(s, t);
+      /* Activate hydro drift */
+      if (t->type == task_type_self) {
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
       }
 
       else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
-        /* Only activate tasks that involve a local active cell. */
-        if ((ci_active || cj_active) &&
-            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-          scheduler_activate(s, t);
+        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
-          /* Activate rt_ghost1 dependencies for each cell that is part of
-           * a pair/sub_pair task as to not miss any dependencies */
-          if (ci_nodeID == nodeID)
-            scheduler_activate(s, ci->hydro.super->hydro.rt_ghost1);
-          if (cj_nodeID == nodeID)
-            scheduler_activate(s, cj->hydro.super->hydro.rt_ghost1);
-        }
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Check the sorts and activate them if needed. */
+        cell_activate_hydro_sorts(ci, t->flags, s);
+        cell_activate_hydro_sorts(cj, t->flags, s);
       }
     }
 
-    for (struct link *l = c->hydro.rt_transport; l != NULL; l = l->next) {
-      /* TODO: all the MPI checks */
-      /* I assume that all hydro related subcell unskipping/activation necessary
-       * here is being done in the hydro part of cell_unskip */
+    /* Only interested in pair interactions as of here. */
+    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
 
-      struct task *t = l->t;
-      struct cell *ci = t->ci;
-      struct cell *cj = t->cj;
 #ifdef WITH_MPI
-      const int ci_nodeID = ci->nodeID;
-      const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-      const int ci_nodeID = nodeID;
-      const int cj_nodeID = nodeID;
-#endif
 
-      const int ci_active = cell_is_active_hydro(ci, e);
-      const int cj_active = ((cj != NULL) && cell_is_active_hydro(cj, e));
+      /* Activate the send/recv tasks. */
+      if (ci_nodeID != nodeID) {
 
-      if (t->type == task_type_self || t->type == task_type_sub_self) {
-        if (ci_active) scheduler_activate(s, t);
-      }
+        /* If the local cell is active, receive data from the foreign cell. */
+        if (cj_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
 
-      else if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+          /* We only need updates later on if the other cell is active as well
+           */
+          if (ci_active) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_transport);
+          }
+        }
 
-        /* Only activate tasks that involve a local active cell. */
-        if ((ci_active || cj_active) &&
-            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-          scheduler_activate(s, t);
+        /* Is the foreign cell active and will need stuff from us? */
+        if (ci_active) {
 
-          /* Activate transport_out for each cell that is part of
-           * a pair/sub_pair task as to not miss any dependencies */
-          if (ci_nodeID == nodeID)
-            scheduler_activate(s, ci->hydro.super->hydro.rt_transport_out);
-          if (cj_nodeID == nodeID)
-            scheduler_activate(s, cj->hydro.super->hydro.rt_transport_out);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
+                                  ci_nodeID);
+
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(cj, s);
+
+          if (cj_active) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_transport,
+                                    ci_nodeID);
+          }
+        }
+
+      } else if (cj_nodeID != nodeID) {
+
+        /* If the local cell is active, receive data from the foreign cell. */
+        if (ci_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
+
+          /* We only need updates later on if the other cell is active as well
+           */
+          if (cj_active) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_transport);
+          }
+        }
+
+        /* Is the foreign cell active and will need stuff from us? */
+        if (cj_active) {
+
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
+                                  cj_nodeID);
+
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
+
+          if (ci_active) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_transport,
+                                    cj_nodeID);
+          }
         }
       }
+#endif
     }
-
-    /* Unskip all the other task types */
-
-    if (cell_is_active_hydro(c, e)) {
-      if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
-      if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
-      if (c->hydro.rt_ghost2 != NULL) scheduler_activate(s, c->hydro.rt_ghost2);
-      if (c->hydro.rt_transport_out != NULL)
-        scheduler_activate(s, c->hydro.rt_transport_out);
-      if (c->hydro.rt_tchem != NULL) scheduler_activate(s, c->hydro.rt_tchem);
-      if (c->hydro.rt_out != NULL) scheduler_activate(s, c->hydro.rt_out);
-    }
-  } else {
-    /* RT doesn't run with MPI as of yet */
-    error("Unskipping RT tasks for non-local cells?");
   }
 
+  for (struct link *l = c->hydro.rt_transport; l != NULL; l = l->next) {
+    /* I assume that all hydro related subcell unskipping/activation necessary
+     * here is being done in the hydro part of cell_unskip */
+
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = ((cj != NULL) && cell_is_active_hydro(cj, e));
+
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
+      if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+
+        /* Activate transport_out for each cell that is part of
+         * a pair/sub_pair task as to not miss any dependencies */
+        if (ci_nodeID == nodeID)
+          scheduler_activate(s, ci->hydro.super->hydro.rt_transport_out);
+        if (cj_nodeID == nodeID)
+          scheduler_activate(s, cj->hydro.super->hydro.rt_transport_out);
+      }
+    }
+  }
+
+  /* Unskip all the other task types */
+
+  if (cell_is_active_hydro(c, e)) {
+    if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
+    if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
+    if (c->hydro.rt_ghost2 != NULL) scheduler_activate(s, c->hydro.rt_ghost2);
+    if (c->hydro.rt_transport_out != NULL)
+      scheduler_activate(s, c->hydro.rt_transport_out);
+    if (c->hydro.rt_tchem != NULL) scheduler_activate(s, c->hydro.rt_tchem);
+    if (c->hydro.rt_out != NULL) scheduler_activate(s, c->hydro.rt_out);
+  }
   return rebuild;
 }

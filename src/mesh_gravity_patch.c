@@ -106,9 +106,12 @@ void pm_mesh_patch_init(struct pm_mesh_patch *patch, const struct cell *cell,
  */
 void pm_mesh_patch_zero(struct pm_mesh_patch *patch) {
 
+  /* Remind the compiler that the arrays are nicely aligned */
+  swift_declare_aligned_ptr(double, mesh, patch->mesh, SWIFT_CACHE_ALIGNMENT);
+
   const int num =
       patch->mesh_size[0] * patch->mesh_size[1] * patch->mesh_size[2];
-  memset(patch->mesh, 0, num * sizeof(double));
+  memset(mesh, 0, num * sizeof(double));
 }
 
 /**

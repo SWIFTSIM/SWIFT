@@ -67,11 +67,14 @@
 #include "debug.h"
 #include "equation_of_state.h"
 #include "error.h"
+#include "extra_io.h"
 #include "feedback.h"
 #include "fof.h"
 #include "gravity.h"
 #include "gravity_cache.h"
 #include "hydro.h"
+#include "lightcone/lightcone.h"
+#include "lightcone/lightcone_array.h"
 #include "line_of_sight.h"
 #include "map.h"
 #include "memuse.h"
@@ -2198,6 +2201,13 @@ void engine_step(struct engine *e) {
     e->time_step = (e->ti_current - e->ti_old) * e->time_base;
   }
 
+#ifdef WITH_LIGHTCONE
+  /* Determine which periodic replications could contribute to the lightcone
+     during this time step */
+  lightcone_array_prepare_for_step(e->lightcone_array_properties, e->cosmology,
+                                   e->ti_earliest_undrifted, e->ti_current);
+#endif
+
   /*****************************************************/
   /* OK, we now know what the next end of time-step is */
   /*****************************************************/
@@ -2453,6 +2463,14 @@ void engine_step(struct engine *e) {
   e->sink_updates_since_rebuild += e->collect_group1.sink_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
 
+  /* Check if we updated all of the particles on this step */
+  if ((e->collect_group1.updated == e->total_nr_parts) &&
+      (e->collect_group1.g_updated == e->total_nr_gparts) &&
+      (e->collect_group1.s_updated == e->total_nr_sparts) &&
+      (e->collect_group1.sink_updated == e->total_nr_sinks) &&
+      (e->collect_group1.b_updated == e->total_nr_bparts))
+    e->ti_earliest_undrifted = e->ti_current;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that all cells have correct time-step information */
   space_check_timesteps(e->s);
@@ -2467,9 +2485,18 @@ void engine_step(struct engine *e) {
             e->collect_group1.csds_file_size_gb);
 #endif
 
-  /********************************************************/
-  /* OK, we are done with the regular stuff. Time for i/o */
-  /********************************************************/
+    /********************************************************/
+    /* OK, we are done with the regular stuff. Time for i/o */
+    /********************************************************/
+
+#ifdef WITH_LIGHTCONE
+  /* Flush lightcone buffers if necessary */
+  const int flush = e->flush_lightcone_maps;
+  lightcone_array_flush(e->lightcone_array_properties, &(e->threadpool),
+                        e->cosmology, e->internal_units, e->snapshot_units,
+                        /*flush_map_updates=*/flush, /*flush_particles=*/0,
+                        /*end_file=*/0, /*dump_all_shells=*/0);
+#endif
 
   /* Create a restart file if needed. */
   engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
@@ -2800,8 +2827,10 @@ void engine_numa_policies(int rank, int verbose) {
  * @param cooling_func The properties of the cooling function.
  * @param starform The #star_formation model of this run.
  * @param chemistry The chemistry information.
+ * @param io_extra_props The properties needed for the extra i/o fields.
  * @param fof_properties The #fof_props of this run.
  * @param los_properties the #los_props of this run.
+ * @param lightcone_array_properties the #lightcone_array_props of this run.
  * @param ics_metadata metadata read from the simulation ICs
  */
 void engine_init(
@@ -2822,7 +2851,9 @@ void engine_init(
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
+    struct extra_io_properties *io_extra_props,
     struct fof_props *fof_properties, struct los_props *los_properties,
+    struct lightcone_array_props *lightcone_array_properties,
     struct ic_info *ics_metadata) {
 
   struct clocks_time tic, toc;
@@ -2847,6 +2878,7 @@ void engine_init(
   e->reparttype = reparttype;
   e->ti_old = 0;
   e->ti_current = 0;
+  e->ti_earliest_undrifted = 0;
   e->time_step = 0.;
   e->time_base = 0.;
   e->time_base_inv = 0.;
@@ -2940,11 +2972,13 @@ void engine_init(
   e->feedback_props = feedback;
   e->rt_props = rt;
   e->chemistry = chemistry;
+  e->io_extra_props = io_extra_props;
   e->fof_properties = fof_properties;
   e->parameter_file = params;
   e->output_options = output_options;
   e->stf_this_timestep = 0;
   e->los_properties = los_properties;
+  e->lightcone_array_properties = lightcone_array_properties;
   e->ics_metadata = ics_metadata;
 #ifdef WITH_MPI
   e->usertime_last_step = 0.0;
@@ -3376,10 +3410,12 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->cooling_func);
     free((void *)e->star_formation);
     free((void *)e->feedback_props);
+    free((void *)e->io_extra_props);
 #ifdef WITH_FOF
     free((void *)e->fof_properties);
 #endif
     free((void *)e->los_properties);
+    free((void *)e->lightcone_array_properties);
     free((void *)e->ics_metadata);
 #ifdef WITH_MPI
     free((void *)e->reparttype);
@@ -3437,10 +3473,12 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   neutrino_struct_dump(e->neutrino_properties, stream);
   neutrino_response_struct_dump(e->neutrino_response, stream);
   chemistry_struct_dump(e->chemistry, stream);
+  extra_io_struct_dump(e->io_extra_props, stream);
 #ifdef WITH_FOF
   fof_struct_dump(e->fof_properties, stream);
 #endif
   los_struct_dump(e->los_properties, stream);
+  lightcone_array_struct_dump(e->lightcone_array_properties, stream);
   ic_info_struct_dump(e->ics_metadata, stream);
   parser_struct_dump(e->parameter_file, stream);
   output_options_struct_dump(e->output_options, stream);
@@ -3582,6 +3620,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   chemistry_struct_restore(chemistry, stream);
   e->chemistry = chemistry;
 
+  struct extra_io_properties *extra_io_props =
+      (struct extra_io_properties *)malloc(sizeof(struct extra_io_properties));
+  extra_io_struct_restore(extra_io_props, stream);
+  e->io_extra_props = extra_io_props;
+
 #ifdef WITH_FOF
   struct fof_props *fof_props =
       (struct fof_props *)malloc(sizeof(struct fof_props));
@@ -3593,6 +3636,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct los_props *)malloc(sizeof(struct los_props));
   los_struct_restore(los_properties, stream);
   e->los_properties = los_properties;
+
+  struct lightcone_array_props *lightcone_array_properties =
+      (struct lightcone_array_props *)malloc(
+          sizeof(struct lightcone_array_props));
+  lightcone_array_struct_restore(lightcone_array_properties, stream);
+  e->lightcone_array_properties = lightcone_array_properties;
 
   struct ic_info *ics_metadata =
       (struct ic_info *)malloc(sizeof(struct ic_info));

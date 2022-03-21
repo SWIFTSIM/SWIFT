@@ -260,10 +260,8 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   /* Pointer to the chunk to be processed */
   int* local_cells = (int*)map_data;
 
-  // MATTHIEU: This could in principle be improved by creating a local mesh
-  //           with just the extent required for the cell. Assignment can
-  //           then be done without atomics. That local mesh is then added
-  //           atomically to the global one.
+  /* A temporary patch of the global mesh */
+  struct pm_mesh_patch patch;
 
   /* Loop over the elements assigned to this thread */
   for (int i = 0; i < num; ++i) {
@@ -271,8 +269,12 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
     /* Pointer to local cell */
     const struct cell* c = &cells[local_cells[i]];
 
-    /* Assign this cell's content to the mesh */
-    cell_gpart_to_mesh_CIC(c, rho, N, fac, dim, nu_model);
+    /* Do a CIC interpolation of all the particles in this cell onto
+       the local patch */
+    accumulate_cell_to_local_patch(N, fac, dim, c, &patch, nu_model);
+
+    /* Copy the local patch values back onto the global mesh */
+    pm_add_patch_to_global_mesh(rho, &patch);
   }
 }
 
