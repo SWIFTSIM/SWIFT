@@ -366,31 +366,14 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
 
 #endif  // WITH_MPI
 
-/**
- * @brief Recursively marks the task with index ta_index as a prior of the
- * current task tb with index tb_index.
- *
- * @param s Scheduler.
- * @param ta_index Task that is a prior of the given task.
- * @param task_mask_array Array of all task masks. The mask for the task with
- * index t_index is task_mask_array[t_index] and has size task_type_count *
- * task_subtype_count.
- * @param tb Task of which ta_index is a prior.
- * @param tb_index Index of tb.
- */
-void scheduler_task_mask_add_prior(struct scheduler *s, const int ta_index,
-                                   int *task_mask_array, const struct task *tb,
-                                   const int tb_index) {
-
+void task_mask_add_priors(const int ta_index, const int *task_prior_array,
+                          int *task_mask_array) {
   const int mask_size = task_type_count * task_subtype_count;
-  int *task_mask = &task_mask_array[tb_index * mask_size];
-
-  if (!task_mask[ta_index]) {
-    task_mask[ta_index] = 1;
-    for (int i = 0; i < tb->nr_unlock_tasks; i++) {
-      const struct task *tc = tb->unlock_tasks[i];
-      const int tc_index = tc->type * task_subtype_count + tc->subtype;
-      scheduler_task_mask_add_prior(s, ta_index, task_mask_array, tc, tc_index);
+  const int *task_priors = &task_prior_array[ta_index * mask_size];
+  for (int itask = 0; itask < mask_size; itask++) {
+    if (task_priors[itask] && !task_mask_array[itask]) {
+      task_mask_array[itask] = 1;
+      task_mask_add_priors(itask, task_prior_array, task_mask_array);
     }
   }
 }
@@ -399,9 +382,29 @@ void scheduler_create_task_masks(struct scheduler *s) {
   const int mask_size = task_type_count * task_subtype_count;
   const int mask_array_size = mask_size * mask_size;
 
+  int *task_prior_array = (int *)calloc(mask_array_size, sizeof(int));
   int *task_mask_array = (int *)calloc(mask_array_size, sizeof(int));
 
-  /* loop over all tasks */
+  /* create an internal representation of the task graph
+     this is a bit tricky: some tasks have circular dependencies upon
+     themselves because of the tree-like structure of the cells. This is bad
+     because (a) we cannot use a recursive algorithm on the task dependencies
+     if this contains circular dependencies, since that would lead to
+     deadlocks, (b) we cannot simply skip circular self-dependencies, because
+     some actual task dependencies only show up after we go up/down the tree
+     through a set of self-dependencies.
+     The only way around this is to
+      - first do a loop on the raw task dependencies that only marks the direct
+        prior dependencies (=priors) of each task, and
+      - then do a recursive loop that marks all prior dependencies of a task,
+        including priors of priors and so on. This loop is done using the
+        prior list found in the first step, which per construction includes
+        all self-dependency chains and is free of circular dependencies.
+     As a bonus, the second loop can be done on a much smaller list, making it
+     a lot more efficient. */
+
+  /* FIRST: create a prior mask for every task that flags all the tasks that
+     directly unlock that particular task */
   for (int i = 0; i < s->nr_tasks; i++) {
     const struct task *ta = &s->tasks[i];
     const int ta_index = ta->type * task_subtype_count + ta->subtype;
@@ -410,19 +413,37 @@ void scheduler_create_task_masks(struct scheduler *s) {
     for (int j = 0; j < ta->nr_unlock_tasks; j++) {
       const struct task *tb = ta->unlock_tasks[j];
       const int tb_index = tb->type * task_subtype_count + tb->subtype;
-      scheduler_task_mask_add_prior(s, ta_index, task_mask_array, tb, tb_index);
+      /* skip self-dependencies (between the same task at different levels in
+       * the tree) */
+      if (ta_index != tb_index) {
+        task_prior_array[tb_index * mask_size + ta_index] = 1;
+      }
     }
   }
 
+  /* SECOND: repeat, but now using the prior mask that is guaranteed to be free
+   * of circular dependencies */
+  for (int i = 0; i < mask_size; i++) {
+    task_mask_add_priors(i, task_prior_array, &task_mask_array[i * mask_size]);
+  }
+
+  /* we are done with the priors, get rid of them */
+  free(task_prior_array);
+
 #ifdef WITH_MPI
-  if (engine_rank == 0)
+  /* we need to communicate, since not all tasks are guaranteed to be present
+     on each rank. We can choose to communicate the masks or the priors, the
+     difference in efficiency is minimal. */
+  if (engine_rank == 0) {
     MPI_Reduce(MPI_IN_PLACE, task_mask_array, mask_array_size, MPI_INT, MPI_MAX,
                0, MPI_COMM_WORLD);
-  else
+  } else {
     MPI_Reduce(task_mask_array, task_mask_array, mask_array_size, MPI_INT,
                MPI_MAX, 0, MPI_COMM_WORLD);
+  }
 #endif
 
+  /* for now: simply write the masks to a file for inspection */
   if (engine_rank == 0) {
     char filename[50];
     sprintf(filename, "task_masks.dat");
@@ -432,18 +453,25 @@ void scheduler_create_task_masks(struct scheduler *s) {
     for (int itype = 0; itype < task_type_count; itype++) {
       for (int istype = 0; istype < task_subtype_count; istype++) {
         const int t_index = itype * task_subtype_count + istype;
-        char t_name[200];
-        task_get_full_name(itype, istype, t_name);
-        fprintf(f, "%s", t_name);
+        int mask_sum = 0;
         for (int im = 0; im < mask_size; im++) {
-          fprintf(f, "\t%i", task_mask_array[t_index * mask_size + im]);
+          mask_sum += task_mask_array[t_index * mask_size + im];
         }
-        fprintf(f, "\n");
+        if (mask_sum > 0) {
+          char t_name[200];
+          task_get_full_name(itype, istype, t_name);
+          fprintf(f, "%s", t_name);
+          for (int im = 0; im < mask_size; im++) {
+            fprintf(f, "\t%i", task_mask_array[t_index * mask_size + im]);
+          }
+          fprintf(f, "\n");
+        }
       }
     }
     fclose(f);
   }
 
+  /* for now: free the masks again */
   free(task_mask_array);
 }
 
