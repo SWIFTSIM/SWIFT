@@ -38,9 +38,6 @@ InitialConditions:
   file_name:  ./advection_1D.hdf5  # The file to read
   periodic:   1                     # peridoc ICs
 
-Scheduler:
-  max_top_level_cells: 32
-
 Restarts:
   delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
 
