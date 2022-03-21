@@ -112,8 +112,8 @@ __attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
   /* Convert mass fractions to abundances (nx/nH) and compute metal mass */
   float totmass = 0., metalmass = 0.;
   for (int elem_nr = element_H; elem_nr < element_OA; elem_nr++) {
-    
-    enum colibre_cooling_element elem = (enum colibre_cooling_element) elem_nr;
+
+    enum colibre_cooling_element elem = (enum colibre_cooling_element)elem_nr;
 
     /* Normal elements: Get the abundance from the particle carried arrays */
     if ((elem != element_S) && (elem != element_Ca)) {

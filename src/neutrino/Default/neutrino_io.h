@@ -175,7 +175,7 @@ double lightcone_map_neutrino_mass_get_value(
     const struct engine* e, const struct lightcone_props* lightcone_props,
     const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
-/* 
+/*
    This associates map names to the appropriate update function and unit info.
 
    Note that field designators are commented out here so that the code will

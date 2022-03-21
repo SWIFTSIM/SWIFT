@@ -215,7 +215,7 @@ static const struct lightcone_map_type extra_lightcone_map_types[] = {
     {
         /* .name = */ "XrayErositaLowIntrinsicPhotons",
         /* .update_map = */
-            lightcone_map_xray_erosita_low_intrinsic_photons_get_value,
+        lightcone_map_xray_erosita_low_intrinsic_photons_get_value,
         /* .ptype_contributes = */ lightcone_map_gas_only,
         /* .baseline_func = */ NULL,
         /* .units = */ UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
@@ -225,7 +225,8 @@ static const struct lightcone_map_type extra_lightcone_map_types[] = {
     },
     {
         /* .name = */ "XrayErositaLowIntrinsicEnergies",
-        /* .update_map = */ lightcone_map_xray_erosita_low_intrinsic_energy_get_value,
+        /* .update_map = */
+        lightcone_map_xray_erosita_low_intrinsic_energy_get_value,
         /* .ptype_contributes = */ lightcone_map_gas_only,
         /* .baseline_func = */ NULL,
         /* .units = */ UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
@@ -236,7 +237,7 @@ static const struct lightcone_map_type extra_lightcone_map_types[] = {
     {
         /* .name = */ "XrayErositaHighIntrinsicPhotons",
         /* .update_map = */
-            lightcone_map_xray_erosita_high_intrinsic_photons_get_value,
+        lightcone_map_xray_erosita_high_intrinsic_photons_get_value,
         /* .ptype_contributes = */ lightcone_map_gas_only,
         /* .baseline_func = */ NULL,
         /* .units = */ UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
@@ -247,7 +248,7 @@ static const struct lightcone_map_type extra_lightcone_map_types[] = {
     {
         /* .name = */ "XrayErositaHighIntrinsicEnergies",
         /* .update_map = */
-            lightcone_map_xray_erosita_high_intrinsic_energy_get_value,
+        lightcone_map_xray_erosita_high_intrinsic_energy_get_value,
         /* .ptype_contributes = */ lightcone_map_gas_only,
         /* .baseline_func = */ NULL,
         /* .units = */ UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
@@ -257,7 +258,8 @@ static const struct lightcone_map_type extra_lightcone_map_types[] = {
     },
     {
         /* .name = */ "XrayROSATIntrinsicPhotons",
-        /* .update_map = */ lightcone_map_xray_rosat_intrinsic_photons_get_value,
+        /* .update_map = */
+        lightcone_map_xray_rosat_intrinsic_photons_get_value,
         /* .ptype_contributes = */ lightcone_map_gas_only,
         /* .baseline_func = */ NULL,
         /* .units = */ UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
@@ -303,8 +305,9 @@ static const struct lightcone_map_type extra_lightcone_map_types[] = {
         /* .units = */ UNIT_CONV_INV_AREA,
         /* .smoothing = */ map_smoothed,
         /* .compression = */ compression_write_lossless,
-        /* .buffer_scale_factor = */ 3.40367719e-68, /* convert 1/Mpc^2 to pc/cm^3 so
-                                                  value fits in a float */
+        /* .buffer_scale_factor = */ 3.40367719e-68, /* convert 1/Mpc^2 to
+                                                  pc/cm^3 so value fits in a
+                                                  float */
     },
     {
         /* NULL functions indicate end of array */
