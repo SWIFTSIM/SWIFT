@@ -193,6 +193,20 @@ float supernovae_ii_get_ejected_mass_fraction_processed_from_raw(
 };
 
 /**
+ * @brief Get the supernova energy for a given progenitor stellar mass.
+ *
+ * @param The progenitor mass in units of solar mass.
+ *
+ * @return the energy released in ergs/1e51.
+ */
+float supernovae_ii_get_energy_from_progenitor_mass(
+    const struct supernovae_ii *snii, float mass) {
+
+  float log_mass = log10(mass);
+  return interpolate_1d(&snii->energy_per_progenitor_mass, log_mass);
+};
+
+/**
  * @brief Read an array of SNII yields from the table.
  *
  * @param snii The #supernovae_ii model.
@@ -345,14 +359,75 @@ void supernovae_ii_read_from_tables(struct supernovae_ii *snii,
 }
 
 /**
+ * @brief Reads the supernovae II energy parameters from tables.
+ *
+ * @param snii The #supernovae_ii model.
+ * @param params The simulation parameters.
+ * @param filename The filename of the chemistry table.
+ */
+void supernovae_ii_read_energy_from_tables(struct supernovae_ii *snii,
+                                           struct swift_params *params,
+                                           const char *filename) {
+
+  const char *hdf5_dataset_name = "Energy";
+  hid_t file_id, group_id;
+
+  /* Open IMF group */
+  h5_open_group(filename, "Data/SNIIEnergy", &file_id, &group_id);
+
+  /* Now let's get the number of elements */
+  /* Open attribute */
+  const hid_t h_dataset = H5Dopen(group_id, hdf5_dataset_name, H5P_DEFAULT);
+  if (h_dataset < 0)
+    error("Error while opening attribute '%s'", hdf5_dataset_name);
+
+  /* Get the number of elements */
+  hsize_t count = io_get_number_element_in_dataset(h_dataset);
+
+  /* Read the minimal energy */
+  float log_mass_min = 0;
+  io_read_attribute(h_dataset, "min", FLOAT, &log_mass_min);
+
+  /* Read the step size (log step) */
+  float step_size = 0;
+  io_read_attribute(h_dataset, "step", FLOAT, &step_size);
+
+  /* Close the attribute */
+  H5Dclose(h_dataset);
+
+  /* Allocate the memory */
+  float *data = (float *)malloc(sizeof(float) * count);
+
+  if (data == NULL)
+    error("Failed to allocate the SNII energy for %s.", hdf5_dataset_name);
+
+  /* Read the dataset */
+  io_read_array_dataset(group_id, hdf5_dataset_name, FLOAT, data, count);
+
+  /* Initialize the raw interpolation */
+  interpolate_1d_init(&snii->energy_per_progenitor_mass, log10(snii->mass_min),
+                      log10(snii->mass_max), snii->interpolation_size,
+                      log_mass_min, step_size, count, data,
+                      boundary_condition_zero);
+
+  /* Cleanup the memory */
+  free(data);
+
+  /* Cleanup everything */
+  h5_close_group(file_id, group_id);
+}
+
+/**
  * @brief Initialize the #supernovae_ii structure.
  *
  * @param snii The #supernovae_ii model.
  * @param params The simulation parameters.
  * @param sm The #stellar_model.
+ * @param us The unit system.
  */
 void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
-                        const struct stellar_model *sm) {
+                        const struct stellar_model *sm,
+                        const struct unit_system *us) {
 
   /* Read the parameters from the tables */
   supernovae_ii_read_from_tables(snii, params, sm->yields_table);
@@ -366,6 +441,15 @@ void supernovae_ii_init(struct supernovae_ii *snii, struct swift_params *params,
   snii->coef_exp = initial_mass_function_get_coefficient(
       &sm->imf, snii->mass_min, snii->mass_max);
   snii->coef_exp /= snii->exponent;
+
+  /* Read the energy parameters from the tables */
+  supernovae_ii_read_energy_from_tables(snii, params, sm->yields_table);
+
+  /* Supernovae energy */
+  double e_feedback =
+      parser_get_param_double(params, "GEARFeedback:supernovae_energy_erg");
+  e_feedback /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  snii->energy_per_supernovae = e_feedback;
 }
 
 /**
@@ -404,6 +488,9 @@ void supernovae_ii_restore(struct supernovae_ii *snii, FILE *stream,
   snii->coef_exp = initial_mass_function_get_coefficient(
       &sm->imf, snii->mass_min, snii->mass_max);
   snii->coef_exp /= snii->exponent;
+
+  /* Read the energy parameters from the tables */
+  supernovae_ii_read_energy_from_tables(snii, NULL, sm->yields_table);
 }
 
 /**

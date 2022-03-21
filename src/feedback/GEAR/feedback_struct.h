@@ -48,14 +48,14 @@ struct feedback_spart_data {
   /*! Inverse of normalisation factor used for the enrichment. */
   float enrichment_weight;
 
-  /* Assign two different names for clarification */
-  union {
-    /*! Number of supernovae */
-    float number_sn;
+  /*! Number of Ia supernovae */
+  float number_snia;
 
-    /*! Energy injected in the surrounding particles */
-    float energy_ejected;
-  };
+  /*! Number of II supernovae */
+  float number_snii;
+
+  /*! Energy injected in the surrounding particles */
+  float energy_ejected;
 
   /*! Total mass ejected by the supernovae */
   float mass_ejected;

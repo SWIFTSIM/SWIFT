@@ -43,7 +43,7 @@ pressure_floor_get_comoving_pressure(const struct part* p, const float pressure,
 /**
  * @brief Properties of the pressure floor in the GEAR model.
  */
-struct pressure_floor_properties {
+struct pressure_floor_props {
 
   /*! Jeans factor */
   float n_jeans;
@@ -93,9 +93,9 @@ pressure_floor_get_comoving_pressure(const struct part* p,
  * @param props The pressure floor properties to fill.
  */
 __attribute__((always_inline)) static INLINE void pressure_floor_init(
-    struct pressure_floor_properties* props,
-    const struct phys_const* phys_const, const struct unit_system* us,
-    const struct hydro_props* hydro_props, struct swift_params* params) {
+    struct pressure_floor_props* props, const struct phys_const* phys_const,
+    const struct unit_system* us, const struct hydro_props* hydro_props,
+    struct swift_params* params) {
 
   /* Read the Jeans factor */
   props->n_jeans =
@@ -112,10 +112,11 @@ __attribute__((always_inline)) static INLINE void pressure_floor_init(
  * @param props The pressure floor properties.
  */
 __attribute__((always_inline)) static INLINE void pressure_floor_print(
-    const struct pressure_floor_properties* props) {
+    const struct pressure_floor_props* props) {
 
   message("Pressure floor is 'GEAR' with:");
-  message("Jeans factor: %g", props->n_jeans);
+  message("Jeans factor  : %g", props->n_jeans);
+  message("      constant: %f", props->constants);
 }
 
 #ifdef HAVE_HDF5
@@ -182,6 +183,45 @@ pressure_floor_first_init_part(const struct phys_const* restrict phys_const,
                                struct xpart* restrict xp) {
 
   pressure_floor_init_part(p, xp);
+}
+
+/**
+ * @brief Write a pressure_floor struct to the given FILE as a stream of bytes.
+ *
+ * @param pressure_floor the struct
+ * @param stream the file stream
+ */
+__attribute__((always_inline)) INLINE static void pressure_floor_struct_dump(
+    const struct pressure_floor_props* pressure_floor, FILE* stream) {
+
+  restart_write_blocks((void*)pressure_floor,
+                       sizeof(struct pressure_floor_props), 1, stream,
+                       "pressure_floor", "pressure_floor");
+
+  message("dumping pressure_floor...");
+  pressure_floor_print(pressure_floor);
+}
+
+/**
+ * @brief Restore a pressure_floor struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param pressure_floor the struct
+ * @param stream the file stream
+ */
+__attribute__((always_inline)) INLINE static void pressure_floor_struct_restore(
+    struct pressure_floor_props* pressure_floor, FILE* stream) {
+
+  restart_read_blocks((void*)pressure_floor,
+                      sizeof(struct pressure_floor_props), 1, stream, NULL,
+                      "pressure_floor");
+
+  message("restoring pressure_floor...");
+  pressure_floor_print(pressure_floor);
+
+  /* copy to the global variable */
+  pressure_floor_props.n_jeans = pressure_floor->n_jeans;
+  pressure_floor_props.constants = pressure_floor->constants;
 }
 
 #endif /* SWIFT_PRESSURE_FLOOR_GEAR_H */

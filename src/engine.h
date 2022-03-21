@@ -499,6 +499,9 @@ struct engine {
   /* Properties of the sellar feedback model */
   struct feedback_props *feedback_props;
 
+  /* Properties of the pressure floor scheme */
+  struct pressure_floor_props *pressure_floor_props;
+
   /* Properties of the radiative transfer model */
   struct rt_props *rt_props;
 
@@ -636,8 +639,9 @@ void engine_init(
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos,
     struct neutrino_response *neutrino_response,
-    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
-    const struct external_potential *potential,
+    struct feedback_props *feedback,
+    struct pressure_floor_props *pressure_floor, struct rt_props *rt,
+    struct pm_mesh *mesh, const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
