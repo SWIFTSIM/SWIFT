@@ -45,6 +45,8 @@
 #error TODO
 #elif defined(SHADOWFAX_SPH)
 #error TODO
+#elif defined(SHADOWSWIFT)
+#error TODO
 #elif defined(PLANETARY_SPH)
 #error TODO
 #elif defined(SPHENIX_SPH)
