@@ -38,6 +38,7 @@
 #include "cell_hydro.h"
 #include "cell_sinks.h"
 #include "cell_stars.h"
+#include "cell_grid.h"
 #include "kernel_hydro.h"
 #include "multipole_struct.h"
 #include "part.h"
@@ -368,6 +369,9 @@ struct cell {
 
   /*! Sink particles variables */
   struct cell_sinks sinks;
+
+  /*! The grid variables */
+  struct cell_grid grid;
 
 #ifdef WITH_MPI
   /*! MPI variables */
