@@ -58,6 +58,8 @@
 #include "./hydro/Gizmo/hydro_debug.h"
 #elif defined(SHADOWFAX_SPH)
 #include "./hydro/Shadowswift_old/hydro_debug.h"
+#elif defined(SHADOWSWIFT)
+#include "./hydro/Shadowswift/hydro_debug.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_debug.h"
 #elif defined(SPHENIX_SPH)
