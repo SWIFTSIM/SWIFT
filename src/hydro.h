@@ -63,8 +63,8 @@
 #include "./hydro/Gizmo/hydro.h"
 #include "./hydro/Gizmo/hydro_iact.h"
 #elif defined(SHADOWFAX_SPH)
-#include "./hydro/Shadowswift/hydro.h"
-#include "./hydro/Shadowswift/hydro_iact.h"
+#include "./hydro/Shadowswift_old/hydro.h"
+#include "./hydro/Shadowswift_old/hydro_iact.h"
 #define SPH_IMPLEMENTATION \
   "Shadowfax moving mesh (Vandenbroucke and De Rijcke 2016)"
 #elif defined(PLANETARY_SPH)
