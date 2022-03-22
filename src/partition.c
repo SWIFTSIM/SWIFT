@@ -2025,11 +2025,13 @@ void partition_initial_partition(struct partition *initial_partition,
 
 #ifdef WITH_ZOOM_REGION
 
+    int res;
+
     /* Do the zoom cells if we are running with them */
     if (s->with_zoom_region) {
 
       /* With a zoom region we must apply the background offset */
-      split_vector(s, s-cdim, nr_nodes, samplecells, s->zoom_props->tl_cell_offset);
+      split_vector(s, s->cdim, nr_nodes, samplecells, s->zoom_props->tl_cell_offset);
       free(samplecells);
 
       int *zoom_samplecells = NULL;
@@ -2041,7 +2043,7 @@ void partition_initial_partition(struct partition *initial_partition,
       }
 
       /* Share the zoom_samplecells around all the nodes. */
-      int res = MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+      res = MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
       if (res != MPI_SUCCESS)
         mpi_error(res, "Failed to bcast the partition sample cells.");
 
@@ -2050,12 +2052,12 @@ void partition_initial_partition(struct partition *initial_partition,
       free(zoom_samplecells);
     } else {
       /* And apply to our cells */
-      split_vector(s, s-cdim, nr_nodes, samplecells, 0);
+      split_vector(s, s->cdim, nr_nodes, samplecells, 0);
       free(samplecells);
     }
 #else
     /* And apply to our cells */
-    split_vector(s, s-cdim, nr_nodes, samplecells, 0);
+    split_vector(s, s->cdim, nr_nodes, samplecells, 0);
     free(samplecells);
 #endif /* WITH_ZOOM_REGION */
 #else
