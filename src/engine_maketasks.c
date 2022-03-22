@@ -4453,6 +4453,11 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Construct the internal representation of the task graph. */
+  scheduler_create_task_masks(&e->sched, e->verbose);
+#endif
+
   /* Rank the tasks. */
   scheduler_ranktasks(sched);
 
