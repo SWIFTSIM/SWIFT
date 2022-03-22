@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,12 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_HYDRO_PART_H
-#define SWIFT_NONE_HYDRO_PART_H
+#ifndef SWIFT_MINIMAL_HYDRO_PART_H
+#define SWIFT_MINIMAL_HYDRO_PART_H
 
 /**
- * @file None/hydro_part.h
- * @brief Empty implementation
+ * @file Minimal/hydro_part.h
+ * @brief Minimal conservative implementation of SPH (Particle definition)
+ *
+ * The thermal variable is the internal energy (u). Simple constant
+ * viscosity term with the Balsara (1995) switch. No thermal conduction
+ * term is implemented.
+ *
+ * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
+ * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
+ * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
 #include "black_holes_struct.h"
@@ -29,7 +37,6 @@
 #include "cooling_struct.h"
 #include "feedback_struct.h"
 #include "particle_splitting_struct.h"
-#include "pressure_floor_struct.h"
 #include "rt_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
@@ -53,8 +60,11 @@ struct xpart {
   /*! Velocity at the last full step. */
   float v_full[3];
 
-  /*! Gravitational acceleration at the last full step. */
+  /*! Gravitational acceleration at the end of the last step */
   float a_grav[3];
+
+  /*! Internal energy at the last full step. */
+  float u_full;
 
   /*! Additional data used to record particle splits */
   struct particle_splitting_data split_data;
@@ -103,7 +113,13 @@ struct part {
   /*! Particle smoothing length. */
   float h;
 
-  /*! Particle density */
+  /*! Particle internal energy. */
+  float u;
+
+  /*! Time derivative of the internal energy. */
+  float u_dt;
+
+  /*! Particle density. */
   float rho;
 
   /* Store density/force specific stuff. */
@@ -124,8 +140,14 @@ struct part {
       /*! Derivative of the neighbour number with respect to h. */
       float wcount_dh;
 
-      /*! Derivative of the density with respect to h. */
+      /*! Derivative of density with respect to h */
       float rho_dh;
+
+      /*! Velocity divergence */
+      float div_v;
+
+      /*! Velocity curl */
+      float rot_v[3];
 
     } density;
 
@@ -138,8 +160,23 @@ struct part {
      */
     struct {
 
+      /*! "Grad h" term */
+      float f;
+
+      /*! Particle pressure. */
+      float pressure;
+
+      /*! Particle soundspeed. */
+      float soundspeed;
+
+      /*! Particle signal velocity */
+      float v_sig;
+
       /*! Time derivative of smoothing length  */
       float h_dt;
+
+      /*! Balsara switch */
+      float balsara;
 
     } force;
   };
@@ -155,9 +192,6 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
-
-  /*! Additional data used by the pressure floor */
-  struct pressure_floor_part_data pressure_floor_data;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
@@ -180,4 +214,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_NONE_HYDRO_PART_H */
+#endif /* SWIFT_MINIMAL_HYDRO_PART_H */
