@@ -90,19 +90,23 @@ __attribute__((always_inline)) INLINE static void accumulate_add_f(
 #endif
 }
 
-
+/**
+ * @brief Add x to the value stored at the location address (MyFloat version)
+ *
+ * When SWIFT_TASKS_WITHOUT_ATOMICS is *not* defined this function uses an
+ * atomic operation.
+ *
+ * @param address The address to update.
+ * @param x The value to add to *address.
+ */
 __attribute__((always_inline)) INLINE static void accumulate_add_mf(
     volatile MyFloat *const address, const MyFloat x) {
 
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+  *address += x;
+#else
 #ifdef DOUBLE_PRECISION
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-  *address += x;
-#else
   atomic_add_d(address, x);
-#endif
-#else
-#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
-  *address += x;
 #else
   atomic_add_f(address, x);
 #endif

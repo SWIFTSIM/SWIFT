@@ -60,11 +60,17 @@ runner_iact_grav_pp_full(const MyFloat r2, const MyFloat h2, const MyFloat h_inv
 
   } else {
 
-    const double r = r2 * r_inv;
-    const double ui = r * h_inv;
+    const MyFloat r = r2 * r_inv;
+    const MyFloat ui = r * h_inv;
+
+#ifdef DOUBLE_PRECISION
     double W_f_ij, W_pot_ij;
     kernel_grav_eval_force_double(ui, &W_f_ij);
     kernel_grav_eval_pot_double(ui, &W_pot_ij);
+#else
+    const float W_f_ij = kernel_grav_force_eval(ui);
+    const float W_pot_ij = kernel_grav_pot_eval(ui);
+#endif
 
     /* Get softened gravity */
     *f_ij = mass * h_inv3 * W_f_ij;
