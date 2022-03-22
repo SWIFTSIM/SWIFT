@@ -1468,6 +1468,9 @@ int main(int argc, char *argv[]) {
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
     if (with_sink) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
+#ifdef SHADOWSWIFT
+    engine_policies |= engine_policy_grid;
+#endif
 
     /* Initialize the engine with the space and policies. */
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],

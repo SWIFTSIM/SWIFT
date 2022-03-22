@@ -42,7 +42,7 @@ endif
 
 # List required headers
 include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h 
-include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h 
+include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h cell_grid.h
 include_HEADERS += engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h 
 include_HEADERS += common_io.h single_io.h distributed_io.h map.h tools.h  partition_fixed_costs.h 
 include_HEADERS += partition.h clocks.h parser.h physical_constants.h physical_constants_cgs.h potential.h version.h 
@@ -134,7 +134,7 @@ AM_SOURCES += runner_recv.c runner_pack.c
 AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c 
 AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c runner_doiact_sinks.c 
 AM_SOURCES += runner_doiact_sinks_merger.c
-AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c 
+AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c
 AM_SOURCES += cell_unskip.c 
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c 
 AM_SOURCES += engine_marktasks.c engine_drift.c engine_unskip.c engine_collect_end_of_step.c 

@@ -12,11 +12,15 @@ struct cell_grid {
 
   int active;
 
+  int unsplittable_flag;
+
   struct voronoi *voronoi;
 
   struct delaunay *delaunay;
 
-  /* TODO add tessellations + building tasks. */
+  struct link *construction;
+
+  struct task *ghost;
 };
 
 struct pcell_grid {

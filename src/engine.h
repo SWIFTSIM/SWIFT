@@ -86,8 +86,9 @@ enum engine_policy {
   engine_policy_line_of_sight = (1 << 24),
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
+  engine_policy_grid = (1 << 27),
 };
-#define engine_maxpolicy 27
+#define engine_maxpolicy 28
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**

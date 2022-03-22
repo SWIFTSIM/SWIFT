@@ -130,7 +130,8 @@ const char *engine_policy_names[] = {"none",
                                      "csds",
                                      "line of sight",
                                      "sink",
-                                     "rt"};
+                                     "rt",
+                                     "moving mesh"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 

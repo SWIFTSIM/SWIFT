@@ -1125,6 +1125,25 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
         cell_set_super_gravity(c->progeny[k], super_gravity);
 }
 
+void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
+  if (super_grid == NULL && c->grid.unsplittable_flag) {
+    /* This is the first time we encounter a cell with the unsplittable flag
+     * set, meaning that it or one of its direct neighbours is unsplittable,
+     * i.e. we are at the super level for this cell.
+     */
+    super_grid = c;
+  }
+
+  /* Set the super-cell */
+  c->grid.super = super_grid;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) cell_set_super_grid(c->progeny[k], super_grid);
+    }
+}
+
 /**
  * @brief Mapper function to set the super pointer of the cells.
  *
@@ -1138,6 +1157,7 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_grav = (e->policy & engine_policy_self_gravity) ||
                         (e->policy & engine_policy_external_gravity);
+  const int with_grid = (e->policy & engine_policy_grid);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1153,8 +1173,136 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);
 
+    /* Super-pointer for the moving mesh */
+    if (with_grid) cell_set_super_grid(c, NULL);
+
     /* Super-pointer for common operations */
     cell_set_super(c, NULL, with_hydro, with_grav);
+  }
+}
+
+void cell_set_neighbour_flags(struct cell *restrict ci,
+                              struct cell *restrict cj, int sid, int ci_local,
+                              int cj_local) {
+  /* Self or pair? */
+  if (cj == NULL) { /* Self */
+    if (ci->split) {
+      /* recurse */
+      for (int k = 0; k < 8; k++) {
+        if (ci->progeny[k] != NULL) {
+          /* Recurse for self */
+          cell_set_neighbour_flags(ci->progeny[k], NULL, 0, 1, 0);
+
+          /* Recurse for pairs of sub-cells */
+          for (int l = k + 1; l < 8; l++) {
+            if (ci->progeny[l] != NULL) {
+              /* Calculate sid for pair */
+              struct cell **ck = &ci->progeny[k];
+              struct cell **cl = &ci->progeny[l];
+              double dx[3];
+              for (int i = 0; i < 3; i++) {
+                dx[i] = (*cl)->loc[i] - (*ck)->loc[i];
+              }
+              /* Get the sorting index. */
+              int sid_sub = 0;
+              for (int i = 0; i < 3; i++)
+                sid_sub =
+                    3 * sid_sub + ((dx[i] < 0.0) ? 0 : ((dx[i] > 0.0) ? 2 : 1));
+              /* Switch the cells around? */
+              if (runner_flip[sid_sub]) {
+                struct cell *temp = *ck;
+                *ck = *cl;
+                *cl = temp;
+              }
+              sid_sub = sortlistID[sid_sub];
+              cell_set_neighbour_flags(*ck, *cl, sid_sub, 1, 1);
+            }
+          }
+        }
+      }
+    } else {
+      ci->grid.unsplittable_flag |= 1;
+    }
+  } else { /* pair */
+    if (ci->split && cj->split) {
+      /* recurse */
+      struct cell_split_pair pairs = cell_split_pairs[sid];
+      for (int i = 0; i < pairs.count; i++) {
+        int k = pairs.pairs[i].pid;
+        int l = pairs.pairs[i].pjd;
+        int sid_sub = pairs.pairs[i].sid;
+        if (ci->progeny[k] != NULL && cj->progeny[l] != NULL)
+          cell_set_neighbour_flags(ci->progeny[k], cj->progeny[l], sid_sub,
+                                   ci_local, cj_local);
+      }
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      assert(ci_local || cj_local);
+#endif
+      if (ci_local) ci->grid.unsplittable_flag |= 1;
+      if (cj_local) cj->grid.unsplittable_flag |= 1;
+    }
+  }
+}
+
+void cell_set_neighbour_flags_mapper(void *map_data, int num_elements,
+                                     void *extra_data) {
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int periodic = e->s->periodic;
+
+  struct space *s = e->s;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Anything to do here? */
+    if (ci->hydro.count == 0) continue;
+
+    /* Set neighbour flags for sub cells */
+    if (ci->nodeID == nodeID) cell_set_neighbour_flags(ci, NULL, 0, 1, 0);
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Treat pairs only once. */
+          if (cid >= cjd || cj->hydro.count == 0) continue;
+
+          /* Set neighbour flags for this cell and its neighbouring cell */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          cell_set_neighbour_flags(ci, cj, sid, ci->nodeID == nodeID,
+                                   cj->nodeID == nodeID);
+        }
+      }
+    }
   }
 }
 

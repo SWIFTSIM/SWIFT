@@ -136,6 +136,9 @@ enum {
   timer_dosub_self_rt_transport,
   timer_dosub_pair_rt_transport,
   timer_do_rt_tchem,
+  timer_doself_grid_construction,
+  timer_dopair_grid_construction,
+  timer_do_grid_ghost,
   timer_count,
 };
 

@@ -121,6 +121,7 @@ const char *taskID_names[task_type_count] = {
     "rt_ghost2",
     "rt_transport_out",
     "rt_tchem",
+    "grid_ghost",
 };
 
 /* Sub-task type names. */
@@ -160,6 +161,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_accretion",
     "rt_gradient",
     "rt_transport",
+    "grid_construction",
 };
 
 const char *task_category_names[task_category_count] = {

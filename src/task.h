@@ -114,6 +114,7 @@ enum task_types {
   task_type_rt_ghost2,
   task_type_rt_transport_out, /* Implicit */
   task_type_rt_tchem,
+  task_type_grid_ghost,
   task_type_count
 } __attribute__((packed));
 
@@ -156,6 +157,7 @@ enum task_subtypes {
   task_subtype_sink_accretion,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
+  task_subtype_grid_construction,
   task_subtype_count
 } __attribute__((packed));
 

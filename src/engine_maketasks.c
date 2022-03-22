@@ -4386,6 +4386,12 @@ void engine_maketasks(struct engine *e) {
   cell_next_tag = 0;
 #endif
 
+  if (e->policy & engine_policy_grid) {
+    threadpool_map(&e->threadpool, cell_set_neighbour_flags_mapper, NULL,
+                   nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
+                   e);
+  }
+
   /* Now that the self/pair tasks are at the right level, set the super
    * pointers. */
   threadpool_map(&e->threadpool, cell_set_super_mapper, cells, nr_cells,
