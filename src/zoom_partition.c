@@ -156,10 +156,11 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim, double *oldzoom
  *  @param nregions the number of regions
  *  @param samplecells the list of sample cell positions, size of 3*nregions
  */
-void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
+void pick_vector_zoom(struct space *s, int nregions, int *samplecells, int *zoom_samplecells) {
 
   /* Get length of space and divide up. */
-  int length = (s->cdim[0] * s->cdim[1] * s->cdim[2]) + (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
+  int length = (s->cdim[0] * s->cdim[1] * s->cdim[2])
+      + (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
   if (nregions > length) {
     error("Too few cells (%d) for this number of regions (%d)", length,
           nregions);
