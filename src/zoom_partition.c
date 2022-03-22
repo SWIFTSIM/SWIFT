@@ -164,8 +164,9 @@ void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
     error("Too few cells (%d) for this number of regions (%d)", length,
           nregions);
   }
+
 	/* Set up variables */
-  int step = (s->cdim[0] * s->cdim[1] * s->cdim[2]) / nregions;
+  int step = (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]) / nregions;
   int n = 0;
   int m = 0;
   int l = 0;
@@ -180,14 +181,15 @@ void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
 	        samplecells[m++] = k;
 	        l++;
         }
-      n++;
-      if (n == step) n = 0;
+        n++;
+        if (n == step) n = 0;
       }
     }
   }
 
-	step = (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]) / nregions;
+	step = (s->cdim[0] * s->cdim[1] * s->cdim[2]) / nregions;
   n = 0;
+  l = 0;
 
   /* Loop over natural grid */
 	for (int i = 0; i < s->cdim[0]; i++) {
@@ -199,8 +201,8 @@ void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
 	        samplecells[m++] = k;
 	        l++;
         }
-      n++;
-      if (n == step) n = 0;
+        n++;
+        if (n == step) n = 0;
       }
     }
   }
