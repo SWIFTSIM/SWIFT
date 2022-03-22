@@ -97,7 +97,7 @@ runner_iact_grav_pp_full(const MyFloat r2, const MyFloat h2, const MyFloat h_inv
 __attribute__((always_inline, nonnull)) INLINE static void
 runner_iact_grav_pp_truncated(const MyFloat r2, const MyFloat h2, const MyFloat h_inv,
                               const MyFloat h_inv3, const MyFloat mass,
-                              const float r_s_inv, MyFloat *restrict f_ij,
+                              const MyFloat r_s_inv, MyFloat *restrict f_ij,
                               MyFloat *restrict pot_ij) {
 
   /* Get the inverse distance */
@@ -113,9 +113,16 @@ runner_iact_grav_pp_truncated(const MyFloat r2, const MyFloat h2, const MyFloat 
 
   } else {
 
-    const float ui = (float)(r * h_inv);
+    const MyFloat ui = r * h_inv;
+
+#ifdef DOUBLE_PRECISION
+    double W_f_ij, W_pot_ij;
+    kernel_grav_eval_force_double(ui, &W_f_ij);
+    kernel_grav_eval_pot_double(ui, &W_pot_ij);
+#else
     const float W_f_ij = kernel_grav_force_eval(ui);
     const float W_pot_ij = kernel_grav_pot_eval(ui);
+#endif
 
     /* Get softened gravity */
     *f_ij = mass * h_inv3 * W_f_ij;
@@ -123,9 +130,18 @@ runner_iact_grav_pp_truncated(const MyFloat r2, const MyFloat h2, const MyFloat 
   }
 
   /* Get long-range correction */
-  const float u_lr = r * r_s_inv;
+  const MyFloat u_lr = r * r_s_inv;
+
+#ifdef DOUBLE_PRECISION
+  double corr_f_lr;
+  kernel_long_grav_force_eval_double(u_lr, &corr_f_lr);
+
+  double corr_pot_lr = 0.0; /* Need to add potential version for double */
+#else
   float corr_f_lr, corr_pot_lr;
   kernel_long_grav_eval(u_lr, &corr_f_lr, &corr_pot_lr);
+#endif
+
   *f_ij *= corr_f_lr;
   *pot_ij *= corr_pot_lr;
 }

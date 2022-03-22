@@ -481,7 +481,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         const MyFloat y_j = gpj->x[1];
         const MyFloat z_j = gpj->x[2];
         const MyFloat mass_j = gpj->mass;
-        const float h_j = gravity_get_softening(gpj, grav_props);
+        const MyFloat h_j = gravity_get_softening(gpj, grav_props);
 
         /* Compute the pairwise distance.
            Note: no need for box wrap here! This is non-periodic */
@@ -497,7 +497,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
         /* Pick the maximal softening length of i and j */
-        const float h = max(h_i, h_j);
+        const MyFloat h = max(h_i, h_j);
         const MyFloat h2 = h * h;
         const MyFloat h_inv = 1. / h;
         const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
@@ -773,7 +773,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
     const MyFloat h_i = ci_cache->epsilon[pid];
 
     /* Local accumulators for the acceleration and potential */
-    MyFloat a_x = 0.f, a_y = 0.f, a_z = 0.f, pot = 0.f;
+    MyFloat a_x = 0., a_y = 0., a_z = 0., pot = 0.;
 
     /* Make the compiler understand we are in happy vectorization land */
     swift_align_information(MyFloat, cj_cache->x, SWIFT_CACHE_ALIGNMENT);
