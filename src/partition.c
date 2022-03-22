@@ -2025,8 +2025,6 @@ void partition_initial_partition(struct partition *initial_partition,
 
 #ifdef WITH_ZOOM_REGION
 
-    int res;
-
     /* Do the zoom cells if we are running with them */
     if (s->with_zoom_region) {
 
