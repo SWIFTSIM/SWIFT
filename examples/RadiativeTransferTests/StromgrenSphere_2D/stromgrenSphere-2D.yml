@@ -38,9 +38,6 @@ InitialConditions:
   file_name:  ./stromgrenSphere-2D.hdf5     # The file to read
   periodic:   0                             # periodic ICs. Keep them periodic so we don't loose photon energy. 
 
-Scheduler:
-  max_top_level_cells: 12
-
 Stars:
   resolution_eta:       2.2348        # (Optional) Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). Defaults to the SPH value.
 

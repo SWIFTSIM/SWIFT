@@ -44,7 +44,6 @@ Stars:
   birth_time:           -1   # Give the star in the ICs a decent birth time
 
 Scheduler:
-  max_top_level_cells: 64
   dependency_graph_frequency:       0  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
 
 Restarts:
