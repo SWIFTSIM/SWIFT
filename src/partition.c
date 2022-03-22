@@ -106,7 +106,7 @@ static int repart_init_fixed_costs(void);
  *  @param nregions the number of regions
  *  @param samplecells the list of sample cell positions, size of 3*nregions
  */
-static void pick_vector(struct space *s, int cdim, int nregions, int *samplecells) {
+static void pick_vector(struct space *s, int *cdim, int nregions, int *samplecells) {
 
   /* Get length of space and divide up. */
   int length = cdim[0] * cdim[1] * cdim[2];
@@ -143,7 +143,7 @@ static void pick_vector(struct space *s, int cdim, int nregions, int *samplecell
  * Using the sample positions as seeds pick cells that are geometrically
  * closest and apply the partition to the space.
  */
-static void split_vector(struct space *s, int cdim, int nregions, int *samplecells, int offset) {
+static void split_vector(struct space *s, int *cdim, int nregions, int *samplecells, int offset) {
 
   int n = 0;
   for (int i = 0; i < cdim[0]; i++) {
