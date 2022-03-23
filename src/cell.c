@@ -1157,7 +1157,6 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_grav = (e->policy & engine_policy_self_gravity) ||
                         (e->policy & engine_policy_external_gravity);
-  const int with_grid = (e->policy & engine_policy_grid);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1173,11 +1172,22 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);
 
-    /* Super-pointer for the moving mesh */
-    if (with_grid) cell_set_super_grid(c, NULL);
-
     /* Super-pointer for common operations */
     cell_set_super(c, NULL, with_hydro, with_grav);
+  }
+}
+
+void cell_set_grid_super_mapper(void *map_data, int num_elements,
+                                void *extra_data) {
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &((struct cell *)map_data)[ind];
+
+#ifdef WITH_MPI
+    cell_ensure_tagged(c);
+#endif
+
+    /* Set super-pointer for the moving mesh */
+    cell_set_super_grid(c, NULL);
   }
 }
 
@@ -1196,26 +1206,10 @@ void cell_set_neighbour_flags(struct cell *restrict ci,
           /* Recurse for pairs of sub-cells */
           for (int l = k + 1; l < 8; l++) {
             if (ci->progeny[l] != NULL) {
-              /* Calculate sid for pair */
-              struct cell **ck = &ci->progeny[k];
-              struct cell **cl = &ci->progeny[l];
-              double dx[3];
-              for (int i = 0; i < 3; i++) {
-                dx[i] = (*cl)->loc[i] - (*ck)->loc[i];
-              }
-              /* Get the sorting index. */
-              int sid_sub = 0;
-              for (int i = 0; i < 3; i++)
-                sid_sub =
-                    3 * sid_sub + ((dx[i] < 0.0) ? 0 : ((dx[i] > 0.0) ? 2 : 1));
-              /* Switch the cells around? */
-              if (runner_flip[sid_sub]) {
-                struct cell *temp = *ck;
-                *ck = *cl;
-                *cl = temp;
-              }
-              sid_sub = sortlistID[sid_sub];
-              cell_set_neighbour_flags(*ck, *cl, sid_sub, 1, 1);
+              /* Get sid for pair */
+              int sid_sub = sub_sid_flag[k][l];
+              cell_set_neighbour_flags(ci->progeny[k], ci->progeny[l], sid_sub,
+                                       1, 1);
             }
           }
         }

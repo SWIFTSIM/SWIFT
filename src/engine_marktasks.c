@@ -349,6 +349,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_hydro) scheduler_activate(s, t);
       }
 
+      /* Activate grid construction tasks */
+      else if (t_subtype == task_subtype_grid_construction) {
+        if (ci_active_hydro) scheduler_activate(s, t);
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       else {
         error("Invalid task type / sub-type encountered");
@@ -793,6 +798,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               scheduler_activate(s, cj->hydro.super->hydro.rt_transport_out);
           }
         }
+      }
+
+      /* Grid construction tasks */
+      else if (t_subtype == task_subtype_grid_construction) {
+        /* activate construction task only for local active cells */
+        if (ci_nodeID == nodeID && ci_active_hydro) scheduler_activate(s, t);
       }
 
       /* Only interested in density tasks as of here. */

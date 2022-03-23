@@ -158,6 +158,9 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+/* Import the grid construction functions*/
+#include "runner_doiact_grid.h"
+
 /**
  * @brief The #runner main thread routine.
  *
@@ -272,6 +275,8 @@ void *runner_main(void *data) {
             runner_doself_branch_sinks_accretion(r, ci);
           else if (t->subtype == task_subtype_sink_merger)
             runner_doself_sinks_merger(r, ci);
+          else if (t->subtype == task_subtype_grid_construction)
+            runner_doself_grid_construction(r, ci);
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -320,6 +325,8 @@ void *runner_main(void *data) {
             runner_dopair_branch_sinks_accretion(r, ci, cj);
           else if (t->subtype == task_subtype_sink_merger)
             runner_do_sym_pair_sinks_merger(r, ci, cj);
+          else if (t->subtype == task_subtype_grid_construction)
+            runner_dopair_grid_construction(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

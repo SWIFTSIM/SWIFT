@@ -1337,6 +1337,33 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         engine_make_hierarchical_tasks_gravity(e, c->progeny[k]);
 }
 
+void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
+  struct scheduler *s = &e->sched;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+
+  /* Are we in a super-cell ? */
+  if (c->grid.super == c) {
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
+      c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
+                                        task_subtype_none, 0, 0, c, NULL);
+      /* TODO add unlocks here? */
+    }
+  } else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->grid.super != NULL)
+      error("Somehow ended up below grid super level!");
+    if (!c->split) error("Cell is above grid super level, but is not split!");
+#endif
+    /* Recurse until we reach the super level */
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hierarchical_tasks_grid(e, c->progeny[k]);
+  }
+}
+
 /**
  * @brief Recursively add non-implicit ghost tasks to a cell hierarchy.
  */
@@ -1724,6 +1751,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
+  const int with_grid = (e->policy & engine_policy_grid);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1735,6 +1763,9 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
+    if (with_grid) {
+      engine_make_hierarchical_tasks_grid(e, c);
+    }
   }
 }
 
@@ -1984,6 +2015,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
         engine_addlink(e, &ci->grav.grav, t);
+      } else if (t_subtype == task_subtype_grid_construction) {
+        engine_addlink(e, &ci->grid.construction, t);
       }
 
       /* Link pair tasks to cells. */
@@ -1997,6 +2030,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
+      } else if (t_subtype == task_subtype_grid_construction) {
+        engine_addlink(e, &ci->grid.construction, t);
+        engine_addlink(e, &cj->grid.construction, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -4014,6 +4050,124 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   }
 }
 
+void engine_make_grid_construction_tasks_mapper(void *map_data,
+                                                int num_elements,
+                                                void *extra_data) {
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int periodic = e->s->periodic;
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without hydro or star particles */
+    if (ci->hydro.count == 0) continue;
+
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
+      scheduler_addtask(sched, task_type_self, task_subtype_grid_construction,
+                        0, 0, ci, NULL);
+    }
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is one of the cells local and does the neighbour have gas
+           * particles? Also, only treat pairs once. */
+          if ((cid >= cjd) || (cj->hydro.count == 0) ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct a pair task for both directions, since the construction
+           * tasks are asymmetric. */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_grid_construction, sid, 0, ci, cj);
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_grid_construction, sid, 0, cj, ci);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cid);
+          }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+        }
+      }
+    }
+  }
+}
+
 struct cell_type_pair {
   struct cell *ci, *cj;
   int type;
@@ -4317,6 +4471,17 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
+  /* Construct the grid construction tasks */
+  if (e->policy & engine_policy_grid)
+    threadpool_map(&e->threadpool, engine_make_grid_construction_tasks_mapper,
+                   NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+  if (e->verbose)
+    message("Making grid tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
   /* Add the self gravity tasks. */
   if (e->policy & engine_policy_self_gravity) {
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
@@ -4335,6 +4500,16 @@ void engine_maketasks(struct engine *e) {
     error("We have particles but no hydro or gravity tasks were created.");
 
   tic2 = getticks();
+
+  /* Set the grid super level, is needed before splitting */
+  if (e->policy & engine_policy_grid) {
+    /* First set the neighbour flags */
+    threadpool_map(&e->threadpool, cell_set_neighbour_flags_mapper, NULL,
+                   nr_cells, 1, threadpool_auto_chunk_size, e);
+    /* Then we can set the super level */
+    threadpool_map(&e->threadpool, cell_set_grid_super_mapper, cells, nr_cells,
+                   sizeof(struct cell), threadpool_auto_chunk_size, e);
+  }
 
   /* Split the tasks. */
   scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
@@ -4385,12 +4560,6 @@ void engine_maketasks(struct engine *e) {
 #ifdef WITH_MPI
   cell_next_tag = 0;
 #endif
-
-  if (e->policy & engine_policy_grid) {
-    threadpool_map(&e->threadpool, cell_set_neighbour_flags_mapper, NULL,
-                   nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
-                   e);
-  }
 
   /* Now that the self/pair tasks are at the right level, set the super
    * pointers. */
