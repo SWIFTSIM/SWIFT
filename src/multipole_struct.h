@@ -36,48 +36,48 @@
 struct grav_tensor {
 
   /* 0th order terms */
-  float F_000;
+  MyFloat F_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 1st order terms */
-  float F_100, F_010, F_001;
+  MyFloat F_100, F_010, F_001;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order terms */
-  float F_200, F_020, F_002;
-  float F_110, F_101, F_011;
+  MyFloat F_200, F_020, F_002;
+  MyFloat F_110, F_101, F_011;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 3rd order terms */
-  float F_300, F_030, F_003;
-  float F_210, F_201;
-  float F_120, F_021;
-  float F_102, F_012;
-  float F_111;
+  MyFloat F_300, F_030, F_003;
+  MyFloat F_210, F_201;
+  MyFloat F_120, F_021;
+  MyFloat F_102, F_012;
+  MyFloat F_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
   /* 4th order terms */
-  float F_400, F_040, F_004;
-  float F_310, F_301;
-  float F_130, F_031;
-  float F_103, F_013;
-  float F_220, F_202, F_022;
-  float F_211, F_121, F_112;
+  MyFloat F_400, F_040, F_004;
+  MyFloat F_310, F_301;
+  MyFloat F_130, F_031;
+  MyFloat F_103, F_013;
+  MyFloat F_220, F_202, F_022;
+  MyFloat F_211, F_121, F_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 
   /* 5th order terms */
-  float F_005, F_014, F_023;
-  float F_032, F_041, F_050;
-  float F_104, F_113, F_122;
-  float F_131, F_140, F_203;
-  float F_212, F_221, F_230;
-  float F_302, F_311, F_320;
-  float F_401, F_410, F_500;
+  MyFloat F_005, F_014, F_023;
+  MyFloat F_032, F_041, F_050;
+  MyFloat F_104, F_113, F_122;
+  MyFloat F_131, F_140, F_203;
+  MyFloat F_212, F_221, F_230;
+  MyFloat F_302, F_311, F_320;
+  MyFloat F_401, F_410, F_500;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"
@@ -110,7 +110,7 @@ struct grav_tensor {
 struct multipole {
 
   /*! Bulk velocity */
-  float vel[3];
+  MyFloat vel[3];
 
   /*! Maximal velocity along each axis of all #gpart */
   float max_delta_vel[3];
@@ -122,56 +122,56 @@ struct multipole {
   float max_softening;
 
   /*! Minimal acceleration norm of all the #gpart in the mulipole */
-  float min_old_a_grav_norm;
+  MyFloat min_old_a_grav_norm;
 
   /*! Mulipole power for the different orders */
-  float power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
+  MyFloat power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
 
   /* 0th order term */
-  float M_000;
+  MyFloat M_000;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 1st order terms (all 0 since we expand around CoM) */
-  // float M_100, M_010, M_001;
+  // MyFloat M_100, M_010, M_001;
 
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 2nd order terms */
-  float M_200, M_020, M_002;
-  float M_110, M_101, M_011;
+  MyFloat M_200, M_020, M_002;
+  MyFloat M_110, M_101, M_011;
 
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 3rd order terms */
-  float M_300, M_030, M_003;
-  float M_210, M_201;
-  float M_120, M_021;
-  float M_102, M_012;
-  float M_111;
+  MyFloat M_300, M_030, M_003;
+  MyFloat M_210, M_201;
+  MyFloat M_120, M_021;
+  MyFloat M_102, M_012;
+  MyFloat M_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
   /* 4th order terms */
-  float M_400, M_040, M_004;
-  float M_310, M_301;
-  float M_130, M_031;
-  float M_103, M_013;
-  float M_220, M_202, M_022;
-  float M_211, M_121, M_112;
+  MyFloat M_400, M_040, M_004;
+  MyFloat M_310, M_301;
+  MyFloat M_130, M_031;
+  MyFloat M_103, M_013;
+  MyFloat M_220, M_202, M_022;
+  MyFloat M_211, M_121, M_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 
   /* 5th order terms */
-  float M_005, M_014, M_023;
-  float M_032, M_041, M_050;
-  float M_104, M_113, M_122;
-  float M_131, M_140, M_203;
-  float M_212, M_221, M_230;
-  float M_302, M_311, M_320;
-  float M_401, M_410, M_500;
+  MyFloat M_005, M_014, M_023;
+  MyFloat M_032, M_041, M_050;
+  MyFloat M_104, M_113, M_122;
+  MyFloat M_131, M_140, M_203;
+  MyFloat M_212, M_221, M_230;
+  MyFloat M_302, M_311, M_320;
+  MyFloat M_401, M_410, M_500;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 5
 #error "Missing implementation for order >5"

@@ -201,16 +201,16 @@ kernel_long_grav_derivatives(const MyFloat r, const MyFloat r_s_inv,
  * @param corr_pot (return) The correction for the potential term.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-kernel_long_grav_eval(const float r_over_r_s, float *restrict corr_f,
-                      float *restrict corr_pot) {
+kernel_long_grav_eval(const MyFloat r_over_r_s, MyFloat *restrict corr_f,
+                      MyFloat *restrict corr_pot) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
-  const float two_over_sqrt_pi = ((float)M_2_SQRTPI);
+  const MyFloat two_over_sqrt_pi = ((MyFloat)M_2_SQRTPI);
 
-  const float u = 0.5f * r_over_r_s;
-  const float u2 = u * u;
-  const float exp_u2 = expf(-u2);
+  const MyFloat u = 0.5f * r_over_r_s;
+  const MyFloat u2 = u * u;
+  const MyFloat exp_u2 = exp(-u2);
 
   /* Compute erfcf(u) using eq. 7.1.26 of
    * Abramowitz & Stegun, 1972.
@@ -221,7 +221,7 @@ kernel_long_grav_eval(const float r_over_r_s, float *restrict corr_f,
    * This is a good approximation to use since we already
    * need exp(-u2) */
 
-  const float t = 1.f / (1.f + 0.3275911f * u);
+  const MyFloat t = 1.f / (1.f + 0.3275911f * u);
 
   const float a1 = 0.254829592f;
   const float a2 = -0.284496736f;
@@ -230,24 +230,24 @@ kernel_long_grav_eval(const float r_over_r_s, float *restrict corr_f,
   const float a5 = 1.061405429f;
 
   /* a1 * t + a2 * t^2 + a3 * t^3 + a4 * t^4 + a5 * t^5 */
-  float a = a5 * t + a4;
+  MyFloat a = a5 * t + a4;
   a = a * t + a3;
   a = a * t + a2;
   a = a * t + a1;
   a = a * t;
 
-  const float erfc_u = a * exp_u2;
+  const MyFloat erfc_u = a * exp_u2;
 
   *corr_pot = erfc_u;
   *corr_f = erfc_u + two_over_sqrt_pi * u * exp_u2;
 
 #else
-  const float x = 2.f * r_over_r_s;
-  const float exp_x = expf(x);  // good_approx_expf(x);
-  const float alpha = 1.f / (1.f + exp_x);
+  const MyFloat x = 2.f * r_over_r_s;
+  const MyFloat exp_x = exp(x);  // good_approx_expf(x);
+  const MyFloat alpha = 1.f / (1.f + exp_x);
 
   /* We want 2 - 2 exp(x) * alpha */
-  float W = 1.f - alpha * exp_x;
+  MyFloat W = 1.f - alpha * exp_x;
   W = W * 2.f;
 
   *corr_pot = W;
