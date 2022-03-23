@@ -1212,6 +1212,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   /* Re-build the space. */
   space_rebuild(e->s, repartitioned, e->verbose);
 
+  /* Set the split flag for the moving mesh */
+  if (e->policy & engine_policy_grid) {
+    cell_set_split_grid_mapper(e->s->cells_top, e->s->nr_cells, NULL);
+  }
+
   /* Report the number of cells and memory */
   if (e->verbose)
     message(

@@ -1196,7 +1196,7 @@ void cell_set_neighbour_flags(struct cell *restrict ci,
                               int cj_local) {
   /* Self or pair? */
   if (cj == NULL) { /* Self */
-    if (ci->split) {
+    if (ci->grid.split) {
       /* recurse */
       for (int k = 0; k < 8; k++) {
         if (ci->progeny[k] != NULL) {
@@ -1218,7 +1218,7 @@ void cell_set_neighbour_flags(struct cell *restrict ci,
       ci->grid.unsplittable_flag |= 1;
     }
   } else { /* pair */
-    if (ci->split && cj->split) {
+    if (ci->grid.split && cj->grid.split) {
       /* recurse */
       struct cell_split_pair pairs = cell_split_pairs[sid];
       for (int i = 0; i < pairs.count; i++) {
@@ -1297,6 +1297,70 @@ void cell_set_neighbour_flags_mapper(void *map_data, int num_elements,
         }
       }
     }
+  }
+}
+
+int cell_set_splittable_grid(struct cell *c) {
+  if (c == NULL) return 1;
+
+  if (c->split) {
+    int all_splittable = 1;
+    /* recurse */
+    for (int i = 0; all_splittable && i < 8; i++) {
+      all_splittable &= cell_set_splittable_grid(c->progeny[i]);
+    }
+
+    /* If the criterion is valid for all sub-cells, it is valid for the cell
+     * itself. */
+    if (all_splittable) {
+      c->grid.split = 1;
+      return 1;
+    }
+  }
+
+  /* Not split or not all progeny splittable */
+  /* Check criterion manually by looping over all the particles */
+  int flags = 0;
+  /* criterion = 0b111_111_111_111_111_111_111_111_111*/
+#ifdef HYDRO_DIMENSION_1D
+  const int criterion = (1 << 3) - 1;
+#elif defined(HYDRO_DIMENSION_2D)
+  const int criterion = (1 << 9) - 1;
+#elif defined(HYDRO_DIMENSION_3D)
+  const int criterion = (1 << 27) - 1;
+#else
+#error "Unknown hydro dimension"
+#endif
+  for (int i = 0; flags != criterion && i < c->hydro.count; i++) {
+    struct part *p = &c->hydro.parts[i];
+    int x_bin = (int)(3. * (p->x[0] - c->loc[0]) / c->width[0]);
+    int y_bin = (int)(3. * (p->x[1] - c->loc[1]) / c->width[1]);
+    int z_bin = (int)(3. * (p->x[2] - c->loc[2]) / c->width[2]);
+    flags |= 1 << (x_bin + 3 * y_bin + 9 * z_bin);
+  }
+
+  if (flags == criterion) {
+    c->grid.split = 1 & c->split;
+    return 1;
+  }
+
+  return 0;
+}
+
+void cell_set_split_grid_mapper(void *map_data, int num_elements, void *extra_data) {
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* A top level cell can be empty in 2D simulations, just skip it */
+    if (c->hydro.count == 0) {
+      continue;
+#ifdef SWIFT_DEBUG_CHECKS
+      assert(hydro_dimension == 2);
+#endif
+    }
+
+    /* Set the splittable attribute for the moving mesh */
+    cell_set_splittable_grid(c);
   }
 }
 
