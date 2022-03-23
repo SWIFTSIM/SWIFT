@@ -351,7 +351,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate grid construction tasks */
       else if (t_subtype == task_subtype_grid_construction) {
-        if (ci_active_hydro) scheduler_activate(s, t);
+        if (ci_active_hydro & (e->policy & engine_policy_grid)) scheduler_activate(s, t);
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1425,6 +1425,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_is_active_hydro(t->ci, e)) {
         cell_activate_sink_formation_tasks(t->ci, s);
         cell_activate_super_sink_drifts(t->ci, s);
+      }
+    }
+
+    /* Grid ghost task? */
+    else if (t_type == task_type_grid_ghost) {
+      if ((e->policy & engine_policy_grid) && cell_is_active_hydro(t->ci, e)) {
+        scheduler_activate(s, t);
       }
     }
   }

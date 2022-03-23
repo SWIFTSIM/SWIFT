@@ -1619,3 +1619,18 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_do_rt_ghost2);
 }
+
+
+/**
+ * @brief Finish up the Voronoi grid calculation.
+ *
+ * This function reruns the construction tasks for unconverged particles until
+ * all particles have converged.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
+  /* TODO */
+}
