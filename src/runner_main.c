@@ -229,10 +229,10 @@ void *runner_main(void *data) {
       const int task_index = t->type * task_subtype_count + t->subtype;
       const int *task_mask = &sched->task_graph_mask[task_index * mask_size];
       if (ci != NULL) {
-        cell_recursively_check_task_mask(ci, task_mask);
+        cell_recursively_check_task_mask(ci, t, task_mask);
       }
       if (cj != NULL) {
-        cell_recursively_check_task_mask(cj, task_mask);
+        cell_recursively_check_task_mask(cj, t, task_mask);
       }
 
       /* Check that we haven't scheduled an inactive task */

@@ -19,13 +19,13 @@
 
 /* Config parameters. */
 #include "../config.h"
-
 #include "cell.h"
 #include "error.h"
 
-void cell_recursively_count_tasks(struct cell *c, const struct task *t){
+void cell_recursively_count_tasks(struct cell *c, const struct task *t) {
 #ifdef SWIFT_DEBUG_CHECKS
-  c->tasks_executed[t->type]++;
+  const int itask = t->type * task_subtype_count + t->subtype;
+  c->tasks_executed[itask]++;
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
@@ -36,14 +36,19 @@ void cell_recursively_count_tasks(struct cell *c, const struct task *t){
 #endif
 }
 
-void cell_check_dependencies(const struct cell *c, const int *task_mask){
+void cell_check_dependencies(const struct cell *c, const struct task *t,
+                             const int *task_mask) {
 #ifdef SWIFT_DEBUG_CHECKS
-  for(int itype = 0; itype < task_type_count; itype++){
-    for(int istype = 0; istype < task_subtype_count; istype++){
+  for (int itype = 0; itype < task_type_count; itype++) {
+    for (int istype = 0; istype < task_subtype_count; istype++) {
       const int itask = itype * task_subtype_count + istype;
-      if(task_mask[itask]){
-        if(c->tasks_executed[itask] > 0){
-          error("Task dependency violated!");
+      if (task_mask[itask]) {
+        if (c->tasks_executed[itask] > 0) {
+          char nameA[100], nameB[100];
+          task_get_full_name(itype, istype, nameA);
+          task_get_full_name(t->type, t->subtype, nameB);
+          error("Task dependency violated (%s has run before %s)!", nameA,
+                nameB);
         }
       }
     }
@@ -51,13 +56,15 @@ void cell_check_dependencies(const struct cell *c, const int *task_mask){
 #endif
 }
 
-void cell_recursively_check_task_mask(const struct cell *c, const int *task_mask){
+void cell_recursively_check_task_mask(const struct cell *c,
+                                      const struct task *t,
+                                      const int *task_mask) {
 #ifdef SWIFT_DEBUG_CHECKS
-  cell_check_dependencies(c, task_mask);
+  cell_check_dependencies(c, t, task_mask);
   if (c->split) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        cell_recursively_check_task_mask(c->progeny[k], task_mask);
+        cell_recursively_check_task_mask(c->progeny[k], t, task_mask);
       }
     }
   }

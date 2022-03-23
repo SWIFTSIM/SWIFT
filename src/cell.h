@@ -636,6 +636,7 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const int use_rebuild_data, const int is_tree_walk);
 void cell_recursively_count_tasks(struct cell *c, const struct task *t);
 void cell_recursively_check_task_mask(const struct cell *c,
+                                      const struct task *t,
                                       const int *task_mask);
 
 /**
