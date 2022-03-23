@@ -98,7 +98,7 @@ __attribute__((const)) INLINE static float kernel_grav_force_eval(
   return W;
 }
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+#if defined(SWIFT_GRAVITY_FORCE_CHECKS) || defined(MULTIPOLE_SIZE_IS_CELL_WIDTH)
 
 /**
  * @brief Computes the gravity softening function for potential in double

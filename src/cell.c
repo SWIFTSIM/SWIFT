@@ -902,7 +902,7 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
   } else {
     if (c->grav.count > 0) {
 
-      gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count, grav_props);
+      gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count, grav_props, c->width);
 
       /* Compute the multipole power */
       gravity_multipole_compute_power(&c->grav.multipole->m_pole);
@@ -990,7 +990,7 @@ void cell_check_multipole(struct cell *c,
 
   if (c->grav.count > 0) {
     /* Brute-force calculation */
-    gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props);
+    gravity_P2M(&ma, c->grav.parts, c->grav.count, grav_props, c->width);
     gravity_multipole_compute_power(&ma.m_pole);
 
     /* Now  compare the multipole expansion */

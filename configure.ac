@@ -2550,6 +2550,18 @@ AC_ARG_WITH([multipole-order],
 )
 AC_DEFINE_UNQUOTED([SELF_GRAVITY_MULTIPOLE_ORDER], [$with_multipole_order], [Multipole order])
 
+# Multipole size criteria.
+AC_ARG_WITH([multipole-size-is-cell-width],
+    [AS_HELP_STRING([--with-multipole-size-is-cell-width],
+       [Use the width of the cell as the multipole size, rather than being defined by the maximum distance of a particle to the COM.]
+    )],
+    [with_multipole_size_is_cell_width="$withval"],
+    [with_multipole_size_is_cell_width="no"]
+)
+if test "$with_multipole_size_is_cell_width" = "yes"; then
+   AC_DEFINE([MULTIPOLE_SIZE_IS_CELL_WIDTH],1,[Use the cell size as multipole size])
+fi
+
 #  Radiative transfer scheme
 AC_ARG_WITH([rt],
    [AS_HELP_STRING([--with-rt=<scheme>],

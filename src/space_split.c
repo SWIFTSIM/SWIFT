@@ -603,7 +603,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (gcount > 0) {
 
         gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
-                    e->gravity_properties);
+                    e->gravity_properties, c->width);
 
         /* Compute the multipole power */
         gravity_multipole_compute_power(&c->grav.multipole->m_pole);

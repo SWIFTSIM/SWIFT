@@ -92,6 +92,7 @@ __attribute__((nonnull)) INLINE static void gravity_drift(
     error("Invalid minimal velocity");
 #endif
 
+#ifndef MULTIPOLE_SIZE_IS_CELL_WIDTH
   /* Maximal distance covered by any particle */
   float dv[3];
   dv[0] = max(m->m_pole.max_delta_vel[0] - m->m_pole.vel[0],
@@ -107,6 +108,7 @@ __attribute__((nonnull)) INLINE static void gravity_drift(
 
   /* Conservative change in maximal radius containing all gpart */
   m->r_max += x_diff;
+#endif
 }
 
 /**
@@ -979,10 +981,11 @@ __attribute__((nonnull)) INLINE static void gravity_multipole_compute_power(
  * @param gparts The #gpart.
  * @param gcount The number of particles.
  * @param grav_props The properties of the gravity scheme.
+ * @param width The width of the cell.
  */
 __attribute__((nonnull)) INLINE static void gravity_P2M(
     struct gravity_tensors *multi, const struct gpart *gparts, const int gcount,
-    const struct gravity_props *const grav_props) {
+    const struct gravity_props *const grav_props, const double width[3]) {
 
   /* Temporary variables */
   float epsilon_max = 0.f;
@@ -1003,6 +1006,11 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
     if (gparts[k].time_bin == time_bin_not_created) {
       error("Extra particle in P2M.");
     }
+
+#ifndef MULTIPOLE_SIZE_IS_CELL_WIDTH
+    if (!(width[0] == width[1] == width[2])=
+        error("Can't have different widths using cell size as multipole");
+#endif
 #endif
 
     epsilon_max = max(epsilon_max, epsilon);
@@ -1026,7 +1034,9 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
   vel[2] *= imass;
 
   /* Prepare some local counters */
+#ifndef MULTIPOLE_SIZE_IS_CELL_WIDTH
   double r_max2 = 0.;
+#endif
   float max_delta_vel[3] = {0., 0., 0.};
   float min_delta_vel[3] = {0., 0., 0.};
 
@@ -1069,8 +1079,10 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
     const double dx[3] = {gparts[k].x[0] - com[0], gparts[k].x[1] - com[1],
                           gparts[k].x[2] - com[2]};
 
+#ifndef MULTIPOLE_SIZE_IS_CELL_WIDTH
     /* Maximal distance CoM<->gpart */
     r_max2 = max(r_max2, dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+#endif
 
     /* Store the vector of the maximal vel difference */
     max_delta_vel[0] = max(gparts[k].v_full[0], max_delta_vel[0]);
@@ -1164,7 +1176,11 @@ __attribute__((nonnull)) INLINE static void gravity_P2M(
   }
 
   /* Store the data on the multipole. */
+#ifndef MULTIPOLE_SIZE_IS_CELL_WIDTH
   multi->r_max = sqrt(r_max2);
+#else
+  multi->r_max = width[0];
+#endif
   multi->CoM[0] = com[0];
   multi->CoM[1] = com[1];
   multi->CoM[2] = com[2];

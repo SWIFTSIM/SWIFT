@@ -225,12 +225,12 @@ struct gravity_tensors {
 struct reduced_grav_tensor {
 
   /* 0th order terms */
-  float F_000;
+  MyFloat F_000;
 
   /* 1st order terms */
-  float F_100;
-  float F_010;
-  float F_001;
+  MyFloat F_100;
+  MyFloat F_010;
+  MyFloat F_001;
 };
 
 #ifdef WITH_MPI
