@@ -64,12 +64,12 @@ runner_iact_grav_pp_full(const MyFloat r2, const MyFloat h2, const MyFloat h_inv
     const MyFloat ui = r * h_inv;
 
 #ifdef DOUBLE_PRECISION
-    double W_f_ij, W_pot_ij;
+    MyFloat W_f_ij, W_pot_ij;
     kernel_grav_eval_force_double(ui, &W_f_ij);
     kernel_grav_eval_pot_double(ui, &W_pot_ij);
 #else
-    const float W_f_ij = kernel_grav_force_eval(ui);
-    const float W_pot_ij = kernel_grav_pot_eval(ui);
+    const MyFloat W_f_ij = kernel_grav_force_eval(ui);
+    const MyFloat W_pot_ij = kernel_grav_pot_eval(ui);
 #endif
 
     /* Get softened gravity */
@@ -116,12 +116,12 @@ runner_iact_grav_pp_truncated(const MyFloat r2, const MyFloat h2, const MyFloat 
     const MyFloat ui = r * h_inv;
 
 #ifdef DOUBLE_PRECISION
-    double W_f_ij, W_pot_ij;
+    MyFloat W_f_ij, W_pot_ij;
     kernel_grav_eval_force_double(ui, &W_f_ij);
     kernel_grav_eval_pot_double(ui, &W_pot_ij);
 #else
-    const float W_f_ij = kernel_grav_force_eval(ui);
-    const float W_pot_ij = kernel_grav_pot_eval(ui);
+    const MyFloat W_f_ij = kernel_grav_force_eval(ui);
+    const MyFloat W_pot_ij = kernel_grav_pot_eval(ui);
 #endif
 
     /* Get softened gravity */
@@ -133,12 +133,12 @@ runner_iact_grav_pp_truncated(const MyFloat r2, const MyFloat h2, const MyFloat 
   const MyFloat u_lr = r * r_s_inv;
 
 #ifdef DOUBLE_PRECISION
-  double corr_f_lr;
+  MyFloat corr_f_lr;
   kernel_long_grav_force_eval_double(u_lr, &corr_f_lr);
 
-  double corr_pot_lr = 0.0; /* Need to add potential version for double */
+  MyFloat corr_pot_lr = 0.0; /* Need to add potential version for double */
 #else
-  float corr_f_lr, corr_pot_lr;
+  MyFloat corr_f_lr, corr_pot_lr;
   kernel_long_grav_eval(u_lr, &corr_f_lr, &corr_pot_lr);
 #endif
 
@@ -162,18 +162,18 @@ runner_iact_grav_pp_truncated(const MyFloat r2, const MyFloat h2, const MyFloat 
  * @param pot (return) The potential.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
-                         const float r2, const float h, const float h_inv,
-                         const struct multipole *m, float *restrict f_x,
-                         float *restrict f_y, float *restrict f_z,
-                         float *restrict pot) {
+runner_iact_grav_pm_full(const MyFloat r_x, const MyFloat r_y, const MyFloat r_z,
+                         const MyFloat r2, const MyFloat h, const MyFloat h_inv,
+                         const struct multipole *m, MyFloat *restrict f_x,
+                         MyFloat *restrict f_y, MyFloat *restrict f_z,
+                         MyFloat *restrict pot) {
 
   /* Use the M2P kernel */
   struct reduced_grav_tensor l;
-  l.F_000 = 0.f;
-  l.F_100 = 0.f;
-  l.F_010 = 0.f;
-  l.F_001 = 0.f;
+  l.F_000 = 0.;
+  l.F_100 = 0.;
+  l.F_010 = 0.;
+  l.F_001 = 0.;
 
   gravity_M2P(m, r_x, r_y, r_z, r2, h, /*periodic=*/0, /*rs_inv=*/0.f, &l);
 
@@ -202,18 +202,18 @@ runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
  * @param pot (return) The potential.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-runner_iact_grav_pm_truncated(const float r_x, const float r_y, const float r_z,
-                              const float r2, const float h, const float h_inv,
-                              const float r_s_inv, const struct multipole *m,
-                              float *restrict f_x, float *restrict f_y,
-                              float *restrict f_z, float *restrict pot) {
+runner_iact_grav_pm_truncated(const MyFloat r_x, const MyFloat r_y, const MyFloat r_z,
+                              const MyFloat r2, const MyFloat h, const MyFloat h_inv,
+                              const MyFloat r_s_inv, const struct multipole *m,
+                              MyFloat *restrict f_x, MyFloat *restrict f_y,
+                              MyFloat *restrict f_z, MyFloat *restrict pot) {
 
   /* Use the M2P kernel */
   struct reduced_grav_tensor l;
-  l.F_000 = 0.f;
-  l.F_100 = 0.f;
-  l.F_010 = 0.f;
-  l.F_001 = 0.f;
+  l.F_000 = 0.;
+  l.F_100 = 0.;
+  l.F_010 = 0.;
+  l.F_001 = 0.;
 
   gravity_M2P(m, r_x, r_y, r_z, r2, h, /*periodic=*/1, r_s_inv, &l);
 

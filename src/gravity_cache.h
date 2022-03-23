@@ -199,7 +199,7 @@ INLINE static void gravity_cache_zero_output(struct gravity_cache *c,
  */
 INLINE static void gravity_cache_populate(
     const timebin_t max_active_bin, const int allow_mpole, const int periodic,
-    const float dim[3], struct gravity_cache *c,
+    const MyFloat dim[3], struct gravity_cache *c,
     const struct gpart *restrict gparts, const int gcount,
     const int gcount_padded, const double shift[3], const MyFloat CoM[3],
     const struct gravity_tensors *multipole, const struct cell *cell,
@@ -261,7 +261,7 @@ INLINE static void gravity_cache_populate(
       dy = nearestf(dy, dim[1]);
       dz = nearestf(dz, dim[2]);
     }
-    const float r2 = dx * dx + dy * dy + dz * dz;
+    const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
     /* Check whether we can use the multipole instead of P-P */
     use_mpole[i] = allow_mpole && gravity_M2P_accept(grav_props, &gparts[i],
@@ -396,7 +396,7 @@ INLINE static void gravity_cache_populate_no_mpole(
  * @param grav_props The global gravity properties.
  */
 INLINE static void gravity_cache_populate_all_mpole(
-    const timebin_t max_active_bin, const int periodic, const float dim[3],
+    const timebin_t max_active_bin, const int periodic, const MyFloat dim[3],
     struct gravity_cache *c, const struct gpart *restrict gparts,
     const int gcount, const int gcount_padded, const struct cell *cell,
     const MyFloat CoM[3], const struct gravity_tensors *multipole,
@@ -433,9 +433,9 @@ INLINE static void gravity_cache_populate_all_mpole(
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Distance to the CoM of the other cell. */
-    float dx = (float)x[i] - (float)CoM[0];
-    float dy = (float)y[i] - (float)CoM[1];
-    float dz = (float)z[i] - (float)CoM[2];
+    MyFloat dx = x[i] - CoM[0];
+    MyFloat dy = y[i] - CoM[1];
+    MyFloat dz = z[i] - CoM[2];
 
     /* Apply periodic BC */
     if (periodic) {
@@ -443,7 +443,7 @@ INLINE static void gravity_cache_populate_all_mpole(
       dy = nearestf(dy, dim[1]);
       dz = nearestf(dz, dim[2]);
     }
-    const float r2 = dx * dx + dy * dy + dz * dz;
+    const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
     if (!gravity_M2P_accept(grav_props, &gparts[i], multipole, r2, periodic))
       error("Using m-pole where the test fails");

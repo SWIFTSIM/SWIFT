@@ -2255,12 +2255,12 @@ __attribute__((nonnull)) INLINE static void gravity_P2L(
  * @param l (return) The #reduced_grav_tensor to compute.
  */
 __attribute__((always_inline, nonnull)) INLINE static void gravity_M2P(
-    const struct multipole *const m, const float r_x, const float r_y,
-    const float r_z, const float r2, const float eps, const int periodic,
-    const float rs_inv, struct reduced_grav_tensor *const l) {
+    const struct multipole *const m, const MyFloat r_x, const MyFloat r_y,
+    const MyFloat r_z, const MyFloat r2, const MyFloat eps, const int periodic,
+    const MyFloat rs_inv, struct reduced_grav_tensor *const l) {
 
   /* Get the inverse distance */
-  const float r_inv = 1.f / sqrtf(r2);
+  const MyFloat r_inv = 1. / sqrt(r2);
 
   /* Compute the derivatives of the potential */
   struct potential_derivatives_M2P d;
@@ -2272,12 +2272,12 @@ __attribute__((always_inline, nonnull)) INLINE static void gravity_M2P(
     error("Working on uninitialised reduced tensor!");
 #endif
 
-  const float M_000 = m->M_000;
-  const float D_000 = d.D_000;
+  const MyFloat M_000 = m->M_000;
+  const MyFloat D_000 = d.D_000;
 
-  const float D_100 = d.D_100;
-  const float D_010 = d.D_010;
-  const float D_001 = d.D_001;
+  const MyFloat D_100 = d.D_100;
+  const MyFloat D_010 = d.D_010;
+  const MyFloat D_001 = d.D_001;
 
   /*  0th order term */
   l->F_000 -= M_000 * D_000;
@@ -2292,16 +2292,16 @@ __attribute__((always_inline, nonnull)) INLINE static void gravity_M2P(
   /* The dipole term is zero when using the CoM */
   /* We keep them written to maintain the logical structure. */
 
-  /* const float M_100 = 0.f; */
-  /* const float M_010 = 0.f; */
-  /* const float M_001 = 0.f; */
+  /* const MyFloat M_100 = 0.f; */
+  /* const MyFloat M_010 = 0.f; */
+  /* const MyFloat M_001 = 0.f; */
 
-  /* const float D_200 = d.D_200; */
-  /* const float D_020 = d.D_020; */
-  /* const float D_002 = d.D_002; */
-  /* const float D_110 = d.D_110; */
-  /* const float D_101 = d.D_101; */
-  /* const float D_011 = d.D_011; */
+  /* const MyFloat D_200 = d.D_200; */
+  /* const MyFloat D_020 = d.D_020; */
+  /* const MyFloat D_002 = d.D_002; */
+  /* const MyFloat D_110 = d.D_110; */
+  /* const MyFloat D_101 = d.D_101; */
+  /* const MyFloat D_011 = d.D_011; */
 
   /*  1st order multipole term (addition to rank 0) */
   /* l->F_000 += M_100 * D_100 + M_010 * D_010 + M_001 * D_001; */
@@ -2316,30 +2316,30 @@ __attribute__((always_inline, nonnull)) INLINE static void gravity_M2P(
 
   /* To keep the logic these would be defined at order 1 but
      since all the M terms are 0 we did not define them above */
-  const float D_200 = d.D_200;
-  const float D_020 = d.D_020;
-  const float D_002 = d.D_002;
-  const float D_110 = d.D_110;
-  const float D_101 = d.D_101;
-  const float D_011 = d.D_011;
+  const MyFloat D_200 = d.D_200;
+  const MyFloat D_020 = d.D_020;
+  const MyFloat D_002 = d.D_002;
+  const MyFloat D_110 = d.D_110;
+  const MyFloat D_101 = d.D_101;
+  const MyFloat D_011 = d.D_011;
 
-  const float M_200 = m->M_200;
-  const float M_020 = m->M_020;
-  const float M_002 = m->M_002;
-  const float M_110 = m->M_110;
-  const float M_101 = m->M_101;
-  const float M_011 = m->M_011;
+  const MyFloat M_200 = m->M_200;
+  const MyFloat M_020 = m->M_020;
+  const MyFloat M_002 = m->M_002;
+  const MyFloat M_110 = m->M_110;
+  const MyFloat M_101 = m->M_101;
+  const MyFloat M_011 = m->M_011;
 
-  const float D_300 = d.D_300;
-  const float D_030 = d.D_030;
-  const float D_003 = d.D_003;
-  const float D_210 = d.D_210;
-  const float D_201 = d.D_201;
-  const float D_021 = d.D_021;
-  const float D_120 = d.D_120;
-  const float D_012 = d.D_012;
-  const float D_102 = d.D_102;
-  const float D_111 = d.D_111;
+  const MyFloat D_300 = d.D_300;
+  const MyFloat D_030 = d.D_030;
+  const MyFloat D_003 = d.D_003;
+  const MyFloat D_210 = d.D_210;
+  const MyFloat D_201 = d.D_201;
+  const MyFloat D_021 = d.D_021;
+  const MyFloat D_120 = d.D_120;
+  const MyFloat D_012 = d.D_012;
+  const MyFloat D_102 = d.D_102;
+  const MyFloat D_111 = d.D_111;
 
   /*  2nd order multipole term (addition to rank 0)*/
   l->F_000 -= M_200 * D_200 + M_020 * D_020 + M_002 * D_002;
@@ -2356,32 +2356,32 @@ __attribute__((always_inline, nonnull)) INLINE static void gravity_M2P(
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
-  const float M_300 = m->M_300;
-  const float M_030 = m->M_030;
-  const float M_003 = m->M_003;
-  const float M_210 = m->M_210;
-  const float M_201 = m->M_201;
-  const float M_021 = m->M_021;
-  const float M_120 = m->M_120;
-  const float M_012 = m->M_012;
-  const float M_102 = m->M_102;
-  const float M_111 = m->M_111;
+  const MyFloat M_300 = m->M_300;
+  const MyFloat M_030 = m->M_030;
+  const MyFloat M_003 = m->M_003;
+  const MyFloat M_210 = m->M_210;
+  const MyFloat M_201 = m->M_201;
+  const MyFloat M_021 = m->M_021;
+  const MyFloat M_120 = m->M_120;
+  const MyFloat M_012 = m->M_012;
+  const MyFloat M_102 = m->M_102;
+  const MyFloat M_111 = m->M_111;
 
-  const float D_400 = d.D_400;
-  const float D_040 = d.D_040;
-  const float D_004 = d.D_004;
-  const float D_310 = d.D_310;
-  const float D_301 = d.D_301;
-  const float D_031 = d.D_031;
-  const float D_130 = d.D_130;
-  const float D_013 = d.D_013;
-  const float D_103 = d.D_103;
-  const float D_220 = d.D_220;
-  const float D_202 = d.D_202;
-  const float D_022 = d.D_022;
-  const float D_211 = d.D_211;
-  const float D_121 = d.D_121;
-  const float D_112 = d.D_112;
+  const MyFloat D_400 = d.D_400;
+  const MyFloat D_040 = d.D_040;
+  const MyFloat D_004 = d.D_004;
+  const MyFloat D_310 = d.D_310;
+  const MyFloat D_301 = d.D_301;
+  const MyFloat D_031 = d.D_031;
+  const MyFloat D_130 = d.D_130;
+  const MyFloat D_013 = d.D_013;
+  const MyFloat D_103 = d.D_103;
+  const MyFloat D_220 = d.D_220;
+  const MyFloat D_202 = d.D_202;
+  const MyFloat D_022 = d.D_022;
+  const MyFloat D_211 = d.D_211;
+  const MyFloat D_121 = d.D_121;
+  const MyFloat D_112 = d.D_112;
 
   /*  3rd order multipole term (addition to rank 0)*/
   l->F_000 += M_300 * D_300 + M_030 * D_030 + M_003 * D_003;
@@ -2403,43 +2403,43 @@ __attribute__((always_inline, nonnull)) INLINE static void gravity_M2P(
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
-  const float M_400 = m->M_400;
-  const float M_040 = m->M_040;
-  const float M_004 = m->M_004;
-  const float M_310 = m->M_310;
-  const float M_301 = m->M_301;
-  const float M_031 = m->M_031;
-  const float M_130 = m->M_130;
-  const float M_013 = m->M_013;
-  const float M_103 = m->M_103;
-  const float M_220 = m->M_220;
-  const float M_202 = m->M_202;
-  const float M_022 = m->M_022;
-  const float M_211 = m->M_211;
-  const float M_121 = m->M_121;
-  const float M_112 = m->M_112;
+  const MyFloat M_400 = m->M_400;
+  const MyFloat M_040 = m->M_040;
+  const MyFloat M_004 = m->M_004;
+  const MyFloat M_310 = m->M_310;
+  const MyFloat M_301 = m->M_301;
+  const MyFloat M_031 = m->M_031;
+  const MyFloat M_130 = m->M_130;
+  const MyFloat M_013 = m->M_013;
+  const MyFloat M_103 = m->M_103;
+  const MyFloat M_220 = m->M_220;
+  const MyFloat M_202 = m->M_202;
+  const MyFloat M_022 = m->M_022;
+  const MyFloat M_211 = m->M_211;
+  const MyFloat M_121 = m->M_121;
+  const MyFloat M_112 = m->M_112;
 
-  const float D_500 = d.D_500;
-  const float D_050 = d.D_050;
-  const float D_005 = d.D_005;
-  const float D_410 = d.D_410;
-  const float D_401 = d.D_401;
-  const float D_041 = d.D_041;
-  const float D_140 = d.D_140;
-  const float D_014 = d.D_014;
-  const float D_104 = d.D_104;
-  const float D_320 = d.D_320;
-  const float D_302 = d.D_302;
-  const float D_230 = d.D_230;
-  const float D_032 = d.D_032;
-  const float D_203 = d.D_203;
-  const float D_023 = d.D_023;
-  const float D_122 = d.D_122;
-  const float D_212 = d.D_212;
-  const float D_221 = d.D_221;
-  const float D_311 = d.D_311;
-  const float D_131 = d.D_131;
-  const float D_113 = d.D_113;
+  const MyFloat D_500 = d.D_500;
+  const MyFloat D_050 = d.D_050;
+  const MyFloat D_005 = d.D_005;
+  const MyFloat D_410 = d.D_410;
+  const MyFloat D_401 = d.D_401;
+  const MyFloat D_041 = d.D_041;
+  const MyFloat D_140 = d.D_140;
+  const MyFloat D_014 = d.D_014;
+  const MyFloat D_104 = d.D_104;
+  const MyFloat D_320 = d.D_320;
+  const MyFloat D_302 = d.D_302;
+  const MyFloat D_230 = d.D_230;
+  const MyFloat D_032 = d.D_032;
+  const MyFloat D_203 = d.D_203;
+  const MyFloat D_023 = d.D_023;
+  const MyFloat D_122 = d.D_122;
+  const MyFloat D_212 = d.D_212;
+  const MyFloat D_221 = d.D_221;
+  const MyFloat D_311 = d.D_311;
+  const MyFloat D_131 = d.D_131;
+  const MyFloat D_113 = d.D_113;
 
   /* Compute 4th order field tensor terms (addition to rank 0) */
   l->F_000 -= M_004 * D_004 + M_013 * D_013 + M_022 * D_022 + M_031 * D_031 +
@@ -2464,27 +2464,27 @@ __attribute__((always_inline, nonnull)) INLINE static void gravity_M2P(
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 4
 
-  const float M_500 = m->M_500;
-  const float M_050 = m->M_050;
-  const float M_005 = m->M_005;
-  const float M_410 = m->M_410;
-  const float M_401 = m->M_401;
-  const float M_041 = m->M_041;
-  const float M_140 = m->M_140;
-  const float M_014 = m->M_014;
-  const float M_104 = m->M_104;
-  const float M_320 = m->M_320;
-  const float M_302 = m->M_302;
-  const float M_230 = m->M_230;
-  const float M_032 = m->M_032;
-  const float M_203 = m->M_203;
-  const float M_023 = m->M_023;
-  const float M_122 = m->M_122;
-  const float M_212 = m->M_212;
-  const float M_221 = m->M_221;
-  const float M_311 = m->M_311;
-  const float M_131 = m->M_131;
-  const float M_113 = m->M_113;
+  const MyFloat M_500 = m->M_500;
+  const MyFloat M_050 = m->M_050;
+  const MyFloat M_005 = m->M_005;
+  const MyFloat M_410 = m->M_410;
+  const MyFloat M_401 = m->M_401;
+  const MyFloat M_041 = m->M_041;
+  const MyFloat M_140 = m->M_140;
+  const MyFloat M_014 = m->M_014;
+  const MyFloat M_104 = m->M_104;
+  const MyFloat M_320 = m->M_320;
+  const MyFloat M_302 = m->M_302;
+  const MyFloat M_230 = m->M_230;
+  const MyFloat M_032 = m->M_032;
+  const MyFloat M_203 = m->M_203;
+  const MyFloat M_023 = m->M_023;
+  const MyFloat M_122 = m->M_122;
+  const MyFloat M_212 = m->M_212;
+  const MyFloat M_221 = m->M_221;
+  const MyFloat M_311 = m->M_311;
+  const MyFloat M_131 = m->M_131;
+  const MyFloat M_113 = m->M_113;
 
   /* Compute 5th order field tensor terms (addition to rank 0) */
   l->F_000 += M_005 * D_005 + M_014 * D_014 + M_023 * D_023 + M_032 * D_032 +

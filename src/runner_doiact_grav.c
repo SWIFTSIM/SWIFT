@@ -229,22 +229,22 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
     /* Now, we can start the interactions for that particle */
 
     /* Distance to the Multipole */
-    const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
-    const float dx_multi = CoM_j[0] - (float)x_i;
-    const float dy_multi = CoM_j[1] - (float)y_i;
-    const float dz_multi = CoM_j[2] - (float)z_i;
+    const MyFloat CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+    const MyFloat dx_multi = CoM_j[0] - x_i;
+    const MyFloat dy_multi = CoM_j[1] - y_i;
+    const MyFloat dz_multi = CoM_j[2] - z_i;
 
-    const float r2_multi =
+    const MyFloat r2_multi =
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
 
     /* Can we use the Mulipole here? */
     if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
                                            /*periodic=*/1)) {
 
-      const float h_inv_i = 1.f / h_i;
+      const MyFloat h_inv_i = 1. / h_i;
 
       /* Interact! */
-      float f_x, f_y, f_z, pot_ij;
+      MyFloat f_x, f_y, f_z, pot_ij;
       runner_iact_grav_pm_full(dx_multi, dy_multi, dz_multi, r2_multi, h_i,
                                h_inv_i, &multi_j->m_pole, &f_x, &f_y, &f_z,
                                &pot_ij);
@@ -386,7 +386,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
   if (ci->split) error("Using function above leaf level!");
 #endif
 
-  const float r_s_inv = grav_props->r_s_inv;
+  const MyFloat r_s_inv = grav_props->r_s_inv;
 
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
@@ -413,7 +413,7 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     const MyFloat x_i = gpi->x[0];
     const MyFloat y_i = gpi->x[1];
     const MyFloat z_i = gpi->x[2];
-    const float h_i = gravity_get_softening(gpi, grav_props);
+    const MyFloat h_i = gravity_get_softening(gpi, grav_props);
 
     /* Local accumulators for the acceleration and potential */
     MyFloat a_x = 0., a_y = 0., a_z = 0., pot = 0.;
@@ -421,27 +421,27 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
     /* Now, we can start the interactions for that particle */
 
     /* Distance to the Multipole */
-    const float CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
-    float dx_multi = CoM_j[0] - (float)x_i;
-    float dy_multi = CoM_j[1] - (float)y_i;
-    float dz_multi = CoM_j[2] - (float)z_i;
+    const MyFloat CoM_j[3] = {multi_j->CoM[0], multi_j->CoM[1], multi_j->CoM[2]};
+    MyFloat dx_multi = CoM_j[0] - x_i;
+    MyFloat dy_multi = CoM_j[1] - y_i;
+    MyFloat dz_multi = CoM_j[2] - z_i;
 
     /* Apply periodic BCs */
-    dx_multi = nearestf(dx_multi, (float)dim[0]);
-    dy_multi = nearestf(dy_multi, (float)dim[1]);
-    dz_multi = nearestf(dz_multi, (float)dim[2]);
+    dx_multi = nearest(dx_multi, dim[0]);
+    dy_multi = nearest(dy_multi, dim[1]);
+    dz_multi = nearest(dz_multi, dim[2]);
 
-    const float r2_multi =
+    const MyFloat r2_multi =
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
 
     /* Can we use the Mulipole here? */
     if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
                                            /*periodic=*/1)) {
 
-      const float h_inv_i = 1.f / h_i;
+      const MyFloat h_inv_i = 1. / h_i;
 
       /* Interact! */
-      float f_x, f_y, f_z, pot_ij;
+      MyFloat f_x, f_y, f_z, pot_ij;
       runner_iact_grav_pm_truncated(dx_multi, dy_multi, dz_multi, r2_multi, h_i,
                                     h_inv_i, r_s_inv, &multi_j->m_pole, &f_x,
                                     &f_y, &f_z, &pot_ij);
@@ -583,7 +583,7 @@ static INLINE void runner_dopair_grav_pp_full(
     struct gravity_cache *restrict ci_cache,
     struct gravity_cache *restrict cj_cache, const int gcount_i,
     const int gcount_j, const int gcount_padded_j, const int periodic,
-    const float dim[3], const struct engine *restrict e,
+    const MyFloat dim[3], const struct engine *restrict e,
     struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j) {
 
   /* Loop over all particles in ci... */
@@ -633,9 +633,9 @@ static INLINE void runner_dopair_grav_pp_full(
 
       /* Correct for periodic BCs */
       if (periodic) {
-        dx = nearestf((float)dx, dim[0]);
-        dy = nearestf((float)dy, dim[1]);
-        dz = nearestf((float)dz, dim[2]);
+        dx = nearest(dx, dim[0]);
+        dy = nearest(dy, dim[1]);
+        dz = nearest(dz, dim[2]);
       }
 
       const MyFloat r2 = dx * dx + dy * dy + dz * dz;
@@ -744,8 +744,8 @@ static INLINE void runner_dopair_grav_pp_full(
 static INLINE void runner_dopair_grav_pp_truncated(
     struct gravity_cache *restrict ci_cache,
     struct gravity_cache *restrict cj_cache, const int gcount_i,
-    const int gcount_j, const int gcount_padded_j, const float dim[3],
-    const float r_s_inv, const struct engine *restrict e,
+    const int gcount_j, const int gcount_padded_j, const MyFloat dim[3],
+    const MyFloat r_s_inv, const struct engine *restrict e,
     struct gpart *restrict gparts_i, const struct gpart *restrict gparts_j) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -799,14 +799,14 @@ static INLINE void runner_dopair_grav_pp_truncated(
       MyFloat dz = z_j - z_i;
 
       /* Correct for periodic BCs */
-      dx = nearestf(dx, dim[0]);
-      dy = nearestf(dy, dim[1]);
-      dz = nearestf(dz, dim[2]);
+      dx = nearest(dx, dim[0]);
+      dy = nearest(dy, dim[1]);
+      dz = nearest(dz, dim[2]);
 
       const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
       /* Pick the maximal softening length of i and j */
-      const float h = max(h_i, h_j);
+      const MyFloat h = max(h_i, h_j);
       const MyFloat h2 = h * h;
       const MyFloat h_inv = 1. / h;
       const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
@@ -908,7 +908,7 @@ static INLINE void runner_dopair_grav_pp_truncated(
 static INLINE void runner_dopair_grav_pm_full(
     struct gravity_cache *ci_cache, const int gcount_padded_i,
     const MyFloat CoM_j[3], const struct multipole *restrict multi_j,
-    const int periodic, const float dim[3], const struct engine *restrict e,
+    const int periodic, const MyFloat dim[3], const struct engine *restrict e,
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct cell *restrict cj) {
 
@@ -928,7 +928,7 @@ static INLINE void runner_dopair_grav_pm_full(
                             SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
-  const float multi_epsilon = multi_j->max_softening;
+  const MyFloat multi_epsilon = multi_j->max_softening;
 
   /* Loop over all particles in ci... */
 #if !defined(SWIFT_DEBUG_CHECKS) && !defined(SWIFT_GRAVITY_FORCE_CHECKS) && \
@@ -969,27 +969,27 @@ static INLINE void runner_dopair_grav_pm_full(
     if (pid >= gcount_i) error("Adding forces to padded particle");
 #endif
 
-    const float x_i = x[pid];
-    const float y_i = y[pid];
-    const float z_i = z[pid];
+    const MyFloat x_i = x[pid];
+    const MyFloat y_i = y[pid];
+    const MyFloat z_i = z[pid];
 
     /* Some powers of the softening length */
-    const float h_i = max(epsilon[pid], multi_epsilon);
-    const float h_inv_i = 1.f / h_i;
+    const MyFloat h_i = max(epsilon[pid], multi_epsilon);
+    const MyFloat h_inv_i = 1.f / h_i;
 
     /* Distance to the Multipole */
-    float dx = (float)CoM_j[0] - x_i;
-    float dy = (float)CoM_j[1] - y_i;
-    float dz = (float)CoM_j[2] - z_i;
+    MyFloat dx = CoM_j[0] - x_i;
+    MyFloat dy = CoM_j[1] - y_i;
+    MyFloat dz = CoM_j[2] - z_i;
 
     /* Apply periodic BCs? */
     if (periodic) {
-      dx = nearestf(dx, dim[0]);
-      dy = nearestf(dy, dim[1]);
-      dz = nearestf(dz, dim[2]);
+      dx = nearest(dx, dim[0]);
+      dy = nearest(dy, dim[1]);
+      dz = nearest(dz, dim[2]);
     }
 
-    const float r2 = dx * dx + dy * dy + dz * dz;
+    const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
@@ -998,7 +998,7 @@ static INLINE void runner_dopair_grav_pm_full(
 #endif
 
     /* Interact! */
-    float f_x, f_y, f_z, pot_ij;
+    MyFloat f_x, f_y, f_z, pot_ij;
     runner_iact_grav_pm_full(dx, dy, dz, r2, h_i, h_inv_i, multi_j, &f_x, &f_y,
                              &f_z, &pot_ij);
 
@@ -1054,7 +1054,7 @@ static INLINE void runner_dopair_grav_pm_full(
 static INLINE void runner_dopair_grav_pm_truncated(
     struct gravity_cache *ci_cache, const int gcount_padded_i,
     const MyFloat CoM_j[3], const struct multipole *restrict multi_j,
-    const float dim[3], const float r_s_inv, const struct engine *restrict e,
+    const MyFloat dim[3], const MyFloat r_s_inv, const struct engine *restrict e,
     struct gpart *restrict gparts_i, const int gcount_i,
     const struct cell *restrict cj) {
 
@@ -1079,7 +1079,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
                             SWIFT_CACHE_ALIGNMENT);
   swift_assume_size(gcount_padded_i, VEC_SIZE);
 
-  const float multi_epsilon = multi_j->max_softening;
+  const MyFloat multi_epsilon = multi_j->max_softening;
 
   /* Loop over all particles in ci... */
 #if !defined(SWIFT_DEBUG_CHECKS) && !defined(SWIFT_GRAVITY_FORCE_CHECKS) && \
@@ -1120,25 +1120,25 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (pid >= gcount_i) error("Adding forces to padded particle");
 #endif
 
-    const float x_i = x[pid];
-    const float y_i = y[pid];
-    const float z_i = z[pid];
+    const MyFloat x_i = x[pid];
+    const MyFloat y_i = y[pid];
+    const MyFloat z_i = z[pid];
 
     /* Some powers of the softening length */
-    const float h_i = max(epsilon[pid], multi_epsilon);
-    const float h_inv_i = 1.f / h_i;
+    const MyFloat h_i = max(epsilon[pid], multi_epsilon);
+    const MyFloat h_inv_i = 1. / h_i;
 
     /* Distance to the Multipole */
-    float dx = (float)CoM_j[0] - x_i;
-    float dy = (float)CoM_j[1] - y_i;
-    float dz = (float)CoM_j[2] - z_i;
+    MyFloat dx = CoM_j[0] - x_i;
+    MyFloat dy = CoM_j[1] - y_i;
+    MyFloat dz = CoM_j[2] - z_i;
 
     /* Apply periodic BCs */
-    dx = nearestf(dx, dim[0]);
-    dy = nearestf(dy, dim[1]);
-    dz = nearestf(dz, dim[2]);
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
 
-    const float r2 = dx * dx + dy * dy + dz * dz;
+    const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
@@ -1147,7 +1147,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
 #endif
 
     /* Interact! */
-    float f_x, f_y, f_z, pot_ij;
+    MyFloat f_x, f_y, f_z, pot_ij;
     runner_iact_grav_pm_truncated(dx, dy, dz, r2, h_i, h_inv_i, r_s_inv,
                                   multi_j, &f_x, &f_y, &f_z, &pot_ij);
 
@@ -1202,9 +1202,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   /* Recover some useful constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
-  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
-                        (float)e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  const MyFloat dim[3] = {(MyFloat)e->mesh->dim[0], (MyFloat)e->mesh->dim[1],
+                        (MyFloat)e->mesh->dim[2]};
+  const MyFloat r_s_inv = e->mesh->r_s_inv;
   const double min_trunc = e->mesh->r_cut_min;
 
   TIMER_TIC;
@@ -1241,8 +1241,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const double shift_j[3] = {0., 0., 0.};
 
   /* Recover the multipole info and shift the CoM locations */
-  const float rmax_i = ci->grav.multipole->r_max;
-  const float rmax_j = cj->grav.multipole->r_max;
+  const MyFloat rmax_i = ci->grav.multipole->r_max;
+  const MyFloat rmax_j = cj->grav.multipole->r_max;
   const struct multipole *multi_i = &ci->grav.multipole->m_pole;
   const struct multipole *multi_j = &cj->grav.multipole->m_pole;
   const MyFloat CoM_i[3] = {(MyFloat)(ci->grav.multipole->CoM[0] - shift_i[0]),
@@ -1320,9 +1320,9 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
                     CoM_j[2] - CoM_i[2]};
 
     /* Correct for periodic BCs */
-    dx[0] = nearestf(dx[0], dim[0]);
-    dx[1] = nearestf(dx[1], dim[1]);
-    dx[2] = nearestf(dx[2], dim[2]);
+    dx[0] = nearest(dx[0], dim[0]);
+    dx[1] = nearest(dx[1], dim[1]);
+    dx[2] = nearest(dx[2], dim[2]);
 
     const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
@@ -1638,7 +1638,7 @@ static INLINE void runner_doself_grav_pp_full(
  */
 static INLINE void runner_doself_grav_pp_truncated(
     struct gravity_cache *restrict ci_cache, const int gcount,
-    const int gcount_padded, const float r_s_inv, const struct engine *e,
+    const int gcount_padded, const MyFloat r_s_inv, const struct engine *e,
     struct gpart *gparts) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1690,7 +1690,7 @@ static INLINE void runner_doself_grav_pp_truncated(
       const MyFloat r2 = dx * dx + dy * dy + dz * dz;
 
       /* Pick the maximal softening length of i and j */
-      const float h = max(h_i, h_j);
+      const MyFloat h = max(h_i, h_j);
       const MyFloat h2 = h * h;
       const MyFloat h_inv = 1. / h;
       const MyFloat h_inv_3 = h_inv * h_inv * h_inv;
@@ -1787,7 +1787,7 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   /* Recover some useful constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
-  const float r_s_inv = e->mesh->r_s_inv;
+  const MyFloat r_s_inv = e->mesh->r_s_inv;
   const double min_trunc = e->mesh->r_cut_min;
 
   TIMER_TIC;
@@ -1884,7 +1884,7 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  const MyFloat r_s_inv = e->mesh->r_s_inv;
 
   TIMER_TIC;
 
@@ -1968,7 +1968,7 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   const struct gravity_props *props = e->gravity_properties;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  const MyFloat r_s_inv = e->mesh->r_s_inv;
 
   TIMER_TIC;
 
@@ -2100,9 +2100,9 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
   /* Some constants */
   const int periodic = e->mesh->periodic;
-  const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
-                        (float)e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  const MyFloat dim[3] = {(MyFloat)e->mesh->dim[0], (MyFloat)e->mesh->dim[1],
+                        (MyFloat)e->mesh->dim[2]};
+  const MyFloat r_s_inv = e->mesh->r_s_inv;
 
   /* Anything to do here? */
   if (!(cell_is_active_gravity(ci, e) && ci->nodeID == e->nodeID)) return;

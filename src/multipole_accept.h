@@ -205,16 +205,16 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const struct gravity_props *props, const struct gpart *pa,
-    const struct gravity_tensors *B, const float r2, const int periodic) {
+    const struct gravity_tensors *B, const MyFloat r2, const int periodic) {
 
   /* Order of the expansion */
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
 
   /* Sizes of the multipoles */
-  const float rho_B = B->r_max;
+  const MyFloat rho_B = B->r_max;
 
   /* Get the maximal softening */
-  const float max_softening =
+  const MyFloat max_softening =
       max(B->m_pole.max_softening, gravity_get_softening(pa, props));
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -222,16 +222,16 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
 #endif
 
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
-  const float E_BA_term = 8.f * B->m_pole.power[p];
+  const MyFloat E_BA_term = 8.f * B->m_pole.power[p];
 
   /* Compute r^p */
 #if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
-  const float r_to_p = integer_powf(sqrtf(r2), p);
+  const MyFloat r_to_p = integer_pow(sqrt(r2), p);
 #else
-  const float r_to_p = integer_powf(r2, (p / 2));
+  const MyFloat r_to_p = integer_pow(r2, (p / 2));
 #endif
 
-  float f_MAC_inv;
+  MyFloat f_MAC_inv;
   if (props->consider_truncation_in_MAC) {
     f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s_inv, r2);
   } else {
@@ -239,14 +239,14 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   }
 
   /* Get the estimate of the acceleration */
-  const float old_a_grav = pa->old_a_grav_norm;
+  const MyFloat old_a_grav = pa->old_a_grav_norm;
 
   /* Get the relative tolerance */
-  const float eps = props->adaptive_tolerance;
+  const MyFloat eps = props->adaptive_tolerance;
 
   /* Get the basic geometric critical angle */
-  const float theta_crit = props->theta_crit;
-  const float theta_crit2 = theta_crit * theta_crit;
+  const MyFloat theta_crit = props->theta_crit;
+  const MyFloat theta_crit2 = theta_crit * theta_crit;
 
   if (props->use_advanced_MAC) {
 
@@ -278,7 +278,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const int cond_2 =
         props->use_tree_below_softening || max_softening * max_softening < r2;
 
-    return cond_1 && cond_2 && 0;
+    return cond_1 && cond_2;
   }
 }
 

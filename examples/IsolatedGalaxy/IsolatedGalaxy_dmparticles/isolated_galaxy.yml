@@ -29,7 +29,8 @@ Snapshots:
 
 Scheduler:
   max_top_level_cells:  16
-  
+  tasks_per_cell: 1000
+
 # Parameters governing the conserved quantities statistics
 Statistics:
   delta_time:           1e-2     # Time between statistics output

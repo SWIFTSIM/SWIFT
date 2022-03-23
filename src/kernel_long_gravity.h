@@ -46,22 +46,22 @@
 struct chi_derivatives {
 
   /*! 0th order derivative \f$\chi(r,r_s)\f$ */
-  float chi_0;
+  MyFloat chi_0;
 
   /*! 1st order derivative \f$\partial_{r}\chi(r,r_s)\f$ */
-  float chi_1;
+  MyFloat chi_1;
 
   /*! 2nd order derivative \f$\partial_{rr}\chi(r,r_s)\f$ */
-  float chi_2;
+  MyFloat chi_2;
 
   /*! 3rd order derivative \f$\partial_{rrr}\chi(r,r_s)\f$ */
-  float chi_3;
+  MyFloat chi_3;
 
   /*! 4th order derivative \f$\partial_{rrrr}\chi(r,r_s)\f$ */
-  float chi_4;
+  MyFloat chi_4;
 
   /*! 5th order derivative \f$\partial_{rrrrr}\chi(r,r_s)\f$ */
-  float chi_5;
+  MyFloat chi_5;
 };
 
 /**
@@ -73,17 +73,17 @@ struct chi_derivatives {
  * @param derivs (return) The computed #chi_derivatives.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-kernel_long_grav_derivatives(const float r, const float r_s_inv,
+kernel_long_grav_derivatives(const MyFloat r, const MyFloat r_s_inv,
                              struct chi_derivatives *const derivs) {
 
 #ifdef GADGET2_LONG_RANGE_CORRECTION
 
   /* Powers of u = (1/2) * (r / r_s) */
-  const float u = 0.5f * r * r_s_inv;
-  const float u2 = u * u;
-  const float u4 = u2 * u2;
+  const MyFloat u = 0.5 * r * r_s_inv;
+  const MyFloat u2 = u * u;
+  const MyFloat u4 = u2 * u2;
 
-  const float exp_u2 = expf(-u2);
+  const MyFloat exp_u2 = exp(-u2);
 
   /* Compute erfcf(u) using eq. 7.1.26 of
    * Abramowitz & Stegun, 1972.
@@ -94,7 +94,7 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
    * This is a good approximation to use since we already
    * need exp(-u2) */
 
-  const float t = 1.f / (1.f + 0.3275911f * u);
+  const MyFloat t = 1. / (1. + 0.3275911 * u);
 
   const float a1 = 0.254829592f;
   const float a2 = -0.284496736f;
@@ -103,24 +103,24 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
   const float a5 = 1.061405429f;
 
   /* a1 * t + a2 * t^2 + a3 * t^3 + a4 * t^4 + a5 * t^5 */
-  float a = a5 * t + a4;
+  MyFloat a = a5 * t + a4;
   a = a * t + a3;
   a = a * t + a2;
   a = a * t + a1;
   a = a * t;
 
-  const float erfc_u = a * exp_u2;
+  const MyFloat erfc_u = a * exp_u2;
 
   /* C = (1/sqrt(pi)) * expf(-u^2) */
-  const float one_over_sqrt_pi = ((float)(M_2_SQRTPI * 0.5));
-  const float common_factor = one_over_sqrt_pi * exp_u2;
+  const MyFloat one_over_sqrt_pi = ((MyFloat)(M_2_SQRTPI * 0.5));
+  const MyFloat common_factor = one_over_sqrt_pi * exp_u2;
 
   /* (1/r_s)^n * C */
-  const float r_s_inv_times_C = r_s_inv * common_factor;
-  const float r_s_inv2_times_C = r_s_inv_times_C * r_s_inv;
-  const float r_s_inv3_times_C = r_s_inv2_times_C * r_s_inv;
-  const float r_s_inv4_times_C = r_s_inv3_times_C * r_s_inv;
-  const float r_s_inv5_times_C = r_s_inv4_times_C * r_s_inv;
+  const MyFloat r_s_inv_times_C = r_s_inv * common_factor;
+  const MyFloat r_s_inv2_times_C = r_s_inv_times_C * r_s_inv;
+  const MyFloat r_s_inv3_times_C = r_s_inv2_times_C * r_s_inv;
+  const MyFloat r_s_inv4_times_C = r_s_inv3_times_C * r_s_inv;
+  const MyFloat r_s_inv5_times_C = r_s_inv4_times_C * r_s_inv;
 
   /* Now, compute the derivatives of \chi */
 #ifdef GRAVITY_USE_EXACT_LONG_RANGE_MATH
@@ -152,28 +152,28 @@ kernel_long_grav_derivatives(const float r, const float r_s_inv,
 
   /* Powers of 2/r_s */
   const float c0 = 1.f;
-  const float c1 = 2.f * r_s_inv;
-  const float c2 = c1 * c1;
-  const float c3 = c2 * c1;
-  const float c4 = c3 * c1;
-  const float c5 = c4 * c1;
+  const Myfloat c1 = 2.f * r_s_inv;
+  const Myfloat c2 = c1 * c1;
+  const Myfloat c3 = c2 * c1;
+  const MyFloat c4 = c3 * c1;
+  const MyFloat c5 = c4 * c1;
 
   /* 2r / r_s */
-  const float x = c1 * r;
+  const MyFloat x = c1 * r;
 
   /* e^(2r / r_s) */
-  const float exp_x = expf(x);  // good_approx_expf(x);
+  const MyFloat exp_x = exp(x);  // good_approx_expf(x);
 
   /* 1 / alpha(w) */
-  const float a_inv = 1.f + exp_x;
+  const MyFloat a_inv = 1.f + exp_x;
 
   /* Powers of alpha */
-  const float a1 = 1.f / a_inv;
-  const float a2 = a1 * a1;
-  const float a3 = a2 * a1;
-  const float a4 = a3 * a1;
-  const float a5 = a4 * a1;
-  const float a6 = a5 * a1;
+  const MyFloat a1 = 1.f / a_inv;
+  const MyFloat a2 = a1 * a1;
+  const MyFloat a3 = a2 * a1;
+  const MyFloat a4 = a3 * a1;
+  const MyFloat a5 = a4 * a1;
+  const MyFloat a6 = a5 * a1;
 
   /* Derivatives of \chi */
   derivs->chi_0 = -2.f * exp_x * c0 * a1 + 2.f;

@@ -97,46 +97,46 @@ struct potential_derivatives_M2L {
 struct potential_derivatives_M2P {
 
   /* 0th order term */
-  float D_000;
+  MyFloat D_000;
 
   /* 1st order terms */
-  float D_100, D_010, D_001;
+  MyFloat D_100, D_010, D_001;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
 
   /* 2nd order terms */
-  float D_200, D_020, D_002;
-  float D_110, D_101, D_011;
+  MyFloat D_200, D_020, D_002;
+  MyFloat D_110, D_101, D_011;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
 
   /* 3rd order terms */
-  float D_300, D_030, D_003;
-  float D_210, D_201;
-  float D_120, D_021;
-  float D_102, D_012;
-  float D_111;
+  MyFloat D_300, D_030, D_003;
+  MyFloat D_210, D_201;
+  MyFloat D_120, D_021;
+  MyFloat D_102, D_012;
+  MyFloat D_111;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
 
   /* 4th order terms */
-  float D_400, D_040, D_004;
-  float D_310, D_301;
-  float D_130, D_031;
-  float D_103, D_013;
-  float D_220, D_202, D_022;
-  float D_211, D_121, D_112;
+  MyFloat D_400, D_040, D_004;
+  MyFloat D_310, D_301;
+  MyFloat D_130, D_031;
+  MyFloat D_103, D_013;
+  MyFloat D_220, D_202, D_022;
+  MyFloat D_211, D_121, D_112;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
 
   /* 5th order terms */
-  float D_005, D_014, D_023;
-  float D_032, D_041, D_050;
-  float D_104, D_113, D_122;
-  float D_131, D_140, D_203;
-  float D_212, D_221, D_230;
-  float D_302, D_311, D_320;
-  float D_401, D_410, D_500;
+  MyFloat D_005, D_014, D_023;
+  MyFloat D_032, D_041, D_050;
+  MyFloat D_104, D_113, D_122;
+  MyFloat D_131, D_140, D_203;
+  MyFloat D_212, D_221, D_230;
+  MyFloat D_302, D_311, D_320;
+  MyFloat D_401, D_410, D_500;
 #endif
 };
 
@@ -513,52 +513,52 @@ potential_derivatives_compute_M2L(const float r_x, const float r_y,
  * @param pot (return) The structure containing all the derivatives.
  */
 __attribute__((always_inline, nonnull)) INLINE static void
-potential_derivatives_compute_M2P(const float r_x, const float r_y,
-                                  const float r_z, const float r2,
-                                  const float r_inv, const float eps,
-                                  const int periodic, const float r_s_inv,
+potential_derivatives_compute_M2P(const MyFloat r_x, const MyFloat r_y,
+                                  const MyFloat r_z, const MyFloat r2,
+                                  const MyFloat r_inv, const MyFloat eps,
+                                  const int periodic, const MyFloat r_s_inv,
                                   struct potential_derivatives_M2P *pot) {
 
-  float Dt_1;
-  float Dt_2;
+  MyFloat Dt_1;
+  MyFloat Dt_2;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  float Dt_3;
+  MyFloat Dt_3;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  float Dt_4;
+  MyFloat Dt_4;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  float Dt_5;
+  MyFloat Dt_5;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  float Dt_6;
+  MyFloat Dt_6;
 #endif
 
   /* Softened case */
   if (r2 < eps * eps) {
 
-    const float eps_inv = 1.f / eps;
-    const float r = r2 * r_inv;
-    const float u = r * eps_inv;
+    const MyFloat eps_inv = 1.f / eps;
+    const MyFloat r = r2 * r_inv;
+    const MyFloat u = r * eps_inv;
 
     Dt_1 = eps_inv * D_soft_1(u);
 
-    const float eps_inv2 = eps_inv * eps_inv;
+    const MyFloat eps_inv2 = eps_inv * eps_inv;
     Dt_2 = eps_inv2 * D_soft_2(u);
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-    const float eps_inv3 = eps_inv2 * eps_inv;
+    const MyFloat eps_inv3 = eps_inv2 * eps_inv;
     Dt_3 = eps_inv3 * D_soft_3(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-    const float eps_inv4 = eps_inv3 * eps_inv;
+    const MyFloat eps_inv4 = eps_inv3 * eps_inv;
     Dt_4 = eps_inv4 * D_soft_4(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-    const float eps_inv5 = eps_inv4 * eps_inv;
+    const MyFloat eps_inv5 = eps_inv4 * eps_inv;
     Dt_5 = eps_inv5 * D_soft_5(u);
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-    const float eps_inv6 = eps_inv5 * eps_inv;
+    const MyFloat eps_inv6 = eps_inv5 * eps_inv;
     Dt_6 = eps_inv6 * D_soft_6(u);
 #endif
 
@@ -584,7 +584,7 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
   } else {
 
     /* Get the derivatives of the truncated potential */
-    const float r = r2 * r_inv;
+    const MyFloat r = r2 * r_inv;
     struct chi_derivatives derivs;
     kernel_long_grav_derivatives(r, r_s_inv, &derivs);
 
@@ -643,29 +643,29 @@ potential_derivatives_compute_M2P(const float r_x, const float r_y,
   /* Alright, let's get the full terms */
 
   /* Compute some powers of (r_x / r), (r_y / r) and (r_z / r) */
-  const float rx_r = r_x * r_inv;
-  const float ry_r = r_y * r_inv;
-  const float rz_r = r_z * r_inv;
+  const MyFloat rx_r = r_x * r_inv;
+  const MyFloat ry_r = r_y * r_inv;
+  const MyFloat rz_r = r_z * r_inv;
 
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 0
-  const float rx_r2 = rx_r * rx_r;
-  const float ry_r2 = ry_r * ry_r;
-  const float rz_r2 = rz_r * rz_r;
+  const MyFloat rx_r2 = rx_r * rx_r;
+  const MyFloat ry_r2 = ry_r * ry_r;
+  const MyFloat rz_r2 = rz_r * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
-  const float rx_r3 = rx_r2 * rx_r;
-  const float ry_r3 = ry_r2 * ry_r;
-  const float rz_r3 = rz_r2 * rz_r;
+  const MyFloat rx_r3 = rx_r2 * rx_r;
+  const MyFloat ry_r3 = ry_r2 * ry_r;
+  const MyFloat rz_r3 = rz_r2 * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
-  const float rx_r4 = rx_r3 * rx_r;
-  const float ry_r4 = ry_r3 * ry_r;
-  const float rz_r4 = rz_r3 * rz_r;
+  const MyFloat rx_r4 = rx_r3 * rx_r;
+  const MyFloat ry_r4 = ry_r3 * ry_r;
+  const MyFloat rz_r4 = rz_r3 * rz_r;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 3
-  const float rx_r5 = rx_r4 * rx_r;
-  const float ry_r5 = ry_r4 * ry_r;
-  const float rz_r5 = rz_r4 * rz_r;
+  const MyFloat rx_r5 = rx_r4 * rx_r;
+  const MyFloat ry_r5 = ry_r4 * ry_r;
+  const MyFloat rz_r5 = rz_r4 * rz_r;
 #endif
 
   /* Get the 0th order term */
