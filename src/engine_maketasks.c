@@ -2300,6 +2300,59 @@ static inline void engine_make_hydro_loops_dependencies(
 #endif
 
 /**
+ * @brief Creates all the task dependencies for the gravity
+ *
+ * @param e The #engine
+ */
+void engine_link_grid_tasks(struct engine *e) {
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int nr_tasks = sched->nr_tasks;
+
+  for (int k = 0; k < nr_tasks; k++) {
+    /* Get a pointer to the task. */
+    struct task *t = &sched->tasks[k];
+
+    if (t->type == task_type_none) continue;
+
+    /* Get the cell we act on */
+    struct cell *ci = t->ci;
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
+
+    /* Node ID (if running with MPI) */
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+#else
+    const int ci_nodeID = nodeID;
+#endif
+
+    if (t_subtype == task_subtype_grid_construction) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci_nodeID != nodeID) error("Non-local construction task");
+#endif
+      /* TODO make depend on grid.super.drift instead, but must be added first... */
+      /* Self grid construction task? Drift --> self_construction --> ghost_construction */
+      if (t_type == task_type_self) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        scheduler_addunlock(sched, t, ci->grid.ghost);
+      }
+      /* Pair grid construction task? Drift --> pair_construction --> ghost_construction
+       *                              |-->Sort --^ */
+      else if (t_type == task_type_pair) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        scheduler_addunlock(sched, t, ci->grid.ghost);
+      }
+    }
+
+    if (t_type == task_type_grid_ghost) {
+      scheduler_addunlock(sched, t, ci->super->kick2);
+    }
+  }
+}
+
+/**
  * @brief Duplicates the first hydro loop and construct all the
  * dependencies for the hydro part
  *
@@ -4573,6 +4626,11 @@ void engine_maketasks(struct engine *e) {
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
+
+  /* Add the dependencies for the grid stuff */
+  if (e->policy & engine_policy_grid) {
+    engine_link_grid_tasks(e);
+  }
 
   tic2 = getticks();
 
