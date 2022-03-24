@@ -351,7 +351,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate grid construction tasks */
       else if (t_subtype == task_subtype_grid_construction) {
-        if (ci_active_hydro & (e->policy & engine_policy_grid)) scheduler_activate(s, t);
+        if (ci_active_hydro && (e->policy & engine_policy_grid)) scheduler_activate(s, t);
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
