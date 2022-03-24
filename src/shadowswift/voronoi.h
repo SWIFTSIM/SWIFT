@@ -7,7 +7,7 @@
 
 /*! @brief Store the edges of faces (so that the actual Voronoi grid can be
  *  reconstructed). */
-//#define VORONOI_STORE_FACES
+#define VORONOI_STORE_FACES
 
 /*! @brief Store cell generators. */
 #define VORONOI_STORE_GENERATORS
