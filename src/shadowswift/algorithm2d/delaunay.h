@@ -540,19 +540,15 @@ inline static void delaunay_init(struct delaunay* restrict d,
  * @param vertex_size Initial size of the vertex array.
  * @param triangle_size Initial size of the triangle array.
  */
-inline static void delaunay_malloc(struct delaunay* restrict d,
-                                   const double* cell_loc,
-                                   const double* cell_width, int vertex_size,
-                                   int triangle_size) {
-
-  if (d->active != 0) {
-    error("Delaunay tessellation corruption!");
-  }
-
+inline static struct delaunay* delaunay_malloc(const double* cell_loc,
+                                               const double* cell_width,
+                                               int vertex_size) {
+  /* Don't bother setting up a Delaunay tessellation for empty cells */
   if (vertex_size == 0) {
-    /* Don't bother setting up a Delaunay tessellation for empty cells */
-    return;
+    return NULL;
   }
+
+  struct delaunay *d = malloc(sizeof(struct delaunay));
 
   d->active = 1;
 
@@ -572,9 +568,9 @@ inline static void delaunay_malloc(struct delaunay* restrict d,
   d->vertex_size = vertex_size;
 
   /* allocate memory for the triangle array */
+  d->triangle_size = 6 * vertex_size;
   d->triangles = (struct triangle*)swift_malloc(
-      "c.h.d.triangles", triangle_size * sizeof(struct triangle));
-  d->triangle_size = triangle_size;
+      "c.h.d.triangles", d->triangle_size * sizeof(struct triangle));
 
   /* allocate memory for the queue (note that the queue size of 10 was chosen
      arbitrarily, and a proper value should be chosen based on performance
@@ -592,6 +588,8 @@ inline static void delaunay_malloc(struct delaunay* restrict d,
   geometry_init(&d->geometry);
 
   delaunay_init(d, cell_loc, cell_width, vertex_size);
+
+  return d;
 }
 
 /**
