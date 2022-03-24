@@ -2031,8 +2031,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
       } else if (t_subtype == task_subtype_grid_construction) {
+        /* Here we only add a link to the first cell, since the pair
+         * construction tasks are asymmetric... */
         engine_addlink(e, &ci->grid.construction, t);
-        engine_addlink(e, &cj->grid.construction, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -2340,8 +2341,15 @@ void engine_link_grid_tasks(struct engine *e) {
       /* Pair grid construction task? Drift --> pair_construction --> ghost_construction
        *                              |-->Sort --^ */
       else if (t_type == task_type_pair) {
+        /* Get the cell we receive particles from */
+        struct cell *cj = t->cj;
+
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
         scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        if (cj->hydro.super != ci->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+        }
         scheduler_addunlock(sched, t, ci->grid.ghost);
       }
     }

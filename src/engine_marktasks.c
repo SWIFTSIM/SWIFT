@@ -803,7 +803,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Grid construction tasks */
       else if (t_subtype == task_subtype_grid_construction) {
         /* activate construction task only for local active cells */
-        if (ci_nodeID == nodeID && ci_active_hydro) scheduler_activate(s, t);
+        if (ci_nodeID == nodeID && ci_active_hydro) {
+          scheduler_activate(s, t);
+
+          /* Activate the sorts if needed */
+          cell_activate_hydro_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
+        }
       }
 
       /* Only interested in density tasks as of here. */

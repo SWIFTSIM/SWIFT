@@ -1632,5 +1632,11 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
-  /* TODO */
+  /* TODO finalize delaunay tessellation */
+
+//  if (c->grid.voronoi == NULL) {
+//    c->grid.voronoi = voronoi_malloc(c->hydro.count, c->width[0]);
+//  }
+//
+//  voronoi_build(c->grid.voronoi, c->grid.delaunay);
 }
