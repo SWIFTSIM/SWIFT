@@ -5,7 +5,8 @@
 #ifndef SWIFTSIM_CELL_GRID_H
 #define SWIFTSIM_CELL_GRID_H
 
-#include "voronoi/voronoi.h"
+#include "shadowswift/voronoi.h"
+#include "shadowswift/delaunay.h"
 
 struct cell_grid {
   /*! Pointer to the parent cell of this cell containing the Voronoi grid (if
