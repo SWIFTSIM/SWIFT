@@ -5,9 +5,10 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_DELAUNAY_2D_H
 #define SWIFTSIM_SHADOWSWIFT_DELAUNAY_2D_H
 
-#include <float.h>
 #include "./geometry.h"
 #include "./triangle.h"
+
+#include <float.h>
 
 /**
  * @brief Delaunay tessellation.
@@ -464,12 +465,10 @@ inline static void delaunay_init(struct delaunay* restrict d,
   /* mind the orientation: counterclockwise w.r.t. the z-axis. */
   int v0 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1], -1);
   delaunay_log("Creating vertex %i: %g %g", v0, box_anchor[0], box_anchor[1]);
-  int v1 =
-      delaunay_new_vertex(d, box_anchor[0] + box_side, box_anchor[1], -1);
+  int v1 = delaunay_new_vertex(d, box_anchor[0] + box_side, box_anchor[1], -1);
   delaunay_log("Creating vertex %i: %g %g", v1, box_anchor[0] + box_side,
                box_anchor[1]);
-  int v2 =
-      delaunay_new_vertex(d, box_anchor[0], box_anchor[1] + box_side, -1);
+  int v2 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1] + box_side, -1);
   delaunay_log("Creating vertex %i: %g %g", v2, box_anchor[0],
                box_anchor[1] + box_side);
 
@@ -1349,8 +1348,7 @@ inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
 
 inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
                                            double y, double z, int cell_sid,
-                                           struct cell* c, int part_idx,
-                                           int nodeID) {
+                                           int part_idx) {
   if (d->active != 1) {
     error("Trying to add a vertex to an inactive Delaunay tessellation!");
   }
@@ -1384,7 +1382,8 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
 }
 
 /*! @brief stores the coordinates of the vertex at given idx in out */
-inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx, double* out /*ret*/) {
+inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx,
+                                          double* out /*ret*/) {
   out[0] = d->vertices[2 * idx];
   out[1] = d->vertices[2 * idx + 1];
   out[2] = 0.;
