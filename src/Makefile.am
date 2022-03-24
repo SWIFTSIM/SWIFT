@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(GSL_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(CHEALPIX_LIBS)
+EXTRA_LIBS = $(GSL_LIBS) $(GMP_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(CHEALPIX_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -170,7 +170,7 @@ AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
 nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
-nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h 
+nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h 
 nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h 
 nobase_noinst_HEADERS += runner_doiact_sinks.h runner_doiact_functions_sinks.h
