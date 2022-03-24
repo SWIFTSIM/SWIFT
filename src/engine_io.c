@@ -124,6 +124,31 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
   }
 }
 
+#ifdef SHADOWSWIFT
+void cell_write_grid(const struct cell *c, FILE *dfile,
+                         FILE *vfile, size_t *offset) {
+  /* Recurse? */
+  if (c->grid.super == NULL) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        cell_write_grid(c->progeny[k], dfile, vfile, offset);
+      }
+    }
+    return;
+  }
+
+  /* Have delaunay? */
+  if (c->grid.delaunay != NULL) {
+    delaunay_write_tessellation(c->grid.delaunay, dfile, offset);
+  }
+
+  /* Have voronoi? */
+  if (c->grid.voronoi != NULL) {
+    voronoi_write_grid(c->grid.voronoi, vfile);
+  }
+}
+#endif /* SHADOWSWIFT */
+
 /**
  * @brief Writes a snapshot with the current state of the engine
  *
@@ -198,6 +223,20 @@ void engine_dump_snapshot(struct engine *e) {
 #else
   write_output_single(e, e->internal_units, e->snapshot_units);
 #endif
+#endif
+
+#ifdef SHADOWSWIFT
+  char fname[50];
+  sprintf(fname, "voronoi%04d.txt", e->snapshot_output_count - 1);
+  FILE *vfile = fopen(fname, "w");
+  sprintf(fname, "delaunay%04d.txt", e->snapshot_output_count - 1);
+  FILE *file = fopen(fname, "w");
+  size_t offset = 0;
+  struct space *s = e->s;
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_write_grid(&s->cells_top[i], file, vfile, &offset);
+  }
+  fclose(vfile);
 #endif
 
   /* Flag that we dumped a snapshot */
