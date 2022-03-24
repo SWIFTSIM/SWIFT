@@ -62,6 +62,9 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
+/* Import the moving mesh construction loop functions */
+#include "runner_doiact_grid.h"
+
 /**
  * @brief Intermediate task after the density to check that the smoothing
  * lengths are correct.
@@ -1620,7 +1623,6 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_do_rt_ghost2);
 }
 
-
 /**
  * @brief Finish up the Voronoi grid calculation.
  *
@@ -1632,11 +1634,144 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
  * @param timer Are we timing this ?
  */
 void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
-  /* TODO finalize delaunay tessellation */
 
-//  if (c->grid.voronoi == NULL) {
-//    c->grid.voronoi = voronoi_malloc(c->hydro.count, c->width[0]);
-//  }
-//
-//  voronoi_build(c->grid.voronoi, c->grid.delaunay);
+  if (c->grid.super != c) error("Grid ghost not run at grid super level!");
+
+  struct part *restrict parts = c->hydro.parts;
+  const struct engine *e = r->e;
+
+  const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
+  int redo = 0, count = 0;
+
+  /* Running value of the maximal smoothing length */
+  float h_max = c->hydro.h_max;
+  float h_max_active = c->hydro.h_max_active;
+
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Init the list of active particles that have to be updated and their
+   * current smoothing lengths. */
+  int *pid = NULL;
+  double *h_0 = NULL;
+  if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
+    error("Can't allocate memory for pid.");
+  if ((h_0 = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
+    error("Can't allocate memory for h_0.");
+  for (int k = 0; k < c->hydro.count; k++)
+    if (part_is_active(&parts[k], e)) {
+      pid[count] = k;
+      h_0[count] = parts[k].h;
+      ++count;
+    }
+
+  /* While there are particles that need to be updated... */
+  for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter && h_max < c->width[0];
+       num_reruns++) {
+    /* TODO add boundary particles */
+
+    /* Reset the redo-count. */
+    redo = 0;
+
+    /* Loop over the remaining active parts in this cell and check if they have
+     * converged. */
+    for (int i = 0; i < count; i++) {
+
+      /* Get a direct pointer on the part. */
+      struct part *p = &parts[pid[i]];
+
+      float hnew = (float)delaunay_get_search_radius(
+          c->grid.delaunay, pid[i] + c->grid.delaunay->vertex_start);
+      if (hnew >= p->h) {
+        /* Use h_0 array for previous search radii */
+        h_0[redo] = p->h;
+        p->h *= 1.25f;
+        /* Check if h_max is increased */
+        h_max = max(h_max, p->h);
+        if (part_is_active(p, e)) {
+          h_max_active = max(h_max_active, p->h);
+        }
+        pid[redo] = pid[i];
+        redo += 1;
+      } else {
+        p->h = hnew;
+      }
+    }
+
+    /* We now need to treat the particles whose smoothing length had not
+     * converged again */
+
+    /* Re-set the counter for the next loop (potentially). */
+    count = redo;
+    if (count > 0) {
+
+      /* We are already at the super level, so we can run through this cell's
+       * grid construction interactions directly. */
+      for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (l->t->ti_run < r->e->ti_current)
+          error("Construction task should have been run.");
+#endif
+
+        /* Self-interaction? */
+        if (l->t->type == task_type_self)
+          runner_doself_subset_grid_construction(r, c, parts, pid, h_0, count);
+
+        /* Otherwise, pair interaction? */
+        else if (l->t->type == task_type_pair) {
+
+          /* Left or right? */
+          if (l->t->ci == c)
+            runner_dopair_subset_grid_construction(r, c, parts, pid, h_0, count,
+                                                   l->t->cj);
+          else
+            runner_dopair_subset_grid_construction(r, c, parts, pid, h_0, count,
+                                                   l->t->ci);
+        } else
+          error("Unsupported interaction encountered!");
+      }
+    }
+  }
+
+  if (count) {
+    warning(
+        "Search radius failed to converge for the following gas "
+        "particles:");
+    for (int i = 0; i < count; i++) {
+      struct part *p = &parts[pid[i]];
+      warning("ID: %lld, h: %g, wcount: %g", p->id, p->h, p->density.wcount);
+    }
+
+    error("Search radius failed to converge on %i particles.", count);
+  }
+
+  /* Be clean */
+  free(pid);
+  free(h_0);
+
+  /* Update h_max */
+  c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
+
+  /* The ghost may not always be at the top level.
+   * Therefore we need to update h_max between the super- and top-levels */
+  if (c->hydro.ghost) {
+    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      atomic_max_f(&tmp->hydro.h_max, h_max);
+      atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
+    }
+  }
+
+  /* Finally ,build the Voronoi grid */
+  if (c->grid.voronoi == NULL) {
+    c->grid.voronoi = voronoi_malloc(c->hydro.count, c->width[0]);
+  }
+
+  voronoi_build(c->grid.voronoi, c->grid.delaunay);
+
+  if (timer) TIMER_TOC(timer_do_ghost);
 }
