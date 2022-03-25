@@ -1669,7 +1669,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
   /* While there are particles that need to be updated... */
-  for (int num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter && h_max < c->width[0];
+  for (int num_reruns = 0;
+       count > 0 && num_reruns < max_smoothing_iter && h_max < c->width[0];
        num_reruns++) {
     /* TODO add boundary particles */
 
@@ -1685,19 +1686,19 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
       float hnew = (float)delaunay_get_search_radius(
           c->grid.delaunay, pid[i] + c->grid.delaunay->vertex_start);
-      if (hnew >= p->h) {
+      if (hnew >= p->r) {
         /* Use h_0 array for previous search radii */
-        h_0[redo] = p->h;
-        p->h *= 1.25f;
-        /* Check if h_max is increased */
-        h_max = max(h_max, p->h);
-        if (part_is_active(p, e)) {
-          h_max_active = max(h_max_active, p->h);
-        }
+        h_0[redo] = p->r;
+        p->r *= 1.25f;
         pid[redo] = pid[i];
         redo += 1;
       } else {
-        p->h = hnew;
+        p->r = 1.25 * hnew;
+      }
+      /* Check if h_max is increased */
+      h_max = max(h_max, p->r);
+      if (part_is_active(p, e)) {
+        h_max_active = max(h_max_active, p->r);
       }
     }
 
@@ -1726,11 +1727,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
           /* Left or right? */
           if (l->t->ci == c)
-            runner_dopair_subset_grid_construction(r, c, parts, pid, h_0, count,
-                                                   l->t->cj);
+            runner_dopair_subset_grid_construction(
+                r, c, parts, pid, h_0, h_max_active, count, l->t->cj);
           else
-            runner_dopair_subset_grid_construction(r, c, parts, pid, h_0, count,
-                                                   l->t->ci);
+            error("Particles should always be on the left!");
         } else
           error("Unsupported interaction encountered!");
       }
@@ -1743,7 +1743,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         "particles:");
     for (int i = 0; i < count; i++) {
       struct part *p = &parts[pid[i]];
-      warning("ID: %lld, h: %g, wcount: %g", p->id, p->h, p->density.wcount);
+      warning("ID: %lld, h: %g, wcount: %g", p->id, p->r, p->density.wcount);
     }
 
     error("Search radius failed to converge on %i particles.", count);

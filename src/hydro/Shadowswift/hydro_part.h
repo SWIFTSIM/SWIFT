@@ -113,6 +113,9 @@ struct part {
   /*! Particle smoothing length. */
   float h;
 
+  /*! Particle search radius. */
+  float r;
+
   /*! Particle internal energy. */
   float u;
 

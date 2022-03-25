@@ -12,9 +12,10 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-__attribute__((always_inline)) INLINE static void runner_dopair_grid_construction(struct runner *restrict r,
-                                     struct cell *restrict ci,
-                                     struct cell *restrict cj) {
+__attribute__((always_inline)) INLINE static void
+runner_dopair_grid_construction(struct runner *restrict r,
+                                struct cell *restrict ci,
+                                struct cell *restrict cj) {
   const struct engine *restrict e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -59,51 +60,31 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grid_constructio
   const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
   const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
-  /* Correct sid if the cells have been flipped */
-  if (ci != ci_temp) sid = 26 - sid;
+  /* Correct sid and shift if the cells have been flipped */
+  const int flipped = ci != ci_temp;
+  if (flipped) {
+    sid = 26 - sid;
+  }
 
   /* Get some other useful values. */
-  const double hi_max = ci->hydro.h_max - rshift;
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
-  const double dj_min = sort_j[0].d;
+  const double hi_max = ci->hydro.h_max;
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Mark cell face as inside of simulation volume */
   ci->grid.delaunay->sid_is_inside_face[sid] |= 1;
 
-  /* Loop over the parts in ci. */
-  for (int pid = count_i - 1;
-       pid >= 0 && sort_i[pid].d + hi_max + dx_max > dj_min; pid--) {
+  if (flipped) {
+    /* ci on the right */
 
-    /* Get a hold of the ith part in ci. */
-    struct part *restrict pi = &parts_i[sort_i[pid].i];
-    const float hi = pi->h;
+    const double di_min = sort_i[0].d;
 
-    /* Skip inactive particles */
-    if (!part_is_active(pi, e)) {
-      /* TODO what should we do here?
-       * For the moment, also build grid for inactive particles... */
-      continue;
-    }
-
-    /* Is there anything we need to interact with ? */
-    //      const double di = sort_i[pid].d + hi * kernel_gamma + dx_max -
-    //      rshift;
-    const double di = sort_i[pid].d + hi + dx_max - rshift;
-    if (di < dj_min) continue;
-
-    /* Get some additional information about pi */
-    //      const float hig2 = hi * hi * kernel_gamma2;
-    const float hig2 = hi * hi;
-    const double pix = pi->x[0] - (cj->loc[0] + shift[0]);
-    const double piy = pi->x[1] - (cj->loc[1] + shift[1]);
-    const double piz = pi->x[2] - (cj->loc[2] + shift[2]);
-
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+    /* Loop over the parts in cj (on the left) */
+    for (int pjd = count_j - 1;
+         pjd >= 0 && sort_j[pjd].d + hi_max + dx_max > di_min; pjd--) {
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
@@ -112,26 +93,95 @@ __attribute__((always_inline)) INLINE static void runner_dopair_grid_constructio
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
-      const double pjx = pj->x[0] - cj->loc[0];
-      const double pjy = pj->x[1] - cj->loc[1];
-      const double pjz = pj->x[2] - cj->loc[2];
+      /* Shift pj so that it is in the frame of ci (with cj on the left) */
+      const double pjx = pj->x[0] - shift[0];
+      const double pjy = pj->x[1] - shift[1];
+      const double pjz = pj->x[2] - shift[2];
 
-      /* Compute the pairwise distance. */
-      double dx[3] = {pix - pjx, piy - pjy, piz - pjz};
-      const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      /* Loop over the parts in ci (on the right) */
+      for (int pid = 0;
+           pid < count_i && sort_i[pid].d - hi_max - dx_max < sort_j[pjd].d;
+           pid++) {
 
-      /* Hit or miss? */
-      if (r2 < hig2) {
-        delaunay_add_new_vertex(ci->grid.delaunay, pj->x[0] + shift[0],
-                                pj->x[1] + shift[1], pj->x[2] + shift[2], sid,
-                                pj_idx);
-      }
-    } /* loop over the parts in cj. */
-  }   /* loop over the parts in ci. */
+        /* Get a hold of pi. */
+        struct part *restrict pi = &parts_i[sort_i[pid].i];
+
+        /* Skip inactive particles */
+        if (!part_is_active(pi, e)) {
+          /* TODO what should we do here? */
+          continue;
+        }
+
+        /* Early abort? */
+        const float hi = pi->r;
+        if (sort_i[pid].d - hi - dx_max >= sort_j[pjd].d) continue;
+
+        /* Compute the pairwise distance. */
+        double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
+        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Hit or miss? */
+        if (r2 < hi * hi) {
+          delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
+                                  pj_idx);
+        }
+      } /* loop over the parts in ci. */
+    }   /* loop over the parts in cj. */
+  } else {
+    /* ci on the left */
+
+    const double di_max = sort_i[count_i - 1].d;
+
+    /* Loop over the parts in cj (on the right) */
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hi_max - dx_max < di_max;
+         pjd++) {
+
+      /* Recover pj */
+      int pj_idx = sort_j[pjd].i;
+      struct part *pj = &parts_j[sort_j[pjd].i];
+
+      /* Skip inhibited particles. */
+      if (part_is_inhibited(pj, e)) continue;
+
+      /* Shift pj so that it is in the frame of ci (with cj on the right) */
+      const double pjx = pj->x[0] + shift[0];
+      const double pjy = pj->x[1] + shift[1];
+      const double pjz = pj->x[2] + shift[2];
+
+      /* Loop over the parts in ci (on the left) */
+      for (int pid = count_i - 1;
+           pid >= 0 && sort_i[pid].d + hi_max + dx_max > sort_j[pjd].d; pid--) {
+
+        /* Get a hold of pi. */
+        struct part *restrict pi = &parts_i[sort_i[pid].i];
+
+        /* Skip inactive particles */
+        if (!part_is_active(pi, e)) {
+          /* TODO what should we do here? */
+          continue;
+        }
+
+        /* Early abort? */
+        const float hi = pi->r;
+        if (sort_i[pid].d + hi + dx_max <= sort_j[pjd].d) continue;
+
+        /* Compute the pairwise distance. */
+        double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
+        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Hit or miss? */
+        if (r2 < hi * hi) {
+          delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
+                                  pj_idx);
+        }
+      } /* loop over the parts in ci. */
+    }   /* loop over the parts in cj. */
+  }     /* Flipped? */
 }
 
-__attribute__((always_inline)) INLINE static void runner_doself_grid_construction(struct runner *restrict r,
-                                     struct cell *restrict c) {
+__attribute__((always_inline)) INLINE static void
+runner_doself_grid_construction(struct runner *restrict r,
+                                struct cell *restrict c) {
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
@@ -177,12 +227,13 @@ __attribute__((always_inline)) INLINE static void runner_doself_grid_constructio
   }
 }
 
-__attribute__((always_inline)) INLINE static void runner_dopair_subset_grid_construction(struct runner *restrict r,
-                                            struct cell *restrict ci,
-                                            struct part *restrict parts_i,
-                                            int *restrict ind,
-                                            double *restrict h_prev, int count,
-                                            struct cell *restrict cj) {
+__attribute__((always_inline)) INLINE static void
+runner_dopair_subset_grid_construction(struct runner *restrict r,
+                                       struct cell *restrict ci,
+                                       struct part *restrict parts_i,
+                                       int *restrict ind,
+                                       double *restrict h_prev, double h_max,
+                                       int count, struct cell *restrict cj) {
   const struct engine *restrict e = r->e;
 
   const int count_j = cj->hydro.count;
@@ -198,27 +249,30 @@ __attribute__((always_inline)) INLINE static void runner_dopair_subset_grid_cons
   int sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
 
   /* Pick-out the sorted lists. */
+  const struct sort_entry *sort_i = cell_get_hydro_sorts(ci, sid);
   const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
-  const float dxj = cj->hydro.dx_max_sort;
 
+  /* Useful variables*/
+  const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
-  /* Loop over the parts_i. */
-  for (int pid = 0; pid < count; pid++) {
+  const int flipped = ci != ci_temp;
+  if (flipped) {
+    /* ci on the right */
 
-    /* Get a hold of the ith part in ci. */
-    struct part *restrict pi = &parts_i[ind[pid]];
-    const double pix = pi->x[0] - (shift[0]);
-    const double piy = pi->x[1] - (shift[1]);
-    const double piz = pi->x[2] - (shift[2]);
-    const float hi = pi->h;
-    const float hig2 = hi * hi;
-    const double hi_prev = h_prev[ind[pid]];
-    const double hi_prev2 = hi_prev * hi_prev;
-    const double di = hi + dxj + pix * runner_shift[sid][0] +
-                      piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+    /* Correct sid if the cells have been flipped */
+    sid = 26 - sid;
 
-    /* Loop over the parts in cj. */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
+    if (shift[1] != 0) {
+      shift[1] = shift[1];
+    }
+
+    /* Get the minimal position of any particle of ci along the sorting axis. */
+    const float di_min = sort_i[0].d;
+
+    /* Loop over the neighbouring particles parts_j until they are definitely
+     * too far to be a candidate ghost particle. */
+    for (int pjd = count_j - 1;
+         pjd >= 0 && sort_j[pjd].d > di_min - dx_max - h_max; pjd--) {
 
       /* Get a pointer to the jth particle. */
       int pj_idx = sort_j[pjd].i;
@@ -227,31 +281,100 @@ __attribute__((always_inline)) INLINE static void runner_dopair_subset_grid_cons
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
-      const double pjx = pj->x[0];
-      const double pjy = pj->x[1];
-      const double pjz = pj->x[2];
+      /* Shift pj so that it is in the frame of ci (with cj on the left) */
+      const double pjx = pj->x[0] - shift[0];
+      const double pjy = pj->x[1] - shift[1];
+      const double pjz = pj->x[2] - shift[2];
 
-      /* Compute the pairwise distance. */
-      float dx[3] = {(float)(pix - pjx), (float)(piy - pjy),
-                     (float)(piz - pjz)};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      /* Loop over all the unconverged particles in parts_i and check if pj
+       * falls within the new search radius, but outside the old search radius
+       * of the unconverged particle pi. */
+      for (int pid = 0; pid < count; pid++) {
 
-      /* Hit or miss? */
-      if (r2 < hig2 && r2 >= hi_prev2) {
-        delaunay_add_new_vertex(ci->grid.delaunay, pj->x[0] + shift[0],
-                                pj->x[1] + shift[1], pj->x[2] + shift[2],
-                                26 - sid, pj_idx);
-      }
-    } /* loop over the parts in cj. */
-  }   /* loop over the parts in ci. */
+        /* Get a hold of the ith part in ci. */
+        struct part *restrict pi = &parts_i[ind[pid]];
+        const float hi = pi->r;
+        const double hi_prev = h_prev[ind[pid]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!part_is_active(pi, e)) {
+          error(
+              "Encountered inactive unconverged particle in ghost construction "
+              "task!");
+        }
+#endif
+
+        /* Compute the pairwise distance. */
+        const double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
+        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Hit or miss? */
+        if (r2 < hi * hi && r2 >= hi_prev * hi_prev) {
+          delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
+                                  pj_idx);
+        }
+      } /* Loop over unconverged particles in ci */
+    }   /* Loop over particles in cj */
+  } else {
+    /* ci on the left */
+
+    /* Get the maximal position of any particle of ci along the sorting axis. */
+    const float dxi = sort_i[ci->hydro.count - 1].d + ci->hydro.dx_max_sort;
+
+    /* Loop over the neighbouring particles parts_j until they are definitely
+     * too far to be a candidate ghost particle. */
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < dxi + h_max; pjd++) {
+
+      /* Get a pointer to the jth particle. */
+      int pj_idx = sort_j[pjd].i;
+      struct part *restrict pj = &parts_j[pj_idx];
+
+      /* Skip inhibited particles. */
+      if (part_is_inhibited(pj, e)) continue;
+
+      /* Shift pj so that it is in the frame of ci (with cj on the right) */
+      const double pjx = pj->x[0] + shift[0];
+      const double pjy = pj->x[1] + shift[1];
+      const double pjz = pj->x[2] + shift[2];
+
+      /* Loop over all the unconverged particles in parts_i and check if pj
+       * falls within the new search radius, but outside the old search radius
+       * of the unconverged particle pi. */
+      for (int pid = 0; pid < count; pid++) {
+
+        /* Get a hold of the ith part in ci. */
+        struct part *restrict pi = &parts_i[ind[pid]];
+        const float hi = pi->r;
+        const double hi_prev = h_prev[ind[pid]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!part_is_active(pi, e)) {
+          error(
+              "Encountered inactive unconverged particle in ghost construction "
+              "task!");
+        }
+#endif
+
+        /* Compute the pairwise distance. */
+        const double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
+        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Hit or miss? */
+        if (r2 < hi * hi && r2 >= hi_prev * hi_prev) {
+          delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
+                                  pj_idx);
+        }
+      } /* Loop over unconverged particles in ci */
+    }   /* Loop over particles in cj */
+  }     /* Flipped? */
 }
 
-__attribute__((always_inline)) INLINE static void runner_doself_subset_grid_construction(struct runner *restrict r,
-                                            struct cell *restrict ci,
-                                            struct part *restrict parts_i,
-                                            int *restrict ind,
-                                            double *restrict h_prev,
-                                            int count) {
+__attribute__((always_inline)) INLINE static void
+runner_doself_subset_grid_construction(struct runner *restrict r,
+                                       struct cell *restrict ci,
+                                       struct part *restrict parts_i,
+                                       int *restrict ind,
+                                       double *restrict h_prev, int count) {
   /* TODO */
 }
 
