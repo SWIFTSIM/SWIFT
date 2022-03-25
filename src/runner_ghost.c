@@ -1771,7 +1771,11 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     c->grid.voronoi = voronoi_malloc(c->hydro.count, c->width[0]);
   }
 
-  voronoi_build(c->grid.voronoi, c->grid.delaunay);
+  /* We only want to build voronoi cells for the active particles */
+  int *part_is_active_mask = (int *)malloc(c->hydro.count * sizeof(int));
+  for (int i = 0; i < c->hydro.count; i++)
+    part_is_active_mask[i] = part_is_active(&parts[i], e);
+  voronoi_build(c->grid.voronoi, c->grid.delaunay, part_is_active_mask);
 
   if (timer) TIMER_TOC(timer_do_ghost);
 }

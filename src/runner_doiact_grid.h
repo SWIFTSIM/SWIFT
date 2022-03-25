@@ -124,6 +124,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
         if (r2 < hi * hi) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
                                   pj_idx);
+          break;
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
@@ -173,6 +174,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
         if (r2 < hi * hi) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
                                   pj_idx);
+          break;
         }
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
@@ -229,8 +231,7 @@ runner_doself_grid_construction(struct runner *restrict r,
     /* Add inactive particles only if they fall in the search radius of an
      * active particle */
     if (part_is_active(pi, e)) {
-      delaunay_add_local_vertex(c->grid.delaunay, idx, pix, piy,
-                                piz);
+      delaunay_add_local_vertex(c->grid.delaunay, idx, pix, piy, piz);
     } else {
       /* pi is inactive, check if there is an active pj containing pi in its
        * search radius. */
@@ -247,6 +248,7 @@ runner_doself_grid_construction(struct runner *restrict r,
         /* Hit or miss? */
         if (r2 < hj * hj) {
           delaunay_add_local_vertex(c->grid.delaunay, idx, pix, piy, piz);
+          break;
         }
       }
     }
@@ -335,9 +337,13 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < hi * hi && r2 >= hi_prev * hi_prev) {
+        if (r2 < hi_prev * hi_prev) {
+          /* pj already added during previous iteration */
+          break;
+        } else if (r2 < hi * hi) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
                                   pj_idx);
+          break;
         }
       } /* Loop over unconverged particles in ci */
     }   /* Loop over particles in cj */
@@ -386,9 +392,13 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < hi * hi && r2 >= hi_prev * hi_prev) {
+        if (r2 < hi_prev * hi_prev) {
+          /* pj already added during previous iteration */
+          break;
+        } else if (r2 < hi * hi) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
                                   pj_idx);
+          break;
         }
       } /* Loop over unconverged particles in ci */
     }   /* Loop over particles in cj */
@@ -429,8 +439,12 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
       const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < hi * hi && r2 >= hi_prev * hi_prev) {
+      if (r2 < hi_prev * hi_prev) {
+        /* pj already added during previous iteration */
+        break;
+      } else if (r2 < hi * hi) {
         delaunay_add_local_vertex(ci->grid.delaunay, pid, pjx, pjy, pjz);
+        break;
       }
     }
   }

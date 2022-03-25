@@ -5,10 +5,10 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_2D_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_2D_H
 
-#include "../queues.h"
-#include "triangle.h"
 #include "../delaunay.h"
+#include "../queues.h"
 #include "./geometry.h"
+#include "triangle.h"
 
 /**
  * @brief Voronoi interface.
@@ -30,7 +30,8 @@ struct voronoi_pair {
    * the corresponding cell in this voronoi tesselation. */
   int right_idx;
 
-  /*! idx of the particle on the right of this pair in the delaunay tesselation. */
+  /*! idx of the particle on the right of this pair in the delaunay tesselation.
+   */
   int right_del_idx;
 
   /*! Surface area of the interface. */
@@ -146,13 +147,14 @@ static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
  */
 static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
                                    int del_vert_idx, int ngb_del_vert_idx,
-                                   double ax, double ay, double bx, double by) {
+                                   int *part_is_active, double ax, double ay,
+                                   double bx, double by) {
   int sid;
   int right_part_idx;
   /* Local pair? */
   if (ngb_del_vert_idx < d->ngb_offset) {
     right_part_idx = ngb_del_vert_idx - d->vertex_start;
-    if (ngb_del_vert_idx < del_vert_idx) {
+    if (ngb_del_vert_idx < del_vert_idx && part_is_active[right_part_idx]) {
       /* Pair was already added. Find it and add it to the cell_pair_connections
        * if necessary. If no pair is found, the face must have been degenerate.
        * Return early. */
@@ -286,7 +288,7 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
   v->min_surface_area = -1;
 }
 
-inline static struct voronoi* voronoi_malloc(int number_of_cells, double dmin) {
+inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
   struct voronoi *v = malloc(sizeof(struct voronoi));
 
   v->number_of_cells = number_of_cells;
@@ -353,7 +355,8 @@ inline static void voronoi_init(struct voronoi *restrict v, int number_of_cells,
  * @param d Delaunay tessellation (read-only).
  * @param parts Local cell generators (read-only).
  */
-static inline void voronoi_build(struct voronoi *v, struct delaunay *d) {
+static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
+                                 int *part_is_active) {
 
   voronoi_assert(d->vertex_end > 0);
   voronoi_assert(d->active);
@@ -376,12 +379,16 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d) {
     int v1 = t->vertices[1];
     int v2 = t->vertices[2];
 
-    /* if the triangle is not linked to a non-ghost, non-dummy vertex, it is not
-     * a grid vertex and we can skip it. */
-    if (v0 >= v->number_of_cells && v1 >= v->number_of_cells &&
-        v2 >= v->number_of_cells) {
+    /* if the triangle is not linked to a non-ghost, non-dummy vertex,
+     * corresponding to an active particle, it is not a grid vertex and we can
+     * skip it. */
+    if ((v0 >= d->vertex_end || v0 < d->vertex_start ||
+         !part_is_active[v0 - d->vertex_start]) &&
+        (v1 >= d->vertex_end || v1 < d->vertex_start ||
+         !part_is_active[v1 - d->vertex_start]) &&
+        (v2 >= d->vertex_end || v2 < d->vertex_start ||
+         !part_is_active[v2 - d->vertex_start]))
       continue;
-    }
 
     if (v0 >= d->vertex_end && v0 < d->ngb_offset) {
       /* This could mean that a neighbouring cell of this grids cell is empty!
@@ -417,6 +424,9 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d) {
   /* loop over all cell generators, and hence over all non-ghost, non-dummy
      Delaunay vertices and create the voronoi cell. */
   for (int i = 0; i < v->number_of_cells; ++i) {
+
+    /* Don't create voronoi cells for inactive particles */
+    if (!part_is_active[i]) continue;
 
     struct voronoi_cell *this_cell = &v->cells[i];
     double cell_volume = 0.;
@@ -492,8 +502,9 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d) {
       /* the neighbour corresponding to the face is the same vertex that
          determines the next triangle */
       int ngb_del_vert_ix = d->triangles[t1].vertices[next_t_ix_in_cur_t];
-      if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix, bx, by, cx,
-                           cy)) {
+      if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix,
+                           part_is_active,
+                           bx, by, cx, cy)) {
         nface++;
       }
 
@@ -514,8 +525,10 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d) {
     cell_centroid[0] += V * centroid[0];
     cell_centroid[1] += V * centroid[1];
 
-    if (voronoi_add_pair(v, d, del_vert_ix, first_ngb_del_vert_ix, bx, by, cx,
-                         cy)) {
+    if (voronoi_add_pair(
+            v, d, del_vert_ix, first_ngb_del_vert_ix,
+            part_is_active, bx, by, cx,
+            cy)) {
       nface++;
     }
 
