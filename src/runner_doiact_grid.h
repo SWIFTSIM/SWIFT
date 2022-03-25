@@ -221,9 +221,35 @@ runner_doself_grid_construction(struct runner *restrict r,
     int idx = i;
 #endif
     /* Get a pointer to the idx-th particle. */
-    struct part *restrict p = &parts[idx];
-    /* TODO skip inactive particles */
-    delaunay_add_local_vertex(c->grid.delaunay, idx, p->x[0], p->x[1], p->x[2]);
+    struct part *restrict pi = &parts[idx];
+    const double pix = pi->x[0];
+    const double piy = pi->x[1];
+    const double piz = pi->x[2];
+
+    /* Add inactive particles only if they fall in the search radius of an
+     * active particle */
+    if (part_is_active(pi, e)) {
+      delaunay_add_local_vertex(c->grid.delaunay, idx, pix, piy,
+                                piz);
+    } else {
+      /* pi is inactive, check if there is an active pj containing pi in its
+       * search radius. */
+      for (int j = 0; j < count; j++) {
+        /* Get a pointer to the j-th particle. */
+        struct part *restrict pj = &parts[j];
+        if (!part_is_active(pj, e)) continue;
+        const double hj = pj->r;
+
+        /* Compute pairwise distance */
+        const double dx[3] = {pj->x[0] - pix, pj->x[1] - piy, pj->x[2] - piz};
+        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Hit or miss? */
+        if (r2 < hj * hj) {
+          delaunay_add_local_vertex(c->grid.delaunay, idx, pix, piy, piz);
+        }
+      }
+    }
   }
 }
 
@@ -375,7 +401,39 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
                                        struct part *restrict parts_i,
                                        int *restrict ind,
                                        double *restrict h_prev, int count) {
-  /* TODO */
+  struct engine *e = r->e;
+
+  /* Loop over all inactive particles in ci */
+  for (int j = 0; j < ci->hydro.count; j++) {
+
+    /* Retrieve particle */
+    struct part *pj = &parts_i[j];
+    const double pjx = pj->x[0];
+    const double pjy = pj->x[1];
+    const double pjz = pj->x[2];
+
+    /* Skip active particles (already added during the self task) */
+    if (part_is_active(pj, e)) continue;
+
+    /* Loop over all unconverged particles */
+    for (int i = 0; i < count; i++) {
+
+      /* Retrieve particle */
+      const int pid = ind[i];
+      struct part *pi = &parts_i[pid];
+      const float hi = pi->r;
+      const float hi_prev = h_prev[pid];
+
+      /* Compute pairwise distance */
+      const double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
+      const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      /* Hit or miss? */
+      if (r2 < hi * hi && r2 >= hi_prev * hi_prev) {
+        delaunay_add_local_vertex(ci->grid.delaunay, pid, pjx, pjy, pjz);
+      }
+    }
+  }
 }
 
 #endif  // SWIFTSIM_RUNNER_DOIACT_GRID_H
