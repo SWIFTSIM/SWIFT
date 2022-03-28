@@ -493,7 +493,10 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 	      c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
 	      c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
 	      c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
-	      c->parent_tl_cid = cell_getid_pos(s, c->loc[0], c->loc[1], c->loc[2]);
+	      c->parent_bkg_cid = cell_getid(s->cdim,
+	                                     s->zoom_props->zoom_cell_ijk[0],
+	                                     s->zoom_props->zoom_cell_ijk[1],
+	                                     s->zoom_props->zoom_cell_ijk[2]) + bkg_cell_offset;
 	      c->width[0] = s->zoom_props->width[0];
 	      c->width[1] = s->zoom_props->width[1];
 	      c->width[2] = s->zoom_props->width[2];

@@ -325,9 +325,10 @@ enum cell_flags {
 /**
  * @brief What kind of top level cell is this cell?
  *
- * 0 = A standard top level cell.
- * 1 = An ignored top level cell (as it is within the zoom region).
- * 2 = A top level zoom cell.
+ * 0 = A background top level cell.
+ * 1 = A background top level cell that is within the gravity criterion of the zoom region.
+ * 2 = An ignored background top level cell (as it contains the zoom region).
+ * 3 = A top level zoom cell.
  */
 enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell };
 #endif
@@ -467,7 +468,7 @@ struct cell {
 
   /*! Top level cell cid (index in the cell array) for the top level cell the
    * zoom cell occupies, NULL if a natural top level cell */
-  int parent_tl_cid;
+  int parent_bkg_cid;
 
   /*! The number of zoom cells along an axis in a natural top level cell */
   double nr_zoom_per_bkg_cells;
