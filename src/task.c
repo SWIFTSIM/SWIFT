@@ -339,6 +339,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_init_grav:
     case task_type_grav_mm:
     case task_type_grav_long_range:
+    case task_type_grav_long_range_bkg:
       return task_action_multipole;
       break;
 
@@ -663,6 +664,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
+    case task_type_grav_long_range_bkg:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       cell_munlocktree(ci);
 #endif
@@ -1058,6 +1060,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_grav_long_range:
+    case task_type_grav_long_range_bkg:
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
       /* Lock the m-poles */
       if (ci->grav.mhold) return 0;
@@ -1171,7 +1174,7 @@ void task_print(const struct task *t) {
  */
 void task_get_group_name(int type, int subtype, char *cluster) {
 
-  if (type == task_type_grav_long_range || type == task_type_grav_mm) {
+  if (type == task_type_grav_long_range || type == task_type_grav_long_range_bkg || type == task_type_grav_mm) {
 
     strcpy(cluster, "Gravity");
     return;
@@ -1776,6 +1779,7 @@ enum task_categories task_get_category(const struct task *t) {
 
     case task_type_init_grav:
     case task_type_grav_long_range:
+    case task_type_grav_long_range_bkg:
     case task_type_grav_mm:
     case task_type_grav_down:
     case task_type_end_grav_force:
