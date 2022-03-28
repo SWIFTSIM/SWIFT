@@ -287,7 +287,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
  * @param num The number of cells in the chunk.
  * @param extra The information about the mesh and cells.
  */
-static void bkg_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
+void bkg_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   cell_gpart_to_mesh_CIC_mapper(map_data, num, extra);
 }
 
@@ -298,7 +298,7 @@ static void bkg_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* ext
  * @param num The number of cells in the chunk.
  * @param extra The information about the mesh and cells.
  */
-static void zoom_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
+void zoom_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   cell_gpart_to_mesh_CIC_mapper(map_data, num, extra);
 }
 
@@ -514,7 +514,7 @@ void cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
  * @param num The number of cells in the chunk.
  * @param extra The information about the mesh and cells.
  */
-static void bkg_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
+void bkg_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
   cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
 }
 
@@ -525,7 +525,7 @@ static void bkg_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* ext
  * @param num The number of cells in the chunk.
  * @param extra The information about the mesh and cells.
  */
-static void zoom_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
+void zoom_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
   cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
 }
 
