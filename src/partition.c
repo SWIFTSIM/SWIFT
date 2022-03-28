@@ -1918,6 +1918,26 @@ void partition_initial_partition(struct partition *initial_partition,
                         initial_partition->grid[2])
       error("Grid size does not match number of nodes.");
 
+#ifdef WITH_ZOOM_REGION
+    /* Run through the cells and set their nodeID. */
+    for (k = 0; k < s->nr_cells; k++) {
+      c = &s->cells_top[k];
+      for (j = 0; j < 3; j++) {
+        if (s->with_zoom_region) {
+          if (c->tl_cell_type == 3) {
+            ind[j] = c->loc[j] / s->zoom_props->dim[j] * initial_partition->grid[j];
+          } else {
+            ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
+          }
+        } else {
+          ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
+        }
+      }
+      c->nodeID = ind[0] + initial_partition->grid[0] *
+                               (ind[1] + initial_partition->grid[1] * ind[2]);
+    }
+#else
+
     /* Run through the cells and set their nodeID. */
     for (k = 0; k < s->nr_cells; k++) {
       c = &s->cells_top[k];
@@ -1926,6 +1946,8 @@ void partition_initial_partition(struct partition *initial_partition,
       c->nodeID = ind[0] + initial_partition->grid[0] *
                                (ind[1] + initial_partition->grid[1] * ind[2]);
     }
+
+#endif /* WITH_ZOOM_REGION */
 
     /* The grid technique can fail, so check for this before proceeding. */
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {
