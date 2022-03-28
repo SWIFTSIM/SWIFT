@@ -1012,17 +1012,6 @@ int task_lock(struct task *t) {
           cell_bunlocktree(ci);
           return 0;
         }
-        if (cell_locktree(ci) != 0) {
-          cell_sunlocktree(ci);
-          cell_sunlocktree(cj);
-          return 0;
-        }
-        if (cell_locktree(cj) != 0) {
-          cell_sunlocktree(ci);
-          cell_sunlocktree(cj);
-          cell_unlocktree(ci);
-          return 0;
-        }
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         if (ci->hydro.hold || cj->hydro.hold) return 0;
