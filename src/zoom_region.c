@@ -1327,7 +1327,7 @@ void engine_makeproxies_between_grids(struct engine *e) {
   for (int cid = 0; cid < bkg_cell_offset; cid++) {
   	
     /* Integer indices of this cell in the natural parent */
-    const int natural_tl_cid = cells[cid].parent_tl_cid - bkg_cell_offset;
+    const int natural_tl_cid = cells[cid].parent_bkg_cid - bkg_cell_offset;
     const int i = natural_tl_cid / (cdim[1] * cdim[2]);
     const int j = (natural_tl_cid / cdim[2]) % cdim[1];
     const int k = natural_tl_cid % cdim[2];
