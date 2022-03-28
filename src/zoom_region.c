@@ -547,6 +547,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 	      c->width[1] = s->width[1];
 	      c->width[2] = s->width[2];
 	      c->dmin = dmin;
+	      c->parent_bkg_cid = cid + bkg_cell_offset;
 	      c->nr_zoom_per_bkg_cells = s->zoom_props->nr_zoom_per_bkg_cells;
 	      if (s->with_self_gravity)
 	        c->grav.multipole = &s->multipoles_top[cid + bkg_cell_offset];
