@@ -2750,7 +2750,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
 
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
-  int rebuild = 0; /* TODO: implement rebuild conditions? */
+  int rebuild = 0;
 
   for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
 
