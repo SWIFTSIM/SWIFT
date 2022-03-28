@@ -73,6 +73,7 @@ enum task_types {
   task_type_pack,
   task_type_unpack,
   task_type_grav_long_range,
+  task_type_grav_long_range_bkg,
   task_type_grav_mm,
   task_type_grav_down_in, /* Implicit */
   task_type_grav_down,
