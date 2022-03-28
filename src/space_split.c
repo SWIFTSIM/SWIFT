@@ -727,7 +727,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-__attribute__((always_inline)) INLINE static void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+static void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   space_split_mapper(map_data, num_cells, extra_data);
 }
 
@@ -739,7 +739,7 @@ __attribute__((always_inline)) INLINE static void bkg_space_split_mapper(void *m
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-__attribute__((always_inline)) INLINE static void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+static void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   space_split_mapper(map_data, num_cells, extra_data);
 }
 
