@@ -32,6 +32,9 @@ struct cell_grid {
 
   /*! Pointer to this cells construction ghost task. */
   struct task *ghost;
+
+  /*! Time of last construction */
+  integertime_t ti_old;
 };
 
 struct pcell_grid {
