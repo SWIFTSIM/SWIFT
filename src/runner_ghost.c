@@ -1656,15 +1656,15 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   /* Init the list of active particles that have to be updated and their
    * current smoothing lengths. */
   int *pid = NULL;
-  double *h_0 = NULL;
+  double *h_prev = NULL;
   if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
     error("Can't allocate memory for pid.");
-  if ((h_0 = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
-    error("Can't allocate memory for h_0.");
+  if ((h_prev = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
+    error("Can't allocate memory for h_prev.");
   for (int k = 0; k < c->hydro.count; k++)
     if (part_is_active(&parts[k], e)) {
       pid[count] = k;
-      h_0[count] = parts[k].h;
+      h_prev[count] = parts[k].r;
       ++count;
     }
 
@@ -1687,8 +1687,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       float hnew = (float)delaunay_get_search_radius(
           c->grid.delaunay, pid[i] + c->grid.delaunay->vertex_start);
       if (hnew >= p->r) {
-        /* Use h_0 array for previous search radii */
-        h_0[redo] = p->r;
+        /* Use h_prev array for previous search radii */
+        h_prev[redo] = p->r;
         p->r *= 1.25f;
         pid[redo] = pid[i];
         redo += 1;
@@ -1720,7 +1720,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Self-interaction? */
         if (l->t->type == task_type_self)
-          runner_doself_subset_grid_construction(r, c, parts, pid, h_0, count);
+          runner_doself_subset_grid_construction(r, c, parts, pid, h_prev, count);
 
         /* Otherwise, pair interaction? */
         else if (l->t->type == task_type_pair) {
@@ -1728,7 +1728,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
           /* Left or right? */
           if (l->t->ci == c)
             runner_dopair_subset_grid_construction(
-                r, c, parts, pid, h_0, h_max_active, count, l->t->cj);
+                r, c, parts, pid, h_prev, h_max_active, count, l->t->cj);
           else
             error("Particles should always be on the left!");
         } else
@@ -1751,7 +1751,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Be clean */
   free(pid);
-  free(h_0);
+  free(h_prev);
 
   /* Update h_max */
   c->hydro.h_max = h_max;

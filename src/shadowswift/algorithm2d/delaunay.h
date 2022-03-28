@@ -1165,15 +1165,15 @@ inline static int delaunay_add_vertex(struct delaunay* restrict d, int v,
   while (flag == 0) {
     t0 = t1;
     flag = delaunay_test_point_inside_triangle(d, v, t0, &t1, &ngb_index);
-    if (flag == -1) {
-      return -1;
-    }
     ++count;
     delaunay_assert(count < d->triangle_index);
   }
-  delaunay_log("Found triangle: %i (flag %i)", t0, flag);
+  if (flag == -1) {
+    return -1;
+  }
 
-  /* check wheter we are in the normal (flag = 1) or degenerate (flag = 2)
+  delaunay_log("Found triangle: %i (flag %i)", t0, flag);
+  /* check whether we are in the normal (flag = 1) or degenerate (flag = 2)
      case */
   if (flag == 1) {
     /* normal case: split t0 into 3 new triangles */
@@ -1340,7 +1340,7 @@ inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
                                              double x, double y, double z) {
   delaunay_init_vertex(d, v, x, y);
   if (delaunay_add_vertex(d, v, x, y) != 0) {
-    error("Local vertices cannot be added twice!");
+//    error("Local vertices cannot be added twice!");
   }
 }
 
