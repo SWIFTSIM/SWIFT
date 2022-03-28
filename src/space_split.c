@@ -717,6 +717,34 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 #endif
 }
 
+#ifdef WITH_ZOOM_REGION
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split background cells if they contain
+ *        too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+__attribute__((always_inline)) INLINE void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(void *map_data, int num_cells, void *extra_data);
+}
+
+/**
+ * @brief A wrapper for #threadpool mapper function to split zoom cells if they contain
+ *        too many particles.
+ *
+ * @param map_data Pointer towards the top-cells.
+ * @param num_cells The number of cells to treat.
+ * @param extra_data Pointers to the #space.
+ */
+__attribute__((always_inline)) INLINE void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+  space_split_mapper(void *map_data, int num_cells, void *extra_data);
+}
+
+#endif
+
 /**
  * @brief Split particles between cells of a hierarchy.
  *
@@ -731,11 +759,11 @@ void space_split(struct space *s, int verbose) {
   const ticks tic = getticks();
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
-    threadpool_map(&s->e->threadpool, space_split_mapper,
+    threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
                  s->zoom_props->local_bkg_cells_with_particles_top,
                  s->zoom_props->nr_local_bkg_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
-    threadpool_map(&s->e->threadpool, space_split_mapper,
+    threadpool_map(&s->e->threadpool, zoom_space_split_mapper,
                  s->zoom_props->local_zoom_cells_with_particles_top,
                  s->zoom_props->nr_local_zoom_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
