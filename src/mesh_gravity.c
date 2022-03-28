@@ -288,7 +288,7 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
  * @param extra The information about the mesh and cells.
  */
 __attribute__((always_inline)) INLINE void bkg_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
-  cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra);
+  cell_gpart_to_mesh_CIC_mapper(map_data, num, extra);
 }
 
 /**
@@ -299,7 +299,7 @@ __attribute__((always_inline)) INLINE void bkg_cell_gpart_to_mesh_CIC_mapper(voi
  * @param extra The information about the mesh and cells.
  */
 __attribute__((always_inline)) INLINE void zoom_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
-  cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra);
+  cell_gpart_to_mesh_CIC_mapper(map_data, num, extra);
 }
 
 #endif
@@ -515,7 +515,7 @@ void cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
  * @param extra The information about the mesh and cells.
  */
 __attribute__((always_inline)) INLINE void bkg_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
-  cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra);
+  cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
 }
 
 /**
@@ -526,7 +526,7 @@ __attribute__((always_inline)) INLINE void bkg_cell_mesh_to_gpart_CIC_mapper(voi
  * @param extra The information about the mesh and cells.
  */
 __attribute__((always_inline)) INLINE void zoom_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra) {
-  cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra);
+  cell_mesh_to_gpart_CIC_mapper(map_data, num, extra);
 }
 
 #endif
