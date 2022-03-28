@@ -48,6 +48,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
   /* Delaunay already allocated? */
   if (ci->grid.delaunay == NULL) {
     ci->grid.delaunay = delaunay_malloc(ci->loc, ci->width, ci->hydro.count);
+    ci->grid.ti_old = e->ti_current;
   } else {
     /* Check if rebuild is needed */
     if (ci->grid.ti_old < e->ti_current) {
@@ -205,6 +206,7 @@ runner_doself_grid_construction(struct runner *restrict r,
   /* Delaunay already allocated? */
   if (c->grid.delaunay == NULL) {
     c->grid.delaunay = delaunay_malloc(c->loc, c->width, c->hydro.count);
+    c->grid.ti_old = e->ti_current;
   } else {
     /* Check if rebuild is needed */
     if (c->grid.ti_old < e->ti_current) {

@@ -33,6 +33,9 @@ struct delaunay {
   /*! @brief Inverse side length of the simulation volume. */
   double inverse_side;
 
+  /*! @brief Flags that keep track whether a local vertex has been added or not */
+  int* vertex_added;
+
   /*! @brief Vertex positions. This array is a copy of the array defined in
    *  main() and we probably want to get rid of it in a SWIFT implementation. */
   double* vertices;
@@ -434,10 +437,14 @@ inline static void delaunay_init(struct delaunay* restrict d,
 
   /* by overwriting the indices, we invalidate all arrays without changing their
      allocated size */
+  /* We reserve vertex_size spots for local vertices. */
   d->vertex_index = vertex_size;
   d->triangle_index = 0;
   d->queue_index = 0;
   d->ngb_index = 0;
+
+  /* Reset vertex_added flags */
+  bzero(d->vertex_added, vertex_size * sizeof(int));
 
   /* determine the size of a box large enough to accommodate the entire
      simulation volume and all possible ghost vertices required to deal with
@@ -553,6 +560,8 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   d->active = 1;
 
   /* allocate memory for the vertex arrays */
+  d->vertex_added = (int*)swift_malloc("delaunay.vertex_added", vertex_size * sizeof(int));
+
   d->vertices =
       (double*)swift_malloc("c.h.d.vertices", vertex_size * 2 * sizeof(double));
   d->rescaled_vertices = (double*)swift_malloc(
@@ -1338,10 +1347,14 @@ inline static int delaunay_add_vertex(struct delaunay* restrict d, int v,
 
 inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
                                              double x, double y, double z) {
+  /* Vertex already added? */
+  if (d->vertex_added[v]) return;
+
   delaunay_init_vertex(d, v, x, y);
   if (delaunay_add_vertex(d, v, x, y) != 0) {
-//    error("Local vertices cannot be added twice!");
+    error("Local vertices cannot be added twice!");
   }
+  d->vertex_added[v] = 1;
 }
 
 inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
