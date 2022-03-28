@@ -2908,3 +2908,59 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
   }
   return rebuild;
 }
+
+/**
+ * @brief Un-skips all the moving mesh tasks associated with a given cell and checks
+ * if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
+  const struct engine *e = s->space->e;
+
+  int nodeID = e->nodeID;
+
+  /* Anyting to do here? */
+  if (!cell_is_active_hydro(c, e) || c->grid.super != c) return 0;
+
+  for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
+    struct task *t = l->t;
+
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    int ci_nodeID = ci->nodeID;
+    int cj_nodeID = cj != NULL ? cj->nodeID : -1;
+
+    scheduler_activate(s, t);
+    /* Activate hydro drift */
+    if (t->type == task_type_self) {
+      if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+    }
+
+    /* Set the correct sorting flags and activate hydro drifts */
+    else if (t->type == task_type_pair) {
+      /* Store some values. */
+      atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+      atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+      ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+      cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+      /* Activate the drift tasks. */
+      if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+      if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+      /* Check the sorts and activate them if needed. */
+      cell_activate_hydro_sorts(ci, t->flags, s);
+      cell_activate_hydro_sorts(cj, t->flags, s);
+    }
+  }
+
+  /* TODO activate limiter? */
+
+  scheduler_activate(s, c->grid.ghost);
+  /* TODO proper check for rebuild */
+  return 0;
+}
