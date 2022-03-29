@@ -128,7 +128,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 void cell_write_grid(const struct cell *c, FILE *dfile,
                          FILE *vfile, size_t *offset) {
   /* Recurse? */
-  if (c->grid.super == NULL) {
+  if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         cell_write_grid(c->progeny[k], dfile, vfile, offset);

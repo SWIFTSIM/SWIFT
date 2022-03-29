@@ -286,7 +286,7 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
  */
 static void engine_do_unskip_grid(struct cell *c, struct engine *e) {
 
-  /* Note: we only get this far if engine_policy_rt is flagged. */
+  /* Note: we only get this far if engine_policy_grid is flagged. */
 #ifdef SWIFT_DEBUG_CHECKS
   if (!(e->policy & engine_policy_grid))
     error("Unksipping Moving mesh stuff without the policy being on");
@@ -299,7 +299,7 @@ static void engine_do_unskip_grid(struct cell *c, struct engine *e) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse */
-  if (c->grid.super == NULL) {
+  if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];

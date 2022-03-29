@@ -11,6 +11,11 @@
 struct cell_grid {
   /*! Pointer to the parent cell of this cell containing the Voronoi grid (if
    * any). */
+  struct cell *construction_level;
+
+  /*! Pointer to shallowest parent of this cell used in any pair construction
+   * task. Can be above the construction level of this cell. We need to drift at
+   * this level. */
   struct cell *super;
 
   /*! Flag that indicates whether this cell is unsplittable or has a directly

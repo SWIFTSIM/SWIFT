@@ -1345,19 +1345,38 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
 
   /* Are we in a super-cell ? */
   if (c->grid.super == c) {
+
+    /* Add the sort task. */
+    c->hydro.sorts =
+        scheduler_addtask(s, task_type_sort, task_subtype_none, 0, 0, c, NULL);
+
     /* Local tasks only... */
     if (c->nodeID == e->nodeID) {
-      c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
-                                        task_subtype_none, 0, 0, c, NULL);
-      /* TODO add unlocks here? */
+
+      /* Add the drift task. */
+      c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
+                                         task_subtype_none, 0, 0, c, NULL);
     }
-  } else {
+  }
+  /* Are we at the construction level? */
+  if (c->grid.construction_level == c) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->grid.super != NULL)
-      error("Somehow ended up below grid super level!");
-    if (!c->split) error("Cell is above grid super level, but is not split!");
+    if (c->grid.super == NULL)
+      error("Grid construction level above super level!");
 #endif
-    /* Recurse until we reach the super level */
+    /* Add the task finishing the grid construction */
+    c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
+                                      task_subtype_none, 0, 0, c, NULL);
+    /* TODO add unlocks here? */
+  }
+  /* Recurse until construction level is reached. */
+  else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->grid.construction_level != NULL)
+      error("Somehow ended up below grid construction level!");
+    if (!c->split)
+      error("Cell is above grid construction level, but is not split!");
+#endif
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_make_hierarchical_tasks_grid(e, c->progeny[k]);
@@ -2336,29 +2355,31 @@ void engine_link_grid_tasks(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci_nodeID != nodeID) error("Non-local construction task");
 #endif
-      /* TODO make depend on grid.super.drift instead, but must be added first... */
-      /* Self grid construction task? Drift --> self_construction --> ghost_construction */
+      /* Self grid construction task?
+       * super.drift --> self_construction --> ghost_construction */
       if (t_type == task_type_self) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        scheduler_addunlock(sched, ci->grid.super->hydro.drift, t);
         scheduler_addunlock(sched, t, ci->grid.ghost);
       }
-      /* Pair grid construction task? Drift --> pair_construction --> ghost_construction
-       *                              |-->Sort --^ */
+      /* Pair grid construction task?
+       * Drift --> pair_construction --> ghost_construction
+       *  |-->Sort --^ */
       else if (t_type == task_type_pair) {
         /* Get the cell we receive particles from */
         struct cell *cj = t->cj;
 
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-        if (cj->hydro.super != ci->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+        scheduler_addunlock(sched, ci->grid.super->hydro.drift, t);
+        scheduler_addunlock(sched, ci->grid.super->hydro.sorts, t);
+        if (ci->grid.super != cj->grid.super) {
+          scheduler_addunlock(sched, cj->grid.super->hydro.drift, t);
+          scheduler_addunlock(sched, cj->grid.super->hydro.sorts, t);
         }
         scheduler_addunlock(sched, t, ci->grid.ghost);
       }
     }
 
     if (t_type == task_type_grid_ghost) {
+      /* This is only temporarily, should unlock the grid hydro tasks */
       scheduler_addunlock(sched, t, ci->super->kick2);
     }
   }
@@ -4686,14 +4707,15 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* Set the grid super level, is needed before splitting */
+  /* Set the grid construction level, is needed before splitting */
   if (e->policy & engine_policy_grid) {
     /* First set the neighbour flags */
     threadpool_map(&e->threadpool, cell_set_neighbour_flags_mapper, NULL,
                    nr_cells, 1, threadpool_auto_chunk_size, e);
-    /* Then we can set the super level */
-    threadpool_map(&e->threadpool, cell_set_grid_super_mapper, cells, nr_cells,
-                   sizeof(struct cell), threadpool_auto_chunk_size, e);
+    /* Then we can set the construction level */
+    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper,
+                   cells, nr_cells, sizeof(struct cell),
+                   threadpool_auto_chunk_size, e);
   }
 
   /* Split the tasks. */

@@ -1635,7 +1635,8 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
-  if (c->grid.super != c) error("Grid ghost not run at grid super level!");
+  if (c->grid.construction_level != c)
+    error("Grid ghost not run at grid construction level!");
 
   struct part *restrict parts = c->hydro.parts;
   const struct engine *e = r->e;

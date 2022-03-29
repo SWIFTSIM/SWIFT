@@ -1087,7 +1087,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
 
     /* Since the grid construction tasks are asymmetric, whether a task
      * can be split depends only on ci. */
-    if (ci->grid.super == NULL) {
+    if (ci->grid.construction_level == NULL) {
       /* Take a step back (we're going to recycle the current task)... */
       redo = 1;
 
@@ -2276,6 +2276,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_external_grav)
           qid = t->ci->grav.super->owner;
+        else if (t->subtype == task_subtype_grid_construction)
+          qid = t->ci->grid.super->owner;
         else
           qid = t->ci->hydro.super->owner;
         break;

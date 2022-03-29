@@ -380,7 +380,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
 #ifdef SHADOWSWIFT
   /* If we're at the grid super level, set the r_max. */
-  if (c->grid.super == c) {
+  if (c->grid.construction_level == c) {
     double r_max = 0.;
 
     /* Loop over all the gas particles in the cell */

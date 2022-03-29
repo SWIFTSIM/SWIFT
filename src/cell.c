@@ -1067,10 +1067,11 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
  * @param with_grav Are we running with gravity on?
  */
 void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
-                    const int with_grav) {
+                    const int with_grav, const int with_grid) {
   /* Are we in a cell which is either the hydro or gravity super? */
   if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
-                        (with_grav && c->grav.super != NULL)))
+                        (with_grav && c->grav.super != NULL) ||
+                        (with_grid && c->grid.super != NULL)))
     super = c;
 
   /* Set the super-cell */
@@ -1080,7 +1081,7 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        cell_set_super(c->progeny[k], super, with_hydro, with_grav);
+        cell_set_super(c->progeny[k], super, with_hydro, with_grav, with_grid);
 }
 
 /**
@@ -1108,6 +1109,27 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  * @brief Set the super-cell pointers for all cells in a hierarchy.
  *
  * @param c The top-level #cell to play with.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of
+ * the tree.
+ */
+void cell_set_super_grid_hydro(struct cell *c, struct cell *super_hydro) {
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_hydro == NULL && c->hydro.flux != NULL) super_hydro = c;
+
+  /* Set the super-cell */
+  c->hydro.super = super_hydro;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_set_super_grid_hydro(c->progeny[k], super_hydro);
+}
+
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
  * @param super_gravity Pointer to the deepest cell with tasks in this part of
  * the tree.
  */
@@ -1126,13 +1148,74 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
         cell_set_super_gravity(c->progeny[k], super_gravity);
 }
 
+/**
+ * @brief Set the super-cell pointers for all cells in a hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super_gravity Pointer to the deepest cell with tasks in this part of
+ * the tree.
+ */
 void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
-  if (super_grid == NULL && c->grid.unsplittable_flag) {
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_grid == NULL && c->grid.construction != NULL)
+    super_grid = c;
+
+  /* Set the super-cell */
+  c->grid.super = super_grid;
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_set_super_grid(c->progeny[k], super_grid);
+}
+
+/**
+ * @brief Mapper function to set the super pointer of the cells.
+ *
+ * @param map_data The top-level cells.
+ * @param num_elements The number of top-level cells.
+ * @param extra_data Unused parameter.
+ */
+void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
+  const struct engine *e = (const struct engine *)extra_data;
+
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_grid_hydro = (e->policy & engine_policy_grid_hydro);
+  const int with_grav = (e->policy & engine_policy_self_gravity) ||
+                        (e->policy & engine_policy_external_gravity);
+  const int with_grid = (e->policy & engine_policy_grid);
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* All top-level cells get an MPI tag. */
+#ifdef WITH_MPI
+    cell_ensure_tagged(c);
+#endif
+
+    /* Super-pointer for hydro */
+    if (with_hydro) cell_set_super_hydro(c, NULL);
+    if (with_grid_hydro) cell_set_super_grid_hydro(c, NULL);
+
+    /* Super-pointer for gravity */
+    if (with_grav) cell_set_super_gravity(c, NULL);
+
+    /* Super-pointer for grid */
+    if (with_grid) cell_set_super_grid(c, NULL);
+
+    /* Super-pointer for common operations */
+    cell_set_super(c, NULL, with_hydro || with_grid_hydro, with_grav, with_grid);
+  }
+}
+
+void cell_set_grid_construction_level(struct cell *c, struct cell *construction_level) {
+  if (construction_level == NULL && c->grid.unsplittable_flag) {
     /* This is the first time we encounter a cell with the unsplittable flag
      * set, meaning that it or one of its direct neighbours is unsplittable,
-     * i.e. we are at the super level for this cell.
+     * i.e. we are at the construction level for this cell.
      */
-    super_grid = c;
+    construction_level = c;
 
     /* Set r_max */
     double r_max = 0.;
@@ -1149,50 +1232,17 @@ void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
   }
 
   /* Set the super-cell */
-  c->grid.super = super_grid;
+  c->grid.construction_level = construction_level;
 
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) cell_set_super_grid(c->progeny[k], super_grid);
+      if (c->progeny[k] != NULL) cell_set_grid_construction_level(c->progeny[k], construction_level);
     }
 }
 
-/**
- * @brief Mapper function to set the super pointer of the cells.
- *
- * @param map_data The top-level cells.
- * @param num_elements The number of top-level cells.
- * @param extra_data Unused parameter.
- */
-void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
-  const struct engine *e = (const struct engine *)extra_data;
-
-  const int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_grav = (e->policy & engine_policy_self_gravity) ||
-                        (e->policy & engine_policy_external_gravity);
-
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &((struct cell *)map_data)[ind];
-
-    /* All top-level cells get an MPI tag. */
-#ifdef WITH_MPI
-    cell_ensure_tagged(c);
-#endif
-
-    /* Super-pointer for hydro */
-    if (with_hydro) cell_set_super_hydro(c, NULL);
-
-    /* Super-pointer for gravity */
-    if (with_grav) cell_set_super_gravity(c, NULL);
-
-    /* Super-pointer for common operations */
-    cell_set_super(c, NULL, with_hydro, with_grav);
-  }
-}
-
-void cell_set_grid_super_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
+void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
+                                             void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
@@ -1200,8 +1250,8 @@ void cell_set_grid_super_mapper(void *map_data, int num_elements,
     cell_ensure_tagged(c);
 #endif
 
-    /* Set super-pointer for the moving mesh */
-    cell_set_super_grid(c, NULL);
+    /* Set construction level-pointer for the moving mesh */
+    cell_set_grid_construction_level(c, NULL);
   }
 }
 
@@ -1361,7 +1411,8 @@ int cell_set_splittable_grid(struct cell *c) {
   return 0;
 }
 
-void cell_set_split_grid_mapper(void *map_data, int num_elements, void *extra_data) {
+void cell_set_split_grid_mapper(void *map_data, int num_elements,
+                                void *extra_data) {
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 

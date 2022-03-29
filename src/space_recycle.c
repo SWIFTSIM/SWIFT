@@ -211,6 +211,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grid.delaunay = NULL;
     c->grid.unsplittable_flag = 0;
     c->grid.split = 0;
+    c->grid.construction_level = NULL;
     c->grid.super = NULL;
     c->grid.ti_old = 0;
     c->grid.r_max = 0;

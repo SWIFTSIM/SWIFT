@@ -2924,7 +2924,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
   int nodeID = e->nodeID;
 
   /* Anyting to do here? */
-  if (!cell_is_active_hydro(c, e) || c->grid.super != c) return 0;
+  if (!cell_is_active_hydro(c, e) || c->grid.construction_level != c) return 0;
 
   for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
     struct task *t = l->t;
