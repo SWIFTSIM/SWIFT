@@ -2470,7 +2470,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   while (top->parent != NULL) top = top->parent;
 
   /* Non-periodic case: loop over everything */
-  if (!periodic) {
+  if (!periodic || top->cell_type != tl_cell) {
   
     /* Loop over all the top-level cells and go for a M-M interaction if
      * well-separated */
@@ -2486,6 +2486,37 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
+    if(periodic) {
+    
+      /* Minimal distance between any pair of particles */
+#ifdef WITH_ZOOM_REGION
+      const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+#else
+      const double min_radius2 = cell_min_dist2_same_size(top, cj, periodic, dim);
+#endif
+      
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
+      if (min_radius2 > max_distance2) {
+#ifdef SWIFT_DEBUG_CHECKS
+	/* Need to account for the interactions we missed */
+	accumulate_add_ll(&multi_i->pot.num_interacted,
+			  multi_j->m_pole.num_gpart);
+#endif
+	
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+	/* Need to account for the interactions we missed */
+	accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+			  multi_j->m_pole.num_gpart);
+#endif
+	
+	/* Record that this multipole received a contribution */
+	multi_i->pot.interacted = 1;
+	
+	/* We are done here. */
+	continue;
+      }
+      
+      
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0)) {
 
@@ -2537,6 +2568,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 	  /* Skip empty cells */
 	  if (multi_j->m_pole.M_000 == 0.f) continue;
 
+	  /* Skip zoom cells */
+	  //MATTHIEU TODO: Do something better about it
+	  if (cj->tl_cell_type != tl_cell) continue;
+	  
 	  /* Minimal distance between any pair of particles */
 #ifdef WITH_ZOOM_REGION
 	  const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
