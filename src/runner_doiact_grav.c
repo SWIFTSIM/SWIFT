@@ -2618,11 +2618,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         } /* Loop over relevant top-level cells */
       }
     }
+  } /* periodic / non-periodic case */
 
-    /* Can we escape early in the periodic BC case? */
-    if (periodic) {
-    }
-  }
+  // MATTHIEU TODO: Deal properly with the debugging checks
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }
