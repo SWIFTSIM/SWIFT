@@ -2551,9 +2551,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         for (int kk = top_k - 3; kk <= top_k + 3; ++kk) {
 
           /* Box wrap */
-          const int iii = ii % s->cdim[0];
-          const int jjj = jj % s->cdim[1];
-          const int kkk = kk % s->cdim[2];
+          const int iii = (ii + s->cdim[0]) % s->cdim[0];
+          const int jjj = (jj + s->cdim[1]) % s->cdim[1];
+          const int kkk = (kk + s->cdim[2]) % s->cdim[2];
 
           /* Get the cell */
           const int cell_index = cell_getid(s->cdim, iii, jjj, kkk) + s->zoom_props->tl_cell_offset;
@@ -2561,14 +2561,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Handle on the top-level cell */
           struct cell *cj = &cells[cell_index];
 
-          /* Avoid empty cells */
-          if (cj->grav.count == 0) continue;
+          /* Avoid self contributions and empty cells  */
+          if (top == cj || cj->grav.count == 0) continue;
 
           /* Handle on the top-level cell's gravity business*/
           const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-          /* Avoid self contributions  */
-          if (top == cj) continue;
 
           /* Skip empty cells */
           if (multi_j->m_pole.M_000 == 0.f) continue;
