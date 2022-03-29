@@ -2470,7 +2470,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   while (top->parent != NULL) top = top->parent;
 
   /* Non-periodic case: loop over everything */
-  if (!periodic || top->tl_cell_type != tl_cell) {
+  if (!periodic || top->tl_cell_type == 3) {
 
     /* Loop over all the top-level cells and go for a M-M interaction if
      * well-separated */
@@ -2531,7 +2531,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       }   /* Loop over top-level cells */
     }
 
-  } else {
+  } else { /* Periodic background cells. */
 
     /* Periodic case
      * Let's be "clever" and only loop over the parts of the
@@ -2539,12 +2539,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * Add some buffer for safety */
 
     /* Get the (i,j,k) location of the top-level cell in the grid,
-     * ignoring zoom for now */
+     * ignoring zoom/void cell for now */
     const int top_i = top->loc[0] * s->iwidth[0];
     const int top_j = top->loc[1] * s->iwidth[1];
     const int top_k = top->loc[2] * s->iwidth[2];
 
-    /* Loop over pluasibly useful cells */
+    /* Loop over plausibly useful cells */
     // MATTHIEU TODO: The 3 needs to be improved by using the mesh props!!
     for (int ii = top_i - 3; ii <= top_i + 3; ++ii) {
       for (int jj = top_j - 3; jj <= top_j + 3; ++jj) {
@@ -2552,11 +2552,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
           /* Box wrap */
           const int iii = ii % s->cdim[0];
-          const int jjj = jj % s->cdim[0];
-          const int kkk = kk % s->cdim[0];
+          const int jjj = jj % s->cdim[1];
+          const int kkk = kk % s->cdim[2];
 
           /* Get the cell */
-          const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
+          const int cell_index = cell_getid(s->cdim, iii, jjj, kkk) + s->zoom_props->tl_cell_offset;
 
           /* Handle on the top-level cell and it's gravity business*/
           struct cell *cj = &cells[cell_index];
@@ -2568,11 +2568,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Skip empty cells */
           if (multi_j->m_pole.M_000 == 0.f) continue;
 
-          /* Skip zoom cells */
+          /* Skip the void cell, we could do something clever here */
           // MATTHIEU TODO: Do something better about it
-          if (cj->tl_cell_type != tl_cell) continue;
+          if (cj->tl_cell_type == 2) continue;
 
-            /* Minimal distance between any pair of particles */
+          /* Minimal distance between any pair of particles */
 #ifdef WITH_ZOOM_REGION
           const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 #else
@@ -2584,14 +2584,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
             /* Need to account for the interactions we missed */
-            accumulate_add_ll(&multi_i->pot.num_interacted,
-                              multi_j->m_pole.num_gpart);
+          accumulate_add_ll(&multi_i->pot.num_interacted,
+                            multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
             /* Need to account for the interactions we missed */
-            accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                              multi_j->m_pole.num_gpart);
+          accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                            multi_j->m_pole.num_gpart);
 #endif
 
             /* Record that this multipole received a contribution */
@@ -2603,7 +2603,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
           /* Shall we interact with this cell? */
           if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                   /*is_tree_walk=*/0)) {
+              /*is_tree_walk=*/0)) {
 
             /* Call the PM interaction function on the active sub-cells of ci
              */
