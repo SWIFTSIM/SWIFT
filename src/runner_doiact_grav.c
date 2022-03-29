@@ -30,7 +30,6 @@
 #include "gravity_iact.h"
 #include "inline.h"
 #include "part.h"
-#include "space.h"
 #include "space_getsid.h"
 #include "timers.h"
 #include "zoom_region.h"
@@ -2561,7 +2560,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
           /* Handle on the top-level cell and it's gravity business*/
           struct cell *cj = &cells[cell_index];
-          struct gravity_tensors *const multi_j = cj->grav.multipole;
+          const struct gravity_tensors *multi_j = cj->grav.multipole;
 
           /* Avoid self contributions */
           if (top == cj) continue;
