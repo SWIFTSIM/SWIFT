@@ -2558,19 +2558,21 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Get the cell */
           const int cell_index = cell_getid(s->cdim, iii, jjj, kkk) + s->zoom_props->tl_cell_offset;
 
-          /* Handle on the top-level cell and it's gravity business*/
+          /* Handle on the top-level cell */
           struct cell *cj = &cells[cell_index];
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-          /* Avoid self contributions, the void cell and empty cells */
-          if (top == cj || cj->tl_cell_type == 2 || cj->grav.count == 0) continue;
+          /* Avoid self contributions and empty cells */
+          if (top == cj || cj->grav.count == 0) continue;
+
+          /* Handle on the top-level cell's gravity business*/
+          const struct gravity_tensors *multi_j = cj->grav.multipole;
 
           /* Skip empty cells */
           if (multi_j->m_pole.M_000 == 0.f) continue;
 
           /* Skip the void cell, we could do something clever here */
           // MATTHIEU TODO: Do something better about it
-          if (cj->tl_cell_type == 2) continue;
+//          if (cj->tl_cell_type == 2) continue;
 
           /* Minimal distance between any pair of particles */
 #ifdef WITH_ZOOM_REGION
