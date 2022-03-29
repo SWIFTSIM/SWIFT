@@ -23,6 +23,10 @@ struct cell_grid {
   /* TODO send this over MPI (add it in cell_pack and cell_unpack) */
   int split;
 
+  /*! The maximal search radius of any particle in the voronoi tessellation of
+   * this cell. */
+  double r_max;
+
   struct voronoi *voronoi;
 
   struct delaunay *delaunay;

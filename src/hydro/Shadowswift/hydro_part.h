@@ -114,7 +114,7 @@ struct part {
   float h;
 
   /*! Particle search radius. */
-  float r;
+  double r;
 
   /*! Particle internal energy. */
   float u;

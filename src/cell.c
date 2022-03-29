@@ -1132,6 +1132,19 @@ void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
      * i.e. we are at the super level for this cell.
      */
     super_grid = c;
+
+    /* Set r_max */
+    double r_max = 0.;
+    const size_t nr_parts = c->hydro.count;
+    for (size_t k = 0; k < nr_parts; k++) {
+
+      /* Get a handle on the part. */
+      struct part *const p = &c->hydro.parts[k];
+      r_max = max(r_max, p->r);
+    }
+
+    /* Store */
+    c->grid.r_max = r_max;
   }
 
   /* Set the super-cell */

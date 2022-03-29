@@ -1644,8 +1644,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   int redo = 0, count = 0;
 
   /* Running value of the maximal smoothing length */
-  float h_max = c->hydro.h_max;
-  float h_max_active = c->hydro.h_max_active;
+  double r_max = c->grid.r_max;
 
   TIMER_TIC;
 
@@ -1656,21 +1655,21 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   /* Init the list of active particles that have to be updated and their
    * current smoothing lengths. */
   int *pid = NULL;
-  double *h_prev = NULL;
+  double *r_prev = NULL;
   if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
     error("Can't allocate memory for pid.");
-  if ((h_prev = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
-    error("Can't allocate memory for h_prev.");
+  if ((r_prev = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
+    error("Can't allocate memory for r_prev.");
   for (int k = 0; k < c->hydro.count; k++)
     if (part_is_active(&parts[k], e)) {
       pid[count] = k;
-      h_prev[count] = parts[k].r;
       ++count;
     }
 
-  /* While there are particles that need to be updated... */
+  /* While there are particles that need to be updated and their search radius
+   * remains smaller than the cell width... */
   for (int num_reruns = 0;
-       count > 0 && num_reruns < max_smoothing_iter && h_max < c->width[0];
+       count > 0 && num_reruns < max_smoothing_iter && r_max < c->width[0];
        num_reruns++) {
     /* TODO add boundary particles */
 
@@ -1684,22 +1683,19 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       struct part *p = &parts[pid[i]];
 
-      float hnew = (float)delaunay_get_search_radius(
+      float r_new = (float)delaunay_get_search_radius(
           c->grid.delaunay, pid[i] + c->grid.delaunay->vertex_start);
-      if (hnew >= p->r) {
-        /* Use h_prev array for previous search radii */
-        h_prev[redo] = p->r;
-        p->r *= 1.25f;
+      if (r_new >= p->r) {
+        /* Use r_prev array for previous search radii */
+        r_prev[redo] = p->r;
+        p->r *= 1.25;
         pid[redo] = pid[i];
         redo += 1;
       } else {
-        p->r = 1.25 * hnew;
+        p->r = 1.25 * r_new;
       }
       /* Check if h_max is increased */
-      h_max = max(h_max, p->r);
-      if (part_is_active(p, e)) {
-        h_max_active = max(h_max_active, p->r);
-      }
+      r_max = max(r_max, p->r);
     }
 
     /* We now need to treat the particles whose smoothing length had not
@@ -1720,7 +1716,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Self-interaction? */
         if (l->t->type == task_type_self)
-          runner_doself_subset_grid_construction(r, c, parts, pid, h_prev, count);
+          runner_doself_subset_grid_construction(r, c, parts, pid, r_prev, count);
 
         /* Otherwise, pair interaction? */
         else if (l->t->type == task_type_pair) {
@@ -1728,7 +1724,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
           /* Left or right? */
           if (l->t->ci == c)
             runner_dopair_subset_grid_construction(
-                r, c, parts, pid, h_prev, h_max_active, count, l->t->cj);
+                r, c, parts, pid, r_prev, r_max, count, l->t->cj);
           else
             error("Particles should always be on the left!");
         } else
@@ -1751,20 +1747,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Be clean */
   free(pid);
-  free(h_prev);
+  free(r_prev);
 
   /* Update h_max */
-  c->hydro.h_max = h_max;
-  c->hydro.h_max_active = h_max_active;
-
-  /* The ghost may not always be at the top level.
-   * Therefore we need to update h_max between the super- and top-levels */
-  if (c->hydro.ghost) {
-    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
-      atomic_max_f(&tmp->hydro.h_max, h_max);
-      atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
-    }
-  }
+  c->grid.r_max = r_max;
 
   /* Finally ,build the Voronoi grid */
   if (c->grid.voronoi == NULL) {

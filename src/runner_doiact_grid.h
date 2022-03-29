@@ -59,10 +59,6 @@ runner_dopair_grid_construction(struct runner *restrict r,
 
   /* We are good to go!*/
 
-  /* Get the cutoff shift. */
-  double rshift = 0.0;
-  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
-
   /* Pick-out the sorted lists. */
   const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
   const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
@@ -78,7 +74,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
-  const double hi_max = ci->hydro.h_max;
+  const double ri_max = ci->grid.r_max;
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Mark cell face as inside of simulation volume */
@@ -91,7 +87,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
 
     /* Loop over the parts in cj (on the left) */
     for (int pjd = count_j - 1;
-         pjd >= 0 && sort_j[pjd].d + hi_max + dx_max > di_min; pjd--) {
+         pjd >= 0 && sort_j[pjd].d + dx_max > di_min - ri_max; pjd--) {
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
@@ -107,7 +103,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
 
       /* Loop over the parts in ci (on the right) */
       for (int pid = 0;
-           pid < count_i && sort_i[pid].d - hi_max - dx_max < sort_j[pjd].d;
+           pid < count_i && sort_i[pid].d - ri_max < sort_j[pjd].d + dx_max;
            pid++) {
 
         /* Get a hold of pi. */
@@ -120,15 +116,15 @@ runner_dopair_grid_construction(struct runner *restrict r,
         }
 
         /* Early abort? */
-        const float hi = pi->r;
-        if (sort_i[pid].d - hi - dx_max >= sort_j[pjd].d) continue;
+        const float ri = pi->r;
+        if (sort_i[pid].d - ri >= sort_j[pjd].d + dx_max) continue;
 
         /* Compute the pairwise distance. */
         double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < hi * hi) {
+        if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
                                   pj_idx);
           break;
@@ -141,7 +137,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
     const double di_max = sort_i[count_i - 1].d;
 
     /* Loop over the parts in cj (on the right) */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hi_max - dx_max < di_max;
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - dx_max < di_max + ri_max;
          pjd++) {
 
       /* Recover pj */
@@ -158,7 +154,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
 
       /* Loop over the parts in ci (on the left) */
       for (int pid = count_i - 1;
-           pid >= 0 && sort_i[pid].d + hi_max + dx_max > sort_j[pjd].d; pid--) {
+           pid >= 0 && sort_i[pid].d + ri_max > sort_j[pjd].d - dx_max; pid--) {
 
         /* Get a hold of pi. */
         struct part *restrict pi = &parts_i[sort_i[pid].i];
@@ -170,15 +166,15 @@ runner_dopair_grid_construction(struct runner *restrict r,
         }
 
         /* Early abort? */
-        const float hi = pi->r;
-        if (sort_i[pid].d + hi + dx_max <= sort_j[pjd].d) continue;
+        const float ri = pi->r;
+        if (sort_i[pid].d + ri <= sort_j[pjd].d - dx_max) continue;
 
         /* Compute the pairwise distance. */
         double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < hi * hi) {
+        if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
                                   pj_idx);
           break;
@@ -253,14 +249,14 @@ runner_doself_grid_construction(struct runner *restrict r,
         /* Get a pointer to the j-th particle. */
         struct part *restrict pj = &parts[j];
         if (!part_is_active(pj, e)) continue;
-        const double hj = pj->r;
+        const double rj = pj->r;
 
         /* Compute pairwise distance */
         const double dx[3] = {pj->x[0] - pix, pj->x[1] - piy, pj->x[2] - piz};
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < hj * hj) {
+        if (r2 < rj * rj) {
           delaunay_add_local_vertex(c->grid.delaunay, idx, pix, piy, piz);
           break;
         }
@@ -273,8 +269,8 @@ __attribute__((always_inline)) INLINE static void
 runner_dopair_subset_grid_construction(struct runner *restrict r,
                                        struct cell *restrict ci,
                                        struct part *restrict parts_i,
-                                       int *restrict ind,
-                                       double *restrict h_prev, double h_max,
+                                       const int *restrict ind,
+                                       const double *restrict r_prev, double r_max,
                                        int count, struct cell *restrict cj) {
   const struct engine *restrict e = r->e;
 
@@ -314,7 +310,7 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
     /* Loop over the neighbouring particles parts_j until they are definitely
      * too far to be a candidate ghost particle. */
     for (int pjd = count_j - 1;
-         pjd >= 0 && sort_j[pjd].d > di_min - dx_max - h_max; pjd--) {
+         pjd >= 0 && sort_j[pjd].d > di_min - dx_max - r_max; pjd--) {
 
       /* Get a pointer to the jth particle. */
       int pj_idx = sort_j[pjd].i;
@@ -335,8 +331,8 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
 
         /* Get a hold of the ith part in ci. */
         struct part *restrict pi = &parts_i[ind[pid]];
-        const float hi = pi->r;
-        const double hi_prev = h_prev[ind[pid]];
+        const double ri = pi->r;
+        const double ri_prev = r_prev[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (!part_is_active(pi, e)) {
@@ -351,10 +347,10 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < hi_prev * hi_prev) {
+        if (r2 < ri_prev * ri_prev) {
           /* pj already added during previous iteration */
           break;
-        } else if (r2 < hi * hi) {
+        } else if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
                                   pj_idx);
           break;
@@ -365,11 +361,11 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
     /* ci on the left */
 
     /* Get the maximal position of any particle of ci along the sorting axis. */
-    const float dxi = sort_i[ci->hydro.count - 1].d + ci->hydro.dx_max_sort;
+    const float di_max = sort_i[ci->hydro.count - 1].d + ci->hydro.dx_max_sort;
 
     /* Loop over the neighbouring particles parts_j until they are definitely
      * too far to be a candidate ghost particle. */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < dxi + h_max; pjd++) {
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di_max + r_max; pjd++) {
 
       /* Get a pointer to the jth particle. */
       int pj_idx = sort_j[pjd].i;
@@ -390,8 +386,8 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
 
         /* Get a hold of the ith part in ci. */
         struct part *restrict pi = &parts_i[ind[pid]];
-        const float hi = pi->r;
-        const double hi_prev = h_prev[ind[pid]];
+        const double ri = pi->r;
+        const double ri_prev = r_prev[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (!part_is_active(pi, e)) {
@@ -406,10 +402,10 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < hi_prev * hi_prev) {
+        if (r2 < ri_prev * ri_prev) {
           /* pj already added during previous iteration */
           break;
-        } else if (r2 < hi * hi) {
+        } else if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
                                   pj_idx);
           break;
@@ -423,8 +419,8 @@ __attribute__((always_inline)) INLINE static void
 runner_doself_subset_grid_construction(struct runner *restrict r,
                                        struct cell *restrict ci,
                                        struct part *restrict parts_i,
-                                       int *restrict ind,
-                                       double *restrict h_prev, int count) {
+                                       const int *restrict ind,
+                                       const double *restrict r_prev, int count) {
   struct engine *e = r->e;
 
   /* Loop over all inactive particles in ci */
@@ -445,18 +441,18 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
       /* Retrieve particle */
       const int pid = ind[i];
       struct part *pi = &parts_i[pid];
-      const float hi = pi->r;
-      const float hi_prev = h_prev[pid];
+      const double ri = pi->r;
+      const double ri_prev = r_prev[pid];
 
       /* Compute pairwise distance */
       const double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
       const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < hi_prev * hi_prev) {
+      if (r2 < ri_prev * ri_prev) {
         /* pj already added during previous iteration */
         break;
-      } else if (r2 < hi * hi) {
+      } else if (r2 < ri * ri) {
         delaunay_add_local_vertex(ci->grid.delaunay, pid, pjx, pjy, pjz);
         break;
       }
