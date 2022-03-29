@@ -2470,7 +2470,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   while (top->parent != NULL) top = top->parent;
 
   /* Non-periodic case: loop over everything */
-  if (!periodic || top->cell_type != tl_cell) {
+  if (!periodic || top->tl_cell_type != tl_cell) {
 
     /* Loop over all the top-level cells and go for a M-M interaction if
      * well-separated */
@@ -2530,98 +2530,99 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         } /* We are in charge of this pair */
       }   /* Loop over top-level cells */
     }
-    else {
 
-      /* Periodic case
-       * Let's be "clever" and only loop over the parts of the
-       * top-level grid that are not covered by the mesh.
-       * Add some buffer for safety */
+  } else {
 
-      /* Get the (i,j,k) location of the top-level cell in the grid,
-       * ignoring zoom for now */
-      const int top_i = top->loc[0] * s->iwidth[0];
-      const int top_j = top->loc[1] * s->iwidth[1];
-      const int top_k = top->loc[2] * s->iwidth[2];
+    /* Periodic case
+     * Let's be "clever" and only loop over the parts of the
+     * top-level grid that are not covered by the mesh.
+     * Add some buffer for safety */
 
-      /* Loop over pluasibly useful cells */
-      // MATTHIEU TODO: The 3 needs to be improved by using the mesh props!!
-      for (int ii = top_i - 3; ii <= top_i + 3; ++ii) {
-        for (int jj = top_j - 3; jj <= top_j + 3; ++jj) {
-          for (int kk = top_k - 3; kk <= top_k + 3; ++kk) {
+    /* Get the (i,j,k) location of the top-level cell in the grid,
+     * ignoring zoom for now */
+    const int top_i = top->loc[0] * s->iwidth[0];
+    const int top_j = top->loc[1] * s->iwidth[1];
+    const int top_k = top->loc[2] * s->iwidth[2];
 
-            /* Box wrap */
-            const int iii = ii % s->cdim[0];
-            const int jjj = jj % s->cdim[0];
-            const int kkk = kk % s->cdim[0];
+    /* Loop over pluasibly useful cells */
+    // MATTHIEU TODO: The 3 needs to be improved by using the mesh props!!
+    for (int ii = top_i - 3; ii <= top_i + 3; ++ii) {
+      for (int jj = top_j - 3; jj <= top_j + 3; ++jj) {
+        for (int kk = top_k - 3; kk <= top_k + 3; ++kk) {
 
-            /* Get the cell */
-            const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
+          /* Box wrap */
+          const int iii = ii % s->cdim[0];
+          const int jjj = jj % s->cdim[0];
+          const int kkk = kk % s->cdim[0];
 
-            /* Handle on the top-level cell and it's gravity business*/
-            struct cell *cj = &cells[cell_index];
-            struct gravity_tensors *const multi_j = cj->grav.multipole;
+          /* Get the cell */
+          const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
 
-            /* Avoid self contributions */
-            if (top == cj) continue;
+          /* Handle on the top-level cell and it's gravity business*/
+          struct cell *cj = &cells[cell_index];
+          struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-            /* Skip empty cells */
-            if (multi_j->m_pole.M_000 == 0.f) continue;
+          /* Avoid self contributions */
+          if (top == cj) continue;
 
-            /* Skip zoom cells */
-            // MATTHIEU TODO: Do something better about it
-            if (cj->tl_cell_type != tl_cell) continue;
+          /* Skip empty cells */
+          if (multi_j->m_pole.M_000 == 0.f) continue;
 
-              /* Minimal distance between any pair of particles */
+          /* Skip zoom cells */
+          // MATTHIEU TODO: Do something better about it
+          if (cj->tl_cell_type != tl_cell) continue;
+
+            /* Minimal distance between any pair of particles */
 #ifdef WITH_ZOOM_REGION
-            const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+          const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 #else
-            const double min_radius2 =
-                cell_min_dist2_same_size(top, cj, periodic, dim);
+          const double min_radius2 =
+              cell_min_dist2_same_size(top, cj, periodic, dim);
 #endif
 
-            /* Are we beyond the distance where the truncated forces are 0 ?*/
-            if (min_radius2 > max_distance2) {
+          /* Are we beyond the distance where the truncated forces are 0 ?*/
+          if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
-              /* Need to account for the interactions we missed */
-              accumulate_add_ll(&multi_i->pot.num_interacted,
-                                multi_j->m_pole.num_gpart);
+            /* Need to account for the interactions we missed */
+            accumulate_add_ll(&multi_i->pot.num_interacted,
+                              multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-              /* Need to account for the interactions we missed */
-              accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                                multi_j->m_pole.num_gpart);
+            /* Need to account for the interactions we missed */
+            accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                              multi_j->m_pole.num_gpart);
 #endif
 
-              /* Record that this multipole received a contribution */
-              multi_i->pot.interacted = 1;
+            /* Record that this multipole received a contribution */
+            multi_i->pot.interacted = 1;
 
-              /* We are done here. */
-              continue;
-            }
+            /* We are done here. */
+            continue;
+          }
 
-            /* Shall we interact with this cell? */
-            if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                     /*is_tree_walk=*/0)) {
+          /* Shall we interact with this cell? */
+          if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                   /*is_tree_walk=*/0)) {
 
-              /* Call the PM interaction function on the active sub-cells of ci
-               */
-              runner_dopair_grav_mm_nonsym(r, ci, cj);
-              // runner_dopair_recursive_grav_pm(r, ci, cj);
+            /* Call the PM interaction function on the active sub-cells of ci
+             */
+            runner_dopair_grav_mm_nonsym(r, ci, cj);
+            // runner_dopair_recursive_grav_pm(r, ci, cj);
 
-              /* Record that this multipole received a contribution */
-              multi_i->pot.interacted = 1;
+            /* Record that this multipole received a contribution */
+            multi_i->pot.interacted = 1;
 
-            } /* We are in charge of this pair */
+          } /* We are in charge of this pair */
 
-          } /* Loop over relevant top-level cells */
-        }
-      }
-
-      /* Can we escape early in the periodic BC case? */
-      if (periodic) {
+        } /* Loop over relevant top-level cells */
       }
     }
 
-    if (timer) TIMER_TOC(timer_dograv_long_range);
+    /* Can we escape early in the periodic BC case? */
+    if (periodic) {
+    }
   }
+
+  if (timer) TIMER_TOC(timer_dograv_long_range);
+}
