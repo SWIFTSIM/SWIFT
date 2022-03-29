@@ -2563,7 +2563,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           const struct gravity_tensors *multi_j = cj->grav.multipole;
 
           /* Avoid self contributions, the void cell and empty cells */
-          if (top == cj || cj->tl_cell_type == 2 || c->grav.count == 0) continue;
+          if (top == cj || cj->tl_cell_type == 2 || cj->grav.count == 0) continue;
 
           /* Skip empty cells */
           if (multi_j->m_pole.M_000 == 0.f) continue;
