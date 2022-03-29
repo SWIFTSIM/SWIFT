@@ -18,8 +18,14 @@ def read_map(basedir, basename, shell_nr, map_name, return_sum=False):
     # Read the pixel data
     data = []
     for file_nr in range(nr_files_per_shell):
-        fname = ("%s/%s_shells/shell_%d/%s.shell_%d.%d.hdf5" % 
-                 (basedir, basename, shell_nr, basename, shell_nr, file_nr))
+        fname = "%s/%s_shells/shell_%d/%s.shell_%d.%d.hdf5" % (
+            basedir,
+            basename,
+            shell_nr,
+            basename,
+            shell_nr,
+            file_nr,
+        )
         with h5py.File(fname, "r") as infile:
             data.append(infile[map_name][...])
             if file_nr == 0 and return_sum:
@@ -45,13 +51,19 @@ def read_particles(basedir, basename, part_type, properties):
         nr_mpi_ranks = infile["Lightcone"].attrs["nr_mpi_ranks"][0]
 
     # Make a dict to store the result
-    data = {prop_name : [] for prop_name in properties}
+    data = {prop_name: [] for prop_name in properties}
 
     # Loop over MPI ranks
     for rank_nr in range(nr_mpi_ranks):
         # Loop over files written by this rank
-        for file_nr in range(final_file_on_rank[rank_nr]+1):
-            fname = "%s/%s_particles/%s_%04d.%d.hdf5" % (basedir, basename, basename, file_nr, rank_nr)
+        for file_nr in range(final_file_on_rank[rank_nr] + 1):
+            fname = "%s/%s_particles/%s_%04d.%d.hdf5" % (
+                basedir,
+                basename,
+                basename,
+                file_nr,
+                rank_nr,
+            )
             with h5py.File(fname, "r") as infile:
                 for prop_name in properties:
                     if part_type in infile:
@@ -62,5 +74,3 @@ def read_particles(basedir, basename, part_type, properties):
         data[prop_name] = np.concatenate(data[prop_name])
 
     return data
-
-
