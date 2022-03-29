@@ -2469,7 +2469,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
-  /* Non-periodic case: loop over everything */
+  /* Non-periodic case and zoom cell: loop over everything */
   if (!periodic || top->tl_cell_type == 3) {
 
     /* Loop over all the top-level cells and go for a M-M interaction if
@@ -2561,11 +2561,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Handle on the top-level cell */
           struct cell *cj = &cells[cell_index];
 
-          /* Avoid self contributions and empty cells */
-          if (top == cj || cj->grav.count == 0) continue;
+          /* Avoid empty cells */
+          if (cj->grav.count == 0) continue;
 
           /* Handle on the top-level cell's gravity business*/
           const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+          /* Avoid self contributions  */
+          if (top == cj) continue;
 
           /* Skip empty cells */
           if (multi_j->m_pole.M_000 == 0.f) continue;
