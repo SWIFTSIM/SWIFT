@@ -50,12 +50,11 @@ nPhotonGroups = 4
 outputfilename = "advection_2D.hdf5"
 
 
-def initial_condition(x, V):
+def initial_condition(x):
     """
     The initial conditions that will be advected
 
     x: particle position. 3D unyt array
-    V: particle "volume". 1D unyt array or scalar
 
     returns: 
     E: photon energy for each photon group. List of scalars with size of nPhotonGroups
@@ -83,7 +82,7 @@ def initial_condition(x, V):
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
-    F[0] = c * E / V
+    F[0] = c * E
 
     E_list.append(E)
     F_list.append(F)
@@ -99,7 +98,7 @@ def initial_condition(x, V):
         E = 1.0
 
     F = np.zeros(3, dtype=np.float64)
-    F[1] = c * E / V
+    F[1] = c * E
 
     E_list.append(E)
     F_list.append(F)
@@ -117,8 +116,8 @@ def initial_condition(x, V):
         + baseline
     )
     F = np.zeros(3, dtype=np.float64)
-    F[0] = c * E / V / 1.414213562  # sqrt(2)
-    F[1] = c * E / V / 1.414213562  # sqrt(2)
+    F[0] = c * E / 1.414213562  # sqrt(2)
+    F[1] = c * E / 1.414213562  # sqrt(2)
 
     E_list.append(E)
     F_list.append(F)
@@ -136,8 +135,8 @@ def initial_condition(x, V):
 
         E = 1.0
         F = np.zeros(3, dtype=np.float64)
-        F[0] = unit_vector[0] * c * E / V
-        F[1] = unit_vector[1] * c * E / V
+        F[0] = unit_vector[0] * c * E
+        F[1] = unit_vector[1] * c * E
 
     else:
         E = 0.0
@@ -161,7 +160,6 @@ if __name__ == "__main__":
     h *= boxsize
 
     numPart = np.size(h)
-    V = boxsize ** 2 / numPart
 
     w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=2)
 
@@ -198,7 +196,7 @@ if __name__ == "__main__":
         parts.create_dataset(dsetname, data=fluxdata)
 
     for p in range(nparts):
-        E, Flux = initial_condition(pos[p], V)
+        E, Flux = initial_condition(pos[p])
         for g in range(nPhotonGroups):
             Esetname = "PhotonEnergiesGroup{0:d}".format(g + 1)
             parts[Esetname][p] = E[g]

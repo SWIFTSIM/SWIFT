@@ -21,10 +21,16 @@ glass.close()
 # by the star
 r = np.sqrt(np.sum((0.5 - xp) ** 2, axis=1))
 rmin = np.argmin(r)
-xs = xp[rmin]
-xp = np.delete(xp, rmin, axis=0)
-h = np.delete(h, rmin)
+mininds = np.argsort(r)
+center_parts = xp[mininds[:4]]
+xs = center_parts.sum(axis=0) / center_parts.shape[0]
 
+# Double-check all particles for boundaries
+for i in range(3):
+    mask = xp[:, i] < 0.0
+    xp[mask, i] += 1.0
+    mask = xp[:, i] > 1.0
+    xp[mask, i] -= 1.0
 
 unitL = unyt.cm
 t_end = 1e-3 * unyt.s

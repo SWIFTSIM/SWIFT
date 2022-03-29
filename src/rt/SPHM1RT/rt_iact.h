@@ -48,7 +48,26 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
                                      const float hi, const float hj,
                                      struct spart *si, const struct part *pj,
                                      const struct cosmology *cosmo,
-                                     const struct rt_props *rt_props) {}
+                                     const struct rt_props *rt_props) {
+
+  /* If the star doesn't have any neighbours, we
+   * have nothing to do here. */
+  if (si->density.wcount == 0.f) return;
+
+  /* Compute the weight of the neighbouring particle */
+  const float r = sqrtf(r2);
+  /* Get the gas density. */
+  const float rhoj = hydro_get_comoving_density(pj);
+  /* Compute the kernel function */
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  float wi;
+  kernel_eval(ui, &wi);
+
+  /* This is actually the inverse of the enrichment weight */
+  /* we abuse the variable here */
+  if (rhoj != 0.f) si->rt_data.injection_weight += wi / rhoj;
+}
 
 /**
  * @brief Injection step interaction between star and hydro particles.
@@ -64,7 +83,54 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {}
+    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+
+  /* If the star doesn't have any neighbours, we
+   * have nothing to do here. */
+  if (si->density.wcount == 0.f) return;
+  if (si->rt_data.injection_weight == 0.f) return;
+
+  /* the direction of the radiation injected */
+  const float r = sqrtf(r2);
+  const float minus_r_inv = -1.f / r;
+  const float n_unit[3] = {dx[0] * minus_r_inv, dx[1] * minus_r_inv,
+                           dx[2] * minus_r_inv};
+
+  /* Get particle mass */
+  const float mj = hydro_get_mass(pj);
+  const float mj_inv = 1.f / mj;
+  /* Get the gas density. */
+  /* TK comment: we need to be careful in the cosmological case here: */
+  const float rhoj = hydro_get_comoving_density(pj);
+  /* Compute the kernel function */
+  const float hi_inv = 1.0f / hi;
+  const float ui = r * hi_inv;
+  float wi;
+  kernel_eval(ui, &wi);
+
+  /* collect the enrichment weights from the neighborhood */
+  float tot_weight_inv;
+  tot_weight_inv = 1.f / si->rt_data.injection_weight;
+
+  float injection_weight = 0.f;
+  /* the enrichment weight of individual gas particle */
+  if (rhoj != 0.f) injection_weight = wi / rhoj;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    /* Inject energy. */
+    const float injected_urad = (si->rt_data.emission_this_step[g]) *
+                                injection_weight * tot_weight_inv * mj_inv;
+
+    pj->rt_data.conserved[g].urad += injected_urad;
+
+    /* Inject flux. */
+    /* We assume the path from the star to the gas is optically thin */
+    const float injected_frad = injected_urad * pj->rt_data.params.cred;
+    pj->rt_data.conserved[g].frad[0] += injected_frad * n_unit[0];
+    pj->rt_data.conserved[g].frad[1] += injected_frad * n_unit[1];
+    pj->rt_data.conserved[g].frad[2] += injected_frad * n_unit[2];
+  }
+}
 
 /**
  * @brief do radiation gradient computation
@@ -308,8 +374,7 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
   float fradmagi, fradmagj;
 
   float hid_inv_temp, wi_dr_temp, hjd_inv_temp, wj_dr_temp;
-  float rhoucdri, rhoucdrj, drhouc_high, rhoucmid, ratioflux;
-  float drhou_low, slopelimiter, diss_durad_term;
+  float drhou_low, diss_durad_term;
 
   float ddfi, ddfj;
   float diss_dfrad_term_i[3], diss_dfrad_term_j[3];
@@ -334,10 +399,9 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
 
   float uradi, uradj;
   float uradi0, uradj0;
-  float cred0 = max(credi, credj);
+  float cred0 = fmaxf(credi, credj);
   float rhomean2;
   float fradi[3], fradj[3];
-  float graduci[3], graducj[3];
   float divfipar, divfjpar; /* divfipar is inside the loop, and divfi is summed
                                over particle */
   float divfi, divfj;
@@ -357,12 +421,6 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     fradj[0] = fradmfj[g][0];
     fradj[1] = fradmfj[g][1];
     fradj[2] = fradmfj[g][2];
-    graduci[0] = rpi->diffusion[g].graduradc[0];
-    graduci[1] = rpi->diffusion[g].graduradc[1];
-    graduci[2] = rpi->diffusion[g].graduradc[2];
-    graducj[0] = rpj->diffusion[g].graduradc[0];
-    graducj[1] = rpj->diffusion[g].graduradc[1];
-    graducj[2] = rpj->diffusion[g].graduradc[2];
 
     alpha_diss_i = rpi->diffusion[g].alpha;
     alpha_f_diss_i = rpi->viscosity[g].alpha;
@@ -374,6 +432,17 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
 
     /* do nothing if there is no radiation */
     if ((uradi == 0.f) && (uradj == 0.f)) return;
+
+#if defined(HYDRO_DIMENSION_1D)
+    fradi[1] = 0.0f;
+    fradi[2] = 0.0f;
+    fradj[1] = 0.0f;
+    fradj[2] = 0.0f;
+#endif
+#if defined(HYDRO_DIMENSION_2D)
+    fradi[2] = 0.0f;
+    fradj[2] = 0.0f;
+#endif
 
     if ((fradi[0] == 0.f) && (fradi[1] == 0.f) && (fradi[2] == 0.f)) {
       fradmagi = 0.f;
@@ -389,16 +458,6 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
                        fradj[2] * fradj[2]);
     }
 
-#if defined(HYDRO_DIMENSION_1D)
-    fradi[1] = 0.0f;
-    fradi[2] = 0.0f;
-    fradj[1] = 0.0f;
-    fradj[2] = 0.0f;
-#elif defined(HYDRO_DIMENSION_2D)
-    fradi[2] = 0.0f;
-    fradj[2] = 0.0f;
-#endif
-
     /*******************************/
     /* CALCULATIONS OF TWO MOMENT EQUATIONS */
     /*******************************/
@@ -407,54 +466,54 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     diffmode = 2;
     divfipar = 0.0f;
     divfjpar = 0.0f;
-    radiation_divergence_SPH(fradi, fradj, mi, mj, pi->force.f, pj->force.f,
+    radiation_divergence_SPH(fradi, fradj, mi, mj, rpi->force.f, rpj->force.f,
                              rhoi, rhoj, wi_dr, wj_dr, dx, r, diffmode,
                              &divfipar, &divfjpar);
 
     /* Calculate the radiation flux term */
+    /* funit is for Eddington tensor */
     if (fradmagi != 0.f) {
       funiti[0] = fradi[0] / fradmagi;
       funiti[1] = fradi[1] / fradmagi;
       funiti[2] = fradi[2] / fradmagi;
-    } else {
-      funiti[0] = 0.0f;
-      funiti[1] = 0.0f;
-      funiti[2] = 0.0f;
-    }
-
-    if (fradmagj != 0.f) {
+      funitj[0] = funiti[0];
+      funitj[1] = funiti[1];
+      funitj[2] = funiti[2];
+    } else if (fradmagj != 0.f) {
       funitj[0] = fradj[0] / fradmagj;
       funitj[1] = fradj[1] / fradmagj;
       funitj[2] = fradj[2] / fradmagj;
+      funiti[0] = funitj[0];
+      funiti[1] = funitj[1];
+      funiti[2] = funitj[2];
     } else {
-      funitj[0] = 0.0f;
-      funitj[1] = 0.0f;
-      funitj[2] = 0.0f;
+      /* Nothing we can do */
+      return;
     }
 
     /* Eddington factor (or optical thickness estimator?) */
     if (credi * uradi == 0.f) {
       foxi = expf(-rpi->params.chi[g] * rhoi * hi);
     } else {
-      foxi = max(expf(-rpi->params.chi[g] * rhoi * hi),
-                 fradmagi / (credi * uradi));
+      foxi = fmaxf(expf(-rpi->params.chi[g] * rhoi * hi),
+                   fradmagi / (credi * uradi));
     }
     if (credj * uradj == 0.f) {
       foxj = expf(-rpj->params.chi[g] * rhoj * hj);
     } else {
-      foxj = max(expf(-rpj->params.chi[g] * rhoj * hj),
-                 fradmagj / (credj * uradj));
+      foxj = fmaxf(expf(-rpj->params.chi[g] * rhoj * hj),
+                   fradmagj / (credj * uradj));
     }
 
-    foxi = min(foxi, 1.0f);
-    foxj = min(foxj, 1.0f);
+    foxi = fminf(foxi, 1.0f);
+    foxj = fminf(foxj, 1.0f);
 
     /* M1 closure with (modified) Eddington factor */
     /* protect against negative in the square root */
     sqi = 4.f - 3.f * foxi * foxi;
     sqj = 4.f - 3.f * foxj * foxj;
-    flimi = min(1.f, (3.f + 4.f * foxi * foxi) / (5.f + 2.f * sqrtf(sqi)));
-    flimj = min(1.f, (3.f + 4.f * foxj * foxj) / (5.f + 2.f * sqrtf(sqj)));
+    flimi = fminf(1.f, (3.f + 4.f * foxi * foxi) / (5.f + 2.f * sqrtf(sqi)));
+    flimj = fminf(1.f, (3.f + 4.f * foxj * foxj) / (5.f + 2.f * sqrtf(sqj)));
 
     /* compute the Eddington tensor (without radiation energy density yet) */
 
@@ -480,8 +539,8 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     diff_dfrad_term_j[0] = 0.0f;
     diff_dfrad_term_j[1] = 0.0f;
     diff_dfrad_term_j[2] = 0.0f;
-    radiation_gradient_aniso_SPH(uradi0, uradj0, mi, mj, pi->force.f,
-                                 pj->force.f, rhoi, rhoj, wi_dr, wj_dr,
+    radiation_gradient_aniso_SPH(uradi0, uradj0, mi, mj, rpi->force.f,
+                                 rpj->force.f, rhoi, rhoj, wi_dr, wj_dr,
                                  F_tensori, F_tensorj, dx, r, diffmodeaniso,
                                  diff_dfrad_term_i, diff_dfrad_term_j);
     diff_dfrad_term_i[0] *= -cred0 * cred0 / mj;
@@ -494,6 +553,9 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     /*******************************/
     /* HERE COME THE CALCULATIONS OF ARTIFICIAL DISSIPATION */
     /*******************************/
+
+    /* fradunit is for anisotropic artificial viscosity */
+
     if (fradmagi != 0.f) {
       fraduniti[0] = fradi[0] / fradmagi;
       fraduniti[1] = fradi[1] / fradmagi;
@@ -534,42 +596,14 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     hjd_inv_temp = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
     wj_dr_temp = hjd_inv_temp * wj_dx;
     drhou_low = rhoi * uradi0 - rhoj * uradj0;
-    /* first order reconstruction to the interface */
-    /* (rj-ri) dot grad u */
-    rhoucdri = -rhoi *
-               (graduci[0] * dx[0] + graduci[1] * dx[1] + graduci[2] * dx[2]) *
-               hi / (hi + hj);
-    rhoucdrj = rhoj *
-               (graducj[0] * dx[0] + graducj[1] * dx[1] + graducj[2] * dx[2]) *
-               hj / (hi + hj);
-    drhouc_high = rhoucdri - rhoucdrj;
-    /* slope limiter */
-    rhoucmid =
-        (rhoi * uradi * credi * hi + rhoj * uradj * credj * hj) / (hi + hj);
     if ((uradi == 0.f) && (uradj == 0.f)) {
       diss_durad_term = 0.0f;
     } else {
-      ratioflux = fabsf(rhoucmid - rhoj * uradj * credj - rhoucdrj);
-      if (ratioflux == 0.f) {
-        slopelimiter = 0.f;
-      } else {
-        ratioflux =
-            fabsf(rhoi * uradi * credi + rhoucdri - rhoucmid) / (ratioflux);
-        slopelimiter = min(1.0f, ratioflux);
-        slopelimiter = max(0.0f, slopelimiter);
-      }
-
-      rhomean2 = min(rhoi, rhoj) * min(rhoi, rhoj);
-      if (((rhoi * uradi * credi > 0.5f * rhoj * uradj * credj) ||
-           (rhoi * uradi * credi < 0.5f * rhoj * uradj * credj)) &&
-          ((rhoi > 0.1f * rhoj) || (rhoi < 0.1f * rhoj))) {
-        drhouc_high = 0.0f;
-        ddi = alpha_diss_i * credi * hi;
-        ddj = alpha_diss_j * credj * hj;
-      }
-      diss_durad_term = 1.f / rhomean2 * (wi_dr_temp + wj_dr_temp);
-      diss_durad_term *= (drhou_low + drhouc_high * slopelimiter / cred0) *
-                         (ddi + ddj) * 0.5f * r_inv;
+      rhomean2 = fminf(rhoi, rhoj) * fminf(rhoi, rhoj);
+      diss_durad_term = (drhou_low / rhomean2) * (wi_dr_temp + wj_dr_temp);
+      /* TK test: the interpolation is broken: need to fix later. */
+      diss_durad_term *= (ddi + ddj);
+      diss_durad_term *= 0.5f * r_inv;
     }
     diss_durad_term_i = mj * diss_durad_term;
     diss_durad_term_j = -mi * diss_durad_term;
@@ -586,7 +620,7 @@ __attribute__((always_inline)) INLINE static void radiation_force_loop_function(
     diss_dfrad_term_j[1] = 0.0f;
     diss_dfrad_term_j[2] = 0.0f;
     radiation_gradient_aniso_SPH(
-        ddfi * divfi, ddfj * divfj, mi, mj, pi->force.f, pj->force.f, rhoi,
+        ddfi * divfi, ddfj * divfj, mi, mj, rpi->force.f, rpj->force.f, rhoi,
         rhoj, wi_dr, wj_dr, J_tensori, J_tensorj, dx, r, diffmodeaniso,
         diss_dfrad_term_i, diss_dfrad_term_j);
 
