@@ -30,6 +30,7 @@
 #include "gravity_iact.h"
 #include "inline.h"
 #include "part.h"
+#include "space.h"
 #include "space_getsid.h"
 #include "timers.h"
 #include "zoom_region.h"
