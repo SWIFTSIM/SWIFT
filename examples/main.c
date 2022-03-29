@@ -168,6 +168,8 @@ int main(int argc, char *argv[]) {
   int with_cooling = 0;
   int with_self_gravity = 0;
   int with_hydro = 0;
+  int with_grid_hydro = 0;
+  int with_grid = 0;
   int with_stars = 0;
   int with_fof = 0;
   int with_lightcone = 0;
@@ -229,7 +231,9 @@ int main(int argc, char *argv[]) {
                   "Run with self-gravity.", NULL, 0, 0),
       OPT_BOOLEAN('M', "multipole-reconstruction", &with_mpole_reconstruction,
                   "Reconstruct the multipoles every time-step.", NULL, 0, 0),
-      OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with hydrodynamics.", NULL, 0,
+      OPT_BOOLEAN('s', "hydro", &with_hydro, "Run with smoothed particle hydrodynamics.", NULL, 0,
+                  0),
+      OPT_BOOLEAN('h', "grid-hydro", &with_grid_hydro, "Run with grid based hydrodynamics.", NULL, 0,
                   0),
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
@@ -380,6 +384,9 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+  if (with_grid_hydro) {
+    with_grid = 1;
+  }
 
   /* Deal with thread numbers */
   if (nr_pool_threads == -1) nr_pool_threads = nr_threads;
@@ -504,10 +511,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!with_self_gravity && !with_hydro && !with_external_gravity) {
+  if (!with_self_gravity && !with_hydro && !with_grid_hydro && !with_external_gravity) {
     if (myrank == 0) {
       argparse_usage(&argparse);
-      printf("\nError: At least one of -s, -g or -G must be chosen.\n");
+      printf("\nError: At least one of -s, -h, -g or -G must be chosen.\n");
     }
     return 1;
   }
@@ -573,7 +580,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (!with_hydro && with_feedback) {
+  if (!(with_hydro || with_grid_hydro) && with_feedback) {
     if (myrank == 0) {
       argparse_usage(&argparse);
       printf(
@@ -583,7 +590,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (!with_hydro && with_black_holes) {
+  if (!(with_hydro || with_grid_hydro) && with_black_holes) {
     if (myrank == 0) {
       argparse_usage(&argparse);
       printf(
@@ -593,7 +600,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (!with_hydro && with_line_of_sight) {
+  if (!(with_hydro || with_grid_hydro) && with_line_of_sight) {
     if (myrank == 0) {
       argparse_usage(&argparse);
       printf(
@@ -608,7 +615,7 @@ int main(int argc, char *argv[]) {
     error("Running with radiative transfer but compiled without it!");
   }
 #else
-  if (with_rt && !with_hydro) {
+  if (with_rt && !(with_hydro || with_grid_hydro)) {
     error(
         "Error: Cannot use radiative transfer without gas, --hydro must be "
         "chosen\n");
@@ -1034,6 +1041,11 @@ int main(int argc, char *argv[]) {
       error("Can't run with hydro when compiled without a hydro model!");
 #endif
     }
+    if (with_grid_hydro) {
+#if !defined(SHADOWSWIFT) 
+      error("The only hydro scheme supporting grid based hydrodynamics is shadowswift (for the time being)!")
+#endif
+    }
     if (with_stars) {
 #ifdef STARS_NONE
       error("Can't run with stars when compiled without a stellar model!");
@@ -1048,26 +1060,26 @@ int main(int argc, char *argv[]) {
     }
 
     /* Initialise the hydro properties */
-    if (with_hydro)
+    if ((with_hydro || with_grid_hydro))
       hydro_props_init(&hydro_properties, &prog_const, &us, params);
     else
       bzero(&hydro_properties, sizeof(struct hydro_props));
 
     /* Initialise the equation of state */
-    if (with_hydro)
+    if ((with_hydro || with_grid_hydro))
       eos_init(&eos, &prog_const, &us, params);
     else
       bzero(&eos, sizeof(struct eos_parameters));
 
     /* Initialise the entropy floor */
-    if (with_hydro)
+    if ((with_hydro || with_grid_hydro))
       entropy_floor_init(&entropy_floor, &prog_const, &us, &hydro_properties,
                          params);
     else
       bzero(&entropy_floor, sizeof(struct entropy_floor_properties));
 
     /* Initialise the pressure floor */
-    if (with_hydro)
+    if ((with_hydro || with_grid_hydro))
       pressure_floor_init(&pressure_floor_props, &prog_const, &us,
                           &hydro_properties, params);
     else
@@ -1186,7 +1198,7 @@ int main(int argc, char *argv[]) {
 #if defined(HAVE_PARALLEL_HDF5)
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                      &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                     &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
+                     &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
                      with_gravity, with_sink, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
@@ -1194,7 +1206,7 @@ int main(int argc, char *argv[]) {
 #else
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
+                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
                    with_gravity, with_sink, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
@@ -1203,7 +1215,7 @@ int main(int argc, char *argv[]) {
 #else
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
-                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
+                   &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
                    with_gravity, with_sink, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    nr_threads, dry_run, remap_ids, &ics_metadata);
@@ -1238,7 +1250,7 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_black_hole) error("Linking problem");
     }
-    if (!with_hydro && !dry_run) {
+    if (!(with_hydro || with_grid_hydro) && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
     }
@@ -1316,7 +1328,7 @@ int main(int argc, char *argv[]) {
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
                sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart,
-               periodic, replicate, remap_ids, generate_gas_in_ics, with_hydro,
+               periodic, replicate, remap_ids, generate_gas_in_ics, (with_hydro || with_grid_hydro),
                with_self_gravity, with_star_formation, with_sink,
                with_DM_background_particles, with_neutrinos, talking, dry_run,
                nr_nodes);
@@ -1417,7 +1429,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Verify that we are not using basic modes incorrectly */
-    if (with_hydro && N_total[swift_type_gas] == 0) {
+    if ((with_hydro || with_grid_hydro) && N_total[swift_type_gas] == 0) {
       error(
           "ERROR: Running with hydrodynamics but no gas particles found in the "
           "ICs!");
@@ -1468,9 +1480,8 @@ int main(int argc, char *argv[]) {
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
     if (with_sink) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
-#ifdef SHADOWSWIFT
-    engine_policies |= engine_policy_grid;
-#endif
+    if (with_grid_hydro) engine_policies |= engine_policy_grid_hydro;
+    if (with_grid) engine_policies |= engine_policy_grid;
 
     /* Initialize the engine with the space and policies. */
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
@@ -1548,7 +1559,7 @@ int main(int argc, char *argv[]) {
        * and if the masses are stored unweighted. */
       const int check_neutrinos =
           s.with_neutrinos && !neutrino_properties.use_delta_f;
-      space_check_cosmology(&s, &cosmo, with_hydro, myrank, check_neutrinos);
+      space_check_cosmology(&s, &cosmo, (with_hydro || with_grid_hydro), myrank, check_neutrinos);
       neutrino_check_cosmology(&s, &cosmo, &prog_const, params,
                                &neutrino_properties, myrank, verbose);
     }

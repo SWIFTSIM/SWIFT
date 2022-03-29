@@ -1129,6 +1129,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
      * others: ghost1, ghost2, thermochemistry       | +  3 */
     n1 += 34;
   }
+  if (e->policy & engine_policy_grid) {
+    /* Grid construction: 1 self + 26 (asymmetric) pairs + 1 ghost */
+    n1 += 28;
+  }
 
 #ifdef WITH_MPI
 
