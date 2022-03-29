@@ -1199,6 +1199,137 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
   }     /* Redo? */
 }
 
+static void scheduler_splittask_grid_hydro(struct task *t,
+                                           struct scheduler *s) {
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Get a handle on the first cell involved. */
+    struct cell *ci = t->ci;
+
+    /* Get a handle on the second cell involved. */
+    struct cell *cj = t->cj;
+
+    /* Foreign task? */
+    if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+      t->skip = 1;
+      break;
+    }
+
+    /* Self task? */
+    if (t->type == task_type_self) {
+      /* Should we split this task? */
+      if (ci->grid.construction_level == NULL) {
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+        /* Find first non-empty child. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL &&
+               ci->progeny[first_child]->hydro.count && first_child < 8)
+          first_child++;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (first_child == 8)
+          error("Above construction level, but no non-empty progenitor found!");
+#endif
+
+        /* Split self interaction */
+        /* Assign first child to task */
+        t->ci = ci->progeny[first_child];
+        cell_set_flag(t->ci, cell_flag_has_tasks);
+
+        for (int k = first_child + 1; k < 8; k++) {
+          /* Do we have other non-empty progenitors? */
+          if (ci->progeny[k] != NULL && ci->progeny[k]->hydro.count) {
+            /* Add a new self task and recursively split it */
+            scheduler_splittask_grid_hydro(
+                scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
+                                  ci->progeny[k], NULL),
+                s);
+          }
+        } /* Loop over progenitors */
+
+        /* Make a pair task for each pair of progeny */
+        for (int j = 0; j < 8; j++) {
+          /* Do we have a non-empty progenitor? */
+          if (ci->progeny[j] != NULL && ci->progeny[j]->hydro.count) {
+            for (int k = j + 1; k < 8; k++) {
+              /* Do we have a second non-empty progenitor? */
+              if (ci->progeny[k] != NULL && ci->progeny[k]->hydro.count) {
+                /* Add a pair task and recursively split it */
+                scheduler_splittask_grid_hydro(
+                    scheduler_addtask(s, task_type_pair, t->subtype,
+                                      sub_sid_flag[j][k], 0, ci->progeny[j],
+                                      ci->progeny[k]),
+                    s);
+              }
+            }
+          }
+        } /* Make pair tasks for each pair of progeny */
+      }   /* Recurse? */
+    }     /* Self? */
+
+    /* Pair interaction? */
+    else if (t->type == task_type_pair) {
+      /* Should we split? I.e, are we above the grid construction level on at
+       * least one side? */
+      if (ci->grid.construction_level == NULL ||
+          cj->grid.construction_level == NULL) {
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!ci->split || !cj->split)
+          error("Ci and cj are not both split, but we are above the "
+              "construction level of both!");
+#endif
+        /* Get the sid of the pair. */
+        double shift[3];
+        const int sid = space_getsid(s->space, &ci, &cj, shift);
+
+        /* Loop over the sub-cell pairs for the current sid and add new tasks
+         * for them. */
+        struct cell_split_pair *csp = &cell_split_pairs[sid];
+
+        /* Recycle current pair task */
+        int first_pair_id = 0;
+        for (; first_pair_id < csp->count; first_pair_id++) {
+          struct cell *ci_sub = ci->progeny[csp->pairs[first_pair_id].pid];
+          struct cell *cj_sub = cj->progeny[csp->pairs[first_pair_id].pjd];
+          if (ci_sub != NULL && ci_sub->hydro.count && cj_sub != NULL &&
+              cj->hydro.count) {
+            /* Found first suitable pair of sub cells */
+            t->ci = ci_sub;
+            t->cj = cj_sub;
+            break;
+          }
+        }
+        cell_set_flag(t->ci, cell_flag_has_tasks);
+        cell_set_flag(t->cj, cell_flag_has_tasks);
+        t->flags = csp->pairs[first_pair_id].sid;
+
+        /* Construct new pair tasks for all other suitable pairs and recursively
+         * split them */
+        for (int k = first_pair_id + 1; k < csp->count; k++) {
+          struct cell *ci_sub = ci->progeny[csp->pairs[k].pid];
+          struct cell *cj_sub = cj->progeny[csp->pairs[k].pjd];
+          if (ci_sub != NULL && ci_sub->hydro.count && cj_sub != NULL &&
+              cj->hydro.count) {
+            scheduler_splittask_grid_hydro(
+                scheduler_addtask(s, task_type_pair, t->subtype,
+                                  csp->pairs[k].sid, 0, ci_sub, cj_sub),
+                s);
+          }
+        } /* Loop over pairs of progeny */
+      } /* Split? */
+    } /* Pair interaction?*/
+  } /* Redo? */
+}
+
 /**
  * @brief Split a FOF task if too large.
  *
@@ -1318,6 +1449,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grid_construction) {
       scheduler_splittask_grid(t, s);
+    } else if (t->subtype == task_subtype_flux) {
+      scheduler_splittask_grid_hydro(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
@@ -1699,6 +1832,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_i;
         else if (t->subtype == task_subtype_grid_construction)
           cost = 1.f * (wscale * count_i) * count_i;
+        else if (t->subtype == task_subtype_flux)
+          cost = 1.f * (wscale * count_i) * count_i;
         else
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
@@ -1777,6 +1912,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_grid_construction) {
+          cost = 1.f * (wscale * count_i) * count_j * sid_scale[t->flags];
+        } else if (t->subtype == task_subtype_flux) {
           cost = 1.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         } else {
           error("Untreated sub-type for pairs: %s",

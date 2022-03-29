@@ -354,6 +354,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_hydro && (e->policy & engine_policy_grid)) scheduler_activate(s, t);
       }
 
+      /* Activate grid hydro tasks */
+      else if (t_subtype == task_subtype_flux) {
+        if (ci_active_hydro)
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(e->policy & engine_policy_grid_hydro)) {
+            error(
+                "Encountered flux exchange task without "
+                "engine_policy_grid_hydro!");
+          }
+#endif
+        scheduler_activate(s, t);
+      }
+
 #ifdef SWIFT_DEBUG_CHECKS
       else {
         error("Invalid task type / sub-type encountered");

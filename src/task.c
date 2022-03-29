@@ -130,6 +130,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "density",
     "gradient",
     "force",
+    "flux",
     "limiter",
     "grav",
     "external_grav",

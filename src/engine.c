@@ -1133,6 +1133,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* Grid construction: 1 self + 26 (asymmetric) pairs + 1 ghost */
     n1 += 28;
   }
+  if (e->policy & engine_policy_grid_hydro) {
+    /* Flux exchange: 1 self + 13 pairs */
+    n1 += 14;
+    n1 += 14;
+  }
 
 #ifdef WITH_MPI
 

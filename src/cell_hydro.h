@@ -67,6 +67,9 @@ struct cell_hydro {
     /*! Linked list of the tasks computing this cell's hydro forces. */
     struct link *force;
 
+    /*! Linked list of the tasks computing this cell's hydro flux exchange. */
+    struct link *flux;
+
     /*! Linked list of the tasks computing this cell's limiter. */
     struct link *limiter;
 
