@@ -160,6 +160,7 @@
 
 /* Import the grid construction functions*/
 #include "runner_doiact_grid.h"
+#include "runner_doiact_grid_hydro.h"
 
 /**
  * @brief The #runner main thread routine.
@@ -277,6 +278,8 @@ void *runner_main(void *data) {
             runner_doself_sinks_merger(r, ci);
           else if (t->subtype == task_subtype_grid_construction)
             runner_doself_grid_construction(r, ci);
+          else if (t->subtype == task_subtype_flux)
+            runner_doself_grid_flux_exchange(r, ci);
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -327,6 +330,8 @@ void *runner_main(void *data) {
             runner_do_sym_pair_sinks_merger(r, ci, cj);
           else if (t->subtype == task_subtype_grid_construction)
             runner_dopair_grid_construction(r, ci, cj);
+          else if (t->subtype == task_subtype_flux)
+            runner_dopair_grid_flux_exchange(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

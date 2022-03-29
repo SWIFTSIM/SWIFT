@@ -1114,7 +1114,8 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  */
 void cell_set_super_grid_hydro(struct cell *c, struct cell *super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_hydro == NULL && c->hydro.flux != NULL) super_hydro = c;
+  if (super_hydro == NULL && (c->hydro.flux != NULL || c->grid.construction != NULL))
+    super_hydro = c;
 
   /* Set the super-cell */
   c->hydro.super = super_hydro;

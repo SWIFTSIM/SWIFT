@@ -1722,12 +1722,12 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         /* Otherwise, pair interaction? */
         else if (l->t->type == task_type_pair) {
 
-          /* Left or right? */
+          /* We only want to redo the pair interactions for which t->ci is the
+           * current cell, since this is the only cell of the pair that is
+           * actually updated in the construction task */
           if (l->t->ci == c)
             runner_dopair_subset_grid_construction(
                 r, c, parts, pid, r_prev, r_max, count, l->t->cj);
-          else
-            error("Particles should always be on the left!");
         } else
           error("Unsupported interaction encountered!");
       }

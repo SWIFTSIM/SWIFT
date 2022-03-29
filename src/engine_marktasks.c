@@ -351,7 +351,15 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate grid construction tasks */
       else if (t_subtype == task_subtype_grid_construction) {
-        if (ci_active_hydro && (e->policy & engine_policy_grid)) scheduler_activate(s, t);
+        if (ci_active_hydro)
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(e->policy & engine_policy_grid)) {
+            error(
+                "Encountered grid construction task without "
+                "engine_policy_grid!");
+          }
+#endif
+        scheduler_activate(s, t);
       }
 
       /* Activate grid hydro tasks */
@@ -819,7 +827,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_nodeID == nodeID && ci_active_hydro) {
           scheduler_activate(s, t);
 
-          /* Activate the sorts if needed */
+          /* Store some values. */
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+          /* Activate the hydro drift tasks. */
+          cell_activate_drift_part(ci, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+          /* TODO the limiter tasks? */
+
+          /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_hydro_sorts(cj, t->flags, s);
         }
@@ -1449,7 +1469,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     /* Grid ghost task? */
     else if (t_type == task_type_grid_ghost) {
-      if ((e->policy & engine_policy_grid) && cell_is_active_hydro(t->ci, e)) {
+      if (cell_is_active_hydro(t->ci, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid)) {
+          error("Encountered grid ghost task without engine_policy_grid!");
+        }
+#endif
         scheduler_activate(s, t);
       }
     }

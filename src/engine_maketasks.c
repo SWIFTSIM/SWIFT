@@ -4193,17 +4193,17 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
 
           /* Is one of the cells local and does the neighbour have gas
            * particles? Also, only treat pairs once. */
-          if ((cid >= cjd) || (cj->hydro.count == 0) ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
-            continue;
+          if ((cid >= cjd) || (cj->hydro.count == 0)) continue;
 
           /* Construct a pair task for both directions, since the construction
            * tasks are asymmetric. */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          scheduler_addtask(sched, task_type_pair,
-                            task_subtype_grid_construction, sid, 0, ci, cj);
-          scheduler_addtask(sched, task_type_pair,
-                            task_subtype_grid_construction, sid, 0, cj, ci);
+          if (ci->nodeID == nodeID)
+            scheduler_addtask(sched, task_type_pair,
+                              task_subtype_grid_construction, sid, 0, ci, cj);
+          if (cj->nodeID == nodeID)
+            scheduler_addtask(sched, task_type_pair,
+                              task_subtype_grid_construction, sid, 0, cj, ci);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
