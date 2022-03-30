@@ -15,6 +15,9 @@ __attribute__((always_inline)) INLINE static void
 runner_dopair_grid_flux_exchange(struct runner *restrict r,
                                  struct cell *restrict ci,
                                  struct cell *restrict cj) {
+
+  TIMER_TIC;
+
   struct engine *e = r->e;
 
   /* anything to do here? */
@@ -63,11 +66,16 @@ runner_dopair_grid_flux_exchange(struct runner *restrict r,
                        pair->surface_area, inverse_shift);
     }
   } /* loop over voronoi faces between ci and cj */
+
+  TIMER_TOC(timer_dopair_flux);
 }
 
 __attribute__((always_inline)) INLINE static void
 runner_doself_grid_flux_exchange(struct runner *restrict r,
                                  struct cell *restrict c) {
+
+  TIMER_TIC;
+
 #ifdef SWIFT_DEBUG_CHECKS
   assert(c->grid.voronoi != NULL);
 #endif
@@ -95,6 +103,8 @@ runner_doself_grid_flux_exchange(struct runner *restrict r,
                        pair->surface_area, shift);
     }
   }
+
+  TIMER_TOC(timer_doself_flux);
 }
 
 #endif  // SWIFTSIM_RUNNER_DOIACT_GRID_HYDRO_H

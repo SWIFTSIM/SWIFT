@@ -16,6 +16,9 @@ __attribute__((always_inline)) INLINE static void
 runner_dopair_grid_construction(struct runner *restrict r,
                                 struct cell *restrict ci,
                                 struct cell *restrict cj) {
+
+  TIMER_TIC;
+
   const struct engine *restrict e = r->e;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -182,11 +185,16 @@ runner_dopair_grid_construction(struct runner *restrict r,
       } /* loop over the parts in ci. */
     }   /* loop over the parts in cj. */
   }     /* Flipped? */
+
+  TIMER_TOC(timer_dopair_grid_construction);
 }
 
 __attribute__((always_inline)) INLINE static void
 runner_doself_grid_construction(struct runner *restrict r,
                                 struct cell *restrict c) {
+
+  TIMER_TIC;
+
   const struct engine *restrict e = r->e;
 
   /* Anything to do here? */
@@ -263,6 +271,8 @@ runner_doself_grid_construction(struct runner *restrict r,
       }
     }
   }
+
+  TIMER_TOC(timer_doself_grid_construction);
 }
 
 __attribute__((always_inline)) INLINE static void
