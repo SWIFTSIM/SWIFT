@@ -34,7 +34,7 @@ m_h_cgs = 1.67e-24  # proton mass
 
 
 # File containing the total energy
-stats_filename = "./energy.txt"
+stats_filename = "./statistics.txt"
 
 # First snapshot
 snap_filename = "coolingBox_0000.hdf5"
@@ -60,12 +60,13 @@ def energyUnits(u):
 
 # Read energy and time arrays
 array = np.genfromtxt(stats_filename, skip_header=1)
-time = array[:, 0] * unit_time
-total_mass = array[:, 1]
-total_energy = array[:, 2]
-kinetic_energy = array[:, 3]
-internal_energy = array[:, 4]
-radiated_energy = array[:, 8]
+time = array[:, 1] * unit_time
+total_mass = array[:, 4]
+kinetic_energy = array[:, 13]
+internal_energy = array[:, 14]
+potential_energy = array[:, 15]
+radiated_energy = array[:, 16]
+total_energy = kinetic_energy + internal_energy + potential_energy
 initial_energy = total_energy[0]
 
 # Conversions to cgs
@@ -96,12 +97,13 @@ for i in range(N):
 
 plt.figure()
 
-Myr_in_yr = 3.15e13
-plt.plot(time, total_energy_cgs, "r-", lw=1.6, label="Gas total energy")
-plt.plot(time_snap_cgs, temp_snap, "rD", ms=3)
-plt.plot(time, radiated_energy_cgs, "g-", lw=1.6, label="Radiated energy")
+Myr_in_s = 3.15e13
+plt.plot(time / Myr_in_s, total_energy_cgs, "r-", lw=1.6, label="Gas total energy")
+# statistics and snapshots may not be at same timestep and frequency
+plt.plot(time_snap_cgs / Myr_in_s, temp_snap, "rD", ms=3)
+plt.plot(time / Myr_in_s, radiated_energy_cgs, "g-", lw=1.6, label="Radiated energy")
 plt.plot(
-    time,
+    time / Myr_in_s,
     total_energy_cgs + radiated_energy_cgs,
     "b-",
     lw=0.6,
