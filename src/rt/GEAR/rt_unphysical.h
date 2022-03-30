@@ -75,6 +75,44 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
 }
 
 /**
+ * @brief Do additional checks after reading in initial conditions, and exit on
+ * error.
+ *
+ * @param p particle we're checking
+ * @param group current photon group we're checking
+ * @param energy_density pointer to the radiation energy density
+ * @param flux pointer to radiation flux (3 dimensional)
+ * @param c the speed of light (in internal units). NOT the reduced speed of
+ * light.
+ */
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_state_ICs(
+    const struct part* restrict p, int group, float* energy_density,
+    float* flux, const double c) {
+
+  /* Nothing to do here. The other unphysical check will catch other problems.
+   */
+  if (*energy_density == 0.f) return;
+
+  /* Check for negative energies */
+  if (*energy_density < 0.f)
+    error(
+        "Found particle with negative energy density after reading in ICs: "
+        "pid= %lld group=%d E=%.6g",
+        p->id, group, *energy_density);
+
+  /* Check for too high fluxes */
+  const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
+  const float flux_norm = sqrtf(flux2);
+  const float flux_max = c * *energy_density;
+  if (flux_norm > flux_max * 1.0001) {
+    error(
+        "Found too high radiation flux for a particle: pid=%lld, group=%d, "
+        "have=%.6g, max=%.6g",
+        p->id, group, flux_norm, flux_max);
+  }
+}
+
+/**
  * @brief check for and correct if needed unphysical
  * values for a flux in the sense of hyperbolic conservation laws
  *

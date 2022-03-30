@@ -49,7 +49,7 @@ INLINE static int rt_read_particles(const struct part* parts,
                             parts, rt_data.radiation[phg].energy_density);
     sprintf(fieldname, "PhotonFluxesGroup%d", phg + 1);
     list[count++] = io_make_input_field(fieldname, FLOAT, 3, OPTIONAL,
-                                        UNIT_CONV_RADIATION_FLUX, parts,
+                                        UNIT_CONV_ENERGY_VELOCITY, parts,
                                         rt_data.radiation[phg].flux);
   }
 
