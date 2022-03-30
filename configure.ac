@@ -1421,6 +1421,10 @@ if test "$enable_lightcone" = "yes"; then
    if test "$have_chealpix" != "yes"; then
       AC_MSG_ERROR([Lightcone output requires the HEALPix C API. Please configure with --with-chealpix.])
    fi
+   # Also need to make sure we have GSL if we're making lightcones
+   if test "$have_gsl" != "yes"; then
+      AC_MSG_ERROR([Lightcone output requires GSL. Please configure with --with-gsl.])
+   fi   
 else
    have_chealpix="no"
 fi
