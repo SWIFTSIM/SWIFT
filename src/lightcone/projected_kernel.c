@@ -44,6 +44,7 @@
  * @param qz z coordinate at which to evaluate the kernel, in units of h
  * @param param Ratio of distance in the xy plane in units of h
  */
+#ifdef HAVE_LIBGSL
 static double projected_kernel_integrand(double qz, void *param) {
 
   const double qxy = *((double *)param);
@@ -52,6 +53,7 @@ static double projected_kernel_integrand(double qz, void *param) {
   kernel_eval_double(q, &W);
   return W;
 }
+#endif
 
 /**
  * @brief Computes 2D projection of the 3D kernel function.
