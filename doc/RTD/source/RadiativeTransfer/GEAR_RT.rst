@@ -130,13 +130,13 @@ group:
     ``nparts`` is the number of hydro particles. 
 -   Note that the GEAR-RT scheme expects the ``PhotonEnergies*`` to be total 
     energies, not energy densities. 
--   If you are writing initial conditions where the fields have units, then 
+-   If you are writing initial conditions where the fields have units [#f1]_, then 
     ``PhotonEnergies*`` are expected to have units of energy 
     :math:`[M L^2 T^{-2}]`), while the ``PhotonFluxes*`` fields should be in units 
-    of energy flux (energy per unit time per unit area, :math:`[M T^{-3}]`). 
+    of energy times velocity (i.e. energy per unit time per unit area times volume, 
+    :math:`[M L^3 T^{-3}]`).
 -   The ``MassFraction*`` datasets need to have dimension ``nparts`` as well, and
     are all unitless.
-
 
 
 Example using Python and ``swiftsimio``
@@ -319,3 +319,32 @@ useful:
     fHeI = data.gas.ion_mass_fractions.HeI
     fHeII = data.gas.ion_mass_fractions.HeII
     fHeIII = data.gas.ion_mass_fractions.HeIII
+
+
+
+
+.. rubric:: Footnotes
+
+.. [#f1] To avoid possible confusions, here are some notes and equations
+   regarding this choice of units.
+
+   One of the RT equations solved by the GEAR RT is the zeroth moment of the
+   equation of radiative transfer for each photon frequency group :math:`i` :
+
+   :math:`\frac{\partial E_i}{\partial t} + \nabla \cdot \mathbf{F}_i = 0`
+
+   where
+
+   - :math:`E_i` : photon energy density; with :math:`[E_i] = erg / cm^3 = M L^{-1} T^{-2}`
+   - :math:`F_i` : radiation flux (energy per unit time per unit surface); with :math:`[F_i] = erg / cm^2 / s = M T^{-3}` 
+
+   and we neglect possible source and sink terms in this footnote.
+
+   These dimensions are also used internally when solving the equations.
+   For the initial conditions however, we require these quantities multiplied by
+   the particle volume. The reason for this choice is so that the photon
+   energies for each particle can be set by the users exactly, while the
+   particle volume computation can be left to SWIFT to worry about internally.
+   The addition of the particle volume term for the radiation flux was made so
+   that the initial conditions are compatible with the SPHM1RT conventions, and
+   both methods can run on the exact same ICs.
