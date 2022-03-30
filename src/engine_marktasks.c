@@ -351,7 +351,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate grid construction tasks */
       else if (t_subtype == task_subtype_grid_construction) {
-        if (ci_active_hydro)
+        if (ci_active_hydro) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (!(e->policy & engine_policy_grid)) {
             error(
@@ -359,12 +359,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 "engine_policy_grid!");
           }
 #endif
-        scheduler_activate(s, t);
+          scheduler_activate(s, t);
+        }
       }
 
       /* Activate grid hydro tasks */
       else if (t_subtype == task_subtype_flux) {
-        if (ci_active_hydro)
+        if (ci_active_hydro) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (!(e->policy & engine_policy_grid_hydro)) {
             error(
@@ -372,7 +373,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 "engine_policy_grid_hydro!");
           }
 #endif
-        scheduler_activate(s, t);
+          scheduler_activate(s, t);
+        }
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -847,7 +849,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate grid hydro tasks */
       else if (t_subtype == task_subtype_flux) {
-        if (ci_active_hydro || cj_active_hydro)
+        if (ci_active_hydro || cj_active_hydro) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (!(e->policy & engine_policy_grid_hydro)) {
             error(
@@ -855,7 +857,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                 "engine_policy_grid_hydro!");
           }
 #endif
-        scheduler_activate(s, t);
+          scheduler_activate(s, t);
+        }
       }
 
       /* Only interested in density tasks as of here. */
