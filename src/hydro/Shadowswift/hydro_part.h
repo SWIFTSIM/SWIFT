@@ -16,20 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_HYDRO_PART_H
-#define SWIFT_MINIMAL_HYDRO_PART_H
+#ifndef SWIFT_SHADOWSWIFT_HYDRO_PART_H
+#define SWIFT_SHADOWSWIFT_HYDRO_PART_H
 
 /**
- * @file Minimal/hydro_part.h
- * @brief Minimal conservative implementation of SPH (Particle definition)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
+ * @file Shadowswift/hydro_part.h
+ * @brief Moving mesh hydrodynamics implementation
  */
 
 #include "black_holes_struct.h"
@@ -116,73 +108,113 @@ struct part {
   /*! Particle search radius. */
   double r;
 
-  /*! Particle internal energy. */
-  float u;
-
-  /*! Time derivative of the internal energy. */
-  float u_dt;
-
-  /*! Particle density. */
+  /* Density. */
   float rho;
 
-  /* Store density/force specific stuff. */
-  union {
+  /* Fluid velocity. */
+  float fluid_v[3];
 
-    /**
-     * @brief Structure for the variables only used in the density loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the density
-     * loop over neighbours and the ghost task.
-     */
-    struct {
+  /* Pressure. */
+  float P;
 
-      /*! Neighbour number count. */
-      float wcount;
+  /* Volume */
+  float volume;
 
-      /*! Derivative of the neighbour number with respect to h. */
-      float wcount_dh;
+  /* Gradients of the primitive variables. */
+  struct {
 
-      /*! Derivative of density with respect to h */
-      float rho_dh;
+    /* Density gradients. */
+    float rho[3];
 
-      /*! Velocity divergence */
-      float div_v;
+    /* Fluid velocity gradients. */
+    float v[3][3];
 
-      /*! Velocity curl */
-      float rot_v[3];
+    /* Pressure gradients. */
+    float P[3];
 
-    } density;
+  } gradients;
 
-    /**
-     * @brief Structure for the variables only used in the force loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the force
-     * loop over neighbours and the ghost, drift and kick tasks.
-     */
-    struct {
+  /* Quantities needed by the slope limiter. */
+  struct {
 
-      /*! "Grad h" term */
-      float f;
+    /* Extreme values of the density among the neighbours. */
+    float rho[2];
 
-      /*! Particle pressure. */
-      float pressure;
+    /* Extreme values of the fluid velocity among the neighbours. */
+    float v[3][2];
 
-      /*! Particle soundspeed. */
-      float soundspeed;
+    /* Extreme values of the pressure among the neighbours. */
+    float P[2];
 
-      /*! Particle signal velocity */
-      float v_sig;
+    /* Maximal distance to all neighbouring faces. */
+    float maxr;
 
-      /*! Time derivative of smoothing length  */
-      float h_dt;
+  } limiter;
 
-      /*! Balsara switch */
-      float balsara;
+  /* The conserved hydrodynamical variables. */
+  struct {
 
-    } force;
-  };
+    /* Fluid mass */
+    float mass;
+
+    /* Fluid momentum. */
+    float momentum[3];
+
+    /* Fluid thermal energy (not per unit mass!). */
+    float energy;
+
+  } conserved;
+
+  /* Fluxes. */
+  struct {
+
+    /* Mass flux. */
+    float mass;
+
+    /* Momentum flux. */
+    float momentum[3];
+
+    /* Energy flux. */
+    float energy;
+
+    /* Timestep for flux calculation. */
+    float dt;
+
+  } flux;
+
+  struct {
+
+    /* Signal velocity */
+    float vmax;
+
+  } timestepvars;
+
+  /* Unused in the ShadowSWIFT scheme */
+  struct {
+
+    /* Derivative of particle number density. */
+    float wcount_dh;
+
+    /* Particle number density. */
+    float wcount;
+
+  } density;
+
+  /* Unused in the ShadowSWIFT scheme. */
+  struct {
+
+    /* Needed to drift the primitive variables. */
+    float h_dt;
+
+  } force;
+
+  /* Specific stuff for the gravity-hydro coupling. */
+  struct {
+
+    /* Current value of the mass flux vector. */
+    float mflux[3];
+
+  } gravity;
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
@@ -217,4 +249,4 @@ struct part {
 
 } SWIFT_STRUCT_ALIGN;
 
-#endif /* SWIFT_MINIMAL_HYDRO_PART_H */
+#endif /* SWIFT_SHADOWSWIFT_HYDRO_PART_H */

@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_MINIMAL_HYDRO_IO_H
-#define SWIFT_MINIMAL_HYDRO_IO_H
+#ifndef SWIFT_SHADOWSWIFT_HYDRO_IO_H
+#define SWIFT_SHADOWSWIFT_HYDRO_IO_H
 
 /**
  * @file Minimal/hydro_io.h
@@ -39,6 +39,13 @@
 #include "io_properties.h"
 #include "kernel_hydro.h"
 
+/* Set the description of the particle movement. */
+#if defined(SHADOWSWIFT_FIX_PARTICLES)
+#define SHADOWSWIFT_PARTICLE_MOVEMENT "Fixed particles."
+#else
+#define SHADOWSWIFT_PARTICLE_MOVEMENT "Particles move with flow velocity."
+#endif
+
 /**
  * @brief Specifies which particle fields to read from a dataset
  *
@@ -58,11 +65,12 @@ INLINE static void hydro_read_particles(struct part* parts,
   list[1] = io_make_input_field("Velocities", FLOAT, 3, COMPULSORY,
                                 UNIT_CONV_SPEED, parts, v);
   list[2] = io_make_input_field("Masses", FLOAT, 1, COMPULSORY, UNIT_CONV_MASS,
-                                parts, mass);
+                                parts, conserved.mass);
   list[3] = io_make_input_field("SmoothingLength", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_LENGTH, parts, h);
   list[4] = io_make_input_field("InternalEnergy", FLOAT, 1, COMPULSORY,
-                                UNIT_CONV_ENERGY_PER_UNIT_MASS, parts, u);
+                                UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+                                conserved.energy);
   list[5] = io_make_input_field("ParticleIDs", ULONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, id);
   list[6] = io_make_input_field("Accelerations", FLOAT, 3, OPTIONAL,
@@ -71,22 +79,56 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
 }
 
-INLINE static void convert_S(const struct engine* e, const struct part* p,
+/**
+ * @brief Get the internal energy of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @param ret (return) Internal energy of the particle
+ */
+INLINE static void convert_u(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
+  ret[0] = hydro_get_comoving_internal_energy(p);
+}
+
+/**
+ * @brief Get the entropic function of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @param ret (return) Entropic function of the particle
+ */
+INLINE static void convert_A(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
   ret[0] = hydro_get_comoving_entropy(p, xp);
 }
 
-INLINE static void convert_P(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
+/**
+ * @brief Get the total energy of a particle
+ *
+ * @param e #engine.
+ * @param p Particle.
+ * @return Total energy of the particle
+ */
+INLINE static void convert_Etot(const struct engine* e, const struct part* p,
+                                const struct xpart* xp, float* ret) {
+#ifdef GIZMO_TOTAL_ENERGY
+  ret[0] = p->conserved.energy;
+#else
+  float momentum2;
 
-  ret[0] = hydro_get_comoving_pressure(p);
+  momentum2 = p->conserved.momentum[0] * p->conserved.momentum[0] +
+              p->conserved.momentum[1] * p->conserved.momentum[1] +
+              p->conserved.momentum[2] * p->conserved.momentum[2];
+
+  ret[0] = p->conserved.energy + 0.5f * momentum2 / p->conserved.mass;
+#endif
 }
 
 INLINE static void convert_part_pos(const struct engine* e,
                                     const struct part* p,
                                     const struct xpart* xp, double* ret) {
-
   const struct space* s = e->s;
   if (s->periodic) {
     ret[0] = box_wrap(p->x[0], 0.0, s->dim[0]);
@@ -112,7 +154,6 @@ INLINE static void convert_part_vel(const struct engine* e,
   const struct cosmology* cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
-  const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
 
   const integertime_t ti_beg = get_integer_time_begin(ti_current, p->time_bin);
   const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
@@ -131,24 +172,8 @@ INLINE static void convert_part_vel(const struct engine* e,
     dt_kick_hydro = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
   }
 
-  /* Extrapolate the velocites to the current time (hydro term)*/
-  ret[0] = xp->v_full[0] + p->a_hydro[0] * dt_kick_hydro;
-  ret[1] = xp->v_full[1] + p->a_hydro[1] * dt_kick_hydro;
-  ret[2] = xp->v_full[2] + p->a_hydro[2] * dt_kick_hydro;
-
-  /* Add the gravity term */
-  if (p->gpart != NULL) {
-    ret[0] += p->gpart->a_grav[0] * dt_kick_grav;
-    ret[1] += p->gpart->a_grav[1] * dt_kick_grav;
-    ret[2] += p->gpart->a_grav[2] * dt_kick_grav;
-  }
-
-  /* And the mesh gravity term */
-  if (p->gpart != NULL) {
-    ret[0] += p->gpart->a_grav_mesh[0] * dt_kick_grav_mesh;
-    ret[1] += p->gpart->a_grav_mesh[1] * dt_kick_grav_mesh;
-    ret[2] += p->gpart->a_grav_mesh[2] * dt_kick_grav_mesh;
-  }
+  /* Extrapolate the velocites to the current time */
+  hydro_get_drifted_velocities(p, xp, dt_kick_hydro, dt_kick_grav, ret);
 
   /* Conversion from internal units to peculiar velocities */
   ret[0] *= cosmo->a_inv;
@@ -170,7 +195,6 @@ INLINE static void convert_part_potential(const struct engine* e,
  * @brief Specifies which particle fields to write to a dataset
  *
  * @param parts The particle array.
- * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
@@ -179,7 +203,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 10;
+  *num_fields = 11;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -192,16 +216,17 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Peculiar velocities of the stars. This is (a * dx/dt) where x is the "
       "co-moving positions of the particles");
 
-  list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f, parts,
-                                 mass, "Masses of the particles");
+  list[2] =
+      io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 1.f, parts,
+                           conserved.mass, "Co-moving masses of the particles");
 
   list[3] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
 
-  list[4] = io_make_output_field(
+  list[4] = io_make_output_field_convert_part(
       "InternalEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      -3.f * hydro_gamma_minus_one, parts, u,
+      3.f * hydro_gamma_minus_one, parts, xparts, convert_u,
       "Co-moving thermal energies per unit mass of the particles");
 
   list[5] =
@@ -213,17 +238,20 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                  "Co-moving mass densities of the particles");
 
   list[7] = io_make_output_field_convert_part(
-      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY_PER_UNIT_MASS, 0.f, parts,
-      xparts, convert_S, "Co-moving entropies per unit mass of the particles");
+      "Entropies", FLOAT, 1, UNIT_CONV_ENTROPY, 0.f, parts, xparts, convert_A,
+      "Co-moving entropies of the particles");
 
-  list[8] = io_make_output_field_convert_part(
-      "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
-      xparts, convert_P, "Co-moving pressures of the particles");
+  list[8] = io_make_output_field("Pressures", FLOAT, 1, UNIT_CONV_PRESSURE,
+                                 -3.f * hydro_gamma, parts, P,
+                                 "Co-moving pressures of the particles");
 
   list[9] = io_make_output_field_convert_part(
+      "TotalEnergies", FLOAT, 1, UNIT_CONV_ENERGY, -3.f * hydro_gamma_minus_one,
+      parts, xparts, convert_Etot, "Total (co-moving) energy of the particles");
+
+  list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
-      convert_part_potential,
-      "Co-moving gravitational potential at position of the particles");
+      convert_part_potential, "Gravitational potentials of the particles");
 }
 
 /**
@@ -231,13 +259,22 @@ INLINE static void hydro_write_particles(const struct part* parts,
  * @param h_grpsph The HDF5 group in which to write
  */
 INLINE static void hydro_write_flavour(hid_t h_grpsph) {
+  /* Gradient information */
+  io_write_attribute_s(h_grpsph, "Gradient reconstruction model",
+                       HYDRO_GRADIENT_IMPLEMENTATION);
 
-  /* Viscosity and thermal conduction */
-  /* Nothing in this minimal model... */
-  io_write_attribute_s(h_grpsph, "Thermal Conductivity Model", "No treatment");
-  io_write_attribute_s(
-      h_grpsph, "Viscosity Model",
-      "as in Springel (2005), i.e. Monaghan (1992) with Balsara (1995) switch");
+  /* Slope limiter information */
+  io_write_attribute_s(h_grpsph, "Cell wide slope limiter model",
+                       HYDRO_SLOPE_LIMITER_CELL_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "Piecewise slope limiter model",
+                       HYDRO_SLOPE_LIMITER_FACE_IMPLEMENTATION);
+
+  /* Riemann solver information */
+  io_write_attribute_s(h_grpsph, "Riemann solver type",
+                       RIEMANN_SOLVER_IMPLEMENTATION);
+
+  /* Particle movement information */
+  io_write_attribute_s(h_grpsph, "Particle movement", SHADOWSWIFT_PARTICLE_MOVEMENT);
 }
 
 /**
@@ -247,4 +284,4 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
  */
 INLINE static int writeEntropyFlag(void) { return 0; }
 
-#endif /* SWIFT_MINIMAL_HYDRO_IO_H */
+#endif /* SWIFT_SHADOWSWIFT_HYDRO_IO_H */

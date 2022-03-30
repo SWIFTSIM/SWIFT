@@ -1177,7 +1177,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Are we using the alternative definition of the
              number of neighbours? */
           if (use_mass_weighted_num_ngb) {
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH) || defined(SHADOWSWIFT)
             error(
                 "Can't use alternative neighbour definition with this scheme!");
 #else
@@ -1740,7 +1740,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         "particles:");
     for (int i = 0; i < count; i++) {
       struct part *p = &parts[pid[i]];
-      warning("ID: %lld, h: %g, wcount: %g", p->id, p->r, p->density.wcount);
+      warning("ID: %lld, search radius: %g", p->id, p->r);
     }
 
     error("Search radius failed to converge on %i particles.", count);
