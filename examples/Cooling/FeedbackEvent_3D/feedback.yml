@@ -44,18 +44,19 @@ LambdaCooling:
 
 # Cooling with Grackle 2.0
 GrackleCooling:
-  CloudyTable: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  WithUVbackground: 0 # Enable or not the UV background
-  Redshift: 0 # Redshift to use (-1 means time based redshift)
-  WithMetalCooling: 1 # Enable or not the metal cooling
-  ProvideVolumetricHeatingRates: 0 # User provide volumetric heating rates
-  ProvideSpecificHeatingRates: 0 # User provide specific heating rates
-  SelfShieldingMethod: 0 # Grackle (<= 3) or Gear self shielding method
-  MaxSteps: 1000
-  ConvergenceLimit: 1e-2
+  cloudy_table: CloudyData_UVB=HM2012.h5 # Name of the Cloudy Table (available on the grackle bitbucket repository)
+  with_UV_background: 0 # Enable or not the UV background
+  redshift: 0 # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1 # Enable or not the metal cooling
+  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
+  provide_specific_heating_rates: 0 # User provide specific heating rates
+  self_shielding_method: 0 # Grackle (<= 3) or Gear self shielding method
+  max_steps: 1000
+  convergence_limit: 1e-2
+  thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   
 GearChemistry:
-  InitialMetallicity: 0.01295
+  initial_metallicity: 0.01295
 
 EAGLEChemistry:              # Solar abundances
   init_abundance_metal:      0.014
