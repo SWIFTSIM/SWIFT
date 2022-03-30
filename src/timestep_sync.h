@@ -134,7 +134,8 @@ INLINE static void timestep_process_sync_part(struct part *p, struct xpart *xp,
   /* The particle is now ready to compute its new time-step size and for the
    * next kick */
   p->time_bin = -min_active_bin;
-  p->limiter_data.wakeup = time_bin_not_awake;
+  /* do not touch the limiter flag, as we might still need to limit the time
+     step of this particle (if the new time step is still too large) */
 }
 
 #endif /* SWIFT_TIMESTEP_SYNC_H */
