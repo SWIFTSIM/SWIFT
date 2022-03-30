@@ -26,36 +26,27 @@
 #include "rt_additions.h"
 
 /**
- * @brief Common part of the flux calculation between particle i and j
- *
- * Since the only difference between the symmetric and non-symmetric version
- * of the flux calculation  is in the update of the conserved variables at the
- * very end (which is not done for particle j if mode is 0), both
- * runner_iact_force and runner_iact_nonsym_force call this method, with an
- * appropriate mode.
+ * @brief The flux calculation between particle i and j
  *
  * This method calculates the surface area of the interface between particle i
  * and particle j, as well as the interface position and velocity. These are
  * then used to reconstruct and predict the primitive variables, which are then
  * fed to a Riemann solver that calculates a flux. This flux is used to update
- * the conserved variables of particle i or both particles.
+ * the conserved variables of both particles.
  *
  * This method also calculates the maximal velocity used to calculate the time
  * step.
  *
- * @param r2 Comoving squared distance between particle i and particle j.
- * @param dx Comoving distance vector between the particles (dx = pi->x -
- * pj->x).
- * @param hi Comoving smoothing-length of particle i.
- * @param hj Comoving smoothing-length of particle j.
- * @param pi Particle i.
- * @param pj Particle j.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
+ * @param pi Particle i (the "left" particle). This particle must always be
+ * active.
+ * @param pj Particle j (the "right" particle).
+ * @param centroid Centroid of the face between pi and pj.
+ * @param surface_area Surface area of the face.
+ * @param shift Shift to apply to the coordinates of pj.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
+__attribute__((always_inline)) INLINE static void runner_iact_flux(
     struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift, const int symmetric) {
+    float surface_area, const double *shift) {
 
   /* Initialize local variables */
   /* Vector from pj to pi */
@@ -102,8 +93,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   /* Store the signal velocity */
   pi->timestepvars.vmax = (float)fmax(pi->timestepvars.vmax, vmax);
-  if (symmetric)
-    pj->timestepvars.vmax = (float)fmax(pj->timestepvars.vmax, vmax);
+  pj->timestepvars.vmax = (float)fmax(pj->timestepvars.vmax, vmax);
 
   /* particle velocities */
   double vi[3], vj[3];
@@ -166,7 +156,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_fluxes_common(
 
   hydro_part_update_fluxes_left(pi, totflux, dx);
 
-  if (symmetric || (pj->flux.dt < 0.0)) {
+  if (pj->flux.dt < 0.0) {
     hydro_part_update_fluxes_right(pj, totflux, dx);
   }
 }
