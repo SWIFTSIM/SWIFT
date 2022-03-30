@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->limiter.v[2][0], p->limiter.v[2][1], p->limiter.P[0], p->limiter.P[1],
       p->limiter.maxr, p->conserved.momentum[0], p->conserved.momentum[1],
       p->conserved.momentum[2], p->conserved.mass, p->conserved.energy,
-      p->volume,
+      p->geometry.volume,
       p->timestepvars.vmax);
 }
 

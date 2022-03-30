@@ -117,9 +117,6 @@ struct part {
   /* Pressure. */
   float P;
 
-  /* Volume */
-  float volume;
-
   /* Gradients of the primitive variables. */
   struct {
 
@@ -181,6 +178,14 @@ struct part {
     float dt;
 
   } flux;
+
+  struct {
+
+    float volume;
+
+    double centroid[3];
+
+  } geometry;
 
   struct {
 

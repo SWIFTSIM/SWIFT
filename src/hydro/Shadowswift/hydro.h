@@ -89,7 +89,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   vmax = max(vmax, p->timestepvars.vmax);
 
   const float psize = cosmo->a * cosmo->a *
-                      powf(p->volume / hydro_dimension_unit_sphere,
+                      powf(p->geometry.volume / hydro_dimension_unit_sphere,
                            hydro_dimension_inv);
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
@@ -177,7 +177,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
   p->rho = 0.f;
-  p->volume = 0.f;
+  p->geometry.volume = 0.f;
 }
 
 /**
@@ -353,7 +353,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   float flux[5];
   hydro_part_get_fluxes(p, flux);
 
-  W[0] += hydro_flux_density_drift_term(flux[0], dt_therm, p->volume);
+  W[0] += hydro_flux_density_drift_term(flux[0], dt_therm, p->geometry.volume);
 
   if (p->conserved.mass > 0.0f) {
     const float m_inv = 1.0f / p->conserved.mass;
@@ -401,6 +401,60 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   /* Reset force variables if we are using Lloyd's algorithm. */
   /* TODO */
+}
+
+/**
+ * @brief Convert conserved variables into primitive variables.
+ *
+ * This method also initializes the gradient variables (if gradients are used).
+ *
+ * @param p The particle to act upon.
+ * @param volume The volume of the particle's associated voronoi cell
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_convert_conserved_to_primitive(struct part *restrict p,
+                                               struct xpart *restrict xp) {
+  float m = p->conserved.mass;
+  double energy;
+  if (m > 0.) {
+    p->rho = m / p->geometry.volume;
+
+    /* Update fluid_v */
+    hydro_velocities_from_momentum(p, p->fluid_v);
+
+    energy = p->conserved.energy;
+
+#ifdef SHADOWFAX_TOTAL_ENERGY
+    energy -=
+        0.5f * (momentum[0] * p->fluid_v[0] + momentum[1] * p->fluid_v[1] +
+                momentum[2] * p->fluid_v[2]);
+#endif
+
+    energy /= m;
+    p->P = gas_pressure_from_internal_energy(p->rho, energy);
+
+    hydro_gravity_extra_velocity_drift(p->fluid_v, p->v, xp->v_full);
+
+  } else {
+    p->rho = 0.f;
+    p->fluid_v[0] = 0.f;
+    p->fluid_v[1] = 0.f;
+    p->fluid_v[2] = 0.f;
+    p->P = 0.f;
+  }
+
+  if (m == 0. &&
+      (p->fluid_v[0] != 0. || p->fluid_v[1] != 0. || p->fluid_v[2] != 0.)) {
+    error("Nonzero fluid_v for particle with zero mass!");
+  }
+
+  if (p->rho < 0.) {
+    error("Negative density!");
+  }
+
+  if (p->P < 0.) {
+    error("Negative pressure!");
+  }
 }
 
 /**
@@ -498,7 +552,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
 #endif
 
+  /* Update conserved quantities */
+  hydro_convert_conserved_to_primitive(p, xp);
+
+  /* Update gpart */
   hydro_gravity_update_gpart_mass(p);
+
+  /* Set actual velocity of ShadowSWIFT particle (!= fluid_v) */
   hydro_velocities_set(p, xp);
 
   /* undo the flux exchange and kick the particles towards their centroid */

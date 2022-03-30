@@ -45,7 +45,37 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
 }
 
 /**
- * @brief Set the velocity of a GIZMO particle, based on the values of its
+ * @brief Set the velocities based on the particles momentum.
+ *
+ * Velocities near vacuum are linearly suppressed.
+ */
+__attribute__((always_inline)) INLINE static void hydro_velocities_from_momentum(struct part* p, float* ret) {
+  if (p->conserved.mass > 0.) {
+
+    const float inverse_mass = 1.f / p->conserved.mass;
+
+    const float rho = p->conserved.mass / p->geometry.volume;
+    if (rho < 1e-10) {
+      /* Suppress velocity linearly near vacuum */
+      const double fac = rho * 1e10;
+      ret[0] = fac * p->conserved.momentum[0] * inverse_mass;
+      ret[1] = fac * p->conserved.momentum[1] * inverse_mass;
+      ret[2] = fac * p->conserved.momentum[2] * inverse_mass;
+    } else {
+      /* Normal case: update fluid velocity and set particle velocity accordingly. */
+      ret[0] = p->conserved.momentum[0] * inverse_mass;
+      ret[1] = p->conserved.momentum[1] * inverse_mass;
+      ret[2] = p->conserved.momentum[2] * inverse_mass;
+    }
+  } else {
+    ret[0] = 0.;
+    ret[1] = 0.;
+    ret[2] = 0.;
+  }
+}
+
+/**
+ * @brief Set the velocity of a ShadowSWIFT particle, based on the values of its
  * primitive variables and the geometry of its mesh-free "cell".
  *
  * @param p The particle to act upon.
@@ -65,12 +95,10 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
   if (p->conserved.mass > 0.0f && p->rho > 0.0f) {
 
-    const float inverse_mass = 1.0f / p->conserved.mass;
-
     /* Normal case: set particle velocity to fluid velocity. */
-    p->v[0] = p->conserved.momentum[0] * inverse_mass;
-    p->v[1] = p->conserved.momentum[1] * inverse_mass;
-    p->v[2] = p->conserved.momentum[2] * inverse_mass;
+    p->v[0] = p->fluid_v[0];
+    p->v[1] = p->fluid_v[1];
+    p->v[2] = p->fluid_v[2];
 
 #ifdef SHADOWSWIFT_STEER_MOTION
     /* Add a correction to the velocity to keep particle positions close enough
