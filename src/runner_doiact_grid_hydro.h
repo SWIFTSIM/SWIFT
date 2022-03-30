@@ -24,7 +24,6 @@ runner_dopair_grid_flux_exchange(struct runner *restrict r,
   assert(ci_active);
 #ifdef SWIFT_DEBUG_CHECKS
   assert(ci->grid.voronoi != NULL);
-  assert(cj->grid.voronoi != NULL);
 #endif
 
   /* Retrieve SID and shift */

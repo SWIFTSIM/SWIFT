@@ -1134,9 +1134,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 28;
   }
   if (e->policy & engine_policy_grid_hydro) {
-    /* Flux exchange: 1 self + 13 pairs */
-    n1 += 14;
-    n1 += 14;
+    /* Flux exchange: 1 self + 13 pairs + 1 ghost */
+    n1 += 15;
   }
 
 #ifdef WITH_MPI
@@ -1621,6 +1620,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_out || t->type == task_type_rt_ghost1 ||
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
+        t->type == task_type_flux_ghost ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
@@ -1645,7 +1645,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_spart_prep2 ||
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport)
+        t->subtype == task_subtype_rt_transport ||
+        t->subtype == task_subtype_flux)
       t->skip = 1;
   }
 

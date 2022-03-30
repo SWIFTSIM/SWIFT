@@ -141,6 +141,7 @@ const char* timers_names[timer_count] = {
     "doself_grid_construction",
     "dopair_grid_construction",
     "do_grid_ghost",
+    "do_flux_ghost",
 };
 
 /* File to store the timers */

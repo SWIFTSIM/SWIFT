@@ -1067,6 +1067,12 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 }
 
 static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->subtype != task_subtype_grid_construction)
+    error("Found non grid construction task in scheduler_splittask_grid!");
+#endif
+
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
@@ -1201,6 +1207,12 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
 
 static void scheduler_splittask_grid_hydro(struct task *t,
                                            struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->subtype != task_subtype_flux)
+    error("Found non grid construction task in scheduler_splittask_grid_hydro!");
+#endif
+
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
@@ -1326,6 +1338,21 @@ static void scheduler_splittask_grid_hydro(struct task *t,
           }
         } /* Loop over pairs of progeny */
       } /* Split? */
+      else {
+        /* Do we need to switch ci and cj (so that t->ci will always be at its
+         * construction level)? */
+        if (t->ci->grid.construction_level != t->ci) {
+#ifdef SWIFT_DEBUG_CHECKS
+          if (t->ci->grid.construction_level == NULL || t->cj->grid.construction_level == NULL)
+            error("Pair task should have been split further!");
+          if (t->cj->grid.construction_level != t->cj)
+            error("Pair flux exchange below construction level of both cells!");
+#endif
+          struct cell *temp = t->ci;
+          t->ci = t->cj;
+          t->cj = temp;
+        }
+      }
     } /* Pair interaction?*/
   } /* Redo? */
 }

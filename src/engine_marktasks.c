@@ -845,6 +845,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Activate grid hydro tasks */
+      else if (t_subtype == task_subtype_flux) {
+        if (ci_active_hydro || cj_active_hydro)
+#ifdef SWIFT_DEBUG_CHECKS
+          if (!(e->policy & engine_policy_grid_hydro)) {
+            error(
+                "Encountered flux exchange task without "
+                "engine_policy_grid_hydro!");
+          }
+#endif
+        scheduler_activate(s, t);
+      }
+
       /* Only interested in density tasks as of here. */
       if (t_subtype == task_subtype_density) {
 
@@ -1473,6 +1486,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_grid)) {
           error("Encountered grid ghost task without engine_policy_grid!");
+        }
+#endif
+        scheduler_activate(s, t);
+      }
+    }
+
+    /* Flux ghost task? */
+    else if (t_type == task_type_flux_ghost) {
+      if (cell_is_active_hydro(t->ci, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid_hydro)) {
+          error("Encountered flux ghost task without engine_policy_grid_hydro!");
         }
 #endif
         scheduler_activate(s, t);

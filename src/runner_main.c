@@ -624,6 +624,9 @@ void *runner_main(void *data) {
         case task_type_grid_ghost:
           runner_do_grid_ghost(r, t->ci, 1);
           break;
+        case task_type_flux_ghost:
+          runner_do_flux_ghost(r, t->ci, 1);
+          break;
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }

@@ -115,6 +115,7 @@ enum task_types {
   task_type_rt_transport_out, /* Implicit */
   task_type_rt_tchem,
   task_type_grid_ghost,
+  task_type_flux_ghost,
   task_type_count
 } __attribute__((packed));
 

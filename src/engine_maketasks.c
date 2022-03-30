@@ -1383,6 +1383,33 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
   }
 }
 
+void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
+                                               struct cell *c) {
+  struct scheduler *s = &e->sched;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+
+  /* Are we in a super-cell ? */
+  if (c->hydro.super == c) {
+    /* Add the task finishing the flux_exchange */
+    c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
+                                            task_subtype_none, 0, 0, c, NULL);
+  }
+  /* Recurse until super level is reached. */
+  else {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->hydro.super != NULL)
+      error("Somehow ended up below super level!");
+    if (!c->split)
+      error("Cell is above super level, but is not split!");
+#endif
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_make_hierarchical_tasks_grid_hydro(e, c->progeny[k]);
+  }
+}
+
 /**
  * @brief Recursively add non-implicit ghost tasks to a cell hierarchy.
  */
@@ -1768,6 +1795,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 
   struct engine *e = (struct engine *)extra_data;
   const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_grid_hydro = (e->policy & engine_policy_grid_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
   const int with_grid = (e->policy & engine_policy_grid);
@@ -1784,6 +1812,9 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
       engine_make_hierarchical_tasks_gravity(e, c);
     if (with_grid) {
       engine_make_hierarchical_tasks_grid(e, c);
+    }
+    if (with_grid_hydro) {
+      engine_make_hierarchical_tasks_grid_hydro(e, c);
     }
   }
 }
@@ -2324,7 +2355,7 @@ static inline void engine_make_hydro_loops_dependencies(
 #endif
 
 /**
- * @brief Creates all the task dependencies for the gravity
+ * @brief Creates all the task dependencies for the grid construction
  *
  * @param e The #engine
  */
@@ -2380,6 +2411,63 @@ void engine_link_grid_tasks(struct engine *e) {
 
     if (t_type == task_type_grid_ghost) {
       /* This is only temporarily, should unlock the grid hydro tasks */
+      scheduler_addunlock(sched, t, ci->super->kick2);
+    }
+  }
+}
+
+/**
+ * @brief Creates all the task dependencies for the grid hydrodynamics
+ *
+ * @param e The #engine
+ */
+void engine_link_grid_hydro_tasks(struct engine *e) {
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int nr_tasks = sched->nr_tasks;
+
+  for (int k = 0; k < nr_tasks; k++) {
+    /* Get a pointer to the task. */
+    struct task *t = &sched->tasks[k];
+
+    if (t->type == task_type_none) continue;
+
+    /* Get the cell we act on */
+    struct cell *ci = t->ci;
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
+
+    /* Node ID (if running with MPI) */
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+#else
+    const int ci_nodeID = nodeID;
+#endif
+
+    if (t_subtype == task_subtype_flux) {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci_nodeID != nodeID) error("Non-local task");
+#endif
+        /* Ghost_construction --> flux exchange --> flux_ghost */
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ci->grid.construction_level != ci)
+        error("Self flux exchange task found not on construction level!");
+#endif
+      scheduler_addunlock(sched, ci->grid.ghost, t);
+      scheduler_addunlock(sched, t, ci->hydro.super->hydro.flux_ghost);
+      if (t_type == task_type_pair) {
+        /* Get the second cell */
+        struct cell *cj = t->cj;
+
+        if (ci->hydro.super != cj->hydro.super) {
+          scheduler_addunlock(sched, t, cj->hydro.super->hydro.flux_ghost);
+        }
+      }
+    }
+
+    if (t_type == task_type_flux_ghost) {
+      /* This is only temporarily, should unlock other stuff such as the cooling
+       * etc. */
       scheduler_addunlock(sched, t, ci->super->kick2);
     }
   }
@@ -4679,8 +4767,8 @@ void engine_maketasks(struct engine *e) {
 
   /* Construct the top level grid hydro tasks */
   if (e->policy & engine_policy_grid_hydro)
-    threadpool_map(&e->threadpool, engine_make_grid_hydro_tasks_mapper,
-                   NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    threadpool_map(&e->threadpool, engine_make_grid_hydro_tasks_mapper, NULL,
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
 
   if (e->verbose)
     message("Making grid tasks took %.3f %s.",
@@ -4784,6 +4872,11 @@ void engine_maketasks(struct engine *e) {
   /* Add the dependencies for the grid stuff */
   if (e->policy & engine_policy_grid) {
     engine_link_grid_tasks(e);
+  }
+
+  /* Add the dependencies for the grid hydro stuff */
+  if (e->policy & engine_policy_grid) {
+    engine_link_grid_hydro_tasks(e);
   }
 
   tic2 = getticks();

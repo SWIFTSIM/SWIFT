@@ -141,6 +141,7 @@ enum {
   timer_doself_grid_construction,
   timer_dopair_grid_construction,
   timer_do_grid_ghost,
+  timer_do_flux_ghost,
   timer_count,
 };
 

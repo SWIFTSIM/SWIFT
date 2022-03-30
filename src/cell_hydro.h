@@ -91,6 +91,9 @@ struct cell_hydro {
     /*! The task to end the force calculation */
     struct task *end_force;
 
+    /*! The ghost task related to flux exchange */
+    struct task *flux_ghost;
+
     /*! Dependency implicit task for cooling (in->cooling->out) */
     struct task *cooling_in;
 

@@ -1767,5 +1767,32 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     part_is_active_mask[i] = part_is_active(&parts[i], e);
   voronoi_build(c->grid.voronoi, c->grid.delaunay, part_is_active_mask);
 
-  if (timer) TIMER_TOC(timer_do_ghost);
+  if (timer) TIMER_TOC(timer_do_grid_ghost);
+}
+
+/**
+ * @brief Finish up the flux calculation.
+ *
+ * This function reruns the construction tasks for unconverged particles until
+ * all particles have converged.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
+
+  struct engine *e = r->e;
+
+  if (c->hydro.super != c)
+    error("Flux ghost not run at super level!");
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* TODO */
+
+  if (timer) TIMER_TOC(timer_do_flux_ghost);
 }
