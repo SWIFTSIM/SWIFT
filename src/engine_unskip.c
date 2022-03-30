@@ -279,7 +279,7 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
 }
 
 /**
- * @brief Unskip any moving mesh tasks associated with active cells.
+ * @brief Unskip any grid construction tasks associated with active cells.
  *
  * @param c The cell.
  * @param e The engine.
@@ -310,6 +310,41 @@ static void engine_do_unskip_grid(struct cell *c, struct engine *e) {
 
   /* Unskip any active tasks. */
   const int forcerebuild = cell_unskip_grid_tasks(c, &e->sched);
+  if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+/**
+ * @brief Unskip any moving mesh hyrdo tasks associated with active cells.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void engine_do_unskip_grid_hydro(struct cell *c, struct engine *e) {
+
+  /* Note: we only get this far if engine_policy_grid is flagged. */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!(e->policy & engine_policy_grid_hydro))
+    error("Unksipping Moving mesh stuff without the policy being on");
+#endif
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Do we have work to do? */
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        engine_do_unskip_grid_hydro(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  const int forcerebuild = cell_unskip_grid_hydro_tasks(c, &e->sched);
   if (forcerebuild) atomic_inc(&e->forcerebuild);
 }
 
@@ -359,11 +394,12 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
     /* What broad type of tasks are we unskipping? */
     switch (task_types[type]) {
       case task_broad_types_hydro:
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(e->policy & engine_policy_hydro))
+        if (e->policy & engine_policy_hydro)
+          engine_do_unskip_hydro(c, e);
+        else if (e->policy & engine_policy_grid_hydro)
+          engine_do_unskip_grid_hydro(c, e);
+        else
           error("Trying to unskip hydro tasks in a non-hydro run!");
-#endif
-        engine_do_unskip_hydro(c, e);
         break;
       case task_broad_types_gravity:
 #ifdef SWIFT_DEBUG_CHECKS
@@ -429,7 +465,8 @@ void engine_unskip(struct engine *e) {
   struct space *s = e->s;
   const int nodeID = e->nodeID;
 
-  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_hydro =
+      e->policy & engine_policy_hydro || e->policy & engine_policy_grid_hydro;
   const int with_self_grav = e->policy & engine_policy_self_gravity;
   const int with_ext_grav = e->policy & engine_policy_external_gravity;
   const int with_stars = e->policy & engine_policy_stars;

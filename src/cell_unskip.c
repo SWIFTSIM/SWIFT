@@ -2961,6 +2961,114 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
   /* TODO activate limiter? */
 
   scheduler_activate(s, c->grid.ghost);
+
   /* TODO proper check for rebuild */
   return 0;
+}
+
+/**
+ * @brief Un-skips all the moving mesh hydro tasks associated with a given cell
+ * and checks if the space needs to be rebuilt.
+ *
+ * @param c the #cell.
+ * @param s the #scheduler.
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
+  struct engine *e = s->space->e;
+  const int nodeID = e->nodeID;
+  const int with_timestep_limiter =
+      (e->policy & engine_policy_timestep_limiter);
+
+#ifdef WITH_MPI
+  const int with_star_formation = e->policy & engine_policy_star_formation;
+  if (e->policy & engine_policy_sinks) error("TODO");
+#endif
+  int rebuild = 0;
+
+  /* Un-skip the flux exchange tasks involved with this cell. */
+#ifdef SWIFT_DEBUG_CHECKS
+  int counter = 0;
+#endif
+  for (struct link *l = c->hydro.flux; l != NULL; l = l->next) {
+#ifdef SWIFT_DEBUG_CHECKS
+    counter++;
+    if (counter > 14) error("Cells should have not more than 14 flux tasks!");
+#endif
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active && ci_nodeID == nodeID) ||
+        (cj_active && cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
+      /* Activate hydro drift */
+      if (t->type == task_type_self) {
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (ci_nodeID == nodeID && with_timestep_limiter)
+          cell_activate_limiter(ci, s);
+      }
+
+      /* Set the correct sorting flags and activate hydro drifts */
+      else if (t->type == task_type_pair) {
+        /* Store some values. */
+        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+        /* Activate the drift tasks. */
+        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+        /* Activate the limiter tasks. */
+        if (ci_nodeID == nodeID && with_timestep_limiter)
+          cell_activate_limiter(ci, s);
+        if (cj_nodeID == nodeID && with_timestep_limiter)
+          cell_activate_limiter(cj, s);
+
+        /* Check the sorts and activate them if needed. */
+        cell_activate_hydro_sorts(ci, t->flags, s);
+        cell_activate_hydro_sorts(cj, t->flags, s);
+      }
+    }
+
+    /* Only interested in pair interactions as of here. */
+    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
+      /* Check whether there was too much particle motion, i.e. the
+         cell neighbour conditions were violated. */
+      /* TODO */
+    }
+  }
+
+  /* Unskip all the other task types. */
+  if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
+
+    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
+
+    if (c->hydro.flux_ghost != NULL)
+      scheduler_activate(s, c->hydro.flux_ghost);
+    if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
+    if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
+    if (c->timestep != NULL) scheduler_activate(s, c->timestep);
+    if (c->top->timestep_collect != NULL)
+      scheduler_activate(s, c->top->timestep_collect);
+
+    /* TODO add other task types here as well */
+  }
+
+  return rebuild;
 }
