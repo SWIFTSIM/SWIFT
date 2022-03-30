@@ -990,6 +990,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_bpart(ci, s);
       cell_activate_drift_part(ci, s);
+      if (with_timestep_sync) cell_activate_sync_part(ci, s);
     }
   }
 
@@ -2288,6 +2289,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self) {
         cell_activate_drift_part(ci, s);
         cell_activate_drift_bpart(ci, s);
+        if (with_timestep_sync) cell_activate_sync_part(ci, s);
       }
 
       /* Activate the drifts */

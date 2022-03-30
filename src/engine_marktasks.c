@@ -265,6 +265,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_bpart(ci, s);
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
 

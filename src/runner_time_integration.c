@@ -1275,6 +1275,14 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       /* Bip, bip, bip... wake-up time */
       if (p->limiter_data.wakeup != time_bin_not_awake) {
 
+        if (!part_is_active(p, e) && p->limiter_data.to_be_synchronized) {
+          warning(
+              "Not limiting particle with id %lld because it needs to be "
+              "synced.",
+              p->id);
+          continue;
+        }
+
         // message("Limiting particle %lld in cell %lld", p->id, c->cellID);
 
         /* Apply the limiter and get the new end of time-step */
@@ -1423,6 +1431,12 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         /* Get new time-step */
         integertime_t ti_new_step = get_part_timestep(p, xp, e);
         timebin_t new_time_bin = get_time_bin(ti_new_step);
+
+        /* Apply the limiter if necessary */
+        if (p->limiter_data.wakeup != time_bin_not_awake) {
+          new_time_bin = min(new_time_bin, -p->limiter_data.wakeup + 2);
+          p->limiter_data.wakeup = time_bin_not_awake;
+        }
 
         /* Limit the time-bin to what is allowed in this step */
         new_time_bin = min(new_time_bin, e->max_active_bin);
