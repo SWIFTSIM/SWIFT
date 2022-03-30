@@ -329,10 +329,18 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
 
   /* If we read in radiation energy, we read in
    * total energy and store it as energy density.
+   * Same for fluxes.
    * Correct that now. */
   for (int g = 0; g < RT_NGROUPS; g++) {
     rtd->radiation[g].energy_density *= Vinv;
+    rtd->radiation[g].flux[0] *= Vinv;
+    rtd->radiation[g].flux[1] *= Vinv;
+    rtd->radiation[g].flux[2] *= Vinv;
 
+    /* Additional check with possible exit for ICs */
+    rt_check_unphysical_state_ICs(p, g, &rtd->radiation[g].energy_density,
+                                  rtd->radiation[g].flux,
+                                  phys_const->const_speed_light_c);
     /* Check for too high fluxes */
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, /*e_old =*/0.f,
