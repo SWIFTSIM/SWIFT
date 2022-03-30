@@ -2572,13 +2572,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           if (cj->tl_cell_type == 2) {
 
             /* Loop over all the top-level zoom cells and go for a M-M interaction if
-             * well-separated */
-            for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles; ++n) {
+             * well-separated.
+             * WILL: TODO: with a zoom equivalent of cells_with_particles this could be better */
+            for (int n = 0; n < s->zoom_props->nr_zoom_cells; ++n) {
 
               /* Handle on the top-level zoom cell and it's gravity business,
                * NOTE: cj can never be top since top is a background cell and
                * cj here is a zoom cell */
-              struct cell *cj = &cells[s->zoom_props->local_zoom_cells_with_particles_top[n]];
+              struct cell *cj = &cells[n];
               struct gravity_tensors *const multi_j = cj->grav.multipole;
 
               /* Skip empty cells */
