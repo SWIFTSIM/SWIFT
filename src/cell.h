@@ -462,9 +462,10 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
-#ifdef WITH_ZOOM_REGION
   /*! What kind of top level cell is this ? */
   enum tl_cell_types tl_cell_type;
+
+#ifdef WITH_ZOOM_REGION
 
   /*! Top level cell cid (index in the cell array) for the top level cell the
    * zoom cell occupies, NULL if a natural top level cell */
