@@ -83,8 +83,100 @@ runner_dopair_grid_construction(struct runner *restrict r,
   /* Mark cell face as inside of simulation volume */
   ci->grid.delaunay->sid_is_inside_face[sid] |= 1;
 
+  if (flipped) { /* cj on the left */
+    const double di_min = sort_i[0].d;
+
+    /* Loop over parts in cj */
+    for (int pjd = count_j - 1; pjd >=0 && sort_j[pjd].d + dx_max > di_min - ri_max; pjd--) {
+
+      /* Recover pj */
+      int pj_idx = sort_j[pjd].i;
+      struct part *pj = &parts_j[pj_idx];
+
+      /* Skip inhibited particles. */
+      if (part_is_inhibited(pj, e)) continue;
+
+      /* Shift pj so that it is in the frame of ci (with cj on the left) */
+      const double pjx = pj->x[0] - shift[0];
+      const double pjy = pj->x[1] - shift[1];
+      const double pjz = pj->x[2] - shift[2];
+
+      delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
+                              pj_idx);
+    }
+  } else {
+    const double di_max = sort_i[count_i - 1].d;
+
+    /* Loop over parts in cj */
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - dx_max < di_max + ri_max; pjd++) {
+
+      /* Recover pj */
+      int pj_idx = sort_j[pjd].i;
+      struct part *pj = &parts_j[pj_idx];
+
+      /* Skip inhibited particles. */
+      if (part_is_inhibited(pj, e)) continue;
+
+      /* Shift pj so that it is in the frame of ci (with cj on the right) */
+      const double pjx = pj->x[0] + shift[0];
+      const double pjy = pj->x[1] + shift[1];
+      const double pjz = pj->x[2] + shift[2];
+
+      delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
+                              pj_idx);
+    }
+  }
+
+  return;
+
   if (flipped) {
     /* ci on the right */
+
+//    const double dj_max = sort_j[count_j - 1].d;
+//
+//    /* Loop over the parts in ci (on the right) */
+//    for (int pid = 0; pid < count_i && sort_i[pid].d - ri_max < dj_max + dx_max;
+//         pid++) {
+//
+//      /* Retrieve particle */
+//      struct part *restrict pi = &parts_i[sort_i[pid].i];
+//
+//      /* Skip inhibited particles. */
+//      if (part_is_inhibited(pi, e)) continue;
+//
+//      /* Skip inactive particles */
+//      if (!part_is_active(pi, e)) continue;
+//
+//      const double sort_i_d = sort_i[pid].d;
+//      const double ri = pi->r;
+//
+//      /* Loop over particles in cj (on the left) */
+//      for (int pjd = count_j - 1;
+//           pjd >= 0 && sort_j[pjd].d + dx_max > sort_i_d - ri; pjd--) {
+//
+//        /* Recover pj */
+//        int pj_idx = sort_j[pjd].i;
+//        struct part *pj = &parts_j[pj_idx];
+//
+//        /* Skip inhibited particles. */
+//        if (part_is_inhibited(pj, e)) continue;
+//
+//        /* Shift pj so that it is in the frame of ci (with cj on the left) */
+//        const double pjx = pj->x[0] - shift[0];
+//        const double pjy = pj->x[1] - shift[1];
+//        const double pjz = pj->x[2] - shift[2];
+//
+//        /* Compute the pairwise distance. */
+//        double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
+//        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+//
+//        /* Hit or miss? */
+//        if (r2 < ri * ri) {
+//          delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
+//                                  pj_idx);
+//        }
+//      }
+//    }
 
     const double di_min = sort_i[0].d;
 
@@ -136,6 +228,52 @@ runner_dopair_grid_construction(struct runner *restrict r,
     }   /* loop over the parts in cj. */
   } else {
     /* ci on the left */
+
+//    const double dj_min = sort_j[0].d;
+//
+//    /* Loop over the parts in ci (on the left) */
+//    for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d + ri_max > dj_min - dx_max;
+//         pid--) {
+//
+//      /* Retrieve particle */
+//      struct part *restrict pi = &parts_i[sort_i[pid].i];
+//
+//      /* Skip inhibited particles. */
+//      if (part_is_inhibited(pi, e)) continue;
+//
+//      /* Skip inactive particles */
+//      if (!part_is_active(pi, e)) continue;
+//
+//      const double sort_i_d = sort_i[pid].d;
+//      const double ri = pi->r;
+//
+//      /* Loop over particles in cj (on the left) */
+//      for (int pjd = 0;
+//           pjd < count_j && sort_j[pjd].d - dx_max < sort_i_d + ri; pjd++) {
+//
+//        /* Recover pj */
+//        int pj_idx = sort_j[pjd].i;
+//        struct part *pj = &parts_j[pj_idx];
+//
+//        /* Skip inhibited particles. */
+//        if (part_is_inhibited(pj, e)) continue;
+//
+//        /* Shift pj so that it is in the frame of ci (with cj on the left) */
+//        const double pjx = pj->x[0] + shift[0];
+//        const double pjy = pj->x[1] + shift[1];
+//        const double pjz = pj->x[2] + shift[2];
+//
+//        /* Compute the pairwise distance. */
+//        double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
+//        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+//
+//        /* Hit or miss? */
+//        if (r2 < ri * ri) {
+//          delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid,
+//                                  pj_idx);
+//        }
+//      }
+//    }
 
     const double di_max = sort_i[count_i - 1].d;
 
@@ -280,8 +418,9 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
                                        struct cell *restrict ci,
                                        struct part *restrict parts_i,
                                        const int *restrict ind,
-                                       const double *restrict r_prev, double r_max,
-                                       int count, struct cell *restrict cj) {
+                                       const double *restrict r_prev,
+                                       double r_max, int count,
+                                       struct cell *restrict cj) {
   const struct engine *restrict e = r->e;
 
   const int count_j = cj->hydro.count;
@@ -430,7 +569,8 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
                                        struct cell *restrict ci,
                                        struct part *restrict parts_i,
                                        const int *restrict ind,
-                                       const double *restrict r_prev, int count) {
+                                       const double *restrict r_prev,
+                                       int count) {
   struct engine *e = r->e;
 
   /* Loop over all inactive particles in ci */
