@@ -60,13 +60,13 @@ void space_allocate_extras(struct space *s, int verbose) {
                                      0.5 * cells[0].width[1],
                                      0.5 * cells[0].width[2]};
 #ifdef WITH_ZOOM_REGION
-  const int bkg_cell_offset = 0;
+  int bkg_cell_offset = 0;
   double half_cell_bkg_width[3] = {0.0, 0.0, 0.0};
   if (s->with_zoom_region) {
     bkg_cell_offset = s->zoom_props->tl_cell_offset;
-    half_cell_bkg_width[3] = {0.5 * cells[bkg_cell_offset].width[0],
-                              0.5 * cells[bkg_cell_offset].width[1],
-                              0.5 * cells[bkg_cell_offset].width[2]};
+    half_cell_bkg_width[0] = 0.5 * cells[bkg_cell_offset].width[0];
+    half_cell_bkg_width[1] = 0.5 * cells[bkg_cell_offset].width[1];
+    half_cell_bkg_width[2] = 0.5 * cells[bkg_cell_offset].width[2];
   }
 #endif
 
@@ -297,11 +297,8 @@ void space_allocate_extras(struct space *s, int verbose) {
 
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
-    if (s->with_zoom_region) {
-      int current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
-    } else {
-      int current_cell = local_cells[local_cell_id];
-    }
+    int current_cell = local_cells[local_cell_id];
+    if (s->with_zoom_region) current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_parts = 0;
     for (size_t i = 0; i < nr_actual_parts + expected_num_extra_parts; ++i) {
@@ -390,11 +387,8 @@ void space_allocate_extras(struct space *s, int verbose) {
 
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
-    if (s->with_zoom_region) {
-      int current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
-    } else {
-      int current_cell = local_cells[local_cell_id];
-    }
+    int current_cell = local_cells[local_cell_id];
+    if (s->with_zoom_region) current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_sinks = 0;
     for (size_t i = 0; i < nr_actual_sinks + expected_num_extra_sinks; ++i) {
@@ -484,11 +478,8 @@ void space_allocate_extras(struct space *s, int verbose) {
 
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
-    if (s->with_zoom_region) {
-      int current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
-    } else {
-      int current_cell = local_cells[local_cell_id];
-    }
+    int current_cell = local_cells[local_cell_id];
+    if (s->with_zoom_region) current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_sparts = 0;
     for (size_t i = 0; i < nr_actual_sparts + expected_num_extra_sparts; ++i) {
@@ -578,11 +569,8 @@ void space_allocate_extras(struct space *s, int verbose) {
 
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
-    if (s->with_zoom_region) {
-      int current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
-    } else {
-      int current_cell = local_cells[local_cell_id];
-    }
+    int current_cell = local_cells[local_cell_id];
+    if (s->with_zoom_region) current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_bparts = 0;
     for (size_t i = 0; i < nr_actual_bparts + expected_num_extra_bparts; ++i) {
