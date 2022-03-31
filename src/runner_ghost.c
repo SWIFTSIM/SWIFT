@@ -1775,6 +1775,30 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       p->geometry.centroid[0] = c->grid.voronoi->cells[i].centroid[0];
       p->geometry.centroid[1] = c->grid.voronoi->cells[i].centroid[1];
       p->geometry.centroid[2] = c->grid.voronoi->cells[i].centroid[2];
+
+      if (e->policy & engine_policy_grid_hydro) {
+        /* Calculate the time-step for passing to hydro_prepare_force.
+         * This is the physical time between the start and end of the time-step
+         * without any scale-factor powers. */
+        double dt_therm;
+
+        if (e->policy & engine_policy_cosmology) {
+          const integertime_t ti_step = get_integer_timestep(p->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(e->ti_current, p->time_bin);
+
+          dt_therm = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
+                                                     ti_begin + ti_step);
+        } else {
+          dt_therm = get_timestep(p->time_bin, e->time_base);
+        }
+
+        /* Set timestep for flux calculation */
+        p->flux.dt = (float)dt_therm;
+
+        /* Reset v_max */
+        p->timestepvars.vmax = 0.f;
+      }
     }
   }
 

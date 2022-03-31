@@ -166,19 +166,13 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
 /**
  * @brief Prepares a particle for the density calculation.
  *
- * Zeroes all the relevant arrays in preparation for the sums taking place in
- * the various density loop over neighbours. Typically, all fields of the
- * density sub-structure of a particle get zeroed in here.
+ * Not used in the ShadowSWIFT scheme.
  *
  * @param p The particle to act upon
  * @param hs #hydro_space containing hydro specific space information.
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
-    struct part *restrict p, const struct hydro_space *hs) {
-
-  p->rho = 0.f;
-  p->geometry.volume = 0.f;
-}
+    struct part *restrict p, const struct hydro_space *hs) {}
 
 /**
  * @brief Finishes the density calculation.
@@ -335,6 +329,10 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 /**
  * @brief Extra operations to be done during the drift
  *
+ * This predicted the primitive variables a half timestep into the future, but
+ * this is better done during the flux calculation (in the gradients predict,
+ * TODO).
+ *
  * @param p Particle to act upon.
  * @param xp The extended particle data to act upon.
  * @param dt_drift The drift time-step for positions.
@@ -350,34 +348,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   float W[5];
   hydro_part_get_primitive_variables(p, W);
-  float flux[5];
-  hydro_part_get_fluxes(p, flux);
-
-  W[0] += hydro_flux_density_drift_term(flux[0], dt_therm, p->geometry.volume);
-
-  if (p->conserved.mass > 0.0f) {
-    const float m_inv = 1.0f / p->conserved.mass;
-
-    W[1] += flux[1] * dt_therm * m_inv;
-    W[2] += flux[2] * dt_therm * m_inv;
-    W[3] += flux[3] * dt_therm * m_inv;
-
-#if !defined(EOS_ISOTHERMAL_GAS)
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
-    const float Etot = p->conserved.energy + flux[4] * dt_therm;
-    const float v2 = (W[1] * W[1] + W[2] * W[2] + W[3] * W[3]);
-    const float u = (Etot * m_inv - 0.5f * v2);
-#else
-    const float u = (p->conserved.energy + flux[4] * dt_therm) * m_inv;
-#endif
-    W[4] = hydro_gamma_minus_one * u * W[0];
-#endif
-  }
 
   // MATTHIEU: Apply the entropy floor here.
 
-  /* add the gravitational contribution to the fluid velocity drift */
-  /* (MFV only) */
+  /* add the gravitational contribution to the fluid velocity drift
+   * TODO: Move this to the kick? */
   hydro_gravity_extra_velocity_drift(&W[1], p->v, xp->v_full);
 
   hydro_part_set_primitive_variables(p, W);
@@ -502,16 +477,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   hydro_part_get_fluxes(p, flux);
 
   /* Update conserved variables. */
-  p->conserved.mass += hydro_gravity_mass_update_term(flux[0], dt_therm);
-  p->conserved.momentum[0] += flux[1] * dt_therm;
-  p->conserved.momentum[1] += flux[2] * dt_therm;
-  p->conserved.momentum[2] += flux[3] * dt_therm;
+  p->conserved.mass += flux[0];
+  p->conserved.momentum[0] += flux[1];
+  p->conserved.momentum[1] += flux[2];
+  p->conserved.momentum[2] += flux[3];
 #if defined(EOS_ISOTHERMAL_GAS)
   /* We use the EoS equation in a sneaky way here just to get the constant u */
   p->conserved.energy =
       p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-  p->conserved.energy += flux[4] * dt_therm;
+  p->conserved.energy += flux[4];
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
@@ -551,6 +526,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
         p->conserved.energy, p->flux.energy);
   }
 #endif
+
+  /* Reset the fluxes so that they do not get used again in the kick1. */
+  hydro_part_reset_fluxes(p);
 
   /* Update conserved quantities */
   hydro_convert_conserved_to_primitive(p, xp);

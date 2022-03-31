@@ -152,7 +152,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux(
     n_unit[k] = (float)(-dx[k] / r);
   }
 
-  hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, /*min_dt,*/ totflux);
+  hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, min_dt, totflux);
 
   hydro_part_update_fluxes_left(pi, totflux, dx);
 
