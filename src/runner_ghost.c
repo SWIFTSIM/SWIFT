@@ -1635,8 +1635,25 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
+  if (c->grid.super == NULL)
+    error("Grid ghost run above grid construction level!");
+
+  /* Recurse? */
+  if (c->grid.construction_level == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!c->split) error("Supposedly above construction level, but not split!");
+#endif
+    for (int i = 0; i < 8; i++)
+      if (c->progeny[i] != NULL)
+        runner_do_grid_ghost(r, c->progeny[i], timer);
+
+    return;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
   if (c->grid.construction_level != c)
-    error("Grid ghost not run at grid construction level!");
+    error("Somehow ended up below the construction level!");
+#endif
 
   struct part *restrict parts = c->hydro.parts;
   const struct engine *e = r->e;
@@ -1706,9 +1723,12 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     count = redo;
     if (count > 0) {
 
-      /* We are already at the super level, so we can run through this cell's
-       * grid construction interactions directly. */
+      /* We are already at the construction level, so we can run through this
+       * cell's grid construction interactions directly. */
       for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
+
+        /* Skip cells that are not linked to c in the ci slot. */
+        if (l->t->ci != c) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (l->t->ti_run < r->e->ti_current)

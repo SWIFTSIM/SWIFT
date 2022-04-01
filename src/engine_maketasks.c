@@ -54,6 +54,7 @@
 #include "proxy.h"
 #include "rt_properties.h"
 #include "timers.h"
+#include "space_getsid.h"
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
@@ -1356,20 +1357,13 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
       /* Add the drift task. */
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
+
+      /* Add the task finishing the grid construction */
+      c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
+                                        task_subtype_none, 0, 0, c, NULL);
     }
   }
-  /* Are we at the construction level? */
-  if (c->grid.construction_level == c) {
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c->grid.super == NULL)
-      error("Grid construction level above super level!");
-#endif
-    /* Add the task finishing the grid construction */
-    c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
-                                      task_subtype_none, 0, 0, c, NULL);
-    /* TODO add unlocks here? */
-  }
-  /* Recurse until construction level is reached. */
+  /* Recurse until super level is reached. */
   else {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->grid.construction_level != NULL)
@@ -1395,14 +1389,15 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
     /* Add the task finishing the flux_exchange */
     c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
                                             task_subtype_none, 0, 0, c, NULL);
+
+    /* Add unlock */
+    scheduler_addunlock(s, c->hydro.flux_ghost, c->super->kick2);
   }
   /* Recurse until super level is reached. */
   else {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->hydro.super != NULL)
-      error("Somehow ended up below super level!");
-    if (!c->split)
-      error("Cell is above super level, but is not split!");
+    if (c->hydro.super != NULL) error("Somehow ended up below super level!");
+    if (!c->split) error("Cell is above super level, but is not split!");
 #endif
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
@@ -4342,6 +4337,122 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
   }
 }
 
+void engine_make_grid_hydroloop_dependencies(struct scheduler *sched, struct cell *c, struct task *t_flux) {
+  scheduler_addunlock(sched, c->grid.super->grid.ghost, t_flux);
+  scheduler_addunlock(sched, t_flux, c->hydro.super->hydro.flux_ghost);
+}
+
+/**
+ * @brief Duplicates the grid construction loop and construct all the
+ * dependencies for the hydro tasks
+ *
+ * This is done by looping over all the previously constructed tasks
+ * and adding another task involving the same cells but this time
+ * corresponding to the hydro loops over neighbours.
+ * With all the relevant tasks for a given cell available, we construct
+ * all the dependencies for that cell.
+ */
+void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
+                                             void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  struct scheduler *sched = &e->sched;
+#ifdef EXTRA_HYDRO_LOOP
+  /* TODO: Add gradient and gradient limiter loops */
+#endif
+  struct task *t_flux = NULL;
+  /* TODO add limiter dependencies */
+
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    struct task *t = &((struct task *)map_data)[ind];
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
+    const long long flags = t->flags;
+    struct cell *const ci = t->ci;
+    struct cell *const cj = t->cj;
+
+    /* Escape early */
+    if (t_type == task_type_none) continue;
+
+    /* Grid construction interaction? */
+    if (t_subtype == task_subtype_grid_construction) {
+
+      /* Grid construction depends on the drift */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+
+      /* Grid construction task unlocks the construction ghost*/
+      scheduler_addunlock(sched, t, ci->grid.super->grid.ghost);
+
+      /* Self task? */
+      if (t_type == task_type_self) {
+
+        /* No additional dependencies for self task */
+
+        /* Create flux exchange task */
+        t_flux = scheduler_addtask(sched, task_type_self, task_subtype_flux,
+                                   flags, 0, ci, NULL);
+
+        /* Create hydro loop dependencies*/
+        engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
+
+        /* Link tasks to cell */
+        engine_addlink(e, &ci->hydro.flux, t_flux);
+
+      } else if (t_type == task_type_pair) {
+
+        /* Additional dependencies on sort and drift */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+        if (cj->hydro.super != ci->hydro.super) {
+          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+
+          /* t also depends on the drift of cj */
+          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+        }
+
+        /* Create flux exchange task */
+        /* Should we add a pair flux exchange task?
+         * We only add a pair if the cells are in the right order for their sid
+         * and the construction level of cj is below or equal to the
+         * construction level of ci. If the construction level of ci is strictly
+         * higher than the construction level of cj, we also add a pair task
+         * regardless of the sid. */
+        struct cell *ci_temp = ci;
+        struct cell *cj_temp = cj;
+        double shift[3];
+        /* get SID */
+        int sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
+#ifdef SWIFT_DEBUG_CHECKS
+        if (sid != flags)
+          error("incorrect flags for pair construction task!");
+#endif
+        int flipped = ci == ci_temp;
+
+        /* Construction level ci == ci */
+        struct cell *construction_level_j = cj->grid.construction_level;
+        if (construction_level_j == NULL || (construction_level_j == cj && !flipped)) {
+          /* We should add a pair interaction*/
+          t_flux = scheduler_addtask(sched, task_type_pair, task_subtype_flux,
+                                     sid, 0, ci, cj);
+
+          /* Create hydro loop dependencies. */
+          engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
+          /* We also need a dependency on the construction task of cj, since the
+           * interaction might be flipped */
+          if (cj->hydro.super != ci->hydro.super)
+            engine_make_grid_hydroloop_dependencies(sched, cj, t_flux);
+        }
+
+        /* link tasks to cells */
+        engine_addlink(e, &ci->hydro.flux, t_flux);
+        engine_addlink(e, &cj->hydro.flux, t_flux);
+
+      } else {
+        error("Unknown task type for subtype task_subtype_grid_construction");
+      }
+    } /* Grid construction task? */
+  }   /* Loop over tasks */
+}
+
 void engine_make_grid_hydro_tasks_mapper(void *map_data, int num_elements,
                                          void *extra_data) {
 
@@ -4765,11 +4876,6 @@ void engine_maketasks(struct engine *e) {
     threadpool_map(&e->threadpool, engine_make_grid_construction_tasks_mapper,
                    NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
 
-  /* Construct the top level grid hydro tasks */
-  if (e->policy & engine_policy_grid_hydro)
-    threadpool_map(&e->threadpool, engine_make_grid_hydro_tasks_mapper, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
-
   if (e->verbose)
     message("Making grid tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
@@ -4869,16 +4975,6 @@ void engine_maketasks(struct engine *e) {
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
 
-  /* Add the dependencies for the grid stuff */
-  if (e->policy & engine_policy_grid) {
-    engine_link_grid_tasks(e);
-  }
-
-  /* Add the dependencies for the grid hydro stuff */
-  if (e->policy & engine_policy_grid) {
-    engine_link_grid_hydro_tasks(e);
-  }
-
   tic2 = getticks();
 
   /* Run through the tasks and make force tasks for each density task.
@@ -4894,6 +4990,13 @@ void engine_maketasks(struct engine *e) {
     /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
      *                sched->tasks, sched->nr_tasks, sizeof(struct task),
      *                threadpool_auto_chunk_size, e); */
+  }
+
+  if (e->policy & engine_policy_grid_hydro) {
+    /* Run through the tasks and make flux exchange, gradient and gradient limiter
+     * tasks, by copying the grid construction structure. Also add the right
+     * dependencies. */
+    engine_make_grid_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
   }
 
   if (e->verbose)

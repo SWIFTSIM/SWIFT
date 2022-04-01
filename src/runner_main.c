@@ -331,7 +331,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grid_construction)
             runner_dopair_grid_construction(r, ci, cj);
           else if (t->subtype == task_subtype_flux)
-            runner_dopair_grid_flux_exchange(r, ci, cj);
+            runner_dopair_grid_flux_exchange_branch(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

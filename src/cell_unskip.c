@@ -2924,7 +2924,21 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
   int nodeID = e->nodeID;
 
   /* Anyting to do here? */
-  if (!cell_is_active_hydro(c, e) || c->grid.construction_level != c) return 0;
+  if (!cell_is_active_hydro(c, e)) return 0;
+
+  /* Are we at super level? */
+  if (c->grid.super == c) {
+    /* TODO activate limiter? */
+    scheduler_activate(s, c->grid.ghost);
+  }
+
+  /* If not at grid construction level, nothing else to do. */
+  if (c->grid.construction_level == NULL) return 0;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->grid.construction_level != c)
+    error("Ended up below construction level!");
+#endif
 
   for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -2934,15 +2948,21 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     int ci_nodeID = ci->nodeID;
     int cj_nodeID = cj != NULL ? cj->nodeID : -1;
 
-    scheduler_activate(s, t);
-    /* Activate hydro drift */
+    /* Self task? */
     if (t->type == task_type_self) {
+
+      scheduler_activate(s, t);
+
+      /* Activate hydro drift */
       if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
     }
 
-    /* Set the correct sorting flags and activate hydro drifts */
-    else if (t->type == task_type_pair) {
-      /* Store some values. */
+    /* Pair task? */
+    else if (t->type == task_type_pair && ci == c) {
+
+      scheduler_activate(s, t);
+
+      /* Set the correct sorting flags and activate hydro drifts */
       atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
       atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
       ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
@@ -2957,10 +2977,6 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_hydro_sorts(cj, t->flags, s);
     }
   }
-
-  /* TODO activate limiter? */
-
-  scheduler_activate(s, c->grid.ghost);
 
   /* TODO proper check for rebuild */
   return 0;
@@ -2994,7 +3010,7 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
   for (struct link *l = c->hydro.flux; l != NULL; l = l->next) {
 #ifdef SWIFT_DEBUG_CHECKS
     counter++;
-    if (counter > 14) error("Cells should have not more than 14 flux tasks!");
+    if (counter > 27) error("Cells should have not more than 14 flux tasks!");
 #endif
     struct task *t = l->t;
     struct cell *ci = t->ci;

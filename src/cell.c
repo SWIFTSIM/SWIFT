@@ -1114,7 +1114,8 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
  */
 void cell_set_super_grid_hydro(struct cell *c, struct cell *super_hydro) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_hydro == NULL && (c->hydro.flux != NULL || c->grid.construction != NULL))
+  if (super_hydro == NULL &&
+      (c->hydro.flux != NULL || c->grid.construction != NULL))
     super_hydro = c;
 
   /* Set the super-cell */
@@ -1158,8 +1159,7 @@ void cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
  */
 void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
   /* Are we in a cell with some kind of self/pair task ? */
-  if (super_grid == NULL && c->grid.construction != NULL)
-    super_grid = c;
+  if (super_grid == NULL && c->grid.construction != NULL) super_grid = c;
 
   /* Set the super-cell */
   c->grid.super = super_grid;
@@ -1167,8 +1167,7 @@ void cell_set_super_grid(struct cell *c, struct cell *super_grid) {
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_set_super_grid(c->progeny[k], super_grid);
+      if (c->progeny[k] != NULL) cell_set_super_grid(c->progeny[k], super_grid);
 }
 
 /**
@@ -1206,11 +1205,13 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     if (with_grid) cell_set_super_grid(c, NULL);
 
     /* Super-pointer for common operations */
-    cell_set_super(c, NULL, with_hydro || with_grid_hydro, with_grav, with_grid);
+    cell_set_super(c, NULL, with_hydro || with_grid_hydro, with_grav,
+                   with_grid);
   }
 }
 
-void cell_set_grid_construction_level(struct cell *c, struct cell *construction_level) {
+void cell_set_grid_construction_level(struct cell *c,
+                                      struct cell *construction_level) {
   if (construction_level == NULL && c->grid.unsplittable_flag) {
     /* This is the first time we encounter a cell with the unsplittable flag
      * set, meaning that it or one of its direct neighbours is unsplittable,
@@ -1238,7 +1239,8 @@ void cell_set_grid_construction_level(struct cell *c, struct cell *construction_
   /* Recurse */
   if (c->split)
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) cell_set_grid_construction_level(c->progeny[k], construction_level);
+      if (c->progeny[k] != NULL)
+        cell_set_grid_construction_level(c->progeny[k], construction_level);
     }
 }
 
@@ -1356,9 +1358,16 @@ void cell_set_neighbour_flags_mapper(void *map_data, int num_elements,
           if (cid >= cjd || cj->hydro.count == 0) continue;
 
           /* Set neighbour flags for this cell and its neighbouring cell */
-          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          cell_set_neighbour_flags(ci, cj, sid, ci->nodeID == nodeID,
-                                   cj->nodeID == nodeID);
+          int sid = (kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1));
+          const int flip = runner_flip[sid];
+          sid = sortlistID[sid];
+          if (flip) {
+            cell_set_neighbour_flags(cj, ci, sid, ci->nodeID == nodeID,
+                                     cj->nodeID == nodeID);
+          } else {
+            cell_set_neighbour_flags(ci, cj, sid, ci->nodeID == nodeID,
+                                     cj->nodeID == nodeID);
+          }
         }
       }
     }

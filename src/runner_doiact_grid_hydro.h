@@ -11,14 +11,43 @@
 #ifndef SWIFTSIM_RUNNER_DOIACT_GRID_HYDRO_H
 #define SWIFTSIM_RUNNER_DOIACT_GRID_HYDRO_H
 
-__attribute__((always_inline)) INLINE static void
-runner_dopair_grid_flux_exchange(struct runner *restrict r,
-                                 struct cell *restrict ci,
-                                 struct cell *restrict cj) {
+static void runner_dopair_grid_flux_exchange(struct runner *restrict r,
+                                             struct cell *ci, struct cell *cj) {
 
   TIMER_TIC;
 
   struct engine *e = r->e;
+
+  /* Recurse? */
+  if (ci->grid.construction_level == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cell_is_active_hydro(cj, e))
+      error(
+          "Flux exchange for cell above construction level, indicating the "
+          "pair has been flipped, but cj is active!");
+#endif
+    /* Retrieve SID and shift */
+    struct cell *ci_old = ci;
+    double shift[3];
+    int sid = space_getsid(e->s, &ci, &cj, shift);
+    int flipped = ci == ci_old;
+
+    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    for (int k = 0; k < csp->count; k++) {
+      struct cell *ci_sub = ci->progeny[csp->pairs[k].pid];
+      struct cell *cj_sub = cj->progeny[csp->pairs[k].pjd];
+      if (ci_sub == NULL || cj_sub == NULL) continue;
+
+      if (flipped) {
+        if (cell_is_active_hydro(cj_sub, e))
+          runner_dopair_grid_flux_exchange(r, cj_sub, ci_sub);
+      } else {
+        if (cell_is_active_hydro(ci_sub, e))
+          runner_dopair_grid_flux_exchange(r, ci_sub, cj_sub);
+      }
+    }
+    return;
+  }
 
   /* anything to do here? */
   int ci_active = cell_is_active_hydro(ci, e);
@@ -68,6 +97,24 @@ runner_dopair_grid_flux_exchange(struct runner *restrict r,
   } /* loop over voronoi faces between ci and cj */
 
   TIMER_TOC(timer_dopair_flux);
+}
+
+__attribute__((always_inline)) INLINE static void
+runner_dopair_grid_flux_exchange_branch(struct runner *restrict r,
+                                        struct cell *restrict ci,
+                                        struct cell *restrict cj) {
+  struct engine *e = r->e;
+
+  int ci_active = cell_is_active_hydro(ci, e);
+  int cj_active = cell_is_active_hydro(cj, e);
+
+  if (!ci_active) {
+    if (!cj_active)
+      error("Flux exchange activated between two inactive cells!");
+    runner_dopair_grid_flux_exchange(r, cj, ci);
+  } else {
+    runner_dopair_grid_flux_exchange(r, ci, cj);
+  }
 }
 
 __attribute__((always_inline)) INLINE static void

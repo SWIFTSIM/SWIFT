@@ -1094,6 +1094,11 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
     /* Since the grid construction tasks are asymmetric, whether a task
      * can be split depends only on ci. */
     if (ci->grid.construction_level == NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (!ci->split || (cj != NULL && !cj->split))
+        error("Trying to split task with unsplittable cell!");
+#endif
       /* Take a step back (we're going to recycle the current task)... */
       redo = 1;
 
@@ -1147,6 +1152,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
 
       /* Pair interaction? */
       else if (t->type == task_type_pair) {
+
         /* Get the sort ID, we check if ci and cj get swapped, so that we can
          * correct for it. */
         double shift[3];
