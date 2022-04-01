@@ -104,6 +104,21 @@ void space_allocate_extras(struct space *s, int verbose) {
     }
   }
 
+#ifdef WITH_ZOOM_REGION
+  int *local_zoom_cells = (int *)malloc(sizeof(int) * s->zoom_props->nr_zoom_cells);
+  if (local_zoom_cells == NULL)
+    error("Failed to allocate list of local top-level cells");
+
+  /* List the local cells */
+  size_t nr_local_zoom_cells = 0;
+  for (int i = 0; i < s->zoom_props->nr_zoom_cells; ++i) {
+    if (s->cells_top[i].nodeID == local_nodeID) {
+      local_zoom_cells[nr_local_zoom_cells] = i;
+      ++nr_local_zoom_cells;
+    }
+  }
+#endif
+
   /* Number of extra particles we want for each type */
   const size_t expected_num_extra_parts = nr_local_cells * space_extra_parts;
   const size_t expected_num_extra_gparts = nr_local_cells * space_extra_gparts;
@@ -298,7 +313,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
-    if (s->with_zoom_region) current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
+    if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_parts = 0;
     for (size_t i = 0; i < nr_actual_parts + expected_num_extra_parts; ++i) {
@@ -325,9 +340,9 @@ void space_allocate_extras(struct space *s, int verbose) {
 
         /* When running with a zoom region we only ever need to consider the zoom cells. */
         if (s->with_zoom_region) {
-          if (local_cell_id == s->zoom_props->nr_local_zoom_cells) break;
+          if (local_cell_id == nr_local_zoom_cells) break;
 
-          current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
+          current_cell = local_zoom_cells[local_cell_id];
         } else {
           if (local_cell_id == nr_local_cells) break;
 
@@ -388,7 +403,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
-    if (s->with_zoom_region) current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
+    if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_sinks = 0;
     for (size_t i = 0; i < nr_actual_sinks + expected_num_extra_sinks; ++i) {
@@ -415,9 +430,9 @@ void space_allocate_extras(struct space *s, int verbose) {
 
         /* When running with a zoom region we only ever need to consider the zoom cells. */
         if (s->with_zoom_region) {
-          if (local_cell_id == s->zoom_props->nr_local_zoom_cells) break;
+          if (local_cell_id == nr_local_zoom_cells) break;
 
-          current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
+          current_cell = local_zoom_cells[local_cell_id];
         } else {
           if (local_cell_id == nr_local_cells) break;
 
@@ -479,7 +494,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
-    if (s->with_zoom_region) current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
+    if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_sparts = 0;
     for (size_t i = 0; i < nr_actual_sparts + expected_num_extra_sparts; ++i) {
@@ -506,9 +521,9 @@ void space_allocate_extras(struct space *s, int verbose) {
 
         /* When running with a zoom region we only ever need to consider the zoom cells. */
         if (s->with_zoom_region) {
-          if (local_cell_id == s->zoom_props->nr_local_zoom_cells) break;
+          if (local_cell_id == nr_local_zoom_cells) break;
 
-          current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
+          current_cell = local_zoom_cells[local_cell_id];
         } else {
           if (local_cell_id == nr_local_cells) break;
 
@@ -570,7 +585,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
-    if (s->with_zoom_region) current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
+    if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_bparts = 0;
     for (size_t i = 0; i < nr_actual_bparts + expected_num_extra_bparts; ++i) {
@@ -597,9 +612,9 @@ void space_allocate_extras(struct space *s, int verbose) {
 
         /* When running with a zoom region we only ever need to consider the zoom cells. */
         if (s->with_zoom_region) {
-          if (local_cell_id == s->zoom_props->nr_local_zoom_cells) break;
+          if (local_cell_id == nr_local_zoom_cells) break;
 
-          current_cell = s->zoom_props->local_zoom_cells_top[local_cell_id];
+          current_cell = local_zoom_cells[local_cell_id];
         } else {
           if (local_cell_id == nr_local_cells) break;
 
