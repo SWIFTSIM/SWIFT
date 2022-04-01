@@ -223,9 +223,17 @@ void space_reorder_extras(struct space *s, int verbose) {
 
   /* Re-order the gas particles */
   if (space_extra_parts)
-    threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
-                   threadpool_auto_chunk_size, s);
+
+    /* In the zoom case we need to limit our loop to the cells containing parts (zoom cells). */
+    if (s->with_zoom_region) {
+      threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
+                     s->zoom_props->local_zoom_cells_top, s->zoom_props->nr_local_zoom_cells,
+                     sizeof(int), threadpool_auto_chunk_size, s);
+    } else {
+      threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
+                     s->local_cells_top, s->nr_local_cells, sizeof(int),
+                     threadpool_auto_chunk_size, s);
+    }
 
   /* Re-order the gravity particles */
   if (space_extra_gparts)
@@ -235,9 +243,17 @@ void space_reorder_extras(struct space *s, int verbose) {
 
   /* Re-order the star particles */
   if (space_extra_sparts)
-    threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
-                   threadpool_auto_chunk_size, s);
+
+    /* In the zoom case we need to limit our loop to the cells containing sparts (zoom cells). */
+    if (s->with_zoom_region) {
+      threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
+                     s->zoom_props->local_zoom_cells_top, s->zoom_props->nr_local_zoom_cells,
+                     sizeof(int), threadpool_auto_chunk_size, s);
+    } else {
+      threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
+                     s->local_cells_top, s->nr_local_cells, sizeof(int),
+                     threadpool_auto_chunk_size, s);
+    }
 
   /* Re-order the black hole particles */
   if (space_extra_bparts)
@@ -245,9 +261,17 @@ void space_reorder_extras(struct space *s, int verbose) {
 
   /* Re-order the sink particles */
   if (space_extra_sinks)
-    threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
-                   threadpool_auto_chunk_size, s);
+
+    /* In the zoom case we need to limit our loop to the cells containing sinks (zoom cells). */
+    if (s->with_zoom_region) {
+      threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
+                     s->zoom_props->local_zoom_cells_top, s->zoom_props->nr_local_zoom_cells,
+                     sizeof(int), threadpool_auto_chunk_size, s);
+    } else {
+      threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
+                     s->local_cells_top, s->nr_local_cells, sizeof(int),
+                     threadpool_auto_chunk_size, s);
+    }
 }
 
 /**
