@@ -1378,22 +1378,23 @@ int cell_set_splittable_grid(struct cell *c) {
   if (c == NULL) return 1;
 
   if (c->split) {
-    int all_splittable = 1;
+    int all_complete = 1;
     /* recurse */
-    for (int i = 0; all_splittable && i < 8; i++) {
-      all_splittable &= cell_set_splittable_grid(c->progeny[i]);
+    for (int i = 0; all_complete && i < 8; i++) {
+      all_complete &= cell_set_splittable_grid(c->progeny[i]);
     }
 
     /* If the criterion is valid for all sub-cells, it is valid for the cell
      * itself. */
-    if (all_splittable) {
+    if (all_complete) {
       c->grid.split = 1;
+      c->grid.complete = 1;
       return 1;
     }
   }
 
-  /* Not split or not all progeny splittable */
-  /* Check criterion manually by looping over all the particles */
+  /* Not split or not all progeny complete */
+  /* Check if this cell is at least complete by looping over all the particles*/
   int flags = 0;
   /* criterion = 0b111_111_111_111_111_111_111_111_111*/
 #ifdef HYDRO_DIMENSION_1D
@@ -1414,7 +1415,7 @@ int cell_set_splittable_grid(struct cell *c) {
   }
 
   if (flags == criterion) {
-    c->grid.split = 1 & c->split;
+    c->grid.complete = 1;
     return 1;
   }
 

@@ -22,11 +22,17 @@ struct cell_grid {
    * neighbouring cell on the same level that is unsplittable. */
   int unsplittable_flag;
 
-  /*! Whether this cell can safely be split for grid construction (a cell can be
-   * split if all 27 small cubes of dimensions 1/3 the dimensions of this cell
-   * making up the cell, contain at least 1 hydro particle). */
+  /*! Whether this cell can safely be split for grid construction (cell can be
+   * split if all of it's progeny is complete). */
   /* TODO send this over MPI (add it in cell_pack and cell_unpack) */
   int split;
+
+  /*! Flag indicating whether this cell satisfies the completeness criterion.
+   * The voronoi grid of a cell is guaranteed to be completed by only particles
+   * of its directly neighbouring cells if when we would split that cell in
+   * thirds along each dimension (i.e. in 27 smaller cells), every small cube
+   * would contain at least one particle. */
+   int complete;
 
   /*! The maximal search radius of any particle in the voronoi tessellation of
    * this cell. */

@@ -53,8 +53,8 @@
 #include "neutrino_properties.h"
 #include "proxy.h"
 #include "rt_properties.h"
-#include "timers.h"
 #include "space_getsid.h"
+#include "timers.h"
 
 extern int engine_max_parts_per_ghost;
 extern int engine_max_sparts_per_ghost;
@@ -4250,6 +4250,11 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
     /* Skip cells without hydro or star particles */
     if (ci->hydro.count == 0) continue;
 
+    if (!ci->grid.complete)
+      error(
+          "Top level cell found which does not satisfy the Voronoi "
+          "completeness criterion");
+
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_grid_construction,
@@ -4337,7 +4342,9 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
   }
 }
 
-void engine_make_grid_hydroloop_dependencies(struct scheduler *sched, struct cell *c, struct task *t_flux) {
+void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
+                                             struct cell *c,
+                                             struct task *t_flux) {
   scheduler_addunlock(sched, c->grid.super->grid.ghost, t_flux);
   scheduler_addunlock(sched, t_flux, c->hydro.super->hydro.flux_ghost);
 }
@@ -4422,14 +4429,14 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         /* get SID */
         int sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
 #ifdef SWIFT_DEBUG_CHECKS
-        if (sid != flags)
-          error("incorrect flags for pair construction task!");
+        if (sid != flags) error("incorrect flags for pair construction task!");
 #endif
         int flipped = ci == ci_temp;
 
         /* Construction level ci == ci */
         struct cell *construction_level_j = cj->grid.construction_level;
-        if (construction_level_j == NULL || (construction_level_j == cj && !flipped)) {
+        if (construction_level_j == NULL ||
+            (construction_level_j == cj && !flipped)) {
           /* We should add a pair interaction*/
           t_flux = scheduler_addtask(sched, task_type_pair, task_subtype_flux,
                                      sid, 0, ci, cj);
@@ -4993,9 +5000,9 @@ void engine_maketasks(struct engine *e) {
   }
 
   if (e->policy & engine_policy_grid_hydro) {
-    /* Run through the tasks and make flux exchange, gradient and gradient limiter
-     * tasks, by copying the grid construction structure. Also add the right
-     * dependencies. */
+    /* Run through the tasks and make flux exchange, gradient and gradient
+     * limiter tasks, by copying the grid construction structure. Also add the
+     * right dependencies. */
     engine_make_grid_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
   }
 
