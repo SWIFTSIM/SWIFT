@@ -59,16 +59,6 @@ void space_allocate_extras(struct space *s, int verbose) {
   const double half_cell_width[3] = {0.5 * cells[0].width[0],
                                      0.5 * cells[0].width[1],
                                      0.5 * cells[0].width[2]};
-#ifdef WITH_ZOOM_REGION
-  int bkg_cell_offset = 0;
-  double half_cell_bkg_width[3] = {0.0, 0.0, 0.0};
-  if (s->with_zoom_region) {
-    bkg_cell_offset = s->zoom_props->tl_cell_offset;
-    half_cell_bkg_width[0] = 0.5 * cells[bkg_cell_offset].width[0];
-    half_cell_bkg_width[1] = 0.5 * cells[bkg_cell_offset].width[1];
-    half_cell_bkg_width[2] = 0.5 * cells[bkg_cell_offset].width[2];
-  }
-#endif
 
   /* The current number of particles (including spare ones) */
   size_t nr_parts = s->nr_parts;
@@ -213,9 +203,6 @@ void space_allocate_extras(struct space *s, int verbose) {
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
     int count_in_cell = 0;
-    double current_cell_halfwidth[3] = {0.5 * cells[current_cell].width[0],
-                                        0.5 * cells[current_cell].width[1],
-                                        0.5 * cells[current_cell].width[2]};
     size_t count_extra_gparts = 0;
     for (size_t i = 0; i < nr_actual_gparts + expected_num_extra_gparts; ++i) {
 
@@ -227,9 +214,9 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->gparts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->gparts[i].x[0] = cells[current_cell].loc[0] + current_cell_halfwidth[0];
-        s->gparts[i].x[1] = cells[current_cell].loc[1] + current_cell_halfwidth[1];
-        s->gparts[i].x[2] = cells[current_cell].loc[2] + current_cell_halfwidth[2];
+        s->gparts[i].x[0] = cells[current_cell].loc[0] + (0.5 * cells[current_cell].width[0]);
+        s->gparts[i].x[1] = cells[current_cell].loc[1] + (0.5 * cells[current_cell].width[1]);
+        s->gparts[i].x[2] = cells[current_cell].loc[2] + (0.5 * cells[current_cell].width[2]);
         ++count_in_cell;
         count_extra_gparts++;
       }
@@ -244,15 +231,6 @@ void space_allocate_extras(struct space *s, int verbose) {
         current_cell = local_cells[local_cell_id];
         count_in_cell = 0;
 
-        if (s->with_zoom_region && cells[current_cell].tl_cell_type < 3) {
-          current_cell_halfwidth[0] = half_cell_bkg_width[0];
-          current_cell_halfwidth[1] = half_cell_bkg_width[1];
-          current_cell_halfwidth[2] = half_cell_bkg_width[2];
-        } else {
-          current_cell_halfwidth[0] = half_cell_width[0];
-          current_cell_halfwidth[1] = half_cell_width[1];
-          current_cell_halfwidth[2] = half_cell_width[2];
-        }
       }
     }
 
