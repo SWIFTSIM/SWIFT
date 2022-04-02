@@ -42,7 +42,7 @@ InitialConditions:
   periodic:   1                    # periodic ICs
 
 GEARRT:
-    f_reduce_c: 1.                  # reduce the speed of light for the RT solver by multiplying c with this factor
+    f_reduce_c: 1.e-9               # This test is without actual radiation, so we don't care about this
     CFL_condition: 0.9              # CFL condition for RT, independent of hydro
     photon_groups_Hz: []            # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N). Outer edges of zero and infinity are assumed.
     hydrogen_mass_fraction:   0.76  # total hydrogen mass fraction

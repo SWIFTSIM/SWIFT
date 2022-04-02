@@ -94,7 +94,10 @@ def get_snapshot_list(snapshot_basename="output"):
 
     snaplist = sorted(snaplist)
 
-    return snaplist
+    snaplist2 = []
+    for i in range(0, len(snaplist), 10):
+        snaplist2.append(snaplist[i])
+    return snaplist2
 
 
 def get_snapshot_data(snaplist):
@@ -115,16 +118,23 @@ def get_snapshot_data(snaplist):
     nsnaps = len(snaplist)
     times = np.zeros(nsnaps) * unyt.Myr
     temperatures = np.zeros(nsnaps) * unyt.K
-    temperatures_std = np.zeros(nsnaps) * unyt.K
     mean_molecular_weights = np.zeros(nsnaps) * unyt.atomic_mass_unit
-    mean_molecular_weights_std = np.zeros(nsnaps) * unyt.atomic_mass_unit
     mass_fractions = np.zeros((nsnaps, 5))
-    mass_fractions_std = np.zeros((nsnaps, 5))
 
+    if plot_errorbars:
+        temperatures_std = np.zeros(nsnaps) * unyt.K
+        mean_molecular_weights_std = np.zeros(nsnaps) * unyt.atomic_mass_unit
+        mass_fractions_std = np.zeros((nsnaps, 5))
+    else:
+        temperatures_std = None
+        mean_molecular_weights_std = None
+        mass_fractions_std = None
 
     for i, snap in enumerate(snaplist):
 
         data = swiftsimio.load(snap)
+        gamma = data.gas.metadata.gas_gamma[0]
+        time = data.metadata.time
         gas = data.gas
 
         u = gas.internal_energies.to("erg/g")
@@ -138,17 +148,10 @@ def get_snapshot_data(snaplist):
         mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)
         T = gas_temperature(u, mu, gamma).to("K")
 
-        gamma = data.gas.metadata.gas_gamma[0]
-        time = data.meta.time
 
-
-        times[i] = time
-
+        times[i] = time.to("Myr")
         temperatures[i] = np.mean(T)
-        temperatures_std[i] = np.std(T)
-
-        mean_molecular_weights[i] = np.mean(mean_molecular_weights)
-        mean_molecular_weights_std[i] = np.std(mean_molecular_weights)
+        mean_molecular_weights[i] = np.mean(mu)
 
         mass_fractions[i, 0] = np.mean(XHI)
         mass_fractions[i, 1] = np.mean(XHII)
@@ -156,13 +159,12 @@ def get_snapshot_data(snaplist):
         mass_fractions[i, 3] = np.mean(XHeII)
         mass_fractions[i, 4] = np.mean(XHeIII)
 
-        mass_fractions_std[i, 0] = np.std(XHI)
-        mass_fractions_std[i, 1] = np.std(XHII)
-        mass_fractions_std[i, 2] = np.std(XHeI)
-        mass_fractions_std[i, 3] = np.std(XHeII)
-        mass_fractions_std[i, 4] = np.std(XHeIII)
-    
-    return times, temperatures, temperatures_std, mean_molecular_weights, mean_molecular_weights_std, mass_fractions, mass_fractions_std
+        if plot_errorbars:
+
+            temperatures_std[i] = np.std(T)
+            mean_molecular_weights_std[i] = np.std(mu)
+
+    return times, temperatures, temperatures_std, mean_molecular_weights, mean_molecular_weights_std, mass_fractions
 
 
 
@@ -178,44 +180,51 @@ if __name__ == "__main__":
     # ------------------
 
     snaplist = get_snapshot_list(snapshot_base)
-    t, T, T_std, mu, mu_std, mf, mf_std = get_snapshot_data(snaplist)
+    t, T, T_std, mu, mu_std, mf = get_snapshot_data(snaplist)
 
-    fig = plt.figure(figsize=(12, 6), dpi=300)
-    ax1 = fig.add_subplot(2, 2, 1)
-    ax2 = fig.add_subplot(2, 2, 2)
-    ax3 = fig.add_subplot(2, 2, 3)
-    ax4 = fig.add_subplot(2, 2, 4)
+    fig = plt.figure(figsize=(12, 4), dpi=300)
+    ax1 = fig.add_subplot(1, 3, 1)
+    ax2 = fig.add_subplot(1, 3, 2)
+    ax3 = fig.add_subplot(1, 3, 3)
 
+    if plot_errorbars:
+        T_dev = T_std / T
+        if T_dev.max() < 1e-3:
+            print("Temperature deviations below threshold. Skipping the errorbar plot")
+        else:
+            ax1.errorbar(t, T, yerr=T_std, label="standard deviations")
     ax1.loglog(t, T, label="obtained results")
-    #  ax1.loglog(T_theory, u_theory, label="expected results", ls=":")
-    ax1.set_xlabel("time")
+    ax1.set_xlabel("time [Myr]")
     ax1.set_ylabel("gas temperature [K]")
     ax1.legend()
     ax1.grid()
 
+    if plot_errorbars:
+        if mu_std.max() < 1e-3:
+            print("Mean molecular mass deviations below threshold. Skipping the errorbar plot")
+        else:
+            ax2.errorbar(t, mu, yerr=mu_std, label="standard deviations")
     ax2.semilogx(t, mu, label="obtained results")
-    #  ax2.semilogx(T_theory, mu_theory, label="expected results", ls=":")
-    ax2.set_xlabel("time")
+    ax2.set_xlabel("time [Myr]")
     ax2.set_ylabel("mean molecular weight")
     ax2.legend()
     ax2.grid()
 
     ax3.set_title("obtained results")
     total_mf = np.sum(mf, axis = 1)
-    ax3.semilogx(time, total_mf, "k", label="total", ls="-")
+    ax3.semilogx(t, total_mf, "k", label="total", ls="-")
 
-    ax3.semilogx( time, mf[:,0], label="HI", ls=":", **plotkwargs, zorder=1)
-    ax3.semilogx( time, mf[:,1], label="HII", ls="-.", **plotkwargs)
-    ax3.semilogx( time, mf[:,2], label="HeI", ls=":", **plotkwargs)
-    ax3.semilogx( time, mf[:,3], label="HeII", ls="-.", **plotkwargs)
-    ax3.semilogx( time, mf[:,4], label="HeIII", ls="--", **plotkwargs)
+    ax3.semilogx(t, mf[:,0], label="HI", ls=":", **plotkwargs, zorder=1)
+    ax3.semilogx(t, mf[:,1], label="HII", ls="-.", **plotkwargs)
+    ax3.semilogx(t, mf[:,2], label="HeI", ls=":", **plotkwargs)
+    ax3.semilogx(t, mf[:,3], label="HeII", ls="-.", **plotkwargs)
+    ax3.semilogx(t, mf[:,4], label="HeIII", ls="--", **plotkwargs)
     ax3.legend()
-    ax3.set_xlabel("time")
+    ax3.set_xlabel("time [Myr]")
     ax3.set_ylabel("gas mass fractions [1]")
     ax3.grid()
 
 
-    #  plt.tight_layout()
-
-    plt.show()
-    #  plt.savefig("cooling_test.png")
+    plt.tight_layout()
+    #  plt.show()
+    plt.savefig("cooling_test.png")

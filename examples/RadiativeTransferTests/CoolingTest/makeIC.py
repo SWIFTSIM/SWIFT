@@ -110,7 +110,7 @@ for i in range(n_p):
 w = Writer(cosmo_units, boxsize, dimension=3)
 
 w.gas.coordinates = xp
-w.gas.velocities = np.zeros(nparts) * (unyt.km / unyt.s)
+w.gas.velocities = np.zeros(xp.shape, dtype=np.float32) * (unyt.km / unyt.s)
 w.gas.masses = np.ones(nparts, dtype=np.float32)* pmass
 w.gas.internal_energy = np.ones(nparts, dtype=np.float32) * u_part
 
