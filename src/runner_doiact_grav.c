@@ -2470,7 +2470,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   while (top->parent != NULL) top = top->parent;
 
   /* Non-periodic case and zoom cells: loop over everything */
-  if (!periodic || top->tl_cell_type == 3) {
+  if (!periodic || top->tl_cell_type == zoom_tl_cell) {
 
     /* Loop over all the top-level cells and go for a M-M interaction if
      * well-separated */
@@ -2480,10 +2480,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct cell *cj = &cells[cells_with_particles[n]];
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-      /* We can skip non-neighbour background cells, neighbours are
-       * defined as background cells within the gravity criterion */
-      if (top->tl_cell_type == 3 &&
-          (cj->tl_cell_type == tl_cell || cj->tl_cell_type == void_tl_cell))
+      /* We can skip non-neighbour background cells */
+      if (top->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == tl_cell)
+        continue;
+
+      /* We can skip top-level cells parent to the zoom region */
+      if (top->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == void_tl_cell)
         continue;
 
       /* Avoid self contributions */
@@ -2571,9 +2573,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Avoid self contributions  */
           if (top == cj) continue;
 
-          /* If the neighbour is the void cell we need to interact with all zoom
-           * cells */
-          if (cj->tl_cell_type == 2) {
+          /* If we get the void cell we need to interact with all zoom cells in
+           * it */
+          if (cj->tl_cell_type == void_tl_cell) {
 
             /* Loop over all the top-level zoom cells and go for a M-M
              * interaction if well-separated.
@@ -2582,8 +2584,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             for (int n = 0; n < s->zoom_props->nr_zoom_cells; ++n) {
 
               /* Handle on the top-level zoom cell and it's gravity business,
-               * NOTE: cj can never be top since top is a background cell and
-               * cj here is a zoom cell */
+               * Note: cj can never be properly top since top is a background
+               * cell and cj here is a zoom cell */
               struct cell *zoom_cj = &cells[n];
               struct gravity_tensors *const multi_j = zoom_cj->grav.multipole;
 
@@ -2633,6 +2635,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                 } /* We are in charge of this pair */
               }   /* Loop over top-level cells */
             }
+
+            /* Else: cj is not the "void" cell */
           } else {
 
             /* Handle on the top-level cell's gravity business*/
@@ -2683,11 +2687,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
               multi_i->pot.interacted = 1;
 
             } /* We are in charge of this pair */
-          }
-        } /* Loop over relevant top-level cells */
-      }
-    }
-  } /* periodic / non-periodic case */
+          }   /* Background cell or void cell? */
+        }     /* Loop over relevant top-level cells (k) */
+      }       /* Loop over relevant top-level cells (j) */
+    }         /* Loop over relevant top-level cells (i) */
+  }           /* periodic / non-periodic case */
 
   // MATTHIEU TODO: Deal properly with the debugging checks
 
