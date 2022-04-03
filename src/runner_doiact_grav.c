@@ -2444,7 +2444,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const struct space *s = e->s;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double max_distance2 = e->mesh->r_cut_max * e->mesh->r_cut_max;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
 
   TIMER_TIC;
 
@@ -2552,11 +2553,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     const int top_j = top->loc[1] * s->iwidth[1];
     const int top_k = top->loc[2] * s->iwidth[2];
 
+    /* Maximal distance any interaction can take place
+     * before the mesh kicks in, rounded up to the next integer */
+    const int d =
+        ceil(max_distance / max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+
     /* Loop over plausibly useful cells */
-    // MATTHIEU TODO: The 3 needs to be improved by using the mesh props!!
-    for (int ii = top_i - 3; ii <= top_i + 3; ++ii) {
-      for (int jj = top_j - 3; jj <= top_j + 3; ++jj) {
-        for (int kk = top_k - 3; kk <= top_k + 3; ++kk) {
+    for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+      for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+        for (int kk = top_k - d; kk <= top_k + d; ++kk) {
 
           /* Box wrap */
           const int iii = (ii + s->cdim[0]) % s->cdim[0];
