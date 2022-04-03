@@ -71,7 +71,10 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   const size_t scount = n_stars * n_stars * n_stars;
   float h_max = 0.f;
   float stars_h_max = 0.f;
-  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
+  struct cell *cell = NULL;
+  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+    error("Couldn't allocate the cell");
+  }
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->hydro.parts, part_align,
@@ -175,6 +178,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->hydro.super = cell;
   cell->stars.ti_old_part = 8;
   cell->stars.ti_end_min = 8;
   cell->hydro.ti_old_part = 8;
@@ -404,6 +408,10 @@ int main(int argc, char *argv[]) {
 
   struct runner runner;
   runner.e = &engine;
+
+  struct lightcone_array_props lightcone_array_properties;
+  lightcone_array_properties.nr_lightcones = 0;
+  engine.lightcone_array_properties = &lightcone_array_properties;
 
   /* Construct some cells */
   struct cell *cells[27];

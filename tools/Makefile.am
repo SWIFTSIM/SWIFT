@@ -1,6 +1,6 @@
 # Scripts to plot task graphs
 EXTRA_DIST = task_plots/plot_tasks.py task_plots/analyse_tasks.py \
-	     task_plots/process_plot_tasks_MPI task_plots/process_plot_tasks
+	     task_plots/process_plot_tasks_MPI.py task_plots/process_plot_tasks.py
 
 # Scripts to plot threadpool 'task' graphs
 EXTRA_DIST += task_plots/analyse_threadpool_tasks.py \
@@ -30,7 +30,7 @@ EXTRA_DIST += plot_task_dependencies.py \
               plot_task_level.py
 
 # Cell hierarchies
-EXTRA_DIST += make_cell_hierarchy.sh \
+EXTRA_DIST += make_cell_hierarchy.py \
               data/cell_hierarchy.html
 
 # Cell dumps

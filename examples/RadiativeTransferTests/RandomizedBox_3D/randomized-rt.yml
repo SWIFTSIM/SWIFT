@@ -44,17 +44,19 @@ Stars:
   birth_time:           -1   # Give the star in the ICs a decent birth time
 
 Scheduler:
-  max_top_level_cells: 64
+  dependency_graph_frequency:       0  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
 
 Restarts:
   delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
+  enable:             1          # (Optional) whether to enable dumping restarts at fixed intervals.
+  stop_steps:         500        # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
 
 # Parameters for the self-gravity scheme
 Gravity:
-  mesh_side_length:              12       # Number of cells along each axis for the periodic gravity mesh.
+  mesh_side_length:              32       # Number of cells along each axis for the periodic gravity mesh.
   eta:                           0.025    # Constant dimensionless multiplier for time integration.
   MAC:                           adaptive # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
-  epsilon_fmm:                   0.01     # Tolerance parameter for the adaptive multipole acceptance criterion.
+  epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7      # Opening angle for the purely gemoetric criterion.
   # comoving_DM_softening:         0.0026994 # Comoving Plummer-equivalent softening length for DM particles (in internal units).
   # max_physical_DM_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for DM particles (in internal units).

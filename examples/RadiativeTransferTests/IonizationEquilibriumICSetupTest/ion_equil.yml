@@ -36,10 +36,7 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./ionization_equilibrium_test.hdf5  # The file to read
-  periodic:   1                     # peridoc ICs
-
-Scheduler:
-  max_top_level_cells: 12
+  periodic:   0                     # periodic ICs
 
 GEARRT:
     f_reduce_c: 1.                                    # reduce the speed of light for the RT solver by multiplying c with this factor

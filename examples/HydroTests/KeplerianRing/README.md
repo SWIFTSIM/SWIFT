@@ -18,9 +18,6 @@ The test uses:
 + $c_s = 0.01 \ll v_\phi = 10$, enforced by giving them a mass of 1 unit and an
   internal energy of 0.015.
 
-Please note that the initial condition generator **requires python3 rather than
-python2**, as well as the plotting script.
-
 
 Code Setup
 ----------

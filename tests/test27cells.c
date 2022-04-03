@@ -98,7 +98,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   const size_t count = n * n * n;
   const double volume = size * size * size;
   float h_max = 0.f;
-  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
+  struct cell *cell = NULL;
+  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+    error("Couldn't allocate the cell");
+  }
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->hydro.parts, part_align,
@@ -150,7 +153,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
         h_max = fmaxf(h_max, part->h);
         part->id = ++(*partId);
 
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 
 #ifdef SHADOWFAX_SPH
@@ -194,6 +197,7 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->hydro.super = cell;
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
   cell->nodeID = NODE_ID;
@@ -272,7 +276,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2],
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
             0.f,
 #elif defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
     defined(ANARCHY_PU_SPH)
@@ -321,7 +325,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
               cj->hydro.parts[pjd].v[0], cj->hydro.parts[pjd].v[1],
               cj->hydro.parts[pjd].v[2],
               hydro_get_comoving_density(&cj->hydro.parts[pjd]),
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
               0.f,
 #else
               main_cell->hydro.parts[pjd].density.rho_dh,
@@ -489,6 +493,10 @@ int main(int argc, char *argv[]) {
 
   struct runner runner;
   runner.e = &engine;
+
+  struct lightcone_array_props lightcone_array_properties;
+  lightcone_array_properties.nr_lightcones = 0;
+  engine.lightcone_array_properties = &lightcone_array_properties;
 
   /* Construct some cells */
   struct cell *cells[27];

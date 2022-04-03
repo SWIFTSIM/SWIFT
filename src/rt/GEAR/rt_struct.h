@@ -27,17 +27,11 @@
 /* Additional RT data in hydro particle struct */
 struct rt_part_data {
 
-  /* conserved state vector */
+  /* Radiation state vector. */
   struct {
-    float energy;
+    float energy_density;
     float flux[3];
-  } conserved[RT_NGROUPS];
-
-  /* density state vector */
-  struct {
-    float energy;
-    float flux[3];
-  } density[RT_NGROUPS];
+  } radiation[RT_NGROUPS];
 
   /* Fluxes in the conservation law sense */
   struct {
@@ -45,12 +39,12 @@ struct rt_part_data {
     float flux[3];
   } flux[RT_NGROUPS];
 
-  /* gradients of densities */
+  /* gradients of the radiation state. */
   /* for the flux[3][3] quantity:
    *    first index: x, y, z coordinate of the flux.
    *    Second index: gradient along x, y, z direction. */
   struct {
-    float energy[3];
+    float energy_density[3];
     float flux[3][3];
   } gradient[RT_NGROUPS];
 
@@ -91,31 +85,23 @@ struct rt_part_data {
   /*! how much radiation this part received from stars during total lifetime */
   unsigned long long debug_radiation_absorbed_tot;
 
-  /*! how many interactions this part had with stars in injection prep over
-   * total lifetime */
-  unsigned long long debug_iact_stars_inject_prep_tot;
-
   /* data to store during one time step */
-
-  /*! how many stars this part interacted with during preparation*/
-  /* Note: It's useless to write this in outputs, as it gets reset
-   * at the end of every step. */
-  int debug_iact_stars_inject_prep;
 
   /*! how many stars this part interacted with during injection*/
   /* Note: It's useless to write this in outputs, as it gets reset
    * at the end of every step. */
   int debug_iact_stars_inject;
 
-  /* skip this for GEAR */
-  /* called in a self/rt_injection task? */
-  /* int debug_injection_check; */
-
   /*! calls from gradient interaction loop in actual function */
   int debug_calls_iact_gradient_interaction;
 
   /*! calls from transport interaction loop in actual function */
   int debug_calls_iact_transport_interaction;
+
+  /* Task completion flags */
+
+  /*! part got kicked? */
+  int debug_kicked;
 
   /*! calls from ghost1 tasks */
   int debug_injection_done;
@@ -137,8 +123,6 @@ struct rt_spart_data {
 
   /* Stellar energy emission that will be injected in to gas.
    * Total energy, not density, not rate! */
-  /* TODO: keep this also for RT_HYDRO_CONTROLLED_INJECTION and
-   * store results with each hydro-star interaction in here */
   float emission_this_step[RT_NGROUPS];
 
   /*! Neighbour weigths in each octant surrounding the star */
@@ -150,29 +134,18 @@ struct rt_spart_data {
   /*! how much radiation this star emitted during total lifetime */
   unsigned long long debug_radiation_emitted_tot;
 
-  /*! how many interactions this star had with parts during
-   * injection prep over total lifetime */
-  unsigned long long debug_iact_hydro_inject_prep_tot;
-
   /* data to store during one time step */
 
-  /*! how many hydro particles this particle interacted with */
-  /* Note: It's useless to write this in outputs, as it gets reset
-   * at the end of every step. */
+  /*! how many hydro particles this particle interacted with
+   * during injection */
   int debug_iact_hydro_inject;
 
   /*! how many hydro particles this particle interacted with
    * during injection prep*/
-  /* Note: It's useless to write this in outputs, as it gets reset
-   * at the end of every step. */
   int debug_iact_hydro_inject_prep;
 
   /*! stellar photon emisison rate computed? */
   int debug_emission_rate_set;
-
-  /* skip this for GEAR */
-  /* !called in a self/rt_injection task? */
-  /* int debug_injection_check; */
 
   /*! how much energy this star particle actually has injected into the gas */
   float debug_injected_energy[RT_NGROUPS];
@@ -180,6 +153,9 @@ struct rt_spart_data {
   /*! how much energy this star particle actually has injected into the gas over
    * the entire run*/
   float debug_injected_energy_tot[RT_NGROUPS];
+
+  /*! sum up total weights used during injection to compare consistency */
+  float debug_psi_sum;
 #endif
 };
 

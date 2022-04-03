@@ -45,6 +45,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int bi_is_local = 1; /* SELF tasks are always local */
 
   /* Anything to do here? */
   if (c->black_holes.count == 0) return;
@@ -89,7 +90,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
         const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
                               (float)(pj->x[1] - c->loc[1]),
                               (float)(pj->x[2] - c->loc[2])};
-        float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -104,6 +105,15 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
           IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                       e->gravity_properties, e->black_holes_properties,
                       e->entropy_floor, ti_current, e->time);
+
+          if (bi_is_local) {
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+            runner_iact_nonsym_bh_gas_repos(
+                r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
+                e->gravity_properties, e->black_holes_properties,
+                e->entropy_floor, ti_current, e->time);
+#endif
+          }
         }
       } /* loop over the parts in ci. */
     }   /* loop over the bparts in ci. */
@@ -145,7 +155,7 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
       const float bjx[3] = {(float)(bj->x[0] - c->loc[0]),
                             (float)(bj->x[1] - c->loc[1]),
                             (float)(bj->x[2] - c->loc[2])};
-      float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
+      const float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -159,6 +169,12 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
       if (r2 < hig2) {
         IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties,
                    e->black_holes_properties, ti_current);
+
+        if (bi_is_local) {
+          runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj, cosmo,
+                                         e->gravity_properties,
+                                         e->black_holes_properties, ti_current);
+        }
       }
     } /* loop over the bparts in ci. */
   }   /* loop over the bparts in ci. */
@@ -190,6 +206,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int bi_is_local = ci->nodeID == e->nodeID;
 
   /* Anything to do here? */
   if (ci->black_holes.count == 0) return;
@@ -243,7 +260,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
         const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
                               (float)(pj->x[1] - cj->loc[1]),
                               (float)(pj->x[2] - cj->loc[2])};
-        float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+        const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -258,6 +275,15 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
           IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                       e->gravity_properties, e->black_holes_properties,
                       e->entropy_floor, ti_current, e->time);
+
+          if (bi_is_local) {
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+            runner_iact_nonsym_bh_gas_repos(
+                r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
+                e->gravity_properties, e->black_holes_properties,
+                e->entropy_floor, ti_current, e->time);
+#endif
+          }
         }
       } /* loop over the parts in cj. */
     }   /* loop over the bparts in ci. */
@@ -299,7 +325,7 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float bjx[3] = {(float)(bj->x[0] - cj->loc[0]),
                             (float)(bj->x[1] - cj->loc[1]),
                             (float)(bj->x[2] - cj->loc[2])};
-      float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
+      const float dx[3] = {bix[0] - bjx[0], bix[1] - bjx[1], bix[2] - bjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -313,6 +339,12 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       if (r2 < hig2) {
         IACT_BH_BH(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties,
                    e->black_holes_properties, ti_current);
+
+        if (bi_is_local) {
+          runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj, cosmo,
+                                         e->gravity_properties,
+                                         e->black_holes_properties, ti_current);
+        }
       }
     } /* loop over the bparts in cj. */
   }   /* loop over the bparts in ci. */
@@ -371,6 +403,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int bi_is_local = ci->nodeID == e->nodeID;
 
   const int count_j = cj->hydro.count;
   struct part *restrict parts_j = cj->hydro.parts;
@@ -412,8 +445,8 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
-      float dx[3] = {(float)(bix - pjx), (float)(biy - pjy),
-                     (float)(biz - pjz)};
+      const float dx[3] = {(float)(bix - pjx), (float)(biy - pjy),
+                           (float)(biz - pjz)};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -426,6 +459,14 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
         IACT_BH_GAS(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
                     e->gravity_properties, e->black_holes_properties,
                     e->entropy_floor, ti_current, e->time);
+        if (bi_is_local) {
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+          runner_iact_nonsym_bh_gas_repos(
+              r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo,
+              e->gravity_properties, e->black_holes_properties,
+              e->entropy_floor, ti_current, e->time);
+#endif
+        }
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */
@@ -453,6 +494,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
+  const int bi_is_local = 1; /* SELF tasks are always local */
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
@@ -490,7 +532,7 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
       const float pjx[3] = {(float)(pj->x[0] - ci->loc[0]),
                             (float)(pj->x[1] - ci->loc[1]),
                             (float)(pj->x[2] - ci->loc[2])};
-      float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
+      const float dx[3] = {bix[0] - pjx[0], bix[1] - pjx[1], bix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -504,6 +546,15 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
         IACT_BH_GAS(r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
                     e->gravity_properties, e->black_holes_properties,
                     e->entropy_floor, ti_current, e->time);
+
+        if (bi_is_local) {
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+          runner_iact_nonsym_bh_gas_repos(
+              r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,
+              e->gravity_properties, e->black_holes_properties,
+              e->entropy_floor, ti_current, e->time);
+#endif
+        }
       }
     } /* loop over the parts in cj. */
   }   /* loop over the parts in ci. */

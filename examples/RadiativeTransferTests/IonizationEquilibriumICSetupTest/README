@@ -8,3 +8,11 @@ fractions should already be set in the zeroth output.
 
 Compile swift with:
     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none 
+
+
+Additional notes:
+
+-   careful if running with periodicity on. The high difference in internal 
+    energies across the box edge will induce a mass flux when running with
+    meshless schemes, and the solution won't be exact at output_0000 any
+    longer since the particles will be kicked before the output is written.

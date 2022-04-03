@@ -32,7 +32,7 @@
 #include "error.h"
 #include "inline.h"
 
-extern struct pressure_floor_properties pressure_floor_props;
+extern struct pressure_floor_props pressure_floor_props;
 
 /* Check if pressure floor is implemented in hydro */
 #ifndef PRESSURE_FLOOR_NONE

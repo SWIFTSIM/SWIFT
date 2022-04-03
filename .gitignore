@@ -374,3 +374,6 @@ sympy-plots-for-*.tex/
 
 # black formatting
 black_formatting_env
+
+# vscode
+*.json

@@ -105,6 +105,15 @@ INLINE static void convert_spart_vel(const struct engine *e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_spart_potential(const struct engine *e,
+                                           const struct spart *sp, float *ret) {
+
+  if (sp->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(sp->gpart);
+  else
+    ret[0] = 0.f;
+}
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -140,6 +149,10 @@ INLINE static void stars_write_particles(const struct spart *sparts,
   list[4] = io_make_output_field(
       "SmoothingLengths", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts, h,
       "Co-moving smoothing lengths (FWHM of the kernel) of the particles");
+
+  list[5] = io_make_output_field_convert_spart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, sparts,
+      convert_spart_potential, "Gravitational potentials of the particles");
 
 #ifdef DEBUG_INTERACTIONS_STARS
 

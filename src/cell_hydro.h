@@ -112,9 +112,6 @@ struct cell_hydro {
     /*! Radiative transfer ghost in task */
     struct task *rt_in;
 
-    /*! Task for self/pair injection step of radiative transfer */
-    struct link *rt_inject;
-
     /*! Radiative transfer ghost1 task (finishes up injection) */
     struct task *rt_ghost1;
 

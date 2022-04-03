@@ -32,6 +32,8 @@
  * @param pi first interacting particle
  * @param pj second interacting particle
  * @param mass_flux the mass flux between these two particles
+ * @param mode 0: non-symmetric interaction, update i only. 1: symmetric
+ * interaction.
  **/
 __attribute__((always_inline)) INLINE static void rt_part_update_mass_fluxes(
     struct part* restrict pi, struct part* restrict pj, float mass_flux,

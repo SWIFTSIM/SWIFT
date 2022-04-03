@@ -28,7 +28,6 @@
 #include "active.h"
 #include "cell.h"
 #include "memswap.h"
-#include "rt_active.h"
 
 /* Load the profiler header, if needed. */
 #ifdef WITH_PROFILER
@@ -261,7 +260,7 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e) {
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Do we have work to do? */
-  if (!rt_should_do_unskip_cell(c, e)) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   /* Recurse */
   if (c->split) {
@@ -409,6 +408,8 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
+    if (cell_is_empty(c)) continue;
+
     if ((with_hydro && cell_is_active_hydro(c, e)) ||
         (with_self_grav && cell_is_active_gravity(c, e)) ||
         (with_ext_grav && c->nodeID == nodeID &&
@@ -417,7 +418,7 @@ void engine_unskip(struct engine *e) {
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_sinks && cell_is_active_sinks(c, e)) ||
         (with_black_holes && cell_is_active_black_holes(c, e)) ||
-        (with_rt && rt_should_do_unskip_cell(c, e))) {
+        (with_rt && cell_is_active_hydro(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));

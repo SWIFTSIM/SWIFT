@@ -34,6 +34,8 @@
 #include "csds_io.h"
 #include "distributed_io.h"
 #include "kick.h"
+#include "lightcone/lightcone.h"
+#include "lightcone/lightcone_array.h"
 #include "line_of_sight.h"
 #include "parallel_io.h"
 #include "serial_io.h"
@@ -78,6 +80,24 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 
       /* Drift all particles first (may have just been done). */
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
+
+#ifdef WITH_LIGHTCONE
+      /* Flush lightcone buffers before dumping restarts */
+      lightcone_array_flush(e->lightcone_array_properties, &(e->threadpool),
+                            e->cosmology, e->internal_units, e->snapshot_units,
+                            /*flush_map_updates=*/1, /*flush_particles=*/1,
+                            /*end_file=*/1, /*dump_all_shells=*/0);
+#ifdef WITH_MPI
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+#endif
+
+      /* Free the foreign particles to get more breathing space. */
+#ifdef WITH_MPI
+      if (e->free_foreign_when_dumping_restart)
+        space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
+#endif
+
       restart_write(e, e->restart_file);
 
 #ifdef WITH_MPI
@@ -85,6 +105,10 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
        * sets of restart files should the code crash before all the ranks
        * are done */
       MPI_Barrier(MPI_COMM_WORLD);
+
+      /* Reallocate freed memory */
+      if (e->free_foreign_when_dumping_restart)
+        engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
 
       if (e->verbose)

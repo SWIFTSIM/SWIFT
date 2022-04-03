@@ -91,17 +91,6 @@ static void rt_do_thermochemistry(struct part* restrict p,
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
 
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  if (!p->rt_data.debug_injection_done)
-    error("Trying to do thermochemistry when injection step hasn't been done");
-  if (!p->rt_data.debug_gradients_done)
-    error("Trying to do thermochemistry when gradient step hasn't been done");
-  if (!p->rt_data.debug_transport_done)
-    error("Trying to do thermochemistry when transport step hasn't been done");
-
-  p->rt_data.debug_thermochem_done += 1;
-#endif
-
   /* Nothing to do here? */
   if (rt_props->skip_thermochemistry) return;
   if (dt == 0.) return;
@@ -165,9 +154,12 @@ static void rt_do_thermochemistry(struct part* restrict p,
   particle_grackle_data.metal_density = NULL;
 
   /* solve chemistry */
-  if (!local_solve_chemistry(
-          &rt_props->grackle_chemistry_data, rt_props->grackle_chemistry_rates,
-          &rt_props->grackle_units, &particle_grackle_data, dt))
+  /* Note: grackle_rates is a global variable defined by grackle itself.
+   * Using a manually allocd and initialized variable here fails with MPI
+   * for some reason. */
+  if (local_solve_chemistry(&rt_props->grackle_chemistry_data, &grackle_rates,
+                            &rt_props->grackle_units, &particle_grackle_data,
+                            dt) == 0)
     error("Error in solve_chemistry.");
 
   /* update particle internal energy. Grackle had access by reference
@@ -189,13 +181,15 @@ static void rt_do_thermochemistry(struct part* restrict p,
 
   /* update radiation fields */
   for (int g = 0; g < RT_NGROUPS; g++) {
+    const float e_old = p->rt_data.radiation[g].energy_density;
     const float factor_new = (1.f - dt * rates_by_frequency_bin[g]);
-    p->rt_data.conserved[g].energy *= factor_new;
+    p->rt_data.radiation[g].energy_density *= factor_new;
     for (int i = 0; i < 3; i++) {
-      p->rt_data.conserved[g].flux[i] *= factor_new;
+      p->rt_data.radiation[g].flux[i] *= factor_new;
     }
-    rt_check_unphysical_conserved(&p->rt_data.conserved[g].energy,
-                                  p->rt_data.conserved[g].flux, 2);
+    rt_check_unphysical_state(&p->rt_data.radiation[g].energy_density,
+                              p->rt_data.radiation[g].flux, e_old,
+                              /*callloc=*/2);
   }
 
   /* copy updated grackle data to particle */

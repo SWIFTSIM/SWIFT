@@ -35,7 +35,6 @@ from swiftsimio import Writer
 import unyt
 import numpy as np
 import h5py
-from matplotlib import pyplot as plt
 
 # define unit system to use
 unitsystem = unyt.unit_systems.cgs_unit_system
@@ -53,14 +52,15 @@ n_p = 1000
 outputfilename = "advection_1D.hdf5"
 
 
-def initial_condition(x):
+def initial_condition(x, V):
     """
     The initial conditions that will be advected
 
     x: particle position. 3D unyt array
+    V: particle "volume". 1D unyt array or scalar
 
     returns: 
-    E: photon energy for each photon group. List of scalars with size of nPhotonGroups
+    E: photon energy density for each photon group. List of scalars with size of nPhotonGroups
     F: photon flux for each photon group. List with size of nPhotonGroups of numpy arrays of shape (3,)
     """
 
@@ -83,7 +83,7 @@ def initial_condition(x):
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
-    F = np.zeros(3, dtype=np.float32)
+    F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
@@ -99,7 +99,7 @@ def initial_condition(x):
     else:
         E = 1.0
 
-    F = np.zeros(3, dtype=np.float32)
+    F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
@@ -112,7 +112,7 @@ def initial_condition(x):
     amplitude = 2.0
 
     E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
-    F = np.zeros(3, dtype=np.float32)
+    F = np.zeros(3, dtype=np.float64)
     F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
@@ -123,7 +123,7 @@ def initial_condition(x):
 
 if __name__ == "__main__":
 
-    xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float32), boxsize.units)
+    xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float64), boxsize.units)
 
     dx = boxsize / n_p
 
@@ -134,9 +134,9 @@ if __name__ == "__main__":
 
     w.gas.coordinates = xp
     w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-    w.gas.masses = np.ones(xp.shape[0], dtype=np.float32) * 1000 * unyt.g
+    w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
     w.gas.internal_energy = (
-        np.ones(xp.shape[0], dtype=np.float32) * (300.0 * unyt.kb * unyt.K) / (unyt.g)
+        np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / (unyt.g)
     )
 
     # Generate initial guess for smoothing lengths based on MIPS
@@ -165,13 +165,14 @@ if __name__ == "__main__":
         parts.create_dataset(dsetname, data=fluxdata)
 
     for p in range(nparts):
-        E, Flux = initial_condition(xp[p])
+        E, Flux = initial_condition(xp[p], dx)
         for g in range(nPhotonGroups):
             Esetname = "PhotonEnergiesGroup{0:d}".format(g + 1)
             parts[Esetname][p] = E[g]
             Fsetname = "PhotonFluxesGroup{0:d}".format(g + 1)
             parts[Fsetname][p] = Flux[g]
 
+    # from matplotlib import pyplot as plt
     #  plt.figure()
     #  for g in range(nPhotonGroups):
     #      #  Esetname = "PhotonEnergiesGroup{0:d}".format(g+1)

@@ -67,8 +67,8 @@ class RTStarData(object):
         self.h = None
 
         self.EmissionRateSet = None
+        self.InjectionInteractions = None
         self.RadiationEmittedTot = None
-        self.InjectPrepCountsTot = None
 
         return
 
@@ -94,7 +94,6 @@ class Rundata(object):
     """
 
     def __init__(self):
-        self.hydro_controlled_injection = False
         self.has_stars = False  # assume we don't have stars, check while reading in
 
         return
@@ -167,8 +166,6 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             "Compile swift --with-rt=debug",
         )
 
-    if "hydro controlled" in scheme:
-        rundata.hydro_controlled_injection = True
     F.close()
 
     for f in hdf5files:
@@ -206,13 +203,17 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         newsnap.gas.ThermochemistryDone = Gas["RTDebugThermochemistryDone"][:][inds]
 
         newsnap.gas.RadiationAbsorbedTot = Gas["RTDebugRadAbsorbedTot"][:][inds]
-        newsnap.gas.InjectPrepCountsTot = Gas["RTDebugStarsInjectPrepTotCounts"][:][
-            inds
-        ]
 
+        has_stars = False
         try:
             Stars = F["PartType4"]
             ids = Stars["ParticleIDs"][:]
+            has_stars = True
+        except KeyError:
+            has_stars = False
+
+        if has_stars:
+            newsnap.has_stars = has_stars
             inds = np.argsort(ids)
 
             newsnap.stars.IDs = ids[inds]
@@ -220,13 +221,8 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             newsnap.stars.h = Stars["SmoothingLengths"][:][inds]
 
             newsnap.stars.EmissionRateSet = Stars["RTDebugEmissionRateSet"][:][inds]
-
+            newsnap.stars.InjectionInteractions = Stars["RTDebugHydroIact"][:][inds]
             newsnap.stars.RadiationEmittedTot = Stars["RTDebugRadEmittedTot"][:][inds]
-            newsnap.stars.InjectPrepCountsTot = Stars[
-                "RTDebugHydroInjectPrepCountsTot"
-            ][:][inds]
-        except KeyError:
-            newsnap.has_stars = False
 
         snapdata.append(newsnap)
 

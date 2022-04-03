@@ -723,8 +723,11 @@ INLINE static void compute_yields(struct feedback_props *feedback_props) {
 
   /* Resample yields for each element tracked in EAGLE */
   int element_index = 0;
-  for (enum chemistry_element elem = chemistry_element_H;
-       elem < chemistry_element_count; elem++) {
+  for (int elem_nr = chemistry_element_H; elem_nr < chemistry_element_count;
+       elem_nr++) {
+
+    enum chemistry_element elem = (enum chemistry_element)elem_nr;
+
     /* SNIa  */
     element_index = get_element_index(chemistry_get_element_name(elem),
                                       feedback_props->SNIa_element_names,

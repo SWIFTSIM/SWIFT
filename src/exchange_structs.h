@@ -1,9 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
- *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
- *               2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ * Copyright (c) 2021 John Helly (j.c.helly@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,21 +17,10 @@
  *
  ******************************************************************************/
 
-/* Config parameters. */
-#include "../config.h"
+#ifndef SWIFT_EXCHANGE_STRUCTS_H
+#define SWIFT_EXCHANGE_STRUCTS_H
 
-/* Local headers. */
-#include "active.h"
-#include "cell.h"
-#include "engine.h"
-#include "rt.h"
-#include "runner.h"
-#include "space_getsid.h"
-#include "timers.h"
+void exchange_structs(size_t *nr_send, void *sendbuf, size_t *nr_recv,
+                      void *recvbuf, size_t element_size);
 
-/* Import the rt injection loop functions. */
-#define FUNCTION inject
-#define FUNCTION_TASK_LOOP TASK_LOOP_RT_INJECT
-#include "runner_doiact_functions_rt.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#endif

@@ -25,7 +25,7 @@ Snapshots:
 # Parameters governing the conserved quantities statistics
 Statistics:
   time_first:          0.
-  delta_time:          5e-3 # Time between statistics output
+  delta_time:          2.980232e-08 # Time between statistics output
 
 # Parameters for the hydrodynamics scheme
 SPH:
@@ -39,13 +39,8 @@ InitialConditions:
   periodic:   1                     # periodic ICs?
 
 Scheduler:
-  max_top_level_cells:       24
   cell_split_size:           25       # Lower than default to test going deep(er) in the tree
   dependency_graph_frequency: 0
-
-# Debugging/Development RT scheme
-DebugRT:
-  all_parts_have_stars:  0          # Set to 1 to do additional tests that only work if all hydro particles have a star particle neighbour
 
 GEARRT:
   f_reduce_c: 1e-3                                   # reduce the speed of light for the RT solver by multiplying c with this factor

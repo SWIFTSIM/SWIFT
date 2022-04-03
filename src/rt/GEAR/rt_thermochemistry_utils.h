@@ -79,7 +79,7 @@ __attribute__((always_inline)) INLINE static float
 rt_tchem_internal_energy_from_T(const double T, const double mu,
                                 const double kB, const double mp) {
 
-  return kB * T * hydro_one_over_gamma_minus_one / mu / mp;
+  return kB * T * hydro_one_over_gamma_minus_one / (mu * mp);
 }
 
 /**
@@ -95,22 +95,23 @@ rt_tchem_internal_energy_from_T(const double T, const double mu,
 __attribute__((always_inline)) INLINE static float rt_tchem_internal_energy_dT(
     double mu, const double kB, const double mp) {
 
-  const double dudT = kB * hydro_one_over_gamma_minus_one / mu / mp;
+  const double dudT = kB * hydro_one_over_gamma_minus_one / (mu * mp);
 
   return dudT;
 }
 
 /**
- * @brief get the number densities of all species and electrons.
+ * @brief get the densities of all species and electrons.
  *
  * @param p particle to use
  * @param rho particle physical density
- * @param number_densities array to write number densities in
+ * @param species_densities array to write densities in
  **/
 __attribute__((always_inline)) INLINE static void
 rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
                                gr_float species_densities[6]) {
 
+  /* TODO: check units here */
   species_densities[0] = p->rt_data.tchem.mass_fraction_HI * rho;
   species_densities[1] = p->rt_data.tchem.mass_fraction_HII * rho;
   species_densities[2] = p->rt_data.tchem.mass_fraction_HeI * rho;
@@ -132,6 +133,7 @@ rt_tchem_get_species_densities(const struct part* restrict p, gr_float rho,
  *
  * @param p particle to use
  * @param phys_const physical constants struct
+ * @param cosmo cosmology struct
  **/
 __attribute__((always_inline)) INLINE static double
 rt_tchem_get_gas_temperature(const struct part* restrict p,

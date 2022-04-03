@@ -1,6 +1,8 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ *
+ * Copyright (c)  2022 Tsang Keung Chan (chantsangkeung@gmail.com)
+ *                2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,12 +18,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_STELLAR_EMISSION_RATE_DEBUG_H
-#define SWIFT_RT_STELLAR_EMISSION_RATE_DEBUG_H
+#ifndef SWIFT_RT_STELLAR_EMISSION_RATE_SPHM1RT_H
+#define SWIFT_RT_STELLAR_EMISSION_RATE_SPHM1RT_H
 
 /**
- * @file src/rt/debug/rt_stellar_emission_rate.h
- * @brief Main header file for the debug radiative transfer scheme
+ * @file src/rt/SPHM1RT/rt_stellar_emission_rate.h
+ * @brief Main header file for the SPHM1RT closure radiative transfer scheme
  * stellar radiation emission rates related functions.
  */
 
@@ -42,7 +44,22 @@ __attribute__((always_inline)) INLINE static void rt_set_stellar_emission_rate(
     const struct rt_props* rt_props, const struct phys_const* phys_const,
     const struct unit_system* internal_units) {
 
-  sp->rt_data.debug_emission_rate_set += 1;
+  if (rt_props->use_const_emission_rates) {
+    /* The read-in constant stellar emisison rates are in units of L_sol.
+     * But they have been read in assuming they are in cgs. Convert this
+     * only now to proper internal units to avoid float overflows. We only
+     * store the energy that is to be distributed from this spart to its
+     * neighbours in this step in internal units.*/
+    const double solar_luminosity = 3.826e33; /* erg/s */
+    const double dt = (age_end - age_beg);
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      double emission_rate_internal_units =
+          rt_props->stellar_const_emission_rates[g] * solar_luminosity;
+      sp->rt_data.emission_this_step[g] = emission_rate_internal_units * dt;
+    }
+  } else {
+    error("Unknown stellar emission rate model");
+  }
 }
 
-#endif /* SWIFT_RT_STELLAR_EMISSION_RATE_DEBUG_H */
+#endif /* SWIFT_RT_STELLAR_EMISSION_RATE_SPHM1RT_H */
