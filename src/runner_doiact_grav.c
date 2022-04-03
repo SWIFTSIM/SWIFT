@@ -2482,7 +2482,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* We can skip non-neighbour background cells, neighbours are
        * defined as background cells within the gravity criterion */
-      if (top->tl_cell_type == 3 && (cj->tl_cell_type == tl_cell || cj->tl_cell_type == void_tl_cell)) continue;
+      if (top->tl_cell_type == 3 &&
+          (cj->tl_cell_type == tl_cell || cj->tl_cell_type == void_tl_cell))
+        continue;
 
       /* Avoid self contributions */
       if (top == cj) continue;
@@ -2560,7 +2562,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           const int kkk = (kk + s->cdim[2]) % s->cdim[2];
 
           /* Get the cell */
-          const int cell_index = cell_getid(s->cdim, iii, jjj, kkk) + s->zoom_props->tl_cell_offset;
+          const int cell_index = cell_getid(s->cdim, iii, jjj, kkk) +
+                                 s->zoom_props->tl_cell_offset;
 
           /* Handle on the top-level cell */
           struct cell *cj = &cells[cell_index];
@@ -2568,12 +2571,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Avoid self contributions  */
           if (top == cj) continue;
 
-          /* If the neighbour is the void cell we need to interact with all zoom cells */
+          /* If the neighbour is the void cell we need to interact with all zoom
+           * cells */
           if (cj->tl_cell_type == 2) {
 
-            /* Loop over all the top-level zoom cells and go for a M-M interaction if
-             * well-separated.
-             * WILL: TODO: with a zoom equivalent of cells_with_particles this could be better */
+            /* Loop over all the top-level zoom cells and go for a M-M
+             * interaction if well-separated.
+             * WILL: TODO: with a zoom equivalent of cells_with_particles this
+             * could be better */
             for (int n = 0; n < s->zoom_props->nr_zoom_cells; ++n) {
 
               /* Handle on the top-level zoom cell and it's gravity business,
@@ -2588,9 +2593,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
               if (periodic) {
 
                 /* Minimal distance between any pair of particles */
-                const double min_radius2 = cell_min_dist2(top, zoom_cj, periodic, dim);
+                const double min_radius2 =
+                    cell_min_dist2(top, zoom_cj, periodic, dim);
 
-                /* Are we beyond the distance where the truncated forces are 0 ?*/
+                /* Are we beyond the distance where the truncated forces are 0
+                 * ?*/
                 if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
                   /* Need to account for the interactions we missed */
@@ -2611,10 +2618,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                   continue;
                 }
 
-                if (cell_can_use_pair_mm(top, zoom_cj, e, e->s, /*use_rebuild_data=*/1,
-                    /*is_tree_walk=*/0)) {
+                if (cell_can_use_pair_mm(top, zoom_cj, e, e->s,
+                                         /*use_rebuild_data=*/1,
+                                         /*is_tree_walk=*/0)) {
 
-                  /* Call the PM interaction function on the active sub-cells of ci */
+                  /* Call the PM interaction function on the active sub-cells of
+                   * ci */
                   runner_dopair_grav_mm_nonsym(r, ci, zoom_cj);
                   // runner_dopair_recursive_grav_pm(r, ci, cj);
 
@@ -2632,7 +2641,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             /* Skip empty cells */
             if (multi_j->m_pole.M_000 == 0.f) continue;
 
-            /* Minimal distance between any pair of particles */
+              /* Minimal distance between any pair of particles */
 #ifdef WITH_ZOOM_REGION
             const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 #else
@@ -2663,7 +2672,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
             /* Shall we interact with this cell? */
             if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                /*is_tree_walk=*/0)) {
+                                     /*is_tree_walk=*/0)) {
 
               /* Call the PM interaction function on the active sub-cells of ci
                */
