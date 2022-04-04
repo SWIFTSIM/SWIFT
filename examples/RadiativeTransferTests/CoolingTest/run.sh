@@ -20,7 +20,7 @@ fi
     ./rt_cooling_test.yml 2>&1 | tee output.log
 
 
-# if [ ! -f "IonizationEquilibriumICSetupTestReference.txt" ]; then
-#     ./getReference.sh
-# fi
-# python3 plotSolution.py
+if [ ! -f "RTCoolingTestReference.txt" ]; then
+    ./getReference.sh
+fi
+python3 plotSolution.py

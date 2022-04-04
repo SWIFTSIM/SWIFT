@@ -30,6 +30,7 @@ import swiftsimio
 import os
 
 plotkwargs = {"alpha": 0.5}
+referenceplotkwargs = {"color":"grey", "lw":4, "alpha":0.6}
 snapshot_base = "output"
 plot_errorbars = True
 
@@ -94,10 +95,7 @@ def get_snapshot_list(snapshot_basename="output"):
 
     snaplist = sorted(snaplist)
 
-    snaplist2 = []
-    for i in range(0, len(snaplist), 10):
-        snaplist2.append(snaplist[i])
-    return snaplist2
+    return snaplist
 
 
 def get_snapshot_data(snaplist):
@@ -169,10 +167,6 @@ def get_snapshot_data(snaplist):
 
 
 
-#  u_theory, mu_theory, T_theory, XHI_theory, XHII_theory, XHeI_theory, XHeII_theory, XHeIII_theory = np.loadtxt(
-#      "IonizationEquilibriumICSetupTestReference.txt", dtype=np.float64, unpack=True
-#  )
-
 if __name__ == "__main__":
 
     # ------------------
@@ -182,44 +176,64 @@ if __name__ == "__main__":
     snaplist = get_snapshot_list(snapshot_base)
     t, T, T_std, mu, mu_std, mf = get_snapshot_data(snaplist)
 
+    t_ref, dt_ref, T_ref, mu_ref, rho_ref, rhoHI_ref, rhoHII_ref, rhoHeI_ref, rhoHeII_ref, rhoHeIII_ref , rhoe_ref= np.loadtxt(
+        "RTCoolingTestReference.txt", dtype=np.float64, unpack=True
+    )
+    t_ref *= 1e-6 # turn to Myrs
+    mf_ref = np.empty((t_ref.shape[0], 5))
+    mf_ref[:,0] = rhoHI_ref / rho_ref
+    mf_ref[:,1] = rhoHII_ref / rho_ref
+    mf_ref[:,2] = rhoHeI_ref / rho_ref
+    mf_ref[:,3] = rhoHeII_ref / rho_ref
+    mf_ref[:,4] = rhoHeIII_ref / rho_ref
+
     fig = plt.figure(figsize=(12, 4), dpi=300)
     ax1 = fig.add_subplot(1, 3, 1)
     ax2 = fig.add_subplot(1, 3, 2)
     ax3 = fig.add_subplot(1, 3, 3)
 
+    ax1.semilogy(t_ref[1:], T_ref[1:], label="reference", **referenceplotkwargs)
     if plot_errorbars:
         T_dev = T_std / T
-        if T_dev.max() < 1e-3:
+        if T_dev.max() < 1e-2:
             print("Temperature deviations below threshold. Skipping the errorbar plot")
         else:
+            print("Max temperature deviation:", T_dev.max())
             ax1.errorbar(t, T, yerr=T_std, label="standard deviations")
-    ax1.loglog(t, T, label="obtained results")
+    ax1.semilogy(t, T, label="obtained results")
     ax1.set_xlabel("time [Myr]")
     ax1.set_ylabel("gas temperature [K]")
     ax1.legend()
     ax1.grid()
 
+    ax2.plot(t_ref, mu_ref, label="reference", **referenceplotkwargs)
     if plot_errorbars:
         if mu_std.max() < 1e-3:
             print("Mean molecular mass deviations below threshold. Skipping the errorbar plot")
         else:
+            print("Max mean molecular weight deviation:", mu_std.max())
             ax2.errorbar(t, mu, yerr=mu_std, label="standard deviations")
-    ax2.semilogx(t, mu, label="obtained results")
+    ax2.plot(t, mu, label="obtained results")
     ax2.set_xlabel("time [Myr]")
     ax2.set_ylabel("mean molecular weight")
     ax2.legend()
     ax2.grid()
 
-    ax3.set_title("obtained results")
     total_mf = np.sum(mf, axis = 1)
-    ax3.semilogx(t, total_mf, "k", label="total", ls="-")
+    ax3.plot(t, total_mf, "k", label="total", ls="-")
 
-    ax3.semilogx(t, mf[:,0], label="HI", ls=":", **plotkwargs, zorder=1)
-    ax3.semilogx(t, mf[:,1], label="HII", ls="-.", **plotkwargs)
-    ax3.semilogx(t, mf[:,2], label="HeI", ls=":", **plotkwargs)
-    ax3.semilogx(t, mf[:,3], label="HeII", ls="-.", **plotkwargs)
-    ax3.semilogx(t, mf[:,4], label="HeIII", ls="--", **plotkwargs)
-    ax3.legend()
+    ax3.plot(t_ref[1:], mf_ref[1:,0], label="reference", **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mf_ref[1:,1], **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mf_ref[1:,2], **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mf_ref[1:,3], **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mf_ref[1:,4], **referenceplotkwargs, zorder=0)
+
+    ax3.plot(t, mf[:,0], label="HI", ls=":", **plotkwargs, zorder=1)
+    ax3.plot(t, mf[:,1], label="HII", ls="-.", **plotkwargs, zorder=1)
+    ax3.plot(t, mf[:,2], label="HeI", ls=":", **plotkwargs, zorder=1)
+    ax3.plot(t, mf[:,3], label="HeII", ls="-.", **plotkwargs, zorder=1)
+    ax3.plot(t, mf[:,4], label="HeIII", ls="--", **plotkwargs, zorder=1)
+    ax3.legend(loc="upper right")
     ax3.set_xlabel("time [Myr]")
     ax3.set_ylabel("gas mass fractions [1]")
     ax3.grid()
