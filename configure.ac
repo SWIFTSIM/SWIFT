@@ -1714,7 +1714,7 @@ case "$with_subgrid" in
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
 	with_subgrid_sink=none
-	with_subgrid_extra_io=EAGLE
+	with_subgrid_extra_io=none
 	enable_fof=yes
    ;;
    *)
