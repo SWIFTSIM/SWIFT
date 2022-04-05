@@ -2355,7 +2355,6 @@ static inline void engine_make_hydro_loops_dependencies(
  */
 void engine_link_grid_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
 
   for (int k = 0; k < nr_tasks; k++) {
@@ -2369,17 +2368,9 @@ void engine_link_grid_tasks(struct engine *e) {
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-    /* Node ID (if running with MPI) */
-#ifdef WITH_MPI
-    const int ci_nodeID = ci->nodeID;
-#else
-    const int ci_nodeID = nodeID;
-#endif
+    /* Node ID (if running with MPI) TODO */
 
     if (t_subtype == task_subtype_grid_construction) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local construction task");
-#endif
       /* Self grid construction task?
        * super.drift --> self_construction --> ghost_construction */
       if (t_type == task_type_self) {
@@ -2417,7 +2408,6 @@ void engine_link_grid_tasks(struct engine *e) {
  */
 void engine_link_grid_hydro_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
   const int nr_tasks = sched->nr_tasks;
 
   for (int k = 0; k < nr_tasks; k++) {
@@ -2431,17 +2421,9 @@ void engine_link_grid_hydro_tasks(struct engine *e) {
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
-    /* Node ID (if running with MPI) */
-#ifdef WITH_MPI
-    const int ci_nodeID = ci->nodeID;
-#else
-    const int ci_nodeID = nodeID;
-#endif
+    /* Node ID (if running with MPI) TODO */
 
     if (t_subtype == task_subtype_flux) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (ci_nodeID != nodeID) error("Non-local task");
-#endif
         /* Ghost_construction --> flux exchange --> flux_ghost */
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci->grid.construction_level != ci)
