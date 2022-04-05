@@ -73,6 +73,18 @@ VELOCIraptor twice and create two builds, then use the
 ``--with-velociraptor-mpi`` configure option to point to the MPI build and the
 ``--with-velociraptor`` option to point at the non-MPI build.
 In general ``./configure`` can be run with other options as desired.
+
+If you see reports about missing references to ``MPI::Comm`` and
+similar functions, then you will also need to include the C++ version
+of the MPI library in ``LIBS`` variable as part of the configuration
+(or by setting the ``LIBS`` environment variable), as in:
+
+.. code:: bash
+
+  ./configure --with-velociraptor=/path/to/VELOCIraptor-STF/build/src LIBS=-lmpi++
+
+other names and libraries may be necessary as these are MPI flavour determined.
+
 After this we can run SWIFT with VELOCIraptor, but for this we first need to
 add several lines to the yaml file of our simulation
 
