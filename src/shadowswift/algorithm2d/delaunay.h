@@ -526,8 +526,8 @@ inline static void delaunay_init(struct delaunay* restrict d,
    * Also sid=13 does not correspond to a face and is always set to 1 as well.
    * We only set the sid's corresponding to the cardinal directions to 0
    * (only faces perpendicular to one of the axes can be boundary faces). */
-  const int default_sid_mask[27] = {1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1,
-                                    1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1};
+  const int default_sid_mask[27] = {1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1,
+                                    1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1};
   memcpy(d->sid_is_inside_face, default_sid_mask,
          sizeof(d->sid_is_inside_face));
 
