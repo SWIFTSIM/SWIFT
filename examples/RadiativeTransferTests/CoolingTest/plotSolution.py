@@ -32,7 +32,6 @@ import os
 plotkwargs = {"alpha": 0.5}
 referenceplotkwargs = {"color":"grey", "lw":4, "alpha":0.6}
 snapshot_base = "output"
-plot_errorbars = True
 
 # -----------------------------------------------------------------------
 
@@ -106,27 +105,20 @@ def get_snapshot_data(snaplist):
         numpy arrays of:
             time
             temperatures 
-            standard deviations of temperatures
             mean molecular weights
-            standard deviations of mean molecular weights
             mass fractions
-            standard deviations of mass fractions
     """
 
     nsnaps = len(snaplist)
+    firstdata = swiftsimio.load(snaplist[0])
+    ngroups = int(firstdata.metadata.subgrid_scheme["PhotonGroupNumber"])
+
     times = np.zeros(nsnaps) * unyt.Myr
     temperatures = np.zeros(nsnaps) * unyt.K
     mean_molecular_weights = np.zeros(nsnaps) * unyt.atomic_mass_unit
     mass_fractions = np.zeros((nsnaps, 5))
-
-    if plot_errorbars:
-        temperatures_std = np.zeros(nsnaps) * unyt.K
-        mean_molecular_weights_std = np.zeros(nsnaps) * unyt.atomic_mass_unit
-        mass_fractions_std = np.zeros((nsnaps, 5))
-    else:
-        temperatures_std = None
-        mean_molecular_weights_std = None
-        mass_fractions_std = None
+    internal_energies = np.zeros(nsnaps) * unyt.Msun * unyt.kpc ** 2 / unyt.Myr ** 2 
+    photon_energies = np.zeros((ngroups, nsnaps)) * unyt.Msun * unyt.kpc ** 2 / unyt.Myr ** 2
 
     for i, snap in enumerate(snaplist):
 
@@ -136,6 +128,7 @@ def get_snapshot_data(snaplist):
         gas = data.gas
 
         u = gas.internal_energies.to("erg/g")
+        masses = gas.masses.to("Msun")
         XHI = gas.ion_mass_fractions.HI
         XHII = gas.ion_mass_fractions.HII
         XHeI = gas.ion_mass_fractions.HeI
@@ -146,10 +139,18 @@ def get_snapshot_data(snaplist):
         mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)
         T = gas_temperature(u, mu, gamma).to("K")
 
+        print(u[0])
+        print(masses[0])
+        um = u.to("kpc**2 / Myr**2") * masses
+        print(um[0])
+        #  um = um.to("1e40 * erg")
+        #  print(um[0])
+
 
         times[i] = time.to("Myr")
         temperatures[i] = np.mean(T)
         mean_molecular_weights[i] = np.mean(mu)
+        internal_energies[i] = np.mean(um)
 
         mass_fractions[i, 0] = np.mean(XHI)
         mass_fractions[i, 1] = np.mean(XHII)
@@ -157,12 +158,13 @@ def get_snapshot_data(snaplist):
         mass_fractions[i, 3] = np.mean(XHeII)
         mass_fractions[i, 4] = np.mean(XHeIII)
 
-        if plot_errorbars:
+        for g in range(ngroups):
+            en = getattr(data.gas.photon_energies, "group" + str(g + 1))
+            en = en.to("Msun * kpc**2 / Myr**2")
+            photon_energies[g, i] = en.sum() / en.shape[0]
 
-            temperatures_std[i] = np.std(T)
-            mean_molecular_weights_std[i] = np.std(mu)
 
-    return times, temperatures, temperatures_std, mean_molecular_weights, mean_molecular_weights_std, mass_fractions
+    return times, temperatures, mean_molecular_weights, mass_fractions, internal_energies, photon_energies
 
 
 
@@ -174,32 +176,27 @@ if __name__ == "__main__":
     # ------------------
 
     snaplist = get_snapshot_list(snapshot_base)
-    t, T, T_std, mu, mu_std, mf = get_snapshot_data(snaplist)
+    t, T, mu, mass_fraction, u, photon_energies = get_snapshot_data(snaplist)
+    ngroups = photon_energies.shape[0]
 
     t_ref, dt_ref, T_ref, mu_ref, rho_ref, rhoHI_ref, rhoHII_ref, rhoHeI_ref, rhoHeII_ref, rhoHeIII_ref , rhoe_ref= np.loadtxt(
         "RTCoolingTestReference.txt", dtype=np.float64, unpack=True
     )
     t_ref *= 1e-6 # turn to Myrs
-    mf_ref = np.empty((t_ref.shape[0], 5))
-    mf_ref[:,0] = rhoHI_ref / rho_ref
-    mf_ref[:,1] = rhoHII_ref / rho_ref
-    mf_ref[:,2] = rhoHeI_ref / rho_ref
-    mf_ref[:,3] = rhoHeII_ref / rho_ref
-    mf_ref[:,4] = rhoHeIII_ref / rho_ref
+    mass_fraction_ref = np.empty((t_ref.shape[0], 5))
+    mass_fraction_ref[:,0] = rhoHI_ref / rho_ref
+    mass_fraction_ref[:,1] = rhoHII_ref / rho_ref
+    mass_fraction_ref[:,2] = rhoHeI_ref / rho_ref
+    mass_fraction_ref[:,3] = rhoHeII_ref / rho_ref
+    mass_fraction_ref[:,4] = rhoHeIII_ref / rho_ref
 
-    fig = plt.figure(figsize=(12, 4), dpi=300)
-    ax1 = fig.add_subplot(1, 3, 1)
-    ax2 = fig.add_subplot(1, 3, 2)
-    ax3 = fig.add_subplot(1, 3, 3)
+    fig = plt.figure(figsize=(8, 8), dpi=300)
+    ax1 = fig.add_subplot(2, 2, 1)
+    ax2 = fig.add_subplot(2, 2, 2)
+    ax3 = fig.add_subplot(2, 2, 3)
+    ax4 = fig.add_subplot(2, 2, 4)
 
     ax1.semilogy(t_ref[1:], T_ref[1:], label="reference", **referenceplotkwargs)
-    if plot_errorbars:
-        T_dev = T_std / T
-        if T_dev.max() < 1e-2:
-            print("Temperature deviations below threshold. Skipping the errorbar plot")
-        else:
-            print("Max temperature deviation:", T_dev.max())
-            ax1.errorbar(t, T, yerr=T_std, label="standard deviations")
     ax1.semilogy(t, T, label="obtained results")
     ax1.set_xlabel("time [Myr]")
     ax1.set_ylabel("gas temperature [K]")
@@ -207,36 +204,40 @@ if __name__ == "__main__":
     ax1.grid()
 
     ax2.plot(t_ref, mu_ref, label="reference", **referenceplotkwargs)
-    if plot_errorbars:
-        if mu_std.max() < 1e-3:
-            print("Mean molecular mass deviations below threshold. Skipping the errorbar plot")
-        else:
-            print("Max mean molecular weight deviation:", mu_std.max())
-            ax2.errorbar(t, mu, yerr=mu_std, label="standard deviations")
     ax2.plot(t, mu, label="obtained results")
     ax2.set_xlabel("time [Myr]")
     ax2.set_ylabel("mean molecular weight")
     ax2.legend()
     ax2.grid()
 
-    total_mf = np.sum(mf, axis = 1)
-    ax3.plot(t, total_mf, "k", label="total", ls="-")
+    total_mass_fraction = np.sum(mass_fraction, axis = 1)
+    ax3.plot(t, total_mass_fraction, "k", label="total", ls="-")
 
-    ax3.plot(t_ref[1:], mf_ref[1:,0], label="reference", **referenceplotkwargs, zorder=0)
-    ax3.plot(t_ref[1:], mf_ref[1:,1], **referenceplotkwargs, zorder=0)
-    ax3.plot(t_ref[1:], mf_ref[1:,2], **referenceplotkwargs, zorder=0)
-    ax3.plot(t_ref[1:], mf_ref[1:,3], **referenceplotkwargs, zorder=0)
-    ax3.plot(t_ref[1:], mf_ref[1:,4], **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mass_fraction_ref[1:,0], label="reference", **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mass_fraction_ref[1:,1], **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mass_fraction_ref[1:,2], **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mass_fraction_ref[1:,3], **referenceplotkwargs, zorder=0)
+    ax3.plot(t_ref[1:], mass_fraction_ref[1:,4], **referenceplotkwargs, zorder=0)
 
-    ax3.plot(t, mf[:,0], label="HI", ls=":", **plotkwargs, zorder=1)
-    ax3.plot(t, mf[:,1], label="HII", ls="-.", **plotkwargs, zorder=1)
-    ax3.plot(t, mf[:,2], label="HeI", ls=":", **plotkwargs, zorder=1)
-    ax3.plot(t, mf[:,3], label="HeII", ls="-.", **plotkwargs, zorder=1)
-    ax3.plot(t, mf[:,4], label="HeIII", ls="--", **plotkwargs, zorder=1)
+    ax3.plot(t, mass_fraction[:,0], label="HI", ls=":", **plotkwargs, zorder=1)
+    ax3.plot(t, mass_fraction[:,1], label="HII", ls="-.", **plotkwargs, zorder=1)
+    ax3.plot(t, mass_fraction[:,2], label="HeI", ls=":", **plotkwargs, zorder=1)
+    ax3.plot(t, mass_fraction[:,3], label="HeII", ls="-.", **plotkwargs, zorder=1)
+    ax3.plot(t, mass_fraction[:,4], label="HeIII", ls="--", **plotkwargs, zorder=1)
     ax3.legend(loc="upper right")
     ax3.set_xlabel("time [Myr]")
     ax3.set_ylabel("gas mass fractions [1]")
     ax3.grid()
+
+    tot_energy = u + np.sum(photon_energies, axis=0)
+    ax4.plot(t, tot_energy, label=f"total energy budget", color="k", ls = "--", **plotkwargs)
+    for g in range(ngroups):
+        ax4.plot(t, photon_energies[g, :], label=f"photon energies group {g+1}", **plotkwargs)
+    ax4.plot(t, u, label=f"gas internal energy", **plotkwargs)
+    ax4.set_xlabel("time [Myr]")
+    ax4.set_ylabel(r"energy budget [$M_\odot$ kpc$^2$ / Myr$^2$]")
+    ax4.legend()
+    ax4.grid()
 
 
     plt.tight_layout()
