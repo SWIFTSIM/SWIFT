@@ -155,10 +155,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux(
   hydro_compute_flux(Wi, Wj, n_unit, vij, surface_area, min_dt, totflux);
 
   hydro_part_update_fluxes_left(pi, totflux, dx);
-
-  if (pj->flux.dt < 0.0) {
-    hydro_part_update_fluxes_right(pj, totflux, dx);
-  }
+  /* We always update the fluxes for the right particle as well, to make
+   * flux exchange manifestly symmetric. */
+  hydro_part_update_fluxes_right(pj, totflux, dx);
 }
 
 /**

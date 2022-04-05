@@ -3017,6 +3017,10 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
     struct cell *cj = t->cj;
     const int ci_active = cell_is_active_hydro(ci, e);
     const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (ci != c && cj != c)
+      error("Found task linked to cell which shouldn't be!");
+#endif
 #ifdef WITH_MPI
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;

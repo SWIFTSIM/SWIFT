@@ -2063,7 +2063,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       } else if (t_subtype == task_subtype_grid_construction) {
         engine_addlink(e, &ci->grid.construction, t);
       } else if (t_subtype == task_subtype_flux) {
-        engine_addlink(e, &ci->hydro.flux, t);
+        error("Flux exchange tasks should not yet have been constructed!");
       }
 
       /* Link pair tasks to cells. */
@@ -2081,8 +2081,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grid.construction, t);
         engine_addlink(e, &cj->grid.construction, t);
       } else if (t_subtype == task_subtype_flux) {
-        engine_addlink(e, &ci->hydro.flux, t);
-        engine_addlink(e, &cj->hydro.flux, t);
+        error("Flux exchange tasks should not yet have been constructed!");
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -4435,9 +4434,11 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         /* Construction level ci == ci */
         struct cell *construction_level_j = cj->grid.construction_level;
+
+        /* Should we add a flux pair interaction? */
         if (construction_level_j == NULL ||
             (construction_level_j == cj && !flipped)) {
-          /* We should add a pair interaction*/
+
           t_flux = scheduler_addtask(sched, task_type_pair, task_subtype_flux,
                                      sid, 0, ci, cj);
 
@@ -4447,12 +4448,11 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
            * interaction might be flipped */
           if (cj->hydro.super != ci->hydro.super)
             engine_make_grid_hydroloop_dependencies(sched, cj, t_flux);
-        }
 
-        /* link tasks to cells */
-        engine_addlink(e, &ci->hydro.flux, t_flux);
-        engine_addlink(e, &cj->hydro.flux, t_flux);
-
+          /* link tasks to cells */
+          engine_addlink(e, &ci->hydro.flux, t_flux);
+          engine_addlink(e, &cj->hydro.flux, t_flux);
+        } /* Should we add a flux pair interaction? */
       } else {
         error("Unknown task type for subtype task_subtype_grid_construction");
       }

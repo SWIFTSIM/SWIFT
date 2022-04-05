@@ -146,7 +146,7 @@ runner_doself_grid_flux_exchange(struct runner *restrict r,
       runner_iact_flux(part_left, part_right, pair->midpoint,
                        pair->surface_area, shift);
     } else if (part_is_active(part_right, e)) {
-      runner_iact_flux(part_left, part_right, pair->midpoint,
+      runner_iact_flux(part_right, part_left, pair->midpoint,
                        pair->surface_area, shift);
     }
   }

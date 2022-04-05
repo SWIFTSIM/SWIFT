@@ -81,6 +81,10 @@ runner_dopair_grid_construction(struct runner *restrict r,
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Mark cell face as inside of simulation volume */
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->grid.delaunay->sid_is_inside_face[sid])
+    error("Already ran construction task for this sid!");
+#endif
   ci->grid.delaunay->sid_is_inside_face[sid] |= 1;
 
   if (flipped) { /* cj on the left */
