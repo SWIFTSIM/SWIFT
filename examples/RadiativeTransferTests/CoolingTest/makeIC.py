@@ -19,7 +19,7 @@
 ##############################################################################
 
 # -----------------------------------------------------------
-# Use 30 particles in to generate a uniform box with
+# Use 20 particles in to generate a uniform box with
 # high temperatures.
 # The goal is to reproduce Figure 3 in Smith e al. 2017
 # (ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S)
@@ -35,13 +35,24 @@ import h5py
 
 # number of particles in each dimension
 n_p = 20
-
+nparts = n_p ** 3
 # filename of ICs to be generated
 outputfilename = "cooling_test.hdf5"
+# adiabatic index
+gamma = 5./3.  
+# total hydrogen mass fraction
+XH = 0.76 
+# total helium mass fraction
+XHe = 0.24 
+# boxsize
+boxsize = 1 * unyt.kpc
+# initial gas temperature
+initial_temperature = 1e6 * unyt.K
+# particle mass
+# take 0.1 amu/cm^3
+pmass = (0.1 * unyt.atomic_mass_unit / unyt.cm**3) * (boxsize**3 / nparts)
 
-nparts = n_p ** 3
-
-gamma = 5./3.  # adiabatic index
+#-----------------------------------------------
 
 def internal_energy(T, mu):
     """
@@ -82,15 +93,9 @@ def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     return 1.0 / one_over_mu
 
 
-XH = 0.76 # total hydrogen mass fraction
-XHe = 0.24 # total helium mass fraction
-boxsize = 1 * unyt.kpc
-initial_temperature = 1e6 * unyt.K
 # assume everything is ionized initially
 mu = mean_molecular_weight(0., XH, 0., 0., XHe)
 u_part = internal_energy(initial_temperature, mu)
-# take 0.1 amu/cm^3
-pmass = (0.1 * unyt.atomic_mass_unit / unyt.cm**3) * (boxsize**3 / nparts)
 pmass = pmass.to("M_Sun")
 
 
