@@ -98,6 +98,12 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
   p->flux.energy += fluxes[3] * p->fluid_v[2];
   p->flux.energy -= fluxes[0] * ekin;
 #endif
+
+  if (dx[0] < 0) {
+    p->flux_count -= 1;
+  } else  {
+    p->flux_count += 1;
+  }
 }
 
 /**
@@ -131,6 +137,12 @@ hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
   p->flux.energy -= fluxes[3] * p->fluid_v[2];
   p->flux.energy += fluxes[0] * ekin;
 #endif
+
+  if (dx[0] < 0) {
+    p->flux_count += 1;
+  } else  {
+    p->flux_count -= 1;
+  }
 }
 
 /**

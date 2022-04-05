@@ -159,6 +159,9 @@ struct part {
 
   } conserved;
 
+  /* Flux counter, should be conserved */
+  long flux_count;
+
   /* Fluxes. */
   struct {
 

@@ -151,6 +151,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 
   /* Set initial search radius to smoothing length */
   p->r = p->h;
+
+  p->flux_count = 0;
 }
 
 /**
