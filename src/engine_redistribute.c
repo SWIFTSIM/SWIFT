@@ -275,8 +275,8 @@ struct redist_mapper_data {
         else if (parts[k].x[j] >= s->dim[j])                               \
           parts[k].x[j] -= s->dim[j];                                      \
       }                                                                    \
-      const int cid = cell_getid_pos(s, parts[k].x[0],                     \
-                                     parts[k].x[1], parts[k].x[2]);        \
+      const int cid =                                                      \
+          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);  \
       dest[k] = s->cells_top[cid].nodeID;                                  \
       size_t ind = mydata->nodeID * mydata->nr_nodes + dest[k];            \
       lcounts[ind] += 1;                                                   \
@@ -754,7 +754,7 @@ void engine_redistribute(struct engine *e) {
 
     if (sp->time_bin == time_bin_not_created)
       error("Inhibited particle found after sorting!");
-    
+
     /* New cell index */
     const int new_cid = cell_getid_pos(s, sp->x[0], sp->x[1], sp->x[2]);
 
@@ -818,7 +818,7 @@ void engine_redistribute(struct engine *e) {
 
     if (bp->time_bin == time_bin_not_created)
       error("Inhibited particle found after sorting!");
-    
+
     /* New cell index */
     const int new_cid = cell_getid_pos(s, bp->x[0], bp->x[1], bp->x[2]);
 
@@ -891,13 +891,19 @@ void engine_redistribute(struct engine *e) {
     const int new_node = c->nodeID;
 
     if (g_dest[k] != new_node)
-      error("gpart's new node index not matching sorted index (%d != %d). cid=%d pos=%f %f %f cwidth=%f",
-            g_dest[k], new_node, new_cid, gp->x[0], gp->x[1], gp->x[2], c->width[0]);
+      error(
+          "gpart's new node index not matching sorted index (%d != %d). cid=%d "
+          "pos=%f %f %f cwidth=%f",
+          g_dest[k], new_node, new_cid, gp->x[0], gp->x[1], gp->x[2],
+          c->width[0]);
 
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
-      error("gpart not sorted into the right top-level cell! (cellid: %d, cell_type: %d)", new_cid, c->tl_cell_type);
+      error(
+          "gpart not sorted into the right top-level cell! (cellid: %d, "
+          "cell_type: %d)",
+          new_cid, c->tl_cell_type);
   }
 #endif
 
@@ -1147,8 +1153,8 @@ void engine_redistribute(struct engine *e) {
   /* Verify that all parts are in the right place. */
   for (size_t k = 0; k < nr_parts_new; k++) {
 
-    const int cid = cell_getid_pos(s, s->parts[k].x[0],
-    		                           s->parts[k].x[1], s->parts[k].x[2]);
+    const int cid =
+        cell_getid_pos(s, s->parts[k].x[0], s->parts[k].x[1], s->parts[k].x[2]);
 
     if (cells[cid].nodeID != nodeID)
       error("Received particle (%zu) that does not belong here (nodeID=%i).", k,
@@ -1156,8 +1162,8 @@ void engine_redistribute(struct engine *e) {
   }
   for (size_t k = 0; k < nr_gparts_new; k++) {
 
-    const int cid = cell_getid_pos(s, s->gparts[k].x[0],
-    		                           s->gparts[k].x[1], s->gparts[k].x[2]);
+    const int cid = cell_getid_pos(s, s->gparts[k].x[0], s->gparts[k].x[1],
+                                   s->gparts[k].x[2]);
 
     if (cells[cid].nodeID != nodeID)
       error("Received g-particle (%zu) that does not belong here (nodeID=%i).",
@@ -1165,8 +1171,8 @@ void engine_redistribute(struct engine *e) {
   }
   for (size_t k = 0; k < nr_sparts_new; k++) {
 
-    const int cid = cell_getid_pos(s, s->sparts[k].x[0],
-    		                           s->sparts[k].x[1], s->sparts[k].x[2]);
+    const int cid = cell_getid_pos(s, s->sparts[k].x[0], s->sparts[k].x[1],
+                                   s->sparts[k].x[2]);
 
     if (cells[cid].nodeID != nodeID)
       error("Received s-particle (%zu) that does not belong here (nodeID=%i).",
@@ -1174,8 +1180,8 @@ void engine_redistribute(struct engine *e) {
   }
   for (size_t k = 0; k < nr_bparts_new; k++) {
 
-    const int cid = cell_getid_pos(s, s->bparts[k].x[0],
-    		                           s->bparts[k].x[1], s->bparts[k].x[2]);
+    const int cid = cell_getid_pos(s, s->bparts[k].x[0], s->bparts[k].x[1],
+                                   s->bparts[k].x[2]);
 
     if (cells[cid].nodeID != nodeID)
       error("Received b-particle (%zu) that does not belong here (nodeID=%i).",

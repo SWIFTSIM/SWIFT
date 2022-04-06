@@ -380,15 +380,15 @@ struct zoom_region_properties {
   /*! The ijk integer coordinates of the zoom region's background cell. */
   int zoom_cell_ijk[3];
 
-	/*! The number of zoom cells along an axis in a natural top level cell,
-	 * used to define zoom_cdim */
-	int nr_zoom_per_bkg_cells;
+  /*! The number of zoom cells along an axis in a natural top level cell,
+   * used to define zoom_cdim */
+  int nr_zoom_per_bkg_cells;
 
-	/*! Number of zoom cells */
-	int nr_zoom_cells;
+  /*! Number of zoom cells */
+  int nr_zoom_cells;
 
-	/*! Number of natural/background cells */
-	int nr_bkg_cells;
+  /*! Number of natural/background cells */
+  int nr_bkg_cells;
 
   /*! Number of *local* top-level zoom cells */
   int nr_local_zoom_cells;
@@ -414,7 +414,8 @@ struct zoom_region_properties {
   /*! The indices of the *local* top-level background cells */
   int *local_bkg_cells_with_particles_top;
 
-  /*! Number of particles that have left the zoom region and been converted to dark matter */
+  /*! Number of particles that have left the zoom region and been converted to
+   * dark matter */
   size_t nr_wanderers;
 };
 
@@ -435,8 +436,9 @@ void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
 void space_getcells(struct space *s, int nr_cells, struct cell **cells);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct gravity_props *gravity_properties,
-                struct part *parts, struct gpart *gparts, struct sink *sinks, struct spart *sparts,
+                const struct hydro_props *hydro_properties,
+                struct gravity_props *gravity_properties, struct part *parts,
+                struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
@@ -454,7 +456,8 @@ void space_map_parts_xparts(struct space *s,
                                         struct cell *c));
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
-void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gravity_properties, int verbose);
+void space_rebuild(struct space *s, int repartitioned,
+                   struct gravity_props *gravity_properties, int verbose);
 void space_recycle(struct space *s, struct cell *c);
 void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,

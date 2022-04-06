@@ -720,8 +720,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 #ifdef WITH_ZOOM_REGION
 
 /**
- * @brief A wrapper for #threadpool mapper function to split background cells if they contain
- *        too many particles.
+ * @brief A wrapper for #threadpool mapper function to split background cells if
+ * they contain too many particles.
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
@@ -732,8 +732,8 @@ void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /**
- * @brief A wrapper for #threadpool mapper function to split zoom cells if they contain
- *        too many particles.
+ * @brief A wrapper for #threadpool mapper function to split zoom cells if they
+ * contain too many particles.
  *
  * @param map_data Pointer towards the top-cells.
  * @param num_cells The number of cells to treat.
@@ -760,20 +760,20 @@ void space_split(struct space *s, int verbose) {
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
     threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
-                 s->zoom_props->local_bkg_cells_with_particles_top,
-                 s->zoom_props->nr_local_bkg_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+                   s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, s);
     threadpool_map(&s->e->threadpool, zoom_space_split_mapper,
-                 s->zoom_props->local_zoom_cells_with_particles_top,
-                 s->zoom_props->nr_local_zoom_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
-  } else{
+                   s->zoom_props->local_zoom_cells_with_particles_top,
+                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, s);
+  } else {
     threadpool_map(&s->e->threadpool, space_split_mapper,
-                 s->local_cells_with_particles_top,
-                 s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+                   s->local_cells_with_particles_top,
+                   s->nr_local_cells_with_particles, sizeof(int),
+                   threadpool_auto_chunk_size, s);
   }
-# else
+#else
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),

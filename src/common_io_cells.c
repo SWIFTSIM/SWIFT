@@ -449,14 +449,18 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
  *
  * @param h_grp the hdf5 group to write to.
  * @param cdim The number of top-level cells along each axis.
- * @param zoom_cdim The number of top-level zoom cells along each axis. (only used with zoom region)
+ * @param zoom_cdim The number of top-level zoom cells along each axis. (only
+ * used with zoom region)
  * @param dim The box size.
  * @param cells_top The top-level cells.
  * @param nr_cells The number of top-level cells.
- * @param nr_zoomcells The number of top-level zoom cells. (only used with zoom region)
- * @param nr_bkgcells The number of top-level background cells. (only used with zoom region)
+ * @param nr_zoomcells The number of top-level zoom cells. (only used with zoom
+ * region)
+ * @param nr_bkgcells The number of top-level background cells. (only used with
+ * zoom region)
  * @param width The width of a top-level cell.
- * @param zoom_width The width of a top-level zoom cell. (only used with zoom region)
+ * @param zoom_width The width of a top-level zoom cell. (only used with zoom
+ * region)
  * @param nodeID This node's MPI rank.
  * @param distributed Is this a distributed snapshot?
  * @param subsample Are we subsampling the different particle types?
@@ -468,21 +472,21 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The internal unit system.
  * @param snapshot_units The snapshot unit system.
- * @param with_zoom Flag for whether we're running with a zoom region. (only used with zoom region)
+ * @param with_zoom Flag for whether we're running with a zoom region. (only
+ * used with zoom region)
  */
-void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const int zoom_cdim[3], const double dim[3],
-                           const struct cell* cells_top, const int nr_cells,
-                           const int nr_zoomcells, const int nr_bkgcells,
-                           const double width[3], const double zoom_width[3], const int nodeID,
-                           const int distributed,
-                           const int subsample[swift_type_count],
-                           const float subsample_fraction[swift_type_count],
-                           const int snap_num,
-                           const long long global_counts[swift_type_count],
-                           const long long global_offsets[swift_type_count],
-                           const int num_fields[swift_type_count],
-                           const struct unit_system* internal_units,
-                           const struct unit_system* snapshot_units, const int with_zoom) {
+void io_write_cell_offsets(
+    hid_t h_grp, const int cdim[3], const int zoom_cdim[3], const double dim[3],
+    const struct cell* cells_top, const int nr_cells, const int nr_zoomcells,
+    const int nr_bkgcells, const double width[3], const double zoom_width[3],
+    const int nodeID, const int distributed,
+    const int subsample[swift_type_count],
+    const float subsample_fraction[swift_type_count], const int snap_num,
+    const long long global_counts[swift_type_count],
+    const long long global_offsets[swift_type_count],
+    const int num_fields[swift_type_count],
+    const struct unit_system* internal_units,
+    const struct unit_system* snapshot_units, const int with_zoom) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (distributed) {
@@ -503,8 +507,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const int zoom_cdim[3
 
 #ifdef WITH_ZOOM_REGION
   if (with_zoom)
-    for (int ijk = 0; ijk < 3; ijk++)
-      zoom_cell_width[ijk] = zoom_width[ijk];
+    for (int ijk = 0; ijk < 3; ijk++) zoom_cell_width[ijk] = zoom_width[ijk];
 #endif
 
   /* Temporary memory for the cell-by-cell information */

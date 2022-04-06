@@ -1280,10 +1280,11 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         /* Gravity non-neighbouring pm calculations */
         if (c->top->tl_cell_type == 3) {
           c->grav.long_range = scheduler_addtask(
-                   s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
+              s, task_type_grav_long_range, task_subtype_none, 0, 0, c, NULL);
         } else {
-          c->grav.long_range = scheduler_addtask(
-                   s, task_type_grav_long_range_bkg, task_subtype_none, 0, 0, c, NULL);
+          c->grav.long_range =
+              scheduler_addtask(s, task_type_grav_long_range_bkg,
+                                task_subtype_none, 0, 0, c, NULL);
         }
 
         /* Gravity recursive down-pass */
@@ -1861,7 +1862,7 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
                               ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-						#ifdef WITH_MPI
+#ifdef WITH_MPI
 
             /* Let's cross-check that we had a proxy for that cell */
             if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
@@ -1907,13 +1908,12 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
             }
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
-					}
-				}
-			}
-		}
-	}
+          }
+        }
+      }
+    }
+  }
 }
-
 
 /**
  * @brief Constructs the top-level tasks for the external gravity.
@@ -4259,16 +4259,17 @@ void engine_make_fof_tasks(struct engine *e) {
   /* Construct a FOF loop over neighbours */
   if (e->policy & engine_policy_fof) {
 #ifdef WITH_ZOOM_REGION
-		if (s->with_zoom_region) {
-				  threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper_with_zoom, NULL,
-	                 s->zoom_props->tl_cell_offset, 1, threadpool_auto_chunk_size, e);
-			} else {
-			  threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
-			                 s->nr_cells, 1, threadpool_auto_chunk_size, e);
-			}
+    if (s->with_zoom_region) {
+      threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper_with_zoom,
+                     NULL, s->zoom_props->tl_cell_offset, 1,
+                     threadpool_auto_chunk_size, e);
+    } else {
+      threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
+                     s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    }
 #else
-	  threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
-	                 s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    threadpool_map(&e->threadpool, engine_make_fofloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
 #endif
   }
 
@@ -4327,16 +4328,17 @@ void engine_maketasks(struct engine *e) {
   /* Construct the first hydro loop over neighbours */
   if (e->policy & engine_policy_hydro) {
 #ifdef WITH_ZOOM_REGION
-	  if (s->with_zoom_region) {
-		  threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper_with_zoom, NULL,
-		  		           s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
+    if (s->with_zoom_region) {
+      threadpool_map(
+          &e->threadpool, engine_make_hydroloop_tasks_mapper_with_zoom, NULL,
+          s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
     } else {
-	  	threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
-	  			           s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
+                     s->nr_cells, 1, threadpool_auto_chunk_size, e);
     }
 #else
-	  threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
-	                 s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    threadpool_map(&e->threadpool, engine_make_hydroloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
 #endif
   }
 
@@ -4350,19 +4352,22 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
 #ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
-    	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells, NULL,
-										 s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
-    	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_natural_cells, NULL,
-										 s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
-      threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper_with_zoom_diffsize, NULL,
-      		           s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      threadpool_map(
+          &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells,
+          NULL, s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
+      threadpool_map(
+          &e->threadpool, engine_make_self_gravity_tasks_mapper_natural_cells,
+          NULL, s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool,
+                     engine_make_self_gravity_tasks_mapper_with_zoom_diffsize,
+                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
     } else {
-    	threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-										 s->nr_cells, 1, threadpool_auto_chunk_size, e);
+      threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper,
+                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
     }
 #else
     threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper, NULL,
-									 s->nr_cells, 1, threadpool_auto_chunk_size, e);
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
 #endif
   }
 

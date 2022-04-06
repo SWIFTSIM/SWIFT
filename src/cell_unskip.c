@@ -1524,8 +1524,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #ifdef SWIFT_DEBUG_CHECKS
         /* Ensure we are not rebuilding on a zoom and natural cell pair */
         if (ci->tl_cell_type <= 2 || cj->tl_cell_type <= 2)
-          error("We just decided to rebuild based on a hydro zoom and natural cell pair. "
-                "This should never happen!");
+          error(
+              "We just decided to rebuild based on a hydro zoom and natural "
+              "cell pair. "
+              "This should never happen!");
 #endif
       }
 

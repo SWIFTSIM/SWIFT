@@ -23,16 +23,15 @@
 
 /* Config parameters. */
 #include "../config.h"
-
-#include <float.h>
-
 #include "cell.h"
-#include "gravity_properties.h"
 #include "engine.h"
-#include "proxy.h"
+#include "gravity_properties.h"
 #include "partition.h"
+#include "proxy.h"
 #include "space.h"
 #include "zoom_region.h"
+
+#include <float.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -50,27 +49,27 @@
  */
 static int check_complete(struct space *s, int verbose, int nregions) {
 
-	int *present = NULL;
-	if ((present = (int *)malloc(sizeof(int) * nregions)) == NULL)
-		error("Failed to allocate present array");
+  int *present = NULL;
+  if ((present = (int *)malloc(sizeof(int) * nregions)) == NULL)
+    error("Failed to allocate present array");
 
-	int failed = 0;
-	for (int i = 0; i < nregions; i++) present[i] = 0;
-	for (int i = 0; i < s->nr_cells; i++) {
-		if (s->cells_top[i].nodeID <= nregions)
-			present[s->cells_top[i].nodeID]++;
-		else
-			message("Bad nodeID: s->cells_top[%d].nodeID = %d", i,
-			        s->cells_top[i].nodeID);
-	}
-	for (int i = 0; i < nregions; i++) {
-		if (!present[i]) {
-			failed = 1;
-			if (verbose) message("Region %d is not present in partition", i);
-		}
-	}
-	free(present);
-	return (!failed);
+  int failed = 0;
+  for (int i = 0; i < nregions; i++) present[i] = 0;
+  for (int i = 0; i < s->nr_cells; i++) {
+    if (s->cells_top[i].nodeID <= nregions)
+      present[s->cells_top[i].nodeID]++;
+    else
+      message("Bad nodeID: s->cells_top[%d].nodeID = %d", i,
+              s->cells_top[i].nodeID);
+  }
+  for (int i = 0; i < nregions; i++) {
+    if (!present[i]) {
+      failed = 1;
+      if (verbose) message("Region %d is not present in partition", i);
+    }
+  }
+  free(present);
+  return (!failed);
 }
 
 /**
@@ -96,48 +95,52 @@ static int check_complete(struct space *s, int verbose, int nregions) {
  *
  * @return 1 if the new space contains nodeIDs from all nodes, 0 otherwise.
  */
-int partition_space_to_space_zoom(double *oldh, double *oldcdim, double *oldzoomh,
-		                              double *oldzoomcdim, int *oldnodeIDs, struct space *s) {
+int partition_space_to_space_zoom(double *oldh, double *oldcdim,
+                                  double *oldzoomh, double *oldzoomcdim,
+                                  int *oldnodeIDs, struct space *s) {
 
-	/* Define the old tl_cell_offset */
-	const int old_bkg_cell_offset = oldzoomcdim[0] * oldzoomcdim[1] * oldzoomcdim[2];
+  /* Define the old tl_cell_offset */
+  const int old_bkg_cell_offset =
+      oldzoomcdim[0] * oldzoomcdim[1] * oldzoomcdim[2];
 
-	/* Loop over all the new zoom cells. */
-	for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-		for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-			for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+  /* Loop over all the new zoom cells. */
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
 
-				/* Scale indices to old cell space. */
-				const int ii = rint(i * s->zoom_props->iwidth[0] * oldzoomh[0]);
-				const int jj = rint(j * s->zoom_props->iwidth[1] * oldzoomh[1]);
-				const int kk = rint(k * s->zoom_props->iwidth[2] * oldzoomh[2]);
+        /* Scale indices to old cell space. */
+        const int ii = rint(i * s->zoom_props->iwidth[0] * oldzoomh[0]);
+        const int jj = rint(j * s->zoom_props->iwidth[1] * oldzoomh[1]);
+        const int kk = rint(k * s->zoom_props->iwidth[2] * oldzoomh[2]);
 
-				const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
-				const int oldcid = cell_getid(oldzoomcdim, ii, jj, kk);
-				s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
-			}
-		}
-	}
+        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+        const int oldcid = cell_getid(oldzoomcdim, ii, jj, kk);
+        s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
+      }
+    }
+  }
 
-	/* Loop over all the new cells. */
-	for (int i = 0; i < s->cdim[0]; i++) {
-		for (int j = 0; j < s->cdim[1]; j++) {
-			for (int k = 0; k < s->cdim[2]; k++) {
+  /* Loop over all the new cells. */
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
 
-				/* Scale indices to old cell space. */
-				const int ii = rint(i * s->iwidth[0] * oldh[0]);
-				const int jj = rint(j * s->iwidth[1] * oldh[1]);
-				const int kk = rint(k * s->iwidth[2] * oldh[2]);
+        /* Scale indices to old cell space. */
+        const int ii = rint(i * s->iwidth[0] * oldh[0]);
+        const int jj = rint(j * s->iwidth[1] * oldh[1]);
+        const int kk = rint(k * s->iwidth[2] * oldh[2]);
 
-				const int cid = cell_getid(s->cdim, i, j, k) + s->zoom_props->tl_cell_offset;
-				const int oldcid = cell_getid(oldcdim, ii, jj, kk) + old_bkg_cell_offset;
-				s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
-			}
-		}
-	}
+        const int cid =
+            cell_getid(s->cdim, i, j, k) + s->zoom_props->tl_cell_offset;
+        const int oldcid =
+            cell_getid(oldcdim, ii, jj, kk) + old_bkg_cell_offset;
+        s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
+      }
+    }
+  }
 
-	/* Check we have all nodeIDs present in the resample. */
-	return check_complete(s, 1, s->e->nr_nodes);
+  /* Check we have all nodeIDs present in the resample. */
+  return check_complete(s, 1, s->e->nr_nodes);
 }
 
 /*  Vectorisation support */
@@ -159,28 +162,31 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim, double *oldzoom
 void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
 
   /* Get length of space and divide up. */
-  int length = (s->cdim[0] * s->cdim[1] * s->cdim[2])
-      + (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]);
+  int length = (s->cdim[0] * s->cdim[1] * s->cdim[2]) +
+               (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] *
+                s->zoom_props->cdim[2]);
   if (nregions > length) {
     error("Too few cells (%d) for this number of regions (%d)", length,
           nregions);
   }
 
-	/* Set up variables */
-  int step = (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2]) / nregions;
+  /* Set up variables */
+  int step = (s->zoom_props->cdim[0] * s->zoom_props->cdim[1] *
+              s->zoom_props->cdim[2]) /
+             nregions;
   int n = 0;
   int m = 0;
   int l = 0;
 
   /* Loop over zoom grid */
-	for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
-	  for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
-	    for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
-	      if (n == 0 && l < nregions) {
-	        samplecells[m++] = i;
-	        samplecells[m++] = j;
-	        samplecells[m++] = k;
-	        l++;
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+        if (n == 0 && l < nregions) {
+          samplecells[m++] = i;
+          samplecells[m++] = j;
+          samplecells[m++] = k;
+          l++;
         }
         n++;
         if (n == step) n = 0;
@@ -188,19 +194,19 @@ void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
     }
   }
 
-	step = (s->cdim[0] * s->cdim[1] * s->cdim[2]) / nregions;
+  step = (s->cdim[0] * s->cdim[1] * s->cdim[2]) / nregions;
   n = 0;
   l = 0;
 
   /* Loop over natural grid */
-	for (int i = 0; i < s->cdim[0]; i++) {
-	  for (int j = 0; j < s->cdim[1]; j++) {
-	    for (int k = 0; k < s->cdim[2]; k++) {
-	      if (n == 0 && l < nregions) {
-	        samplecells[m++] = i;
-	        samplecells[m++] = j;
-	        samplecells[m++] = k;
-	        l++;
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+        if (n == 0 && l < nregions) {
+          samplecells[m++] = i;
+          samplecells[m++] = j;
+          samplecells[m++] = k;
+          l++;
         }
         n++;
         if (n == step) n = 0;
@@ -221,7 +227,7 @@ void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
  */
 void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
 
-	/* Define variables for selection */
+  /* Define variables for selection */
   int cid = 0;
 
   /* Loop over zoom cells*/
@@ -270,4 +276,3 @@ void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
 }
 #endif
 #endif
-

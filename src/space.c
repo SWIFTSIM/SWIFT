@@ -44,9 +44,9 @@
 #include "atomic.h"
 #include "const.h"
 #include "cooling.h"
-#include "gravity_properties.h"
 #include "engine.h"
 #include "error.h"
+#include "gravity_properties.h"
 #include "kernel_hydro.h"
 #include "lock.h"
 #include "minmax.h"
@@ -224,11 +224,13 @@ void space_reorder_extras(struct space *s, int verbose) {
   /* Re-order the gas particles */
   if (space_extra_parts) {
 
-    /* In the zoom case we need to limit our loop to the cells containing parts (zoom cells). */
+    /* In the zoom case we need to limit our loop to the cells containing parts
+     * (zoom cells). */
     if (s->with_zoom_region) {
       threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
-                     s->zoom_props->local_zoom_cells_top, s->zoom_props->nr_local_zoom_cells,
-                     sizeof(int), threadpool_auto_chunk_size, s);
+                     s->zoom_props->local_zoom_cells_top,
+                     s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, s);
     } else {
       threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
                      s->local_cells_top, s->nr_local_cells, sizeof(int),
@@ -245,11 +247,13 @@ void space_reorder_extras(struct space *s, int verbose) {
   /* Re-order the star particles */
   if (space_extra_sparts) {
 
-    /* In the zoom case we need to limit our loop to the cells containing sparts (zoom cells). */
+    /* In the zoom case we need to limit our loop to the cells containing sparts
+     * (zoom cells). */
     if (s->with_zoom_region) {
       threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
-                     s->zoom_props->local_zoom_cells_top, s->zoom_props->nr_local_zoom_cells,
-                     sizeof(int), threadpool_auto_chunk_size, s);
+                     s->zoom_props->local_zoom_cells_top,
+                     s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, s);
     } else {
       threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
                      s->local_cells_top, s->nr_local_cells, sizeof(int),
@@ -264,11 +268,13 @@ void space_reorder_extras(struct space *s, int verbose) {
   /* Re-order the sink particles */
   if (space_extra_sinks) {
 
-    /* In the zoom case we need to limit our loop to the cells containing sinks (zoom cells). */
+    /* In the zoom case we need to limit our loop to the cells containing sinks
+     * (zoom cells). */
     if (s->with_zoom_region) {
       threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
-                     s->zoom_props->local_zoom_cells_top, s->zoom_props->nr_local_zoom_cells,
-                     sizeof(int), threadpool_auto_chunk_size, s);
+                     s->zoom_props->local_zoom_cells_top,
+                     s->zoom_props->nr_local_zoom_cells, sizeof(int),
+                     threadpool_auto_chunk_size, s);
     } else {
       threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
                      s->local_cells_top, s->nr_local_cells, sizeof(int),
@@ -1139,8 +1145,9 @@ void space_collect_mean_masses(struct space *s, int verbose) {
  */
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
-                const struct hydro_props *hydro_properties, struct gravity_props *gravity_properties,
-                struct part *parts, struct gpart *gparts, struct sink *sinks, struct spart *sparts,
+                const struct hydro_props *hydro_properties,
+                struct gravity_props *gravity_properties, struct part *parts,
+                struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
@@ -1534,13 +1541,13 @@ void space_init(struct space *s, struct swift_params *params,
 #ifdef WITH_ZOOM_REGION
   if (!dry_run) {
     if (s->with_zoom_region) {
-	    space_regrid_zoom(s, gravity_properties, verbose);
-	  } else {
-		  space_regrid(s, verbose);
-	  }
+      space_regrid_zoom(s, gravity_properties, verbose);
+    } else {
+      space_regrid(s, verbose);
+    }
   }
 #else
-	if (!dry_run) space_regrid(s, verbose);
+  if (!dry_run) space_regrid(s, verbose);
 #endif
 
   /* Compute the max id for the generation of unique id. */
@@ -2730,9 +2737,9 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   fprintf(f, "%g,%g,%i,%i", c->hydro.h_max, c->stars.h_max, c->depth,
           c->maxdepth);
 #ifdef WITH_ZOOM_REGION
-    fprintf(f, ",%i\n", c->tl_cell_type);
+  fprintf(f, ",%i\n", c->tl_cell_type);
 #else
-    fprintf(f, "\n");
+  fprintf(f, "\n");
 #endif
 
   /* Write children */

@@ -1174,7 +1174,8 @@ void task_print(const struct task *t) {
  */
 void task_get_group_name(int type, int subtype, char *cluster) {
 
-  if (type == task_type_grav_long_range || type == task_type_grav_long_range_bkg || type == task_type_grav_mm) {
+  if (type == task_type_grav_long_range ||
+      type == task_type_grav_long_range_bkg || type == task_type_grav_mm) {
 
     strcpy(cluster, "Gravity");
     return;
