@@ -222,7 +222,7 @@ void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
 void space_reorder_extras(struct space *s, int verbose) {
 
   /* Re-order the gas particles */
-  if (space_extra_parts)
+  if (space_extra_parts) {
 
     /* In the zoom case we need to limit our loop to the cells containing parts (zoom cells). */
     if (s->with_zoom_region) {
@@ -234,6 +234,7 @@ void space_reorder_extras(struct space *s, int verbose) {
                      s->local_cells_top, s->nr_local_cells, sizeof(int),
                      threadpool_auto_chunk_size, s);
     }
+  }
 
   /* Re-order the gravity particles */
   if (space_extra_gparts)
@@ -242,7 +243,7 @@ void space_reorder_extras(struct space *s, int verbose) {
                    threadpool_auto_chunk_size, s);
 
   /* Re-order the star particles */
-  if (space_extra_sparts)
+  if (space_extra_sparts) {
 
     /* In the zoom case we need to limit our loop to the cells containing sparts (zoom cells). */
     if (s->with_zoom_region) {
@@ -254,13 +255,14 @@ void space_reorder_extras(struct space *s, int verbose) {
                      s->local_cells_top, s->nr_local_cells, sizeof(int),
                      threadpool_auto_chunk_size, s);
     }
+  }
 
   /* Re-order the black hole particles */
   if (space_extra_bparts)
     error("Missing implementation of BH extra reordering");
 
   /* Re-order the sink particles */
-  if (space_extra_sinks)
+  if (space_extra_sinks) {
 
     /* In the zoom case we need to limit our loop to the cells containing sinks (zoom cells). */
     if (s->with_zoom_region) {
@@ -272,6 +274,7 @@ void space_reorder_extras(struct space *s, int verbose) {
                      s->local_cells_top, s->nr_local_cells, sizeof(int),
                      threadpool_auto_chunk_size, s);
     }
+  }
 }
 
 /**
