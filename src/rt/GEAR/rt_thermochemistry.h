@@ -118,6 +118,7 @@ static void rt_do_thermochemistry(struct part* restrict p,
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
 
   const float u_old = internal_energy;
+  const double T_old = rt_tchem_get_gas_temperature(p, phys_const, cosmo);
 
   /* initialize density */
   particle_grackle_data.density = &density;
@@ -177,22 +178,15 @@ static void rt_do_thermochemistry(struct part* restrict p,
   }
 
   /* If we're good, update the particle data from grackle results */
-  hydro_set_internal_energy(p, u_new);
+  /* Update mass fractions */
+ 
+  const float mass_fractions_old[5] = 
+  {p->rt_data.tchem.mass_fraction_HI, 
+  p->rt_data.tchem.mass_fraction_HII, 
+  p->rt_data.tchem.mass_fraction_HeI, 
+  p->rt_data.tchem.mass_fraction_HeII, 
+  p->rt_data.tchem.mass_fraction_HeIII};
 
-  /* update radiation fields */
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    const float e_old = p->rt_data.radiation[g].energy_density;
-    const float factor_new = (1.f - dt * rates_by_frequency_bin[g]);
-    p->rt_data.radiation[g].energy_density *= factor_new;
-    for (int i = 0; i < 3; i++) {
-      p->rt_data.radiation[g].flux[i] *= factor_new;
-    }
-    rt_check_unphysical_state(&p->rt_data.radiation[g].energy_density,
-                              p->rt_data.radiation[g].flux, e_old,
-                              /*callloc=*/2);
-  }
-
-  /* copy updated grackle data to particle */
   const gr_float one_over_rho = 1. / density;
   p->rt_data.tchem.mass_fraction_HI =
       particle_grackle_data.HI_density[0] * one_over_rho;
@@ -206,6 +200,46 @@ static void rt_do_thermochemistry(struct part* restrict p,
       particle_grackle_data.HeIII_density[0] * one_over_rho;
 
   rt_check_unphysical_mass_fractions(p);
+
+  const float mass_fractions_new[5] = 
+  {p->rt_data.tchem.mass_fraction_HI, 
+  p->rt_data.tchem.mass_fraction_HII, 
+  p->rt_data.tchem.mass_fraction_HeI, 
+  p->rt_data.tchem.mass_fraction_HeII, 
+  p->rt_data.tchem.mass_fraction_HeIII};
+
+  /* Update internal energy */
+  hydro_set_internal_energy(p, u_new);
+  const double T_new = rt_tchem_get_gas_temperature(p, phys_const, cosmo);
+
+  /* update radiation fields */
+  /* first, get recombination radiation */
+  float recombination_radiation[RT_NGROUPS];
+  rt_tchem_get_recombination_radiation(
+            recombination_radiation, T_old, T_new, 
+            mass_fractions_old, mass_fractions_new, 
+            density, rt_props, phys_const, us, p->id);
+
+  /* Note: if we cooled the gas, we increade the radiation,
+   * so do u_old - u_new */
+  recombination_radiation[0] = (u_old - u_new) * density;
+
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    const float e_old = p->rt_data.radiation[g].energy_density;
+    const float factor_new = (1.f - dt * rates_by_frequency_bin[g]);
+    const float recombination = recombination_radiation[g];
+    p->rt_data.radiation[g].energy_density *= factor_new;
+    p->rt_data.radiation[g].energy_density += recombination;
+    for (int i = 0; i < 3; i++) {
+      p->rt_data.radiation[g].flux[i] *= factor_new;
+      p->rt_data.radiation[g].flux[i] += recombination * 0.333333;
+    }
+    rt_check_unphysical_state(&p->rt_data.radiation[g].energy_density,
+                              p->rt_data.radiation[g].flux, e_old,
+                              /*callloc=*/2);
+  }
+  if (p->id==1) message("test %.6g %.6g", (u_new - u_old)/u_new, recombination_radiation[0] * dt / p->rt_data.radiation[0].energy_density);
 }
 
 #endif /* SWIFT_RT_GEAR_THERMOCHEMISTRY_H */

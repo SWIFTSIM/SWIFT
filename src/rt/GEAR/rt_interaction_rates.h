@@ -22,6 +22,7 @@
 #include "rt_blackbody.h"
 #include "rt_parameters.h"
 #include "rt_properties.h"
+#include "grackle_rate_functions.h"
 
 #include <gsl/gsl_integration.h>
 
@@ -407,9 +408,9 @@ rt_tchem_get_interaction_rates(gr_float rates[5],
   double m_p = phys_const->const_proton_mass;
   double species_number_densities_cgs[RT_NIONIZING_SPECIES]; /* in cm^-3 */
   double species_number_densities_nHI[RT_NIONIZING_SPECIES]; /* in nHI^-1 */
-  const double to_inv_volume =
+  const double to_inv_volume_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_INV_VOLUME);
-  const double to_number_density_cgs = to_inv_volume / m_p;
+  const double to_number_density_cgs = to_inv_volume_cgs / m_p;
   /* neutral hydrogen */
   species_number_densities_cgs[0] =
       species_densities[0] * to_number_density_cgs;
@@ -446,7 +447,7 @@ rt_tchem_get_interaction_rates(gr_float rates[5],
     double heating_rate_group_nHI = 0.;
     double heating_rate_group_cgs = 0.;
     float energy_density_i_cgs =
-        p->rt_data.radiation[group].energy_density * to_erg * to_inv_volume;
+        p->rt_data.radiation[group].energy_density * to_erg * to_inv_volume_cgs;
 
     for (int spec = 0; spec < RT_NIONIZING_SPECIES; spec++) {
       const double cse = rt_props->energy_weighted_cross_sections[group][spec];
@@ -474,5 +475,134 @@ rt_tchem_get_interaction_rates(gr_float rates[5],
   rates[2] = ionization_rates_by_species[1];
   rates[3] = ionization_rates_by_species[2];
 }
+
+/**
+ * @brief compute the radiation energy emitted by the gas through recombination.
+ * @param recombination_radiation (return) The radiation energy emitted through
+ * recombination processes for each photon group.
+ * TODO: finish dox
+ * @param p particle to work on
+ * @param species_densities the physical densities of all traced species
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param us internal units struct
+ * @param cosmo cosmology struct
+ **/
+
+__attribute__((always_inline)) INLINE static void 
+rt_tchem_get_recombination_radiation(float recombination_radiation[RT_NGROUPS], 
+const double T_old, const double T_new, 
+const float mass_fractions_old[5], const float mass_fractions_new[5], const float density,
+struct rt_props *rt_props, const struct phys_const *phys_const, const struct unit_system *us, 
+long long pid
+){
+
+  for (int g = 0; g < RT_NGROUPS; g++) recombination_radiation[g] = 0.f;
+  return;
+
+  /* Fix this later. */
+  /* const double number_density_units = units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY); */
+  /* const double rate_units1 = units_cgs_conversion_factor(us, UNIT_CONV_POWER) / number_density_units; */
+  /* const double rate_units2 = rate_units1 / number_density_units; */
+  /*  */
+  /* const double number_density = density / phys_const->const_proton_mass; */
+  /* if (pid == 1) message("TCHEM CHECK INTERNAL0.3 %12.3g  %12.3g | %12.3g %12.3g",  */
+  /*         rate_units1, rate_units2, number_density_units, number_density); */
+  /*  */
+  /* [> const double nHI_old = mass_fractions_old[0] * number_density; <] */
+  /* const double nHII_old = mass_fractions_old[1] * number_density; */
+  /* const double nHeI_old = mass_fractions_old[2] * number_density * 0.5; */
+  /* const double nHeII_old = mass_fractions_old[3] * number_density * 0.5; */
+  /* const double nHeIII_old = mass_fractions_old[4] * number_density * 0.5; */
+  /* const double ne_old = nHII_old + nHeII_old + 2. * nHeIII_old; */
+  /*  */
+  /* [> const double nHI_new = mass_fractions_new[0] * number_density; <] */
+  /* const double nHII_new = mass_fractions_new[1] * number_density; */
+  /* const double nHeI_new = mass_fractions_new[2] * number_density * 0.5; */
+  /* const double nHeII_new = mass_fractions_new[3] * number_density * 0.5; */
+  /* const double nHeIII_new = mass_fractions_new[4] * number_density * 0.5; */
+  /* const double ne_new = nHII_new + nHeII_new + 2. * nHeIII_new; */
+  /*  */
+  /* [> (HeII + e --> HeI + photon) <] */
+  /* const double k4_old = k4_rate(T_old, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double k4_new = k4_rate(T_new, rate_units2, &rt_props->grackle_chemistry_data); */
+  /*  */
+  /* [> Calculation of k2 (HII + e --> HI + photon) <] */
+  /* const double k2_old = k2_rate(T_old, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double k2_new = k2_rate(T_new, rate_units2, &rt_props->grackle_chemistry_data); */
+  /*  */
+  /* [> Calculation of k6 (HeIII + e --> HeII + photon) <] */
+  /* const double k6_old = k6_rate(T_old, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double k6_new = k6_rate(T_new, rate_units2, &rt_props->grackle_chemistry_data); */
+  /*  */
+  /* const double reHII_old = reHII_rate(T_old, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double reHII_new = reHII_rate(T_new, rate_units2, &rt_props->grackle_chemistry_data); */
+  /*  */
+  /* const double reHeII1_old = reHeII1_rate(T_old, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double reHeII1_new = reHeII1_rate(T_new, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double reHeII2_old = reHeII2_rate(T_old, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double reHeII2_new = reHeII2_rate(T_new, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double reHeIII_old = reHeIII_rate(T_old, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double reHeIII_new = reHeIII_rate(T_new, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double brem_rate_old = brem_rate(T_old, rate_units2, &rt_props->grackle_chemistry_data); */
+  /* const double brem_rate_new = brem_rate(T_new, rate_units2, &rt_props->grackle_chemistry_data); */
+  /*  */
+  /*  */
+  /* [> TODO TEMPORARY: Add everything to bin 0 <] */
+  /*  */
+  /* double temp = 0.; */
+  /*  */
+  /* [> temp +=  <] */
+  /* [>   k4_old * ne_old * nHeII_old +  <] */
+  /* [>   k4_new * ne_new * nHeII_new; <] */
+  /* [>  <] */
+  /* [>  <] */
+  /* [> temp +=  <] */
+  /* [>   k2_old * ne_old * nHII_old +  <] */
+  /* [>   k2_new * ne_new * nHII_new; <] */
+  /* [>  <] */
+  /* [> if (pid == 1) message("TCHEM CHECK INTERNAL 4.1 %12.6g", temp); <] */
+  /* [> temp +=  <] */
+  /* [>   k6_old * ne_old * nHeIII_old +  <] */
+  /* [>   k6_new * ne_new * nHeIII_new; <] */
+  /*  */
+  /* if (pid == 1) message("TCHEM CHECK INTERNAL 4.2 %12.6g", temp); */
+  /* temp +=  */
+  /*   reHII_old * nHII_old * ne_old+  */
+  /*   reHII_new * nHII_new * ne_new; */
+  /*  */
+  /* if (pid == 1) message("TCHEM CHECK INTERNAL 4.3 %12.6g", temp); */
+  /* temp +=  */
+  /*   reHeII1_old * nHeII_old * ne_old+  */
+  /*   reHeII1_new * nHeII_new * ne_new; */
+  /*  */
+  /* if (pid == 1) message("TCHEM CHECK INTERNAL 4.4 %12.6g", temp); */
+  /* temp +=  */
+  /*   reHeII2_old * nHeII_old * ne_old+  */
+  /*   reHeII2_new * nHeII_new * ne_new; */
+  /*  */
+  /* if (pid == 1) message("TCHEM CHECK INTERNAL 4.5 %12.6g", temp); */
+  /* temp +=  */
+  /*   reHeIII_old * nHeIII_old * ne_old+  */
+  /*   reHeIII_new * nHeIII_new * ne_new; */
+  /*  */
+  /* [> if (pid == 1) message("TCHEM CHECK INTERNAL 4.6 %12.6g", temp); <] */
+  /* [> temp +=  <] */
+  /* [>   brem_rate_old * (nHII_old + nHeII_old + nHeIII_old + ne_old) +  <] */
+  /* [>   brem_rate_new * (nHII_new + nHeII_new + nHeIII_new + ne_new); <] */
+  /*  */
+  /* if (pid == 1) message("TCHEM CHECK INTERNAL 4.7 %12.6g", temp); */
+  /* temp *= 0.5; */
+  /*  */
+  /* recombination_radiation[0] = temp; */
+
+  /* TODO: For future: */
+  /* Calculation of k7 (HI + e --> HM + photon)
+   * k7_rate(double T, double units, chemistry_data *my_chemistry)
+   * Calculation of k9 (HI + HII --> H2II + photon)
+   * double k9_rate(double T, double units, chemistry_data *my_chemistry)
+   * */
+}
+
 
 #endif /* SWIFT_RT_GEAR_INTERACION_RATES_H */
