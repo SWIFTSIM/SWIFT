@@ -61,6 +61,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     if (s->zoom_props == NULL)
       error("Error allocating memory for the zoom parameters.");
 
+    /* Zero everything before filling up */
+    bzero(s->zoom_props, sizeof(struct zoom_region_properties));
+
     /* Are refining the background cells? */
     s->zoom_props->refine_bkg =
         parser_get_opt_param_int(params, "ZoomRegion:enable_bkg_refinement", 1);
