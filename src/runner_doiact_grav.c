@@ -2556,7 +2556,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
     const int d =
-        ceil(max_distance / max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+        ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
 
     /* Loop over plausibly useful cells */
     for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -2585,7 +2585,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             /* Loop over all the top-level zoom cells and go for a M-M
              * interaction if well-separated.
              * WILL: TODO: with a zoom equivalent of cells_with_particles this
-             * could be better */
+             * could be better or even a void cell multipole */
             for (int n = 0; n < s->zoom_props->nr_zoom_cells; ++n) {
 
               /* Handle on the top-level zoom cell and it's gravity business,
