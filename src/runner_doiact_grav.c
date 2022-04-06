@@ -2525,20 +2525,20 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* We are done here. */
           continue;
         }
+      }
 
-        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0)) {
+      if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0)) {
 
-          /* Call the PM interaction function on the active sub-cells of ci */
-          runner_dopair_grav_mm_nonsym(r, ci, cj);
-          // runner_dopair_recursive_grav_pm(r, ci, cj);
+        /* Call the PM interaction function on the active sub-cells of ci */
+        runner_dopair_grav_mm_nonsym(r, ci, cj);
+        // runner_dopair_recursive_grav_pm(r, ci, cj);
 
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
 
-        } /* We are in charge of this pair */
-      }   /* Loop over top-level cells */
-    }
+      } /* We are in charge of this pair */
+    }   /* Loop over top-level cells */
 
   } else { /* Periodic background cells. */
 
