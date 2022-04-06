@@ -276,6 +276,29 @@ void space_regrid_zoom(struct space *s,
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
+        /* Allocate the indices of local cells with tasks */
+    if (swift_memalign("local_cells_with_tasks_top",
+                       (void **)&s->local_cells_with_tasks_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells with tasks.");
+    bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
+
+    /* Allocate the indices of cells with particles */
+    if (swift_memalign("cells_with_particles_top",
+                       (void **)&s->cells_with_particles_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of top-level cells with particles.");
+    bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
+
+    /* Allocate the indices of local cells with particles */
+    if (swift_memalign("local_cells_with_particles_top",
+                       (void **)&s->local_cells_with_particles_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error(
+          "Failed to allocate indices of local top-level cells with "
+          "particles.");
+    bzero(s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
+
     /* Allocate the indices of local zoom cells */
     if (swift_memalign("local_zoom_cells_top",
                        (void **)&s->zoom_props->local_zoom_cells_top,
@@ -317,29 +340,6 @@ void space_regrid_zoom(struct space *s,
           "particles.");
     bzero(s->zoom_props->local_bkg_cells_with_particles_top,
           s->zoom_props->nr_bkg_cells * sizeof(int));
-
-    /* Allocate the indices of local cells with tasks */
-    if (swift_memalign("local_cells_with_tasks_top",
-                       (void **)&s->local_cells_with_tasks_top,
-                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error("Failed to allocate indices of local top-level cells with tasks.");
-    bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
-
-    /* Allocate the indices of cells with particles */
-    if (swift_memalign("cells_with_particles_top",
-                       (void **)&s->cells_with_particles_top,
-                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error("Failed to allocate indices of top-level cells with particles.");
-    bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
-
-    /* Allocate the indices of local cells with particles */
-    if (swift_memalign("local_cells_with_particles_top",
-                       (void **)&s->local_cells_with_particles_top,
-                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-      error(
-          "Failed to allocate indices of local top-level cells with "
-          "particles.");
-    bzero(s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
 
     /* Set the cells' locks */
     for (int k = 0; k < s->nr_cells; k++) {
