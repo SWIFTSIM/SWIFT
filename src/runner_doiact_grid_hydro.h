@@ -11,17 +11,37 @@
 #ifndef SWIFTSIM_RUNNER_DOIACT_GRID_HYDRO_H
 #define SWIFTSIM_RUNNER_DOIACT_GRID_HYDRO_H
 
+/*! @brief Method to do the flux exchange over the faces between a pair of cells.
+ *
+ * There are 2 modes this function can operate in. In the first mode (0), flux
+ * exchange is carried out for all faces of active voronoi cells of ci. In
+ * the second mode (1), flux exchange is carried out for all faces of active voronoi
+ * cells of ci iff the neighbouring particle is inactive.
+ *
+ * @param r The current runner
+ * @param ci The first cell of the pair. We use this cells voronoi tesseltation
+ * @param cj The second cell of the pair.
+ * @param mode Flag indicating in which mode we operate (0 or 1).
+ * */
 static void runner_dopair_grid_flux_exchange(struct runner *restrict r,
-                                             struct cell *ci, struct cell *cj) {
+                                             struct cell *ci,
+                                             struct cell *cj,
+                                             int mode) {
 
   TIMER_TIC;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (mode != 0 && mode != 1)
+    error("Unknown mode for flux exchange: %d", mode);
+#endif
+
   struct engine *e = r->e;
 
-  /* Recurse? */
+  /* Recurse? If the cells have been flipped in the branch function, ci might
+   * be above its construction level. */
   if (ci->grid.construction_level == NULL) {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (cell_is_active_hydro(cj, e))
+    if (cell_is_active_hydro(cj, e) && mode == 0)
       error(
           "Flux exchange for cell above construction level, indicating the "
           "pair has been flipped, but cj is active!");
@@ -30,7 +50,7 @@ static void runner_dopair_grid_flux_exchange(struct runner *restrict r,
     struct cell *ci_old = ci;
     double shift[3];
     int sid = space_getsid(e->s, &ci, &cj, shift);
-    int flipped = ci == ci_old;
+    int flipped = ci != ci_old;
 
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
@@ -40,21 +60,17 @@ static void runner_dopair_grid_flux_exchange(struct runner *restrict r,
 
       if (flipped) {
         if (cell_is_active_hydro(cj_sub, e))
-          runner_dopair_grid_flux_exchange(r, cj_sub, ci_sub);
+          runner_dopair_grid_flux_exchange(r, cj_sub, ci_sub, mode);
       } else {
         if (cell_is_active_hydro(ci_sub, e))
-          runner_dopair_grid_flux_exchange(r, ci_sub, cj_sub);
+          runner_dopair_grid_flux_exchange(r, ci_sub, cj_sub, mode);
       }
     }
     return;
   }
 
-  /* anything to do here? */
-  int ci_active = cell_is_active_hydro(ci, e);
-  int cj_active = cell_is_active_hydro(cj, e);
-
-  assert(ci_active);
 #ifdef SWIFT_DEBUG_CHECKS
+  assert(cell_is_active_hydro(ci, e));
   assert(ci->grid.voronoi != NULL);
 #endif
 
@@ -72,11 +88,8 @@ static void runner_dopair_grid_flux_exchange(struct runner *restrict r,
     shift[2] = -shift[2];
   }
 
+  /* loop over voronoi faces between ci and cj. */
   struct voronoi *vortess = ci->grid.voronoi;
-
-  double inverse_shift[3] = {-shift[0], -shift[1], -shift[2]};
-
-  /* loop over voronoi faces between ci and cj */
   for (int i = 0; i < vortess->pair_index[sid]; ++i) {
     struct voronoi_pair *pair = &vortess->pairs[sid][i];
 
@@ -84,15 +97,18 @@ static void runner_dopair_grid_flux_exchange(struct runner *restrict r,
     struct part *part_left = &ci->hydro.parts[pair->left_idx];
     struct part *part_right = &cj->hydro.parts[pair->right_idx];
 
-    /* Anything to do here? */
-    int left_active = part_is_active(part_left, e);
-    int right_active = cj_active && part_is_active(part_right, e);
-    if (left_active) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!part_is_active(part_left, e))
+      error("Encountered face of Voronoi cell of inactive particle!");
+#endif
+
+    /* Anything to do here? If the mode is 0, we always proceed, else we only
+     * treat faces between an active particle of ci and an inactive particle of
+     * cj. The other faces should already have been treated in another function
+     * call. */
+    if (mode == 0 || !part_is_active(part_right, e)) {
       runner_iact_flux(part_left, part_right, pair->midpoint,
                        pair->surface_area, shift);
-    } else if (right_active) {
-      runner_iact_flux(part_left, part_right, pair->midpoint,
-                       pair->surface_area, inverse_shift);
     }
   } /* loop over voronoi faces between ci and cj */
 
@@ -101,8 +117,8 @@ static void runner_dopair_grid_flux_exchange(struct runner *restrict r,
 
 __attribute__((always_inline)) INLINE static void
 runner_dopair_grid_flux_exchange_branch(struct runner *restrict r,
-                                        struct cell *restrict ci,
-                                        struct cell *restrict cj) {
+                                        struct cell *ci,
+                                        struct cell *cj) {
   struct engine *e = r->e;
 
   int ci_active = cell_is_active_hydro(ci, e);
@@ -111,9 +127,26 @@ runner_dopair_grid_flux_exchange_branch(struct runner *restrict r,
   if (!ci_active) {
     if (!cj_active)
       error("Flux exchange activated between two inactive cells!");
-    runner_dopair_grid_flux_exchange(r, cj, ci);
-  } else {
-    runner_dopair_grid_flux_exchange(r, ci, cj);
+
+    /* Exchange flux from cj to ci only (in mode 0, but does not actually
+     * matter in this case). */
+    runner_dopair_grid_flux_exchange(r, cj, ci, 0);
+
+  } else { /* ci_active */
+
+    /* First do flux exchange between ci an cj in mode 0. */
+    runner_dopair_grid_flux_exchange(r, ci, cj, 0);
+
+    /* If cj is also active, we might have missed some faces between an active
+     * particle of cj and an inactive particle of ci (not present in voronoi
+     * tesselation of ci). */
+    if (cj_active) {
+      /* Also do flux exchange between cj and ci, but this time in mode 1, to
+       * treat the remaining faces between an active particle of cj and inactive
+       * particle of ci (those are not present in the voronoi tesselation of
+       * ci. */
+      runner_dopair_grid_flux_exchange(r, cj, ci, 1);
+    }
   }
 }
 
