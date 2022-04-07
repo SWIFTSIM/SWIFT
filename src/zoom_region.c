@@ -631,6 +631,12 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
 	const int delta_m = delta_cells;
 	const int delta_p = delta_cells;
 
+	/* Allocate the indices of neighbour background cells */
+  if (swift_memalign("neighbour_cells_top", (void **)&s->zoom_props->neighbour_cells_top,
+                     SWIFT_STRUCT_ALIGNMENT, s->zoom_props->nr_bkg_cells * sizeof(int)) != 0)
+    error("Failed to allocate indices of local top-level background cells.");
+  bzero(s->zoom_props->neighbour_cells_top, s->zoom_props->nr_bkg_cells * sizeof(int));
+
   int neighbour_count = 0;
   int void_count = 0;
 
@@ -682,6 +688,7 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
 
                 /* Record that we've found a neighbour. */
                 cells[cjd].tl_cell_type = tl_cell_neighbour;
+                s->zoom_props->neighbour_cells_top[neighbour_count] = cjd;
                 neighbour_count++;
               }
             }
@@ -690,6 +697,9 @@ void find_neighbouring_cells(struct space *s, struct gravity_props *gravity_prop
       }
     }
   }
+
+  /* Store the number of neighbour cells */
+  s->zoom_props->nr_neighbour_cells = neighbour_count;
 
   if (verbose) {
   	message("%i cells neighbouring the zoom region", neighbour_count);
