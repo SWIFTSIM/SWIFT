@@ -425,6 +425,12 @@ void construct_zoom_region(struct space *s, int verbose) {
   s->zoom_props->nr_zoom_cells = s->zoom_props->cdim[0] * s->zoom_props->cdim[1] * s->zoom_props->cdim[2];
   s->zoom_props->nr_bkg_cells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
+  /* Get the cell index for the parent background cell */
+  s->zoom_props->void_cell_index = cell_getid(s->cdim,
+                                              s->zoom_props->zoom_cell_ijk[0],
+                                              s->zoom_props->zoom_cell_ijk[1],
+                                              s->zoom_props->zoom_cell_ijk[2]) + s->zoom_props->tl_cell_offset;
+
   /* Lets report what we have constructed. */
   if (verbose) {
   	message("set cell dimensions to zoom_cdim=[%d %d %d] background_cdim=[%d %d %d]", s->zoom_props->cdim[0],
@@ -493,10 +499,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
 	      c->loc[0] = i * s->zoom_props->width[0] + zoom_region_bounds[0];
 	      c->loc[1] = j * s->zoom_props->width[1] + zoom_region_bounds[2];
 	      c->loc[2] = k * s->zoom_props->width[2] + zoom_region_bounds[4];
-	      c->parent_bkg_cid = cell_getid(s->cdim,
-	                                     s->zoom_props->zoom_cell_ijk[0],
-	                                     s->zoom_props->zoom_cell_ijk[1],
-	                                     s->zoom_props->zoom_cell_ijk[2]) + bkg_cell_offset;
+	      c->parent_bkg_cid = s->zoom_props->void_cell_index;
 	      c->width[0] = s->zoom_props->width[0];
 	      c->width[1] = s->zoom_props->width[1];
 	      c->width[2] = s->zoom_props->width[2];
@@ -582,11 +585,7 @@ void construct_tl_cells_with_zoom_region(struct space *s, const int *cdim, const
   }
 
   /* We need to label the zoom region's background cell as void. */
-  const size_t void_cid = cell_getid(cdim,
-                                     s->zoom_props->zoom_cell_ijk[0],
-                                     s->zoom_props->zoom_cell_ijk[1],
-                                     s->zoom_props->zoom_cell_ijk[2]);
-  c = &s->cells_top[void_cid + bkg_cell_offset];
+  c = &s->cells_top[s->zoom_props->void_cell_index];
   c->tl_cell_type = void_tl_cell;
 
 #ifdef SWIFT_DEBUG_CHECKS
