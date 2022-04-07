@@ -953,8 +953,8 @@ void cell_make_void_multipole(struct space *s, struct cell *c, integertime_t ti_
   struct cell *cells = s->cells_top;
 
   /* Loop over zoom cells */
-  for (int k = 0; k < s->nr_zoom_cells; ++k) {
-    const struct gravity_tensors *m = &cells[k]->grav.multipole;
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; ++k) {
+    const struct gravity_tensors *m = cells[k]->grav.multipole;
 
     mass += m->m_pole.M_000;
 
@@ -995,9 +995,9 @@ void cell_make_void_multipole(struct space *s, struct cell *c, integertime_t ti_
   /* Now add them up */
   struct multipole temp;
   double r_max = 0.;
-  for (int k = 0; k < s->nr_zoom_cells; ++k) {
+  for (int k = 0; k < s->zoom_props->nr_zoom_cells; ++k) {
     const struct cell *c_zoom = &cells[k];
-    const struct multipole *m = c_zoom->grav.multipole->m_pole;
+    const struct multipole *m = &c_zoom->grav.multipole->m_pole;
 
     /* Contribution to multipole */
     gravity_M2M(&temp, m, c->grav.multipole->CoM, c_zoom->grav.multipole->CoM);
