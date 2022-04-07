@@ -100,11 +100,14 @@ float cooling_get_radiated_energy(const struct xpart* restrict xp);
 void cooling_print_backend(const struct cooling_function_data* cooling);
 
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho);
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]);
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho);
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]);
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho);
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]);
 void cooling_copy_from_grackle1(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
@@ -112,7 +115,8 @@ void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
 void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
-                             struct xpart* xp, gr_float rho);
+                             struct xpart* xp, gr_float rho,
+                             gr_float species_densities[12]);
 void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
                                struct xpart* xp, gr_float rho);
 void cooling_apply_self_shielding(
