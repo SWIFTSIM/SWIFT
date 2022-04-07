@@ -35,7 +35,8 @@ Compiling for GEAR RT
     Please note that the current implementation is not (yet) as
     advanced as the :ref:`GEAR subgrid model grackle cooling <gear_grackle_cooling>`, 
     and the parameters listed as available there are not applicable for the 
-    grackle cooling in combination with GEAR RT. 
+    grackle cooling in combination with GEAR RT. You can however follow the Grackle 
+    installation instructions documented there.
 
 
 
