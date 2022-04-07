@@ -2455,6 +2455,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   int *cells_with_particles = e->s->cells_with_particles_top;
   const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
+  /* Explicitly skip the void cell */
+  if (ci->tl_cell_type == void_tl_cell) return;
+
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e)) return;
 
@@ -2725,121 +2728,50 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           /* Avoid self contributions  */
           if (top == cj) continue;
 
-          /* If we get the void cell we need to interact with all zoom cells in
-           * it */
-          if (cj->tl_cell_type == void_tl_cell) {
+          /* Handle on the top-level cell's gravity business*/
+          const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-            /* Loop over all the top-level zoom cells and go for a M-M
-             * interaction if well-separated.
-             * WILL: TODO: with a zoom equivalent of cells_with_particles this
-             * could be better or even a void cell multipole */
-            for (int n = 0; n < s->zoom_props->nr_zoom_cells; ++n) {
+          /* Skip empty cells */
+          if (multi_j->m_pole.M_000 == 0.f) continue;
 
-              /* Handle on the top-level zoom cell and it's gravity business,
-               * Note: cj can never be properly top since top is a background
-               * cell and cj here is a zoom cell */
-              struct cell *zoom_cj = &cells[n];
-              struct gravity_tensors *const multi_j = zoom_cj->grav.multipole;
+          /* Minimal distance between any pair of particles */
+          const double min_radius2 =
+              cell_min_dist2_same_size(top, cj, periodic, dim);
 
-              /* Skip empty cells */
-              if (multi_j->m_pole.M_000 == 0.f) continue;
-
-              if (periodic) {
-
-                /* Minimal distance between any pair of particles */
-                const double min_radius2 =
-                    cell_min_dist2(top, zoom_cj, periodic, dim);
-
-                /* Are we beyond the distance where the truncated forces are 0
-                 * ?*/
-                if (min_radius2 > max_distance2) {
+          /* Are we beyond the distance where the truncated forces are 0 ?*/
+          if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
-                  /* Need to account for the interactions we missed */
-                  accumulate_add_ll(&multi_i->pot.num_interacted,
-                                    multi_j->m_pole.num_gpart);
+            /* Need to account for the interactions we missed */
+            accumulate_add_ll(&multi_i->pot.num_interacted,
+                              multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-                  /* Need to account for the interactions we missed */
-                  accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                                    multi_j->m_pole.num_gpart);
+            /* Need to account for the interactions we missed */
+            accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                              multi_j->m_pole.num_gpart);
 #endif
 
-                  /* Record that this multipole received a contribution */
-                  multi_i->pot.interacted = 1;
+            /* Record that this multipole received a contribution */
+            multi_i->pot.interacted = 1;
 
-                  /* We are done here. */
-                  continue;
-                }
+            /* We are done here. */
+            continue;
+          }
 
-                if (cell_can_use_pair_mm(top, zoom_cj, e, e->s,
-                                         /*use_rebuild_data=*/1,
-                                         /*is_tree_walk=*/0)) {
+          /* Shall we interact with this cell? */
+          if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                   /*is_tree_walk=*/0)) {
 
-                  /* Call the PM interaction function on the active sub-cells of
-                   * ci */
-                  runner_dopair_grav_mm_nonsym(r, ci, zoom_cj);
-                  // runner_dopair_recursive_grav_pm(r, ci, cj);
+            /* Call the PM interaction function on the active sub-cells of ci
+             */
+            runner_dopair_grav_mm_nonsym(r, ci, cj);
+            // runner_dopair_recursive_grav_pm(r, ci, cj);
 
-                  /* Record that this multipole received a contribution */
-                  multi_i->pot.interacted = 1;
+            /* Record that this multipole received a contribution */
+            multi_i->pot.interacted = 1;
 
-                } /* We are in charge of this pair */
-              }  /* If periodic*/
-            } /* Loop over top-level cells */
-
-            /* Else: cj is not the "void" cell */
-          } else {
-
-            /* Handle on the top-level cell's gravity business*/
-            const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-            /* Skip empty cells */
-            if (multi_j->m_pole.M_000 == 0.f) continue;
-
-              /* Minimal distance between any pair of particles */
-#ifdef WITH_ZOOM_REGION
-            const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
-#else
-            const double min_radius2 =
-                cell_min_dist2_same_size(top, cj, periodic, dim);
-#endif
-
-            /* Are we beyond the distance where the truncated forces are 0 ?*/
-            if (min_radius2 > max_distance2) {
-#ifdef SWIFT_DEBUG_CHECKS
-              /* Need to account for the interactions we missed */
-              accumulate_add_ll(&multi_i->pot.num_interacted,
-                                multi_j->m_pole.num_gpart);
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-              /* Need to account for the interactions we missed */
-              accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                                multi_j->m_pole.num_gpart);
-#endif
-
-              /* Record that this multipole received a contribution */
-              multi_i->pot.interacted = 1;
-
-              /* We are done here. */
-              continue;
-            }
-
-            /* Shall we interact with this cell? */
-            if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                     /*is_tree_walk=*/0)) {
-
-              /* Call the PM interaction function on the active sub-cells of ci
-               */
-              runner_dopair_grav_mm_nonsym(r, ci, cj);
-              // runner_dopair_recursive_grav_pm(r, ci, cj);
-
-              /* Record that this multipole received a contribution */
-              multi_i->pot.interacted = 1;
-
-            } /* We are in charge of this pair */
-          }   /* Background cell or void cell? */
+          } /* We are in charge of this pair */
         }     /* Loop over relevant top-level cells (k) */
       }       /* Loop over relevant top-level cells (j) */
     }         /* Loop over relevant top-level cells (i) */

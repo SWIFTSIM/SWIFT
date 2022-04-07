@@ -546,8 +546,10 @@ void cell_unlink_foreign_particles(struct cell *c);
 int cell_count_parts_for_tasks(const struct cell *c);
 int cell_count_gparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
-void cell_make_multipoles(struct cell *c, integertime_t ti_current,
+void cell_make_multipoles(struct space *s, struct cell *c, integertime_t ti_current,
                           const struct gravity_props *const grav_props);
+void cell_make_void_multipole(struct cell *c, integertime_t ti_current,
+                              const struct gravity_props *const grav_props);
 void cell_check_multipole(struct cell *c,
                           const struct gravity_props *const grav_props);
 void cell_check_foreign_multipole(const struct cell *c);

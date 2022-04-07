@@ -2566,6 +2566,12 @@ void engine_reconstruct_multipoles(struct engine *e) {
                  e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
                  threadpool_auto_chunk_size, e);
 
+  if (e->s->with_zoom_region) {
+    /* Compute void cell multipole */
+    cell_make_void_multipole(e->s, &e->s->cells_top[s->zoom_props->void_cell_index], e->ti_current,
+                             e->gravity_properties);
+  }
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
