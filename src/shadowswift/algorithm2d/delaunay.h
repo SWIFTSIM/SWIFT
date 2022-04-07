@@ -611,6 +611,7 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   assert(d->active);
   assert(d->vertices != NULL);
 #endif
+  swift_free("delaunay.vertex_added", d->vertex_added);
   swift_free("c.h.d.vertices", d->vertices);
   swift_free("c.h.d.rescaled_vertices", d->rescaled_vertices);
   swift_free("c.h.d.integer_vertices", d->integer_vertices);
@@ -623,6 +624,7 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   swift_free("c.h.d.ngb_part_idx", d->ngb_part_idx);
   geometry_destroy(&d->geometry);
 
+  d->vertex_added = NULL;
   d->vertices = NULL;
   d->rescaled_vertices = NULL;
   d->integer_vertices = NULL;
@@ -651,6 +653,9 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   d->ngb_size = 0;
   d->ngb_offset = -1;
   bzero(d->sid_is_inside_face, 27 * sizeof(int));
+
+  /* Free delaunay struct itself */
+  free(d);
 }
 
 /**

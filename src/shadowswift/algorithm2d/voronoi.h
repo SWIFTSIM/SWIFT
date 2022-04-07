@@ -267,25 +267,25 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
   assert(v->active);
   assert(v->cells != NULL);
 #endif
-  swift_free("c.h.v.cells", v->cells);
-  for (int i = 0; i < 28; ++i) {
-    swift_free("c.h.v.pairs", v->pairs[i]);
-  }
-  int2_lifo_queue_destroy(&v->cell_pair_connections);
-
-  v->cells = NULL;
-  for (int i = 0; i < 28; i++) {
-    v->pairs[i] = NULL;
-  }
-
   v->active = 0;
+
+  swift_free("c.h.v.cells", v->cells);
+  v->cells = NULL;
   v->number_of_cells = 0;
   v->cells_size = 0;
+
+  int2_lifo_queue_destroy(&v->cell_pair_connections);
+
   for (int i = 0; i < 28; i++) {
+    swift_free("c.h.v.pairs", v->pairs[i]);
+    v->pairs[i] = NULL;
     v->pair_index[i] = 0;
     v->pair_size[i] = 0;
   }
+
   v->min_surface_area = -1;
+
+  free(v);
 }
 
 inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {

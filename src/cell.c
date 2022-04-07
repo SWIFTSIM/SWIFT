@@ -1032,9 +1032,46 @@ void cell_clean(struct cell *c) {
   /* Stars */
   cell_free_stars_sorts(c);
 
+  /* Grid */
+  cell_free_grid(c);
+
   /* Recurse */
   for (int k = 0; k < 8; k++)
     if (c->progeny[k]) cell_clean(c->progeny[k]);
+}
+
+/**
+ * @brief Recursively free grid memory for cell.
+ *
+ * @param c The #cell.
+ */
+void cell_free_grid_rec(struct cell *c) {
+
+#ifndef SHADOWSWIFT
+  /* Nothing to do as we have no tessellations */
+#else
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->grid.construction_level != c && (c->grid.voronoi != NULL || c->grid.delaunay != NULL))
+    error("Grid allocated, but not on grid construction level!");
+#endif
+  if (c->grid.construction_level == NULL) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_free_grid_rec(c->progeny[k]);
+
+  } else if (c->grid.construction_level == c) {
+    if (c->grid.voronoi != NULL) {
+      voronoi_destroy(c->grid.voronoi);
+      c->grid.voronoi = NULL;
+    }
+    if (c->grid.delaunay != NULL) {
+      delaunay_destroy(c->grid.delaunay);
+      c->grid.delaunay = NULL;
+    }
+  } else {
+    error("Somehow ended up below grid construction level!");
+  }
+#endif
 }
 
 /**

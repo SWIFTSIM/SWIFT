@@ -1822,6 +1822,9 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     }
   }
 
+  /* Be clean */
+  free(part_is_active_mask);
+
   if (timer) TIMER_TOC(timer_do_grid_ghost);
 }
 
