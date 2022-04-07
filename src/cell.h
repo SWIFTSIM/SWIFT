@@ -963,6 +963,26 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
 }
 
 /**
+ * @brief Have gas particles in a pair of cells moved too much and require a
+ * rebuild?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_grid_pair(const struct cell *ci, const struct cell *cj) {
+
+  /* The max distance the parts in both cells have */
+  /* moved larger than the cell size divided by three? */
+  /* TODO: Also check if completeness criterion is still satisfied? */
+  /* Note ci->dmin == cj->dmin */
+  if (ci->hydro.dx_max_part + cj->hydro.dx_max_part > cj->dmin / 3.) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
  * @brief Have star particles in a pair of cells moved too much and require a
  * rebuild?
  *

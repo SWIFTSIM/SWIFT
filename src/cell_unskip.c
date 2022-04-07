@@ -2932,6 +2932,8 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     scheduler_activate(s, c->grid.ghost);
   }
 
+  int rebuild = 0;
+
   /* If not at grid construction level, nothing else to do. */
   if (c->grid.construction_level == NULL) return 0;
 
@@ -2941,6 +2943,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
+
     struct task *t = l->t;
 
     struct cell *ci = t->ci;
@@ -2975,11 +2978,14 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
       /* Check the sorts and activate them if needed. */
       cell_activate_hydro_sorts(ci, t->flags, s);
       cell_activate_hydro_sorts(cj, t->flags, s);
+
+      /* Check if we need to rebuild.
+       * TODO: Maybe try to avoid checking the same pair twice */
+      rebuild = cell_need_rebuild_for_grid_pair(ci, cj);
     }
   }
 
-  /* TODO proper check for rebuild */
-  return 0;
+  return rebuild;
 }
 
 /**
