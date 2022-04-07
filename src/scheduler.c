@@ -1246,8 +1246,8 @@ static void scheduler_splittask_grid_hydro(struct task *t,
 
         /* Find first non-empty child. */
         int first_child = 0;
-        while (ci->progeny[first_child] == NULL &&
-               ci->progeny[first_child]->hydro.count && first_child < 8)
+        while (first_child < 8 && ci->progeny[first_child] == NULL &&
+               ci->progeny[first_child]->hydro.count)
           first_child++;
 
 #ifdef SWIFT_DEBUG_CHECKS
