@@ -757,6 +757,62 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 #endif
 }
 
+__attribute__((always_inline)) INLINE static float update_rho(struct part *p, float P_new){
+    //float rho_sph, float u, float P_sph, enum eos_planetary_material_id mat_id, float P_new) {
+
+  float factor_rho = 10.f;
+  int N_iter = 20;
+  float tol = 1e-4;
+  float rho_low, rho_high, rho_mid;
+  float P_low, P_high, P_mid;
+
+  float rho_sph = p->rho;
+  float P_sph = p->P;
+  // return if condition already satisfied
+  if (P_new == P_sph || p->I == 0.f) {
+    return rho_sph;
+  }
+  
+  // define density range to search
+  if (P_new > P_sph){
+    rho_low = rho_sph;
+    rho_high = factor_rho * rho_sph;
+  } else {
+    rho_low = rho_sph / factor_rho;
+    rho_high = rho_sph;
+  }
+
+  // assert P_new is within range
+  P_low = gas_pressure_from_internal_energy(rho_low, p->u, p->mat_id);
+  P_high = gas_pressure_from_internal_energy(rho_high, p->u, p->mat_id);
+
+  if (P_new > P_high || P_new < P_low) {
+    return rho_sph;
+  } else {
+    // compute new density using bisection method
+    for (int i=0.; i <= N_iter; i++){
+      rho_mid = 0.5 * (rho_low + rho_high);
+      P_mid = gas_pressure_from_internal_energy(rho_mid, p->u, p->mat_id);
+      
+      if (P_mid > P_new){
+        rho_high = rho_mid;
+      } else {
+        rho_low = rho_mid;
+      }
+
+      // check if tolerance level reached
+      float tolerance = fabs(P_mid - P_new) / P_new;
+      if (tolerance < tol) {
+        return rho_mid;
+      }
+    }
+  }
+
+  return rho_mid;
+
+}
+
+
 /**
  * @brief Resets the variables that are required for a gradient calculation.
  *
@@ -804,8 +860,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float rho_min = p->mass * kernel_root * h_inv_dim;
 
   /* Bullet proof */
-  if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f &&
-      p->sum_wij_exp_T > 0.f && p->I > 0.f) {
+  if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->I > 0.f) {
     /* End computation */
     p->sum_wij_exp_P /= p->sum_wij_exp;
     p->sum_wij_exp_T /= p->sum_wij_exp;
@@ -814,29 +869,25 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     float P_new = expf(-I2) * p->P + (1.f - expf(-I2)) * p->sum_wij_exp_P;
 
     /* Compute new T */
-    float T_new = expf(-I2) * p->T + (1.f - expf(-I2)) * p->sum_wij_exp_T;
+    //float T_new = expf(-I2) * p->T + (1.f - expf(-I2)) * p->sum_wij_exp_T;
 
-    /* Compute new density */
-    float rho_new =
-        gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
-
+    // Compute rho from u, P_new
+    float rho_new_from_u = update_rho(p, P_new);
     /* Ensure new density is not lower than minimum SPH density */
-    if (rho_new < rho_min) {
-      p->rho = rho_min;
-      p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-      p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+    if (rho_new_from_u > rho_min){
+      p->rho = rho_new_from_u;
     } else {
-      p->rho = rho_new;
-      p->P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-      p->T = gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+      p->rho = rho_min;
     }
-  } else {
-    const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-    const float T =
-        gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
-    p->P = P;
-    p->T = T;
   }
+
+  // finish computations
+  const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float T =
+        gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+  p->P = P;
+  p->T = T;
+
 #endif
 }
 
