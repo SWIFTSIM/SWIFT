@@ -29,13 +29,29 @@
 #include "timeline.h"
 #include "units.h"
 
-static long long cell_count_non_inhibited_gas(const struct cell* c,
-                                              const int subsample,
-                                              const float subsample_ratio,
-                                              const int snap_num) {
+/* Standard includes */
+#include <float.h>
+
+/**
+ * @brief Count the non-inhibted gas particles in the cell and return the
+ * min/max positions
+ *
+ * @param c The #cell.
+ * @param subsample Are we subsampling the output?
+ * @param susample_ratio Fraction of particles to write when sub-sampling.
+ * @param snap_num The snapshot number (used for the sampling random draws).
+ * @param min_pos (return) The min position of all particles to write.
+ * @param max_pos (return) The max position of all particles to write.
+ */
+static long long cell_count_non_inhibited_gas(
+    const struct cell* c, const int subsample, const float subsample_ratio,
+    const int snap_num, double min_pos[3], double max_pos[3]) {
   const int total_count = c->hydro.count;
   struct part* parts = c->hydro.parts;
   long long count = 0;
+  min_pos[0] = min_pos[1] = min_pos[2] = DBL_MAX;
+  max_pos[0] = max_pos[1] = max_pos[2] = -DBL_MAX;
+
   for (int i = 0; i < total_count; ++i) {
     if ((parts[i].time_bin != time_bin_inhibited) &&
         (parts[i].time_bin != time_bin_not_created)) {
@@ -48,6 +64,14 @@ static long long cell_count_non_inhibited_gas(const struct cell* c,
       }
 
       ++count;
+
+      min_pos[0] = min(parts[i].x[0], min_pos[0]);
+      min_pos[1] = min(parts[i].x[1], min_pos[1]);
+      min_pos[2] = min(parts[i].x[2], min_pos[2]);
+
+      max_pos[0] = max(parts[i].x[0], max_pos[0]);
+      max_pos[1] = max(parts[i].x[1], max_pos[1]);
+      max_pos[2] = max(parts[i].x[2], max_pos[2]);
     }
   }
   return count;
@@ -219,9 +243,11 @@ long long io_count_gas_to_write(const struct space* s, const int subsample,
   long long count = 0;
   for (int i = 0; i < s->nr_local_cells; ++i) {
 
+    double dummy1[3], dummy2[3];
+
     const struct cell* c = &s->cells_top[s->local_cells_top[i]];
-    count +=
-        cell_count_non_inhibited_gas(c, subsample, subsample_ratio, snap_num);
+    count += cell_count_non_inhibited_gas(c, subsample, subsample_ratio,
+                                          snap_num, dummy1, dummy2);
   }
   return count;
 }
@@ -387,29 +413,30 @@ long long io_count_neutrinos_to_write(const struct space* s,
 #endif
 
 /**
- * @brief Write a single 1D array to a hdf5 group.
+ * @brief Write a single rank 1 or rank 2 array to a hdf5 group.
  *
- * This creates a simple Nx1 array with a chunk size of 1024x1.
+ * This creates a simple Nxdim array with a chunk size of 1024xdim.
  * The Fletcher-32 filter is applied to the array.
  *
  * @param h_grp The open hdf5 group.
  * @param n The number of elements in the array.
+ * @param dim The dimensionality of each element.
  * @param array The data to write.
  * @param type The type of the data to write.
  * @param name The name of the array.
  * @param array_content The name of the parent group (only used for error
  * messages).
  */
-void io_write_array(hid_t h_grp, const int n, const void* array,
+void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
                     const enum IO_DATA_TYPE type, const char* name,
                     const char* array_content) {
 
   /* Create memory space */
-  const hsize_t shape[2] = {(hsize_t)n, 1};
+  const hsize_t shape[2] = {(hsize_t)n, dim};
   hid_t h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0)
     error("Error while creating data space for %s %s", name, array_content);
-  hid_t h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+  hid_t h_err = H5Sset_extent_simple(h_space, dim > 1 ? 2 : 1, shape, shape);
   if (h_err < 0)
     error("Error while changing shape of %s %s data space.", name,
           array_content);
@@ -417,9 +444,9 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
   /* Dataset type */
   hid_t h_type = H5Tcopy(io_hdf5_type(type));
 
-  const hsize_t chunk[2] = {(1024 > n ? n : 1024), 1};
+  const hsize_t chunk[2] = {(1024 > n ? n : 1024), dim};
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
-  h_err = H5Pset_chunk(h_prop, 1, chunk);
+  h_err = H5Pset_chunk(h_prop, dim > 1 ? 2 : 1, chunk);
   if (h_err < 0)
     error("Error while setting chunk shapes of %s %s data space.", name,
           array_content);
@@ -496,6 +523,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   double* centres = NULL;
   centres = (double*)malloc(3 * nr_cells * sizeof(double));
 
+  /* Temporary memory for the min position of particles in the cells */
+  double* min_part_pos = NULL;
+  min_part_pos = (double*)malloc(3 * nr_cells * sizeof(double));
+
+  double* max_part_pos = NULL;
+  max_part_pos = (double*)malloc(3 * nr_cells * sizeof(double));
+
   /* Temporary memory for the cell files ID */
   int* files = NULL;
   files = (int*)malloc(nr_cells * sizeof(int));
@@ -566,7 +600,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       /* Count real particles that will be written */
       count_part[i] = cell_count_non_inhibited_gas(
           &cells_top[i], subsample[swift_type_gas],
-          subsample_fraction[swift_type_gas], snap_num);
+          subsample_fraction[swift_type_gas], snap_num, &min_part_pos[i * 3],
+          &max_part_pos[i * 3]);
 
       count_gpart[i] = cell_count_non_inhibited_dark_matter(
           &cells_top[i], subsample[swift_type_dark_matter],
@@ -625,6 +660,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       centres[i * 3 + 1] = 0.;
       centres[i * 3 + 2] = 0.;
 
+      min_part_pos[i * 3 + 0] = 0.;
+      min_part_pos[i * 3 + 1] = 0.;
+      min_part_pos[i * 3 + 2] = 0.;
+
+      max_part_pos[i * 3 + 0] = 0.;
+      max_part_pos[i * 3 + 1] = 0.;
+      max_part_pos[i * 3 + 2] = 0.;
+
       count_part[i] = 0;
       count_gpart[i] = 0;
       count_background_gpart[i] = 0;
@@ -680,6 +723,11 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
      on floating point numbers */
   MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
+
+  MPI_Allreduce(MPI_IN_PLACE, min_part_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_part_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
 #endif
 
   /* When writing a single file, only rank 0 writes the meta-data */
@@ -695,6 +743,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
         centres[i * 3 + 0] *= factor;
         centres[i * 3 + 1] *= factor;
         centres[i * 3 + 2] *= factor;
+      }
+
+      /* Convert the particle envelopes */
+      for (int i = 0; i < nr_cells; ++i) {
+        for (int k = 0; k < 3; ++k) {
+          min_part_pos[i * 3 + k] *= factor;
+          max_part_pos[i * 3 + k] *= factor;
+        }
       }
 
       /* Convert the cell widths */
@@ -713,20 +769,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     H5Gclose(h_subgrp);
 
     /* Write the centres to the group */
-    hsize_t shape[2] = {(hsize_t)nr_cells, 3};
-    hid_t h_space = H5Screate(H5S_SIMPLE);
-    if (h_space < 0) error("Error while creating data space for cell centres");
-    hid_t h_err = H5Sset_extent_simple(h_space, 2, shape, shape);
-    if (h_err < 0)
-      error("Error while changing shape of gas offsets data space.");
-    hid_t h_data = H5Dcreate(h_grp, "Centres", io_hdf5_type(DOUBLE), h_space,
-                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_data < 0) error("Error while creating dataspace for gas offsets.");
-    h_err = H5Dwrite(h_data, io_hdf5_type(DOUBLE), h_space, H5S_ALL,
-                     H5P_DEFAULT, centres);
-    if (h_err < 0) error("Error while writing centres.");
-    H5Dclose(h_data);
-    H5Sclose(h_space);
+    io_write_array(h_grp, nr_cells, /*dim=*/3, centres, DOUBLE, "Centres",
+                   "Cell centres");
 
     /* Group containing the offsets and counts for each particle type */
     hid_t h_grp_offsets = H5Gcreate(h_grp, "OffsetsInFile", H5P_DEFAULT,
@@ -737,72 +781,89 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     if (h_grp_files < 0) error("Error while creating filess sub-group");
     hid_t h_grp_counts =
         H5Gcreate(h_grp, "Counts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t h_grp_min_pos =
+        H5Gcreate(h_grp, "MinPositions", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t h_grp_max_pos =
+        H5Gcreate(h_grp, "MaxPositions", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp_counts < 0) error("Error while creating counts sub-group");
 
     if (global_counts[swift_type_gas] > 0 && num_fields[swift_type_gas] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType0", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_part, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType0",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_part, LONGLONG,
                      "PartType0", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_part, LONGLONG, "PartType0",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_part, LONGLONG,
+                     "PartType0", "counts");
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_part_pos, DOUBLE,
+                     "PartType0", "counts");
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_part_pos, DOUBLE,
+                     "PartType0", "counts");
     }
 
     if (global_counts[swift_type_dark_matter] > 0 &&
         num_fields[swift_type_dark_matter] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType1", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_gpart, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType1",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_gpart, LONGLONG,
                      "PartType1", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_gpart, LONGLONG, "PartType1",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_gpart, LONGLONG,
+                     "PartType1", "counts");
     }
 
     if (global_counts[swift_type_dark_matter_background] > 0 &&
         num_fields[swift_type_dark_matter_background] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType2", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_background_gpart, LONGLONG,
-                     "PartType2", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_background_gpart, LONGLONG,
-                     "PartType2", "counts");
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType2",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1,
+                     offset_background_gpart, LONGLONG, "PartType2", "offsets");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_background_gpart,
+                     LONGLONG, "PartType2", "counts");
     }
 
     if (global_counts[swift_type_sink] > 0 && num_fields[swift_type_sink] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType3", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_sink, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType3",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_sink, LONGLONG,
                      "PartType3", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_sink, LONGLONG, "PartType3",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_sink, LONGLONG,
+                     "PartType3", "counts");
     }
 
     if (global_counts[swift_type_stars] > 0 &&
         num_fields[swift_type_stars] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType4", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_spart, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType4",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_spart, LONGLONG,
                      "PartType4", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_spart, LONGLONG, "PartType4",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_spart, LONGLONG,
+                     "PartType4", "counts");
     }
 
     if (global_counts[swift_type_black_hole] > 0 &&
         num_fields[swift_type_black_hole] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType5", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_bpart, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType5",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_bpart, LONGLONG,
                      "PartType5", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_bpart, LONGLONG, "PartType5",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_bpart, LONGLONG,
+                     "PartType5", "counts");
     }
 
     if (global_counts[swift_type_neutrino] > 0 &&
         num_fields[swift_type_neutrino] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType6", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_nupart, LONGLONG,
-                     "PartType6", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_nupart, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType6",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_nupart,
+                     LONGLONG, "PartType6", "offsets");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_nupart, LONGLONG,
                      "PartType6", "counts");
     }
 
     H5Gclose(h_grp_offsets);
     H5Gclose(h_grp_files);
     H5Gclose(h_grp_counts);
+    H5Gclose(h_grp_min_pos);
+    H5Gclose(h_grp_max_pos);
   }
 
   /* Free everything we allocated */
