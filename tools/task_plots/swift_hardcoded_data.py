@@ -64,7 +64,7 @@ TASKTYPES = [
     "stars_resort",
     "bh_in",
     "bh_out",
-    "bh_ghost",
+    "bh_density_ghost",
     "bh_swallow_ghost1",
     "bh_swallow_ghost2",
     "bh_swallow_ghost3",
