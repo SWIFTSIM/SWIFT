@@ -68,7 +68,7 @@ const char *taskID_names[task_type_count] = {
     "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
-    "end_hydro_force",
+    "hydro_end_force",
     "kick1",
     "kick2",
     "timestep",
