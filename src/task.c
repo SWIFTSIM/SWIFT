@@ -146,7 +146,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "stars_prep1",
     "stars_prep2",
     "stars_feedback",
-    "sf_count",
+    "sf_counts",
     "bpart_rho",
     "bpart_swallow",
     "bpart_feedback",
