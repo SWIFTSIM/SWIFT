@@ -234,7 +234,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
       }
   } else {
 
-    /* Loop over the gas particles in this cell. */
+    /* Loop over the sink particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */

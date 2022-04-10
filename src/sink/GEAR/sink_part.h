@@ -53,6 +53,10 @@ struct sink {
 
   /*! Particle time bin */
   timebin_t time_bin;
+  
+  /*! number of stars contained in the sink */
+  int n_stars;
+  
 
 #ifdef SWIFT_DEBUG_CHECKS
 

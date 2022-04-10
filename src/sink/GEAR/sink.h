@@ -128,7 +128,21 @@ INLINE static int sink_is_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor) {
 
-  return 1;
+  //const float temperature_max = sink_props->maximal_temperature;
+  // const float temperature = cooling_get_temperature(phys_const, hydro_props, us,cosmo, cooling, p, xp);
+  
+  const float density_threashold = sink_props->density_threashold;
+  
+  const float density = hydro_get_physical_density(p, cosmo);
+  
+  if (density>density_threashold)
+    {
+      message("forming a sink particle ! %lld",p->id);
+      return 1;
+    }
+  else
+    return 0;  
+
 }
 
 /**
@@ -148,10 +162,11 @@ INLINE static int sink_should_convert_to_sink(
     const struct part* p, const struct xpart* xp,
     const struct sink_props* sink_props, const struct engine* e,
     const double dt_sink) {
-  const float random_number =
-      random_unit_interval(p->id, e->ti_current, random_number_star_formation);
+  //const float random_number =
+  //    random_unit_interval(p->id, e->ti_current, random_number_star_formation);
 
-  return random_number < 5e-4;
+  return 1;
+  //return random_number < 5e-4;
 }
 
 /**
@@ -176,7 +191,11 @@ INLINE static void sink_copy_properties(
     const struct phys_const* phys_const,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {}
+    const struct cooling_function_data* restrict cooling) {
+      
+
+    sink->n_stars=3;  
+}
 
 /**
  * @brief Should the sink spawn a star particle?
@@ -197,10 +216,24 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const int with_cosmology,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
+  
   const float random_number = random_unit_interval(
       sink->id, e->ti_current, random_number_star_formation);
-
-  return random_number < 1e-3;
+  //return random_number < 1;  //1e-3;
+  
+  if (sink->n_stars>0)
+    {
+      if (random_number<1e-2)
+        {
+          sink->n_stars--;
+          message("%lld spawn a star : n_star is now %d",sink->id,sink->n_stars);
+          return 1;
+        }
+      else
+        return 0;    
+    }  
+  else
+    return 0;
 }
 
 /**
