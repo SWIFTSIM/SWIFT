@@ -158,9 +158,31 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
-/* Import the grid construction functions*/
+/* Import the grid construction functions. */
 #include "runner_doiact_grid.h"
+
+/* Import the moving mesh hydro functions. */
+
+/* Gradient calculation */
+#define FUNCTION gradient
+#define FUNCTION_TASK_LOOP TASK_LOOP_GRADIENT
 #include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Slope limiter */
+#define FUNCTION slope_limiter
+#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_LIMITER
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Flux exchange */
+#define FUNCTION flux_exchange
+#define FUNCTION_TASK_LOOP TASK_LOOP_FLUX_EXCHANGE
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
 
 /**
  * @brief The #runner main thread routine.
@@ -279,7 +301,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grid_construction)
             runner_doself_grid_construction(r, ci);
           else if (t->subtype == task_subtype_flux)
-            runner_doself_grid_flux_exchange(r, ci);
+            runner_doself_flux_exchange(r, ci);
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -331,7 +353,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_grid_construction)
             runner_dopair_grid_construction(r, ci, cj);
           else if (t->subtype == task_subtype_flux)
-            runner_dopair_grid_flux_exchange_branch(r, ci, cj);
+            runner_dopair_branch_flux_exchange(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

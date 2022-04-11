@@ -44,7 +44,7 @@
  * @param surface_area Surface area of the face.
  * @param shift Shift to apply to the coordinates of pj.
  */
-__attribute__((always_inline)) INLINE static void runner_iact_flux(
+__attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     struct part *pi, struct part *pj, double const *centroid,
     float surface_area, const double *shift) {
 
@@ -161,6 +161,41 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux(
 }
 
 /**
+* @brief Calculate the gradient interaction between particle i and particle j
+*
+* This method wraps around hydro_gradients_collect, which can be an empty
+* method, in which case no gradients are used.
+*
+* @param pi Particle i (the "left" particle). This particle must always be
+* active.
+* @param pj Particle j (the "right" particle).
+* @param centroid Centroid of the face between pi and pj.
+* @param surface_area Surface area of the face.
+* @param shift Shift to apply to the coordinates of pj.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_gradient(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {
+  /* TODO */
+}
+
+/**
+* @brief Limit the gradient estimates.
+*
+* @param pi Particle i (the "left" particle). This particle must always be
+* active.
+* @param pj Particle j (the "right" particle).
+* @param centroid Centroid of the face between pi and pj.
+* @param surface_area Surface area of the face.
+* @param shift Shift to apply to the coordinates of pj.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {
+  /* TODO */
+}
+
+/**
  * @brief Not used in the ShadowSWIFT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
@@ -177,34 +212,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float H) {}
 
 /**
-* @brief Calculate the gradient interaction between particle i and particle j
-*
-* This method wraps around hydro_gradients_collect, which can be an empty
-* method, in which case no gradients are used.
-*
-* @param r2 Comoving squared distance between particle i and particle j.
-* @param dx Comoving distance vector between the particles (dx = pi->x -
-* pj->x).
-* @param hi Comoving smoothing-length of particle i.
-* @param hj Comoving smoothing-length of particle j.
-* @param pi Particle i.
-* @param pj Particle j.
-* @param a Current scale factor.
-* @param H Current Hubble parameter.
- */
-__attribute__((always_inline)) INLINE static void runner_iact_gradient(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
-  hydro_gradients_collect(r2, dx, hi, hj, pi, pj);
-}
-
-/**
-* @brief Calculate the gradient interaction between particle i and particle j:
-* non-symmetric version
-*
-* This method wraps around hydro_gradients_nonsym_collect, which can be an
-* empty method, in which case no gradients are used.
+* @brief Not used in ShadowSWIFT
 *
 * @param r2 Comoving squared distance between particle i and particle j.
 * @param dx Comoving distance vector between the particles (dx = pi->x -
@@ -219,9 +227,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
-  hydro_gradients_nonsym_collect(r2, dx, hi, hj, pi, pj);
-}
+    const float H) {}
 
 /**
  * @brief Not used in the ShadowSWIFT scheme.
