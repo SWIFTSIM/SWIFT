@@ -520,6 +520,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
 
+  p->delay_time = 0.f;
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
   p->N_force = 0;
