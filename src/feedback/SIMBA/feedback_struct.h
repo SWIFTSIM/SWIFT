@@ -32,8 +32,7 @@ struct feedback_part_data {
 /**
  * @brief Extra feedback fields carried by each hydro particles
  */
-struct feedback_xpart_data {
-};
+struct feedback_xpart_data {};
 
 /**
  * @brief Feedback fields carried by each star particles
@@ -58,10 +57,12 @@ struct feedback_spart_data {
       float v_kick;
 
       /* Remaining energy to distribute as heat */
-      float delta_u; // ALEXEI: surely this should be an energy and not an internal energy because don't know particle's mass we're distributing to.
+      float delta_u;  // ALEXEI: surely this should be an energy and not an
+                      // internal energy because don't know particle's mass
+                      // we're distributing to.
 
       /* Delay time */
-      double simba_delay_time; // ALEXEI: think of a better place to put this
+      double simba_delay_time;  // ALEXEI: think of a better place to put this
 
     } to_distribute;
 

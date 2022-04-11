@@ -234,8 +234,8 @@ struct part {
   /*! Time-step limiter information */
   struct timestep_limiter_data limiter_data;
 
-   /* Delay time for decoupling from hydro */
-  double delay_time; 
+  /* Delay time for decoupling from hydro */
+  double delay_time;
 
 #ifdef SWIFT_DEBUG_CHECKS
 

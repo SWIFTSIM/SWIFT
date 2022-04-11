@@ -35,10 +35,14 @@ struct feedback_props {
   float galsf_firevel;
   float galsf_firevel_slope;
   float scale_factor_norm;
-  float vwvf_scatter; // ALEXEI: rename this variable to something intelligible.
+  float
+      vwvf_scatter;  // ALEXEI: rename this variable to something intelligible.
 
   /* Delay time */
-  float simba_delay_time; //ALEXEI use this variable to read in value from yml file, to be copied later to individual particles so that feedback iact function can access it. Perhaps move somewhere else
+  float simba_delay_time;  // ALEXEI use this variable to read in value from yml
+                           // file, to be copied later to individual particles so
+                           // that feedback iact function can access it. Perhaps
+                           // move somewhere else
 };
 
 /**
@@ -59,18 +63,27 @@ INLINE static void feedback_props_init(struct feedback_props *fp,
                                        const struct cosmology *cosmo) {
 
   /* Initialize parameters for calculating rotational velocity of galaxy */
-  fp->simba_host_galaxy_mass_norm = parser_get_param_float(params, "SIMBAFeedback:galaxy_mass_norm"); // 102.329 ALEXEI: guide values added in until figured out what are appropriate values.
-  fp->simba_v_circ_exp = parser_get_param_float(params, "SIMBAFeedback:v_circ_exp"); // 0.26178;
+  fp->simba_host_galaxy_mass_norm = parser_get_param_float(
+      params,
+      "SIMBAFeedback:galaxy_mass_norm");  // 102.329 ALEXEI: guide values added
+                                          // in until figured out what are
+                                          // appropriate values.
+  fp->simba_v_circ_exp =
+      parser_get_param_float(params, "SIMBAFeedback:v_circ_exp");  // 0.26178;
 
   /* Initialize parameters for calculating ejection velocity */
-  fp->galsf_firevel = parser_get_param_float(params,"SIMBAFeedback:galsf_vel"); // Look in config file 1.6
-  fp->galsf_firevel_slope = parser_get_param_float(params, "SIMBAFeedback:galsf_vel_slope"); // 0.12;
-  fp->scale_factor_norm = parser_get_param_float(params,"SIMBAFeedback:scale_factor_norm"); // 200.;
-  fp->vwvf_scatter = parser_get_param_float(params,"SIMBAFeedback:wind_scatter"); // 0.1;
+  fp->galsf_firevel = parser_get_param_float(
+      params, "SIMBAFeedback:galsf_vel");  // Look in config file 1.6
+  fp->galsf_firevel_slope =
+      parser_get_param_float(params, "SIMBAFeedback:galsf_vel_slope");  // 0.12;
+  fp->scale_factor_norm = parser_get_param_float(
+      params, "SIMBAFeedback:scale_factor_norm");  // 200.;
+  fp->vwvf_scatter =
+      parser_get_param_float(params, "SIMBAFeedback:wind_scatter");  // 0.1;
 
   /* read in delay time */
-  fp->simba_delay_time = parser_get_param_float(params,"SIMBAFeedback:delay_time");
-
+  fp->simba_delay_time =
+      parser_get_param_float(params, "SIMBAFeedback:delay_time");
 }
 
 #endif /* SWIFT_SIMBA_FEEDBACK_PROPERTIES_H */

@@ -26,52 +26,61 @@
 #include "part.h"
 #include "units.h"
 
-
 /**
  * @brief Calculates speed particles will be kicked based on
- * host galaxy properties 
+ * host galaxy properties
  *
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_kick_speed(struct spart *sp, const struct feedback_props *feedback_props, const struct cosmology *cosmo) {
+inline void compute_kick_speed(struct spart* sp,
+                               const struct feedback_props* feedback_props,
+                               const struct cosmology* cosmo) {
 
   /* Calculate circular velocity based on Baryonic Tully-Fisher relation*/
-  const float v_circ = pow(sp->feedback_data.host_galaxy_mass/feedback_props->simba_host_galaxy_mass_norm, feedback_props->simba_v_circ_exp);
+  const float v_circ = pow(sp->feedback_data.host_galaxy_mass /
+                               feedback_props->simba_host_galaxy_mass_norm,
+                           feedback_props->simba_v_circ_exp);
 
   /* checkout what this random number does and how to generate it */
   const float random_num = 1.;
 
   /* Calculate wind speed */
-  // ALEXEI: checkout what the numbers in this equation mean. Maybe possible future simplifications
-  sp->feedback_data.to_distribute.v_kick = feedback_props->galsf_firevel 
-      * pow(v_circ * cosmo->a /feedback_props->scale_factor_norm,feedback_props->galsf_firevel_slope) 
-      * pow(feedback_props->scale_factor_norm,0.12 - feedback_props->galsf_firevel_slope)
-      * (1. - feedback_props->vwvf_scatter - 2.*feedback_props->vwvf_scatter*random_num)
-      * v_circ;
+  // ALEXEI: checkout what the numbers in this equation mean. Maybe possible
+  // future simplifications
+  sp->feedback_data.to_distribute.v_kick =
+      feedback_props->galsf_firevel *
+      pow(v_circ * cosmo->a / feedback_props->scale_factor_norm,
+          feedback_props->galsf_firevel_slope) *
+      pow(feedback_props->scale_factor_norm,
+          0.12 - feedback_props->galsf_firevel_slope) *
+      (1. - feedback_props->vwvf_scatter -
+       2. * feedback_props->vwvf_scatter * random_num) *
+      v_circ;
 
   // ALEXEI: temporarily set to arbitrary number for testing.
   sp->feedback_data.to_distribute.v_kick = 500.;
-  
 }
 
 /**
  * @brief Calculates speed particles will be kicked based on
- * host galaxy properties 
+ * host galaxy properties
  *
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_mass_loading(struct spart *sp, const struct feedback_props *feedback_props) {};
+inline void compute_mass_loading(struct spart* sp,
+                                 const struct feedback_props* feedback_props){};
 
 /**
  * @brief Calculates speed particles will be kicked based on
- * host galaxy properties 
+ * host galaxy properties
  *
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-inline void compute_heating(struct spart *sp, const struct feedback_props *feedback_props) {};
+inline void compute_heating(struct spart* sp,
+                            const struct feedback_props* feedback_props){};
 
 /**
  * @brief Update the properties of a particle fue to feedback effects after
@@ -113,7 +122,6 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
   return (sp->birth_time != -1.);
 }
 
-
 /**
  * @brief Prepares a s-particle for its feedback interactions
  *
@@ -123,7 +131,6 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
     struct spart* sp) {
   // Temporarily set the particle's galaxy host mass artificially.
   sp->feedback_data.host_galaxy_mass = 1.;
-
 }
 
 /**
@@ -168,7 +175,8 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
  */
 __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
     struct spart* sp, const struct feedback_props* feedback_props) {
-  sp->feedback_data.to_distribute.simba_delay_time = feedback_props->simba_delay_time;
+  sp->feedback_data.to_distribute.simba_delay_time =
+      feedback_props->simba_delay_time;
 }
 
 /**
@@ -253,7 +261,6 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     const struct unit_system* us, const struct phys_const* phys_const,
     const integertime_t ti_current, const double time_base) {}
 
-
 static INLINE void feedback_clean(struct feedback_props* fp) {}
 
 /**
@@ -289,6 +296,5 @@ INLINE static void feedback_write_flavour(struct feedback_props* feedback,
   io_write_attribute_s(h_grp, "Feedback Model", "SIMBA (kinetic decoupled)");
 }
 #endif  // HAVE_HDF5
-
 
 #endif /* SWIFT_FEEDBACK_SIMBA_H */

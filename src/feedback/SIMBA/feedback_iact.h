@@ -36,14 +36,11 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float *dx,
-                                    const float hi, const float hj,
-                                    struct spart *restrict si,
-                                    const struct part *restrict pj,
-                                    const struct xpart *restrict xp,
-                                    const struct cosmology *restrict cosmo,
-				    const struct feedback_props *fb_props,
-                                    const integertime_t ti_current) {}
+runner_iact_nonsym_feedback_density(
+    const float r2, const float *dx, const float hi, const float hj,
+    struct spart *restrict si, const struct part *restrict pj,
+    const struct xpart *restrict xp, const struct cosmology *restrict cosmo,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {}
 
 /**
  * @brief Feedback interaction between two particles (non-symmetric).
@@ -64,28 +61,27 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  const struct spart *restrict si,
-                                  struct part *restrict pj,
-                                  struct xpart *restrict xp,
-                                  const struct cosmology *restrict cosmo,
-				  const struct hydro_props *hydro_props,
-				  const struct feedback_props *fb_props,
-                                  const integertime_t ti_current) {
-  
+runner_iact_nonsym_feedback_apply(
+    const float r2, const float *dx, const float hi, const float hj,
+    const struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xp, const struct cosmology *restrict cosmo,
+    const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
+
   /* Get the probability of doing feedback */
   // Compute mass loading which will determine probability
-  const float prob = 1./50.; // ALEXEI: just set to random constant for now
+  const float prob = 1. / 50.;  // ALEXEI: just set to random constant for now
 
   if (prob > 0) {
     /* Draw a random number (Note mixing both IDs) */
-    const float rand = random_unit_interval(si->id + pj->id, ti_current, random_number_stellar_feedback);
+    const float rand = random_unit_interval(si->id + pj->id, ti_current,
+                                            random_number_stellar_feedback);
 
     /* Are we lucky? */
     if (rand < prob) {
       /* kick particle */
-      for (int i = 0; i < 3; i++) pj->v[i] += si->feedback_data.to_distribute.v_kick;
+      for (int i = 0; i < 3; i++)
+        pj->v[i] += si->feedback_data.to_distribute.v_kick;
 
       /* Heat particle */
       const float u_init = hydro_get_physical_internal_energy(pj, xp, cosmo);
@@ -97,7 +93,6 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       pj->delay_time = si->feedback_data.to_distribute.simba_delay_time;
     }
   }
-
 }
 
 #endif /* SWIFT_SIMBA_FEEDBACK_IACT_H */
