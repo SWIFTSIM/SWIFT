@@ -1,0 +1,22 @@
+This directory contains a series of examples using an idealised cluster
+that contains a intracluster medium (ICM), a NFW profile for the dark 
+matter halo and a Hernquist (1990) profile for the central galaxy. 
+
+The ICs are the same as presented in Nobels et al. (2022), see 
+https://arxiv.org/abs/2204.02205. There are 3 example directories 
+for the three different halo masse used in Nobels et al. (2022). 
+The fiducial ICs for the 10^13 Msun and 10^14 Msun idealised cluster
+contain resolution variations for 5 different resolutions. For each
+halo mass the central temperature variations discussed in the paper
+are provided. 
+
+The code should be configured using a NFW profile and the desired subgrid
+models:
+./configure --with-ext-potential=nfw --enable-fixed-boundary-particles=2
+
+The first argument sets the external potential to an NFW profile and the 
+second argument pins the supermassive BH of the simulation to the centre
+of the halo.
+
+These ICs are ideal for testing galaxy formation subgrid model 
+implementation.
