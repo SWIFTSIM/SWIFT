@@ -501,9 +501,10 @@ double lightcone_map_doppler_b_get_value(
         error("only implemented for flat cosmology");
 #endif
 
+      /* beware: we need comoving radial peculiar velocities, so no a_cross
+         factor is required (reminder: p->v = a^2 \dot{x})! */
       double radial_velocity =
-          (p->v[0] * x_cross[0] * a_cross + p->v[1] * x_cross[1] * a_cross +
-           p->v[2] * x_cross[2] * a_cross) /
+          (p->v[0] * x_cross[0] + p->v[1] * x_cross[1] + p->v[2] * x_cross[2]) /
           angular_diameter_distance;
 
       double pixel_size_2 = lightcone_props->pixel_area_steradians;
@@ -572,8 +573,9 @@ double lightcone_map_dispersion_meassure_get_value(
 #endif
 
       double pixel_size_2 = lightcone_props->pixel_area_steradians;
-      double dm_for_map =
-          n_e * m / (pixel_size_2 * angular_diameter_distance_2 * rho);
+      /* an additional a_cross = 1/(1+z) is part of the integrand */
+      double dm_for_map = n_e * m * a_cross /
+                          (pixel_size_2 * angular_diameter_distance_2 * rho);
 
       return dm_for_map;
     } break;
