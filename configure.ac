@@ -1630,7 +1630,7 @@ AC_SUBST([NUMA_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SIMBA default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1713,6 +1713,19 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
+   SIMBA)
+	with_subgrid_cooling=grackle_0
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=SIMBA
+	with_subgrid_black_holes=none
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
@@ -2273,7 +2286,7 @@ esac
 # Feedback model
 AC_ARG_WITH([feedback],
    [AS_HELP_STRING([--with-feedback=<model>],
-      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR default: none@:>@]
+      [Feedback model to use @<:@none, EAGLE, EAGLE-thermal, EAGLE-kinetic, GEAR, SIMBA default: none@:>@]
    )],
    [with_feedback="$withval"],
    [with_feedback="none"]
@@ -2304,6 +2317,10 @@ case "$with_feedback" in
    GEAR)
       AC_DEFINE([FEEDBACK_GEAR], [1], [GEAR stellar feedback and evolution model])
       with_feedback_name="GEAR"
+   ;;
+   SIMBA)
+      AC_DEFINE([FEEDBACK_SIMBA], [1], [SIMBA stellar feedback and evolution model])
+      with_feedback_name="SIMBA decoupled winds feedback"
    ;;
    none)
       AC_DEFINE([FEEDBACK_NONE], [1], [No feedback])

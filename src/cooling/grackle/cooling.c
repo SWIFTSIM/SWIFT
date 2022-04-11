@@ -1040,7 +1040,7 @@ void cooling_init_backend(struct swift_params* parameter_file,
  * @param cooling the cooling data structure.
  */
 void cooling_clean(struct cooling_function_data* cooling) {
-  _free_chemistry_data(&cooling->chemistry, &grackle_rates);
+  //_free_chemistry_data(&cooling->chemistry, &grackle_rates);
 }
 
 /**
