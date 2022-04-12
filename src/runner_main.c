@@ -40,6 +40,9 @@
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
 
+/* Import the hydro loop functions */
+
+/* SPH hydro loops */
 /* Import the density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
@@ -60,6 +63,30 @@
 #define FUNCTION force
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
 #include "runner_doiact_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Moving mesh hydro loops. */
+#ifdef EXTRA_HYDRO_LOOP
+/* Gradient calculation */
+#define FUNCTION slope_estimate
+#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_ESTIMATE
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Slope limiter */
+#define FUNCTION slope_limiter
+#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_LIMITER
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+#endif
+
+/* Flux exchange */
+#define FUNCTION flux_exchange
+#define FUNCTION_TASK_LOOP TASK_LOOP_FLUX_EXCHANGE
+#include "runner_doiact_grid_hydro.h"
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
 
@@ -160,29 +187,6 @@
 
 /* Import the grid construction functions. */
 #include "runner_doiact_grid.h"
-
-/* Import the moving mesh hydro functions. */
-
-/* Gradient calculation */
-#define FUNCTION gradient
-#define FUNCTION_TASK_LOOP TASK_LOOP_GRADIENT
-#include "runner_doiact_grid_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
-
-/* Slope limiter */
-#define FUNCTION slope_limiter
-#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_LIMITER
-#include "runner_doiact_grid_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
-
-/* Flux exchange */
-#define FUNCTION flux_exchange
-#define FUNCTION_TASK_LOOP TASK_LOOP_FLUX_EXCHANGE
-#include "runner_doiact_grid_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
 
 /**
  * @brief The #runner main thread routine.
@@ -300,6 +304,10 @@ void *runner_main(void *data) {
             runner_doself_sinks_merger(r, ci);
           else if (t->subtype == task_subtype_grid_construction)
             runner_doself_grid_construction(r, ci);
+          else if (t->subtype == task_subtype_slope_estimate)
+            runner_doself_slope_estimate(r, ci);
+          else if (t->subtype == task_subtype_slope_limiter)
+            runner_doself_slope_limiter(r, ci);
           else if (t->subtype == task_subtype_flux)
             runner_doself_flux_exchange(r, ci);
           else
@@ -352,6 +360,10 @@ void *runner_main(void *data) {
             runner_do_sym_pair_sinks_merger(r, ci, cj);
           else if (t->subtype == task_subtype_grid_construction)
             runner_dopair_grid_construction(r, ci, cj);
+          else if (t->subtype == task_subtype_slope_estimate)
+            runner_dopair_branch_slope_estimate(r, ci, cj);
+          else if (t->subtype == task_subtype_slope_limiter)
+            runner_dopair_branch_slope_limiter(r, ci, cj);
           else if (t->subtype == task_subtype_flux)
             runner_dopair_branch_flux_exchange(r, ci, cj);
           else
@@ -645,6 +657,12 @@ void *runner_main(void *data) {
           break;
         case task_type_grid_ghost:
           runner_do_grid_ghost(r, t->ci, 1);
+          break;
+        case task_type_slope_estimate_ghost:
+          runner_do_slope_estimate_ghost(r, t->ci, 1);
+          break;
+        case task_type_slope_limiter_ghost:
+          runner_do_slope_limiter_ghost(r, t->ci, 1);
           break;
         case task_type_flux_ghost:
           runner_do_flux_ghost(r, t->ci, 1);

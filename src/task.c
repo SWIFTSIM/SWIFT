@@ -122,6 +122,8 @@ const char *taskID_names[task_type_count] = {
     "rt_transport_out",
     "rt_tchem",
     "grid_ghost",
+    "slope_estimate_ghost",
+    "slope_limiter_ghost",
     "flux_ghost",
 };
 
@@ -131,6 +133,8 @@ const char *subtaskID_names[task_subtype_count] = {
     "density",
     "gradient",
     "force",
+    "slope_estimate",
+    "slope_limiter",
     "flux",
     "limiter",
     "grav",

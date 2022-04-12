@@ -1216,7 +1216,8 @@ static void scheduler_splittask_grid_hydro(struct task *t,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (t->subtype != task_subtype_flux)
-    error("Found non grid construction task in scheduler_splittask_grid_hydro!");
+    error(
+        "Found non grid construction task in scheduler_splittask_grid_hydro!");
 #endif
 
   /* Iterate on this task until we're done with it. */
@@ -1302,7 +1303,8 @@ static void scheduler_splittask_grid_hydro(struct task *t,
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (!ci->split || !cj->split)
-          error("Ci and cj are not both split, but we are above the "
+          error(
+              "Ci and cj are not both split, but we are above the "
               "construction level of both!");
 #endif
         /* Get the sid of the pair. */
@@ -1343,13 +1345,14 @@ static void scheduler_splittask_grid_hydro(struct task *t,
                 s);
           }
         } /* Loop over pairs of progeny */
-      } /* Split? */
+      }   /* Split? */
       else {
         /* Do we need to switch ci and cj (so that t->ci will always be at its
          * construction level)? */
         if (t->ci->grid.construction_level != t->ci) {
 #ifdef SWIFT_DEBUG_CHECKS
-          if (t->ci->grid.construction_level == NULL || t->cj->grid.construction_level == NULL)
+          if (t->ci->grid.construction_level == NULL ||
+              t->cj->grid.construction_level == NULL)
             error("Pair task should have been split further!");
           if (t->cj->grid.construction_level != t->cj)
             error("Pair flux exchange below construction level of both cells!");
@@ -1360,7 +1363,7 @@ static void scheduler_splittask_grid_hydro(struct task *t,
         }
       }
     } /* Pair interaction?*/
-  } /* Redo? */
+  }   /* Redo? */
 }
 
 /**
@@ -1865,7 +1868,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_i;
         else if (t->subtype == task_subtype_grid_construction)
           cost = 1.f * (wscale * count_i) * count_i;
-        else if (t->subtype == task_subtype_flux)
+        else if (t->subtype == task_subtype_slope_estimate ||
+                 t->subtype == task_subtype_slope_limiter ||
+                 t->subtype == task_subtype_flux)
           cost = 1.f * (wscale * count_i) * count_i;
         else
           error("Untreated sub-type for selfs: %s",
@@ -1946,7 +1951,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_grid_construction) {
           cost = 1.f * (wscale * count_i) * count_j * sid_scale[t->flags];
-        } else if (t->subtype == task_subtype_flux) {
+        } else if (t->subtype == task_subtype_slope_estimate ||
+                   t->subtype == task_subtype_slope_limiter ||
+                   t->subtype == task_subtype_flux) {
           cost = 1.f * (wscale * count_i) * count_j * sid_scale[t->flags];
         } else {
           error("Untreated sub-type for pairs: %s",
@@ -2169,6 +2176,18 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 5.f * (wscale * count_i) * count_i;
         else
           cost = 1e9;
+        break;
+      case task_type_grid_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
+        break;
+      case task_type_slope_estimate_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
+        break;
+      case task_type_slope_limiter_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
+        break;
+      case task_type_flux_ghost:
+        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
         break;
       default:
         cost = 0;

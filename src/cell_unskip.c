@@ -3082,9 +3082,20 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
 
+    for (struct link *l = c->hydro.slope_estimate; l != NULL; l = l->next) {
+      scheduler_activate(s, l->t);
+    }
+    for (struct link *l = c->hydro.slope_limiter; l != NULL; l = l->next) {
+      scheduler_activate(s, l->t);
+    }
+
     for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
       scheduler_activate(s, l->t);
 
+    if (c->hydro.slope_estimate_ghost != NULL)
+      scheduler_activate(s, c->hydro.slope_estimate_ghost);
+    if (c->hydro.slope_limiter_ghost != NULL)
+      scheduler_activate(s, c->hydro.slope_limiter_ghost);
     if (c->hydro.flux_ghost != NULL)
       scheduler_activate(s, c->hydro.flux_ghost);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);

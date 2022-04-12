@@ -1386,6 +1386,16 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
+#ifdef EXTRA_HYDRO_LOOP
+    /* Add the task finishing the gradient calculation */
+    c->hydro.slope_estimate_ghost = scheduler_addtask(
+        s, task_type_slope_estimate_ghost, task_subtype_none, 0, 0, c, NULL);
+
+    /* Add the task finishing the gradient limiting procedure */
+    c->hydro.slope_limiter_ghost = scheduler_addtask(
+        s, task_type_slope_limiter_ghost, task_subtype_none, 0, 0, c, NULL);
+#endif
+
     /* Add the task finishing the flux_exchange */
     c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
                                             task_subtype_none, 0, 0, c, NULL);
@@ -2396,54 +2406,6 @@ void engine_link_grid_tasks(struct engine *e) {
 
     if (t_type == task_type_grid_ghost) {
       /* This is only temporarily, should unlock the grid hydro tasks */
-      scheduler_addunlock(sched, t, ci->super->kick2);
-    }
-  }
-}
-
-/**
- * @brief Creates all the task dependencies for the grid hydrodynamics
- *
- * @param e The #engine
- */
-void engine_link_grid_hydro_tasks(struct engine *e) {
-  struct scheduler *sched = &e->sched;
-  const int nr_tasks = sched->nr_tasks;
-
-  for (int k = 0; k < nr_tasks; k++) {
-    /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
-
-    if (t->type == task_type_none) continue;
-
-    /* Get the cell we act on */
-    struct cell *ci = t->ci;
-    const enum task_types t_type = t->type;
-    const enum task_subtypes t_subtype = t->subtype;
-
-    /* Node ID (if running with MPI) TODO */
-
-    if (t_subtype == task_subtype_flux) {
-        /* Ghost_construction --> flux exchange --> flux_ghost */
-#ifdef SWIFT_DEBUG_CHECKS
-      if (ci->grid.construction_level != ci)
-        error("Self flux exchange task found not on construction level!");
-#endif
-      scheduler_addunlock(sched, ci->grid.ghost, t);
-      scheduler_addunlock(sched, t, ci->hydro.super->hydro.flux_ghost);
-      if (t_type == task_type_pair) {
-        /* Get the second cell */
-        struct cell *cj = t->cj;
-
-        if (ci->hydro.super != cj->hydro.super) {
-          scheduler_addunlock(sched, t, cj->hydro.super->hydro.flux_ghost);
-        }
-      }
-    }
-
-    if (t_type == task_type_flux_ghost) {
-      /* This is only temporarily, should unlock other stuff such as the cooling
-       * etc. */
       scheduler_addunlock(sched, t, ci->super->kick2);
     }
   }
@@ -4323,12 +4285,42 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
   }
 }
 
+#ifdef EXTRA_HYDRO_LOOP
+/**
+ * @brief Construct the right dependencies for the hydro loops of the moving
+ * mesh scheme.
+ *
+ * construction ghost -> slope_estimate -> slope_limiter -> flux
+ *
+ * @param sched
+ * @param c
+ * @param t_slope_estimate
+ * @param t_slope_limiter
+ * @param t_flux
+ * */
+void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
+                                             struct cell *c,
+                                             struct task *t_slope_estimate,
+                                             struct task *t_slope_limiter,
+                                             struct task *t_flux) {
+  scheduler_addunlock(sched, c->grid.super->grid.ghost, t_slope_estimate);
+  scheduler_addunlock(sched, t_slope_estimate,
+                      c->hydro.super->hydro.slope_estimate_ghost);
+  scheduler_addunlock(sched, c->hydro.super->hydro.slope_estimate_ghost,
+                      t_slope_limiter);
+  scheduler_addunlock(sched, t_slope_limiter,
+                      c->hydro.super->hydro.slope_limiter_ghost);
+  scheduler_addunlock(sched, c->hydro.super->hydro.slope_limiter_ghost, t_flux);
+  scheduler_addunlock(sched, t_flux, c->hydro.super->hydro.flux_ghost);
+}
+#else
 void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
                                              struct cell *c,
                                              struct task *t_flux) {
   scheduler_addunlock(sched, c->grid.super->grid.ghost, t_flux);
   scheduler_addunlock(sched, t_flux, c->hydro.super->hydro.flux_ghost);
 }
+#endif
 
 /**
  * @brief Duplicates the grid construction loop and construct all the
@@ -4345,7 +4337,8 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
 #ifdef EXTRA_HYDRO_LOOP
-  /* TODO: Add gradient and gradient limiter loops */
+  struct task *t_slope_estimate = NULL;
+  struct task *t_slope_limiter = NULL;
 #endif
   struct task *t_flux = NULL;
   /* TODO add limiter dependencies */
@@ -4376,12 +4369,29 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         /* No additional dependencies for self task */
 
+#ifdef EXTRA_HYDRO_LOOP
+        /* Create slope estimate task */
+        t_slope_estimate =
+            scheduler_addtask(sched, task_type_self,
+                              task_subtype_slope_estimate, flags, 0, ci, NULL);
+
+        /* Create slope limiter task */
+        t_slope_limiter =
+            scheduler_addtask(sched, task_type_self, task_subtype_slope_limiter,
+                              flags, 0, ci, NULL);
+#endif
+
         /* Create flux exchange task */
         t_flux = scheduler_addtask(sched, task_type_self, task_subtype_flux,
                                    flags, 0, ci, NULL);
 
         /* Create hydro loop dependencies*/
+#ifdef EXTRA_HYDRO_LOOP
+        engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
+                                                t_slope_limiter, t_flux);
+#else
         engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
+#endif
 
         /* Link tasks to cell */
         engine_addlink(e, &ci->hydro.flux, t_flux);
@@ -4417,19 +4427,37 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         /* Construction level ci == ci */
         struct cell *construction_level_j = cj->grid.construction_level;
 
-        /* Should we add a flux pair interaction? */
+        /* Should we add hydro pair interactions? */
         if (construction_level_j == NULL ||
             (construction_level_j == cj && !flipped)) {
 
+#ifdef EXTRA_HYDRO_LOOP
+          t_slope_estimate =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_slope_estimate, sid, 0, ci, cj);
+          t_slope_limiter =
+              scheduler_addtask(sched, task_type_pair,
+                                task_subtype_slope_limiter, sid, 0, ci, cj);
+#endif
           t_flux = scheduler_addtask(sched, task_type_pair, task_subtype_flux,
                                      sid, 0, ci, cj);
 
           /* Create hydro loop dependencies. */
+#ifdef EXTRA_HYDRO_LOOP
+          engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
+                                                  t_slope_limiter, t_flux);
+          /* We also need a dependency on the construction task of cj, since the
+           * interaction might be flipped */
+          if (cj->hydro.super != ci->hydro.super)
+            engine_make_grid_hydroloop_dependencies(sched, cj, t_slope_estimate,
+                                                    t_slope_limiter, t_flux);
+#else
           engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
           /* We also need a dependency on the construction task of cj, since the
            * interaction might be flipped */
           if (cj->hydro.super != ci->hydro.super)
             engine_make_grid_hydroloop_dependencies(sched, cj, t_flux);
+#endif
 
           /* link tasks to cells */
           engine_addlink(e, &ci->hydro.flux, t_flux);

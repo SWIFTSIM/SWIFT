@@ -31,22 +31,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     struct part* restrict pj) {}
 
 /**
- * @brief Gradient calculations done during the neighbour loop: non-symmetric
- * version
- *
- * @param r2 Squared distance between the two particles.
- * @param dx Distance vector (pi->x - pj->x).
- * @param hi Smoothing length of particle i.
- * @param hj Smoothing length of particle j.
- * @param pi Particle i.
- * @param pj Particle j.
- */
-__attribute__((always_inline)) INLINE static void
-hydro_gradients_nonsym_collect(float r2, const float* dx, float hi, float hj,
-                               struct part* restrict pi,
-                               struct part* restrict pj) {}
-
-/**
  * @brief Finalize the gradient variables after all data have been collected
  *
  * @param p Particle.

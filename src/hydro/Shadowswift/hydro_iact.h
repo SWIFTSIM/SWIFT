@@ -25,6 +25,39 @@
 #include "hydro_setters.h"
 #include "rt_additions.h"
 
+
+/**
+* @brief Update the slope estimates of particles pi and pj.
+*
+* @param pi Particle i (the "left" particle). This particle must always be
+* active.
+* @param pj Particle j (the "right" particle).
+* @param centroid Centroid of the face between pi and pj.
+* @param surface_area Surface area of the face.
+* @param shift Shift to apply to the coordinates of pj.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {
+  /* TODO */
+}
+
+/**
+* @brief Limit the gradient estimates.
+*
+* @param pi Particle i (the "left" particle). This particle must always be
+* active.
+* @param pj Particle j (the "right" particle).
+* @param centroid Centroid of the face between pi and pj.
+* @param surface_area Surface area of the face.
+* @param shift Shift to apply to the coordinates of pj.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {
+  /* TODO */
+}
+
 /**
  * @brief The flux calculation between particle i and j
  *
@@ -161,41 +194,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 }
 
 /**
-* @brief Calculate the gradient interaction between particle i and particle j
-*
-* This method wraps around hydro_gradients_collect, which can be an empty
-* method, in which case no gradients are used.
-*
-* @param pi Particle i (the "left" particle). This particle must always be
-* active.
-* @param pj Particle j (the "right" particle).
-* @param centroid Centroid of the face between pi and pj.
-* @param surface_area Surface area of the face.
-* @param shift Shift to apply to the coordinates of pj.
- */
-__attribute__((always_inline)) INLINE static void runner_iact_gradient(
-    struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift) {
-  /* TODO */
-}
-
-/**
-* @brief Limit the gradient estimates.
-*
-* @param pi Particle i (the "left" particle). This particle must always be
-* active.
-* @param pj Particle j (the "right" particle).
-* @param centroid Centroid of the face between pi and pj.
-* @param surface_area Surface area of the face.
-* @param shift Shift to apply to the coordinates of pj.
- */
-__attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
-    struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift) {
-  /* TODO */
-}
-
-/**
  * @brief Not used in the ShadowSWIFT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
@@ -207,6 +205,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @brief Not used in the ShadowSWIFT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+/**
+* @brief Not used in ShadowSWIFT.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {}

@@ -1135,8 +1135,14 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 28;
   }
   if (e->policy & engine_policy_grid_hydro) {
-    /* Flux exchange: 1 self + 13 pairs + 1 ghost */
-    n1 += 15;
+    /* 1 self (flux), 1 sort, 26/2 flux pairs, 1 drift, 1 ghosts, 2 kicks, 1
+     * time-step */
+    n1 += 20;
+    n2 += 2;
+#ifdef EXTRA_HYDRO_LOOP
+    /* 2 self (slope estimate + limiter), 26 pairs, 2 ghost. */
+    n1 += 30;
+#endif
   }
 
 #ifdef WITH_MPI

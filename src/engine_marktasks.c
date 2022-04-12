@@ -364,7 +364,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate grid hydro tasks */
-      else if (t_subtype == task_subtype_flux) {
+      else if (t_subtype == task_subtype_slope_estimate ||
+               t_subtype == task_subtype_slope_limiter ||
+               t_subtype == task_subtype_flux) {
         if (ci_active_hydro) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (!(e->policy & engine_policy_grid_hydro)) {
@@ -848,7 +850,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate grid hydro tasks */
-      else if (t_subtype == task_subtype_flux) {
+      else if (t_subtype == task_subtype_slope_estimate ||
+               t_subtype == task_subtype_slope_limiter ||
+               t_subtype == task_subtype_flux) {
         if (ci_active_hydro || cj_active_hydro) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (!(e->policy & engine_policy_grid_hydro)) {
@@ -1500,7 +1504,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       if (cell_is_active_hydro(t->ci, e)) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_grid_hydro)) {
-          error("Encountered flux ghost task without engine_policy_grid_hydro!");
+          error(
+              "Encountered flux ghost task without engine_policy_grid_hydro!");
         }
 #endif
         scheduler_activate(s, t);

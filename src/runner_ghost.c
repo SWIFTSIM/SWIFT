@@ -1829,6 +1829,54 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
+ * @brief Finish up the gradient calculation.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c, int timer) {
+
+  struct engine *e = r->e;
+
+  if (c->hydro.super != c)
+    error("Slope estimate ghost not run at super level!");
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* TODO */
+
+  if (timer) TIMER_TOC(timer_do_slope_estimate_ghost);
+}
+
+/**
+ * @brief Finish up the gradient limiting procedure.
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c, int timer) {
+
+  struct engine *e = r->e;
+
+  if (c->hydro.super != c)
+    error("Slope limiter ghost not run at super level!");
+  TIMER_TIC;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+  if (!cell_is_active_hydro(c, e)) return;
+
+  /* TODO */
+
+  if (timer) TIMER_TOC(timer_do_slope_limiter_ghost);
+}
+
+/**
  * @brief Finish up the flux calculation.
  *
  * This function reruns the construction tasks for unconverged particles until

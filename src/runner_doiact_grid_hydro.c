@@ -9,8 +9,8 @@
 #include "timers.h"
 
 /* Import the gradient loop functions. */
-#define FUNCTION gradient
-#define FUNCTION_TASK_LOOP TASK_LOOP_GRADIENT
+#define FUNCTION slope_estimate
+#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_ESTIMATE
 #include "runner_doiact_functions_grid_hydro.h"
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
