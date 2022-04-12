@@ -225,9 +225,9 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
     {
       if (random_number<1e-2)
         {
-          sink->n_stars--;
-          message("%lld spawn a star : n_star is now %d",sink->id,sink->n_stars);
-          return 1;
+          //sink->n_stars--;
+          //message("%lld spawn a star : n_star is now %d",sink->id,sink->n_stars);
+          return 0;
         }
       else
         return 0;    

@@ -43,6 +43,7 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
+#include "sink_struct.h"
 
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
@@ -191,6 +192,9 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+  
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;  
 
   /*! Material identifier flag */
   enum eos_planetary_material_id mat_id;

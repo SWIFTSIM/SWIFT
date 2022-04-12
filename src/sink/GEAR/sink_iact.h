@@ -19,6 +19,61 @@
 #ifndef SWIFT_GEAR_SINKS_IACT_H
 #define SWIFT_GEAR_SINKS_IACT_H
 
+
+
+/**
+ * @brief do sink computation after the runner_iact_density (symmetric
+ * version)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_sink(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
+
+  //struct sink_part_data *chi = &pi->sink_data;
+  //struct sink_part_data *chj = &pj->sink_data;
+
+}
+
+
+/**
+ * @brief do sink computation after the runner_iact_density (non symmetric
+ * version)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, const struct part *restrict pj, const float a,
+    const float H) {
+
+  //struct sink_part_data *chi = &pi->chemistry_data;
+  //const struct sink_part_data *chj = &pj->chemistry_data;
+
+}
+
+
+
+
+
+
+
 /**
  * @brief Compute formation interaction between two particles (non-symmetric).
  *
@@ -35,8 +90,11 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_compute_formation(const float r2, const float *dx,
                                            const float hi, const float hj,
                                            struct sink *restrict si,
-                                           const struct part *restrict pj,
+                                           struct part *restrict pj,
                                            const float a, const float H) {
+
+//message("%lld",pj->sink_data.swallow_id);
+
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
@@ -68,6 +126,18 @@ __attribute__((always_inline)) INLINE static int runner_iact_sym_sinks_merger(
     struct sink *restrict si, struct sink *restrict sj, const float a,
     const float H) {
 
+  message(">>");
+  if (sqrt(r2) < si->r_cut || sqrt(r2) < sj->r_cut){
+      if (si->id > sj->id){
+          sj->mass = sj->mass + si->mass;       // should also add momentum and metals
+          return sink_merger_remove_first;
+        }  
+      else {
+          si->mass = si->mass + sj->mass;       // should also add momentum and metals
+          return sink_merger_remove_second;  
+        }
+    }
+  
   return sink_merger_remove_none;
 
 #ifdef DEBUG_INTERACTIONS_SINKS

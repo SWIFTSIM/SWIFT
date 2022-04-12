@@ -30,6 +30,7 @@
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 #include "voronoi_cell.h"
+#include "sink_struct.h"
 
 /* Extra particle data not needed during the computation. */
 struct xpart {
@@ -198,6 +199,9 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+  
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;  
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
