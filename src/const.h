@@ -81,22 +81,25 @@
    gradient matrix and use SPH gradients instead. */
 #define const_gizmo_min_wcorr 0.5f
 
-/* Types of gradients to use for SHADOWFAX_SPH */
+/* Options controlling ShadowSWIFT */
+/* Types of gradients to use for ShadowSWIFT */
 /* If no option is chosen, no gradients are used (first order scheme) */
-#define SHADOWFAX_GRADIENTS
+#define SHADOWSWIFT_GRADIENTS
 
-/* SHADOWFAX_SPH slope limiters */
-#define SHADOWFAX_SLOPE_LIMITER_PER_FACE
-#define SHADOWFAX_SLOPE_LIMITER_CELL_WIDE
+/* Always activate the slope limiters if we use gradients (the scheme becomes
+ * unstable otherwise) */
+#ifdef SHADOWSWIFT_GRADIENTS
+#define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
+#define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
+#endif
 
-/* Options to control SHADOWFAX_SPH */
 /* This option disables cell movement */
-//#define SHADOWFAX_FIX_CELLS
+//#define SHADOWSWIFT_FIX_CELLS
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
-#define SHADOWFAX_STEER_CELL_MOTION
+//#define SHADOWSWIFT_STEER_CELL_MOTION
 /* This option evolves the total energy instead of the thermal energy */
-//#define SHADOWFAX_TOTAL_ENERGY
+//#define SHADOWSWIFT_TOTAL_ENERGY
 
 /* Source terms */
 #define SOURCETERMS_NONE
