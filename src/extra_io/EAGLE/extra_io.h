@@ -66,12 +66,14 @@ INLINE static int extra_io_write_particles(const struct part *parts,
   list[0] = io_make_output_field_convert_part(
       "XrayPhotonLuminosities", DOUBLE, 3, UNIT_CONV_PHOTONS_PER_TIME, 0.f,
       parts, xparts, convert_part_Xray_photons,
-      "Intrinsic X-ray photon luminosities in various bands");
+      "Intrinsic X-ray photon luminosities in various bands. This is 0 for "
+      "star-forming particles.");
 
   list[1] = io_make_output_field_convert_part(
       "XrayLuminosities", DOUBLE, 3, UNIT_CONV_POWER, 0.f, parts, xparts,
       convert_part_Xray_energies,
-      "Intrinsic X-ray luminosities in various bands");
+      "Intrinsic X-ray luminosities in various bands. This is 0 for "
+      "star-forming particles.");
 
   return 2;
 }

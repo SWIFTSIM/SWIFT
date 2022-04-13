@@ -22,8 +22,9 @@
 #include "chemistry.h"
 #include "cooling.h"
 #include "engine.h"
+#include "star_formation.h"
 
-#define xray_table_date_string 20210713
+#define xray_table_date_string 20210923
 
 #define xray_emission_N_temperature 46
 #define xray_emission_N_density 71
@@ -47,66 +48,64 @@ enum xray_band_types {
 /**
  * @brief The general properties required for the extra i/o fields.
  */
-
-struct xray_properties {
-
-  /* Element masses for the chemistry elements (cgs) */
-  float *element_mass;
-
-  /* Temperature bins from xray table (cgs) */
-  float *Temperatures;
-
-  /* Density bins from xray table (physical cgs) */
-  float *Densities;
-
-  /* Helium fraction bins from xray table */
-  float *He_bins;
-
-  /* Redshift bins from xray table */
-  float *Redshifts;
-
-  /* Solar metallicites from xray table */
-  float *Solar_metallicity;
-
-  /* Log of solar metallicites from xray table */
-  float *Log10_solar_metallicity;
-
-  /* Integrated photon emissivity in the erosita-low band (0.2-2.3 keV)
-   * (physical) */
-  float *emissivity_erosita_low_intrinsic_photons;
-
-  /* Integrated photon emissivity in the erosita-high band (2.3-8.0 keV)
-   * (physical) */
-  float *emissivity_erosita_high_intrinsic_photons;
-
-  /* Integrated photon emissivity in the ROSAT band (0.5-2.0 keV) (physical)
-   */
-  float *emissivity_ROSAT_intrinsic_photons;
-
-  /* Integrated emissivity in the erosita-low band (0.2-2.3 keV)
-   * (physical) */
-  float *emissivity_erosita_low_intrinsic_energies;
-
-  /* Integrated emissivity in the erosita-high band (2.3-8.0 keV)
-   * (physical) */
-  float *emissivity_erosita_high_intrinsic_energies;
-
-  /* Integrated emissivity in the ROSAT band (0.5-2.0 keV) (physical)
-   */
-  float *emissivity_ROSAT_intrinsic_energies;
-
-  /* Path to the xray table */
-  char xray_table_path[500];
-
-  /* Photon emissivity unit conversion factor */
-  double xray_photon_emissivity_unit_conversion;
-
-  /* Energy emissivity unit conversion factor */
-  double xray_energy_emissivity_unit_conversion;
-};
-
 struct extra_io_properties {
-  struct xray_properties xray_data;
+
+  struct xray_properties {
+
+    /* Element masses for the chemistry elements (cgs) */
+    float *element_mass;
+
+    /* Temperature bins from xray table (cgs) */
+    float *Temperatures;
+
+    /* Density bins from xray table (physical cgs) */
+    float *Densities;
+
+    /* Helium fraction bins from xray table */
+    float *He_bins;
+
+    /* Redshift bins from xray table */
+    float *Redshifts;
+
+    /* Solar metallicites from xray table */
+    float *Solar_metallicity;
+
+    /* Log of solar metallicites from xray table */
+    float *Log10_solar_metallicity;
+
+    /* Integrated photon emissivity in the erosita-low band (0.2-2.3 keV)
+     * (physical) */
+    float *emissivity_erosita_low_intrinsic_photons;
+
+    /* Integrated photon emissivity in the erosita-high band (2.3-8.0 keV)
+     * (physical) */
+    float *emissivity_erosita_high_intrinsic_photons;
+
+    /* Integrated photon emissivity in the ROSAT band (0.5-2.0 keV) (physical)
+     */
+    float *emissivity_ROSAT_intrinsic_photons;
+
+    /* Integrated emissivity in the erosita-low band (0.2-2.3 keV)
+     * (physical) */
+    float *emissivity_erosita_low_intrinsic_energies;
+
+    /* Integrated emissivity in the erosita-high band (2.3-8.0 keV)
+     * (physical) */
+    float *emissivity_erosita_high_intrinsic_energies;
+
+    /* Integrated emissivity in the ROSAT band (0.5-2.0 keV) (physical)
+     */
+    float *emissivity_ROSAT_intrinsic_energies;
+
+    /* Path to the xray table */
+    char xray_table_path[500];
+
+    /* Photon emissivity unit conversion factor */
+    double xray_photon_emissivity_unit_conversion;
+
+    /* Energy emissivity unit conversion factor */
+    double xray_energy_emissivity_unit_conversion;
+  } xray_data;
 };
 
 /**
@@ -710,6 +709,9 @@ INLINE static float do_xray_interpolation(
 /**
  * @brief Compute the emmisivity of a particle in a given X-ray band.
  *
+ * Particles that are star-forming or have a (rho,T) pair outside
+ * the table range return a flux of 0.
+ *
  * @param p The #part.
  * @param xp The corresponding #xpart.
  * @param e The #engine.
@@ -736,9 +738,11 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
                    e->cooling_func->number_density_to_cgs;
   const float log10_nH_cgs = log10f(nH);
 
-  /* If the particle is not in the table range we return a flux of 0 */
+  /* If the particle is not in the table range or star-forming, we return a flux
+   * of 0 */
   if ((log10_T < 5.0f || log10_T > 9.5f) ||
-      (log10_nH_cgs < -8.0f || log10_nH_cgs > 6.0f))
+      (log10_nH_cgs < -8.0f || log10_nH_cgs > 6.0f) ||
+      star_formation_get_SFR(p, xp) > 0.)
     return 0.;
 
   /* Get gas particle element mass fractions */
