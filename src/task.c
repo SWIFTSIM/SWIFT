@@ -1487,8 +1487,8 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
 
-    /* Skip implicit tasks, tasks that didn't run this step. */
-    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
+    /* Skip implicit tasks and tasks that have not ran. */
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > 0) {
       int subtype = e->sched.tasks[l].subtype;
 
       double dt = e->sched.tasks[l].toc - e->sched.tasks[l].tic;
