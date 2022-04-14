@@ -276,7 +276,7 @@ void space_regrid_zoom(struct space *s,
       error("Failed to allocate indices of local top-level cells.");
     bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
-        /* Allocate the indices of local cells with tasks */
+    /* Allocate the indices of local cells with tasks */
     if (swift_memalign("local_cells_with_tasks_top",
                        (void **)&s->local_cells_with_tasks_top,
                        SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
