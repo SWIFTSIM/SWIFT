@@ -1847,7 +1847,15 @@ void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c, int timer)
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
-  /* TODO */
+  /* Finish gradient calculation for active particles */
+  for (int k = 0; k < c->hydro.count; k++) {
+    struct part *p = &c->hydro.parts[k];
+
+    if (!part_is_active(p, e)) continue;
+
+    /* Finalize gradients and initialize slope limiters */
+    hydro_end_gradient(p);
+  }
 
   if (timer) TIMER_TOC(timer_do_slope_estimate_ghost);
 }
@@ -1872,6 +1880,15 @@ void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c, int timer) 
   if (!cell_is_active_hydro(c, e)) return;
 
   /* TODO */
+  /* Apply the cell wide slope limiters for active particles */
+  for (int k = 0; k < c->hydro.count; k++) {
+    struct part *p = &c->hydro.parts[k];
+
+    if (!part_is_active(p, e)) continue;
+
+    /* Finalize gradients and initialize slope limiters */
+    hydro_slope_limit_cell(p);
+  }
 
   if (timer) TIMER_TOC(timer_do_slope_limiter_ghost);
 }
@@ -1898,7 +1915,7 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
-  /* TODO */
+  /* TODO what actually needs to happen here? */
 
   if (timer) TIMER_TOC(timer_do_flux_ghost);
 }

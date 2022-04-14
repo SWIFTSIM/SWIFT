@@ -53,8 +53,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "limiter={"
       "rho=[%.3e,%.3e], "
       "v=[[%.3e,%.3e],[%.3e,%.3e],[%.3e,%.3e]], "
-      "P=[%.3e,%.3e], "
-      "maxr=%.3e}}, "
+      "P=[%.3e,%.3e]}}, "
       "conserved={"
       "momentum=[%.3e,%.3e,%.3e], "
       "mass=%.3e, "
@@ -73,7 +72,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->limiter.rho[0], p->limiter.rho[1], p->limiter.v[0][0],
       p->limiter.v[0][1], p->limiter.v[1][0], p->limiter.v[1][1],
       p->limiter.v[2][0], p->limiter.v[2][1], p->limiter.P[0], p->limiter.P[1],
-      p->limiter.maxr, p->conserved.momentum[0], p->conserved.momentum[1],
+      p->conserved.momentum[0], p->conserved.momentum[1],
       p->conserved.momentum[2], p->conserved.mass, p->conserved.energy,
       p->geometry.volume,
       p->timestepvars.vmax);

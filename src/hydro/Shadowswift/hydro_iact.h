@@ -39,11 +39,59 @@
 __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
     struct part *pi, struct part *pj, double const *centroid,
     float surface_area, const double *shift) {
-  /* TODO */
+  if (!surface_area) {
+    /* particle is not a cell neighbour: do nothing */
+    return;
+  }
+
+  /* Initialize local variables */
+  const double dx[3] = {pi->x[0] - pj->x[0] - shift[0],
+                        pi->x[1] - pj->x[1] - shift[1],
+                        pi->x[2] - pj->x[2] - shift[2]};
+  const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  /* c is supposed to be the vector pointing from the midpoint of pi and pj to
+     the centroid of the face between pi and pj.
+     The coordinates of the centroid of the face of the voronoi cell of particle
+     pi are given in the case of periodic boundary conditions. */
+  double c[3] = {centroid[0] - 0.5 * (pi->x[0] + pj->x[0] + shift[0]),
+                 centroid[1] - 0.5 * (pi->x[1] + pj->x[1] + shift[1]),
+                 centroid[2] - 0.5 * (pi->x[2] + pj->x[2] + shift[2])};
+
+  /* Update gradient estimate pi */
+  double r = sqrt(r2);
+  hydro_gradients_single_quantity(pi->rho, pj->rho, c, dx, r, surface_area,
+                                  pi->gradients.rho);
+  hydro_gradients_single_quantity(pi->fluid_v[0], pj->fluid_v[0], c, dx, r,
+                                  surface_area, pi->gradients.v[0]);
+  hydro_gradients_single_quantity(pi->fluid_v[1], pj->fluid_v[1], c, dx, r,
+                                  surface_area, pi->gradients.v[1]);
+  hydro_gradients_single_quantity(pi->fluid_v[2], pj->fluid_v[2], c, dx, r,
+                                  surface_area, pi->gradients.v[2]);
+  hydro_gradients_single_quantity(pi->P, pj->P, c, dx, r, surface_area,
+                                  pi->gradients.P);
+
+  /* Also update gradient estimate pj? */
+  if (pj->flux.dt >= 0) {
+    double mindx[3];
+    mindx[0] = -dx[0];
+    mindx[1] = -dx[1];
+    mindx[2] = -dx[2];
+    hydro_gradients_single_quantity(pj->rho, pi->rho, c, mindx, r, surface_area,
+                                    pj->gradients.rho);
+    hydro_gradients_single_quantity(pj->fluid_v[0], pi->fluid_v[0], c, mindx, r,
+                                    surface_area, pj->gradients.v[0]);
+    hydro_gradients_single_quantity(pj->fluid_v[1], pi->fluid_v[1], c, mindx, r,
+                                    surface_area, pj->gradients.v[1]);
+    hydro_gradients_single_quantity(pj->fluid_v[2], pi->fluid_v[2], c, mindx, r,
+                                    surface_area, pj->gradients.v[2]);
+    hydro_gradients_single_quantity(pj->P, pi->P, c, mindx, r, surface_area,
+                                    pj->gradients.P);
+  }
 }
 
 /**
-* @brief Limit the gradient estimates.
+* @brief Collect info necessary for limiting the gradient estimates.
 *
 * @param pi Particle i (the "left" particle). This particle must always be
 * active.
@@ -55,7 +103,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
 __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
     struct part *pi, struct part *pj, double const *centroid,
     float surface_area, const double *shift) {
-  /* TODO */
+
+  float f_ij[3] = {centroid[0] - pi->x[0], centroid[1] - pi->x[1],
+                    centroid[2] - pi->x[2]};
+  hydro_slope_limit_cell_collect(pi, pj, f_ij);
+
+  /* Also treat pj? */
+  if (pj->flux.dt >= 0) {
+    float f_ji[3] = {centroid[0] - pj->x[0] - shift[0],
+                      centroid[1] - pj->x[1] - shift[1],
+                      centroid[2] - pj->x[2] - shift[2]};
+    hydro_slope_limit_cell_collect(pj, pi, f_ji);
+  }
 }
 
 /**
@@ -148,11 +207,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   assert(vij[0] == 0.f && vij[1] == 0.f && vij[2] == 0.);
 #endif
 
+  /* get the time step for the flux exchange. This is always the smallest time
+     step among the two particles */
+  const float min_dt = (pj->flux.dt > 0.f)
+                           ? fminf(pi->flux.dt, pj->flux.dt)
+                           : pi->flux.dt;
+
   float xij_i[3];
   for (int k = 0; k < 3; k++) {
     xij_i[k] = centroid[k] - pi->x[k];
   }
-  hydro_gradients_predict(pi, pj, pi->h, pj->h, dx, r, xij_i, /*min_dt,*/ Wi, Wj);
+  hydro_gradients_predict(pi, pj, dx, r, xij_i, min_dt, Wi, Wj);
 
   /* Boost the primitive variables to the frame of reference of the interface */
   /* Note that velocities are indices 1-3 in W */
@@ -162,12 +227,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   Wj[1] -= vij[0];
   Wj[2] -= vij[1];
   Wj[3] -= vij[2];
-
-  /* get the time step for the flux exchange. This is always the smallest time
-     step among the two particles */
-  const float min_dt = (pj->flux.dt > 0.f)
-                           ? fminf(pi->flux.dt, pj->flux.dt)
-                           : pi->flux.dt;
 
 #ifdef SWIFT_DEBUG_CHECKS
   assert(pi->flux.dt >= 0);

@@ -140,8 +140,19 @@ struct part {
     /* Extreme values of the pressure among the neighbours. */
     float P[2];
 
-    /* Maximal distance to all neighbouring faces. */
-    float maxr;
+    struct {
+
+      /* Extreme values of the extrapolated density towards the neighbours. */
+      float rho[2];
+
+      /* Extreme values of the extrapolated fluid velocity towards the
+       * neighbours. */
+      float v[3][2];
+
+      /* Extreme values of the extrapolated pressure towards the neighbours. */
+      float P[2];
+
+    } extrapolations;
 
   } limiter;
 

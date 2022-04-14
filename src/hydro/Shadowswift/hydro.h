@@ -238,7 +238,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part* restrict p) {}
 
 /**
- * @brief Finishes the gradient calculation.
+ * @brief Finishes the gradient calculation and prepares the particle for the
+ * slope limiting loop.
  *
  * Just a wrapper around hydro_gradients_finalize, which can be an empty method,
  * in which case no gradients are used.
@@ -254,6 +255,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* reset the gradients if we are using Lloyd's algorith; we don't use them */
   /* TODO */
+
+  hydro_slope_limiter_prepare(p);
 }
 
 /**
