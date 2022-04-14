@@ -87,6 +87,7 @@
 #include "output_options.h"
 #include "partition.h"
 #include "potential.h"
+#include "pressure_floor.h"
 #include "profiler.h"
 #include "proxy.h"
 #include "restart.h"
@@ -2846,8 +2847,9 @@ void engine_init(
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos,
     struct neutrino_response *neutrino_response,
-    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
-    const struct external_potential *potential,
+    struct feedback_props *feedback,
+    struct pressure_floor_props *pressure_floor, struct rt_props *rt,
+    struct pm_mesh *mesh, const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -2970,6 +2972,7 @@ void engine_init(
   e->cooling_func = cooling_func;
   e->star_formation = starform;
   e->feedback_props = feedback;
+  e->pressure_floor_props = pressure_floor;
   e->rt_props = rt;
   e->chemistry = chemistry;
   e->io_extra_props = io_extra_props;
@@ -3395,6 +3398,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->output_options);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
+    free((void *)e->pressure_floor_props);
     free((void *)e->rt_props);
     free((void *)e->sink_properties);
     free((void *)e->stars_properties);
@@ -3467,6 +3471,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
+  pressure_floor_struct_dump(e->pressure_floor_props, stream);
   rt_struct_dump(e->rt_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
@@ -3588,6 +3593,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct feedback_props *)malloc(sizeof(struct feedback_props));
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
+
+  struct pressure_floor_props *pressure_floor_properties =
+      (struct pressure_floor_props *)malloc(
+          sizeof(struct pressure_floor_props));
+  pressure_floor_struct_restore(pressure_floor_properties, stream);
+  e->pressure_floor_props = pressure_floor_properties;
 
   struct rt_props *rt_properties =
       (struct rt_props *)malloc(sizeof(struct rt_props));

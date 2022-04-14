@@ -14,7 +14,7 @@ if [ ! -d black_formatting_env ]
 then
   echo "Formatting environment not found, installing it..."
   python3 -m venv black_formatting_env
-  ./black_formatting_env/bin/python3 -m pip install black==19.3b0
+  ./black_formatting_env/bin/python3 -m pip install click==8.0.4 black==19.3b0
 fi
 # Now we know exactly which black to use
 black="./black_formatting_env/bin/python3 -m black"

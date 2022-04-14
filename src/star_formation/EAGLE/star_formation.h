@@ -826,6 +826,15 @@ INLINE static void starformation_init_backend(
 
   } else if (strcmp(temp_SF, "Subgrid") == 0) {
 
+#ifdef COOLING_EAGLE
+    error(
+        "The 'Subgrid' SF threshold in the EAGLE star formation model cannot "
+        "be used in combination with EAGLE cooling. A cooling model with "
+        "subgrid quantities (such as 'COLIBRE' using the Ploeckinger tables) "
+        "must be used. Alternatively, the 'Zdep' threshold should be used as "
+        "it can be combined with any cooling model.");
+#endif
+
     /* Subgrid quantities based model */
     starform->SF_threshold = eagle_star_formation_threshold_subgrid;
 

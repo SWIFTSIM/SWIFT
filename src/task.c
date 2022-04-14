@@ -68,7 +68,7 @@ const char *taskID_names[task_type_count] = {
     "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
-    "end_hydro_force",
+    "hydro_end_force",
     "kick1",
     "kick2",
     "timestep",
@@ -147,7 +147,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "stars_prep1",
     "stars_prep2",
     "stars_feedback",
-    "sf_count",
+    "sf_counts",
     "bpart_rho",
     "bpart_swallow",
     "bpart_feedback",
@@ -1015,17 +1015,6 @@ int task_lock(struct task *t) {
           cell_bunlocktree(ci);
           return 0;
         }
-        if (cell_locktree(ci) != 0) {
-          cell_sunlocktree(ci);
-          cell_sunlocktree(cj);
-          return 0;
-        }
-        if (cell_locktree(cj) != 0) {
-          cell_sunlocktree(ci);
-          cell_sunlocktree(cj);
-          cell_unlocktree(ci);
-          return 0;
-        }
       } else if (subtype == task_subtype_limiter) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         if (ci->hydro.hold || cj->hydro.hold) return 0;
@@ -1503,8 +1492,8 @@ void task_dump_stats(const char *dumpfile, struct engine *e,
   for (int l = 0; l < e->sched.nr_tasks; l++) {
     int type = e->sched.tasks[l].type;
 
-    /* Skip implicit tasks, tasks that didn't run this step. */
-    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > e->tic_step) {
+    /* Skip implicit tasks and tasks that have not ran. */
+    if (!e->sched.tasks[l].implicit && e->sched.tasks[l].tic > 0) {
       int subtype = e->sched.tasks[l].subtype;
 
       double dt = e->sched.tasks[l].toc - e->sched.tasks[l].tic;

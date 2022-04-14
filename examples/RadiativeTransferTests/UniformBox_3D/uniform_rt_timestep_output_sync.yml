@@ -39,7 +39,6 @@ InitialConditions:
   periodic:   1                     # periodic ICs?
 
 Scheduler:
-  max_top_level_cells:       24
   cell_split_size:           25       # Lower than default to test going deep(er) in the tree
   dependency_graph_frequency: 0
 

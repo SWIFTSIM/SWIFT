@@ -22,6 +22,9 @@
 
 #ifdef HAVE_HDF5
 
+/* Some standard headers. */
+#include <libgen.h>
+
 /* Local headers */
 #include "engine.h"
 #include "fof.h"

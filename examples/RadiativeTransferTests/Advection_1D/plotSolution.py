@@ -109,6 +109,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     # Read in data firt
     data = swiftsimio.load(filename)
     meta = data.metadata
+    scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
     boxsize = meta.boxsize[0]
 
@@ -204,7 +205,13 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             # plot flux X
             new_attribute_str = "radiation_flux" + str(g + 1) + "X"
             photon_flux = getattr(data.gas, new_attribute_str)
-            photon_flux = photon_flux.to("erg/cm**2/s")
+            if scheme.startswith("GEAR M1closure"):
+                photon_flux = photon_flux.to("erg/cm**2/s")
+            elif scheme.startswith("SPH M1closure"):
+                photon_flux = photon_flux.to("erg*cm/s")
+            else:
+                print("Error: Unknown RT scheme " + scheme)
+                exit()
 
             ax = fig.add_subplot(2, ngroups, g + 1 + ngroups)
             ax.scatter(part_positions, photon_flux, **scatterplot_kwargs)

@@ -1071,7 +1071,7 @@ int main(int argc, char *argv[]) {
       pressure_floor_init(&pressure_floor_props, &prog_const, &us,
                           &hydro_properties, params);
     else
-      bzero(&pressure_floor_props, sizeof(struct pressure_floor_properties));
+      bzero(&pressure_floor_props, sizeof(struct pressure_floor_props));
 
     /* Initialise the stars properties */
     if (with_stars)
