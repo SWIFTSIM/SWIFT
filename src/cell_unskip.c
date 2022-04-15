@@ -2722,7 +2722,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {
 
     if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
-    if (c->sinks.ghost != NULL) scheduler_activate(s, c->sinks.ghost);
+    if (c->sinks.sink_ghost1 != NULL) scheduler_activate(s, c->sinks.sink_ghost1);
     if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);

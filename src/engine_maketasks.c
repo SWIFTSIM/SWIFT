@@ -1519,8 +1519,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_sink_in, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
-        c->sinks.ghost =
-            scheduler_addtask(s, task_type_sink_ghost, task_subtype_none, 0,
+        c->sinks.sink_ghost1 =
+            scheduler_addtask(s, task_type_sink_ghost1, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
         c->sinks.sink_out =
@@ -2516,9 +2516,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         /* Do the sink merger */
         scheduler_addunlock(sched, ci->top->hydro.sink_formation,
                             t_sink_merger);
-        scheduler_addunlock(sched, t_sink_merger, ci->hydro.super->sinks.ghost);
+        scheduler_addunlock(sched, t_sink_merger, ci->hydro.super->sinks.sink_ghost1);
         /* Do the sink accretion */
-        scheduler_addunlock(sched, ci->hydro.super->sinks.ghost,
+        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
                             t_sink_accretion);
         scheduler_addunlock(sched, t_sink_accretion,
                             ci->hydro.super->sinks.sink_out);
@@ -2838,9 +2838,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->top->hydro.sink_formation,
                               t_sink_merger);
           scheduler_addunlock(sched, t_sink_merger,
-                              ci->hydro.super->sinks.ghost);
+                              ci->hydro.super->sinks.sink_ghost1);
           /* Accretion */
-          scheduler_addunlock(sched, ci->hydro.super->sinks.ghost,
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
                               t_sink_accretion);
           scheduler_addunlock(sched, t_sink_accretion,
                               ci->hydro.super->sinks.sink_out);
@@ -2990,10 +2990,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, cj->top->hydro.sink_formation,
                                 t_sink_merger);
             scheduler_addunlock(sched, t_sink_merger,
-                                cj->hydro.super->sinks.ghost);
+                                cj->hydro.super->sinks.sink_ghost1);
 
             /* Accretion */
-            scheduler_addunlock(sched, cj->hydro.super->sinks.ghost,
+            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
                                 t_sink_accretion);
             scheduler_addunlock(sched, t_sink_accretion,
                                 cj->hydro.super->sinks.sink_out);
@@ -3289,10 +3289,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         /* Merger */
         scheduler_addunlock(sched, ci->top->hydro.sink_formation,
                             t_sink_merger);
-        scheduler_addunlock(sched, t_sink_merger, ci->hydro.super->sinks.ghost);
+        scheduler_addunlock(sched, t_sink_merger, ci->hydro.super->sinks.sink_ghost1);
 
         /* Accretion */
-        scheduler_addunlock(sched, ci->hydro.super->sinks.ghost,
+        scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
                             t_sink_accretion);
         scheduler_addunlock(sched, t_sink_accretion,
                             ci->hydro.super->sinks.sink_out);
@@ -3622,10 +3622,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->top->hydro.sink_formation,
                               t_sink_merger);
           scheduler_addunlock(sched, t_sink_merger,
-                              ci->hydro.super->sinks.ghost);
+                              ci->hydro.super->sinks.sink_ghost1);
 
           /* Accretion */
-          scheduler_addunlock(sched, ci->hydro.super->sinks.ghost,
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
                               t_sink_accretion);
           scheduler_addunlock(sched, t_sink_accretion,
                               ci->hydro.super->sinks.sink_out);
@@ -3774,10 +3774,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, cj->top->hydro.sink_formation,
                                 t_sink_merger);
             scheduler_addunlock(sched, t_sink_merger,
-                                cj->hydro.super->sinks.ghost);
+                                cj->hydro.super->sinks.sink_ghost1);
 
             /* Accretion */
-            scheduler_addunlock(sched, cj->hydro.super->sinks.ghost,
+            scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
                                 t_sink_accretion);
             scheduler_addunlock(sched, t_sink_accretion,
                                 cj->hydro.super->sinks.sink_out);

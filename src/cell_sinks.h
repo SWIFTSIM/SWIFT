@@ -58,7 +58,7 @@ struct cell_sinks {
     struct task *sink_in;
 
     /*! Implicit tasks marking the separation between merger and accretion */
-    struct task *ghost;
+    struct task *sink_ghost1;
 
     /*! Implicit tasks marking the exit of the sink block of tasks */
     struct task *sink_out;
