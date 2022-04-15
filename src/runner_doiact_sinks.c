@@ -30,15 +30,15 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-/* Import the sink compute formation loop functions. */
+/* Import the sink compute swallow loop functions. */
 #define FUNCTION swallow
-#define FUNCTION_TASK_LOOP TASK_LOOP_FORMATION
+#define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
 #include "runner_doiact_functions_sinks.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
 #define FUNCTION accretion
-#define FUNCTION_TASK_LOOP TASK_LOOP_ACCRETION
+#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_DO_GAS_SWALLOW
 #include "runner_doiact_functions_sinks.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION

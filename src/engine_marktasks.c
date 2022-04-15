@@ -230,14 +230,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate the sink merger */
       else if (t_type == task_type_self &&
-               t_subtype == task_subtype_sink_merger) {
+               t_subtype == task_subtype_sink_do_sink_swallow) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
         }
       }
 
       else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_sink_merger) {
+               t_subtype == task_subtype_sink_do_sink_swallow) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
         }
@@ -670,7 +670,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Sink formation */
       else if ((t_subtype == task_subtype_sink_swallow ||
-                t_subtype == task_subtype_sink_merger ||
+                t_subtype == task_subtype_sink_do_sink_swallow ||
                 t_subtype == task_subtype_sink_accretion) &&
                (ci_active_sinks || cj_active_sinks) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {

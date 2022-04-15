@@ -90,7 +90,7 @@ runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
 }
 
 /**
- * @brief Compute the sink merger interaction.
+ * @brief Swallowing interaction between two sink particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -102,10 +102,10 @@ runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
  * @param H Current Hubble parameter.
  *
  * @param Which particle should be removed?
- * Possible value: (sink_merger_remove_none/first/second)
+ * Possible value: (sink_do_sink_swallow_remove_none/first/second)
  */
-__attribute__((always_inline)) INLINE static enum sink_merger_remove
-runner_iact_sym_sinks_merger(const float r2, const float *dx, const float hi,
+__attribute__((always_inline)) INLINE static enum sink_do_sink_swallow_remove
+runner_iact_sym_sinks_do_sink_swallow(const float r2, const float *dx, const float hi,
                              const float hj, struct sink *restrict si,
                              struct sink *restrict sj, const float a,
                              const float H) {
@@ -119,7 +119,7 @@ runner_iact_sym_sinks_merger(const float r2, const float *dx, const float hi,
   ++si->num_ngb_merger;
 #endif
 
-  return sink_merger_remove_none;
+  return sink_do_sink_swallow_remove_none;
 }
 
 /**

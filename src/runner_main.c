@@ -139,21 +139,21 @@
 
 /* Import the sink compute formation loop functions. */
 #define FUNCTION swallow
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_FORMATION
+#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_SWALLOW
 #include "runner_doiact_sinks.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
 /* Import the sink compute formation loop functions. */
 #define FUNCTION accretion
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_ACCRETION
+#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_DO_GAS_SWALLOW
 #include "runner_doiact_sinks.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
-/* Import the sink merger loop functions. */
-#define FUNCTION merger
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_MERGER
+/* Import the sink swallow loop functions. */
+#define FUNCTION do_sink_swallow
+#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_DO_SINK_SWALLOW
 #include "runner_doiact_sinks_merger.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
@@ -270,8 +270,8 @@ void *runner_main(void *data) {
             runner_doself_branch_sinks_swallow(r, ci);
           else if (t->subtype == task_subtype_sink_accretion)
             runner_doself_branch_sinks_accretion(r, ci);
-          else if (t->subtype == task_subtype_sink_merger)
-            runner_doself_sinks_merger(r, ci);
+          else if (t->subtype == task_subtype_sink_do_sink_swallow)
+            runner_doself_sinks_do_sink_swallow(r, ci);
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -318,8 +318,8 @@ void *runner_main(void *data) {
             runner_dopair_branch_sinks_swallow(r, ci, cj);
           else if (t->subtype == task_subtype_sink_accretion)
             runner_dopair_branch_sinks_accretion(r, ci, cj);
-          else if (t->subtype == task_subtype_sink_merger)
-            runner_do_sym_pair_sinks_merger(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_do_sink_swallow)
+            runner_do_sym_pair_sinks_do_sink_swallow(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -364,8 +364,8 @@ void *runner_main(void *data) {
             runner_dosub_self_sinks_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_sink_accretion)
             runner_dosub_self_sinks_accretion(r, ci, 1);
-          else if (t->subtype == task_subtype_sink_merger)
-            runner_dosub_self_sinks_merger(r, ci);
+          else if (t->subtype == task_subtype_sink_do_sink_swallow)
+            runner_dosub_self_sinks_do_sink_swallow(r, ci);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -410,8 +410,8 @@ void *runner_main(void *data) {
             runner_dosub_pair_sinks_swallow(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_accretion)
             runner_dosub_pair_sinks_accretion(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_sink_merger)
-            runner_dosub_pair_sinks_merger(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_do_sink_swallow)
+            runner_dosub_pair_sinks_do_sink_swallow(r, ci, cj);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

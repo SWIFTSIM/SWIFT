@@ -29,10 +29,10 @@
  * to define if the none, the first or the second sink particle should be
  * removed (in the order of the arguments)
  */
-enum sink_merger_remove {
-  sink_merger_remove_none,
-  sink_merger_remove_first,
-  sink_merger_remove_second
+enum sink_do_sink_swallow_remove {
+  sink_do_sink_swallow_remove_none,
+  sink_do_sink_swallow_remove_first,
+  sink_do_sink_swallow_remove_second
 };
 
 /* Select the correct sink model */

@@ -98,17 +98,17 @@ void DOSELF1_SINKS_MERGER(struct runner *r, struct cell *c) {
         error("Particle si not drifted to current time");
 #endif
       if (r2 < ri2 || r2 < rj2) {
-        enum sink_merger_remove remove =
+        enum sink_do_sink_swallow_remove remove =
             IACT_SINK_MERGER(r2, dx, ri, rj, si, sj, a, H);
 
         /* Remove the particle. */
         switch (remove) {
-          case sink_merger_remove_none:
+          case sink_do_sink_swallow_remove_none:
             break;
-          case sink_merger_remove_first:
+          case sink_do_sink_swallow_remove_first:
             cell_remove_sink(e, c, si);
             break;
-          case sink_merger_remove_second:
+          case sink_do_sink_swallow_remove_second:
             cell_remove_sink(e, c, sj);
             break;
           default:
@@ -116,7 +116,7 @@ void DOSELF1_SINKS_MERGER(struct runner *r, struct cell *c) {
         }
 
         /* Can we continue the loop on the current particle? */
-        if (remove == sink_merger_remove_first) {
+        if (remove == sink_do_sink_swallow_remove_first) {
           break;
         }
       }
@@ -214,17 +214,17 @@ void DO_SYM_PAIR1_SINKS_MERGER(struct runner *r, struct cell *restrict ci,
 #endif
 
       if (r2 < ri2 || r2 < rj2) {
-        enum sink_merger_remove remove =
+        enum sink_do_sink_swallow_remove remove =
             IACT_SINK_MERGER(r2, dx, ri, rj, si, sj, a, H);
 
         /* Remove the particle. */
         switch (remove) {
-          case sink_merger_remove_none:
+          case sink_do_sink_swallow_remove_none:
             break;
-          case sink_merger_remove_first:
+          case sink_do_sink_swallow_remove_first:
             cell_remove_sink(e, ci, si);
             break;
-          case sink_merger_remove_second:
+          case sink_do_sink_swallow_remove_second:
             cell_remove_sink(e, cj, sj);
             break;
           default:
@@ -232,7 +232,7 @@ void DO_SYM_PAIR1_SINKS_MERGER(struct runner *r, struct cell *restrict ci,
         }
 
         /* Can we continue the loop on the current particle? */
-        if (remove == sink_merger_remove_first) {
+        if (remove == sink_do_sink_swallow_remove_first) {
           break;
         }
       }

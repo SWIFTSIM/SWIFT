@@ -105,8 +105,6 @@ runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
                                            struct part *restrict pj,
                                            const float a, const float H) {
 
-//message("%lld",pj->sink_data.swallow_id);
-
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
@@ -119,7 +117,7 @@ runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
 }
 
 /**
- * @brief Compute the sink merger interaction.
+ * @brief Swallowing interaction between two sink particles (symmetric but should be non symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -131,26 +129,27 @@ runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
  * @param H Current Hubble parameter.
  *
  * @param Which particle should be removed?
- * Possible value: (sink_merger_remove_none/first/second)
+ * Possible value: (sink_do_sink_swallow_remove_none/first/second)
  */
-__attribute__((always_inline)) INLINE static int runner_iact_sym_sinks_merger(
+__attribute__((always_inline)) INLINE static enum sink_do_sink_swallow_remove 
+runner_iact_sym_sinks_do_sink_swallow(
     const float r2, const float *dx, const float hi, const float hj,
     struct sink *restrict si, struct sink *restrict sj, const float a,
     const float H) {
 
-  message(">>");
+
   if (sqrt(r2) < si->r_cut || sqrt(r2) < sj->r_cut){
       if (si->id > sj->id){
           sj->mass = sj->mass + si->mass;       // should also add momentum and metals
-          return sink_merger_remove_first;
+          return sink_do_sink_swallow_remove_first;
         }  
       else {
           si->mass = si->mass + sj->mass;       // should also add momentum and metals
-          return sink_merger_remove_second;  
+          return sink_do_sink_swallow_remove_second;  
         }
     }
   
-  return sink_merger_remove_none;
+  return sink_do_sink_swallow_remove_none;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */

@@ -44,10 +44,10 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (c->hydro.count == 0 || c->sinks.count == 0) return;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
   if (!cell_is_active_hydro(c, e)) return;
 #else
-  if (!cell_is_active_sink(c, e)) return;
+  if (!cell_is_active_sinks(c, e)) return;
 #endif
 
   /* Cosmological terms */
@@ -70,7 +70,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
     /* Early abort? */
     if (part_is_inhibited(pj, e)) continue;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
     /* Skip inactive particles */
     if (!part_is_active(pj, e)) continue;
 #endif
@@ -87,7 +87,7 @@ void DOSELF1_SINKS(struct runner *r, struct cell *c, int timer) {
 
       /* Early abort? */
       if (sink_is_inhibited(si, e)) continue;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_ACCRETION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_DO_GAS_SWALLOW)
       /* Skip inactive particles */
       if (!sink_is_active(si, e)) continue;
 #endif
@@ -138,10 +138,10 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
 
   /* Anything to do here? */
   if (cj->hydro.count == 0 || ci->sinks.count == 0) return;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
   if (!cell_is_active_hydro(ci, e)) return;
 #else
-  if (!cell_is_active_sink(ci, e)) return;
+  if (!cell_is_active_sinks(ci, e)) return;
 #endif
 
   /* Cosmological terms */
@@ -173,7 +173,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pj, e)) continue;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
     /* Skip inactive particles */
     if (!part_is_active(pj, e)) continue;
 #endif
@@ -191,7 +191,7 @@ void DO_NONSYM_PAIR1_SINKS_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (sink_is_inhibited(si, e)) continue;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_ACCRETION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_DO_GAS_SWALLOW)
       /* Skip inactive particles */
       if (!sink_is_active(si, e)) continue;
 #endif
@@ -246,16 +246,16 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   double rshift = 0.0;
   for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
   const int do_ci_sinks = (ci->nodeID == e->nodeID) && (ci->sinks.count != 0) &&
                           (cj->hydro.count != 0) && cell_is_active_hydro(ci, e);
   const int do_cj_sinks = (cj->nodeID == e->nodeID) && (cj->sinks.count != 0) &&
                           (ci->hydro.count != 0) && cell_is_active_hydro(cj, e);
 #else
   const int do_ci_sinks = (ci->nodeID == e->nodeID) && (ci->sinks.count != 0) &&
-                          (cj->hydro.count != 0) && cell_is_active_sink(ci, e);
+                          (cj->hydro.count != 0) && cell_is_active_sinks(ci, e);
   const int do_cj_sinks = (cj->nodeID == e->nodeID) && (cj->sinks.count != 0) &&
-                          (ci->hydro.count != 0) && cell_is_active_sink(cj, e);
+                          (ci->hydro.count != 0) && cell_is_active_sinks(cj, e);
 #endif
 
   if (do_ci_sinks) {
@@ -294,7 +294,7 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Skip inhibited particles */
       if (sink_is_inhibited(spi, e)) continue;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_ACCRETION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_DO_GAS_SWALLOW)
       /* Skip inactive particles */
       if (!sink_is_active(spi, e)) continue;
 #endif
@@ -323,7 +323,7 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
         /* Early abort? */
         if (part_is_inhibited(pj, e)) continue;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
         /* Skip inactive particles. */
         if (!part_is_active(pj, e)) continue;
 #endif
@@ -414,7 +414,7 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
       /* Skip inhibited particles */
       if (sink_is_inhibited(spj, e)) continue;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_ACCRETION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_DO_GAS_SWALLOW)
       /* Skip inactive particles */
       if (!sink_is_active(spj, e)) continue;
 #endif
@@ -443,7 +443,7 @@ void DO_SYM_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
         /* Early abort? */
         if (part_is_inhibited(pi, e)) continue;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
         /* Skip inactive particles. */
         if (!part_is_active(pi, e)) continue;
 #endif
@@ -527,11 +527,11 @@ void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c) {
   /* Anything to do here? */
   if (c->sinks.count == 0) return;
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e)) return;
 #else
-  if (!cell_is_active_sink(c, e)) return;
+  if (!cell_is_active_sinks(c, e)) return;
 #endif
 
   /* Did we mess up the recursion? */
@@ -559,12 +559,12 @@ void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj) {
   double shift[3] = {0.0, 0.0, 0.0};
   const int sid = space_getsid(e->s, &ci, &cj, shift);
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
   const int ci_active = cell_is_active_hydro(ci, e);
   const int cj_active = cell_is_active_hydro(cj, e);
 #else
-  const int ci_active = cell_is_active_sink(ci, e);
-  const int cj_active = cell_is_active_sink(cj, e);
+  const int ci_active = cell_is_active_sinks(ci, e);
+  const int cj_active = cell_is_active_sinks(cj, e);
 #endif
   const int do_ci_sinks = ci->nodeID == e->nodeID;
   const int do_cj_sinks = cj->nodeID == e->nodeID;
@@ -620,16 +620,16 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *e = r->e;
 
   /* Should we even bother? */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
   const int should_do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
                            cell_is_active_hydro(ci, e);
   const int should_do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
                            cell_is_active_hydro(cj, e);
 #else
   const int should_do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
-                           cell_is_active_sink(ci, e);
+                           cell_is_active_sinks(ci, e);
   const int should_do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
-                           cell_is_active_sink(cj, e);
+                           cell_is_active_sinks(cj, e);
 #endif
 
   if (!should_do_ci && !should_do_cj) return;
@@ -655,16 +655,16 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
 
     const int do_ci_sinks = ci->nodeID == e->nodeID;
     const int do_cj_sinks = cj->nodeID == e->nodeID;
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
     const int do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
                       cell_is_active_hydro(ci, e) && do_ci_sinks;
     const int do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
                       cell_is_active_hydro(cj, e) && do_cj_sinks;
 #else
     const int do_ci = ci->sinks.count != 0 && cj->hydro.count != 0 &&
-                      cell_is_active_sink(ci, e) && do_ci_sinks;
+                      cell_is_active_sinks(ci, e) && do_ci_sinks;
     const int do_cj = cj->sinks.count != 0 && ci->hydro.count != 0 &&
-                      cell_is_active_sink(cj, e) && do_cj_sinks;
+                      cell_is_active_sinks(cj, e) && do_cj_sinks;
 #endif
 
     if (do_ci) {
@@ -717,13 +717,13 @@ void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int gettimer) {
 #endif
 
     /* Should we even bother? */
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORMATION)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SINK_SWALLOW)
   if (ci->hydro.count == 0 || ci->sinks.count == 0 ||
       !cell_is_active_hydro(ci, r->e))
     return;
 #else
   if (ci->hydro.count == 0 || ci->sinks.count == 0 ||
-      !cell_is_active_sink(ci, r->e))
+      !cell_is_active_sinks(ci, r->e))
     return;
 #endif
 

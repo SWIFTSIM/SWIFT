@@ -1543,7 +1543,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         else if (t->subtype == task_subtype_sink_swallow ||
                  t->subtype == task_subtype_sink_accretion)
           cost = 1.f * wscale * count_i * sink_count_i;
-        else if (t->subtype == task_subtype_sink_merger)
+        else if (t->subtype == task_subtype_sink_do_sink_swallow)
           cost = 1.f * wscale * sink_count_i * sink_count_i;
         else if (t->subtype == task_subtype_bh_density ||
                  t->subtype == task_subtype_bh_swallow ||
@@ -1597,7 +1597,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    (sink_count_i * count_j + sink_count_j * count_i) *
                    sid_scale[t->flags];
 
-        } else if (t->subtype == task_subtype_sink_merger) {
+        } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * sink_count_i * sink_count_j *
                    sid_scale[t->flags];
@@ -1676,7 +1676,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else if (t->subtype == task_subtype_sink_merger) {
+        } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           if (t->ci->nodeID != nodeID) {
             cost = 3.f * (wscale * sink_count_i) * sink_count_j *
                    sid_scale[t->flags];
@@ -1734,7 +1734,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_accretion) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
-        } else if (t->subtype == task_subtype_sink_merger) {
+        } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           cost = 1.f * (wscale * sink_count_i) * sink_count_i;
         } else if (t->subtype == task_subtype_bh_density ||
                    t->subtype == task_subtype_bh_swallow ||

@@ -151,7 +151,7 @@ enum task_subtypes {
   task_subtype_do_gas_swallow,
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
-  task_subtype_sink_merger,
+  task_subtype_sink_do_sink_swallow,
   task_subtype_sink_swallow,
   task_subtype_sink_accretion,
   task_subtype_rt_gradient,
