@@ -38,6 +38,7 @@
 #include "rt.h"
 #include "star_formation.h"
 #include "tracers.h"
+#include "sink.h"
 
 #ifdef WITH_LIGHTCONE
 /**
@@ -344,6 +345,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
+        sink_init_part(p);                   
         rt_init_part(p);
 
         /* Update the maximal active smoothing length in the cell */

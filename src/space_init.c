@@ -37,6 +37,7 @@
 #include "stars.h"
 #include "threadpool.h"
 #include "tracers.h"
+#include "sink.h"
 
 void space_init_parts_mapper(void *restrict map_data, int count,
                              void *restrict extra_data) {
@@ -60,6 +61,7 @@ void space_init_parts_mapper(void *restrict map_data, int count,
     tracers_after_init(&parts[k], &xparts[k], e->internal_units,
                        e->physical_constants, with_cosmology, e->cosmology,
                        e->hydro_properties, e->cooling_func, e->time);
+    sink_init_part(&parts[k]);                   
   }
 }
 

@@ -26,6 +26,7 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
+#include "cooling.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -53,6 +54,21 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->r_cut = sink_props->cut_off_radius;
   sp->time_bin = 0;
 }
+
+
+/**
+ * @brief Prepares a particle for the sink calculation.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void sink_init_part(
+    struct part* restrict p) {
+
+  struct sink_part_data* cpd = &p->sink_data;
+
+  cpd->can_form_sink = 1;
+}
+
 
 /**
  * @brief Prepares a sink-particle for its interactions
@@ -128,20 +144,23 @@ INLINE static int sink_is_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor) {
 
-  //const float temperature_max = sink_props->maximal_temperature;
-  // const float temperature = cooling_get_temperature(phys_const, hydro_props, us,cosmo, cooling, p, xp);
+  /* the particle is not elligible */
+  if (!p->sink_data.can_form_sink)
+   return 0;
   
+  const float temperature_max = sink_props->maximal_temperature;
+  const float temperature = cooling_get_temperature(phys_const, hydro_props, us,cosmo, cooling, p, xp);
+    
   const float density_threashold = sink_props->density_threashold;
-  
   const float density = hydro_get_physical_density(p, cosmo);
-  
-  if (density>density_threashold)
+    
+  if (density > density_threashold && temperature < temperature_max)
     {
       message("forming a sink particle ! %lld",p->id);
       return 1;
     }
-  else
-    return 0;  
+
+  return 0;  
 
 }
 
@@ -162,11 +181,11 @@ INLINE static int sink_should_convert_to_sink(
     const struct part* p, const struct xpart* xp,
     const struct sink_props* sink_props, const struct engine* e,
     const double dt_sink) {
-  //const float random_number =
-  //    random_unit_interval(p->id, e->ti_current, random_number_star_formation);
 
+  /* We do not use a stockastic approach. 
+   * Once elligible, the gas particle form a sink */
+  
   return 1;
-  //return random_number < 5e-4;
 }
 
 /**

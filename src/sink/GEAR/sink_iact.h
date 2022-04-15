@@ -37,10 +37,7 @@
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
-
-  //struct sink_part_data *chi = &pi->sink_data;
-  //struct sink_part_data *chj = &pj->sink_data;
+    const float H, const struct sink_props *sink_props) {
 
 }
 
@@ -61,11 +58,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const struct sink_props *sink_props) {
 
-  //struct sink_part_data *chi = &pi->chemistry_data;
-  //const struct sink_part_data *chj = &pj->chemistry_data;
 
+  /* In order to prevent the formation of two sink particles at a distance
+   * smaller than the sink cutoff radius, we keep only gas particles with
+   * the smallest potential. */
+
+  const float r = sqrtf(r2);
+  
+  if (r < sink_props->cut_off_radius) {
+    
+    float potential_i = pi->gpart->potential;
+    float potential_j = pj->gpart->potential;
+        
+    /* if the potential is larger
+     * prevent the particle to form a sink */
+    if(potential_i > potential_j)
+      pi->sink_data.can_form_sink = 0;
+  } 
+  
 }
 
 

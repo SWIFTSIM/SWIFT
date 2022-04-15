@@ -54,6 +54,17 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->time_bin = 0;
 }
 
+
+/**
+ * @brief Prepares a particle for the sink calculation.
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void sink_init_part(
+    struct part* restrict p) {}
+
+
+
 /**
  * @brief Prepares a sink-particle for its interactions
  *
