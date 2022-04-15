@@ -145,7 +145,7 @@
 #undef FUNCTION
 
 /* Import the sink compute formation loop functions. */
-#define FUNCTION accretion
+#define FUNCTION do_gas_swallow
 #define FUNCTION_TASK_LOOP TASK_LOOP_SINK_DO_GAS_SWALLOW
 #include "runner_doiact_sinks.h"
 #undef FUNCTION_TASK_LOOP
@@ -268,8 +268,8 @@ void *runner_main(void *data) {
             runner_doself2_branch_rt_transport(r, ci);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_doself_branch_sinks_swallow(r, ci);
-          else if (t->subtype == task_subtype_sink_accretion)
-            runner_doself_branch_sinks_accretion(r, ci);
+          else if (t->subtype == task_subtype_sink_do_gas_swallow)
+            runner_doself_branch_sinks_do_gas_swallow(r, ci);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_doself_sinks_do_sink_swallow(r, ci);
           else
@@ -316,8 +316,8 @@ void *runner_main(void *data) {
             runner_dopair2_branch_rt_transport(r, ci, cj);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dopair_branch_sinks_swallow(r, ci, cj);
-          else if (t->subtype == task_subtype_sink_accretion)
-            runner_dopair_branch_sinks_accretion(r, ci, cj);
+          else if (t->subtype == task_subtype_sink_do_gas_swallow)
+            runner_dopair_branch_sinks_do_gas_swallow(r, ci, cj);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sym_pair_sinks_do_sink_swallow(r, ci, cj);
           else
@@ -362,8 +362,8 @@ void *runner_main(void *data) {
             runner_dosub_self2_rt_transport(r, ci, 1);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dosub_self_sinks_swallow(r, ci, 1);
-          else if (t->subtype == task_subtype_sink_accretion)
-            runner_dosub_self_sinks_accretion(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_do_gas_swallow)
+            runner_dosub_self_sinks_do_gas_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_dosub_self_sinks_do_sink_swallow(r, ci);
           else
@@ -408,8 +408,8 @@ void *runner_main(void *data) {
             runner_dosub_pair2_rt_transport(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dosub_pair_sinks_swallow(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_sink_accretion)
-            runner_dosub_pair_sinks_accretion(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_do_gas_swallow)
+            runner_dosub_pair_sinks_do_gas_swallow(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_dosub_pair_sinks_do_sink_swallow(r, ci, cj);
           else

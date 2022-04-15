@@ -1541,7 +1541,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
         else if (t->subtype == task_subtype_sink_swallow ||
-                 t->subtype == task_subtype_sink_accretion)
+                 t->subtype == task_subtype_sink_do_gas_swallow)
           cost = 1.f * wscale * count_i * sink_count_i;
         else if (t->subtype == task_subtype_sink_do_sink_swallow)
           cost = 1.f * wscale * sink_count_i * sink_count_i;
@@ -1587,7 +1587,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
 
         } else if (t->subtype == task_subtype_sink_swallow ||
-                   t->subtype == task_subtype_sink_accretion) {
+                   t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * sink_count_j * sid_scale[t->flags];
           else if (t->cj->nodeID != nodeID)
@@ -1663,7 +1663,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           }
 
         } else if (t->subtype == task_subtype_sink_swallow ||
-                   t->subtype == task_subtype_sink_accretion) {
+                   t->subtype == task_subtype_sink_do_gas_swallow) {
           if (t->ci->nodeID != nodeID) {
             cost =
                 3.f * (wscale * count_i) * sink_count_j * sid_scale[t->flags];
@@ -1732,7 +1732,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
         } else if (t->subtype == task_subtype_sink_swallow ||
-                   t->subtype == task_subtype_sink_accretion) {
+                   t->subtype == task_subtype_sink_do_gas_swallow) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_do_sink_swallow) {
           cost = 1.f * (wscale * sink_count_i) * sink_count_i;

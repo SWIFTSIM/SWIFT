@@ -2307,7 +2307,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_rt_gradient = NULL;
   struct task *t_rt_transport = NULL;
   struct task *t_sink_do_sink_swallow = NULL;
-  struct task *t_sink_accretion = NULL;
+  struct task *t_sink_do_gas_swallow = NULL;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -2380,9 +2380,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_sink_do_sink_swallow =
             scheduler_addtask(sched, task_type_self, task_subtype_sink_do_sink_swallow,
                               flags, 0, ci, NULL);
-        t_sink_accretion =
+        t_sink_do_gas_swallow =
             scheduler_addtask(sched, task_type_self,
-                              task_subtype_sink_accretion, flags, 0, ci, NULL);
+                              task_subtype_sink_do_gas_swallow, flags, 0, ci, NULL);
       }
 
       /* The black hole feedback tasks */
@@ -2426,8 +2426,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
       if (with_sink) {
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
-        engine_addlink(e, &ci->sinks.merger, t_sink_do_sink_swallow);
-        engine_addlink(e, &ci->sinks.accretion, t_sink_accretion);
+        engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+        engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
       }
       if (with_black_holes && bcount_i > 0) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -2519,8 +2519,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t_sink_do_sink_swallow, ci->hydro.super->sinks.sink_ghost1);
         /* Do the sink accretion */
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                            t_sink_accretion);
-        scheduler_addunlock(sched, t_sink_accretion,
+                            t_sink_do_gas_swallow);
+        scheduler_addunlock(sched, t_sink_do_gas_swallow,
                             ci->hydro.super->sinks.sink_out);
       }
 
@@ -2639,9 +2639,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             0, ci, cj);
         t_sink_do_sink_swallow = scheduler_addtask(
             sched, task_type_pair, task_subtype_sink_do_sink_swallow, flags, 0, ci, cj);
-        t_sink_accretion =
+        t_sink_do_gas_swallow =
             scheduler_addtask(sched, task_type_pair,
-                              task_subtype_sink_accretion, flags, 0, ci, cj);
+                              task_subtype_sink_do_gas_swallow, flags, 0, ci, cj);
       }
 
       /* The black hole feedback tasks */
@@ -2690,11 +2690,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
         engine_addlink(e, &cj->sinks.swallow, t_sink_swallow);
         /* Merger */
-        engine_addlink(e, &ci->sinks.merger, t_sink_do_sink_swallow);
-        engine_addlink(e, &cj->sinks.merger, t_sink_do_sink_swallow);
+        engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+        engine_addlink(e, &cj->sinks.do_sink_swallow, t_sink_do_sink_swallow);
         /* Accretion */
-        engine_addlink(e, &ci->sinks.accretion, t_sink_accretion);
-        engine_addlink(e, &cj->sinks.accretion, t_sink_accretion);
+        engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -2841,8 +2841,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               ci->hydro.super->sinks.sink_ghost1);
           /* Accretion */
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                              t_sink_accretion);
-          scheduler_addunlock(sched, t_sink_accretion,
+                              t_sink_do_gas_swallow);
+          scheduler_addunlock(sched, t_sink_do_gas_swallow,
                               ci->hydro.super->sinks.sink_out);
         }
 
@@ -2994,8 +2994,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             /* Accretion */
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
-                                t_sink_accretion);
-            scheduler_addunlock(sched, t_sink_accretion,
+                                t_sink_do_gas_swallow);
+            scheduler_addunlock(sched, t_sink_do_gas_swallow,
                                 cj->hydro.super->sinks.sink_out);
           }
 
@@ -3140,9 +3140,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_sink_do_sink_swallow =
             scheduler_addtask(sched, task_type_sub_self,
                               task_subtype_sink_do_sink_swallow, flags, 0, ci, NULL);
-        t_sink_accretion =
+        t_sink_do_gas_swallow =
             scheduler_addtask(sched, task_type_sub_self,
-                              task_subtype_sink_accretion, flags, 0, ci, NULL);
+                              task_subtype_sink_do_gas_swallow, flags, 0, ci, NULL);
       }
 
       /* The black hole feedback tasks */
@@ -3191,8 +3191,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
       if (with_sink) {
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
-        engine_addlink(e, &ci->sinks.merger, t_sink_do_sink_swallow);
-        engine_addlink(e, &ci->sinks.accretion, t_sink_accretion);
+        engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+        engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
       }
       if (with_black_holes && bcount_i > 0) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -3293,8 +3293,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         /* Accretion */
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                            t_sink_accretion);
-        scheduler_addunlock(sched, t_sink_accretion,
+                            t_sink_do_gas_swallow);
+        scheduler_addunlock(sched, t_sink_do_gas_swallow,
                             ci->hydro.super->sinks.sink_out);
       }
 
@@ -3418,9 +3418,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_sink_do_sink_swallow =
             scheduler_addtask(sched, task_type_sub_pair,
                               task_subtype_sink_do_sink_swallow, flags, 0, ci, cj);
-        t_sink_accretion =
+        t_sink_do_gas_swallow =
             scheduler_addtask(sched, task_type_sub_pair,
-                              task_subtype_sink_accretion, flags, 0, ci, cj);
+                              task_subtype_sink_do_gas_swallow, flags, 0, ci, cj);
       }
 
       /* The black hole feedback tasks */
@@ -3475,12 +3475,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->sinks.swallow, t_sink_swallow);
 
         /* Merger */
-        engine_addlink(e, &ci->sinks.merger, t_sink_do_sink_swallow);
-        engine_addlink(e, &cj->sinks.merger, t_sink_do_sink_swallow);
+        engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
+        engine_addlink(e, &cj->sinks.do_sink_swallow, t_sink_do_sink_swallow);
 
         /* Accretion */
-        engine_addlink(e, &ci->sinks.accretion, t_sink_accretion);
-        engine_addlink(e, &cj->sinks.accretion, t_sink_accretion);
+        engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -3626,8 +3626,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Accretion */
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost1,
-                              t_sink_accretion);
-          scheduler_addunlock(sched, t_sink_accretion,
+                              t_sink_do_gas_swallow);
+          scheduler_addunlock(sched, t_sink_do_gas_swallow,
                               ci->hydro.super->sinks.sink_out);
         }
 
@@ -3778,8 +3778,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             /* Accretion */
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost1,
-                                t_sink_accretion);
-            scheduler_addunlock(sched, t_sink_accretion,
+                                t_sink_do_gas_swallow);
+            scheduler_addunlock(sched, t_sink_do_gas_swallow,
                                 cj->hydro.super->sinks.sink_out);
           }
 

@@ -37,7 +37,7 @@
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
 
-#define FUNCTION accretion
+#define FUNCTION do_gas_swallow
 #define FUNCTION_TASK_LOOP TASK_LOOP_SINK_DO_GAS_SWALLOW
 #include "runner_doiact_functions_sinks.h"
 #undef FUNCTION_TASK_LOOP

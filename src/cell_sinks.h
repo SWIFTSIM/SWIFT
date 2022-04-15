@@ -45,11 +45,11 @@ struct cell_sinks {
     /*! Linked list of the tasks computing this cell's sink swallow. */
     struct link *swallow;
 
-    /*! Linked list of the tasks computing this cell's sink accretion. */
-    struct link *accretion;
+    /*! Linked list of the tasks computing this cell's sink do_gas_swallow. */
+    struct link *do_gas_swallow;
 
-    /*! Linked list of the tasks computing this cell's sink merger. */
-    struct link *merger;
+    /*! Linked list of the tasks computing this cell's sink do_sink_swallow. */
+    struct link *do_sink_swallow;
 
     /*! The drift task for sinks */
     struct task *drift;

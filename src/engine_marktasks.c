@@ -245,14 +245,14 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate the sink accretion */
       else if (t_type == task_type_self &&
-               t_subtype == task_subtype_sink_accretion) {
+               t_subtype == task_subtype_sink_do_gas_swallow) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
         }
       }
 
       else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_sink_accretion) {
+               t_subtype == task_subtype_sink_do_gas_swallow) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
         }
@@ -671,7 +671,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Sink formation */
       else if ((t_subtype == task_subtype_sink_swallow ||
                 t_subtype == task_subtype_sink_do_sink_swallow ||
-                t_subtype == task_subtype_sink_accretion) &&
+                t_subtype == task_subtype_sink_do_gas_swallow) &&
                (ci_active_sinks || cj_active_sinks) &&
                (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
 
@@ -748,7 +748,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
         else if ((t_type == task_type_pair || t_type == task_type_sub_pair) &&
-                 t_subtype == task_subtype_sink_accretion) {
+                 t_subtype == task_subtype_sink_do_gas_swallow) {
           /* Activate sinks_out for each cell that is part of
            * a pair/sub_pair task as to not miss any dependencies */
           if (ci_nodeID == nodeID)
