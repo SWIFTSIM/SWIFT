@@ -156,7 +156,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "do_bh_swallow",
     "bh_feedback",
     "sink_merger",
-    "sink_compute_formation",
+    "sink_swallow",
     "sink_accretion",
     "rt_gradient",
     "rt_transport",
@@ -289,7 +289,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_sink_accretion:
         case task_subtype_sink_merger:
-        case task_subtype_sink_compute_formation:
+        case task_subtype_sink_swallow:
           return task_action_all;
 
         case task_subtype_rt_transport:
@@ -565,7 +565,7 @@ void task_unlock(struct task *t) {
         cell_gunlocktree(ci);
         cell_munlocktree(ci);
 #endif
-      } else if (subtype == task_subtype_sink_compute_formation) {
+      } else if (subtype == task_subtype_sink_swallow) {
         cell_sink_unlocktree(ci);
         cell_unlocktree(ci);
       } else if (subtype == task_subtype_sink_merger) {
@@ -607,7 +607,7 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
 #endif
-      } else if (subtype == task_subtype_sink_compute_formation) {
+      } else if (subtype == task_subtype_sink_swallow) {
         cell_sink_unlocktree(ci);
         cell_sink_unlocktree(cj);
         cell_unlocktree(ci);
@@ -804,7 +804,7 @@ int task_lock(struct task *t) {
           cell_sink_unlocktree(ci);
           return 0;
         }
-      } else if (subtype == task_subtype_sink_compute_formation) {
+      } else if (subtype == task_subtype_sink_swallow) {
         if (ci->sinks.hold) return 0;
         if (ci->hydro.hold) return 0;
         if (cell_sink_locktree(ci) != 0) return 0;
@@ -883,7 +883,7 @@ int task_lock(struct task *t) {
           return 0;
         }
 #endif
-      } else if (subtype == task_subtype_sink_compute_formation) {
+      } else if (subtype == task_subtype_sink_swallow) {
         /* Lock the sinks and the gas particles in both cells */
         if (ci->sinks.hold || cj->sinks.hold) return 0;
         if (ci->hydro.hold || cj->hydro.hold) return 0;
@@ -1230,7 +1230,7 @@ void task_get_group_name(int type, int subtype, char *cluster) {
         strcpy(cluster, "RTtransport");
       }
       break;
-    case task_subtype_sink_compute_formation:
+    case task_subtype_sink_swallow:
       strcpy(cluster, "SinkFormation");
       break;
     case task_subtype_sink_merger:
@@ -1815,7 +1815,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_bh_feedback:
           return task_category_black_holes;
 
-        case task_subtype_sink_compute_formation:
+        case task_subtype_sink_swallow:
         case task_subtype_sink_merger:
         case task_subtype_sink_accretion:
           return task_category_sink;

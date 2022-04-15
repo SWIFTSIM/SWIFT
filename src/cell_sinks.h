@@ -42,8 +42,8 @@ struct cell_sinks {
     /*! Pointer to the #sink data. */
     struct sink *parts;
 
-    /*! Linked list of the tasks computing this cell's sink formation checks. */
-    struct link *compute_formation;
+    /*! Linked list of the tasks computing this cell's sink swallow. */
+    struct link *swallow;
 
     /*! Linked list of the tasks computing this cell's sink accretion. */
     struct link *accretion;

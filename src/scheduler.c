@@ -1540,7 +1540,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_stars_prep2 ||
                  t->subtype == task_subtype_stars_feedback)
           cost = 1.f * wscale * scount_i * count_i;
-        else if (t->subtype == task_subtype_sink_compute_formation ||
+        else if (t->subtype == task_subtype_sink_swallow ||
                  t->subtype == task_subtype_sink_accretion)
           cost = 1.f * wscale * count_i * sink_count_i;
         else if (t->subtype == task_subtype_sink_merger)
@@ -1586,7 +1586,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 2.f * wscale * (scount_i * count_j + scount_j * count_i) *
                    sid_scale[t->flags];
 
-        } else if (t->subtype == task_subtype_sink_compute_formation ||
+        } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_accretion) {
           if (t->ci->nodeID != nodeID)
             cost = 3.f * wscale * count_i * sink_count_j * sid_scale[t->flags];
@@ -1662,7 +1662,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    sid_scale[t->flags];
           }
 
-        } else if (t->subtype == task_subtype_sink_compute_formation ||
+        } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_accretion) {
           if (t->ci->nodeID != nodeID) {
             cost =
@@ -1731,7 +1731,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             t->subtype == task_subtype_stars_prep2 ||
             t->subtype == task_subtype_stars_feedback) {
           cost = 1.f * (wscale * scount_i) * count_i;
-        } else if (t->subtype == task_subtype_sink_compute_formation ||
+        } else if (t->subtype == task_subtype_sink_swallow ||
                    t->subtype == task_subtype_sink_accretion) {
           cost = 1.f * (wscale * sink_count_i) * count_i;
         } else if (t->subtype == task_subtype_sink_merger) {

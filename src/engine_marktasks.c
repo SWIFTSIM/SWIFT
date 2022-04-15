@@ -209,7 +209,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate the sink formation */
       else if (t_type == task_type_self &&
-               t_subtype == task_subtype_sink_compute_formation) {
+               t_subtype == task_subtype_sink_swallow) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
@@ -221,7 +221,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Store current values of dx_max and h_max. */
       else if (t_type == task_type_sub_self &&
-               t_subtype == task_subtype_sink_compute_formation) {
+               t_subtype == task_subtype_sink_swallow) {
         if (ci_active_sinks) {
           scheduler_activate(s, t);
           cell_activate_subcell_sinks_tasks(ci, NULL, s, with_timestep_sync);
@@ -669,7 +669,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Sink formation */
-      else if ((t_subtype == task_subtype_sink_compute_formation ||
+      else if ((t_subtype == task_subtype_sink_swallow ||
                 t_subtype == task_subtype_sink_merger ||
                 t_subtype == task_subtype_sink_accretion) &&
                (ci_active_sinks || cj_active_sinks) &&
@@ -679,7 +679,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
         /* Set the correct sorting flags */
         if (t_type == task_type_pair &&
-            t_subtype == task_subtype_sink_compute_formation) {
+            t_subtype == task_subtype_sink_swallow) {
 
           /* Activate the sink drift for the sink merger */
           if (ci_nodeID == nodeID) {
@@ -735,7 +735,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 
         else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_sink_compute_formation) {
+                 t_subtype == task_subtype_sink_swallow) {
           /* Activate all sink_in tasks for each cell involved
            * in sub_pair type tasks */
           if (ci_nodeID == nodeID)
@@ -1031,8 +1031,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
       }
 
-      /* Only interested in sink_compute_formation tasks as of here. */
-      else if (t->subtype == task_subtype_sink_compute_formation) {
+      /* Only interested in sink_swallow tasks as of here. */
+      else if (t->subtype == task_subtype_sink_swallow) {
 
         /* Too much particle movement? */
         if (cell_need_rebuild_for_sinks_pair(ci, cj)) *rebuild_space = 1;

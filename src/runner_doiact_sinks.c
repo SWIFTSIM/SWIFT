@@ -31,7 +31,7 @@
 #include "timers.h"
 
 /* Import the sink compute formation loop functions. */
-#define FUNCTION compute_formation
+#define FUNCTION swallow
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORMATION
 #include "runner_doiact_functions_sinks.h"
 #undef FUNCTION_TASK_LOOP

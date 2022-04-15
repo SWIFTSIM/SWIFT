@@ -2554,7 +2554,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
 
   /* Un-skip the star formation tasks involved with this cell. */
-  for (struct link *l = c->sinks.compute_formation; l != NULL; l = l->next) {
+  for (struct link *l = c->sinks.swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;

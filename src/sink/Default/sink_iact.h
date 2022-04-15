@@ -61,7 +61,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 
 
 /**
- * @brief Compute formation interaction between two particles (non-symmetric).
+ * @brief Compute sink swallow interaction between two particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_compute_formation(const float r2, const float *dx,
+runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
                                            const float hi, const float hj,
                                            struct sink *restrict si,
                                            const struct part *restrict pj,
