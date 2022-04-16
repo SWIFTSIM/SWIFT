@@ -113,6 +113,7 @@ const char *taskID_names[task_type_count] = {
     "neutrino_weight",
     "sink_in",
     "sink_ghost1",
+    "sink_ghost2",
     "sink_out",
     "rt_in",
     "rt_out",

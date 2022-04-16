@@ -57,8 +57,11 @@ struct cell_sinks {
     /*! Implicit tasks marking the entry of the sink block of tasks */
     struct task *sink_in;
 
-    /*! Implicit tasks marking the separation between merger and accretion */
+    /*! Implicit tasks marking the end of sink swallow */
     struct task *sink_ghost1;
+
+    /*! Implicit tasks marking the separation between do_gas_swallow and do_sink_swallow */
+    struct task *sink_ghost2;
 
     /*! Implicit tasks marking the exit of the sink block of tasks */
     struct task *sink_out;
