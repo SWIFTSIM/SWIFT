@@ -962,7 +962,7 @@ void cell_make_void_multipole(struct space *s, struct cell *c, integertime_t ti_
 
       /* Loop over particles adding them to array. */
       for (int i = 0; i < c_zoom->grav.count; ++i) {
-        struct gpart *void_gpart = c_zoom->grav.parts[i];
+        struct gpart *void_gpart = &c_zoom->grav.parts[i];
         void_parts[nr_void_parts] = void_gpart;
         nr_void_parts++;
 
