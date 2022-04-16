@@ -393,6 +393,12 @@ struct zoom_region_properties {
 	/*! Number of natural/background cells */
 	int nr_bkg_cells;
 
+  /*! Number of particles in zoom cells */
+  size_t nr_zoom_cell_particles;
+
+  /*! Number of particles in natural/background cells */
+  size_t nr_bkg_cell_particles;
+
   /*! Number of neighbour top-level bkg cells */
   int nr_neighbour_cells;
 

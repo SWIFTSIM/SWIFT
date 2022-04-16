@@ -898,8 +898,8 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
 #endif
 
 	/* Define variables to count particles in cell types */
-	int bkg_cell_particles = 0;
-	int zoom_cell_particles = 0;
+	int s->zoom_props->nr_bkg_cell_particles = 0;
+	int s->zoom_props->nr_zoom_cell_particles = 0;
 
 	/* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
@@ -959,9 +959,9 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       if (s->with_zoom_region) {
         /* Add the number of particles to the cell counter */
         if (c->tl_cell_type <= 2) {
-          bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
+          s->zoom_props->nr_bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
         } else {
-          zoom_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
+          s->zoom_props->nr_zoom_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
         }
       }
 #endif
@@ -1028,10 +1028,10 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
 #ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
-      message("Have %d local particles in background cells",
-              bkg_cell_particles);
-      message("Have %d local particles in zoom cells",
-              zoom_cell_particles);
+      message("Have %zd local particles in background cells",
+              s->zoom_props->nr_bkg_cell_particles);
+      message("Have %zd local particles in zoom cells",
+              s->zoom_props->nr_zoom_cell_particles);
     }
 #endif
 
