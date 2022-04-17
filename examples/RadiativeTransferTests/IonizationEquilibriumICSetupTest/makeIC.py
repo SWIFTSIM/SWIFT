@@ -1,7 +1,26 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
 
 # -----------------------------------------------------------
-# Use 10k particles in 1D with a wide range of different
+# Use particles in with a wide range of different
 # internal energies (hence temperatures) to test the
 # ionization equilibrium IC setup within GEAR-RT.
 # -----------------------------------------------------------
@@ -26,28 +45,39 @@ boxsize = 1e15 * unitsystem["length"]
 nPhotonGroups = 1
 
 # number of particles in each dimension
-n_p = 10000
+n_p = 30
+nparts = n_p ** 3
 
 # filename of ICs to be generated
 outputfilename = "ionization_equilibrium_test.hdf5"
 
 # particle positions
-xp = unyt.unyt_array(np.zeros((n_p, 3), dtype=np.float64), boxsize.units)
+xp = unyt.unyt_array(np.zeros((nparts, 3), dtype=np.float64), boxsize.units)
 dx = boxsize / n_p
-for i in range(n_p):
-    xp[i, 0] = (i + 0.5) * dx
 
-w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=1)
+ind = 0
+for i in range(n_p):
+    x = (i + 0.5) * dx
+    for j in range(n_p):
+        y = (j + 0.5) * dx
+        for k in range(n_p):
+            z = (k + 0.5) * dx
+
+            xp[ind] = (x, y, z)
+            ind += 1
+
+
+w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=3)
 
 w.gas.coordinates = xp
 w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
+w.gas.masses = np.ones(nparts, dtype=np.float64) * 1000 * unyt.g
 w.gas.internal_energy = (
     np.logspace(np.log10(umin.v), np.log10(umax.v), n_p) * unyt.erg / unyt.g
 )
 
 # Generate initial guess for smoothing lengths based on MIPS
-w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=1)
+w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
 
 # If IDs are not present, this automatically generates
 w.write(outputfilename)
