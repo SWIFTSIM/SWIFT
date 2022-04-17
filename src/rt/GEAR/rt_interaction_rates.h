@@ -363,7 +363,7 @@ static void rt_interaction_rates_init(struct rt_props *restrict rt_props,
  * [1]: HI ionization. [2]: HeI ionization. [3]: HeII ionization.
  * [4]: H2 dissociation.
  * @param heating_rates_by_group (return) net absorption/emission rates of each
- * photon frequency group.
+ * photon frequency group in internal units.
  * @param p particle to work on
  * @param species_densities the physical densities of all traced species
  * @param rt_props RT properties struct
@@ -374,25 +374,26 @@ static void rt_interaction_rates_init(struct rt_props *restrict rt_props,
 __attribute__((always_inline)) INLINE static void
 rt_tchem_get_interaction_rates(gr_float rates[5],
                                float heating_rates_by_group[RT_NGROUPS],
-                               struct part *restrict p,
+                               const struct part *restrict p,
                                gr_float species_densities[6],
                                const struct rt_props *restrict rt_props,
                                const struct phys_const *restrict phys_const,
                                const struct unit_system *restrict us,
                                const struct cosmology *restrict cosmo) {
 
-  rates[0] = 0.;
-  rates[1] = 0.;
-  rates[2] = 0.;
-  rates[3] = 0.;
-  rates[4] = 0.;
+  rates[0] = 0.; /* Needs to be in [erg / s / cm^3 / nHI] for grackle. */
+  rates[1] = 0.; /* [1 / time_units] */
+  rates[2] = 0.; /* [1 / time_units] */
+  rates[3] = 0.; /* [1 / time_units] */
+  rates[4] = 0.; /* [1 / time_units] */
   for (int group = 0; group < RT_NGROUPS; group++) {
     heating_rates_by_group[group] = 0.;
   }
 
   /* "copy" ionization energies from cross section parameters */
-  struct rt_photoion_cs_parameters cs_params = rt_init_photoion_cs_params_cgs();
-  const double *E_ion = cs_params.E_ion;
+  struct rt_photoion_cs_parameters cs_params_cgs =
+      rt_init_photoion_cs_params_cgs();
+  const double *E_ion_cgs = cs_params_cgs.E_ion;
 
   /* Integrate energy spectra and cross sections assuming blackbody spectra
    * to obtain estimate for effective cross sections, then use the actual
@@ -409,19 +410,19 @@ rt_tchem_get_interaction_rates(gr_float rates[5],
   double species_number_densities_nHI[RT_NIONIZING_SPECIES]; /* in nHI^-1 */
   const double to_inv_volume =
       units_cgs_conversion_factor(us, UNIT_CONV_INV_VOLUME);
-  const double to_number_density_cgs = to_inv_volume / m_p;
+  const double mass_to_number_density_cgs = to_inv_volume / m_p;
   /* neutral hydrogen */
   species_number_densities_cgs[0] =
-      species_densities[0] * to_number_density_cgs;
+      species_densities[0] * mass_to_number_density_cgs;
   species_number_densities_nHI[0] = 1.;
   /* neutral helium */
   species_number_densities_cgs[1] =
-      0.25 * species_densities[2] * to_number_density_cgs;
+      0.25 * species_densities[2] * mass_to_number_density_cgs;
   species_number_densities_nHI[1] =
       0.25 * species_densities[2] / species_densities[0];
   /* singly ionized helium */
   species_number_densities_cgs[2] =
-      0.25 * species_densities[3] * to_number_density_cgs;
+      0.25 * species_densities[3] * mass_to_number_density_cgs;
   species_number_densities_nHI[2] =
       0.25 * species_densities[3] / species_densities[0];
 
@@ -433,7 +434,7 @@ rt_tchem_get_interaction_rates(gr_float rates[5],
    * For the heating rate, we need to sum up all species.
    * To remove the correct amount of energy from the
    * radiation fields, we additionally need to keep track
-   * rates from each photon group. */
+   * of rates from each photon group. */
 
   /* store photoionization rate for each species here */
   double ionization_rates_by_species[RT_NIONIZING_SPECIES];
@@ -449,13 +450,14 @@ rt_tchem_get_interaction_rates(gr_float rates[5],
         p->rt_data.radiation[group].energy_density * to_erg * to_inv_volume;
 
     for (int spec = 0; spec < RT_NIONIZING_SPECIES; spec++) {
+      /* Note: the cross sections are in cgs. */
       const double cse = rt_props->energy_weighted_cross_sections[group][spec];
       const double csn = rt_props->number_weighted_cross_sections[group][spec];
 
       heating_rate_group_nHI +=
-          (cse - E_ion[spec] * csn) * species_number_densities_nHI[spec];
+          (cse - E_ion_cgs[spec] * csn) * species_number_densities_nHI[spec];
       heating_rate_group_cgs +=
-          (cse - E_ion[spec] * csn) * species_number_densities_cgs[spec];
+          (cse - E_ion_cgs[spec] * csn) * species_number_densities_cgs[spec];
       ionization_rates_by_species[spec] +=
           energy_density_i_cgs * cse * species_number_densities_cgs[spec] *
           c_cgs / inv_time_cgs; /* internal units T^-1 */

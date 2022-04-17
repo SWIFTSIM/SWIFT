@@ -2,12 +2,12 @@ Check that the initial condition setup for ionizing equilibrium works correctly.
 
 GEAR-RT can set the initial ionization state of the gas to the (collisional) 
 ionization equilibrium at startup. This test makes sure that this setup works as
-expected. To do this, we set up 10k particles in 1D with a very high range of 
+expected. To do this, we set up particles in with a very high range of 
 different internal energies, and only run for 1 step. The correct ion mass 
 fractions should already be set in the zeroth output.
 
 Compile swift with:
-    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro-dimension=1 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none 
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none 
 
 
 Additional notes:
