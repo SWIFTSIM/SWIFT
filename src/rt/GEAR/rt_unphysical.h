@@ -161,30 +161,34 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
+/* GRACKLE doesn't really like exact zeroes, so use something
+ * comparatively small instead. */
+#define RT_GEAR_TINY_MASS_FRACTION 1.e-6
+
   if (p->rt_data.tchem.mass_fraction_HI < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HI < -1e4)
       message("WARNING: Got negative HI mass fraction?");
-    p->rt_data.tchem.mass_fraction_HI = 0.f;
+    p->rt_data.tchem.mass_fraction_HI = RT_GEAR_TINY_MASS_FRACTION;
   }
   if (p->rt_data.tchem.mass_fraction_HII < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HII < -1e4)
       message("WARNING: Got negative HII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HII = 0.f;
+    p->rt_data.tchem.mass_fraction_HII = RT_GEAR_TINY_MASS_FRACTION;
   }
   if (p->rt_data.tchem.mass_fraction_HeI < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeI < -1e4)
       message("WARNING: Got negative HeI mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeI = 0.f;
+    p->rt_data.tchem.mass_fraction_HeI = RT_GEAR_TINY_MASS_FRACTION;
   }
   if (p->rt_data.tchem.mass_fraction_HeII < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeII < -1e4)
       message("WARNING: Got negative HeII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeII = 0.f;
+    p->rt_data.tchem.mass_fraction_HeII = RT_GEAR_TINY_MASS_FRACTION;
   }
   if (p->rt_data.tchem.mass_fraction_HeIII < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeIII < -1e4)
       message("WARNING: Got negative HeIII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+    p->rt_data.tchem.mass_fraction_HeIII = RT_GEAR_TINY_MASS_FRACTION;
   }
 
   const float XHI = p->rt_data.tchem.mass_fraction_HI;
