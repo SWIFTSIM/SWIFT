@@ -321,7 +321,6 @@ enum cell_flags {
   cell_flag_unskip_pair_grav_processed = (1UL << 20)
 };
 
-#ifdef WITH_ZOOM_REGION
 /**
  * @brief What kind of top level cell is this cell?
  *
@@ -331,7 +330,6 @@ enum cell_flags {
  * 3 = A top level zoom cell.
  */
 enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell };
-#endif
 
 /**
  * @brief Cell within the tree structure.
