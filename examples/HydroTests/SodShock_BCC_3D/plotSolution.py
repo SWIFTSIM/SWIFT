@@ -1,6 +1,6 @@
 ###############################################################################
 # This file is part of the ANARCHY paper.
-# Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+# Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #               2019 Josh Borrow (joshua.boorrow@durham.ac.uk)
 #
 # This program is free software: you can redistribute it and/or modify
