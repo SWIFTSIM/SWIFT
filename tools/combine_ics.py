@@ -16,7 +16,7 @@ to apply to all the fields in the file. Use 0 to cancel all coompression.
 The default value is `4`.
 
 This file is part of SWIFT.
-Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+Copyright (C) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
 
 All Rights Reserved.
 

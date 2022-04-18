@@ -1,7 +1,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
-#                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+#                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published

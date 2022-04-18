@@ -2,7 +2,7 @@
 # This file is part of SWIFT.
 # Copyright (c) 2016 John A. Regan (john.a.regan@durham.ac.uk)
 #                    Tom Theuns (tom.theuns@durham.ac.uk)
-#               2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+#               2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #                    Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
