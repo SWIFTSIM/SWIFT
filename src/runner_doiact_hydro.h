@@ -101,6 +101,12 @@
 #define _IACT(f) PASTE(runner_iact, f)
 #define IACT _IACT(FUNCTION)
 
+#define _IACT_NONSYM_MHD(f) PASTE(runner_iact_nonsym_mhd, f)
+#define IACT_NONSYM_MHD _IACT_NONSYM_MHD(FUNCTION)
+
+#define _IACT_MHD(f) PASTE(runner_iact_mhd, f)
+#define IACT_MHD _IACT_MHD(FUNCTION)
+
 #define _IACT_NONSYM_VEC(f) PASTE(runner_iact_nonsym_vec, f)
 #define IACT_NONSYM_VEC _IACT_NONSYM_VEC(FUNCTION)
 
