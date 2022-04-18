@@ -1849,6 +1849,25 @@ case "$with_hydro" in
    ;;
 esac
 
+# MHD scheme.
+AC_ARG_WITH([mhd],
+   [AS_HELP_STRING([--with-mhd=<scheme>],
+      [Mhd dynamics to use @<:@none default:none@:>@]
+   )],
+   [with_mhd="$withval"],
+   [with_mhd="none"]
+)
+
+case "$with_mhd" in
+   none)
+      AC_DEFINE([NONE_MHD], [1], [No mhd])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_mhd])
+   ;;
+esac
+
+
 # Check if debugging interactions stars is switched on.
 AC_ARG_ENABLE([debug-interactions-stars],
    [AS_HELP_STRING([--enable-debug-interactions-stars],
@@ -2772,6 +2791,7 @@ AC_MSG_RESULT([
    Lightcones enabled   : $enable_lightcone
 
    Hydro scheme       : $with_hydro
+   MHD scheme         : $with_mhd
    Dimensionality     : $with_dimension
    Kernel function    : $with_kernel
    Equation of state  : $with_eos
