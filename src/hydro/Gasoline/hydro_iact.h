@@ -29,6 +29,7 @@
 #include "adiabatic_index.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
+#include "signal_velocity.h"
 
 /**
  * @brief Density interaction between two particles.
