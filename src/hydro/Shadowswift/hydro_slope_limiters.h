@@ -74,8 +74,6 @@ hydro_slope_limit_cell_collect(struct part *pi, struct part *pj,
 
   /* Collect maximal and minimal extrapolated values of the primitive
    * quantities */
-  float W[5];
-  hydro_part_get_primitive_variables(pi, W);
   float dW[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
   hydro_gradients_extrapolate(pi, dx, dW);
 

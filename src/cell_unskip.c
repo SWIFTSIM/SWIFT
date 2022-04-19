@@ -2910,8 +2910,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
 }
 
 /**
- * @brief Un-skips all the moving mesh tasks associated with a given cell and checks
- * if the space needs to be rebuilt.
+ * @brief Un-skips all the moving mesh tasks associated with a given cell and
+ * checks if the space needs to be rebuilt.
  *
  * @param c the #cell.
  * @param s the #scheduler.
@@ -3017,6 +3017,11 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
 #ifdef SWIFT_DEBUG_CHECKS
     counter++;
     if (counter > 27) error("Cells should have not more than 14 flux tasks!");
+#ifdef EXTRA_HYDRO_LOOP
+    if (c->hydro.slope_estimate == NULL)
+      error("Should have a slope estimation loop!");
+    if (c->hydro.slope_limiter == NULL) error("Should have a slope limiter loop!");
+#endif
 #endif
     struct task *t = l->t;
     struct cell *ci = t->ci;
@@ -3096,8 +3101,7 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
       scheduler_activate(s, c->hydro.slope_estimate_ghost);
     if (c->hydro.slope_limiter_ghost != NULL)
       scheduler_activate(s, c->hydro.slope_limiter_ghost);
-    if (c->hydro.flux_ghost != NULL)
-      scheduler_activate(s, c->hydro.flux_ghost);
+    if (c->hydro.flux_ghost != NULL) scheduler_activate(s, c->hydro.flux_ghost);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);

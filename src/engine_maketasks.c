@@ -4394,6 +4394,10 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
 
         /* Link tasks to cell */
+#ifdef EXTRA_HYDRO_LOOP
+        engine_addlink(e, &ci->hydro.slope_estimate, t_slope_estimate);
+        engine_addlink(e, &ci->hydro.slope_limiter, t_slope_limiter);
+#endif
         engine_addlink(e, &ci->hydro.flux, t_flux);
 
       } else if (t_type == task_type_pair) {
@@ -4460,6 +4464,12 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
 
           /* link tasks to cells */
+#ifdef EXTRA_HYDRO_LOOP
+          engine_addlink(e, &ci->hydro.slope_estimate, t_slope_estimate);
+          engine_addlink(e, &cj->hydro.slope_estimate, t_slope_estimate);
+          engine_addlink(e, &ci->hydro.slope_limiter, t_slope_limiter);
+          engine_addlink(e, &cj->hydro.slope_limiter, t_slope_limiter);
+#endif
           engine_addlink(e, &ci->hydro.flux, t_flux);
           engine_addlink(e, &cj->hydro.flux, t_flux);
         } /* Should we add a flux pair interaction? */

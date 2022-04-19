@@ -256,6 +256,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* reset the gradients if we are using Lloyd's algorith; we don't use them */
   /* TODO */
 
+  /* Prepare the slope limiter for this particle */
   hydro_slope_limiter_prepare(p);
 }
 

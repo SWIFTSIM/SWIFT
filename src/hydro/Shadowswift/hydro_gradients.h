@@ -174,11 +174,6 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
    * position) eqn. (8) */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
-  float drho_i[3], dvx_i[3], dvy_i[3], dvz_i[3], dP_i[3];
-  float drho_j[3], dvx_j[3], dvy_j[3], dvz_j[3], dP_j[3];
-  hydro_part_get_gradients(pi, drho_i, dvx_i, dvy_i, dvz_i, dP_i);
-  hydro_part_get_gradients(pj, drho_j, dvx_j, dvy_j, dvz_j, dP_j);
-
   float dWi[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
   hydro_gradients_extrapolate_in_time(pi, Wi, dt, dWi);
   hydro_gradients_extrapolate(pi, xij_i, dWi);

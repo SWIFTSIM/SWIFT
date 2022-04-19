@@ -1790,7 +1790,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   /* Set the geometry properties of the particles */
   for (int i = 0; i < c->hydro.count; i++) {
     struct part *p = &c->hydro.parts[i];
-    if (part_is_active(p, e)) {
+    if (part_is_active_mask[i]) {
       p->geometry.volume = c->grid.voronoi->cells[i].volume;
       p->geometry.centroid[0] = c->grid.voronoi->cells[i].centroid[0];
       p->geometry.centroid[1] = c->grid.voronoi->cells[i].centroid[1];

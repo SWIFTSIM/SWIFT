@@ -220,7 +220,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grid.r_max = 0;
     c->grid.construction = NULL;
     c->grid.ghost = NULL;
+    c->hydro.slope_estimate = NULL;
+    c->hydro.slope_limiter = NULL;
     c->hydro.flux = NULL;
+    c->hydro.slope_estimate_ghost = NULL;
+    c->hydro.slope_limiter_ghost = NULL;
     c->hydro.flux_ghost = NULL;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
