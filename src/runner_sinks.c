@@ -557,7 +557,6 @@ void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int time
 
 
 
-/////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -627,7 +626,7 @@ void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_bh_swallow(struct runner *r, struct cell *c, int timer) {
+void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
 }
 
@@ -638,7 +637,7 @@ void runner_do_sinks_bh_swallow(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_bh_swallow_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c, int timer) {
 
 
 }
@@ -651,7 +650,7 @@ void runner_do_sinks_bh_swallow_self(struct runner *r, struct cell *c, int timer
  * @param cj Second #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_bh_swallow_pair(struct runner *r, struct cell *ci,
+void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
                                struct cell *cj, int timer) {
 
 

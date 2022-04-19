@@ -75,8 +75,8 @@ void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct c
 void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c, int timer);
 void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer);
 
-void runner_do_sinks_bh_swallow_self(struct runner *r, struct cell *c, int timer);
-void runner_do_sinks_bh_swallow_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer);
+void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c, int timer);
+void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer);
 
 
 
