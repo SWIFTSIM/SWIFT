@@ -592,7 +592,13 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c, int timer) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
+  if (!cell_is_active_sinks(c, r->e))
+    error("Running self task on inactive cell");
+#endif
 
+  runner_do_sinks_gas_swallow(r, c, timer);
 }
 
 /**
@@ -606,7 +612,17 @@ void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c, int time
 void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
                                 struct cell *cj, int timer) {
 
- 
+  const struct engine *e = r->e;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
+    error("Running pair task on foreign node");
+#endif
+
+  /* Run the swallowing loop only in the cell that is the neighbour of the
+   * active sink */
+  if (cell_is_active_sinks(cj, e)) runner_do_sinks_gas_swallow(r, ci, timer);
+  if (cell_is_active_sinks(ci, e)) runner_do_sinks_gas_swallow(r, cj, timer);
 }
 
 /**
@@ -631,7 +647,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Processing of bh particles to swallow - self task case.
+ * @brief Processing of sink particles to swallow - self task case.
  *
  * @param r The thread #runner.
  * @param c The #cell.
@@ -639,11 +655,17 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c, int timer) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
+  if (!cell_is_active_sinks(c, r->e))
+    error("Running self task on inactive cell");
+#endif
 
+  runner_do_sinks_sink_swallow(r, c, timer);
 }
 
 /**
- * @brief Processing of bh particles to swallow - pair task case.
+ * @brief Processing of sink particles to swallow - pair task case.
  *
  * @param r The thread #runner.
  * @param ci First #cell.
@@ -653,5 +675,15 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c, int tim
 void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
                                struct cell *cj, int timer) {
 
+  const struct engine *e = r->e;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->nodeID != e->nodeID && cj->nodeID != e->nodeID)
+    error("Running pair task on foreign node");
+#endif
+
+  /* Run the swallowing loop only in the cell that is the neighbour of the
+   * active sink */
+  if (cell_is_active_sinks(cj, e)) runner_do_sinks_sink_swallow(r, ci, timer);
+  if (cell_is_active_sinks(ci, e)) runner_do_sinks_sink_swallow(r, cj, timer);
 }
