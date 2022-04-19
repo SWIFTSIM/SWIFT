@@ -41,35 +41,30 @@
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef_hydro.h"
 
 /* Import the gradient loop functions (if required). */
 #ifdef EXTRA_HYDRO_LOOP
 #define FUNCTION gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_GRADIENT
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef_hydro.h"
 #endif
 
 /* Import the force loop functions. */
 #define FUNCTION force
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef_hydro.h"
 
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef_hydro.h"
 
 /* Import the RT transport (force) loop functions. */
 #define FUNCTION rt_transport
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_TRANSPORT
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef_hydro.h"
