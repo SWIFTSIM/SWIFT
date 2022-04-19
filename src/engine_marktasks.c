@@ -1499,8 +1499,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
     }
 
-    /* Flux ghost task? */
-    else if (t_type == task_type_flux_ghost) {
+    /* grid hydro ghost task? */
+    else if (t_type == task_type_slope_estimate_ghost ||
+             t_type == task_type_slope_limiter_ghost ||
+             t_type == task_type_flux_ghost) {
       if (cell_is_active_hydro(t->ci, e)) {
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_grid_hydro)) {
