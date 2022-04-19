@@ -102,8 +102,7 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
                                            const float hi, const float hj,
                                            struct sink *restrict si,
-                                           struct part *restrict pj,
-                                           const float a, const float H) {
+                                           struct part *restrict pj) {
 
 
 #ifdef DEBUG_INTERACTIONS_SINKS
@@ -115,6 +114,76 @@ runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
   ++si->num_ngb_formation;
 #endif
 }
+
+
+
+
+
+
+
+/**
+ * @brief Compute sink swallow interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sink particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
+                                           const float ri, const float rj,
+                                           struct sink *restrict si,
+                                           struct sink *restrict sj) {
+
+
+#ifdef DEBUG_INTERACTIONS_SINKS
+  /* Update ngb counters */
+  if (si->num_ngb_formation < MAX_NUM_OF_NEIGHBOURS_SINKS)
+    si->ids_ngbs_formation[si->num_ngb_formation] = pj->id;
+
+  /* Update ngb counters */
+  ++si->num_ngb_formation;
+#endif
+}
+
+
+/**
+ * @brief Compute sink swallow interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param ri Comoving cut off radius of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First sink particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_sinks_gas_swallow(const float r2, const float *dx,
+                                           const float ri, const float hj,
+                                           struct sink *restrict si,
+                                           struct part *restrict pj) {
+
+
+
+#ifdef DEBUG_INTERACTIONS_SINKS
+  /* Update ngb counters */
+  if (si->num_ngb_formation < MAX_NUM_OF_NEIGHBOURS_SINKS)
+    si->ids_ngbs_formation[si->num_ngb_formation] = pj->id;
+
+  /* Update ngb counters */
+  ++si->num_ngb_formation;
+#endif
+}
+
+
+
+
 
 /**
  * @brief Swallowing interaction between two sink particles (symmetric but should be non symmetric).
