@@ -160,6 +160,7 @@ void pairs_single_density(double *dim, long long int pid,
   printf("pairs_single: part[%i].id == %lli.\n", k, pid);
 
   hydro_init_part(&p, NULL);
+  mhd_init_part(&p);
 
   /* Loop over all particle pairs. */
   for (k = 0; k < N; k++) {
@@ -720,6 +721,7 @@ void engine_single_density(double *dim, long long int pid,
 
   /* Clear accumulators. */
   hydro_init_part(&p, NULL);
+  mhd_init_part(&p);
 
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
@@ -742,6 +744,7 @@ void engine_single_density(double *dim, long long int pid,
 
   /* Dump the result. */
   hydro_end_density(&p, cosmo);
+  mhd_end_density(&p, cosmo);
   message("part %lli (h=%e) has wcount=%e, rho=%e.", p.id, p.h,
           p.density.wcount, hydro_get_comoving_density(&p));
   fflush(stdout);
@@ -763,6 +766,7 @@ void engine_single_force(double *dim, long long int pid,
 
   /* Clear accumulators. */
   hydro_reset_acceleration(&p);
+  mhd_reset_acceleration(&p);
 
   /* Loop over all particle pairs (force). */
   for (k = 0; k < N; k++) {
@@ -782,6 +786,7 @@ void engine_single_force(double *dim, long long int pid,
     if (r2 < p.h * p.h * kernel_gamma2 ||
         r2 < parts[k].h * parts[k].h * kernel_gamma2) {
       hydro_reset_acceleration(&p);
+      mhd_reset_acceleration(&p);
       runner_iact_nonsym_force(r2, fdx, p.h, parts[k].h, &p, &parts[k], a, H);
     }
   }
