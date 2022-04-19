@@ -269,9 +269,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_swallow)
             runner_doself_branch_sinks_swallow(r, ci);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
-            runner_doself_branch_sinks_do_gas_swallow(r, ci);
+            runner_do_sinks_gas_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
-            runner_doself_sinks_do_sink_swallow(r, ci);
+            runner_do_sinks_bh_swallow_self(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%s).",
                   subtaskID_names[t->subtype]);
@@ -317,9 +317,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dopair_branch_sinks_swallow(r, ci, cj);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
-            runner_dopair_branch_sinks_do_gas_swallow(r, ci, cj);
+            runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
-            runner_do_sym_pair_sinks_do_sink_swallow(r, ci, cj);
+            runner_do_sinks_bh_swallow_pair(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -363,9 +363,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dosub_self_sinks_swallow(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
-            runner_dosub_self_sinks_do_gas_swallow(r, ci, 1);
+            runner_do_sinks_gas_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
-            runner_dosub_self_sinks_do_sink_swallow(r, ci);
+            runner_do_sinks_bh_swallow_self(r, ci, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -409,9 +409,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_swallow)
             runner_dosub_pair_sinks_swallow(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_gas_swallow)
-            runner_dosub_pair_sinks_do_gas_swallow(r, ci, cj, 1);
+            runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
-            runner_dosub_pair_sinks_do_sink_swallow(r, ci, cj);
+            runner_do_sinks_bh_swallow_pair(r, ci, cj, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

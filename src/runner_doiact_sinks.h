@@ -22,7 +22,11 @@
    runner_dopair_FUNCTION, runner_doself_FUNCTION and runner_dosub_FUNCTION
    calling the pairwise interaction function runner_iact_FUNCTION. */
 
+
+/*
+
 #define PASTE(x, y) x##_##y
+
 
 #define _DOSELF1_SINKS(f) PASTE(runner_doself_sinks, f)
 #define DOSELF1_SINKS _DOSELF1_SINKS(FUNCTION)
@@ -52,9 +56,47 @@
 #define _IACT_SINK(f) PASTE(runner_iact_nonsym_sinks, f)
 #define IACT_SINK _IACT_SINK(FUNCTION)
 
+
+
 void DOSELF1_BRANCH_SINKS(struct runner *r, struct cell *c);
 void DOPAIR1_BRANCH_SINKS(struct runner *r, struct cell *ci, struct cell *cj);
 
 void DOSUB_SELF1_SINKS(struct runner *r, struct cell *ci, int gettimer);
 void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
                        int gettimer);
+*/
+
+void runner_doself_branch_sinks_swallow(struct runner *r, struct cell *c);
+void runner_dopair_branch_sinks_swallow(struct runner *r, struct cell *ci, struct cell *cj);
+void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int gettimer);
+void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct cell *cj, int gettimer);
+
+
+void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c, int timer);
+void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer);
+
+void runner_do_sinks_bh_swallow_self(struct runner *r, struct cell *c, int timer);
+void runner_do_sinks_bh_swallow_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
