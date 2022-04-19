@@ -82,7 +82,7 @@ struct xpart {
   /*! Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
 
-  /* Additional data used by the MHD scheme */
+  /*! Additional data used by the MHD scheme */
   struct mhd_xpart_data mhd_data;
 
 } SWIFT_STRUCT_ALIGN;

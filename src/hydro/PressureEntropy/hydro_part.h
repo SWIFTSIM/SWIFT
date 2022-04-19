@@ -73,6 +73,9 @@ struct xpart {
   /* Additional data used by the feedback */
   struct feedback_xpart_data feedback_data;
 
+  /*! Additional data used by the MHD scheme */
+  struct mhd_xpart_data mhd_data;
+
 } SWIFT_STRUCT_ALIGN;
 
 /* Data of a single particle. */
@@ -160,6 +163,9 @@ struct part {
 
     } force;
   };
+
+  /*! Additional data used by the MHD scheme */
+  struct mhd_part_data mhd_data;
 
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
