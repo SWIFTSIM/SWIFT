@@ -31,6 +31,7 @@
 #include "cell.h"
 #include "engine.h"
 #include "feedback.h"
+#include "mhd.h"
 #include "pressure_floor.h"
 #include "pressure_floor_iact.h"
 #include "rt.h"

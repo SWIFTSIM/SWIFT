@@ -26,6 +26,7 @@
 #include "black_holes.h"
 #include "const.h"
 #include "debug.h"
+#include "mhd.h"
 #include "rt.h"
 #include "sink.h"
 #include "stars.h"

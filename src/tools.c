@@ -47,6 +47,7 @@
 #include "feedback.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "mhd.h"
 #include "part.h"
 #include "periodic.h"
 #include "pressure_floor_iact.h"

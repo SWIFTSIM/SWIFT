@@ -30,6 +30,7 @@
 #include "chemistry.h"
 #include "engine.h"
 #include "gravity.h"
+#include "mhd.h"
 #include "neutrino.h"
 #include "particle_splitting.h"
 #include "pressure_floor.h"

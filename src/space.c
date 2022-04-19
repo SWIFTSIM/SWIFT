@@ -48,6 +48,7 @@
 #include "error.h"
 #include "kernel_hydro.h"
 #include "lock.h"
+#include "mhd.h"
 #include "minmax.h"
 #include "proxy.h"
 #include "restart.h"
