@@ -25,7 +25,7 @@
 /* Local includes */
 #include "part.h"
 
-#ifdef WITH_MHD
+#ifndef NONE_MHD
 
 /**
  * @brief Compute the signal velocity between two gas particles.
