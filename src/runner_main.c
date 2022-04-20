@@ -202,30 +202,6 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      /* Hard coded skip for void cell if it appears in tasks, it shouldn't! */
-      if (cj != NULL) {
-        if (ci->tl_cell_type == void_tl_cell || cj->tl_cell_type == void_tl_cell) {
-          /* Mark that we have run this task on these cells */
-#ifdef SWIFT_DEBUG_CHECKS
-          if (ci != NULL) {
-        ci->tasks_executed[t->type]++;
-        ci->subtasks_executed[t->subtype]++;
-      }
-      if (cj != NULL) {
-        cj->tasks_executed[t->type]++;
-        cj->subtasks_executed[t->subtype]++;
-      }
-
-      /* This runner is not doing a task anymore */
-      r->t = NULL;
-#endif
-
-          /* We're done with this task, see if we get a next one. */
-          prev = t;
-          t = scheduler_done(sched, t);
-        }
-      }
-
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;
