@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
     mindx[0] = -dx[0];
     mindx[1] = -dx[1];
     mindx[2] = -dx[2];
-    hydro_gradients_collect(pi, pj, c, mindx, r, surface_area);
+    hydro_gradients_collect(pj, pi, c, mindx, r, surface_area);
   }
 }
 

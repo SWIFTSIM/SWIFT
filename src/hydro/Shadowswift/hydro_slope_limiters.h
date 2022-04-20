@@ -76,27 +76,27 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
  */
 __attribute__((always_inline)) INLINE static void hydro_slope_limiter_prepare(
     struct part *p) {
-  p->limiter.rho[0] = FLT_MAX;
-  p->limiter.rho[1] = -FLT_MAX;
-  p->limiter.v[0][0] = FLT_MAX;
-  p->limiter.v[0][1] = -FLT_MAX;
-  p->limiter.v[1][0] = FLT_MAX;
-  p->limiter.v[1][1] = -FLT_MAX;
-  p->limiter.v[2][0] = FLT_MAX;
-  p->limiter.v[2][1] = -FLT_MAX;
-  p->limiter.P[0] = FLT_MAX;
-  p->limiter.P[1] = -FLT_MAX;
+  p->limiter.rho[0] = p->rho;
+  p->limiter.rho[1] = p->rho;
+  p->limiter.v[0][0] = p->fluid_v[0];
+  p->limiter.v[0][1] = p->fluid_v[0];
+  p->limiter.v[1][0] = p->fluid_v[1];
+  p->limiter.v[1][1] = p->fluid_v[1];
+  p->limiter.v[2][0] = p->fluid_v[2];
+  p->limiter.v[2][1] = p->fluid_v[2];
+  p->limiter.P[0] = p->P;
+  p->limiter.P[1] = p->P;
 
-  p->limiter.extrapolations.rho[0] = FLT_MAX;
-  p->limiter.extrapolations.rho[1] = -FLT_MAX;
-  p->limiter.extrapolations.v[0][0] = FLT_MAX;
-  p->limiter.extrapolations.v[0][1] = -FLT_MAX;
-  p->limiter.extrapolations.v[1][0] = FLT_MAX;
-  p->limiter.extrapolations.v[1][1] = -FLT_MAX;
-  p->limiter.extrapolations.v[2][0] = FLT_MAX;
-  p->limiter.extrapolations.v[2][1] = -FLT_MAX;
-  p->limiter.extrapolations.P[0] = FLT_MAX;
-  p->limiter.extrapolations.P[1] = -FLT_MAX;
+  p->limiter.extrapolations.rho[0] = 0.f;
+  p->limiter.extrapolations.rho[1] = 0.f;
+  p->limiter.extrapolations.v[0][0] = 0.f;
+  p->limiter.extrapolations.v[0][1] = 0.f;
+  p->limiter.extrapolations.v[1][0] = 0.f;
+  p->limiter.extrapolations.v[1][1] = 0.f;
+  p->limiter.extrapolations.v[2][0] = 0.f;
+  p->limiter.extrapolations.v[2][1] = 0.f;
+  p->limiter.extrapolations.P[0] = 0.f;
+  p->limiter.extrapolations.P[1] = 0.f;
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_SLOPE_LIMITERS_H

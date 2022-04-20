@@ -52,6 +52,7 @@ __attribute__((always_inline)) INLINE void hydro_gradients_collect(
     struct part* restrict pi, const struct part* restrict pj,
     const double* restrict cLR, const double* restrict dx, double r,
     float surface_area) {
+
   hydro_gradients_single_quantity(pi->rho, pj->rho, cLR, dx, r, surface_area,
                                   pi->gradients.rho);
   hydro_gradients_single_quantity(pi->fluid_v[0], pj->fluid_v[0], cLR, dx, r,
