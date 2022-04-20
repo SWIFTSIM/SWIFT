@@ -54,22 +54,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
      the centroid of the face between pi and pj.
      The coordinates of the centroid of the face of the voronoi cell of particle
      pi are given in the case of periodic boundary conditions. */
-  double c[3] = {centroid[0] - 0.5 * (pi->x[0] + pj->x[0] + shift[0]),
+  const double c[3] = {centroid[0] - 0.5 * (pi->x[0] + pj->x[0] + shift[0]),
                  centroid[1] - 0.5 * (pi->x[1] + pj->x[1] + shift[1]),
                  centroid[2] - 0.5 * (pi->x[2] + pj->x[2] + shift[2])};
 
   /* Update gradient estimate pi */
   double r = sqrt(r2);
-  hydro_gradients_single_quantity(pi->rho, pj->rho, c, dx, r, surface_area,
-                                  pi->gradients.rho);
-  hydro_gradients_single_quantity(pi->fluid_v[0], pj->fluid_v[0], c, dx, r,
-                                  surface_area, pi->gradients.v[0]);
-  hydro_gradients_single_quantity(pi->fluid_v[1], pj->fluid_v[1], c, dx, r,
-                                  surface_area, pi->gradients.v[1]);
-  hydro_gradients_single_quantity(pi->fluid_v[2], pj->fluid_v[2], c, dx, r,
-                                  surface_area, pi->gradients.v[2]);
-  hydro_gradients_single_quantity(pi->P, pj->P, c, dx, r, surface_area,
-                                  pi->gradients.P);
+  hydro_gradients_collect(pi, pj, c, dx, r, surface_area);
 
   /* Also update gradient estimate pj? */
   if (pj->flux.dt >= 0) {
@@ -77,16 +68,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
     mindx[0] = -dx[0];
     mindx[1] = -dx[1];
     mindx[2] = -dx[2];
-    hydro_gradients_single_quantity(pj->rho, pi->rho, c, mindx, r, surface_area,
-                                    pj->gradients.rho);
-    hydro_gradients_single_quantity(pj->fluid_v[0], pi->fluid_v[0], c, mindx, r,
-                                    surface_area, pj->gradients.v[0]);
-    hydro_gradients_single_quantity(pj->fluid_v[1], pi->fluid_v[1], c, mindx, r,
-                                    surface_area, pj->gradients.v[1]);
-    hydro_gradients_single_quantity(pj->fluid_v[2], pi->fluid_v[2], c, mindx, r,
-                                    surface_area, pj->gradients.v[2]);
-    hydro_gradients_single_quantity(pj->P, pi->P, c, mindx, r, surface_area,
-                                    pj->gradients.P);
+    hydro_gradients_collect(pi, pj, c, mindx, r, surface_area);
   }
 }
 
