@@ -100,7 +100,39 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
                                            struct sink *restrict si,
                                            struct sink *restrict sj) {
 
-// see runner_iact_nonsym_bh_bh_swallow
+
+
+  /* See runner_iact_nonsym_bh_bh_swallow.
+   * The sink with the smaller mass will be merged onto the one with the
+   * larger mass.
+   * To avoid rounding issues, we additionally check for IDs if the BHs
+   * have the exact same mass. */
+   
+   /* We should check the relative energy */
+   
+  if ((sj->subgrid_mass < si->subgrid_mass) ||
+      (sj->subgrid_mass == si->subgrid_mass && sj->id < si->id)) {
+
+
+
+      /* This particle is swallowed by the sink with the largest mass of all the
+       * candidates wanting to swallow it (we use IDs to break ties)*/
+      if ((sj->merger_data.swallow_mass < si->subgrid_mass) ||
+          (sj->merger_data.swallow_mass == si->subgrid_mass &&
+           sj->merger_data.swallow_id < si->id)) {
+
+        message("sink %lld wants to swallow sink particle %lld", si->id, sj->id);
+
+        sj->merger_data.swallow_id = si->id;
+        sj->merger_data.swallow_mass = si->subgrid_mass;
+
+      }
+
+
+
+
+
+  }
 
 
 
@@ -132,7 +164,16 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float *dx,
                                            struct part *restrict pj) {
 
 
-// see runner_iact_nonsym_bh_gas_swallow
+    /* See see runner_iact_nonsym_bh_gas_swallow. 
+     * We first check if a gas particle has not been already marked to
+     * be swallowed by another sink particle. */
+    
+    /* We should check the relative energy */ 
+     
+
+    if (pj->sink_data.swallow_id < si->id) {
+      pj->sink_data.swallow_id = si->id;
+    }
 
 
 

@@ -581,6 +581,135 @@ void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int time
  */
 void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
 
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+
+  struct sink *sinks = s->sinks;
+  const size_t nr_sink = s->nr_sinks;
+#ifdef WITH_MPI
+  not implemented yet !
+#endif
+
+  struct part *parts = c->hydro.parts;
+  struct xpart *xparts = c->hydro.xparts;
+
+
+
+  /* Early abort?
+   * (We only want cells for which we drifted the gas as these are
+   * the only ones that could have gas particles that have been flagged
+   * for swallowing) */
+  if (c->hydro.count == 0 || c->hydro.ti_old_part != e->ti_current) {
+    return;
+  }
+
+  /* Loop over the progeny ? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *restrict cp = c->progeny[k];
+
+        runner_do_sinks_gas_swallow(r, cp, 0);
+      }
+    }
+  } else {
+
+    /* Loop over all the gas particles in the cell
+     * Note that the cell (and hence the parts) may be local or foreign. */
+    const size_t nr_parts = c->hydro.count;
+    for (size_t k = 0; k < nr_parts; k++) {
+
+      /* Get a handle on the part. */
+      struct part *const p = &parts[k];
+      struct xpart *const xp = &xparts[k];
+
+      /* Ignore inhibited particles (they have already been removed!) */
+      if (part_is_inhibited(p, e)) continue;
+
+
+      /* Get the ID of the black holes that will swallow this part */
+      const long long swallow_id =
+          sink_get_part_swallow_id(&p->sink_data);
+
+      /* Has this particle been flagged for swallowing? */
+      if (swallow_id >= 0) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (p->ti_drift != e->ti_current)
+          error("Trying to swallow an un-drifted particle.");
+#endif
+
+        /* ID of the sink swallowing this particle */
+        const long long sink_id = swallow_id;
+
+        /* Have we found this particle's BH already? */
+        int found = 0;
+
+        /* Let's look for the hungry sink in the local list */
+        for (size_t i = 0; i < nr_sink; ++i) {
+
+          /* Get a handle on the bpart. */
+          struct sink *sp = &sinks[i];
+
+          if (sp->id == sink_id) {
+
+            /* Lock the space as we are going to work directly on the spart list
+             */
+            lock_lock(&s->lock);
+
+            /* Swallow the gas particle (i.e. update the BH properties) */
+            sink_swallow_part(sp, p, xp, e->cosmology);
+
+            /* Release the space as we are done updating the spart */
+            if (lock_unlock(&s->lock) != 0)
+              error("Failed to unlock the space.");
+
+            /* If the gas particle is local, remove it */
+            if (c->nodeID == e->nodeID) {
+
+              message("sink %lld removing gas particle %lld", sp->id, p->id);
+
+              lock_lock(&e->s->lock);
+
+              /* Re-check that the particle has not been removed
+               * by another thread before we do the deed. */
+              if (!part_is_inhibited(p, e)) {
+
+                /* Finally, remove the gas particle from the system
+                 * Recall that the gpart associated with it is also removed
+                 * at the same time. */
+                cell_remove_part(e, c, p, xp);
+              }
+
+              if (lock_unlock(&e->s->lock) != 0)
+                error("Failed to unlock the space!");
+            }
+
+            /* In any case, prevent the particle from being re-swallowed */
+            sink_mark_part_as_swallowed(&p->sink_data);
+
+            found = 1;
+            break;
+          }
+
+        } /* Loop over local BHs */
+
+#ifdef WITH_MPI
+  not implemented yet !
+#endif
+
+        /* If we have a local particle, we must have found the BH in one
+         * of our list of black holes. */
+        if (c->nodeID == e->nodeID && !found) {
+          error("Gas particle %lld could not find sink %lld to be swallowed",
+                p->id, swallow_id);
+        }
+      } /* Part was flagged for swallowing */
+    }   /* Loop over the parts */
+  }     /* Cell is not split */
+
+
 }
 
 /**

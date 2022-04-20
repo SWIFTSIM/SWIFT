@@ -27,12 +27,73 @@ struct sink_part_data {
   /*! ID of the sink that will swallow this #part. */
   long long swallow_id;
 
-  /*! Gravitational potential of the particle */
-  float potential;
   
   /*! Gravitational potential of the particle */
   uint8_t can_form_sink;
     
 };
+
+
+/**
+ * @brief Sink-related fields carried by each *sink* particle.
+ */
+struct sink_sink_data {
+
+  /*! ID of the sink that will swallow this #sink. */
+  long long swallow_id;
+
+  /*! Mass of the sink that will swallow this #sink. */
+  float swallow_mass;
+};
+
+
+
+
+/**
+ * @brief Return the ID of the sink that should swallow this #part.
+ *
+ * @param s_data The #part's #sink_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+sink_get_part_swallow_id(struct sink_part_data* s_data) {
+
+  return s_data->swallow_id;
+}
+
+
+
+/**
+ * @brief Update a given #part's sink data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param s_data The #part's #sink_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_mark_part_as_not_swallowed(struct sink_part_data* s_data) {
+
+  s_data->swallow_id = -1;
+}
+
+
+
+/**
+ * @brief Update a given #part's sink data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param p_data The #part's #sink_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_mark_part_as_swallowed(struct sink_part_data* s_data) {
+
+  s_data->swallow_id = -2;
+}
+
+
+
+
+
+
+
+
 
 #endif /* SWIFT_SINK_STRUCT_DEFAULT_H */

@@ -461,6 +461,26 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
   error("Loic: to be implemented");
 }
 
+
+/**
+ * @brief Add the chemistry data of a gas particle to a sink.
+ *
+ * Nothing to do here.
+ *
+ * @param sp_data The sink data to add to.
+ * @param p_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
+    struct chemistry_sink_data* sp_data,
+    const struct chemistry_part_data* p_data, const double gas_mass) {
+  
+  // we do nothing for the moment.
+  
+}
+
+
+
 /**
  * @brief Transfer chemistry data of a gas particle to a black hole.
  *
