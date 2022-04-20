@@ -1358,6 +1358,9 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
 
+      /* Add unlock. */
+      scheduler_addunlock(s, c->hydro.drift, c->hydro.sorts);
+
       /* Add the task finishing the grid construction */
       c->grid.ghost = scheduler_addtask(s, task_type_grid_ghost,
                                         task_subtype_none, 0, 0, c, NULL);
@@ -4480,121 +4483,6 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
   }   /* Loop over tasks */
 }
 
-void engine_make_grid_hydro_tasks_mapper(void *map_data, int num_elements,
-                                         void *extra_data) {
-
-  /* Extract the engine pointer. */
-  struct engine *e = (struct engine *)extra_data;
-  const int periodic = e->s->periodic;
-
-  struct space *s = e->s;
-  struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int *cdim = s->cdim;
-  struct cell *cells = s->cells_top;
-
-  /* Loop through the elements, which are just byte offsets from NULL. */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get the cell index. */
-    const int cid = (size_t)(map_data) + ind;
-
-    /* Integer indices of the cell in the top-level grid */
-    const int i = cid / (cdim[1] * cdim[2]);
-    const int j = (cid / cdim[2]) % cdim[1];
-    const int k = cid % cdim[2];
-
-    /* Get the cell */
-    struct cell *ci = &cells[cid];
-
-    /* Skip cells without hydro or star particles */
-    if (ci->hydro.count == 0) continue;
-
-    /* If the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_flux, 0, 0, ci,
-                        NULL);
-    }
-
-    /* Now loop over all the neighbours of this cell */
-    for (int ii = -1; ii < 2; ii++) {
-      int iii = i + ii;
-      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -1; jj < 2; jj++) {
-        int jjj = j + jj;
-        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -1; kk < 2; kk++) {
-          int kkk = k + kk;
-          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
-
-          /* Get the neighbouring cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk);
-          struct cell *cj = &cells[cjd];
-
-          /* Is one of the cells local and does the neighbour have gas
-           * particles? Also, only treat pairs once. */
-          if ((cid >= cjd) || (cj->hydro.count == 0) ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
-            continue;
-
-          /* Construct a pair flux exchange task. Flux exchange is symmetric,
-           * so we only add one task. */
-          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          scheduler_addtask(sched, task_type_pair, task_subtype_flux, sid, 0,
-                            ci, cj);
-
-#ifdef SWIFT_DEBUG_CHECKS
-#ifdef WITH_MPI
-
-          /* Let's cross-check that we had a proxy for that cell */
-          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
-
-            /* Find the proxy for this node */
-            const int proxy_id = e->proxy_ind[cj->nodeID];
-            if (proxy_id < 0)
-              error("No proxy exists for that foreign node %d!", cj->nodeID);
-
-            const struct proxy *p = &e->proxies[proxy_id];
-
-            /* Check whether the cell exists in the proxy */
-            int n = 0;
-            for (n = 0; n < p->nr_cells_in; n++)
-              if (p->cells_in[n] == cj) break;
-            if (n == p->nr_cells_in)
-              error(
-                  "Cell %d not found in the proxy but trying to construct "
-                  "hydro task!",
-                  cjd);
-          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
-
-            /* Find the proxy for this node */
-            const int proxy_id = e->proxy_ind[ci->nodeID];
-            if (proxy_id < 0)
-              error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-            const struct proxy *p = &e->proxies[proxy_id];
-
-            /* Check whether the cell exists in the proxy */
-            int n = 0;
-            for (n = 0; n < p->nr_cells_in; n++)
-              if (p->cells_in[n] == ci) break;
-            if (n == p->nr_cells_in)
-              error(
-                  "Cell %d not found in the proxy but trying to construct "
-                  "hydro task!",
-                  cid);
-          }
-#endif /* WITH_MPI */
-#endif /* SWIFT_DEBUG_CHECKS */
-        }
-      }
-    }
-  }
-}
-
 struct cell_type_pair {
   struct cell *ci, *cj;
   int type;
@@ -5021,7 +4909,7 @@ void engine_maketasks(struct engine *e) {
 
   if (e->policy & engine_policy_grid_hydro) {
     /* Run through the tasks and make flux exchange, gradient and gradient
-     * limiter tasks, by copying the grid construction structure. Also add the
+     * limiter tasks, based on the grid construction structure. Also add the
      * right dependencies. */
     engine_make_grid_hydroloop_tasks_mapper(sched->tasks, sched->nr_tasks, e);
   }
