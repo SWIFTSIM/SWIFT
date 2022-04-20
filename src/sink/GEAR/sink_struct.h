@@ -111,12 +111,24 @@ sink_mark_sink_as_not_swallowed(struct sink_sink_data* s_data) {
  * @param s_data The #sink's #bsink_sink_data structure.
  */
 __attribute__((always_inline)) INLINE static void
-sink_mark_sink_as_merged(struct sink_sink_data* p_data) {
+sink_mark_sink_as_merged(struct sink_sink_data* s_data) {
 
-  p_data->swallow_id = -2;
-  p_data->swallow_mass = -1.f;
+  s_data->swallow_id = -2;
+  s_data->swallow_mass = -1.f;
 }
 
+
+
+/**
+ * @brief Return the ID of the sink that should swallow this #sink.
+ *
+ * @param s_data The #sink's #sink_sink_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+sink_get_sink_swallow_id(struct sink_sink_data* s_data) {
+
+  return s_data->swallow_id;
+}
 
 
 

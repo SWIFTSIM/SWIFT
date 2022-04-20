@@ -773,6 +773,141 @@ void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
  */
 void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+  //const int with_cosmology = (e->policy & engine_policy_cosmology);
+  //const struct black_holes_props *props = e->black_holes_properties;
+  //const int use_nibbling = props->use_nibbling;
+
+  struct sink *sinks = s->sinks;
+  const size_t nr_sink = s->nr_sinks;
+#ifdef WITH_MPI
+  not implemented yet !
+#endif
+
+  struct sink *cell_sinks = c->sinks.parts;
+
+  /* Early abort?
+   * (We only want cells for which we drifted the BH as these are
+   * the only ones that could have BH particles that have been flagged
+   * for swallowing) */
+  if (c->sinks.count == 0 ||
+      c->sinks.ti_old_part != e->ti_current) {
+    return;
+  }
+
+  /* Loop over the progeny ? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *restrict cp = c->progeny[k];
+
+        runner_do_sinks_sink_swallow(r, cp, 0);
+      }
+    }
+  } else {
+
+    /* Loop over all the sinks particles in the cell
+     * Note that the cell (and hence the sinks) may be local or foreign. */
+    const size_t nr_cell_sinks = c->sinks.count;
+
+    for (size_t k = 0; k < nr_cell_sinks; k++) {
+
+      /* Get a handle on the part. */
+      struct sink *const cell_sp = &cell_sinks[k];
+
+      /* Ignore inhibited particles (they have already been removed!) */
+      if (sink_is_inhibited(cell_sp, e)) continue;
+
+
+      /* Get the ID of the black holes that will swallow this bpart */
+      const long long swallow_id =
+          sink_get_sink_swallow_id(&cell_sp->merger_data);
+
+      /* Has this particle been flagged for swallowing? */
+      if (swallow_id >= 0) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (cell_sp->ti_drift != e->ti_current)
+          error("Trying to swallow an un-drifted particle.");
+#endif
+
+        /* ID of the BH swallowing this particle */
+        const long long sink_id = swallow_id;
+
+        /* Have we found this particle's sink already? */
+        int found = 0;
+
+        /* Let's look for the hungry sink in the local list */
+        for (size_t i = 0; i < nr_sink; ++i) {
+
+          /* Get a handle on the bpart. */
+          struct sink *sp = &sinks[i];
+
+          if (sp->id == sink_id) {
+
+            /* Is the swallowing sink itself flagged for swallowing by
+               another sink? */
+            if (sink_get_sink_swallow_id(&sp->merger_data) != -1) {
+
+              /* Pretend it was found and abort */
+              sink_mark_sink_as_not_swallowed(&cell_sp->merger_data);
+              found = 1;
+              break;
+            }
+
+            /* Lock the space as we are going to work directly on the
+             * space's bpart list */
+            lock_lock(&s->lock);
+
+            /* Swallow the sink particle (i.e. update the swallowing sink
+             * properties with the properties of cell_sp) */
+            sink_swallow_sink(sp, cell_sp);
+            
+
+            /* Release the space as we are done updating the spart */
+            if (lock_unlock(&s->lock) != 0)
+              error("Failed to unlock the space.");
+
+            message("sink %lld swallowing sink particle %lld", sp->id, cell_sp->id);
+
+            /* If the sink particle is local, remove it */
+            if (c->nodeID == e->nodeID) {
+
+              message("sink %lld removing sink particle %lld", sp->id, cell_sp->id);
+
+              /* Finally, remove the sink particle from the system
+               * Recall that the gpart associated with it is also removed
+               * at the same time. */
+              cell_remove_sink(e, c, cell_bp);
+            }
+
+            /* In any case, prevent the particle from being re-swallowed */
+            sink_mark_sink_as_merged(&cell_sp->merger_data);
+
+            found = 1;
+            break;
+          }
+
+        } /* Loop over local BHs */
+
+#ifdef WITH_MPI
+  not implemented yet !
+#endif
+
+        /* If we have a local particle, we must have found the sink in one
+         * of our list of black holes. */
+        if (c->nodeID == e->nodeID && !found) {
+          error("sink particle %lld could not find sink %lld to be swallowed",
+                cell_sp->id, swallow_id);
+        }
+
+      } /* Part was flagged for swallowing */
+    }   /* Loop over the parts */
+  }     /* Cell is not split */
+
+
 }
 
 /**

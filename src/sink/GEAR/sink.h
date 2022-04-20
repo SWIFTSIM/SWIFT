@@ -307,7 +307,69 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
 
 
 
+/**
+ * @brief Update the properties of a sink particles by swallowing
+ * a sink particle.
+ *
+ * @param spi The #sink to update.
+ * @param spj The #sink that is swallowed.
+ * @param cosmo The current cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
+ * @param props The properties of the black hole scheme.
+ */
+__attribute__((always_inline)) INLINE static void sink_swallow_sink(
+    struct sink* spi, const struct sink* spj, const struct cosmology* cosmo) {
 
+  /* Get the current dynamical masses */
+  const float spi_dyn_mass = spi->mass;
+  const float spj_dyn_mass = spj->mass;
+
+
+  /* Increase the masses of the sink. */
+  spi->mass += spj->mass;
+  spi->gpart->mass += spj->mass;
+  spi->subgrid_mass += spj->subgrid_mass;
+
+  /* Collect the swallowed angular momentum */
+  spi->swallowed_angular_momentum[0] += spj->swallowed_angular_momentum[0];
+  spi->swallowed_angular_momentum[1] += spj->swallowed_angular_momentum[1];
+  spi->swallowed_angular_momentum[2] += spj->swallowed_angular_momentum[2];
+
+  /* Update the sink momentum */
+  const float sink_mom[3] = {spi_dyn_mass * spi->v[0] + spj_dyn_mass * spj->v[0],
+                             spi_dyn_mass * spi->v[1] + spj_dyn_mass * spj->v[1],
+                             spi_dyn_mass * spi->v[2] + spj_dyn_mass * spj->v[2]};
+
+  spi->v[0] = sink_mom[0] / spi->mass;
+  spi->v[1] = sink_mom[1] / spi->mass;
+  spi->v[2] = sink_mom[2] / spi->mass;
+  spi->gpart->v_full[0]   = spi->v[0];
+  spi->gpart->v_full[1]   = spi->v[1];
+  spi->gpart->v_full[2]   = spi->v[2];
+
+  /* Update the sink metal masses */
+  struct chemistry_sink_data* spi_chem = &spi->chemistry_data;
+  const struct chemistry_sink_data* spj_chem = &spj->chemistry_data;
+  chemistry_add_sink_to_sink(spi_chem, spj_chem);
+
+  /* Update the energy reservoir */
+  spi->energy_reservoir += spj->energy_reservoir;
+
+  /* Add up all the BH seeds */
+  spi->cumulative_number_seeds += spj->cumulative_number_seeds;
+
+  /* Add up all the gas particles we swallowed */
+  spi->number_of_gas_swallows += spj->number_of_gas_swallows;
+
+  /* Add the subgrid angular momentum that we swallowed */
+  spi->accreted_angular_momentum[0] += spj->accreted_angular_momentum[0];
+  spi->accreted_angular_momentum[1] += spj->accreted_angular_momentum[1];
+  spi->accreted_angular_momentum[2] += spj->accreted_angular_momentum[2];
+
+  /* We had another merger */
+  spi->number_of_mergers++;
+}
 
 
 
