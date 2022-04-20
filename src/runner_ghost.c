@@ -1657,6 +1657,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct part *restrict parts = c->hydro.parts;
   const struct engine *e = r->e;
+#ifdef EXTRA_HYDRO_LOOP
+  const struct cosmology *cosmo = e->cosmology;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+#endif
 
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
@@ -1787,7 +1791,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     part_is_active_mask[i] = part_is_active(&parts[i], e);
   voronoi_build(c->grid.voronoi, c->grid.delaunay, part_is_active_mask);
 
-  /* Set the geometry properties of the particles */
+  /* Set the geometry properties of the particles and prepare the particles for
+   * the gradient calculation */
   for (int i = 0; i < c->hydro.count; i++) {
     struct part *p = &c->hydro.parts[i];
     if (part_is_active_mask[i]) {
@@ -1797,6 +1802,15 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       p->geometry.centroid[2] = c->grid.voronoi->cells[i].centroid[2];
 
       if (e->policy & engine_policy_grid_hydro) {
+
+        /* get a handle on the xp */
+        struct xpart *xp = &c->hydro.xparts[i];
+
+#ifdef EXTRA_HYDRO_LOOP
+        /* Prepare particle for gradient calculation */
+        hydro_prepare_gradient(p, xp, cosmo, hydro_props);
+#endif
+
         /* Calculate the time-step for passing to hydro_prepare_force.
          * This is the physical time between the start and end of the time-step
          * without any scale-factor powers. */
