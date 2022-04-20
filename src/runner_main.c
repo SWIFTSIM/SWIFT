@@ -304,10 +304,12 @@ void *runner_main(void *data) {
             runner_doself_sinks_merger(r, ci);
           else if (t->subtype == task_subtype_grid_construction)
             runner_doself_grid_construction(r, ci);
+#ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_slope_estimate)
             runner_doself_slope_estimate(r, ci);
           else if (t->subtype == task_subtype_slope_limiter)
             runner_doself_slope_limiter(r, ci);
+#endif
           else if (t->subtype == task_subtype_flux)
             runner_doself_flux_exchange(r, ci);
           else
@@ -360,10 +362,12 @@ void *runner_main(void *data) {
             runner_do_sym_pair_sinks_merger(r, ci, cj);
           else if (t->subtype == task_subtype_grid_construction)
             runner_dopair_grid_construction(r, ci, cj);
+#ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_slope_estimate)
             runner_dopair_branch_slope_estimate(r, ci, cj);
           else if (t->subtype == task_subtype_slope_limiter)
             runner_dopair_branch_slope_limiter(r, ci, cj);
+#endif
           else if (t->subtype == task_subtype_flux)
             runner_dopair_branch_flux_exchange(r, ci, cj);
           else
