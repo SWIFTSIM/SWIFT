@@ -53,6 +53,15 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
 
   sp->r_cut = sink_props->cut_off_radius;
   sp->time_bin = 0;
+  
+  sp->number_of_gas_swallows = 0;
+  sp->number_of_direct_gas_swallows = 0;
+  sp->swallowed_angular_momentum[0] = 0.f;
+  sp->swallowed_angular_momentum[1] = 0.f;
+  sp->swallowed_angular_momentum[2] = 0.f;
+
+  
+  sink_mark_sink_as_not_swallowed(&sp->merger_data);
 }
 
 

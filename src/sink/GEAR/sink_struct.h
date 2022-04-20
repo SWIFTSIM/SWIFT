@@ -26,7 +26,6 @@ struct sink_part_data {
 
   /*! ID of the sink that will swallow this #part. */
   long long swallow_id;
-
   
   /*! Gravitational potential of the particle */
   uint8_t can_form_sink;
@@ -91,6 +90,32 @@ sink_mark_part_as_swallowed(struct sink_part_data* s_data) {
 
 
 
+/**
+ * @brief Update a given #sink's sink data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param s_data The #sink's #sink_sink_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_mark_sink_as_not_swallowed(struct sink_sink_data* s_data) {
+
+  s_data->swallow_id = -1;
+  s_data->swallow_mass = 0.f;
+}
+
+
+/**
+ * @brief Update a given #sink's sink data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param s_data The #sink's #bsink_sink_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_mark_sink_as_merged(struct sink_sink_data* p_data) {
+
+  p_data->swallow_id = -2;
+  p_data->swallow_mass = -1.f;
+}
 
 
 
