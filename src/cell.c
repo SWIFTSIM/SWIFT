@@ -1250,10 +1250,10 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 void cell_set_grid_construction_level(struct cell *c,
                                       struct cell *construction_level) {
 
-  const size_t nr_parts = c->hydro.count;
+  const int nr_parts = c->hydro.count;
   if (construction_level == NULL &&
       (c->grid.unsplittable_flag ||
-       nr_parts < SHADOWSWIFT_SPLITTING_THRESHOLD)) {
+       nr_parts < space_grid_split_threshold)) {
     /* This is the first time we encounter a cell with the unsplittable flag
      * set, meaning that it or one of its direct neighbours is unsplittable, or
      * which has too few particles to split further. This is the construction
@@ -1263,7 +1263,7 @@ void cell_set_grid_construction_level(struct cell *c,
 
     /* Set r_max */
     double r_max = 0.;
-    for (size_t k = 0; k < nr_parts; k++) {
+    for (int k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
       struct part *const p = &c->hydro.parts[k];
