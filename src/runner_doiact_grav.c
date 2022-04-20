@@ -2446,7 +2446,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-  const double theta_crit = e->gravity_properties->theta_crit;
+//  const double theta_crit = e->gravity_properties->theta_crit;
 
   TIMER_TIC;
 
@@ -2455,8 +2455,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   int *cells_with_particles = e->s->cells_with_particles_top;
   const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
-//  /* Explicitly skip the void cell */
-//  if (ci->tl_cell_type == void_tl_cell) return;
+  /* Explicitly skip the void cell */
+  if (ci->tl_cell_type == void_tl_cell) return;
 
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e)) return;
@@ -2499,38 +2499,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Skip empty cells */
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
-      if (periodic) {
-
-        /* Minimal distance between any pair of particles */
-#ifdef WITH_ZOOM_REGION
-        const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
-#else
-        const double min_radius2 =
-            cell_min_dist2_same_size(top, cj, periodic, dim);
-#endif
-
-        /* Are we beyond the distance where the truncated forces are 0 ?*/
-        if (min_radius2 > max_distance2) {
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Need to account for the interactions we missed */
-          accumulate_add_ll(&multi_i->pot.num_interacted,
-                            multi_j->m_pole.num_gpart);
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-          /* Need to account for the interactions we missed */
-          accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                            multi_j->m_pole.num_gpart);
-#endif
-
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
-
-          /* We are done here. */
-          continue;
-        }
-      }
-
       if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
           /*is_tree_walk=*/0)) {
 
@@ -2557,8 +2525,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
-    const double distance = 2.5 * top->dmin / theta_crit;
-    const int d = ceil(distance / top->dmin) + 1;
+//    const double distance = 2.5 * top->dmin / theta_crit;
+    const int d = ceil(max_distance / top->dmin) + 1;
 
     /* Loop over plausibly useful cells, skipping out of range coordinates */
     for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -2646,36 +2614,33 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Skip empty cells */
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
-      if (periodic) {
-
-        /* Minimal distance between any pair of particles */
+      /* Minimal distance between any pair of particles */
 #ifdef WITH_ZOOM_REGION
-        const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
+      const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 #else
-        const double min_radius2 =
-            cell_min_dist2_same_size(top, cj, periodic, dim);
+      const double min_radius2 =
+          cell_min_dist2_same_size(top, cj, periodic, dim);
 #endif
 
-        /* Are we beyond the distance where the truncated forces are 0 ?*/
-        if (min_radius2 > max_distance2) {
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
+      if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
-          /* Need to account for the interactions we missed */
-          accumulate_add_ll(&multi_i->pot.num_interacted,
-                            multi_j->m_pole.num_gpart);
+        /* Need to account for the interactions we missed */
+        accumulate_add_ll(&multi_i->pot.num_interacted,
+                          multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-          /* Need to account for the interactions we missed */
-          accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                            multi_j->m_pole.num_gpart);
+        /* Need to account for the interactions we missed */
+        accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                          multi_j->m_pole.num_gpart);
 #endif
 
-          /* Record that this multipole received a contribution */
-          multi_i->pot.interacted = 1;
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
 
-          /* We are done here. */
-          continue;
-        }
+        /* We are done here. */
+        continue;
       }
 
       if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
