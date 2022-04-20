@@ -21,4 +21,4 @@
 #include "pressure_floor.h"
 
 /* Pressure floor for the physics model. */
-struct pressure_floor_properties pressure_floor_props;
+struct pressure_floor_props pressure_floor_props;

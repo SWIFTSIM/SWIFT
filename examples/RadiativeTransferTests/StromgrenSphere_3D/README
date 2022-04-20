@@ -25,3 +25,6 @@ Additional scripts:
 To use the GEAR RT model, compile with :
     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
+To use the SPHM1 RT model, compile with :
+    --with-rt=SPHM1RT_1 --with-stars=basic --with-feedback=none
+

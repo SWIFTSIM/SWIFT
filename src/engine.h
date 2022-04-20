@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -300,8 +300,8 @@ struct engine {
   long long count_inhibited_bparts;
 #endif
 
-  /* Maximal ID of the parts (used for the generation of new IDs when splitting)
-   */
+  /* Maximal ID of the parts, *excluding* background particles
+   * (used for the generation of new IDs when splitting) */
   long long max_parts_id;
 
   /* Total mass in the simulation */
@@ -501,6 +501,9 @@ struct engine {
   /* Properties of the sellar feedback model */
   struct feedback_props *feedback_props;
 
+  /* Properties of the pressure floor scheme */
+  struct pressure_floor_props *pressure_floor_props;
+
   /* Properties of the radiative transfer model */
   struct rt_props *rt_props;
 
@@ -638,8 +641,9 @@ void engine_init(
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos,
     struct neutrino_response *neutrino_response,
-    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
-    const struct external_potential *potential,
+    struct feedback_props *feedback,
+    struct pressure_floor_props *pressure_floor, struct rt_props *rt,
+    struct pm_mesh *mesh, const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,

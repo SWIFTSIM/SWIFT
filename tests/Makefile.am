@@ -1,5 +1,5 @@
 # This file is part of SWIFT.
-# Copyright (c) 2015 matthieu.schaller@durham.ac.uk.
+# Copyright (c) 2015 schaller@strw.leidenuniv.nl.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

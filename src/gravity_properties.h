@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -152,7 +152,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
-                        const int periodic, const double dim[3]);
+                        const int periodic, const double dim[3],
+                        const int cdim[3]);
 void gravity_props_update(struct gravity_props *p,
                           const struct cosmology *cosmo);
 void gravity_props_update_MAC_choice(struct gravity_props *p);

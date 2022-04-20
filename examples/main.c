@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -1083,7 +1083,7 @@ int main(int argc, char *argv[]) {
       pressure_floor_init(&pressure_floor_props, &prog_const, &us,
                           &hydro_properties, params);
     else
-      bzero(&pressure_floor_props, sizeof(struct pressure_floor_properties));
+      bzero(&pressure_floor_props, sizeof(struct pressure_floor_props));
 
     /* Initialise the stars properties */
     if (with_stars)
@@ -1356,10 +1356,11 @@ int main(int argc, char *argv[]) {
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity)
-      gravity_props_init(
-          &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
-          with_external_gravity, with_baryon_particles, with_DM_particles,
-          with_neutrinos, with_DM_background_particles, periodic, s.dim);
+      gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
+                         with_cosmology, with_external_gravity,
+                         with_baryon_particles, with_DM_particles,
+                         with_neutrinos, with_DM_background_particles, periodic,
+                         s.dim, s.cdim);
 
     /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));
@@ -1492,9 +1493,9 @@ int main(int argc, char *argv[]) {
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &neutrino_properties,
-                &neutrino_response, &feedback_properties, &rt_properties, &mesh,
-                &potential, &cooling_func, &starform, &chemistry,
-                &extra_io_props, &fof_properties, &los_properties,
+                &neutrino_response, &feedback_properties, &pressure_floor_props,
+                &rt_properties, &mesh, &potential, &cooling_func, &starform,
+                &chemistry, &extra_io_props, &fof_properties, &los_properties,
                 &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);

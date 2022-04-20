@@ -175,27 +175,35 @@ double lightcone_map_neutrino_mass_get_value(
     const struct engine* e, const struct lightcone_props* lightcone_props,
     const struct gpart* gp, const double a_cross, const double x_cross[3]);
 
+/*
+   This associates map names to the appropriate update function and unit info.
+
+   Note that field designators are commented out here so that the code will
+   compile as C++ using gcc. This is necessary due to a gcc bug.
+
+   See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=55227 for details.
+*/
 static const struct lightcone_map_type neutrino_lightcone_map_types[] = {
     {
-        .name = "NeutrinoMass",
-        .update_map = lightcone_map_neutrino_mass_get_value,
-        .ptype_contributes = lightcone_map_neutrino_mass_type_contributes,
-        .baseline_func = lightcone_map_neutrino_baseline_value,
-        .units = UNIT_CONV_MASS,
-        .smoothing = map_unsmoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "NeutrinoMass",
+        /* .update_map = */ lightcone_map_neutrino_mass_get_value,
+        /* .ptype_contributes = */ lightcone_map_neutrino_mass_type_contributes,
+        /* .baseline_func = */ lightcone_map_neutrino_baseline_value,
+        /* .units = */ UNIT_CONV_MASS,
+        /* .smoothing = */ map_unsmoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
     {
         /* NULL functions indicate end of array */
-        .name = "",
-        .update_map = NULL,
-        .ptype_contributes = NULL,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_NO_UNITS,
-        .smoothing = map_unsmoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "",
+        /* .update_map = */ NULL,
+        /* .ptype_contributes = */ NULL,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_NO_UNITS,
+        /* .smoothing = */ map_unsmoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
 };
 

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -580,7 +580,7 @@ int main(int argc, char *argv[]) {
   gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                      with_cosmology, /*with_external_gravity=*/0,
                      with_baryon_particles, with_DM_particles, with_neutrinos,
-                     with_DM_background_particles, periodic, s.dim);
+                     with_DM_background_particles, periodic, s.dim, s.cdim);
 
   /* Initialise the long-range gravity mesh */
   if (periodic) {
@@ -651,6 +651,7 @@ int main(int argc, char *argv[]) {
       /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
       /*sink_properties=*/NULL, &neutrino_properties,
       /*neutrino_response=*/NULL, /*feedback_properties=*/NULL,
+      /*pressure_floor_properties=*/NULL,
       /*rt_properties=*/NULL, &mesh, /*potential=*/NULL,
       /*cooling_func=*/NULL, /*starform=*/NULL, /*chemistry=*/NULL,
       /*extra_io_props=*/NULL, &fof_properties, /*los_properties=*/NULL,

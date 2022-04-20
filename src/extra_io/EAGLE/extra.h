@@ -22,8 +22,9 @@
 #include "chemistry.h"
 #include "cooling.h"
 #include "engine.h"
+#include "star_formation.h"
 
-#define xray_table_date_string 20210713
+#define xray_table_date_string 20210923
 
 #define xray_emission_N_temperature 46
 #define xray_emission_N_density 71
@@ -104,7 +105,6 @@ struct extra_io_properties {
 
     /* Energy emissivity unit conversion factor */
     double xray_energy_emissivity_unit_conversion;
-
   } xray_data;
 };
 
@@ -709,6 +709,9 @@ INLINE static float do_xray_interpolation(
 /**
  * @brief Compute the emmisivity of a particle in a given X-ray band.
  *
+ * Particles that are star-forming or have a (rho,T) pair outside
+ * the table range return a flux of 0.
+ *
  * @param p The #part.
  * @param xp The corresponding #xpart.
  * @param e The #engine.
@@ -735,9 +738,11 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
                    e->cooling_func->number_density_to_cgs;
   const float log10_nH_cgs = log10f(nH);
 
-  /* If the particle is not in the table range we return a flux of 0 */
+  /* If the particle is not in the table range or star-forming, we return a flux
+   * of 0 */
   if ((log10_T < 5.0f || log10_T > 9.5f) ||
-      (log10_nH_cgs < -8.0f || log10_nH_cgs > 6.0f))
+      (log10_nH_cgs < -8.0f || log10_nH_cgs > 6.0f) ||
+      star_formation_get_SFR(p, xp) > 0.)
     return 0.;
 
   /* Get gas particle element mass fractions */

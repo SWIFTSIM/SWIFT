@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2021 Tsang Keung Chan (chantsangkeung@gmail.com)
- * Copyright (c) 2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ *               2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,9 @@
 #define SWIFT_RT_SPHM1RT_H
 
 #include "rt_properties.h"
+#include "rt_stellar_emission_rate.h"
 #include "rt_struct.h"
+#include "rt_unphysical.h"
 
 #include <float.h>
 
@@ -212,45 +214,24 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
     rpd->diffusion[g].graduradc[2] = 0.0f;
   }
 
-  float fradmag, flux_max, correct;
-
   /* To avoid radiation reaching other dimension and violating conservation */
   for (int g = 0; g < RT_NGROUPS; g++) {
-    if (hydro_dimension < 1.001f) {
-      rpd->conserved[g].frad[1] = 0.0f;
-    }
-    if (hydro_dimension < 2.001f) {
-      rpd->conserved[g].frad[2] = 0.0f;
-    }
+#if defined(HYDRO_DIMENSION_1D)
+    rpd->conserved[g].frad[1] = 0.0f;
+    rpd->conserved[g].frad[2] = 0.0f;
+#endif
+#if defined(HYDRO_DIMENSION_2D)
+    rpd->conserved[g].frad[2] = 0.0f;
+#endif
   }
 
+  float urad_old;
   for (int g = 0; g < RT_NGROUPS; g++) {
     /* TK: avoid the radiation flux to violate causality. Impose a limit: F<Ec
      */
-
-    if ((rpd->conserved[g].frad[0] == 0.f) &&
-        (rpd->conserved[g].frad[1] == 0.f) &&
-        (rpd->conserved[g].frad[2] == 0.f)) {
-      fradmag = 0.f;
-    } else {
-      fradmag = sqrtf(rpd->conserved[g].frad[0] * rpd->conserved[g].frad[0] +
-                      rpd->conserved[g].frad[1] * rpd->conserved[g].frad[1] +
-                      rpd->conserved[g].frad[2] * rpd->conserved[g].frad[2]);
-    }
-
-    flux_max = rpd->conserved[g].urad * rpd->params.cred;
-    if (fradmag > 0.f) {
-      if (fradmag > flux_max) {
-        correct = flux_max / fradmag;
-        rpd->conserved[g].frad[0] = rpd->conserved[g].frad[0] * correct;
-        rpd->conserved[g].frad[1] = rpd->conserved[g].frad[1] * correct;
-        rpd->conserved[g].frad[2] = rpd->conserved[g].frad[2] * correct;
-      }
-    } else {
-      rpd->conserved[g].frad[0] = 0.0f;
-      rpd->conserved[g].frad[1] = 0.0f;
-      rpd->conserved[g].frad[2] = 0.0f;
-    }
+    urad_old = rpd->conserved[g].urad;
+    rt_check_unphysical_state(&rpd->conserved[g].urad, rpd->conserved[g].frad,
+                              urad_old, rpd->params.cred);
   }
 }
 
@@ -301,7 +282,10 @@ rt_init_part_after_zeroth_step(struct part* restrict p,
  * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_init_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+
+  sp->rt_data.injection_weight = 0.f;
+}
 
 /**
  * @brief Reset of the RT star particle data not related to the density.
@@ -310,13 +294,22 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
  * @param sp star particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    sp->rt_data.emission_this_step[g] = 0.f;
+  }
+}
 
 /**
  * @brief First initialisation of the RT star particle data.
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
-    struct spart* restrict sp) {}
+    struct spart* restrict sp) {
+
+  rt_init_spart(sp);
+  rt_reset_spart(sp);
+}
 
 /**
  * @brief Initialises particle quantities that can't be set
@@ -364,7 +357,9 @@ __attribute__((always_inline)) INLINE static void rt_part_has_no_neighbours(
  * @param sp The #spart.
  */
 __attribute__((always_inline)) INLINE static void rt_spart_has_no_neighbours(
-    struct spart* sp){};
+    struct spart* sp) {
+  message("WARNING: found star without neighbours");
+};
 
 /**
  * @brief Do checks/conversions on particles on startup.
@@ -398,13 +393,21 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
  * @brief Computes the next radiative transfer time step size
  * of a given particle (during timestep tasks)
  *
- * @param p particle to work on
- * @param rt_props the RT properties struct
- * @param cosmo the cosmology
+ * @param p Particle to work on.
+ * @param rt_props RT properties struct
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static float rt_compute_timestep(
-    const struct part* restrict p, const struct rt_props* restrict rt_props,
-    const struct cosmology* restrict cosmo) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us) {
+
   float dt = p->h * cosmo->a / (p->rt_data.params.cred + FLT_MIN) *
              rt_props->CFL_condition;
 
@@ -423,7 +426,8 @@ __attribute__((always_inline)) INLINE static float rt_compute_spart_timestep(
     const struct spart* restrict sp, const struct rt_props* restrict rt_props,
     const struct cosmology* restrict cosmo) {
 
-  return FLT_MAX;
+  /* For now, the only thing we care about is the upper threshold for stars. */
+  return rt_props->stars_max_timestep;
 }
 
 /**
@@ -482,7 +486,23 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
                                  double star_age, double dt,
                                  const struct rt_props* rt_props,
                                  const struct phys_const* phys_const,
-                                 const struct unit_system* internal_units) {}
+                                 const struct unit_system* internal_units) {
+
+  /* Skip initial fake time-step */
+  if (dt == 0.0l) return;
+
+  if (time == 0.l) {
+    /* if function is called before the first actual step, time is still
+     * at zero unless specified otherwise in parameter file.*/
+    star_age = dt;
+  }
+
+  /* now get the emission rates */
+  double star_age_begin_of_step = star_age - dt;
+  star_age_begin_of_step = max(0.l, star_age_begin_of_step);
+  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
+                               phys_const, internal_units);
+}
 
 /**
  * @brief finishes up the gradient computation
@@ -608,12 +628,13 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
 
   /* To avoid radiation reaching other dimension and violating conservation */
   for (int g = 0; g < RT_NGROUPS; g++) {
-    if (hydro_dimension < 1.001f) {
-      rpd->conserved[g].frad[1] = 0.0f;
-    }
-    if (hydro_dimension < 2.001f) {
-      rpd->conserved[g].frad[2] = 0.0f;
-    }
+#if defined(HYDRO_DIMENSION_1D)
+    rpd->conserved[g].frad[1] = 0.0f;
+    rpd->conserved[g].frad[2] = 0.0f;
+#endif
+#if defined(HYDRO_DIMENSION_2D)
+    rpd->conserved[g].frad[2] = 0.0f;
+#endif
   }
 }
 

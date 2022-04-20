@@ -75,6 +75,44 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
 }
 
 /**
+ * @brief Do additional checks after reading in initial conditions, and exit on
+ * error.
+ *
+ * @param p particle we're checking
+ * @param group current photon group we're checking
+ * @param energy_density pointer to the radiation energy density
+ * @param flux pointer to radiation flux (3 dimensional)
+ * @param c the speed of light (in internal units). NOT the reduced speed of
+ * light.
+ */
+__attribute__((always_inline)) INLINE static void rt_check_unphysical_state_ICs(
+    const struct part* restrict p, int group, float* energy_density,
+    float* flux, const double c) {
+
+  /* Nothing to do here. The other unphysical check will catch other problems.
+   */
+  if (*energy_density == 0.f) return;
+
+  /* Check for negative energies */
+  if (*energy_density < 0.f)
+    error(
+        "Found particle with negative energy density after reading in ICs: "
+        "pid= %lld group=%d E=%.6g",
+        p->id, group, *energy_density);
+
+  /* Check for too high fluxes */
+  const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
+  const float flux_norm = sqrtf(flux2);
+  const float flux_max = c * *energy_density;
+  if (flux_norm > flux_max * 1.0001) {
+    error(
+        "Found too high radiation flux for a particle: pid=%lld, group=%d, "
+        "have=%.6g, max=%.6g",
+        p->id, group, flux_norm, flux_max);
+  }
+}
+
+/**
  * @brief check for and correct if needed unphysical
  * values for a flux in the sense of hyperbolic conservation laws
  *
@@ -123,30 +161,34 @@ rt_check_unphysical_hyperbolic_flux(float flux[4][3]) {
 __attribute__((always_inline)) INLINE static void
 rt_check_unphysical_mass_fractions(struct part* restrict p) {
 
+/* GRACKLE doesn't really like exact zeroes, so use something
+ * comparatively small instead. */
+#define RT_GEAR_TINY_MASS_FRACTION 1.e-6
+
   if (p->rt_data.tchem.mass_fraction_HI < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HI < -1e4)
       message("WARNING: Got negative HI mass fraction?");
-    p->rt_data.tchem.mass_fraction_HI = 0.f;
+    p->rt_data.tchem.mass_fraction_HI = RT_GEAR_TINY_MASS_FRACTION;
   }
   if (p->rt_data.tchem.mass_fraction_HII < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HII < -1e4)
       message("WARNING: Got negative HII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HII = 0.f;
+    p->rt_data.tchem.mass_fraction_HII = RT_GEAR_TINY_MASS_FRACTION;
   }
   if (p->rt_data.tchem.mass_fraction_HeI < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeI < -1e4)
       message("WARNING: Got negative HeI mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeI = 0.f;
+    p->rt_data.tchem.mass_fraction_HeI = RT_GEAR_TINY_MASS_FRACTION;
   }
   if (p->rt_data.tchem.mass_fraction_HeII < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeII < -1e4)
       message("WARNING: Got negative HeII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeII = 0.f;
+    p->rt_data.tchem.mass_fraction_HeII = RT_GEAR_TINY_MASS_FRACTION;
   }
   if (p->rt_data.tchem.mass_fraction_HeIII < 0.f) {
     if (p->rt_data.tchem.mass_fraction_HeIII < -1e4)
       message("WARNING: Got negative HeIII mass fraction?");
-    p->rt_data.tchem.mass_fraction_HeIII = 0.f;
+    p->rt_data.tchem.mass_fraction_HeIII = RT_GEAR_TINY_MASS_FRACTION;
   }
 
   const float XHI = p->rt_data.tchem.mass_fraction_HI;

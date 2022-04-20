@@ -1,4 +1,24 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
 
 # ----------------------------------------------------
 # plots 2D projection of radiation energy and fluxes
@@ -38,24 +58,8 @@ projection_kwargs = {"resolution": 1024, "parallel": True}
 
 # snapshot basename
 snapshot_base = "propagation_test"
-
-# Set Units of your choice
-energy_units = unyt.erg
-energy_units_str = "\\rm{erg}"
-flux_units = 1e10 * energy_units / unyt.cm ** 2 / unyt.s
-flux_units_str = "10^{10} \\rm{erg} \\ \\rm{cm}^{-2} \\ \\rm{s}^{-1}"
-time_units = unyt.s
-
 if do_stromgren_sphere:
     snapshot_base = "output"
-
-    energy_units = 1e50 * unyt.erg
-    energy_units_str = "10^{50} \\rm{erg}"
-    flux_units = 1e50 * unyt.erg / unyt.kpc ** 2 / unyt.Gyr
-    flux_units_str = "10^{60} \\rm{erg} \\ \\rm{kpc}^{-2} \\ \\rm{Gyr}^{-1}"
-    time_units = unyt.Myr
-# -----------------------------------------------------------------------
-
 
 # Read in cmdline arg: Are we plotting only one snapshot, or all?
 plot_all = False
@@ -65,6 +69,42 @@ except IndexError:
     plot_all = True
 
 mpl.rcParams["text.usetex"] = True
+
+# -----------------------------------------------------------------------
+
+
+# get the unit for rt according to the RT scheme:
+def get_units(scheme, unit_system="cgs_units"):
+    if unit_system == "cgs_units":
+        time_units = unyt.s
+        energy_units = unyt.erg
+        energy_units_str = "\\rm{erg}"
+        if scheme.startswith("GEAR M1closure"):
+            flux_units = 1e-10 * energy_units / unyt.cm ** 2 / unyt.s
+            flux_units_str = "10^{-10} \\rm{erg} \\ \\rm{cm}^{-2} \\ \\rm{s}^{-1}"
+        elif scheme.startswith("SPH M1closure"):
+            flux_units = 1e10 * energy_units * unyt.cm / unyt.s
+            flux_units_str = "10^{10} \\rm{erg} \\ \\rm{cm} \\ \\rm{s}^{-1}"
+        else:
+            print("RT scheme not identified. Exit.")
+            exit()
+    elif unit_system == "stromgren_units":
+        time_units = unyt.Myr
+        energy_units = 1e50 * unyt.erg
+        energy_units_str = "10^{50} \\rm{erg}"
+        if scheme.startswith("GEAR M1closure"):
+            flux_units = 1e50 * unyt.erg / unyt.kpc ** 2 / unyt.Gyr
+            flux_units_str = "10^{60} \\rm{erg} \\ \\rm{kpc}^{-2} \\ \\rm{Gyr}^{-1}"
+        elif scheme.startswith("SPH M1closure"):
+            flux_units = 1e50 * unyt.erg * unyt.kpc / unyt.Gyr
+            flux_units_str = "10^{60} \\rm{erg} \\ \\rm{kpc} \\ \\rm{Gyr}^{-1}"
+        else:
+            print("RT scheme not identified. Exit.")
+            exit()
+    else:
+        print("Unit system not identified. Exit.")
+        exit()
+    return time_units, energy_units, energy_units_str, flux_units, flux_units_str
 
 
 def get_snapshot_list(snapshot_basename="output"):
@@ -124,6 +164,16 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     # Read in data first
     data = swiftsimio.load(filename)
     meta = data.metadata
+    scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
+
+    if do_stromgren_sphere:
+        time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
+            scheme, unit_system="stromgren_units"
+        )
+    else:
+        time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
+            scheme, unit_system="cgs_units"
+        )
 
     ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
     xlabel_units_str = meta.boxsize.units.latex_representation()
@@ -318,6 +368,16 @@ def get_minmax_vals(snaplist):
 
         data = swiftsimio.load(filename)
         meta = data.metadata
+        scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
+
+        if do_stromgren_sphere:
+            time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
+                scheme, unit_system="stromgren_units"
+            )
+        else:
+            time_units, energy_units, energy_units_str, flux_units, flux_units_str = get_units(
+                scheme, unit_system="cgs_units"
+            )
 
         ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
         emin_group = []

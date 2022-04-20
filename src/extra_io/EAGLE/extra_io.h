@@ -66,12 +66,14 @@ INLINE static int extra_io_write_particles(const struct part *parts,
   list[0] = io_make_output_field_convert_part(
       "XrayPhotonLuminosities", DOUBLE, 3, UNIT_CONV_PHOTONS_PER_TIME, 0.f,
       parts, xparts, convert_part_Xray_photons,
-      "Intrinsic X-ray photon luminosities in various bands");
+      "Intrinsic X-ray photon luminosities in various bands. This is 0 for "
+      "star-forming particles.");
 
   list[1] = io_make_output_field_convert_part(
       "XrayLuminosities", DOUBLE, 3, UNIT_CONV_POWER, 0.f, parts, xparts,
       convert_part_Xray_energies,
-      "Intrinsic X-ray luminosities in various bands");
+      "Intrinsic X-ray luminosities in various bands. This is 0 for "
+      "star-forming particles.");
 
   return 2;
 }
@@ -213,109 +215,112 @@ double lightcone_map_dispersion_meassure_get_value(
 
 static const struct lightcone_map_type extra_lightcone_map_types[] = {
     {
-        .name = "XrayErositaLowIntrinsicPhotons",
-        .update_map =
-            lightcone_map_xray_erosita_low_intrinsic_photons_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0e-62, /* to keep in range of a float */
+        /* .name = */ "XrayErositaLowIntrinsicPhotons",
+        /* .update_map = */
+        lightcone_map_xray_erosita_low_intrinsic_photons_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0e-62, /* to keep in range of a float */
     },
     {
-        .name = "XrayErositaLowIntrinsicEnergies",
-        .update_map = lightcone_map_xray_erosita_low_intrinsic_energy_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "XrayErositaLowIntrinsicEnergies",
+        /* .update_map = */
+        lightcone_map_xray_erosita_low_intrinsic_energy_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
     {
-        .name = "XrayErositaHighIntrinsicPhotons",
-        .update_map =
-            lightcone_map_xray_erosita_high_intrinsic_photons_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0e-62, /* to keep in range of a float */
+        /* .name = */ "XrayErositaHighIntrinsicPhotons",
+        /* .update_map = */
+        lightcone_map_xray_erosita_high_intrinsic_photons_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0e-62, /* to keep in range of a float */
     },
     {
-        .name = "XrayErositaHighIntrinsicEnergies",
-        .update_map =
-            lightcone_map_xray_erosita_high_intrinsic_energy_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "XrayErositaHighIntrinsicEnergies",
+        /* .update_map = */
+        lightcone_map_xray_erosita_high_intrinsic_energy_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
     {
-        .name = "XrayROSATIntrinsicPhotons",
-        .update_map = lightcone_map_xray_rosat_intrinsic_photons_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0e-62, /* to keep in range of a float */
+        /* .name = */ "XrayROSATIntrinsicPhotons",
+        /* .update_map = */
+        lightcone_map_xray_rosat_intrinsic_photons_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0e-62, /* to keep in range of a float */
     },
     {
-        .name = "XrayROSATIntrinsicEnergies",
-        .update_map = lightcone_map_xray_rosat_intrinsic_energy_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "XrayROSATIntrinsicEnergies",
+        /* .update_map = */ lightcone_map_xray_rosat_intrinsic_energy_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
     {
-        .name = "ComptonY",
-        .update_map = lightcone_map_compton_y_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_NO_UNITS,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "ComptonY",
+        /* .update_map = */ lightcone_map_compton_y_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_NO_UNITS,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
     {
-        .name = "DopplerB",
-        .update_map = lightcone_map_doppler_b_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_NO_UNITS,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "DopplerB",
+        /* .update_map = */ lightcone_map_doppler_b_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_NO_UNITS,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
     {
-        .name = "DM",
-        .update_map = lightcone_map_dispersion_meassure_get_value,
-        .ptype_contributes = lightcone_map_gas_only,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_INV_AREA,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 3.40367719e-68, /* convert 1/Mpc^2 to pc/cm^3 so
-                                                  value fits in a float */
+        /* .name = */ "DM",
+        /* .update_map = */ lightcone_map_dispersion_meassure_get_value,
+        /* .ptype_contributes = */ lightcone_map_gas_only,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_INV_AREA,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 3.40367719e-68, /* convert 1/Mpc^2 to
+                                                  pc/cm^3 so value fits in a
+                                                  float */
     },
     {
         /* NULL functions indicate end of array */
-        .name = "",
-        .update_map = NULL,
-        .ptype_contributes = NULL,
-        .baseline_func = NULL,
-        .units = UNIT_CONV_NO_UNITS,
-        .smoothing = map_smoothed,
-        .compression = compression_write_lossless,
-        .buffer_scale_factor = 1.0,
+        /* .name = */ "",
+        /* .update_map = */ NULL,
+        /* .ptype_contributes = */ NULL,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_NO_UNITS,
+        /* .smoothing = */ map_smoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
     },
 };
 
