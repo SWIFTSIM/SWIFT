@@ -2455,8 +2455,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   int *cells_with_particles = e->s->cells_with_particles_top;
   const int nr_cells_with_particles = e->s->nr_cells_with_particles;
 
-  /* Explicitly skip the void cell */
-  if (ci->tl_cell_type == void_tl_cell) return;
+//  /* Explicitly skip the void cell */
+//  if (ci->tl_cell_type == void_tl_cell) return;
 
   /* Anything to do here? */
   if (!cell_is_active_gravity(ci, e)) return;
