@@ -93,6 +93,11 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
 
+/* This option sets a threshold below which we no longer split the grid
+ * construction, even though theoretically we could. Ideally this would be moved
+ * to a config file */
+#define SHADOWSWIFT_SPLITTING_THRESHOLD 200
+
 /* This option disables cell movement */
 //#define SHADOWSWIFT_FIX_CELLS
 /* This option enables cell steering, i.e. trying to keep the cells regular by

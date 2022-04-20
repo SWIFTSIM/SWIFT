@@ -1051,13 +1051,13 @@ void cell_free_grid_rec(struct cell *c) {
   /* Nothing to do as we have no tessellations */
 #else
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != c && (c->grid.voronoi != NULL || c->grid.delaunay != NULL))
+  if (c->grid.construction_level != c &&
+      (c->grid.voronoi != NULL || c->grid.delaunay != NULL))
     error("Grid allocated, but not on grid construction level!");
 #endif
   if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        cell_free_grid_rec(c->progeny[k]);
+      if (c->progeny[k] != NULL) cell_free_grid_rec(c->progeny[k]);
 
   } else if (c->grid.construction_level == c) {
     if (c->grid.voronoi != NULL) {
@@ -1249,16 +1249,20 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 
 void cell_set_grid_construction_level(struct cell *c,
                                       struct cell *construction_level) {
-  if (construction_level == NULL && c->grid.unsplittable_flag) {
+
+  const size_t nr_parts = c->hydro.count;
+  if (construction_level == NULL &&
+      (c->grid.unsplittable_flag ||
+       nr_parts < SHADOWSWIFT_SPLITTING_THRESHOLD)) {
     /* This is the first time we encounter a cell with the unsplittable flag
-     * set, meaning that it or one of its direct neighbours is unsplittable,
-     * i.e. we are at the construction level for this cell.
+     * set, meaning that it or one of its direct neighbours is unsplittable, or
+     * which has too few particles to split further. This is the construction
+     * level for this cell.
      */
     construction_level = c;
 
     /* Set r_max */
     double r_max = 0.;
-    const size_t nr_parts = c->hydro.count;
     for (size_t k = 0; k < nr_parts; k++) {
 
       /* Get a handle on the part. */
@@ -1411,6 +1415,18 @@ void cell_set_neighbour_flags_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Sets the grid.split and grid.complete flags.
+ *
+ * The grid.complete flag indicates whether this cell satisfies the completeness
+ * criterion. I.e. the voronoi grid of this cell can only depend on particles
+ * from directly neighbouring cells on the same level
+ * The grid.split flag indicates that all the sub-cells of this cells also
+ * satisfy the completeness criterion, meaning that the grid construction task
+ * could safely be split.
+ *
+ * @return Whether this cell is complete.
+ * */
 int cell_set_splittable_grid(struct cell *c) {
   if (c == NULL) return 1;
 
@@ -1422,7 +1438,7 @@ int cell_set_splittable_grid(struct cell *c) {
     }
 
     /* If the criterion is valid for all sub-cells, it is valid for the cell
-     * itself. */
+     * itself and the cell can be safely split at least one level down. */
     if (all_complete) {
       c->grid.split = 1;
       c->grid.complete = 1;
@@ -1431,6 +1447,8 @@ int cell_set_splittable_grid(struct cell *c) {
   }
 
   /* Not split or not all progeny complete */
+  c->grid.split = 0;
+
   /* Check if this cell is at least complete by looping over all the particles*/
   int flags = 0;
   /* criterion = 0b111_111_111_111_111_111_111_111_111*/
