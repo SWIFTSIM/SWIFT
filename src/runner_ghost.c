@@ -1832,6 +1832,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Reset v_max */
         p->timestepvars.vmax = 0.f;
+
+        /* TODO: Update the primitive variables here again? Esp. density? */
       }
     }
   }
