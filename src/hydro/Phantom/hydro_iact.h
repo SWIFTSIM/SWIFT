@@ -529,4 +529,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->force.h_dt -= mj * dvdr * f_ij * r_inv / rhoj * wi_dr;
 }
 
+/**
+* @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {}
+
+/**
+* @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {}
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {}
+
 #endif /* SWIFT_PHANTOM_HYDRO_IACT_H */

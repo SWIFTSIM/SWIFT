@@ -34,10 +34,6 @@ struct cell_grid {
    * would contain at least one particle. */
    int complete;
 
-  /*! The maximal search radius of any particle in the voronoi tessellation of
-   * this cell. */
-  double r_max;
-
   struct voronoi *voronoi;
 
   struct delaunay *delaunay;

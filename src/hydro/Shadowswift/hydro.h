@@ -149,9 +149,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->a_hydro[1] = 0.0f;
   p->a_hydro[2] = 0.0f;
 
-  /* Set initial search radius to smoothing length */
-  p->r = p->h;
-
   p->flux_count = 0;
 }
 
@@ -159,11 +156,20 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * @brief Does some extra hydro operations once the actual physical time step
  * for the particle is known.
  *
+ * We use this to set the timestep used in the flux calculation.
+ *
  * @param p The particle to act upon.
  * @param dt Physical time step of the particle during the next step.
  */
 __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
-    struct part *p, float dt) {}
+    struct part *p, float dt) {
+
+  /* Update the timestep used in the flux calculation */
+  p->flux.dt = dt;
+
+  /* Reset v_max */
+  p->timestepvars.vmax = 0.f;
+}
 
 /**
  * @brief Prepares a particle for the density calculation.

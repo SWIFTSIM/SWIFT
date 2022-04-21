@@ -23,7 +23,6 @@
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
-#include "rt_additions.h"
 
 
 /**

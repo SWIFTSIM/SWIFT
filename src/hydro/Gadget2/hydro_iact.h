@@ -1055,4 +1055,25 @@ runner_iact_nonsym_2_vec_force(
 
 #endif
 
+/**
+* @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {}
+
+/**
+* @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {}
+
+/**
+ * @brief Unused in this scheme.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
+    struct part *pi, struct part *pj, double const *centroid,
+    float surface_area, const double *shift) {}
+
 #endif /* SWIFT_GADGET2_HYDRO_IACT_H */

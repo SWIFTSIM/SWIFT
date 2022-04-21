@@ -1260,18 +1260,6 @@ void cell_set_grid_construction_level(struct cell *c,
      * level for this cell.
      */
     construction_level = c;
-
-    /* Set r_max */
-    double r_max = 0.;
-    for (int k = 0; k < nr_parts; k++) {
-
-      /* Get a handle on the part. */
-      struct part *const p = &c->hydro.parts[k];
-      r_max = max(r_max, p->r);
-    }
-
-    /* Store */
-    c->grid.r_max = r_max;
   }
 
   /* Set the super-cell */

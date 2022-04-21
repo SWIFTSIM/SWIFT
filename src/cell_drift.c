@@ -378,31 +378,6 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
                                       replication_list);
 #endif
 
-#ifdef SHADOWSWIFT
-  /* If we're at the grid super level, set the r_max. */
-  if (c->grid.construction_level == c) {
-    double r_max = 0.;
-
-    /* Loop over all the gas particles in the cell */
-    const size_t nr_parts = c->hydro.count;
-    for (size_t k = 0; k < nr_parts; k++) {
-
-      /* Get a handle on the part. */
-      struct part *const p = &parts[k];
-
-      /* Ignore inhibited particles */
-      if (part_is_inhibited(p, e)) continue;
-
-      if (part_is_active(p, e)) {
-        r_max = max(r_max, p->r);
-      }
-    }
-
-    /* Store */
-    c->grid.r_max = r_max;
-  }
-#endif
-
   /* Clear the drift flags. */
   cell_clear_flag(c, cell_flag_do_hydro_drift | cell_flag_do_hydro_sub_drift);
 }

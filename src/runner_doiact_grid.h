@@ -12,6 +12,8 @@
 #include "space_getsid.h"
 #include "timers.h"
 
+#ifdef MOVING_MESH
+
 __attribute__((always_inline)) INLINE static void
 runner_dopair_grid_construction(struct runner *restrict r,
                                 struct cell *restrict ci,
@@ -77,7 +79,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
-  const double ri_max = ci->grid.r_max;
+  const float hi_max = ci->hydro.h_max_active;
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Mark cell face as inside of simulation volume */
@@ -91,7 +93,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
     const double di_min = sort_i[0].d;
 
     /* Loop over parts in cj */
-    for (int pjd = count_j - 1; pjd >=0 && sort_j[pjd].d + dx_max > di_min - ri_max; pjd--) {
+    for (int pjd = count_j - 1; pjd >=0 && sort_j[pjd].d + dx_max > di_min - hi_max; pjd--) {
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
@@ -112,7 +114,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
     const double di_max = sort_i[count_i - 1].d;
 
     /* Loop over parts in cj */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - dx_max < di_max + ri_max; pjd++) {
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - dx_max < di_max + hi_max; pjd++) {
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
@@ -152,7 +154,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
 //      if (!part_is_active(pi, e)) continue;
 //
 //      const double sort_i_d = sort_i[pid].d;
-//      const double ri = pi->r;
+//      const double ri = pi->h;
 //
 //      /* Loop over particles in cj (on the left) */
 //      for (int pjd = count_j - 1;
@@ -186,7 +188,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
 
     /* Loop over the parts in cj (on the left) */
     for (int pjd = count_j - 1;
-         pjd >= 0 && sort_j[pjd].d + dx_max > di_min - ri_max; pjd--) {
+         pjd >= 0 && sort_j[pjd].d + dx_max > di_min - hi_max; pjd--) {
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
@@ -202,7 +204,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
 
       /* Loop over the parts in ci (on the right) */
       for (int pid = 0;
-           pid < count_i && sort_i[pid].d - ri_max < sort_j[pjd].d + dx_max;
+           pid < count_i && sort_i[pid].d - hi_max < sort_j[pjd].d + dx_max;
            pid++) {
 
         /* Get a hold of pi. */
@@ -215,7 +217,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
         }
 
         /* Early abort? */
-        const float ri = pi->r;
+        const float ri = pi->h;
         if (sort_i[pid].d - ri >= sort_j[pjd].d + dx_max) continue;
 
         /* Compute the pairwise distance. */
@@ -249,7 +251,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
 //      if (!part_is_active(pi, e)) continue;
 //
 //      const double sort_i_d = sort_i[pid].d;
-//      const double ri = pi->r;
+//      const double ri = pi->h;
 //
 //      /* Loop over particles in cj (on the left) */
 //      for (int pjd = 0;
@@ -282,7 +284,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
     const double di_max = sort_i[count_i - 1].d;
 
     /* Loop over the parts in cj (on the right) */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - dx_max < di_max + ri_max;
+    for (int pjd = 0; pjd < count_j && sort_j[pjd].d - dx_max < di_max + hi_max;
          pjd++) {
 
       /* Recover pj */
@@ -299,7 +301,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
 
       /* Loop over the parts in ci (on the left) */
       for (int pid = count_i - 1;
-           pid >= 0 && sort_i[pid].d + ri_max > sort_j[pjd].d - dx_max; pid--) {
+           pid >= 0 && sort_i[pid].d + hi_max > sort_j[pjd].d - dx_max; pid--) {
 
         /* Get a hold of pi. */
         struct part *restrict pi = &parts_i[sort_i[pid].i];
@@ -311,7 +313,7 @@ runner_dopair_grid_construction(struct runner *restrict r,
         }
 
         /* Early abort? */
-        const float ri = pi->r;
+        const float ri = pi->h;
         if (sort_i[pid].d + ri <= sort_j[pjd].d - dx_max) continue;
 
         /* Compute the pairwise distance. */
@@ -399,7 +401,7 @@ runner_doself_grid_construction(struct runner *restrict r,
         /* Get a pointer to the j-th particle. */
         struct part *restrict pj = &parts[j];
         if (!part_is_active(pj, e)) continue;
-        const double rj = pj->r;
+        const double rj = pj->h;
 
         /* Compute pairwise distance */
         const double dx[3] = {pj->x[0] - pix, pj->x[1] - piy, pj->x[2] - piz};
@@ -484,7 +486,7 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
 
         /* Get a hold of the ith part in ci. */
         struct part *restrict pi = &parts_i[ind[pid]];
-        const double ri = pi->r;
+        const double ri = pi->h;
         const double ri_prev = r_prev[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -539,7 +541,7 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
 
         /* Get a hold of the ith part in ci. */
         struct part *restrict pi = &parts_i[ind[pid]];
-        const double ri = pi->r;
+        const double ri = pi->h;
         const double ri_prev = r_prev[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -595,7 +597,7 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
       /* Retrieve particle */
       const int pid = ind[i];
       struct part *pi = &parts_i[pid];
-      const double ri = pi->r;
+      const double ri = pi->h;
       const double ri_prev = r_prev[pid];
 
       /* Compute pairwise distance */
@@ -613,5 +615,36 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
     }
   }
 }
+
+#else
+/* No grid construction needed */
+
+__attribute__((always_inline)) INLINE static void
+runner_dopair_grid_construction(struct runner *restrict r,
+                                struct cell *restrict ci,
+                                struct cell *restrict cj) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_doself_grid_construction(struct runner *restrict r,
+                                struct cell *restrict c) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_dopair_subset_grid_construction(struct runner *restrict r,
+                                       struct cell *restrict ci,
+                                       struct part *restrict parts_i,
+                                       const int *restrict ind,
+                                       const double *restrict r_prev,
+                                       double r_max, int count,
+                                       struct cell *restrict cj) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_doself_subset_grid_construction(struct runner *restrict r,
+                                       struct cell *restrict ci,
+                                       struct part *restrict parts_i,
+                                       const int *restrict ind,
+                                       const double *restrict r_prev,
+                                       int count) {}
+
+#endif
 
 #endif  // SWIFTSIM_RUNNER_DOIACT_GRID_H

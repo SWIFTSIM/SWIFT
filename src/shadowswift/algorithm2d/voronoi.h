@@ -135,20 +135,21 @@ static inline double voronoi_compute_midpoint_area_face(double ax, double ay,
  * interface.
  *
  * @param v Voronoi grid.
- * @param sid Index of the cell list in which the pair is stored.
- * @param cell Pointer to the cell of the right particle (NULL if the right
- * particle lives in the same cell as the left particle).
- * @param left_part_pointer Direct pointer to the left particle (particle in the
- * cell linked to this grid).
- * @param right_part_pointer Direct pointer to the right particle (particle
- * within the cell determined by sid.
+ * @param d Delaunay tesselation, dual of this Voronoi grid.
+ * @param del_vert_idx The index in the delaunay tesselation of the left vertex
+ * of the new pair.
+ * @param ngb_del_vert_idx The index in the delaunay tesselation of the right
+ * vertex of the new pair.
+ * @param part_is_active Array of flags indicating whether the corresponding
+ * hydro parts are active (we only construct voronoi cells for active
+ * particles).
  * @param ax,ay,bx,by Vertices of the interface.
- * @return 1 if the face was valid (non degenerate surface area).
+ * @return 1 if the face was valid (non degenerate surface area), else 0.
  */
 static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
                                    int del_vert_idx, int ngb_del_vert_idx,
-                                   int *part_is_active, double ax, double ay,
-                                   double bx, double by) {
+                                   const int *part_is_active, double ax,
+                                   double ay, double bx, double by) {
   int sid;
   int right_part_idx;
   /* Local pair? */
@@ -353,10 +354,10 @@ inline static void voronoi_init(struct voronoi *restrict v, int number_of_cells,
  *
  * @param v Voronoi grid.
  * @param d Delaunay tessellation (read-only).
- * @param parts Local cell generators (read-only).
+ * @param part_is_active Flags indicating whether the particle is active.
  */
 static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
-                                 int *part_is_active) {
+                                 const int *part_is_active) {
 
   voronoi_assert(d->vertex_end > 0);
   voronoi_assert(d->active);
@@ -502,8 +503,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
       /* the neighbour corresponding to the face is the same vertex that
          determines the next triangle */
       int ngb_del_vert_ix = d->triangles[t1].vertices[next_t_ix_in_cur_t];
-      if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix,
-                           part_is_active,
+      if (voronoi_add_pair(v, d, del_vert_ix, ngb_del_vert_ix, part_is_active,
                            bx, by, cx, cy)) {
         nface++;
       }
@@ -525,10 +525,8 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     cell_centroid[0] += V * centroid[0];
     cell_centroid[1] += V * centroid[1];
 
-    if (voronoi_add_pair(
-            v, d, del_vert_ix, first_ngb_del_vert_ix,
-            part_is_active, bx, by, cx,
-            cy)) {
+    if (voronoi_add_pair(v, d, del_vert_ix, first_ngb_del_vert_ix,
+                         part_is_active, bx, by, cx, cy)) {
       nface++;
     }
 
@@ -655,22 +653,6 @@ static inline void voronoi_write_grid(const struct voronoi *restrict v,
               pair->midpoint[0], pair->midpoint[1]);
     }
   }
-}
-
-/**
- * @brief Print the Voronoi grid to a file with the given name.
- *
- * @param v Voronoi grid (read-only).
- * @param file_name Name of the output file.
- */
-static inline void voronoi_print_grid(const struct voronoi *restrict v,
-                                      const char *file_name) {
-
-  FILE *file = fopen(file_name, "w");
-
-  voronoi_write_grid(v, file);
-
-  fclose(file);
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_VORONOI_2D_H

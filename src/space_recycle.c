@@ -217,7 +217,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grid.construction_level = NULL;
     c->grid.super = NULL;
     c->grid.ti_old = 0;
-    c->grid.r_max = 0;
     c->grid.construction = NULL;
     c->grid.ghost = NULL;
     c->hydro.slope_estimate = NULL;

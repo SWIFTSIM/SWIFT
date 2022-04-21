@@ -101,11 +101,9 @@ struct part {
   /*! Particle acceleration. */
   float a_hydro[3];
 
-  /*! Particle smoothing length. */
+  /*! Particle smoothing length. We use this as the search radius for completing
+   * the Voronoi mesh. */
   float h;
-
-  /*! Particle search radius. */
-  double r;
 
   /* Density. */
   float rho;

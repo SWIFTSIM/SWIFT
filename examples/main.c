@@ -1042,8 +1042,8 @@ int main(int argc, char *argv[]) {
 #endif
     }
     if (with_grid_hydro) {
-#if !defined(SHADOWSWIFT) 
-      error("The only hydro scheme supporting grid based hydrodynamics is shadowswift (for the time being)!")
+#ifndef SHADOWSWIFT
+      error("The only hydro scheme supporting grid based hydrodynamics is shadowswift (for the time being)!");
 #endif
     }
     if (with_stars) {

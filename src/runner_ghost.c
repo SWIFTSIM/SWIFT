@@ -1177,7 +1177,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
           /* Are we using the alternative definition of the
              number of neighbours? */
           if (use_mass_weighted_num_ngb) {
-#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH) || defined(SHADOWSWIFT)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || \
+    defined(SHADOWFAX_SPH) || defined(SHADOWSWIFT)
             error(
                 "Can't use alternative neighbour definition with this scheme!");
 #else
@@ -1623,6 +1624,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_do_rt_ghost2);
 }
 
+#ifdef MOVING_MESH
 /**
  * @brief Finish up the Voronoi grid calculation.
  *
@@ -1644,8 +1646,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     if (!c->split) error("Supposedly above construction level, but not split!");
 #endif
     for (int i = 0; i < 8; i++)
-      if (c->progeny[i] != NULL)
-        runner_do_grid_ghost(r, c->progeny[i], timer);
+      if (c->progeny[i] != NULL) runner_do_grid_ghost(r, c->progeny[i], timer);
 
     return;
   }
@@ -1666,7 +1667,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   int redo = 0, count = 0;
 
   /* Running value of the maximal smoothing length */
-  double r_max = c->grid.r_max;
+  float h_max = c->hydro.h_max;
+  float h_max_active = c->hydro.h_max_active;
 
   TIMER_TIC;
 
@@ -1677,10 +1679,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   /* Init the list of active particles that have to be updated and their
    * current smoothing lengths. */
   int *pid = NULL;
-  double *r_prev = NULL;
+  double *h_prev = NULL;
   if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
     error("Can't allocate memory for pid.");
-  if ((r_prev = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
+  if ((h_prev = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
     error("Can't allocate memory for r_prev.");
   for (int k = 0; k < c->hydro.count; k++)
     if (part_is_active(&parts[k], e)) {
@@ -1691,7 +1693,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   /* While there are particles that need to be updated and their search radius
    * remains smaller than the cell width... */
   for (int num_reruns = 0;
-       count > 0 && num_reruns < max_smoothing_iter && r_max < c->width[0];
+       count > 0 && num_reruns < max_smoothing_iter && h_max < c->width[0];
        num_reruns++) {
     /* TODO add boundary particles */
 
@@ -1707,17 +1709,20 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
       float r_new = (float)delaunay_get_search_radius(
           c->grid.delaunay, pid[i] + c->grid.delaunay->vertex_start);
-      if (r_new >= p->r) {
+      if (r_new >= p->h) {
         /* Use r_prev array for previous search radii */
-        r_prev[redo] = p->r;
-        p->r *= 1.25;
+        h_prev[redo] = p->h;
+        p->h *= 1.25f;
         pid[redo] = pid[i];
         redo += 1;
       } else {
-        p->r = 1.25 * r_new;
+        /* Add a small buffer zone to compensate for particle movement in the
+         * next iteration. */
+        p->h = 1.25f * r_new;
       }
       /* Check if h_max is increased */
-      r_max = max(r_max, p->r);
+      h_max = max(h_max, p->h);
+      h_max_active = max(h_max_active, p->h);
     }
 
     /* We now need to treat the particles whose smoothing length had not
@@ -1741,7 +1746,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Self-interaction? */
         if (l->t->type == task_type_self)
-          runner_doself_subset_grid_construction(r, c, parts, pid, r_prev, count);
+          runner_doself_subset_grid_construction(r, c, parts, pid, h_prev,
+                                                 count);
 
         /* Otherwise, pair interaction? */
         else if (l->t->type == task_type_pair) {
@@ -1751,7 +1757,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
            * actually updated in the construction task */
           if (l->t->ci == c)
             runner_dopair_subset_grid_construction(
-                r, c, parts, pid, r_prev, r_max, count, l->t->cj);
+                r, c, parts, pid, h_prev, h_max_active, count, l->t->cj);
         } else
           error("Unsupported interaction encountered!");
       }
@@ -1764,7 +1770,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         "particles:");
     for (int i = 0; i < count; i++) {
       struct part *p = &parts[pid[i]];
-      warning("ID: %lld, search radius: %g", p->id, p->r);
+      warning("ID: %lld, search radius: %g", p->id, p->h);
     }
 
     error("Search radius failed to converge on %i particles.", count);
@@ -1772,10 +1778,20 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Be clean */
   free(pid);
-  free(r_prev);
+  free(h_prev);
 
   /* Update h_max */
-  c->grid.r_max = r_max;
+  c->hydro.h_max = h_max;
+  c->hydro.h_max_active = h_max_active;
+
+  /* The ghost may not always be at the top level.
+   * Therefore we need to update h_max between the super- and top-levels */
+  if (c->hydro.ghost) {
+    for (struct cell *tmp = c->parent; tmp != NULL; tmp = tmp->parent) {
+      atomic_max_f(&tmp->hydro.h_max, h_max);
+      atomic_max_f(&tmp->hydro.h_max_active, h_max_active);
+    }
+  }
 
   /* Finally ,build the Voronoi grid */
   if (c->grid.voronoi == NULL) {
@@ -1803,10 +1819,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
       if (e->policy & engine_policy_grid_hydro) {
 
+#ifdef EXTRA_HYDRO_LOOP
         /* get a handle on the xp */
         struct xpart *xp = &c->hydro.xparts[i];
 
-#ifdef EXTRA_HYDRO_LOOP
         /* Prepare particle for gradient calculation */
         hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 #endif
@@ -1828,10 +1844,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         }
 
         /* Set timestep for flux calculation */
-        p->flux.dt = (float)dt_therm;
-
-        /* Reset v_max */
-        p->timestepvars.vmax = 0.f;
+        hydro_timestep_extra(p, (float)dt_therm);
 
         /* TODO: Update the primitive variables here again? Esp. density? */
       }
@@ -1851,7 +1864,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c,
+                                    int timer) {
 
   struct engine *e = r->e;
 
@@ -1883,12 +1897,12 @@ void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c, int timer)
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c, int timer) {
+void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c,
+                                   int timer) {
 
   struct engine *e = r->e;
 
-  if (c->hydro.super != c)
-    error("Slope limiter ghost not run at super level!");
+  if (c->hydro.super != c) error("Slope limiter ghost not run at super level!");
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -1923,8 +1937,7 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
 
-  if (c->hydro.super != c)
-    error("Flux ghost not run at super level!");
+  if (c->hydro.super != c) error("Flux ghost not run at super level!");
   TIMER_TIC;
 
   /* Anything to do here? */
@@ -1935,3 +1948,29 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_do_flux_ghost);
 }
+
+#else
+
+/**
+ * @brief Only used for moving mesh schemes.
+ */
+void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c,
+                                    int timer) {}
+
+/**
+ * @brief Only used for moving mesh schemes.
+ */
+void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {}
+
+/**
+ * @brief Only used for moving mesh schemes.
+ */
+void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c,
+                                   int timer) {}
+
+/**
+ * @brief Only used for moving mesh schemes.
+ */
+void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {}
+
+#endif

@@ -76,7 +76,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_from_momentum
 
 /**
  * @brief Set the velocity of a ShadowSWIFT particle, based on the values of its
- * primitive variables and the geometry of its mesh-free "cell".
+ * primitive variables and the geometry of its voronoi cell.
  *
  * @param p The particle to act upon.
  * @param xp The extended particle data to act upon.
