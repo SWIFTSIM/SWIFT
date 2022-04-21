@@ -203,7 +203,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 12;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -253,9 +253,19 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
 
-  list[11] = io_make_output_field("Flux_counts", LONGLONG, 1, UNIT_CONV_NO_UNITS,
-                                  0.f, parts, flux_count,
-                                  "Flux counters of the particles");
+  list[11] =
+      io_make_output_field("Flux_counts", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                           parts, flux_count, "Flux counters of the particles");
+
+  if (hydro_dimension == 2) {
+    list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_AREA, 2.f,
+                                    parts, geometry.volume,
+                                    "Co-moving volumes of the particles");
+  } else if (hydro_dimension == 3) {
+    list[12] = io_make_output_field("Volumes", FLOAT, 1, UNIT_CONV_VOLUME, 3.f,
+                                    parts, geometry.volume,
+                                    "Co-moving volumes of the particles");
+  }
 }
 
 /**
@@ -278,7 +288,8 @@ INLINE static void hydro_write_flavour(hid_t h_grpsph) {
                        RIEMANN_SOLVER_IMPLEMENTATION);
 
   /* Particle movement information */
-  io_write_attribute_s(h_grpsph, "Particle movement", SHADOWSWIFT_PARTICLE_MOVEMENT);
+  io_write_attribute_s(h_grpsph, "Particle movement",
+                       SHADOWSWIFT_PARTICLE_MOVEMENT);
 }
 
 /**
