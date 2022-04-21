@@ -127,6 +127,7 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #ifdef SHADOWSWIFT
 void cell_write_grid(const struct cell *c, FILE *dfile,
                          FILE *vfile, size_t *offset) {
+#ifdef SHADOWSWIFT_OUTPUT_GRIDS
   /* Recurse? */
   if (c->grid.construction_level == NULL) {
     for (int k = 0; k < 8; k++) {
@@ -146,6 +147,7 @@ void cell_write_grid(const struct cell *c, FILE *dfile,
   if (c->grid.voronoi != NULL) {
     voronoi_write_grid(c->grid.voronoi, vfile);
   }
+#endif
 }
 #endif /* SHADOWSWIFT */
 

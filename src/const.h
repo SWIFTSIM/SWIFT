@@ -93,6 +93,9 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
 
+/* Option to controlling output of grids */
+//#define SHADOWSWIFT_OUTPUT_GRIDS
+
 /* This option disables cell movement */
 //#define SHADOWSWIFT_FIX_CELLS
 /* This option enables cell steering, i.e. trying to keep the cells regular by
