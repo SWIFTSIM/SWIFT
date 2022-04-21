@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct extra_io_properties extra_io_props;
   struct star_formation starform;
   struct pm_mesh mesh;
   struct gpart *gparts = NULL;
@@ -104,6 +105,7 @@ int main(int argc, char *argv[]) {
   struct entropy_floor_properties entropy_floor;
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
+  struct lightcone_array_props lightcone_array_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
@@ -168,6 +170,7 @@ int main(int argc, char *argv[]) {
   int with_hydro = 0;
   int with_stars = 0;
   int with_fof = 0;
+  int with_lightcone = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
   int with_black_holes = 0;
@@ -237,6 +240,9 @@ int main(int argc, char *argv[]) {
           'u', "fof", &with_fof,
           "Run Friends-of-Friends algorithm to perform black hole seeding.",
           NULL, 0, 0),
+
+      OPT_BOOLEAN(0, "lightcone", &with_lightcone,
+                  "Generate lightcone outputs.", NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
       OPT_BOOLEAN(0, "line-of-sight", &with_line_of_sight,
@@ -539,6 +545,14 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (with_lightcone) {
+#ifndef WITH_LIGHTCONE
+    error("Running with lightcone output but compiled without it!");
+#endif
+    if (!with_cosmology)
+      error("Error: cannot make lightcones without --cosmology.");
+  }
+
   if (!with_stars && with_star_formation) {
     if (myrank == 0) {
       argparse_usage(&argparse);
@@ -600,6 +614,8 @@ int main(int argc, char *argv[]) {
         "chosen\n");
   }
   if (with_rt && !with_stars) {
+    /* In principle we can run without stars, but I don't trust the user to
+     * remember to add the flag every time they want to run RT. */
     error(
         "Error: Cannot use radiative transfer without stars, --stars must be "
         "chosen\n");
@@ -613,10 +629,6 @@ int main(int argc, char *argv[]) {
     error("Error: Cannot use radiative transfer and cooling simultaneously");
   }
 
-#ifdef WITH_MPI
-  /* Temporary, this will be removed in due time */
-  error("Error: Cannot use radiative transfer with MPI\n");
-#endif
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
@@ -1059,7 +1071,7 @@ int main(int argc, char *argv[]) {
       pressure_floor_init(&pressure_floor_props, &prog_const, &us,
                           &hydro_properties, params);
     else
-      bzero(&pressure_floor_props, sizeof(struct pressure_floor_properties));
+      bzero(&pressure_floor_props, sizeof(struct pressure_floor_props));
 
     /* Initialise the stars properties */
     if (with_stars)
@@ -1132,6 +1144,10 @@ int main(int argc, char *argv[]) {
     bzero(&chemistry, sizeof(struct chemistry_global_data));
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
+
+    /* Initialise the extra i/o */
+    bzero(&extra_io_props, sizeof(struct extra_io_properties));
+    extra_io_init(params, &us, &prog_const, &cosmo, &extra_io_props);
 
     /* Initialise the FOF properties */
     bzero(&fof_properties, sizeof(struct fof_props));
@@ -1308,6 +1324,16 @@ int main(int argc, char *argv[]) {
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
 
+    /* Initialise the lightcone properties */
+    bzero(&lightcone_array_properties, sizeof(struct lightcone_array_props));
+#ifdef WITH_LIGHTCONE
+    if (with_lightcone)
+      lightcone_array_init(&lightcone_array_properties, &s, &cosmo, params, &us,
+                           &prog_const, verbose);
+    else
+      lightcone_array_properties.nr_lightcones = 0;
+#endif
+
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -1318,10 +1344,11 @@ int main(int argc, char *argv[]) {
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity)
-      gravity_props_init(
-          &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
-          with_external_gravity, with_baryon_particles, with_DM_particles,
-          with_neutrinos, with_DM_background_particles, periodic, s.dim);
+      gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
+                         with_cosmology, with_external_gravity,
+                         with_baryon_particles, with_DM_particles,
+                         with_neutrinos, with_DM_background_particles, periodic,
+                         s.dim, s.cdim);
 
     /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));
@@ -1452,9 +1479,10 @@ int main(int argc, char *argv[]) {
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &neutrino_properties,
-                &neutrino_response, &feedback_properties, &rt_properties, &mesh,
-                &potential, &cooling_func, &starform, &chemistry,
-                &fof_properties, &los_properties, &ics_metadata);
+                &neutrino_response, &feedback_properties, &pressure_floor_props,
+                &rt_properties, &mesh, &potential, &cooling_func, &starform,
+                &chemistry, &extra_io_props, &fof_properties, &los_properties,
+                &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);
 
@@ -1789,6 +1817,16 @@ int main(int argc, char *argv[]) {
         velociraptor_invoke(&e, /*linked_with_snap=*/0);
     }
 #endif
+
+    /* Write out any remaining lightcone data at the end of the run */
+#ifdef WITH_LIGHTCONE
+    lightcone_array_flush(e.lightcone_array_properties, &(e.threadpool),
+                          e.cosmology, e.internal_units, e.snapshot_units,
+                          /*flush_map_updates=*/1, /*flush_particles=*/1,
+                          /*end_file=*/1, /*dump_all_shells=*/1);
+    lightcone_array_write_index(e.lightcone_array_properties, e.internal_units,
+                                e.snapshot_units);
+#endif
   }
 
   /* Remove the stop file if used. Do this anyway, we could have missed the
@@ -1813,7 +1851,9 @@ int main(int argc, char *argv[]) {
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_rt) rt_clean(e.rt_props);
+  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
+  if (with_rt) rt_clean(e.rt_props, restart);
+  extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
   free(output_options);

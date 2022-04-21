@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
 
 # ----------------------------------------------------
 # plots 2D projection of radiation energy and fluxes
@@ -17,9 +36,10 @@ import unyt
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.colors import SymLogNorm, LogNorm
+from matplotlib.colors import SymLogNorm
 
 # Parameters users should/may tweak
+# -----------------------------------
 
 # plot all groups and all photon quantities
 plot_all_data = True
@@ -158,9 +178,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             ax = fig.add_subplot(ngroups, 4, g * 4 + 1)
 
             if energy_boundaries is not None:
-                #  imshow_kwargs["norm"] = None
-                #  imshow_kwargs["vmin"] = energy_boundaries[g][0]
-                #  imshow_kwargs["vmax"] = energy_boundaries[g][1]
                 imshow_kwargs["norm"] = SymLogNorm(
                     vmin=energy_boundaries[g][0],
                     vmax=energy_boundaries[g][1],
@@ -259,12 +276,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             if energy_boundaries is not None:
                 imshow_kwargs["vmin"] = energy_boundaries[g][0]
                 imshow_kwargs["vmax"] = energy_boundaries[g][1]
-                #  imshow_kwargs["norm"] = SymLogNorm(
-                #      vmin=energy_boundaries[g][0],
-                #      vmax=energy_boundaries[g][1],
-                #      linthresh = 1e-2,
-                #      base=10
-                # )
             im = ax.imshow(photon_map.T, **imshow_kwargs)
             set_colorbar(ax, im)
             ax.set_title("Group {0:2d}".format(g + 1))
@@ -331,7 +342,6 @@ def get_minmax_vals(snaplist):
             dirmin = []
             dirmax = []
             for direction in ["X", "Y", "Z"]:
-                new_attribute_str = "radiation_flux" + str(g + 1) + direction
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 dirmin.append(f.min())
                 dirmax.append(f.max())

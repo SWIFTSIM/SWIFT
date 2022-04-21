@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
@@ -125,10 +125,6 @@ enum {
   timer_fof_self,
   timer_fof_pair,
   timer_drift_sink,
-  timer_doself_rt_inject,
-  timer_dopair_rt_inject,
-  timer_dosub_self_rt_inject,
-  timer_dosub_pair_rt_inject,
   timer_do_rt_ghost1,
   timer_do_rt_ghost2,
   timer_doself_rt_gradient,

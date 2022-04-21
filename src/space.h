@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -84,6 +84,8 @@ extern int space_extra_gparts;
 extern int space_extra_sparts;
 extern int space_extra_bparts;
 extern int space_extra_sinks;
+extern double engine_redistribute_alloc_margin;
+extern double engine_foreign_alloc_margin;
 
 /**
  * @brief The space in which the cells and particles reside.
@@ -410,6 +412,7 @@ void space_init_sinks(struct space *s, int verbose);
 void space_convert_rt_quantities_after_zeroth_step(struct space *s,
                                                    int verbose);
 void space_convert_quantities(struct space *s, int verbose);
+void space_convert_rt_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);
 void space_check_drift_point(struct space *s, integertime_t ti_drift,
                              int multipole);

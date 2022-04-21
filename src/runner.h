@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -48,7 +48,6 @@ struct task;
 #define TASK_LOOP_STARS_PREP2 10
 #define TASK_LOOP_RT_GRADIENT 11
 #define TASK_LOOP_RT_TRANSPORT 12
-#define TASK_LOOP_RT_INJECT 13
 
 /**
  * @brief A struct representing a runner's thread and its data.

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -159,6 +159,8 @@ void cooling_compute_equilibrium(
     const struct cooling_function_data* restrict cooling,
     const struct part* restrict p, struct xpart* restrict xp) {
 
+  /* TODO: this can fail spectacularly and needs to be replaced. */
+
   /* get temporary data */
   struct part p_tmp = *p;
   struct cooling_function_data cooling_tmp = *cooling;
@@ -227,9 +229,9 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
   /* primordial chemistry >= 1 */
   xp->cooling_data.HI_frac = zero;
   xp->cooling_data.HII_frac = grackle_data->HydrogenFractionByMass;
-  xp->cooling_data.HeI_frac = 1. - grackle_data->HydrogenFractionByMass;
+  xp->cooling_data.HeI_frac = zero;
   xp->cooling_data.HeII_frac = zero;
-  xp->cooling_data.HeIII_frac = zero;
+  xp->cooling_data.HeIII_frac = 1. - grackle_data->HydrogenFractionByMass;
   xp->cooling_data.e_frac = xp->cooling_data.HII_frac +
                             0.25 * xp->cooling_data.HeII_frac +
                             0.5 * xp->cooling_data.HeIII_frac;
@@ -251,6 +253,7 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
 #endif  // MODE >= 3
 
 #if COOLING_GRACKLE_MODE > 0
+  /* TODO: this can fail spectacularly and needs to be replaced. */
   cooling_compute_equilibrium(phys_const, us, hydro_props, cosmo, cooling, p,
                               xp);
 #endif
@@ -308,33 +311,35 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
  */
 #if COOLING_GRACKLE_MODE > 0
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho) {
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]) {
   /* HI */
-  xp->cooling_data.HI_frac *= rho;
-  data->HI_density = &xp->cooling_data.HI_frac;
+  species_densities[0] = xp->cooling_data.HI_frac * rho;
+  data->HI_density = &species_densities[0];
   /* HII */
-  xp->cooling_data.HII_frac *= rho;
-  data->HII_density = &xp->cooling_data.HII_frac;
+  species_densities[1] = xp->cooling_data.HII_frac * rho;
+  data->HII_density = &species_densities[1];
 
   /* HeI */
-  xp->cooling_data.HeI_frac *= rho;
-  data->HeI_density = &xp->cooling_data.HeI_frac;
+  species_densities[2] = xp->cooling_data.HeI_frac * rho;
+  data->HeI_density = &species_densities[2];
 
   /* HeII */
-  xp->cooling_data.HeII_frac *= rho;
-  data->HeII_density = &xp->cooling_data.HeII_frac;
+  species_densities[3] = xp->cooling_data.HeII_frac * rho;
+  data->HeII_density = &species_densities[3];
 
   /* HeIII */
-  xp->cooling_data.HeIII_frac *= rho;
-  data->HeIII_density = &xp->cooling_data.HeIII_frac;
+  species_densities[4] = xp->cooling_data.HeIII_frac * rho;
+  data->HeIII_density = &species_densities[4];
 
   /* HeII */
-  xp->cooling_data.e_frac *= rho;
-  data->e_density = &xp->cooling_data.e_frac;
+  species_densities[5] = xp->cooling_data.e_frac * rho;
+  data->e_density = &species_densities[5];
 }
 #else
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho) {
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]) {
   data->HI_density = NULL;
   data->HII_density = NULL;
   data->HeI_density = NULL;
@@ -354,22 +359,24 @@ void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
  */
 #if COOLING_GRACKLE_MODE > 1
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho) {
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]) {
   /* HM */
-  xp->cooling_data.HM_frac *= rho;
-  data->HM_density = &xp->cooling_data.HM_frac;
+  species_densities[6] = xp->cooling_data.HM_frac * rho;
+  data->HM_density = &species_densities[6]
 
-  /* H2I */
-  xp->cooling_data.H2I_frac *= rho;
-  data->H2I_density = &xp->cooling_data.H2I_frac;
+                     /* H2I */
+                     species_densities[7] = xp->cooling_data.H2I_frac * rho;
+  data->H2I_density = &species_densities[7];
 
   /* H2II */
-  xp->cooling_data.H2II_frac *= rho;
-  data->H2II_density = &xp->cooling_data.H2II_frac;
+  species_densities[8] = xp->cooling_data.H2II_frac * rho;
+  data->H2II_density = &species_densities[8];
 }
 #else
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho) {
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]) {
   data->HM_density = NULL;
   data->H2I_density = NULL;
   data->H2II_density = NULL;
@@ -386,22 +393,24 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
  */
 #if COOLING_GRACKLE_MODE > 2
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho) {
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]) {
   /* DI */
-  xp->cooling_data.DI_frac *= rho;
-  data->DI_density = &xp->cooling_data.DI_frac;
+  species_densities[9] = xp->cooling_data.DI_frac * rho;
+  data->DI_density = &species_densities[9];
 
   /* DII */
-  xp->cooling_data.DII_frac *= rho;
-  data->DII_density = &xp->cooling_data.DII_frac;
+  species_densities[10] = xp->cooling_data.DII_frac * rho;
+  data->DII_density = &species_densities[10];
 
   /* HDI */
-  xp->cooling_data.HDI_frac *= rho;
-  data->HDI_density = &xp->cooling_data.HDI_frac;
+  species_densities[11] = xp->cooling_data.HDI_frac * rho;
+  data->HDI_density = &species_densities[11];
 }
 #else
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
-                              struct xpart* xp, gr_float rho) {
+                              struct xpart* xp, gr_float rho,
+                              gr_float species_densities[12]) {
   data->DI_density = NULL;
   data->DII_density = NULL;
   data->HDI_density = NULL;
@@ -504,11 +513,12 @@ void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
  * @param rho The particle density.
  */
 void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
-                             struct xpart* xp, gr_float rho) {
+                             struct xpart* xp, gr_float rho,
+                             gr_float species_densities[12]) {
 
-  cooling_copy_to_grackle1(data, p, xp, rho);
-  cooling_copy_to_grackle2(data, p, xp, rho);
-  cooling_copy_to_grackle3(data, p, xp, rho);
+  cooling_copy_to_grackle1(data, p, xp, rho, species_densities);
+  cooling_copy_to_grackle2(data, p, xp, rho, species_densities);
+  cooling_copy_to_grackle3(data, p, xp, rho, species_densities);
 
   data->volumetric_heating_rate = NULL;
   data->specific_heating_rate = NULL;
@@ -620,6 +630,9 @@ gr_float cooling_new_energy(
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo) +
                     dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
   energy = max(energy, hydro_props->minimal_internal_energy);
+  /* keep this array here so you can point to and from it in
+   * copy to/from grackle */
+  gr_float species_densities[12];
 
   /* initialize density */
   data.density = &density;
@@ -633,7 +646,7 @@ gr_float cooling_new_energy(
   data.z_velocity = NULL;
 
   /* copy to grackle structure */
-  cooling_copy_to_grackle(&data, p, xp, density);
+  cooling_copy_to_grackle(&data, p, xp, density, species_densities);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);
@@ -705,8 +718,9 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
   data.y_velocity = NULL;
   data.z_velocity = NULL;
 
+  gr_float species_densities[12];
   /* copy data from particle to grackle data */
-  cooling_copy_to_grackle(&data, p, xp, density);
+  cooling_copy_to_grackle(&data, p, xp, density, species_densities);
 
   /* Apply the self shielding if requested */
   cooling_apply_self_shielding(cooling, &chemistry_grackle, p, cosmo);

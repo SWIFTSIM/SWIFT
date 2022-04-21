@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -200,7 +200,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.ti_end_min = -1;
     c->black_holes.ti_end_min = -1;
     c->hydro.rt_in = NULL;
-    c->hydro.rt_inject = NULL;
     c->hydro.rt_ghost1 = NULL;
     c->hydro.rt_gradient = NULL;
     c->hydro.rt_ghost2 = NULL;

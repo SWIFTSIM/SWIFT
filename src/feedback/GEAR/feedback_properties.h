@@ -28,8 +28,9 @@
  * @brief Properties of the GEAR feedback model.
  */
 struct feedback_props {
-  /*! Energy per supernovae */
-  float energy_per_supernovae;
+
+  /*! Supernovae energy effectively deposited */
+  float supernovae_efficiency;
 
   /*! The stellar model */
   struct stellar_model stellar_model;
@@ -39,6 +40,9 @@ struct feedback_props {
 
   /* Metallicity limits for the first stars */
   float metallicity_max_first_stars;
+
+  /* Metallicity [Fe/H] transition for the first stars */
+  float imf_transition_metallicity;
 };
 
 /**
@@ -69,8 +73,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   }
 
   /* Print the feedback properties */
-  message("Energy per supernovae = %.2g",
-          feedback_props->energy_per_supernovae);
+  message("Supernovae efficiency = %.2g",
+          feedback_props->supernovae_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
 
   /* Print the stellar model */
@@ -81,6 +85,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("Yields table first stars = %s",
             feedback_props->stellar_model_first_stars.yields_table);
     stellar_model_print(&feedback_props->stellar_model_first_stars);
+    message("Metallicity max for the first stars (in abundance) = %g",
+            feedback_props->imf_transition_metallicity);
     message("Metallicity max for the first stars (in mass fraction) = %g",
             feedback_props->metallicity_max_first_stars);
   }
@@ -101,11 +107,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     const struct unit_system* us, struct swift_params* params,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo) {
 
-  /* Supernovae energy */
-  double e_feedback =
-      parser_get_param_double(params, "GEARFeedback:supernovae_energy_erg");
-  e_feedback /= units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
-  fp->energy_per_supernovae = e_feedback;
+  /* Supernovae energy efficiency */
+  double e_efficiency =
+      parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
+  fp->supernovae_efficiency = e_efficiency;
 
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",
@@ -115,10 +120,25 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
                                cosmo);
 
-  /* Now the same for first stars. */
-  fp->metallicity_max_first_stars = parser_get_opt_param_float(
-      params, "GEARFeedback:metallicity_max_first_stars", -1);
+  /* Read the metallicity threashold */
+  fp->imf_transition_metallicity = parser_get_opt_param_float(
+      params, "GEARFeedback:imf_transition_metallicity", 0);
 
+  /* Read and get the solar abundances */
+  struct chemistry_global_data data;
+  bzero(&data, sizeof(struct chemistry_global_data));
+  chemistry_read_solar_abundances(params, &data);
+
+  const int iFe = stellar_evolution_get_element_index(&fp->stellar_model, "Fe");
+  const float XFe = data.solar_abundances[iFe];
+
+  if (fp->imf_transition_metallicity == 0)
+    fp->metallicity_max_first_stars = -1;
+  else
+    fp->metallicity_max_first_stars =
+        pow(10, fp->imf_transition_metallicity) * XFe;
+
+  /* Now initialize the first stars. */
   if (fp->metallicity_max_first_stars == -1) {
     message("First stars are disabled.");
   } else {

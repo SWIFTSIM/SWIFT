@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -41,6 +41,7 @@
 #include "error.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "potential.h"
 #include "sink_io.h"
 #include "stars_io.h"
 #include "threadpool.h"

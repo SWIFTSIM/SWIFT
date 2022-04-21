@@ -93,6 +93,16 @@ GRACKLE
 ~~~~~~~
 GRACKLE cooling is implemented in SWIFT. If you wish to take advantage of it, you will need it installed.
 
+HEALPix C library
+~~~~~~~~~~~~~~~~~~~
+
+This is required for making light cone HEALPix maps. Note that by default HEALPix builds a static library which cannot be used to build the SWIFT shared library. Either HEALPix must be built as a shared library or -fPIC must be added to the C compiler flags when HEALPix is being configured.
+
+CFITSIO
+~~~~~~~
+
+This may be required as a dependency of HEALPix.
+
 
 Initial Setup
 -------------

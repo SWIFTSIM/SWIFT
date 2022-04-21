@@ -55,11 +55,9 @@ __attribute__((always_inline)) INLINE static void rt_set_stellar_emission_rate(
           rt_props->stellar_const_emission_rates[g] * solar_luminosity;
       sp->rt_data.emission_this_step[g] = emission_rate_internal_units * dt;
     }
+  } else {
+    error("Unknown stellar emission rate model");
   }
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  sp->rt_data.debug_emission_rate_set += 1;
-#endif
 }
 
 #endif /* SWIFT_RT_STELLAR_EMISSION_RATE_GEAR_H */

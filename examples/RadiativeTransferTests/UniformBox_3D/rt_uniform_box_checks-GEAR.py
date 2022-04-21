@@ -41,7 +41,6 @@
 
 
 import numpy as np
-import unyt
 from sys import argv
 from swift_rt_GEAR_io import get_snap_data
 
@@ -82,30 +81,33 @@ def check_injection(snapdata, rundata):
     # into the gas
     # ----------------------------------------------------------------
 
-    initial_energies = snapdata[0].gas.PhotonEnergies.sum(axis=0)
-    initial_time = snapdata[0].time
-
     emission_rates = rundata.const_emission_rates
     ngroups = rundata.ngroups
 
+    initial_energies = [
+        snapdata[0].gas.PhotonEnergies[g].sum(axis=0) for g in range(ngroups)
+    ]
+    initial_time = snapdata[0].time
+
     for snap in snapdata:
         dt = snap.time - initial_time
-        photon_energies = snap.gas.PhotonEnergies.sum(axis=0)
         injected = snap.nstars * emission_rates * dt
-        energies_expected = initial_energies + injected
-        diff = np.array(1.0 - energies_expected / photon_energies)
+        for g in range(ngroups):
+            photon_energy = snap.gas.PhotonEnergies[g].sum(axis=0)
+            energy_expected = initial_energies[g] + injected[g]
+            diff = 1.0 - energy_expected / photon_energy
 
-        if (np.abs(diff) > float_particle_sum_comparison_tolerance).any():
-            print("Snapshot", snap.snapnr, "Injected Energy Prediction is wrong;")
-            if print_diffs:
-                for g in range(ngroups):
-                    if abs(diff[g]) > float_particle_sum_comparison_tolerance:
-                        print("--- group ", g + 1)
-                        print("----- diff:           ", diff[g])
-                        print("----- photon energies:", photon_energies[g])
-                        print("----- expected:       ", energies_expected[g])
+            if abs(diff) > float_particle_sum_comparison_tolerance:
+                print("Snapshot", snap.snapnr, "Injected Energy Prediction is wrong;")
+                if print_diffs:
+                    print("--- group ", g + 1)
+                    print("----- diff:           ", diff)
+                    print("----- photon energies:", photon_energy)
+                    print("----- expected:       ", energy_expected)
                 if break_on_diff:
                     quit()
+
+    return
 
 
 def main():

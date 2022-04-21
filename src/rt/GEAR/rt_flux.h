@@ -58,18 +58,18 @@ __attribute__((always_inline)) INLINE static void rt_part_reset_fluxes(
  * state UR along the direction of the unit vector n_unit
  * through a surface of size Anorm.
  *
- * @param UL left state
- * @param UR right state
+ * @param UL left state (energy density, fluxes)
+ * @param UR right state (energy density, fluxes)
  * @param n_unit unit vector of the direction of the surface
  * @param Anorm size of the surface through which the flux goes
- * @param fluxes the resulting flux
+ * @param fluxes (return) the resulting flux
  */
 __attribute__((always_inline)) INLINE static void rt_compute_flux(
     float UL[4], float UR[4], const float n_unit[3], const float Anorm,
     float fluxes[4]) {
 
-  /* Unphysical density check not necessary here.
-   * It's done in gradients predict as well. */
+  /* Unphysical check not necessary here.
+   * It's done in gradients_predict as well. */
 
   const float FLnorm = sqrtf(UL[1] * UL[1] + UL[2] * UL[2] + UL[3] * UL[3]);
   const float FRnorm = sqrtf(UR[1] * UR[1] + UR[2] * UR[2] + UR[3] * UR[3]);
@@ -86,13 +86,27 @@ __attribute__((always_inline)) INLINE static void rt_compute_flux(
 #endif
 
   rt_riemann_solve_for_flux(UL, UR, FLnorm, FRnorm, hyperFluxL, hyperFluxR,
-                            fluxes, n_unit);
+                            n_unit, fluxes);
 
   /* get the actual flux */
   fluxes[0] *= Anorm;
   fluxes[1] *= Anorm;
   fluxes[2] *= Anorm;
   fluxes[3] *= Anorm;
+}
+
+/**
+ * @brief reset the mass fluxes of constituent species for a particle.
+ *
+ * @param p particle to work on.
+ **/
+__attribute__((always_inline)) INLINE static void rt_part_reset_mass_fluxes(
+    struct part* restrict p) {
+  p->rt_data.mass_flux.HI = 0.f;
+  p->rt_data.mass_flux.HII = 0.f;
+  p->rt_data.mass_flux.HeI = 0.f;
+  p->rt_data.mass_flux.HeII = 0.f;
+  p->rt_data.mass_flux.HeIII = 0.f;
 }
 
 #endif /* SWIFT_GEAR_RT_FLUX_H */

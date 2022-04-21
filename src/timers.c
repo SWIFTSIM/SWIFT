@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
  *
@@ -125,10 +125,6 @@ const char* timers_names[timer_count] = {
     "fof_self",
     "fof_pair",
     "drift_sink",
-    "doself_rt_inject",
-    "dopair_rt_inject",
-    "dosub_self_rt_inject",
-    "dosub_pair_rt_inject",
     "rt_ghost1",
     "rt_ghost2",
     "doself_rt_gradient",

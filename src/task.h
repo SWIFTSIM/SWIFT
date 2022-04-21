@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -152,7 +152,6 @@ enum task_subtypes {
   task_subtype_do_bh_swallow,
   task_subtype_bh_feedback,
   task_subtype_sink_merger,
-  task_subtype_rt_inject,
   task_subtype_sink_compute_formation,
   task_subtype_sink_accretion,
   task_subtype_rt_gradient,

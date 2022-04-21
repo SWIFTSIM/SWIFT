@@ -29,7 +29,14 @@ Compiling for GEAR RT
     need to compile using ``--with-hydro=gizmo-mfv``, which will also require
     you to select a hydro Riemann solver, e.g ``--with-riemann-solver=hllc``.
 
-
+-   The thermochemistry requires the `grackle <https://github.com/grackle-project/grackle>`_ 
+    library. Grackle is a chemistry and cooling library presented in 
+    `B. Smith et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S>`_.
+    Please note that the current implementation is not (yet) as
+    advanced as the :ref:`GEAR subgrid model grackle cooling <gear_grackle_cooling>`, 
+    and the parameters listed as available there are not applicable for the 
+    grackle cooling in combination with GEAR RT. You can however follow the Grackle 
+    installation instructions documented there.
 
 
 
@@ -50,6 +57,7 @@ You need to provide the following runtime parameters in the yaml file:
        hydrogen_mass_fraction:  0.76                      # total hydrogen (H + H+) mass fraction in the 
                                                           # metal-free portion of the gas
 
+       stellar_spectrum_type: 0                           # Which radiation spectrum to use. 0: constant. 1: blackbody spectrum.
 
 The ``photon_groups`` need to be ``N - 1`` frequency edges (floats) to separate 
 the spectrum into ``N`` groups. The outer limits of zero and infinity are 
@@ -67,11 +75,27 @@ intended to be optional in the future, **for now it needs to be set to 1.**, and
 it requires you to manually set the stellar emission rates via the
 ``star_emission_rates_LSol`` parameter.
 
+When solving the thermochemistry, we need to assume some form of stellar
+spectrum so we may integrate over frequency bins to obtain average interaction
+rates. The parameter ``stellar_spectrum_type`` is hence required, and allows you
+to select between:
+
+- constant spectrum (``stellar_spectrum_type: 0``)
+    - This choice additionally requires you to provide a maximal frequency for
+      the spectrum after which it'll be cut off via the 
+      ``stellar_spectrum_const_max_frequency_Hz`` parameter
+
+- blackbody spectrum (``stellar_spectrum_type: 1``)
+    - In this case, you need to provide also temperature of the blackbody via the 
+      ``stellar_spectrum_blackbody_temperature_K`` parameter.
+
+
+
+
 
 
 Initial Conditions
 ~~~~~~~~~~~~~~~~~~
-
 
 Setting Up Initial Conditions for RT
 ````````````````````````````````````
@@ -102,16 +126,18 @@ group:
    MassFractionHeIII
 
 
-The ``PhotonEnergies*`` datasets need to have dimension ``nparts``, while the
-``PhotonFluxesGroup*`` datasets need to have dimension ``(nparts, 3)``, where
-``nparts`` is the number of hydro particles. If you are writing initial
-conditions where the fields have units, then ``PhotonEnergies*`` are expected to
-have units of energy :math:`[M L^2 T^{-2}]`), while the ``PhotonFluxes*`` fields
-should be in units of energy flux (energy per unit time per unit area, :math:`[M
-T^{-3}]`).
-The ``MassFraction*`` datasets need to have dimension ``nparts`` as well, and
-are all unitless.
-
+-   The ``PhotonEnergies*`` datasets need to have dimension ``nparts``, while the
+    ``PhotonFluxesGroup*`` datasets need to have dimension ``(nparts, 3)``, where
+    ``nparts`` is the number of hydro particles. 
+-   Note that the GEAR-RT scheme expects the ``PhotonEnergies*`` to be total 
+    energies, not energy densities. 
+-   If you are writing initial conditions where the fields have units [#f1]_, then 
+    ``PhotonEnergies*`` are expected to have units of energy 
+    :math:`[M L^2 T^{-2}]`), while the ``PhotonFluxes*`` fields should be in units 
+    of energy times velocity (i.e. energy per unit time per unit area times volume, 
+    :math:`[M L^3 T^{-3}]`).
+-   The ``MassFraction*`` datasets need to have dimension ``nparts`` as well, and
+    are all unitless.
 
 
 Example using Python and ``swiftsimio``
@@ -188,7 +214,8 @@ Generate Ionization Mass Fractions Using SWIFT
 ``````````````````````````````````````````````
 
 .. warning:: Using SWIFT to generate initial ionization mass fractions will
-   overwrite any initial conditions that have been read in.
+   overwrite the mass fractions that have been read in from the initial 
+   conditions.
 
 Optionally, you can use SWIFT to generate the initial mass fractions of the
 ionizing species. To set the initial mass fractions of all particles to the same
@@ -219,3 +246,106 @@ for you assuming ionization equilibrium, following `Katz, et al. 1996
 The ``hydrogen_mass_fraction`` (which is a compulsory argument in any case) will
 determine the hydrogen and helium mass fractions, while SWIFT will determine the
 equilibrium ionizations.
+
+
+
+
+Accessing Output Data
+~~~~~~~~~~~~~~~~~~~~~~
+
+We recommend using `swiftsimio <https://github.com/SWIFTSIM/swiftsimio>`_ to 
+access the RT related snapshot data. The compatibility is being maintained.
+Here's an example how to access some specific quantities that you might find
+useful:
+
+
+.. code:: python
+
+    #!/usr/bin/env python3
+
+    import swiftsimio
+    import unyt
+
+    data = swiftsimio.load("output_0001.hdf5")
+    meta = data.metadata
+
+
+
+    # Accessing RT Related Metadata
+    # ---------------------------------
+
+    # get scheme name: "GEAR M1closure"
+    scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
+
+    # number of photon groups used
+    ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"])
+
+    # get the reduced speed of light that was used. Will have unyts.
+    reduced_speed_of_light = meta.reduced_lightspeed
+
+
+
+
+    # Accessing Photon Data
+    # ------------------------
+
+    # accessing a photon group directly
+    # NOTE: group names start with 1
+    group_1_photon_energies = data.gas.photon_energies.group1
+    group_1_photon_fluxes_x = data.gas.photon_fluxes.Group1X
+    group_1_photon_fluxes_y = data.gas.photon_fluxes.Group1Y
+    group_1_photon_fluxes_z = data.gas.photon_fluxes.Group1Z
+
+    # want to stack all fluxes into 1 array?
+    group1fluxes = swiftsimio.cosmo_array(
+        unyt.uvstack(
+            (group_1_photon_fluxes_x, group_1_photon_fluxes_y, group_1_photon_fluxes_z)
+        ),
+        group_1_photon_fluxes_x.units,
+    ).T
+    # group1fluxes.shape = (npart, 3)
+
+
+    # Load all photon energies in a list
+    photon_energies = [
+        getattr(data.gas.photon_energies, "group" + str(g + 1)) for g in range(ngroups)
+    ]
+
+
+
+    # Accessing Ion Mass Fractions
+    # -------------------------------
+    fHI = data.gas.ion_mass_fractions.HI
+    fHII = data.gas.ion_mass_fractions.HII
+    fHeI = data.gas.ion_mass_fractions.HeI
+    fHeII = data.gas.ion_mass_fractions.HeII
+    fHeIII = data.gas.ion_mass_fractions.HeIII
+
+
+
+
+.. rubric:: Footnotes
+
+.. [#f1] To avoid possible confusions, here are some notes and equations
+   regarding this choice of units.
+
+   One of the RT equations solved by the GEAR RT is the zeroth moment of the
+   equation of radiative transfer for each photon frequency group :math:`i` :
+
+   :math:`\frac{\partial E_i}{\partial t} + \nabla \cdot \mathbf{F}_i = 0`
+
+   where
+
+   - :math:`E_i` : photon energy density; with :math:`[E_i] = erg / cm^3 = M L^{-1} T^{-2}`
+   - :math:`F_i` : radiation flux (energy per unit time per unit surface); with :math:`[F_i] = erg / cm^2 / s = M T^{-3}` 
+
+   and we neglect possible source and sink terms in this footnote.
+
+   These dimensions are also used internally when solving the equations.
+   For the initial conditions however, we require these quantities multiplied by
+   the particle volume. The reason for this choice is so that the photon
+   energies for each particle can be set by the users exactly, while the
+   particle volume computation can be left to SWIFT to worry about internally.
+   The addition of the particle volume term for the radiation flux was made so
+   that the initial conditions are compatible with the SPHM1RT conventions, and
+   both methods can run on the exact same ICs.

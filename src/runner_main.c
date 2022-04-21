@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -122,13 +122,6 @@
 #include "runner_doiact_black_holes.h"
 #undef FUNCTION_TASK_LOOP
 #undef FUNCTION
-
-/* Import radiative transfer loop functions. */
-#define FUNCTION inject
-#define FUNCTION_TASK_LOOP TASK_LOOP_RT_INJECT
-#include "runner_doiact_rt.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
 
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
@@ -269,8 +262,6 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_doself_branch_bh_feedback(r, ci);
-          else if (t->subtype == task_subtype_rt_inject)
-            runner_doself_branch_rt_inject(r, ci, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_doself1_branch_rt_gradient(r, ci);
           else if (t->subtype == task_subtype_rt_transport)
@@ -319,8 +310,6 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dopair_branch_bh_feedback(r, ci, cj);
-          else if (t->subtype == task_subtype_rt_inject)
-            runner_dopair_branch_rt_inject(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dopair1_branch_rt_gradient(r, ci, cj);
           else if (t->subtype == task_subtype_rt_transport)
@@ -367,8 +356,6 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_self_bh_feedback(r, ci, 1);
-          else if (t->subtype == task_subtype_rt_inject)
-            runner_dosub_self_rt_inject(r, ci, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dosub_self1_rt_gradient(r, ci, 1);
           else if (t->subtype == task_subtype_rt_transport)
@@ -415,8 +402,6 @@ void *runner_main(void *data) {
             runner_do_bh_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_rt_inject)
-            runner_dosub_pair_rt_inject(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dosub_pair1_rt_gradient(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_transport)
@@ -537,6 +522,10 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_rho) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_gradient) {
+            runner_do_recv_part(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_rt_gradient) {
+            runner_do_recv_part(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_rt_transport) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_part_swallow) {
             cell_unpack_part_swallow(ci,
