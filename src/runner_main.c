@@ -361,7 +361,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_merger)
             runner_do_sym_pair_sinks_merger(r, ci, cj);
           else if (t->subtype == task_subtype_grid_construction)
-            runner_dopair_grid_construction(r, ci, cj);
+            runner_dopair_branch_grid_construction(r, ci, cj);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_slope_estimate)
             runner_dopair_branch_slope_estimate(r, ci, cj);

@@ -1797,8 +1797,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   if (c->grid.voronoi == NULL) {
     c->grid.voronoi = voronoi_malloc(c->hydro.count, c->width[0]);
   } else {
-    voronoi_destroy(c->grid.voronoi);
-    c->grid.voronoi = voronoi_malloc(c->hydro.count, c->width[0]);
+    voronoi_reset(c->grid.voronoi, c->hydro.count, c->width[0]);
   }
 
   /* We only want to build voronoi cells for the active particles */

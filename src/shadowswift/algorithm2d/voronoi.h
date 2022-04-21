@@ -315,8 +315,8 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
   return v;
 }
 
-inline static void voronoi_init(struct voronoi *restrict v, int number_of_cells,
-                                double dmin) {
+inline static void voronoi_reset(struct voronoi *restrict v,
+                                 int number_of_cells, double dmin) {
   voronoi_assert(v->active);
 
   v->number_of_cells = number_of_cells;

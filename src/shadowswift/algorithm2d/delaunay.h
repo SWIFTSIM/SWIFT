@@ -422,7 +422,7 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
  *
  * @param d Delaunay tessellation.
  */
-inline static void delaunay_init(struct delaunay* restrict d,
+inline static void delaunay_reset(struct delaunay* restrict d,
                                  const double* cell_loc,
                                  const double* cell_width, int vertex_size) {
 
@@ -596,7 +596,7 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
   /* initialise the structure used to perform exact geometrical tests */
   geometry_init(&d->geometry);
 
-  delaunay_init(d, cell_loc, cell_width, vertex_size);
+  delaunay_reset(d, cell_loc, cell_width, vertex_size);
 
   return d;
 }
