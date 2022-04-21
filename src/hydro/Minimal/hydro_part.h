@@ -134,6 +134,13 @@ struct part {
   /*! Monopole term in momentum equation. */
   float B_mon;
 
+  /*! Particle div(B) cleaning scalar field over signal velocity. */
+  float psi_over_v_sig;
+
+  /*! Time derivative of div(B) cleaning scalar field over signal velocity. */
+  float psi_over_v_sig_dt;
+
+
   /* Store density/force specific stuff. */
   // union {
 

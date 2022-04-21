@@ -679,6 +679,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   p->B_over_rho_dt[2] = 0.0f;
 
   p->B_mon = 0.0f;
+
+  p->psi_over_v_sig_dt = 0.0f;
 }
 
 /**
@@ -750,6 +752,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->B_over_rho[1] += p->B_over_rho_dt[1] * dt_therm;
   p->B_over_rho[2] += p->B_over_rho_dt[2] * dt_therm;
 
+  p->psi_over_v_sig += p->psi_over_v_sig_dt * dt_therm;
+
   const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
@@ -808,8 +812,16 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   /* Some smoothing length multiples. */
   const float h = p->h;
+  const float h_inv = 1.0f / h;
 
   p->force.h_dt *= h * hydro_dimension_inv;
+
+  /* Dedner cleaning scalar time derivative */
+  const float v_sig = p->force.v_sig;
+  const float div_B = p->B_mon;
+  const float div_v = p->density.div_v;
+  const float psi_over_v_sig = p->psi_over_v_sig;
+  p->psi_over_v_sig_dt = - v_sig * div_B - 0.5f * psi_over_v_sig * div_v - psi_over_v_sig * v_sig * h_inv; 
 }
 
 /**

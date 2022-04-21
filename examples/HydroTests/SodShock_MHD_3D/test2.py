@@ -17,6 +17,9 @@ for ii in range(snapnum):
 
 	attrs = data.metadata.gas_properties.field_names
 
+	print(attrs)
+	quit()
+
 	ids = data.gas.particle_ids
 	idx = np.where(ids == break_ptcle_id)[0][0]
 

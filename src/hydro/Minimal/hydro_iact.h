@@ -229,6 +229,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   Bj[0] = pj->B_over_rho[0] * rhoj;
   Bj[1] = pj->B_over_rho[1] * rhoj;
   Bj[2] = pj->B_over_rho[2] * rhoj;
+  const float psi_over_v_sigi = pi->psi_over_v_sig;
+  const float psi_over_v_sigj = pj->psi_over_v_sig;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -301,10 +303,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float balsara_j = pj->force.balsara;
 
   /* Construct the full viscosity term */
-  const float v_sig_hydro = ci + cj - const_viscosity_beta * mu_ij;
+  // const float v_sig_hydro = ci + cj - const_viscosity_beta * mu_ij;
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc =
-      -0.25f * v_sig_hydro * (balsara_i + balsara_j) * mu_ij / rho_ij;
+      -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =
@@ -471,7 +473,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->B_over_rho_dt[0] += mi * dB_dt_pref_j * dB_dt_j[0];
   pj->B_over_rho_dt[1] += mi * dB_dt_pref_j * dB_dt_j[1];
   pj->B_over_rho_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
+
+  /*Divergence diffusion */
+  const float dedner_cleaning_pref = dedner_beta * (over_rho2_i * psi_over_v_sigi * wi_dr * r_inv + over_rho2_j * psi_over_v_sigj * wj_dr);
+  pi->B_over_rho_dt[0] += mj * v_sig * dedner_cleaning_pref * dx[0];
+  pi->B_over_rho_dt[1] += mj * v_sig * dedner_cleaning_pref * dx[1];
+  pi->B_over_rho_dt[2] += mj * v_sig * dedner_cleaning_pref * dx[2];
+
+  pj->B_over_rho_dt[0] -= mi * v_sig * dedner_cleaning_pref * dx[0];
+  pj->B_over_rho_dt[1] -= mi * v_sig * dedner_cleaning_pref * dx[1];
+  pj->B_over_rho_dt[2] -= mi * v_sig * dedner_cleaning_pref * dx[2];
 }
+
 
 /**
  * @brief Force interaction between two particles (non-symmetric).
@@ -520,6 +533,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   Bj[0] = pj->B_over_rho[0] * rhoj;
   Bj[1] = pj->B_over_rho[1] * rhoj;
   Bj[2] = pj->B_over_rho[2] * rhoj;
+  const float psi_over_v_sigi = pi->psi_over_v_sig;
+  const float psi_over_v_sigj = pj->psi_over_v_sig;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -592,10 +607,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float balsara_j = pj->force.balsara;
 
   /* Construct the full viscosity term */
-  const float v_sig_hydro = ci + cj - const_viscosity_beta * mu_ij;
+  // const float v_sig_hydro = ci + cj - const_viscosity_beta * mu_ij;
   const float rho_ij = 0.5f * (rhoi + rhoj);
   const float visc =
-      -0.25f * v_sig_hydro * (balsara_i + balsara_j) * mu_ij / rho_ij;
+      -0.25f * v_sig * (balsara_i + balsara_j) * mu_ij / rho_ij;
 
   /* Convolve with the kernel */
   const float visc_acc_term =
@@ -719,6 +734,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->B_over_rho_dt[0] += mj * dB_dt_pref_i * dB_dt_i[0];
   pi->B_over_rho_dt[1] += mj * dB_dt_pref_i * dB_dt_i[1];
   pi->B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
+
+  /*Divergence diffusion */
+  const float dedner_cleaning_pref = dedner_beta * (over_rho2_i * psi_over_v_sigi * wi_dr * r_inv + over_rho2_j * psi_over_v_sigj * wj_dr);
+  pi->B_over_rho_dt[0] += mj * v_sig * dedner_cleaning_pref * dx[0];
+  pi->B_over_rho_dt[1] += mj * v_sig * dedner_cleaning_pref * dx[1];
+  pi->B_over_rho_dt[2] += mj * v_sig * dedner_cleaning_pref * dx[2];
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */
