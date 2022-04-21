@@ -30,6 +30,10 @@
 #include "./mhd/None/mhd.h"
 #include "./mhd/None/mhd_iact.h"
 #define MHD_IMPLEMENTATION "No MHD scheme"
+#elif defined(DIRECT_INDUCTION_MHD)
+#include "./mhd/DirectInduction/mhd.h"
+#include "./mhd/DirectInduction/mhd_iact.h"
+#define MHD_IMPLEMENTATION "MHD scheme using direct induction"
 #else
 #error "Invalid choice of MHD variant"
 #endif

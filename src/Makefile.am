@@ -260,6 +260,7 @@ nobase_noinst_HEADERS += hydro/Shadowswift/voronoi_cell.h
 nobase_noinst_HEADERS += hydro/Shadowswift/hydro_parameters.h 
 nobase_noinst_HEADERS += mhd.h mhd_struct.h mhd_io.h
 nobase_noinst_HEADERS += mhd/None/mhd.h mhd/None/mhd_iact.h mhd/None/mhd_struct.h mhd/None/mhd_io.h
+nobase_noinst_HEADERS += mhd/DirectInduction/mhd.h mhd/DirectInduction/mhd_iact.h mhd/DirectInduction/mhd_struct.h mhd/DirectInduction/mhd_io.h
 nobase_noinst_HEADERS += riemann/riemann_hllc.h riemann/riemann_trrs.h 
 nobase_noinst_HEADERS += riemann/riemann_exact.h riemann/riemann_vacuum.h 
 nobase_noinst_HEADERS += riemann/riemann_checks.h 

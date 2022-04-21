@@ -1852,7 +1852,7 @@ esac
 # MHD scheme.
 AC_ARG_WITH([mhd],
    [AS_HELP_STRING([--with-mhd=<scheme>],
-      [Mhd dynamics to use @<:@none default:none@:>@]
+      [Mhd dynamics to use @<:@none direct-induction default:none@:>@]
    )],
    [with_mhd="$withval"],
    [with_mhd="none"]
@@ -1861,6 +1861,9 @@ AC_ARG_WITH([mhd],
 case "$with_mhd" in
    none)
       AC_DEFINE([NONE_MHD], [1], [No mhd])
+   ;;
+   direct-induction)
+      AC_DEFINE([DIRECT_INDUCTION_MHD], [1], [MHD using a direct induction method])
    ;;
    *)
       AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_mhd])

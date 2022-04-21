@@ -28,6 +28,8 @@
 /* Import the right functions */
 #if defined(NONE_MHD)
 #include "./mhd/None/mhd_struct.h"
+#elif defined(DIRECT_INDUCTION_MHD)
+#include "./mhd/DirectInduction/mhd_struct.h"
 #else
 #error "Invalid choice of MHD variant"
 #endif
