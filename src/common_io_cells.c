@@ -29,181 +29,119 @@
 #include "timeline.h"
 #include "units.h"
 
-static long long cell_count_non_inhibited_gas(const struct cell* c,
-                                              const int subsample,
-                                              const float subsample_ratio,
-                                              const int snap_num) {
-  const int total_count = c->hydro.count;
-  struct part* parts = c->hydro.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((parts[i].time_bin != time_bin_inhibited) &&
-        (parts[i].time_bin != time_bin_not_created)) {
-
-      /* When subsampling, select particles at random */
-      if (subsample) {
-        const float r = random_unit_interval(parts[i].id, snap_num,
-                                             random_number_snapshot_sampling);
-        if (r > subsample_ratio) continue;
-      }
-
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_dark_matter(
-    const struct cell* c, const int subsample, const float subsample_ratio,
-    const int snap_num) {
-
-  const int total_count = c->grav.count;
-  struct gpart* gparts = c->grav.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((gparts[i].time_bin != time_bin_inhibited) &&
-        (gparts[i].time_bin != time_bin_not_created) &&
-        (gparts[i].type == swift_type_dark_matter)) {
-
-      /* When subsampling, select particles at random */
-      if (subsample) {
-        const float r =
-            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
-                                 random_number_snapshot_sampling);
-        if (r > subsample_ratio) continue;
-      }
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_background_dark_matter(
-    const struct cell* c, const int subsample, const float subsample_ratio,
-    const int snap_num) {
-
-  const int total_count = c->grav.count;
-  struct gpart* gparts = c->grav.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((gparts[i].time_bin != time_bin_inhibited) &&
-        (gparts[i].time_bin != time_bin_not_created) &&
-        (gparts[i].type == swift_type_dark_matter_background)) {
-
-      /* When subsampling, select particles at random */
-      if (subsample) {
-        const float r =
-            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
-                                 random_number_snapshot_sampling);
-        if (r > subsample_ratio) continue;
-      }
-
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_stars(const struct cell* c,
-                                                const int subsample,
-                                                const float subsample_ratio,
-                                                const int snap_num) {
-  const int total_count = c->stars.count;
-  struct spart* sparts = c->stars.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((sparts[i].time_bin != time_bin_inhibited) &&
-        (sparts[i].time_bin != time_bin_not_created)) {
-
-      /* When subsampling, select particles at random */
-      if (subsample) {
-        const float r = random_unit_interval(sparts[i].id, snap_num,
-                                             random_number_snapshot_sampling);
-        if (r > subsample_ratio) continue;
-      }
-
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_black_holes(
-    const struct cell* c, const int subsample, const float subsample_ratio,
-    const int snap_num) {
-  const int total_count = c->black_holes.count;
-  struct bpart* bparts = c->black_holes.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((bparts[i].time_bin != time_bin_inhibited) &&
-        (bparts[i].time_bin != time_bin_not_created)) {
-
-      /* When subsampling, select particles at random */
-      if (subsample) {
-        const float r = random_unit_interval(bparts[i].id, snap_num,
-                                             random_number_snapshot_sampling);
-        if (r > subsample_ratio) continue;
-      }
-
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_sinks(const struct cell* c,
-                                                const int subsample,
-                                                const float subsample_ratio,
-                                                const int snap_num) {
-  const int total_count = c->sinks.count;
-  struct sink* sinks = c->sinks.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((sinks[i].time_bin != time_bin_inhibited) &&
-        (sinks[i].time_bin != time_bin_not_created)) {
-
-      /* When subsampling, select particles at random */
-      if (subsample) {
-        const float r = random_unit_interval(sinks[i].id, snap_num,
-                                             random_number_snapshot_sampling);
-        if (r > subsample_ratio) continue;
-      }
-
-      ++count;
-    }
-  }
-  return count;
-}
-
-static long long cell_count_non_inhibited_neutrinos(const struct cell* c,
-                                                    const int subsample,
-                                                    const float subsample_ratio,
-                                                    const int snap_num) {
-
-  const int total_count = c->grav.count;
-  struct gpart* gparts = c->grav.parts;
-  long long count = 0;
-  for (int i = 0; i < total_count; ++i) {
-    if ((gparts[i].time_bin != time_bin_inhibited) &&
-        (gparts[i].time_bin != time_bin_not_created) &&
-        (gparts[i].type == swift_type_neutrino)) {
-
-      /* When subsampling, select particles at random */
-      if (subsample) {
-        const float r =
-            random_unit_interval(gparts[i].id_or_neg_offset, snap_num,
-                                 random_number_snapshot_sampling);
-        if (r > subsample_ratio) continue;
-      }
-
-      ++count;
-    }
-  }
-  return count;
-}
+/* Standard includes */
+#include <float.h>
 
 /**
- * @brief Count the number of local non-inhibited gas particles to write.
+ * @brief Count the non-inhibted particles in the cell and return the
+ * min/max positions
+ *
+ * @param c The #cell.
+ * @param subsample Are we subsampling the output?
+ * @param susample_ratio Fraction of particles to write when sub-sampling.
+ * @param snap_num The snapshot number (used for the sampling random draws).
+ * @param min_pos (return) The min position of all particles to write.
+ * @param max_pos (return) The max position of all particles to write.
+ */
+#define CELL_COUNT_NON_INHIBITED_PARTICLES(TYPE, CELL_TYPE)                   \
+  cell_count_non_inhibited_##TYPE(                                            \
+      const struct cell* c, const int subsample, const float subsample_ratio, \
+      const int snap_num, double min_pos[3], double max_pos[3]) {             \
+                                                                              \
+    const int total_count = c->CELL_TYPE.count;                               \
+    const struct TYPE* parts = c->CELL_TYPE.parts;                            \
+    long long count = 0;                                                      \
+    min_pos[0] = min_pos[1] = min_pos[2] = DBL_MAX;                           \
+    max_pos[0] = max_pos[1] = max_pos[2] = -DBL_MAX;                          \
+                                                                              \
+    for (int i = 0; i < total_count; ++i) {                                   \
+      if ((parts[i].time_bin != time_bin_inhibited) &&                        \
+          (parts[i].time_bin != time_bin_not_created)) {                      \
+                                                                              \
+        /* When subsampling, select particles at random */                    \
+        if (subsample) {                                                      \
+          const float r = random_unit_interval(                               \
+              parts[i].id, snap_num, random_number_snapshot_sampling);        \
+          if (r > subsample_ratio) continue;                                  \
+        }                                                                     \
+                                                                              \
+        ++count;                                                              \
+                                                                              \
+        min_pos[0] = min(parts[i].x[0], min_pos[0]);                          \
+        min_pos[1] = min(parts[i].x[1], min_pos[1]);                          \
+        min_pos[2] = min(parts[i].x[2], min_pos[2]);                          \
+                                                                              \
+        max_pos[0] = max(parts[i].x[0], max_pos[0]);                          \
+        max_pos[1] = max(parts[i].x[1], max_pos[1]);                          \
+        max_pos[2] = max(parts[i].x[2], max_pos[2]);                          \
+      }                                                                       \
+    }                                                                         \
+    return count;                                                             \
+  }
+
+static long long CELL_COUNT_NON_INHIBITED_PARTICLES(part, hydro);
+static long long CELL_COUNT_NON_INHIBITED_PARTICLES(spart, stars);
+static long long CELL_COUNT_NON_INHIBITED_PARTICLES(bpart, black_holes);
+static long long CELL_COUNT_NON_INHIBITED_PARTICLES(sink, sinks);
+
+/**
+ * @brief Count the non-inhibted g-particles in the cell and return the
+ * min/max positions
+ *
+ * @param c The #cell.
+ * @param subsample Are we subsampling the output?
+ * @param susample_ratio Fraction of particles to write when sub-sampling.
+ * @param snap_num The snapshot number (used for the sampling random draws).
+ * @param min_pos (return) The min position of all particles to write.
+ * @param max_pos (return) The max position of all particles to write.
+ */
+#define CELL_COUNT_NON_INHIBITED_GPARTICLES(TYPE, PART_TYPE)                  \
+  cell_count_non_inhibited_##TYPE(                                            \
+      const struct cell* c, const int subsample, const float subsample_ratio, \
+      const int snap_num, double min_pos[3], double max_pos[3]) {             \
+                                                                              \
+    const int total_count = c->grav.count;                                    \
+    const struct gpart* gparts = c->grav.parts;                               \
+    long long count = 0;                                                      \
+    min_pos[0] = min_pos[1] = min_pos[2] = DBL_MAX;                           \
+    max_pos[0] = max_pos[1] = max_pos[2] = -DBL_MAX;                          \
+                                                                              \
+    for (int i = 0; i < total_count; ++i) {                                   \
+      if ((gparts[i].time_bin != time_bin_inhibited) &&                       \
+          (gparts[i].time_bin != time_bin_not_created) &&                     \
+          (gparts[i].type == PART_TYPE)) {                                    \
+                                                                              \
+        /* When subsampling, select particles at random */                    \
+        if (subsample) {                                                      \
+          const float r =                                                     \
+              random_unit_interval(gparts[i].id_or_neg_offset, snap_num,      \
+                                   random_number_snapshot_sampling);          \
+          if (r > subsample_ratio) continue;                                  \
+        }                                                                     \
+                                                                              \
+        ++count;                                                              \
+                                                                              \
+        min_pos[0] = min(gparts[i].x[0], min_pos[0]);                         \
+        min_pos[1] = min(gparts[i].x[1], min_pos[1]);                         \
+        min_pos[2] = min(gparts[i].x[2], min_pos[2]);                         \
+                                                                              \
+        max_pos[0] = max(gparts[i].x[0], max_pos[0]);                         \
+        max_pos[1] = max(gparts[i].x[1], max_pos[1]);                         \
+        max_pos[2] = max(gparts[i].x[2], max_pos[2]);                         \
+      }                                                                       \
+    }                                                                         \
+    return count;                                                             \
+  }
+
+static long long CELL_COUNT_NON_INHIBITED_GPARTICLES(dark_matter,
+                                                     swift_type_dark_matter);
+static long long CELL_COUNT_NON_INHIBITED_GPARTICLES(
+    background_dark_matter, swift_type_dark_matter_background);
+static long long CELL_COUNT_NON_INHIBITED_GPARTICLES(neutrinos,
+                                                     swift_type_neutrino);
+
+/**
+ * @brief Count the number of local non-inhibited particles to write.
  *
  * Takes into account downsampling.
  *
@@ -212,170 +150,28 @@ static long long cell_count_non_inhibited_neutrinos(const struct cell* c,
  * @param subsample_ratio The fraction of particle to keep when subsampling.
  * @param snap_num The snapshot number to use as random seed.
  */
-long long io_count_gas_to_write(const struct space* s, const int subsample,
-                                const float subsample_ratio,
-                                const int snap_num) {
-
-  long long count = 0;
-  for (int i = 0; i < s->nr_local_cells; ++i) {
-
-    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
-    count +=
-        cell_count_non_inhibited_gas(c, subsample, subsample_ratio, snap_num);
+#define IO_COUNT_PARTICLES_TO_WRITE(NAME, TYPE)                               \
+  io_count_##NAME##_to_write(const struct space* s, const int subsample,      \
+                             const float subsample_ratio,                     \
+                             const int snap_num) {                            \
+    long long count = 0;                                                      \
+    for (int i = 0; i < s->nr_local_cells; ++i) {                             \
+      double dummy1[3], dummy2[3];                                            \
+      const struct cell* c = &s->cells_top[s->local_cells_top[i]];            \
+      count += cell_count_non_inhibited_##TYPE(c, subsample, subsample_ratio, \
+                                               snap_num, dummy1, dummy2);     \
+    }                                                                         \
+    return count;                                                             \
   }
-  return count;
-}
 
-/**
- * @brief Count the number of local non-inhibited dark matter particles to
- * write.
- *
- * Takes into account downsampling.
- *
- * @param s The #space.
- * @param subsample Are we subsampling?
- * @param subsample_ratio The fraction of particle to keep when subsampling.
- * @param snap_num The snapshot number to use as random seed.
- */
-long long io_count_dark_matter_to_write(const struct space* s,
-                                        const int subsample,
-                                        const float subsample_ratio,
-                                        const int snap_num) {
-
-  long long count = 0;
-  for (int i = 0; i < s->nr_local_cells; ++i) {
-
-    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
-    count += cell_count_non_inhibited_dark_matter(c, subsample, subsample_ratio,
-                                                  snap_num);
-  }
-  return count;
-}
-
-/**
- * @brief Count the number of local non-inhibited background dark matter
- * particles to write.
- *
- * Takes into account downsampling.
- *
- * @param s The #space.
- * @param subsample Are we subsampling?
- * @param subsample_ratio The fraction of particle to keep when subsampling.
- * @param snap_num The snapshot number to use as random seed.
- */
-long long io_count_background_dark_matter_to_write(const struct space* s,
-                                                   const int subsample,
-                                                   const float subsample_ratio,
-                                                   const int snap_num) {
-
-  long long count = 0;
-  for (int i = 0; i < s->nr_local_cells; ++i) {
-
-    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
-    count += cell_count_non_inhibited_background_dark_matter(
-        c, subsample, subsample_ratio, snap_num);
-  }
-  return count;
-}
-
-/**
- * @brief Count the number of local non-inhibited stars particles to write.
- *
- * Takes into account downsampling.
- *
- * @param s The #space.
- * @param subsample Are we subsampling?
- * @param subsample_ratio The fraction of particle to keep when subsampling.
- * @param snap_num The snapshot number to use as random seed.
- */
-long long io_count_stars_to_write(const struct space* s, const int subsample,
-                                  const float subsample_ratio,
-                                  const int snap_num) {
-
-  long long count = 0;
-  for (int i = 0; i < s->nr_local_cells; ++i) {
-
-    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
-    count +=
-        cell_count_non_inhibited_stars(c, subsample, subsample_ratio, snap_num);
-  }
-  return count;
-}
-
-/**
- * @brief Count the number of local non-inhibited sinks particles to write.
- *
- * Takes into account downsampling.
- *
- * @param s The #space.
- * @param subsample Are we subsampling?
- * @param subsample_ratio The fraction of particle to keep when subsampling.
- * @param snap_num The snapshot number to use as random seed.
- */
-long long io_count_sinks_to_write(const struct space* s, const int subsample,
-                                  const float subsample_ratio,
-                                  const int snap_num) {
-
-  long long count = 0;
-  for (int i = 0; i < s->nr_local_cells; ++i) {
-
-    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
-    count +=
-        cell_count_non_inhibited_sinks(c, subsample, subsample_ratio, snap_num);
-  }
-  return count;
-}
-
-/**
- * @brief Count the number of local non-inhibited black holes particles to
- * write.
- *
- * Takes into account downsampling.
- *
- * @param s The #space.
- * @param subsample Are we subsampling?
- * @param subsample_ratio The fraction of particle to keep when subsampling.
- * @param snap_num The snapshot number to use as random seed.
- */
-long long io_count_black_holes_to_write(const struct space* s,
-                                        const int subsample,
-                                        const float subsample_ratio,
-                                        const int snap_num) {
-
-  long long count = 0;
-  for (int i = 0; i < s->nr_local_cells; ++i) {
-
-    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
-    count += cell_count_non_inhibited_black_holes(c, subsample, subsample_ratio,
-                                                  snap_num);
-  }
-  return count;
-}
-
-/**
- * @brief Count the number of local non-inhibited neutrinos particles to write.
- *
- * Takes into account downsampling.
- *
- * @param s The #space.
- * @param subsample Are we subsampling?
- * @param subsample_ratio The fraction of particle to keep when subsampling.
- * @param snap_num The snapshot number to use as random seed.
- */
-long long io_count_neutrinos_to_write(const struct space* s,
-                                      const int subsample,
-                                      const float subsample_ratio,
-                                      const int snap_num) {
-
-  long long count = 0;
-  for (int i = 0; i < s->nr_local_cells; ++i) {
-
-    const struct cell* c = &s->cells_top[s->local_cells_top[i]];
-    count += cell_count_non_inhibited_neutrinos(c, subsample, subsample_ratio,
-                                                snap_num);
-  }
-  return count;
-}
+long long IO_COUNT_PARTICLES_TO_WRITE(gas, part);
+long long IO_COUNT_PARTICLES_TO_WRITE(dark_matter, dark_matter);
+long long IO_COUNT_PARTICLES_TO_WRITE(background_dark_matter,
+                                      background_dark_matter);
+long long IO_COUNT_PARTICLES_TO_WRITE(stars, spart);
+long long IO_COUNT_PARTICLES_TO_WRITE(sinks, sink);
+long long IO_COUNT_PARTICLES_TO_WRITE(black_holes, bpart);
+long long IO_COUNT_PARTICLES_TO_WRITE(neutrinos, neutrinos);
 
 #if defined(HAVE_HDF5)
 
@@ -387,29 +183,30 @@ long long io_count_neutrinos_to_write(const struct space* s,
 #endif
 
 /**
- * @brief Write a single 1D array to a hdf5 group.
+ * @brief Write a single rank 1 or rank 2 array to a hdf5 group.
  *
- * This creates a simple Nx1 array with a chunk size of 1024x1.
+ * This creates a simple Nxdim array with a chunk size of 1024xdim.
  * The Fletcher-32 filter is applied to the array.
  *
  * @param h_grp The open hdf5 group.
  * @param n The number of elements in the array.
+ * @param dim The dimensionality of each element.
  * @param array The data to write.
  * @param type The type of the data to write.
  * @param name The name of the array.
  * @param array_content The name of the parent group (only used for error
  * messages).
  */
-void io_write_array(hid_t h_grp, const int n, const void* array,
+void io_write_array(hid_t h_grp, const int n, const int dim, const void* array,
                     const enum IO_DATA_TYPE type, const char* name,
                     const char* array_content) {
 
   /* Create memory space */
-  const hsize_t shape[2] = {(hsize_t)n, 1};
+  const hsize_t shape[2] = {(hsize_t)n, dim};
   hid_t h_space = H5Screate(H5S_SIMPLE);
   if (h_space < 0)
     error("Error while creating data space for %s %s", name, array_content);
-  hid_t h_err = H5Sset_extent_simple(h_space, 1, shape, shape);
+  hid_t h_err = H5Sset_extent_simple(h_space, dim > 1 ? 2 : 1, shape, shape);
   if (h_err < 0)
     error("Error while changing shape of %s %s data space.", name,
           array_content);
@@ -417,9 +214,9 @@ void io_write_array(hid_t h_grp, const int n, const void* array,
   /* Dataset type */
   hid_t h_type = H5Tcopy(io_hdf5_type(type));
 
-  const hsize_t chunk[2] = {(1024 > n ? n : 1024), 1};
+  const hsize_t chunk[2] = {(1024 > n ? n : 1024), dim};
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
-  h_err = H5Pset_chunk(h_prop, 1, chunk);
+  h_err = H5Pset_chunk(h_prop, dim > 1 ? 2 : 1, chunk);
   if (h_err < 0)
     error("Error while setting chunk shapes of %s %s data space.", name,
           array_content);
@@ -500,6 +297,30 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   int* files = NULL;
   files = (int*)malloc(nr_cells * sizeof(int));
 
+  /* Temporary memory for the min position of particles in the cells */
+  double *min_part_pos = NULL, *min_gpart_pos = NULL,
+         *min_gpart_background_pos = NULL, *min_spart_pos = NULL,
+         *min_bpart_pos = NULL, *min_sink_pos = NULL, *min_nupart_pos = NULL;
+  min_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  min_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  min_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  min_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  min_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  min_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  min_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+
+  /* Temporary memory for the max position of particles in the cells */
+  double *max_part_pos = NULL, *max_gpart_pos = NULL,
+         *max_gpart_background_pos = NULL, *max_spart_pos = NULL,
+         *max_bpart_pos = NULL, *max_sink_pos = NULL, *max_nupart_pos = NULL;
+  max_part_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  max_gpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  max_gpart_background_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  max_spart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  max_bpart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  max_sink_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+  max_nupart_pos = (double*)calloc(3 * nr_cells, sizeof(double));
+
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL,
             *count_background_gpart = NULL, *count_spart = NULL,
@@ -563,35 +384,44 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
       centres[i * 3 + 1] = box_wrap(centres[i * 3 + 1], 0.0, dim[1]);
       centres[i * 3 + 2] = box_wrap(centres[i * 3 + 2], 0.0, dim[2]);
 
-      /* Count real particles that will be written */
-      count_part[i] = cell_count_non_inhibited_gas(
+      /* Count real particles that will be written and collect the min/max
+       * positions */
+      count_part[i] = cell_count_non_inhibited_part(
           &cells_top[i], subsample[swift_type_gas],
-          subsample_fraction[swift_type_gas], snap_num);
+          subsample_fraction[swift_type_gas], snap_num, &min_part_pos[i * 3],
+          &max_part_pos[i * 3]);
 
       count_gpart[i] = cell_count_non_inhibited_dark_matter(
           &cells_top[i], subsample[swift_type_dark_matter],
-          subsample_fraction[swift_type_dark_matter], snap_num);
+          subsample_fraction[swift_type_dark_matter], snap_num,
+          &min_gpart_pos[i * 3], &max_gpart_pos[i * 3]);
 
       count_background_gpart[i] =
           cell_count_non_inhibited_background_dark_matter(
               &cells_top[i], subsample[swift_type_dark_matter_background],
-              subsample_fraction[swift_type_dark_matter_background], snap_num);
+              subsample_fraction[swift_type_dark_matter_background], snap_num,
+              &min_gpart_background_pos[i * 3],
+              &max_gpart_background_pos[i * 3]);
 
-      count_spart[i] = cell_count_non_inhibited_stars(
+      count_spart[i] = cell_count_non_inhibited_spart(
           &cells_top[i], subsample[swift_type_stars],
-          subsample_fraction[swift_type_stars], snap_num);
+          subsample_fraction[swift_type_stars], snap_num, &min_spart_pos[i * 3],
+          &max_spart_pos[i * 3]);
 
-      count_bpart[i] = cell_count_non_inhibited_black_holes(
+      count_bpart[i] = cell_count_non_inhibited_bpart(
           &cells_top[i], subsample[swift_type_black_hole],
-          subsample_fraction[swift_type_black_hole], snap_num);
+          subsample_fraction[swift_type_black_hole], snap_num,
+          &min_bpart_pos[i * 3], &max_bpart_pos[i * 3]);
 
-      count_sink[i] = cell_count_non_inhibited_sinks(
+      count_sink[i] = cell_count_non_inhibited_sink(
           &cells_top[i], subsample[swift_type_sink],
-          subsample_fraction[swift_type_sink], snap_num);
+          subsample_fraction[swift_type_sink], snap_num, &min_sink_pos[i * 3],
+          &max_sink_pos[i * 3]);
 
       count_nupart[i] = cell_count_non_inhibited_neutrinos(
           &cells_top[i], subsample[swift_type_neutrino],
-          subsample_fraction[swift_type_neutrino], snap_num);
+          subsample_fraction[swift_type_neutrino], snap_num,
+          &min_nupart_pos[i * 3], &max_nupart_pos[i * 3]);
 
       /* Offsets including the global offset of all particles on this MPI rank
        * Note that in the distributed case, the global offsets are 0 such that
@@ -680,6 +510,36 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
      on floating point numbers */
   MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
+
+  MPI_Allreduce(MPI_IN_PLACE, min_part_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, min_gpart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, min_gpart_background_pos, 3 * nr_cells,
+                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, min_spart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, min_bpart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, min_sink_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, min_nupart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  MPI_Allreduce(MPI_IN_PLACE, max_part_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_gpart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_gpart_background_pos, 3 * nr_cells,
+                MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_spart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_bpart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_sink_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, max_nupart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
 #endif
 
   /* When writing a single file, only rank 0 writes the meta-data */
@@ -695,6 +555,26 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
         centres[i * 3 + 0] *= factor;
         centres[i * 3 + 1] *= factor;
         centres[i * 3 + 2] *= factor;
+      }
+
+      /* Convert the particle envelopes */
+      for (int i = 0; i < nr_cells; ++i) {
+        for (int k = 0; k < 3; ++k) {
+          min_part_pos[i * 3 + k] *= factor;
+          max_part_pos[i * 3 + k] *= factor;
+          min_gpart_pos[i * 3 + k] *= factor;
+          max_gpart_pos[i * 3 + k] *= factor;
+          min_gpart_background_pos[i * 3 + k] *= factor;
+          max_gpart_background_pos[i * 3 + k] *= factor;
+          min_sink_pos[i * 3 + k] *= factor;
+          max_sink_pos[i * 3 + k] *= factor;
+          min_spart_pos[i * 3 + k] *= factor;
+          max_spart_pos[i * 3 + k] *= factor;
+          min_bpart_pos[i * 3 + k] *= factor;
+          max_bpart_pos[i * 3 + k] *= factor;
+          min_nupart_pos[i * 3 + k] *= factor;
+          max_nupart_pos[i * 3 + k] *= factor;
+        }
       }
 
       /* Convert the cell widths */
@@ -713,20 +593,8 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     H5Gclose(h_subgrp);
 
     /* Write the centres to the group */
-    hsize_t shape[2] = {(hsize_t)nr_cells, 3};
-    hid_t h_space = H5Screate(H5S_SIMPLE);
-    if (h_space < 0) error("Error while creating data space for cell centres");
-    hid_t h_err = H5Sset_extent_simple(h_space, 2, shape, shape);
-    if (h_err < 0)
-      error("Error while changing shape of gas offsets data space.");
-    hid_t h_data = H5Dcreate(h_grp, "Centres", io_hdf5_type(DOUBLE), h_space,
-                             H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    if (h_data < 0) error("Error while creating dataspace for gas offsets.");
-    h_err = H5Dwrite(h_data, io_hdf5_type(DOUBLE), h_space, H5S_ALL,
-                     H5P_DEFAULT, centres);
-    if (h_err < 0) error("Error while writing centres.");
-    H5Dclose(h_data);
-    H5Sclose(h_space);
+    io_write_array(h_grp, nr_cells, /*dim=*/3, centres, DOUBLE, "Centres",
+                   "Cell centres");
 
     /* Group containing the offsets and counts for each particle type */
     hid_t h_grp_offsets = H5Gcreate(h_grp, "OffsetsInFile", H5P_DEFAULT,
@@ -737,72 +605,113 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     if (h_grp_files < 0) error("Error while creating filess sub-group");
     hid_t h_grp_counts =
         H5Gcreate(h_grp, "Counts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t h_grp_min_pos =
+        H5Gcreate(h_grp, "MinPositions", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t h_grp_max_pos =
+        H5Gcreate(h_grp, "MaxPositions", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_grp_counts < 0) error("Error while creating counts sub-group");
 
     if (global_counts[swift_type_gas] > 0 && num_fields[swift_type_gas] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType0", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_part, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType0",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_part, LONGLONG,
                      "PartType0", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_part, LONGLONG, "PartType0",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_part, LONGLONG,
+                     "PartType0", "counts");
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_part_pos, DOUBLE,
+                     "PartType0", "min_pos");
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_part_pos, DOUBLE,
+                     "PartType0", "max_pos");
     }
 
     if (global_counts[swift_type_dark_matter] > 0 &&
         num_fields[swift_type_dark_matter] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType1", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_gpart, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType1",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_gpart, LONGLONG,
                      "PartType1", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_gpart, LONGLONG, "PartType1",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_gpart, LONGLONG,
+                     "PartType1", "counts");
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_gpart_pos, DOUBLE,
+                     "PartType1", "min_pos");
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_gpart_pos, DOUBLE,
+                     "PartType1", "max_pos");
     }
 
     if (global_counts[swift_type_dark_matter_background] > 0 &&
         num_fields[swift_type_dark_matter_background] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType2", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_background_gpart, LONGLONG,
-                     "PartType2", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_background_gpart, LONGLONG,
-                     "PartType2", "counts");
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType2",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1,
+                     offset_background_gpart, LONGLONG, "PartType2", "offsets");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_background_gpart,
+                     LONGLONG, "PartType2", "counts");
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3,
+                     min_gpart_background_pos, DOUBLE, "PartType2", "min_pos");
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3,
+                     max_gpart_background_pos, DOUBLE, "PartType2", "max_pos");
     }
 
     if (global_counts[swift_type_sink] > 0 && num_fields[swift_type_sink] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType3", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_sink, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType3",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_sink, LONGLONG,
                      "PartType3", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_sink, LONGLONG, "PartType3",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_sink, LONGLONG,
+                     "PartType3", "counts");
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_sink_pos, DOUBLE,
+                     "PartType3", "min_pos");
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_sink_pos, DOUBLE,
+                     "PartType3", "max_pos");
     }
 
     if (global_counts[swift_type_stars] > 0 &&
         num_fields[swift_type_stars] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType4", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_spart, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType4",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_spart, LONGLONG,
                      "PartType4", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_spart, LONGLONG, "PartType4",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_spart, LONGLONG,
+                     "PartType4", "counts");
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_spart_pos, DOUBLE,
+                     "PartType4", "min_pos");
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_spart_pos, DOUBLE,
+                     "PartType4", "max_pos");
     }
 
     if (global_counts[swift_type_black_hole] > 0 &&
         num_fields[swift_type_black_hole] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType5", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_bpart, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType5",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_bpart, LONGLONG,
                      "PartType5", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_bpart, LONGLONG, "PartType5",
-                     "counts");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_bpart, LONGLONG,
+                     "PartType5", "counts");
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_bpart_pos, DOUBLE,
+                     "PartType5", "min_pos");
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_bpart_pos, DOUBLE,
+                     "PartType5", "max_pos");
     }
 
     if (global_counts[swift_type_neutrino] > 0 &&
         num_fields[swift_type_neutrino] > 0) {
-      io_write_array(h_grp_files, nr_cells, files, INT, "PartType6", "files");
-      io_write_array(h_grp_offsets, nr_cells, offset_nupart, LONGLONG,
-                     "PartType6", "offsets");
-      io_write_array(h_grp_counts, nr_cells, count_nupart, LONGLONG,
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType6",
+                     "files");
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_nupart,
+                     LONGLONG, "PartType6", "offsets");
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_nupart, LONGLONG,
                      "PartType6", "counts");
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_nupart_pos, DOUBLE,
+                     "PartType6", "min_pos");
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_nupart_pos, DOUBLE,
+                     "PartType6", "max_pos");
     }
 
     H5Gclose(h_grp_offsets);
     H5Gclose(h_grp_files);
     H5Gclose(h_grp_counts);
+    H5Gclose(h_grp_min_pos);
+    H5Gclose(h_grp_max_pos);
   }
 
   /* Free everything we allocated */
@@ -822,6 +731,20 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   free(offset_bpart);
   free(offset_sink);
   free(offset_nupart);
+  free(min_part_pos);
+  free(min_gpart_pos);
+  free(min_gpart_background_pos);
+  free(min_spart_pos);
+  free(min_bpart_pos);
+  free(min_sink_pos);
+  free(min_nupart_pos);
+  free(max_part_pos);
+  free(max_gpart_pos);
+  free(max_gpart_background_pos);
+  free(max_spart_pos);
+  free(max_bpart_pos);
+  free(max_sink_pos);
+  free(max_nupart_pos);
 }
 
 #endif /* HAVE_HDF5 */
