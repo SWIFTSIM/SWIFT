@@ -1351,9 +1351,20 @@ inline static int delaunay_add_vertex(struct delaunay* restrict d, int v,
 }
 
 inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
-                                             double x, double y, double z) {
+                                             double x, double y, double z, int ngb_idx) {
   /* Vertex already added? */
   if (d->vertex_added[v]) return;
+
+  /* Update last triangle to be a triangle connected to the neighbouring
+   * vertex. */
+  if (ngb_idx >= 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (d->vertex_end - d->vertex_start <= ngb_idx)
+      error("Invalid neighbour index passed to delaunay_add_new_vertex!");
+#endif
+    if (d->vertex_added[ngb_idx])
+      d->last_triangle = d->vertex_triangles[ngb_idx];
+  }
 
   delaunay_init_vertex(d, v, x, y);
   if (delaunay_add_vertex(d, v, x, y) != 0) {
@@ -1364,7 +1375,7 @@ inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
 
 inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
                                            double y, double z, int cell_sid,
-                                           int part_idx) {
+                                           int part_idx, int ngb_idx) {
   if (d->active != 1) {
     error("Trying to add a vertex to an inactive Delaunay tessellation!");
   }
@@ -1372,6 +1383,17 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
 #ifdef SWIFT_DEBUG_CHECKS
 //  assert(!c->split);
 #endif
+
+  /* Update last triangle to be a triangle connected to the neighbouring
+   * vertex. */
+  if (ngb_idx >= 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (d->vertex_end - d->vertex_start <= ngb_idx)
+      error("Invalid neighbour index passed to delaunay_add_new_vertex!");
+#endif
+    if (d->vertex_added[ngb_idx])
+      d->last_triangle = d->vertex_triangles[ngb_idx];
+  }
 
   /* create the new vertex */
   int v = delaunay_new_vertex(d, x, y, part_idx);
