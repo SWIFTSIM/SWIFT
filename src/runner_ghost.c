@@ -1697,6 +1697,9 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     /* Reset the redo-count. */
     redo = 0;
 
+    /* Reset the maximal search radius of all un-converged particles */
+    float h_max_unconverged = 0.f;
+
     /* Loop over the remaining active parts in this cell and check if they have
      * converged. */
     for (int i = 0; i < count; i++) {
@@ -1707,15 +1710,17 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       float r_new = (float)delaunay_get_search_radius(
           c->grid.delaunay, pid[i] + c->grid.delaunay->vertex_start);
       if (r_new >= p->h) {
+        /* Un-converged particle */
         p->h *= 1.2f;
+        h_max_unconverged = max(p->h, h_max_unconverged);
         pid[redo] = pid[i];
         redo += 1;
       } else {
-        /* Add a small buffer zone to compensate for particle movement in the
-         * next iteration. */
+        /* Particle has converged. Add a small buffer zone to compensate for
+         * particle movement in the next iteration. */
         p->h = 1.1f * r_new;
       }
-      /* Check if h_max is increased */
+      /* Check if h_max has increased */
       h_max = max(h_max, p->h);
       h_max_active = max(h_max_active, p->h);
     }
@@ -1752,7 +1757,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
            * actually updated in the construction task */
           if (l->t->ci == c)
             runner_dopair_subset_grid_construction(
-                r, c, parts, pid, h_max_active, count, l->t->cj);
+                r, c, parts, pid, h_max_unconverged, count, l->t->cj);
         } else
           error("Unsupported interaction encountered!");
       }
