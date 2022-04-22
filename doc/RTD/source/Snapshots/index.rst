@@ -379,9 +379,9 @@ expressed in the unit system used for the snapshots (see above) and are hence
 consistent with the particle positions themselves. 
 
 Once the cell(s) containing the region of interest has been located,
-users can use the ``/Cells/Offsets/PartTypeN/Files``,
-``/Cells/Offsets/PartTypeN/Counts`` and
-``/Cells/Offsets/PartTypeN/OffsetsInFile`` to retrieve the location of
+users can use the ``/Cells/Files/PartTypeN/``,
+``/Cells/Counts/PartTypeN/`` and
+``/Cells/OffsetsInFile/PartTypeN/`` to retrieve the location of
 the particles of type ``N`` in the ``/PartTypeN`` arrays.  These
 contain information about which file contains the particles of a given
 cell. It also gives the offset from the start of the ``/PartTypeN``
@@ -397,6 +397,15 @@ over the z axis, then y axis and x is the slowest varying dimension.
 In the case of a single-file snapshot, the ``Files`` array is just an array of
 zeroes since all the particles will be in the 0-th file. Note also that in the
 case of a multi-files snapshot, a cell is always contained in a single file.
+
+As noted above, particles can (slightly) drift out of their cells. This can be
+problematic in cases where one wants to find precisely all the particles in a
+given region. To help with this, the meta-data also contains a "cell bounding
+box". The arrays ``/Cells/MinPositions/PartTypeN`` and
+``/Cells/MaxPositions/PartTypeN`` contain the minimal (maximal) x,y,z
+coordinates of all the particles of this type in the cells. Note that these
+coordinates can be outside of the cell itself. When using periodic boundary
+conditions, no box-wrapping is applied.
 
 If a snapshot used a sub-sampled output, then the counts and offsets are
 adjusted accordingly and correspond to the actual content of the file
