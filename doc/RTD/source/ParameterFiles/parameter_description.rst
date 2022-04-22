@@ -293,6 +293,9 @@ Particle-Mesh part of the calculation. The last five are optional:
 
 * The number cells along each axis of the mesh :math:`N`: ``mesh_side_length``,
 * Whether or not to use a distributed mesh when running over MPI: ``distributed_mesh`` (default: ``0``),
+* Whether or not to use local patches instead of direct atomic operations to
+  write to the mesh in the non-MPI case (this is a performance tuning
+  parameter): ``mesh_uses_local_patches`` (default: ``1``),
 * The mesh smoothing scale in units of the mesh cell-size :math:`a_{\rm
   smooth}`: ``a_smooth`` (default: ``1.25``),
 * The scale above which the short-range forces are assumed to be 0 (in units of

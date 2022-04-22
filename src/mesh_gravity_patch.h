@@ -167,4 +167,7 @@ __attribute__((always_inline)) INLINE static void pm_mesh_patch_CIC_set(
   mesh[pm_mesh_patch_index(patch, i + 1, j + 1, k + 1)] += value * dx * dy * dz;
 }
 
+void pm_add_patch_to_global_mesh(double *const global_mesh,
+                                 const struct pm_mesh_patch *patch);
+
 #endif
