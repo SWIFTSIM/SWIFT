@@ -79,6 +79,7 @@ Stars:
 Gravity:
   mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh (must be even).
   distributed_mesh:              0         # (Optional) Are we using a distributed mesh when running over MPI (necessary for meshes > 1290^3)
+  mesh_uses_local_patches:       1         # (Optional) Are we using thread-local patches (1) or direct atomic writes to the global mesh (0) in the non-MPI case?
   eta:                           0.025     # Constant dimensionless multiplier for time integration.
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.

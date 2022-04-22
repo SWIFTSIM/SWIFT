@@ -161,6 +161,9 @@ void accumulate_cell_to_local_patches_mapper(void *map_data, int num,
     /* Pointer to local cell */
     const struct cell *c = &cells[local_cells[i]];
 
+    /* Skip empty cells */
+    if (c->grav.count == 0) continue;
+
     /* Assign this cell's content to the mesh */
     accumulate_cell_to_local_patch(N, fac, dim, c, &local_patches[i], nu_model);
   }

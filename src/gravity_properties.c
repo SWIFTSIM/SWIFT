@@ -64,6 +64,8 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
     p->distributed_mesh =
         parser_get_opt_param_int(params, "Gravity:distributed_mesh",
                                  gravity_props_default_distributed_mesh);
+    p->mesh_uses_local_patches =
+        parser_get_opt_param_int(params, "Gravity:mesh_uses_local_patches", 1);
     p->a_smooth = parser_get_opt_param_float(params, "Gravity:a_smooth",
                                              gravity_props_default_a_smooth);
     p->r_cut_max_ratio = parser_get_opt_param_float(

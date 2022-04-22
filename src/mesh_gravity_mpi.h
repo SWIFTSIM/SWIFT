@@ -28,6 +28,12 @@ struct cell;
 struct threadpool;
 struct pm_mesh;
 struct pm_mesh_patch;
+struct neutrino_model;
+
+void accumulate_cell_to_local_patch(const int N, const double fac,
+                                    const double *dim, const struct cell *cell,
+                                    struct pm_mesh_patch *patch,
+                                    const struct neutrino_model *nu_model);
 
 void mpi_mesh_accumulate_gparts_to_local_patches(
     struct threadpool *tp, const int N, const double fac, const struct space *s,
