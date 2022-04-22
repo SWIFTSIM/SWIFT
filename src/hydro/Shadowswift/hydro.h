@@ -368,6 +368,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   hydro_gravity_extra_velocity_drift(&W[1], p->v, xp->v_full);
 
   hydro_part_set_primitive_variables(p, W);
+
+  /* Reset the delaunay flags after a particle has been drifted */
+  p->geometry.delaunay_flags = 0;
 }
 
 /**
