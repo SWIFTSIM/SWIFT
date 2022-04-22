@@ -87,7 +87,6 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
     const double dx_max, int sid) {
 
   /* Get some useful values. */
-  const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
   struct part *restrict parts_j = cj->hydro.parts;
@@ -95,34 +94,33 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
   if (flipped) {
     /* ci on the right */
 
-    const double di_min = sort_i[0].d - hi_max - dx_max + rshift;
+    /* Loop over the sorted active parts in ci (on the right) */
+    for (int i = 0; i < count_active; i++) {
 
-    /* Loop over the parts in cj (on the left) */
-    for (int pjd = count_j - 1; pjd >= 0 && sort_j[pjd].d > di_min; pjd--) {
+      /* Get a hold of pi. */
+      struct sort_entry sort_pi = sort_active_i[i];
+      struct part *restrict pi = &parts_i[sort_pi.i];
+      const float ri = pi->h;
 
-      /* Recover pj */
-      int pj_idx = sort_j[pjd].i;
-      struct part *restrict pj = &parts_j[pj_idx];
+      const double dj_min = sort_pi.d - ri - dx_max + rshift;
 
-      /* Skip inhibited particles. */
-      if (part_is_inhibited(pj, e)) continue;
+      /* Loop over the parts in cj (on the left) */
+      for (int pjd = count_j - 1; pjd >= 0 && sort_j[pjd].d > dj_min; pjd--) {
 
-      /* Shift pj so that it is in the frame of ci (with cj on the left) */
-      const double pjx = pj->x[0] - shift[0];
-      const double pjy = pj->x[1] - shift[1];
-      const double pjz = pj->x[2] - shift[2];
-      const double dj_max = sort_j[pjd].d + dx_max - rshift;
+        /* Recover pj */
+        int pj_idx = sort_j[pjd].i;
+        struct part *restrict pj = &parts_j[pj_idx];
 
-      /* Loop over the sorted active parts in ci (on the right) */
-      for (int i = 0; i < count_active; i++) {
+        /* Skip particles that are already added */
+        if (pj->geometry.delaunay_flags & 1 << sid) continue;
 
-        /* Get a hold of pi. */
-        struct sort_entry sort_pi = sort_active_i[i];
-        struct part *restrict pi = &parts_i[sort_pi.i];
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(pj, e)) continue;
 
-        /* Early abort? */
-        const float ri = pi->h;
-        if (sort_pi.d - ri >= dj_max) continue;
+        /* Shift pj so that it is in the frame of ci (with cj on the left) */
+        const double pjx = pj->x[0] - shift[0];
+        const double pjy = pj->x[1] - shift[1];
+        const double pjz = pj->x[2] - shift[2];
 
         /* Compute the pairwise distance. */
         double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
@@ -132,47 +130,42 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
         if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                                   sort_pi.i);
-
           /* Update delaunay flags to signal that the particle was added for
            * this sid */
           pj->geometry.delaunay_flags |= 1 << sid;
-
-          /* We are done here */
-          break;
         }
-      } /* loop over the parts in ci. */
-    }   /* loop over the parts in cj. */
+      }
+    }
   } else {
     /* ci on the left */
 
-    const double di_max = sort_i[count_i - 1].d + hi_max + dx_max - rshift;
+    /* Loop over the sorted active parts in ci (on the left) */
+    for (int i = 0; i < count_active; i++) {
 
-    /* Loop over the parts in cj (on the right) */
-    for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di_max; pjd++) {
+      /* Get a hold of pi. */
+      struct sort_entry sort_pi = sort_active_i[i];
+      struct part *restrict pi = &parts_i[sort_pi.i];
+      const float ri = pi->h;
 
-      /* Recover pj */
-      int pj_idx = sort_j[pjd].i;
-      struct part *restrict pj = &parts_j[sort_j[pjd].i];
+      const double dj_max = sort_pi.d + ri + dx_max - rshift;
 
-      /* Skip inhibited particles. */
-      if (part_is_inhibited(pj, e)) continue;
+      /* Loop over the parts in cj (on the right) */
+      for (int pjd = 0; pjd < count_j && sort_j[pjd].d < dj_max; pjd++) {
 
-      /* Shift pj so that it is in the frame of ci (with cj on the right) */
-      const double pjx = pj->x[0] + shift[0];
-      const double pjy = pj->x[1] + shift[1];
-      const double pjz = pj->x[2] + shift[2];
-      const double dj_min = sort_j[pjd].d - dx_max + rshift;
+        /* Recover pj */
+        int pj_idx = sort_j[pjd].i;
+        struct part *restrict pj = &parts_j[sort_j[pjd].i];
 
-      /* Loop over the sorted active parts in ci (on the right) */
-      for (int i = 0; i < count_active; i++) {
+        /* Skip particles that are already added */
+        if (pj->geometry.delaunay_flags & 1 << sid) continue;
 
-        /* Get a hold of pi. */
-        struct sort_entry sort_pi = sort_active_i[i];
-        struct part *restrict pi = &parts_i[sort_pi.i];
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(pj, e)) continue;
 
-        /* Early abort? */
-        const float ri = pi->h;
-        if (sort_pi.d + ri <= dj_min) continue;
+        /* Shift pj so that it is in the frame of ci (with cj on the right) */
+        const double pjx = pj->x[0] + shift[0];
+        const double pjy = pj->x[1] + shift[1];
+        const double pjz = pj->x[2] + shift[2];
 
         /* Compute the pairwise distance. */
         double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
@@ -182,16 +175,13 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
         if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                                   sort_pi.i);
-
           /* Update delaunay flags to signal that the particle was added for
            * this sid */
           pj->geometry.delaunay_flags |= 1 << sid;
 
-          /* We are done here */
-          break;
         }
-      } /* loop over the parts in ci. */
-    }   /* loop over the parts in cj. */
+      }
+    }
   }     /* Flipped? */
 }
 
