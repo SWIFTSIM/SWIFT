@@ -303,6 +303,9 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
                        sid);
   }
 
+  /* Be clean */
+  free(sort_active_i);
+
   TIMER_TOC(timer_dopair_grid_construction);
 }
 
