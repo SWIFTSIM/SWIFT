@@ -35,7 +35,7 @@ runner_dopair_grid_construction_naive(
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
-      struct part *pj = &parts_j[pj_idx];
+      struct part *restrict pj = &parts_j[pj_idx];
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
@@ -47,6 +47,9 @@ runner_dopair_grid_construction_naive(
 
       delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                               -1);
+      /* Update delaunay flags to signal that the particle was added for
+       * this sid */
+      pj->geometry.delaunay_flags |= 1 << sid;
     }
   } else {
     const double di_max = sort_i[count_i - 1].d + hi_max + dx_max - rshift;
@@ -56,7 +59,7 @@ runner_dopair_grid_construction_naive(
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
-      struct part *pj = &parts_j[pj_idx];
+      struct part *restrict pj = &parts_j[pj_idx];
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
@@ -68,6 +71,9 @@ runner_dopair_grid_construction_naive(
 
       delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                               -1);
+      /* Update delaunay flags to signal that the particle was added for
+       * this sid */
+      pj->geometry.delaunay_flags |= 1 << sid;
     }
   }
 }
@@ -96,7 +102,7 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
-      struct part *pj = &parts_j[pj_idx];
+      struct part *restrict pj = &parts_j[pj_idx];
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
@@ -126,6 +132,12 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
         if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                                   sort_pi.i);
+
+          /* Update delaunay flags to signal that the particle was added for
+           * this sid */
+          pj->geometry.delaunay_flags |= 1 << sid;
+
+          /* We are done here */
           break;
         }
       } /* loop over the parts in ci. */
@@ -140,7 +152,7 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
 
       /* Recover pj */
       int pj_idx = sort_j[pjd].i;
-      struct part *pj = &parts_j[sort_j[pjd].i];
+      struct part *restrict pj = &parts_j[sort_j[pjd].i];
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
@@ -170,6 +182,12 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
         if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                                   sort_pi.i);
+
+          /* Update delaunay flags to signal that the particle was added for
+           * this sid */
+          pj->geometry.delaunay_flags |= 1 << sid;
+
+          /* We are done here */
           break;
         }
       } /* loop over the parts in ci. */
@@ -263,7 +281,7 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
   struct part *restrict parts_i = ci->hydro.parts;
 
   int count_active = 0;
-  struct sort_entry *sort_active_i =
+  struct sort_entry *restrict sort_active_i =
       (struct sort_entry *)malloc(count_i * sizeof(struct sort_entry));
   if (flipped) { /* ci on the right */
 
@@ -304,12 +322,11 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
 }
 
 __attribute__((always_inline)) INLINE static void
-runner_doself_grid_construction_naive(struct runner *restrict r,
-                                      struct cell *restrict c) {
+runner_doself_grid_construction_naive(struct cell *restrict c) {
 
   /* Get useful variables */
   int count = c->hydro.count;
-  const struct part *parts = c->hydro.parts;
+  const struct part *restrict parts = c->hydro.parts;
 
   /* Loop over the parts in c. */
   for (int i = 0; i < count; i++) {
@@ -330,12 +347,12 @@ runner_doself_grid_construction_naive(struct runner *restrict r,
 }
 
 __attribute__((always_inline)) INLINE static void
-runner_doself_grid_construction(const struct engine *e,
+runner_doself_grid_construction(const struct engine *restrict e,
                                 struct cell *restrict c) {
 
   /* Get useful variables */
   int count = c->hydro.count;
-  const struct part *parts = c->hydro.parts;
+  struct part *restrict parts = c->hydro.parts;
 
   /* Loop over the parts in c. */
   for (int i = 0; i < count; i++) {
@@ -345,7 +362,7 @@ runner_doself_grid_construction(const struct engine *e,
     int pid = i;
 #endif
     /* Get a pointer to the idx-th particle. */
-    const struct part *restrict pi = &parts[pid];
+    struct part *restrict pi = &parts[pid];
     const double pix = pi->x[0];
     const double piy = pi->x[1];
     const double piz = pi->x[2];
@@ -354,6 +371,10 @@ runner_doself_grid_construction(const struct engine *e,
      * active particle */
     if (part_is_active(pi, e)) {
       delaunay_add_local_vertex(c->grid.delaunay, pid, pix, piy, piz, -1);
+      /* Update delaunay flags to signal that the particle was added for
+       * the self interaction */
+      pi->geometry.delaunay_flags |= 1 << 13;
+
     } else {
       /* pi is inactive, check if there is an active pj containing pi in its
        * search radius. */
@@ -370,6 +391,9 @@ runner_doself_grid_construction(const struct engine *e,
         /* Hit or miss? */
         if (r2 < rj * rj) {
           delaunay_add_local_vertex(c->grid.delaunay, pid, pix, piy, piz, pjd);
+          /* Update delaunay flags to signal that the particle was added for
+           * the self interaction */
+          pi->geometry.delaunay_flags |= 1 << 13;
           break;
         }
       }
@@ -422,8 +446,7 @@ runner_doself_branch_grid_construction(struct runner *restrict r,
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_GRID
   /* Do a naive self interaction */
-  runner_doself_grid_construction_naive(ci, cj, e, sort_i, sort_j, flipped,
-                                        shift, rshift, hi_max, dx_max, sid);
+  runner_doself_grid_construction_naive(c);
 #else
   /* Do a smart self interaction. (we only construct voronoi cells of active
    * particles). */
@@ -437,10 +460,8 @@ __attribute__((always_inline)) INLINE static void
 runner_dopair_subset_grid_construction(struct runner *restrict r,
                                        struct cell *restrict ci,
                                        struct part *restrict parts_i,
-                                       const int *restrict ind,
-                                       const double *restrict r_prev,
-                                       float r_max, int count,
-                                       struct cell *restrict cj) {
+                                       const int *restrict ind, float r_max,
+                                       int count, struct cell *restrict cj) {
   const struct engine *restrict e = r->e;
 
   const int count_j = cj->hydro.count;
@@ -456,8 +477,8 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
   int sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
 
   /* Pick-out the sorted lists. */
-  const struct sort_entry *sort_i = cell_get_hydro_sorts(ci, sid);
-  const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
+  const struct sort_entry *restrict sort_i = cell_get_hydro_sorts(ci, sid);
+  const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
 
   /* Get the cutoff shift. */
   double rshift = 0.0f;
@@ -485,6 +506,9 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
       int pj_idx = sort_j[pjd].i;
       struct part *restrict pj = &parts_j[pj_idx];
 
+      /* Skip particles that were already added */
+      if (pj->geometry.delaunay_flags & 1 << sid) continue;
+
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
@@ -501,7 +525,6 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
         /* Get a hold of the ith part in ci. */
         struct part *restrict pi = &parts_i[ind[pid]];
         const double ri = pi->h;
-        const double ri_prev = r_prev[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (!part_is_active(pi, e)) {
@@ -517,12 +540,12 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < ri_prev * ri_prev) {
-          /* pj already added during previous iteration */
-          break;
-        } else if (r2 < ri * ri) {
+        if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                                   ind[pid]);
+          /* Update delaunay flags to signal that the particle was added for
+           * this sid */
+          atomic_or(&pj->geometry.delaunay_flags, 1 << sid);
           break;
         }
       } /* Loop over unconverged particles in ci */
@@ -543,6 +566,9 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
       int pj_idx = sort_j[pjd].i;
       struct part *restrict pj = &parts_j[pj_idx];
 
+      /* Skip particles that were already added */
+      if (pj->geometry.delaunay_flags & 1 << sid) continue;
+
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
@@ -559,7 +585,6 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
         /* Get a hold of the ith part in ci. */
         struct part *restrict pi = &parts_i[ind[pid]];
         const double ri = pi->h;
-        const double ri_prev = r_prev[ind[pid]];
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (!part_is_active(pi, e)) {
@@ -575,12 +600,12 @@ runner_dopair_subset_grid_construction(struct runner *restrict r,
         const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Hit or miss? */
-        if (r2 < ri_prev * ri_prev) {
-          /* pj already added during previous iteration */
-          break;
-        } else if (r2 < ri * ri) {
+        if (r2 < ri * ri) {
           delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                                   ind[pid]);
+          /* Update delaunay flags to signal that the particle was added for
+           * this sid */
+          atomic_or(&pj->geometry.delaunay_flags, 1 << sid);
           break;
         }
       } /* Loop over unconverged particles in ci */
@@ -592,47 +617,47 @@ __attribute__((always_inline)) INLINE static void
 runner_doself_subset_grid_construction(struct runner *restrict r,
                                        struct cell *restrict ci,
                                        struct part *restrict parts_i,
-                                       const int *restrict ind,
-                                       const double *restrict r_prev,
-                                       int count) {
+                                       const int *restrict ind, int count) {
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_GRID
   /* Nothing to do here, all particles already added */
   return;
 #else
-  struct engine *e = r->e;
+  struct engine *restrict e = r->e;
 
   /* Loop over all inactive particles in ci */
   for (int pjd = 0; pjd < ci->hydro.count; pjd++) {
 
     /* Retrieve particle */
-    struct part *pj = &parts_i[pjd];
+    struct part *restrict pj = &parts_i[pjd];
     const double pjx = pj->x[0];
     const double pjy = pj->x[1];
     const double pjz = pj->x[2];
 
-    /* Skip active particles (already added during the self task) */
-    if (part_is_active(pj, e)) continue;
+    /* Skip already added particles */
+    if (pj->geometry.delaunay_flags & 1 << 13) continue;
+
+    /* Skip inhibited particles. */
+    if (part_is_inhibited(pj, e)) continue;
 
     /* Loop over all unconverged particles */
     for (int i = 0; i < count; i++) {
 
       /* Retrieve particle */
       const int pid = ind[i];
-      struct part *pi = &parts_i[pid];
+      struct part *restrict pi = &parts_i[pid];
       const double ri = pi->h;
-      const double ri_prev = r_prev[pid];
 
       /* Compute pairwise distance */
       const double dx[3] = {pi->x[0] - pjx, pi->x[1] - pjy, pi->x[2] - pjz};
       const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       /* Hit or miss? */
-      if (r2 < ri_prev * ri_prev) {
-        /* pj already added during previous iteration */
-        break;
-      } else if (r2 < ri * ri) {
+      if (r2 < ri * ri) {
         delaunay_add_local_vertex(ci->grid.delaunay, pjd, pjx, pjy, pjz, pid);
+        /* Update delaunay flags to signal that the particle was added for
+          * the self interaction */
+        atomic_or(&pj->geometry.delaunay_flags, 1 << 13);
         break;
       }
     }

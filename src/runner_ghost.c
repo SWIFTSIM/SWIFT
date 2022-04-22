@@ -1679,11 +1679,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   /* Init the list of active particles that have to be updated and their
    * current smoothing lengths. */
   int *pid = NULL;
-  double *h_prev = NULL;
   if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
     error("Can't allocate memory for pid.");
-  if ((h_prev = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
-    error("Can't allocate memory for r_prev.");
   for (int k = 0; k < c->hydro.count; k++)
     if (part_is_active(&parts[k], e)) {
       pid[count] = k;
@@ -1710,15 +1707,13 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       float r_new = (float)delaunay_get_search_radius(
           c->grid.delaunay, pid[i] + c->grid.delaunay->vertex_start);
       if (r_new >= p->h) {
-        /* Use r_prev array for previous search radii */
-        h_prev[redo] = p->h;
-        p->h *= 1.25f;
+        p->h *= 1.2f;
         pid[redo] = pid[i];
         redo += 1;
       } else {
         /* Add a small buffer zone to compensate for particle movement in the
          * next iteration. */
-        p->h = 1.25f * r_new;
+        p->h = 1.1f * r_new;
       }
       /* Check if h_max is increased */
       h_max = max(h_max, p->h);
@@ -1746,7 +1741,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Self-interaction? */
         if (l->t->type == task_type_self)
-          runner_doself_subset_grid_construction(r, c, parts, pid, h_prev,
+          runner_doself_subset_grid_construction(r, c, parts, pid,
                                                  count);
 
         /* Otherwise, pair interaction? */
@@ -1757,7 +1752,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
            * actually updated in the construction task */
           if (l->t->ci == c)
             runner_dopair_subset_grid_construction(
-                r, c, parts, pid, h_prev, h_max_active, count, l->t->cj);
+                r, c, parts, pid, h_max_active, count, l->t->cj);
         } else
           error("Unsupported interaction encountered!");
       }
@@ -1778,7 +1773,6 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Be clean */
   free(pid);
-  free(h_prev);
 
   /* Update h_max */
   c->hydro.h_max = h_max;

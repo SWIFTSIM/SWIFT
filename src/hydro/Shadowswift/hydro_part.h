@@ -196,6 +196,8 @@ struct part {
 
     double centroid[3];
 
+    int delaunay_flags;
+
   } geometry;
 
   struct {

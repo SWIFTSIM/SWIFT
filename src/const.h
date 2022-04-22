@@ -94,7 +94,7 @@
 #endif
 
 /* Option to controlling output of grids */
-#define SHADOWSWIFT_OUTPUT_GRIDS
+//#define SHADOWSWIFT_OUTPUT_GRIDS
 
 /* This option disables cell movement */
 //#define SHADOWSWIFT_FIX_CELLS
