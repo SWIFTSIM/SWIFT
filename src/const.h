@@ -94,10 +94,10 @@
 #endif
 
 /* Option controlling output of grids */
-#define SHADOWSWIFT_OUTPUT_GRIDS
+//#define SHADOWSWIFT_OUTPUT_GRIDS
 
 /* Option to enable the hilbert order insertion in the grid construction */
-#define SHADOWSWIFT_HILBERT_ORDERING
+//#define SHADOWSWIFT_HILBERT_ORDERING
 
 /* This option disables cell movement */
 //#define SHADOWSWIFT_FIX_CELLS

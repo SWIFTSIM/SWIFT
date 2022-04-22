@@ -23,6 +23,7 @@
  */
 static inline void get_hilbert_keys(const struct cell *restrict c,
                                     int *restrict keys) {
+  /* TODO only calculate (and later sort) the keys for the active particles! */
   for (int i = 0; i < c->hydro.count; i++) {
     float dx_max = c->hydro.dx_max_part;
 #if defined(HYDRO_DIMENSION_2D)
