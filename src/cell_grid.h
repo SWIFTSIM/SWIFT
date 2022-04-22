@@ -7,6 +7,7 @@
 
 #include "shadowswift/voronoi.h"
 #include "shadowswift/delaunay.h"
+#include "const.h"
 
 struct cell_grid {
   /*! Pointer to the parent cell of this cell containing the Voronoi grid (if
@@ -34,9 +35,17 @@ struct cell_grid {
    * would contain at least one particle. */
    int complete;
 
+  /*! Pointer to the voronoi struct of this cell (if any) */
   struct voronoi *voronoi;
 
+  /*! Pointer to the delaunay struct of this cell (if any) */
   struct delaunay *delaunay;
+
+#ifdef SHADOWSWIFT_HILBERT_ORDERING
+  /*! Indices sorting the particles of this cell according to their hilbert
+   * ordering */
+  int *hilbert_r_sort;
+#endif
 
   /*! Linked list of this cells construction tasks. */
   struct link *construction;

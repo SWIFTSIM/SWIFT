@@ -93,8 +93,11 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
 
-/* Option to controlling output of grids */
+/* Option controlling output of grids */
 #define SHADOWSWIFT_OUTPUT_GRIDS
+
+/* Option to enable the hilbert order insertion in the grid construction */
+#define SHADOWSWIFT_HILBERT_ORDERING
 
 /* This option disables cell movement */
 //#define SHADOWSWIFT_FIX_CELLS

@@ -211,6 +211,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.rt_out = NULL;
     c->grid.voronoi = NULL;
     c->grid.delaunay = NULL;
+    c->grid.hilbert_r_sort = NULL;
     c->grid.unsplittable_flag = 0;
     c->grid.split = 0;
     c->grid.complete = 0;

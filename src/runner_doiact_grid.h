@@ -5,6 +5,8 @@
 #ifndef SWIFTSIM_RUNNER_DOIACT_GRID_H
 #define SWIFTSIM_RUNNER_DOIACT_GRID_H
 
+#ifdef MOVING_MESH
+
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
@@ -12,7 +14,41 @@
 #include "space_getsid.h"
 #include "timers.h"
 
-#ifdef MOVING_MESH
+#ifdef SHADOWSWIFT_HILBERT_ORDERING
+#include "shadowswift/hilbert.h"
+
+/*! @brief Calculate the hilbert keys of the vertices
+ *
+ * @param c Cell containing the vertices
+ */
+static inline void get_hilbert_keys(const struct cell *restrict c,
+                                    int *restrict keys) {
+  for (int i = 0; i < c->hydro.count; i++) {
+    float dx_max = c->hydro.dx_max_part;
+#if defined(HYDRO_DIMENSION_2D)
+    unsigned long bits[2];
+    int nbits = 32;
+    double max_width = max(c->width[0], c->width[1]) + 2 * dx_max;
+    bits[0] = (c->hydro.parts[i].x[0] + dx_max - c->loc[0]) / max_width *
+              (1ul << (nbits - 1));
+    bits[1] = (c->hydro.parts[i].x[1] + dx_max - c->loc[1]) / max_width *
+              (1ul << (nbits - 1));
+    keys[i] = hilbert_get_key_2d(bits, nbits);
+#elif defined(HYDRO_DIMENSION_3D)
+    unsigned long bits[3];
+    int nbits = 21;
+    double max_width = max3(c->width[0], c->width[1], c->width[2]) + 2 * dx_max;
+    bits[0] = (c->hydro.parts[i].x[0] + dx_max - c->loc[0]) / max_width *
+              (1ul << (nbits - 1));
+    bits[1] = (c->hydro.parts[i].x[1] + dx_max - c->loc[1]) / max_width *
+              (1ul << (nbits - 1));
+    bits[2] = (c->hydro.parts[i].x[2] + dx_max - c->loc[2]) / max_width *
+              (1ul << (nbits - 1));
+    keys[i] = hilbert_get_key_3d(bits, nbits);
+#endif
+  }
+}
+#endif
 
 __attribute((always_inline)) INLINE static void
 runner_dopair_grid_construction_naive(
@@ -181,7 +217,7 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
         }
       }
     }
-  }     /* Flipped? */
+  } /* Flipped? */
 }
 
 __attribute__((always_inline)) INLINE static void
@@ -345,8 +381,8 @@ runner_doself_grid_construction(const struct engine *restrict e,
 
   /* Loop over the parts in c. */
   for (int i = 0; i < count; i++) {
-#ifdef SHADOWFAX_HILBERT_ORDERING
-    int idx = c->hydro.hilbert_r_sort[i];
+#ifdef SHADOWSWIFT_HILBERT_ORDERING
+    int pid = c->grid.hilbert_r_sort[i];
 #else
     int pid = i;
 #endif
@@ -421,16 +457,20 @@ runner_doself_branch_grid_construction(struct runner *restrict r,
 
   /* We are good to go!*/
 
-#ifdef SHADOWFAX_HILBERT_ORDERING
+#ifdef SHADOWSWIFT_HILBERT_ORDERING
   const int count = c->hydro.count;
 
-  /* Update hilbert keys + sort */
-  cell_update_hilbert_keys(c);
+  /* Calculate hilbert keys + sort
+   * TODO: Move this to the sorts and avoid doing it every timestep? */
+  int *hilbert_keys = (int *)malloc(count * sizeof(int));
+  get_hilbert_keys(c, hilbert_keys);
+
+  c->grid.hilbert_r_sort = (int *)malloc(count * sizeof(int));
   for (int i = 0; i < count; i++) {
-    c->hydro.hilbert_r_sort[i] = i;
+    c->grid.hilbert_r_sort[i] = i;
   }
-  qsort_r(c->hydro.hilbert_r_sort, count, sizeof(int), sort_h_comp,
-          c->hydro.hilbert_keys);
+  qsort_r(c->grid.hilbert_r_sort, count, sizeof(int), sort_h_comp,
+          hilbert_keys);
 #endif
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_GRID
@@ -440,6 +480,13 @@ runner_doself_branch_grid_construction(struct runner *restrict r,
   /* Do a smart self interaction. (we only construct voronoi cells of active
    * particles). */
   runner_doself_grid_construction(e, c);
+#endif
+
+#ifdef SHADOWSWIFT_HILBERT_ORDERING
+  /* Be clean */
+  free(hilbert_keys);
+  free(c->grid.hilbert_r_sort);
+  c->grid.hilbert_r_sort = NULL;
 #endif
 
   TIMER_TOC(timer_doself_grid_construction);
@@ -645,7 +692,7 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
       if (r2 < ri * ri) {
         delaunay_add_local_vertex(ci->grid.delaunay, pjd, pjx, pjy, pjz, pid);
         /* Update delaunay flags to signal that the particle was added for
-          * the self interaction */
+         * the self interaction */
         atomic_or(&pj->geometry.delaunay_flags, 1 << 13);
         break;
       }
