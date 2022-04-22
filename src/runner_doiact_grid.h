@@ -178,7 +178,6 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
           /* Update delaunay flags to signal that the particle was added for
            * this sid */
           pj->geometry.delaunay_flags |= 1 << sid;
-
         }
       }
     }

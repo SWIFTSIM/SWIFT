@@ -150,6 +150,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->a_hydro[2] = 0.0f;
 
   p->flux_count = 0;
+  p->geometry.delaunay_flags = 0;
 }
 
 /**
@@ -180,7 +181,9 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
  * @param hs #hydro_space containing hydro specific space information.
  */
 __attribute__((always_inline)) INLINE static void hydro_init_part(
-    struct part *restrict p, const struct hydro_space *hs) {}
+    struct part *restrict p, const struct hydro_space *hs) {
+  p->geometry.delaunay_flags = 0;
+}
 
 /**
  * @brief Finishes the density calculation.
