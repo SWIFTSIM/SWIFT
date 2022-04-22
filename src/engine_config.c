@@ -796,13 +796,13 @@ void engine_config(int restart, int fof, struct engine *e,
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);
     space_extra_parts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_parts", space_extra_parts);
+        params, "Scheduler:cell_extra_parts", space_extra_parts_default);
     space_extra_sparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_sparts", space_extra_sparts);
+        params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
     space_extra_gparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_gparts", space_extra_gparts);
+        params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
     space_extra_bparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_bparts", space_extra_bparts);
+        params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */
