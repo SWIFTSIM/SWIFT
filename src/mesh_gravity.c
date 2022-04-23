@@ -214,6 +214,7 @@ struct cic_mapper_data {
   const struct cell* cells;
   double* rho;
   double* potential;
+  int use_local_patches;
   int N;
   double fac;
   double dim[3];
