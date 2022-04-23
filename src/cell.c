@@ -936,7 +936,8 @@ void cell_make_multipoles(struct cell *c, integertime_t ti_current,
  * @param ti_current The current integer time.
  * @param grav_props The properties of the gravity scheme.
  */
-void cell_make_void_multipole(struct space *s, struct cell *c, integertime_t ti_current,
+void cell_make_void_multipole(struct space *s, struct cell *c,
+                              integertime_t ti_current,
                               const struct gravity_props *const grav_props) {
 
   /* Reset everything */
@@ -952,7 +953,7 @@ void cell_make_void_multipole(struct space *s, struct cell *c, integertime_t ti_
     /* Allocate array to hold particles and intialise counter */
     struct gpart *void_parts = NULL;
     if (swift_memalign("void_parts", (void **)&void_parts, gpart_align,
-        s->size_gparts * sizeof(struct gpart)) != 0)
+                       s->size_gparts * sizeof(struct gpart)) != 0)
       error("Failed to allocate array for void cell particles.");
     size_t nr_void_parts = 0;
 
@@ -965,7 +966,6 @@ void cell_make_void_multipole(struct space *s, struct cell *c, integertime_t ti_
         struct gpart void_gpart = c_zoom->grav.parts[i];
         void_parts[nr_void_parts] = void_gpart;
         nr_void_parts++;
-
       }
     }
 
@@ -974,105 +974,108 @@ void cell_make_void_multipole(struct space *s, struct cell *c, integertime_t ti_
 
     /* Compute the multipole power */
     gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-
   }
 
-//  /* Compute CoM from all zoom cells */
-//  double CoM[3] = {0., 0., 0.};
-//  double vel[3] = {0., 0., 0.};
-//  float max_delta_vel[3] = {0.f, 0.f, 0.f};
-//  float min_delta_vel[3] = {0.f, 0.f, 0.f};
-//  double mass = 0.;
-//
-//  /* Get top-level cells array */
-//  struct cell *cells = s->cells_top;
-//
-//  /* Loop over zoom cells */
-//  for (int k = 0; k < s->zoom_props->nr_zoom_cells; ++k) {
-//    const struct cell *c_zoom = &cells[k];
-//    const struct gravity_tensors *m = c_zoom->grav.multipole;
-//
-//    mass += m->m_pole.M_000;
-//
-//    CoM[0] += m->CoM[0] * m->m_pole.M_000;
-//    CoM[1] += m->CoM[1] * m->m_pole.M_000;
-//    CoM[2] += m->CoM[2] * m->m_pole.M_000;
-//
-//    vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
-//    vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
-//    vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
-//
-//    max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
-//    max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
-//    max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
-//
-//    min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
-//    min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
-//    min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
-//  }
-//
-//  /* Final operation on the CoM and bulk velocity */
-//  const double mass_inv = 1. / mass;
-//  c->grav.multipole->CoM[0] = CoM[0] * mass_inv;
-//  c->grav.multipole->CoM[1] = CoM[1] * mass_inv;
-//  c->grav.multipole->CoM[2] = CoM[2] * mass_inv;
-//  c->grav.multipole->m_pole.vel[0] = vel[0] * mass_inv;
-//  c->grav.multipole->m_pole.vel[1] = vel[1] * mass_inv;
-//  c->grav.multipole->m_pole.vel[2] = vel[2] * mass_inv;
-//
-//  /* Min max velocity along each axis */
-//  c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
-//  c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
-//  c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
-//  c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
-//  c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
-//  c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
-//
-//  /* Now add them up */
-//  struct multipole temp;
-//  double r_max = 0.;
-//  for (int k = 0; k < s->zoom_props->nr_zoom_cells; ++k) {
-//    const struct cell *c_zoom = &cells[k];
-//    const struct multipole *m = &c_zoom->grav.multipole->m_pole;
-//
-//    /* Contribution to multipole */
-//    gravity_M2M(&temp, m, c->grav.multipole->CoM, c_zoom->grav.multipole->CoM);
-//    gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
-//
-//    /* Upper limit of max CoM<->gpart distance */
-//    const double dx =
-//        c->grav.multipole->CoM[0] - c_zoom->grav.multipole->CoM[0];
-//    const double dy =
-//        c->grav.multipole->CoM[1] - c_zoom->grav.multipole->CoM[1];
-//    const double dz =
-//        c->grav.multipole->CoM[2] - c_zoom->grav.multipole->CoM[2];
-//    const double r2 = dx * dx + dy * dy + dz * dz;
-//    r_max = max(r_max, c_zoom->grav.multipole->r_max + sqrt(r2));
-//  }
-//  /* Alternative upper limit of max CoM<->gpart distance */
-//  const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] * 0.5
-//                    ? c->grav.multipole->CoM[0] - c->loc[0]
-//                    : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-//  const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] * 0.5
-//                    ? c->grav.multipole->CoM[1] - c->loc[1]
-//                    : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-//  const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] * 0.5
-//                    ? c->grav.multipole->CoM[2] - c->loc[2]
-//                    : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-//
-//  /* Take minimum of both limits */
-//  c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-//
-//  /* Compute the multipole power */
-//  gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-//
-//  /* Also update the values at rebuild time */
-//  c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-//  c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-//  c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-//  c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-//
-//  c->grav.ti_old_multipole = ti_current;
+  //  /* Compute CoM from all zoom cells */
+  //  double CoM[3] = {0., 0., 0.};
+  //  double vel[3] = {0., 0., 0.};
+  //  float max_delta_vel[3] = {0.f, 0.f, 0.f};
+  //  float min_delta_vel[3] = {0.f, 0.f, 0.f};
+  //  double mass = 0.;
+  //
+  //  /* Get top-level cells array */
+  //  struct cell *cells = s->cells_top;
+  //
+  //  /* Loop over zoom cells */
+  //  for (int k = 0; k < s->zoom_props->nr_zoom_cells; ++k) {
+  //    const struct cell *c_zoom = &cells[k];
+  //    const struct gravity_tensors *m = c_zoom->grav.multipole;
+  //
+  //    mass += m->m_pole.M_000;
+  //
+  //    CoM[0] += m->CoM[0] * m->m_pole.M_000;
+  //    CoM[1] += m->CoM[1] * m->m_pole.M_000;
+  //    CoM[2] += m->CoM[2] * m->m_pole.M_000;
+  //
+  //    vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+  //    vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+  //    vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+  //
+  //    max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+  //    max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+  //    max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+  //
+  //    min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+  //    min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+  //    min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
+  //  }
+  //
+  //  /* Final operation on the CoM and bulk velocity */
+  //  const double mass_inv = 1. / mass;
+  //  c->grav.multipole->CoM[0] = CoM[0] * mass_inv;
+  //  c->grav.multipole->CoM[1] = CoM[1] * mass_inv;
+  //  c->grav.multipole->CoM[2] = CoM[2] * mass_inv;
+  //  c->grav.multipole->m_pole.vel[0] = vel[0] * mass_inv;
+  //  c->grav.multipole->m_pole.vel[1] = vel[1] * mass_inv;
+  //  c->grav.multipole->m_pole.vel[2] = vel[2] * mass_inv;
+  //
+  //  /* Min max velocity along each axis */
+  //  c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+  //  c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+  //  c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+  //  c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+  //  c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+  //  c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
+  //
+  //  /* Now add them up */
+  //  struct multipole temp;
+  //  double r_max = 0.;
+  //  for (int k = 0; k < s->zoom_props->nr_zoom_cells; ++k) {
+  //    const struct cell *c_zoom = &cells[k];
+  //    const struct multipole *m = &c_zoom->grav.multipole->m_pole;
+  //
+  //    /* Contribution to multipole */
+  //    gravity_M2M(&temp, m, c->grav.multipole->CoM,
+  //    c_zoom->grav.multipole->CoM);
+  //    gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
+  //
+  //    /* Upper limit of max CoM<->gpart distance */
+  //    const double dx =
+  //        c->grav.multipole->CoM[0] - c_zoom->grav.multipole->CoM[0];
+  //    const double dy =
+  //        c->grav.multipole->CoM[1] - c_zoom->grav.multipole->CoM[1];
+  //    const double dz =
+  //        c->grav.multipole->CoM[2] - c_zoom->grav.multipole->CoM[2];
+  //    const double r2 = dx * dx + dy * dy + dz * dz;
+  //    r_max = max(r_max, c_zoom->grav.multipole->r_max + sqrt(r2));
+  //  }
+  //  /* Alternative upper limit of max CoM<->gpart distance */
+  //  const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] *
+  //  0.5
+  //                    ? c->grav.multipole->CoM[0] - c->loc[0]
+  //                    : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+  //  const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] *
+  //  0.5
+  //                    ? c->grav.multipole->CoM[1] - c->loc[1]
+  //                    : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+  //  const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] *
+  //  0.5
+  //                    ? c->grav.multipole->CoM[2] - c->loc[2]
+  //                    : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
+  //
+  //  /* Take minimum of both limits */
+  //  c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+  //
+  //  /* Compute the multipole power */
+  //  gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+  //
+  //  /* Also update the values at rebuild time */
+  //  c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+  //  c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+  //  c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+  //  c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+  //
+  //  c->grav.ti_old_multipole = ti_current;
 }
 
 /**

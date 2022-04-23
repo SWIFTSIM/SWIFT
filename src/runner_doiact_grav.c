@@ -2446,7 +2446,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-//  const double theta_crit = e->gravity_properties->theta_crit;
+  //  const double theta_crit = e->gravity_properties->theta_crit;
 
   TIMER_TIC;
 
@@ -2500,7 +2500,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
       if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-          /*is_tree_walk=*/0)) {
+                               /*is_tree_walk=*/0)) {
 
         /* Call the PM interaction function on the active sub-cells of ci */
         runner_dopair_grav_mm_nonsym(r, ci, cj);
@@ -2532,7 +2532,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Skip empty cells */
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
-      /* Minimal distance between any pair of particles */
+        /* Minimal distance between any pair of particles */
 #ifdef WITH_ZOOM_REGION
       const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 #else
@@ -2563,7 +2563,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Shall we interact with this cell? */
       if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-          /*is_tree_walk=*/0)) {
+                               /*is_tree_walk=*/0)) {
 
         /* Call the PM interaction function on the active sub-cells of ci
          */
@@ -2574,7 +2574,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         multi_i->pot.interacted = 1;
 
       } /* We are in charge of this pair */
-    } /* Loop over zoom top-level cells*/
+    }   /* Loop over zoom top-level cells*/
 
     /* Now we need to loop over over the neighbouring background
      * top-level cells */
@@ -2593,7 +2593,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Skip empty cells */
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
-      /* Minimal distance between any pair of particles */
+        /* Minimal distance between any pair of particles */
 #ifdef WITH_ZOOM_REGION
       const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 #else
@@ -2623,7 +2623,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       }
 
       if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-          /*is_tree_walk=*/0)) {
+                               /*is_tree_walk=*/0)) {
 
         /* Call the PM interaction function on the active sub-cells of ci */
         runner_dopair_grav_mm_nonsym(r, ci, cj);
@@ -2632,8 +2632,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         /* Record that this multipole received a contribution */
         multi_i->pot.interacted = 1;
 
-      } /* We are in charge of this pair */
-    }   /* Loop over neighbour top-level cells */
+      }    /* We are in charge of this pair */
+    }      /* Loop over neighbour top-level cells */
   } else { /* Periodic background cells. */
 
     /* Periodic case
@@ -2716,10 +2716,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             multi_i->pot.interacted = 1;
 
           } /* We are in charge of this pair */
-        }     /* Loop over relevant top-level cells (k) */
-      }       /* Loop over relevant top-level cells (j) */
-    }         /* Loop over relevant top-level cells (i) */
-  }           /* periodic / non-periodic case */
+        }   /* Loop over relevant top-level cells (k) */
+      }     /* Loop over relevant top-level cells (j) */
+    }       /* Loop over relevant top-level cells (i) */
+  }         /* periodic / non-periodic case */
 
   // MATTHIEU TODO: Deal properly with the debugging checks
 

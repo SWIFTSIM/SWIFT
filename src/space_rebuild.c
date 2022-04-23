@@ -997,7 +997,6 @@ void space_rebuild(struct space *s, int repartitioned,
           s->zoom_props
               ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
           s->zoom_props->nr_local_bkg_cells++;
-
         }
       }
 #endif
@@ -1024,7 +1023,6 @@ void space_rebuild(struct space *s, int repartitioned,
           s->zoom_props->local_bkg_cells_with_particles_top
               [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
           s->zoom_props->nr_local_bkg_cells_with_particles++;
-
         }
       }
 #endif
@@ -1041,8 +1039,7 @@ void space_rebuild(struct space *s, int repartitioned,
     if (s->with_zoom_region) {
       message("Have %d local particles in background cells",
               bkg_cell_particles);
-      message("Have %d local particles in zoom cells",
-              zoom_cell_particles);
+      message("Have %d local particles in zoom cells", zoom_cell_particles);
       s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
       s->zoom_props->nr_zoom_cell_particles = zoom_cell_particles;
     }
