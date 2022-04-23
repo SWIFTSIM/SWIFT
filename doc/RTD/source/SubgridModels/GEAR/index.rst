@@ -57,7 +57,7 @@ When starting a simulation without providing the different element fractions in 
 The code uses an iterative method in order to find the correct initial composition and this method can be tuned with two parameters. ``GrackleCooling:max_steps`` defines the maximal number of steps to reach the convergence and ``GrackleCooling:convergence_limit`` defines the tolerance in the relative error.
 
 In order to compile SWIFT with Grackle, you need to provide the options ``with-chemistry=GEAR`` and ``with-grackle=$GRACKLE_ROOT``
-where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``).
+where ``$GRACKLE_ROOT`` is the root of the install directory (not the ``lib``). 
 
 You will need a Grackle version later than 3.1.1. To compile it, run
 the following commands from the root directory of Grackle:
@@ -65,6 +65,8 @@ the following commands from the root directory of Grackle:
 Update the variables ``LOCAL_HDF5_INSTALL`` and ``MACH_INSTALL_PREFIX`` in
 the file ``src/clib/Make.mach.linux-gnu``.
 Finish with ``make machine-linux-gnu; make && make install``.
+Note that we require the 64 bit float version of Grackle, which should be the default setting. 
+(The precision can be set while compiling grackle with ``make precision-64``).
 If you encounter any problem, you can look at the `Grackle documentation <https://grackle.readthedocs.io/en/latest/>`_
 
 You can now provide the path given for ``MACH_INSTALL_PREFIX`` to ``with-grackle``.

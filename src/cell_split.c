@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -76,12 +76,12 @@ void cell_split(struct cell *c, const ptrdiff_t parts_offset,
   int bucket_offset[9];
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* Check that the buffs are OK and particles are within the cells prior to split. */
+  /* Check that the buffs are OK and particles are within the cells prior to
+   * split. */
   for (int k = 0; k < count; k++) {
     if (buff[k].x[0] != parts[k].x[0] || buff[k].x[1] != parts[k].x[1] ||
         buff[k].x[2] != parts[k].x[2])
       error("Inconsistent buff contents.");
-
   }
   for (int k = 0; k < gcount; k++) {
     if (gbuff[k].x[0] != gparts[k].x[0] || gbuff[k].x[1] != gparts[k].x[1] ||

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2021 Tsang Keung Chan (chantsangkeung@gmail.com)
- * Copyright (c) 2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ *               2020 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -95,6 +95,14 @@ struct rt_part_data {
 };
 
 /* Additional RT data in star particle struct */
-struct rt_spart_data {};
+struct rt_spart_data {
+
+  /* Stellar energy emission that will be injected in to gas.
+   * Total energy, not density, not rate! */
+  float emission_this_step[RT_NGROUPS];
+
+  /*! normalisation factor used for the enrichment */
+  float injection_weight;
+};
 
 #endif /* SWIFT_RT_STRUCT_SPHM1RT_H */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -50,6 +50,10 @@ struct pm_mesh {
   /*! Whether mesh is distributed between MPI ranks */
   int distributed_mesh;
 
+  /*! Whether or not to use local patches rather than
+   * direct atomic writes to the mesh when running without MPI */
+  int use_local_patches;
+
   /*! Integer time-step end of the mesh force for the last step */
   integertime_t ti_end_mesh_last;
 
@@ -97,9 +101,9 @@ void pm_mesh_free(struct pm_mesh *mesh);
 /* Dump/restore. */
 void pm_mesh_struct_dump(const struct pm_mesh *p, FILE *stream);
 void pm_mesh_struct_restore(struct pm_mesh *p, FILE *stream);
-void bkg_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra);
-void zoom_cell_mesh_to_gpart_CIC_mapper(void* map_data, int num, void* extra);
-void bkg_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra);
-void zoom_cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra);
+void bkg_cell_mesh_to_gpart_CIC_mapper(void *map_data, int num, void *extra);
+void zoom_cell_mesh_to_gpart_CIC_mapper(void *map_data, int num, void *extra);
+void bkg_cell_gpart_to_mesh_CIC_mapper(void *map_data, int num, void *extra);
+void zoom_cell_gpart_to_mesh_CIC_mapper(void *map_data, int num, void *extra);
 
 #endif /* SWIFT_MESH_GRAVITY_H */

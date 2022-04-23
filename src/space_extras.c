@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -94,12 +94,32 @@ void space_allocate_extras(struct space *s, int verbose) {
     }
   }
 
+  /* Define a number of cells for non-gparts (baryons). */
+  size_t nr_baryon_cells = nr_local_cells;
+
+#ifdef WITH_ZOOM_REGION
+  int *local_zoom_cells =
+      (int *)malloc(sizeof(int) * s->zoom_props->nr_zoom_cells);
+  if (local_zoom_cells == NULL)
+    error("Failed to allocate list of local top-level cells");
+
+  /* List the local zoom cells and recount baryon cells
+   * (only zoom cells shoudl contain these particles) */
+  nr_baryon_cells = 0;
+  for (int i = 0; i < s->zoom_props->nr_zoom_cells; ++i) {
+    if (s->cells_top[i].nodeID == local_nodeID) {
+      local_zoom_cells[nr_baryon_cells] = i;
+      ++nr_baryon_cells;
+    }
+  }
+#endif
+
   /* Number of extra particles we want for each type */
-  const size_t expected_num_extra_parts = nr_local_cells * space_extra_parts;
+  const size_t expected_num_extra_parts = nr_baryon_cells * space_extra_parts;
   const size_t expected_num_extra_gparts = nr_local_cells * space_extra_gparts;
-  const size_t expected_num_extra_sparts = nr_local_cells * space_extra_sparts;
-  const size_t expected_num_extra_bparts = nr_local_cells * space_extra_bparts;
-  const size_t expected_num_extra_sinks = nr_local_cells * space_extra_sinks;
+  const size_t expected_num_extra_sparts = nr_baryon_cells * space_extra_sparts;
+  const size_t expected_num_extra_bparts = nr_baryon_cells * space_extra_bparts;
+  const size_t expected_num_extra_sinks = nr_baryon_cells * space_extra_sinks;
 
   if (verbose) {
     message("Currently have %zd/%zd/%zd/%zd/%zd real particles.",
@@ -153,7 +173,7 @@ void space_allocate_extras(struct space *s, int verbose) {
         message("Re-allocating gparts array from %zd to %zd", s->size_gparts,
                 size_gparts);
 
-      /* Create more space for parts */
+      /* Create more space for gparts */
       struct gpart *gparts_new = NULL;
       if (swift_memalign("gparts", (void **)&gparts_new, gpart_align,
                          sizeof(struct gpart) * size_gparts) != 0)
@@ -195,9 +215,12 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (s->gparts[i].time_bin == time_bin_not_created) {
 
         /* We want the extra particles to be at the centre of their cell */
-        s->gparts[i].x[0] = cells[current_cell].loc[0] + half_cell_width[0];
-        s->gparts[i].x[1] = cells[current_cell].loc[1] + half_cell_width[1];
-        s->gparts[i].x[2] = cells[current_cell].loc[2] + half_cell_width[2];
+        s->gparts[i].x[0] =
+            cells[current_cell].loc[0] + (0.5 * cells[current_cell].width[0]);
+        s->gparts[i].x[1] =
+            cells[current_cell].loc[1] + (0.5 * cells[current_cell].width[1]);
+        s->gparts[i].x[2] =
+            cells[current_cell].loc[2] + (0.5 * cells[current_cell].width[2]);
         ++count_in_cell;
         count_extra_gparts++;
       }
@@ -275,6 +298,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
+    if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_parts = 0;
     for (size_t i = 0; i < nr_actual_parts + expected_num_extra_parts; ++i) {
@@ -299,9 +323,18 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (count_in_cell == space_extra_parts) {
         ++local_cell_id;
 
-        if (local_cell_id == nr_local_cells) break;
+        /* When running with a zoom region we only ever need to consider the
+         * zoom cells. */
+        if (s->with_zoom_region) {
+          if (local_cell_id == nr_baryon_cells) break;
 
-        current_cell = local_cells[local_cell_id];
+          current_cell = local_zoom_cells[local_cell_id];
+        } else {
+          if (local_cell_id == nr_local_cells) break;
+
+          current_cell = local_cells[local_cell_id];
+        }
+
         count_in_cell = 0;
       }
     }
@@ -356,6 +389,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
+    if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_sinks = 0;
     for (size_t i = 0; i < nr_actual_sinks + expected_num_extra_sinks; ++i) {
@@ -380,9 +414,18 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (count_in_cell == space_extra_sinks) {
         ++local_cell_id;
 
-        if (local_cell_id == nr_local_cells) break;
+        /* When running with a zoom region we only ever need to consider the
+         * zoom cells. */
+        if (s->with_zoom_region) {
+          if (local_cell_id == nr_baryon_cells) break;
 
-        current_cell = local_cells[local_cell_id];
+          current_cell = local_zoom_cells[local_cell_id];
+        } else {
+          if (local_cell_id == nr_local_cells) break;
+
+          current_cell = local_cells[local_cell_id];
+        }
+
         count_in_cell = 0;
       }
     }
@@ -438,6 +481,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
+    if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_sparts = 0;
     for (size_t i = 0; i < nr_actual_sparts + expected_num_extra_sparts; ++i) {
@@ -462,9 +506,18 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (count_in_cell == space_extra_sparts) {
         ++local_cell_id;
 
-        if (local_cell_id == nr_local_cells) break;
+        /* When running with a zoom region we only ever need to consider the
+         * zoom cells. */
+        if (s->with_zoom_region) {
+          if (local_cell_id == nr_baryon_cells) break;
 
-        current_cell = local_cells[local_cell_id];
+          current_cell = local_zoom_cells[local_cell_id];
+        } else {
+          if (local_cell_id == nr_local_cells) break;
+
+          current_cell = local_cells[local_cell_id];
+        }
+
         count_in_cell = 0;
       }
     }
@@ -520,6 +573,7 @@ void space_allocate_extras(struct space *s, int verbose) {
     /* Put the spare particles in their correct cell */
     size_t local_cell_id = 0;
     int current_cell = local_cells[local_cell_id];
+    if (s->with_zoom_region) current_cell = local_zoom_cells[local_cell_id];
     int count_in_cell = 0;
     size_t count_extra_bparts = 0;
     for (size_t i = 0; i < nr_actual_bparts + expected_num_extra_bparts; ++i) {
@@ -544,9 +598,18 @@ void space_allocate_extras(struct space *s, int verbose) {
       if (count_in_cell == space_extra_bparts) {
         ++local_cell_id;
 
-        if (local_cell_id == nr_local_cells) break;
+        /* When running with a zoom region we only ever need to consider the
+         * zoom cells. */
+        if (s->with_zoom_region) {
+          if (local_cell_id == nr_baryon_cells) break;
 
-        current_cell = local_cells[local_cell_id];
+          current_cell = local_zoom_cells[local_cell_id];
+        } else {
+          if (local_cell_id == nr_local_cells) break;
+
+          current_cell = local_cells[local_cell_id];
+        }
+
         count_in_cell = 0;
       }
     }

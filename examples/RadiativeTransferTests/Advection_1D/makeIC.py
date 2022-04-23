@@ -3,6 +3,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -84,11 +85,7 @@ def initial_condition(x, V):
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
     F = np.zeros(3, dtype=np.float64)
-    F[0] = (
-        unyt.c.to(unitsystem["length"] / unitsystem["time"])
-        * E
-        / V.to(unitsystem["length"])
-    )
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
     F_list.append(F)
@@ -104,11 +101,7 @@ def initial_condition(x, V):
         E = 1.0
 
     F = np.zeros(3, dtype=np.float64)
-    F[0] = (
-        unyt.c.to(unitsystem["length"] / unitsystem["time"])
-        * E
-        / V.to(unitsystem["length"])
-    )
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
     F_list.append(F)
@@ -121,11 +114,7 @@ def initial_condition(x, V):
 
     E = amplitude * np.exp(-(x[0] - mean) ** 2 / (2 * sigma ** 2))
     F = np.zeros(3, dtype=np.float64)
-    F[0] = (
-        unyt.c.to(unitsystem["length"] / unitsystem["time"])
-        * E
-        / V.to(unitsystem["length"])
-    )
+    F[0] = unyt.c.to(unitsystem["length"] / unitsystem["time"]) * E
 
     E_list.append(E)
     F_list.append(F)

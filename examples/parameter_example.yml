@@ -79,6 +79,7 @@ Stars:
 Gravity:
   mesh_side_length:              128       # Number of cells along each axis for the periodic gravity mesh (must be even).
   distributed_mesh:              0         # (Optional) Are we using a distributed mesh when running over MPI (necessary for meshes > 1290^3)
+  mesh_uses_local_patches:       1         # (Optional) Are we using thread-local patches (1) or direct atomic writes to the global mesh (0) in the non-MPI case?
   eta:                           0.025     # Constant dimensionless multiplier for time integration.
   MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
@@ -712,6 +713,13 @@ SPHM1RT:
     CFL_condition: 0.1                                  # CFL condition for RT, independent of hydro 
     chi:  [0, 0, 0]                                     # (Optional) initial opacity in code unit for all gas particles
     photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]   # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=SPHM1RT_N). Outer edges of zero and infinity are assumed.
+    use_const_emission_rates: 1     # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_LSol parameter
+    star_emission_rates_LSol: [1e-32, 1e-32, 1e-32]   # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set.
+    stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+    stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+    stellar_spectrum_blackbody_temperature_K: 1.e4    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum. 
+    stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
+
 
 
 # Parameters related to lightcones  -----------------------------------------------

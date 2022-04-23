@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -42,7 +42,7 @@
 void engine_makeproxies(struct engine *e) {
 #ifdef WITH_MPI
 #ifdef WITH_ZOOM_REGION
-    engine_makeproxies_with_zoom_region(e);
+  engine_makeproxies_with_zoom_region(e);
 #else
 
   /* Let's time this */

@@ -68,6 +68,46 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
   rt_check_unphysical_mass_fractions(p);
 }
 
+__attribute__((always_inline)) INLINE static void rt_tchem_copy_data_to_grackle(
+    grackle_field_data* grackle_field, int grid_dimension[GRACKLE_RANK],
+    int grid_start[GRACKLE_RANK], int grid_end[GRACKLE_RANK], gr_float* density,
+    gr_float* internal_energy, gr_float species_densities[6],
+    gr_float iact_rates[5]) {
+
+  grackle_field->grid_dx = 0.;
+  grackle_field->grid_rank = GRACKLE_RANK;
+  grackle_field->grid_dimension = grid_dimension;
+  grackle_field->grid_start = grid_start;
+  grackle_field->grid_end = grid_end;
+
+  /* initialize density */
+  grackle_field->density = density;
+  grackle_field->internal_energy = internal_energy;
+  /* grackle 3.0 doc: "Currently not used" */
+  grackle_field->x_velocity = NULL;
+  grackle_field->y_velocity = NULL;
+  grackle_field->z_velocity = NULL;
+
+  grackle_field->HI_density = &species_densities[0];
+  grackle_field->HII_density = &species_densities[1];
+  grackle_field->HeI_density = &species_densities[2];
+  grackle_field->HeII_density = &species_densities[3];
+  grackle_field->HeIII_density = &species_densities[4];
+  grackle_field->e_density = &species_densities[5];
+
+  /* general particle data */
+  grackle_field->volumetric_heating_rate = NULL;
+  grackle_field->specific_heating_rate = NULL;
+
+  grackle_field->RT_heating_rate = &iact_rates[0];
+  grackle_field->RT_HI_ionization_rate = &iact_rates[1];
+  grackle_field->RT_HeI_ionization_rate = &iact_rates[2];
+  grackle_field->RT_HeII_ionization_rate = &iact_rates[3];
+  grackle_field->RT_H2_dissociation_rate = &iact_rates[4];
+
+  grackle_field->metal_density = NULL;
+}
+
 /**
  * @brief Main function for the thermochemistry step.
  *
@@ -98,60 +138,31 @@ static void rt_do_thermochemistry(struct part* restrict p,
   /* This is where the fun begins */
   /* ---------------------------- */
 
-  /* initialize data */
+  /* initialize data so it'll be in scope */
   grackle_field_data particle_grackle_data;
 
   int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
   int grid_start[GRACKLE_RANK] = {0, 0, 0};
   int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
 
-  particle_grackle_data.grid_dx = 0.;
-  particle_grackle_data.grid_rank = GRACKLE_RANK;
-  particle_grackle_data.grid_dimension = grid_dimension;
-  particle_grackle_data.grid_start = grid_start;
-  particle_grackle_data.grid_end = grid_end;
-
-  /* general particle data */
   gr_float density = hydro_get_physical_density(p, cosmo);
   const float u_minimal = hydro_props->minimal_internal_energy;
   gr_float internal_energy =
       max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
 
   const float u_old = internal_energy;
-
-  /* initialize density */
-  particle_grackle_data.density = &density;
-  particle_grackle_data.internal_energy = &internal_energy;
-  /* grackle 3.0 doc: "Currently not used" */
-  particle_grackle_data.x_velocity = NULL;
-  particle_grackle_data.y_velocity = NULL;
-  particle_grackle_data.z_velocity = NULL;
-
   gr_float species_densities[6];
   rt_tchem_get_species_densities(p, density, species_densities);
 
-  particle_grackle_data.HI_density = &species_densities[0];
-  particle_grackle_data.HII_density = &species_densities[1];
-  particle_grackle_data.HeI_density = &species_densities[2];
-  particle_grackle_data.HeII_density = &species_densities[3];
-  particle_grackle_data.HeIII_density = &species_densities[4];
-  particle_grackle_data.e_density = &species_densities[5];
-
-  particle_grackle_data.volumetric_heating_rate = NULL;
-  particle_grackle_data.specific_heating_rate = NULL;
-
-  gr_float rates[5];
-  float rates_by_frequency_bin[RT_NGROUPS];
-  rt_tchem_get_interaction_rates(rates, rates_by_frequency_bin, p,
+  gr_float iact_rates[5];
+  float iact_rates_by_frequency_bin[RT_NGROUPS];
+  rt_tchem_get_interaction_rates(iact_rates, iact_rates_by_frequency_bin, p,
                                  species_densities, rt_props, phys_const, us,
                                  cosmo);
-  particle_grackle_data.RT_heating_rate = &rates[0];
-  particle_grackle_data.RT_HI_ionization_rate = &rates[1];
-  particle_grackle_data.RT_HeI_ionization_rate = &rates[2];
-  particle_grackle_data.RT_HeII_ionization_rate = &rates[3];
-  particle_grackle_data.RT_H2_dissociation_rate = &rates[4];
 
-  particle_grackle_data.metal_density = NULL;
+  rt_tchem_copy_data_to_grackle(
+      &particle_grackle_data, grid_dimension, grid_start, grid_end, &density,
+      &internal_energy, species_densities, iact_rates);
 
   /* solve chemistry */
   /* Note: grackle_rates is a global variable defined by grackle itself.
@@ -182,7 +193,7 @@ static void rt_do_thermochemistry(struct part* restrict p,
   /* update radiation fields */
   for (int g = 0; g < RT_NGROUPS; g++) {
     const float e_old = p->rt_data.radiation[g].energy_density;
-    const float factor_new = (1.f - dt * rates_by_frequency_bin[g]);
+    const float factor_new = (1.f - dt * iact_rates_by_frequency_bin[g]);
     p->rt_data.radiation[g].energy_density *= factor_new;
     for (int i = 0; i < 3; i++) {
       p->rt_data.radiation[g].flux[i] *= factor_new;
@@ -206,6 +217,64 @@ static void rt_do_thermochemistry(struct part* restrict p,
       particle_grackle_data.HeIII_density[0] * one_over_rho;
 
   rt_check_unphysical_mass_fractions(p);
+}
+
+/**
+ * @brief Main function for the thermochemistry step.
+ *
+ * @param p Particle to work on.
+ * @param xp Pointer to the particle' extended data.
+ * @param rt_props RT properties struct
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ */
+static float rt_tchem_get_tchem_time(
+    const struct part* restrict p, const struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us) {
+  /* Note: Can't pass rt_props as const struct because of grackle
+   * accessinging its properties there */
+
+  /* initialize data so it'll be in scope */
+  grackle_field_data particle_grackle_data;
+
+  int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
+  int grid_start[GRACKLE_RANK] = {0, 0, 0};
+  int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
+
+  gr_float density = hydro_get_physical_density(p, cosmo);
+  const float u_minimal = hydro_props->minimal_internal_energy;
+  gr_float internal_energy =
+      max(hydro_get_physical_internal_energy(p, xp, cosmo), u_minimal);
+
+  gr_float species_densities[6];
+  rt_tchem_get_species_densities(p, density, species_densities);
+
+  gr_float iact_rates[5];
+  float iact_rates_by_frequency_bin[RT_NGROUPS];
+  rt_tchem_get_interaction_rates(iact_rates, iact_rates_by_frequency_bin, p,
+                                 species_densities, rt_props, phys_const, us,
+                                 cosmo);
+
+  rt_tchem_copy_data_to_grackle(
+      &particle_grackle_data, grid_dimension, grid_start, grid_end, &density,
+      &internal_energy, species_densities, iact_rates);
+
+  /* Compute 'cooling' time */
+  /* Note: grackle_rates is a global variable defined by grackle itself.
+   * Using a manually allocd and initialized variable here fails with MPI
+   * for some reason. */
+  gr_float tchem_time;
+  if (local_calculate_cooling_time(&rt_props->grackle_chemistry_data,
+                                   &grackle_rates, &rt_props->grackle_units,
+                                   &particle_grackle_data, &tchem_time) == 0)
+    error("Error in calculate_cooling_time.");
+
+  return (float)tchem_time;
 }
 
 #endif /* SWIFT_RT_GEAR_THERMOCHEMISTRY_H */

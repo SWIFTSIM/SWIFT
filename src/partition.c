@@ -106,7 +106,8 @@ static int repart_init_fixed_costs(void);
  *  @param nregions the number of regions
  *  @param samplecells the list of sample cell positions, size of 3*nregions
  */
-static void pick_vector(struct space *s, int *cdim, int nregions, int *samplecells) {
+static void pick_vector(struct space *s, int *cdim, int nregions,
+                        int *samplecells) {
 
   /* Get length of space and divide up. */
   int length = cdim[0] * cdim[1] * cdim[2];
@@ -128,8 +129,8 @@ static void pick_vector(struct space *s, int *cdim, int nregions, int *samplecel
           samplecells[m++] = k;
           l++;
         }
-      n++;
-      if (n == step) n = 0;
+        n++;
+        if (n == step) n = 0;
       }
     }
   }
@@ -143,7 +144,8 @@ static void pick_vector(struct space *s, int *cdim, int nregions, int *samplecel
  * Using the sample positions as seeds pick cells that are geometrically
  * closest and apply the partition to the space.
  */
-static void split_vector(struct space *s, int *cdim, int nregions, int *samplecells, int offset) {
+static void split_vector(struct space *s, int *cdim, int nregions,
+                         int *samplecells, int offset) {
 
   int n = 0;
   for (int i = 0; i < cdim[0]; i++) {
@@ -356,8 +358,8 @@ struct counts_mapper_data {
         else if (parts[k].x[j] >= dim[j])                                      \
           parts[k].x[j] -= dim[j];                                             \
       }                                                                        \
-	    const int cid = cell_getid_pos(s, parts[k].x[0],                         \
-	        parts[k].x[1], parts[k].x[2]);                                       \
+      const int cid =                                                          \
+          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
       if (cid > ucid) ucid = cid;                                              \
       if (cid < lcid) lcid = cid;                                              \
     }                                                                          \
@@ -365,8 +367,8 @@ struct counts_mapper_data {
     if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
-	    const int cid = cell_getid_pos(s, parts[k].x[0],                         \
-	        parts[k].x[1], parts[k].x[2]);                                       \
+      const int cid =                                                          \
+          cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
       lcounts[cid - lcid] += size;                                             \
     }                                                                          \
     for (int k = 0; k < nused; k++)                                            \
@@ -1925,8 +1927,8 @@ void partition_initial_partition(struct partition *initial_partition,
       for (j = 0; j < 3; j++) {
         if (s->with_zoom_region) {
           if (c->tl_cell_type == 3) {
-            ind[j] = (c->loc[j] - s->zoom_props->region_bounds[2 * j])
-                / s->zoom_props->dim[j] * initial_partition->grid[j];
+            ind[j] = (c->loc[j] - s->zoom_props->region_bounds[2 * j]) /
+                     s->zoom_props->dim[j] * initial_partition->grid[j];
           } else {
             ind[j] = c->loc[j] / s->dim[j] * initial_partition->grid[j];
           }
@@ -2052,11 +2054,13 @@ void partition_initial_partition(struct partition *initial_partition,
     if (s->with_zoom_region) {
 
       /* With a zoom region we must apply the background offset */
-      split_vector(s, s->cdim, nr_nodes, samplecells, s->zoom_props->tl_cell_offset);
+      split_vector(s, s->cdim, nr_nodes, samplecells,
+                   s->zoom_props->tl_cell_offset);
       free(samplecells);
 
       int *zoom_samplecells = NULL;
-      if ((zoom_samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
+      if ((zoom_samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) ==
+          NULL)
         error("Failed to allocate zoom_samplecells");
 
       if (nodeID == 0) {
@@ -2064,7 +2068,8 @@ void partition_initial_partition(struct partition *initial_partition,
       }
 
       /* Share the zoom_samplecells around all the nodes. */
-      res = MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+      res =
+          MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
       if (res != MPI_SUCCESS)
         mpi_error(res, "Failed to bcast the partition sample cells.");
 

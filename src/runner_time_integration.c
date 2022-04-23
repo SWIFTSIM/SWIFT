@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -455,11 +455,14 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that kick and the drift are synchronized */
-        if (p->ti_drift != p->ti_kick) error("Error integrating part in time. "
-																						 "(p->ti_drift=%lld,  p->ti_kick=%lld, e->ti_current=%lld, p->x=[%f %f %f]"
-											                       "c->tl_cell_type=%d, c->hydro.count=%d)",
-																						 p->ti_drift, p->ti_kick, e->ti_current, p->x[0], p->x[1], p->x[2],
-																						 c->tl_cell_type, c->hydro.count);
+        if (p->ti_drift != p->ti_kick)
+          error(
+              "Error integrating part in time. "
+              "(p->ti_drift=%lld,  p->ti_kick=%lld, e->ti_current=%lld, "
+              "p->x=[%f %f %f]"
+              "c->tl_cell_type=%d, c->hydro.count=%d)",
+              p->ti_drift, p->ti_kick, e->ti_current, p->x[0], p->x[1], p->x[2],
+              c->tl_cell_type, c->hydro.count);
 #endif
 
         /* Prepare the values to be drifted */
@@ -1279,6 +1282,14 @@ void runner_do_limiter(struct runner *r, struct cell *c, int force,
       /* Bip, bip, bip... wake-up time */
       if (p->limiter_data.wakeup != time_bin_not_awake) {
 
+        if (!part_is_active(p, e) && p->limiter_data.to_be_synchronized) {
+          warning(
+              "Not limiting particle with id %lld because it needs to be "
+              "synced.",
+              p->id);
+          continue;
+        }
+
         // message("Limiting particle %lld in cell %lld", p->id, c->cellID);
 
         /* Apply the limiter and get the new end of time-step */
@@ -1427,6 +1438,12 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
         /* Get new time-step */
         integertime_t ti_new_step = get_part_timestep(p, xp, e);
         timebin_t new_time_bin = get_time_bin(ti_new_step);
+
+        /* Apply the limiter if necessary */
+        if (p->limiter_data.wakeup != time_bin_not_awake) {
+          new_time_bin = min(new_time_bin, -p->limiter_data.wakeup + 2);
+          p->limiter_data.wakeup = time_bin_not_awake;
+        }
 
         /* Limit the time-bin to what is allowed in this step */
         new_time_bin = min(new_time_bin, e->max_active_bin);

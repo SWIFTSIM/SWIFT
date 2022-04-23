@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -160,6 +160,9 @@ void accumulate_cell_to_local_patches_mapper(void *map_data, int num,
 
     /* Pointer to local cell */
     const struct cell *c = &cells[local_cells[i]];
+
+    /* Skip empty cells */
+    if (c->grav.count == 0) continue;
 
     /* Assign this cell's content to the mesh */
     accumulate_cell_to_local_patch(N, fac, dim, c, &local_patches[i], nu_model);
