@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -269,12 +269,26 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
     /* Pointer to local cell */
     const struct cell* c = &cells[local_cells[i]];
 
-    /* Do a CIC interpolation of all the particles in this cell onto
-       the local patch */
-    accumulate_cell_to_local_patch(N, fac, dim, c, &patch, nu_model);
+    /* Skip empty cells */
+    if (c->grav.count == 0) continue;
 
-    /* Copy the local patch values back onto the global mesh */
-    pm_add_patch_to_global_mesh(rho, &patch);
+    if (data->use_local_patches) {
+
+      /* Do a CIC interpolation of all the particles in this cell onto
+         the local patch (allocates memory in the patch) */
+      accumulate_cell_to_local_patch(N, fac, dim, c, &patch, nu_model);
+
+      /* Copy the local patch values back onto the global mesh */
+      pm_add_patch_to_global_mesh(rho, &patch);
+
+      /* Free the allocated memory */
+      pm_mesh_patch_clean(&patch);
+
+    } else {
+
+      /* Assign this cell's content directly atomically to the mesh */
+      cell_gpart_to_mesh_CIC(c, rho, N, fac, dim, nu_model);
+    }
   }
 }
 
@@ -938,6 +952,7 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   data.rho = rho;
   data.potential = NULL;
   data.N = N;
+  data.use_local_patches = mesh->use_local_patches;
   data.fac = cell_fac;
   data.dim[0] = dim[0];
   data.dim[1] = dim[1];
@@ -1228,6 +1243,7 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->periodic = 1;
   mesh->N = N;
   mesh->distributed_mesh = props->distributed_mesh;
+  mesh->use_local_patches = props->mesh_uses_local_patches;
   mesh->dim[0] = dim[0];
   mesh->dim[1] = dim[1];
   mesh->dim[2] = dim[2];

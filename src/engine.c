@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -1055,9 +1055,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->policy & engine_policy_hydro) {
     /* 2 self (density, force), 1 sort, 26/2 density pairs
        26/2 force pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
-       1 end_force, 2 extra space
+       1 end_force, 1 collect, 2 extra space
      */
-    n1 += 37;
+    n1 += 38;
     n2 += 2;
 #ifdef WITH_MPI
     n1 += 6;
@@ -1126,8 +1126,12 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* gradient: 1 self + 13 pairs                   |   14
      * transport: 1 self + 13 pairs                  | + 14
      * implicits: in + out, transport_out            | +  3
-     * others: ghost1, ghost2, thermochemistry       | +  3 */
-    n1 += 34;
+     * others: ghost1, ghost2, thermochemistry       | +  3
+     * 2 extra space                                 | +  2 */
+    n1 += 36;
+#ifdef WITH_MPI
+    n1 += 4; /* TODO: check this */
+#endif
   }
 
 #ifdef WITH_MPI

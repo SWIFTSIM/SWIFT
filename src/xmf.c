@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *                    Peter W. Draper   (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
