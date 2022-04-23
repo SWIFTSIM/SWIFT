@@ -36,6 +36,7 @@
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
+#include "runner_doiact_sinks.h"
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
@@ -137,26 +138,7 @@
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
 
-/* Import the sink compute formation loop functions. */
-#define FUNCTION swallow
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_SWALLOW
-#include "runner_doiact_sinks.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
 
-/* Import the sink compute formation loop functions. */
-#define FUNCTION do_gas_swallow
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_DO_GAS_SWALLOW
-#include "runner_doiact_sinks.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
-
-/* Import the sink swallow loop functions. */
-#define FUNCTION do_sink_swallow
-#define FUNCTION_TASK_LOOP TASK_LOOP_SINK_DO_SINK_SWALLOW
-#include "runner_doiact_sinks_merger.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
 
 /**
  * @brief The #runner main thread routine.

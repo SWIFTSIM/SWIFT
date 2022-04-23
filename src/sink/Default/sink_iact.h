@@ -77,53 +77,12 @@ runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
                                            const float hi, const float hj,
                                            struct sink *restrict si,
                                            const struct part *restrict pj,
-                                           const float a, const float H) {
+                                           const float a, const float H) {}
 
-#ifdef DEBUG_INTERACTIONS_SINKS
-  /* Update ngb counters */
-  if (si->num_ngb_formation < MAX_NUM_OF_NEIGHBOURS_SINKS)
-    si->ids_ngbs_formation[si->num_ngb_formation] = pj->id;
 
-  /* Update ngb counters */
-  ++si->num_ngb_formation;
-#endif
-}
 
 /**
- * @brief Swallowing interaction between two sink particles (non-symmetric).
- *
- * @param r2 Comoving square distance between the two particles.
- * @param dx Comoving vector separating both particles (pi - pj).
- * @param ri Comoving cut off radius of particle i.
- * @param rj Comoving cut off radius of particle j.
- * @param si First sink particle.
- * @param sj Second sink particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
- *
- * @param Which particle should be removed?
- * Possible value: (sink_do_sink_swallow_remove_none/first/second)
- */
-__attribute__((always_inline)) INLINE static enum sink_do_sink_swallow_remove
-runner_iact_sym_sinks_do_sink_swallow(const float r2, const float *dx, const float hi,
-                             const float hj, struct sink *restrict si,
-                             struct sink *restrict sj, const float a,
-                             const float H) {
-
-#ifdef DEBUG_INTERACTIONS_SINKS
-  /* Update ngb counters */
-  if (si->num_ngb_merger < MAX_NUM_OF_NEIGHBOURS_SINKS)
-    si->ids_ngbs_merger[si->num_ngb_merger] = sj->id;
-
-  /* Update ngb counters */
-  ++si->num_ngb_merger;
-#endif
-
-  return sink_do_sink_swallow_remove_none;
-}
-
-/**
- * @brief Swallowing interaction between a sink and a gas (non-symmetric).
+ * @brief Compute sink-gas swallow interaction (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -131,24 +90,13 @@ runner_iact_sym_sinks_do_sink_swallow(const float r2, const float *dx, const flo
  * @param hj Comoving smoothing-length of particle j.
  * @param si First sink particle.
  * @param pj Second particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_do_gas_swallow(const float r2, const float *dx,
-                                   const float hi, const float hj,
-                                   struct sink *restrict si,
-                                   const struct part *restrict pj,
-                                   const float a, const float H) {
+runner_iact_nonsym_sinks_gas_swallow(const float r2, const float *dx,
+                                           const float ri, const float hj,
+                                           struct sink *restrict si,
+                                           struct part *restrict pj) {}
 
-#ifdef DEBUG_INTERACTIONS_SINKS
-  /* Update ngb counters */
-  if (si->num_ngb_accretion < MAX_NUM_OF_NEIGHBOURS_SINKS)
-    si->ids_ngbs_accretion[si->num_ngb_accretion] = pj->id;
 
-  /* Update ngb counters */
-  ++si->num_ngb_accretion;
-#endif
-}
 
 #endif
