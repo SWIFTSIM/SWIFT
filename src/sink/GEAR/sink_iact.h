@@ -37,10 +37,7 @@
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const struct sink_props *sink_props) {
-
-}
-
+    const float H, const struct sink_props *sink_props) {}
 
 /**
  * @brief do sink computation after the runner_iact_density (non symmetric
@@ -60,7 +57,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H, const struct sink_props *sink_props) {
 
-
   /* In order to prevent the formation of two sink particles at a distance
    * smaller than the sink cutoff radius, we keep only gas particles with
    * the smallest potential. */
@@ -77,11 +73,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     if(potential_i > potential_j)
       pi->sink_data.can_form_sink = 0;
   } 
-  
 }
-
-
-
 
 
 /**
@@ -101,7 +93,6 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
                                            struct sink *restrict sj) {
 
 
-
   /* See runner_iact_nonsym_bh_bh_swallow.
    * The sink with the smaller mass will be merged onto the one with the
    * larger mass.
@@ -110,31 +101,22 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
    
    /* We should check the relative energy */
    
-  if ((sj->subgrid_mass < si->subgrid_mass) ||
-      (sj->subgrid_mass == si->subgrid_mass && sj->id < si->id)) {
-
+  if ((sj->mass < si->mass) ||
+      (sj->mass == si->mass && sj->id < si->id)) {
 
 
       /* This particle is swallowed by the sink with the largest mass of all the
        * candidates wanting to swallow it (we use IDs to break ties)*/
-      if ((sj->merger_data.swallow_mass < si->subgrid_mass) ||
-          (sj->merger_data.swallow_mass == si->subgrid_mass &&
+      if ((sj->merger_data.swallow_mass < si->mass) ||
+          (sj->merger_data.swallow_mass == si->mass &&
            sj->merger_data.swallow_id < si->id)) {
 
-        message("sink %lld wants to swallow sink particle %lld", si->id, sj->id);
+        //message("sink %lld wants to swallow sink particle %lld", si->id, sj->id);
 
         sj->merger_data.swallow_id = si->id;
-        sj->merger_data.swallow_mass = si->subgrid_mass;
-
+        sj->merger_data.swallow_mass = si->mass;
       }
-
-
-
-
-
   }
-
-
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
@@ -169,12 +151,12 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float *dx,
      * be swallowed by another sink particle. */
     
     /* We should check the relative energy */ 
-     
+    
+    //message("sink %lld wants to swallow gas particle %lld", si->id, pj->id);
 
     if (pj->sink_data.swallow_id < si->id) {
       pj->sink_data.swallow_id = si->id;
     }
-
 
 
 #ifdef DEBUG_INTERACTIONS_SINKS

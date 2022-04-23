@@ -60,7 +60,6 @@ sink_get_part_swallow_id(struct sink_part_data* s_data) {
 }
 
 
-
 /**
  * @brief Update a given #part's sink data field to mark the particle has
  * not yet been swallowed.
@@ -72,7 +71,6 @@ sink_mark_part_as_not_swallowed(struct sink_part_data* s_data) {
 
   s_data->swallow_id = -1;
 }
-
 
 
 /**

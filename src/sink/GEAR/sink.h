@@ -56,17 +56,19 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   
   sp->number_of_gas_swallows = 0;
   sp->number_of_direct_gas_swallows = 0;
+  sp->number_of_sink_swallows = 0;
+  sp->number_of_direct_sink_swallows = 0;
   sp->swallowed_angular_momentum[0] = 0.f;
   sp->swallowed_angular_momentum[1] = 0.f;
   sp->swallowed_angular_momentum[2] = 0.f;
 
-  
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 }
 
 
 /**
- * @brief Prepares a particle for the sink calculation.
+ * @brief Initialisation of particle data before the hydro density loop.
+ * Note: during initalisation (space_init)
  *
  * @param p The particle to act upon
  */
@@ -80,7 +82,8 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
 
 
 /**
- * @brief Prepares a sink-particle for its interactions
+ * @brief Initialisation of sink particle data before sink loops.
+ * Note: during initalisation (space_init_sinks)
  *
  * @param sp The particle to act upon
  */
@@ -131,8 +134,9 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
 /**
  * @brief Calculate if the gas has the potential of becoming
  * a sink.
- *
- * No sink formation should occur, so return 0.
+ * 
+ * Return 0 if no sink formation should occur.
+ * Note: called in runner_do_sink_formation
  *
  * @param sink_props the sink properties to use.
  * @param p the gas particles.
@@ -178,6 +182,7 @@ INLINE static int sink_is_forming(
  * sink or not.
  *
  * No SF should occur, so return 0.
+ * Note: called in runner_do_sink_formation
  *
  * @param p The #part.
  * @param xp The #xpart.
@@ -192,7 +197,7 @@ INLINE static int sink_should_convert_to_sink(
     const double dt_sink) {
 
   /* We do not use a stockastic approach. 
-   * Once elligible, the gas particle form a sink */
+   * Once elligible (sink_is_forming), the gas particle form a sink */
   
   return 1;
 }
@@ -222,7 +227,11 @@ INLINE static void sink_copy_properties(
     const struct cooling_function_data* restrict cooling) {
       
 
-    sink->n_stars=3;  
+    /* First initialisation */
+    sink_init_sink(sink);
+  
+    /* Flag it as not swallowed */
+    sink_mark_sink_as_not_swallowed(&sink->merger_data);
 }
 
 
@@ -293,13 +302,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   const struct chemistry_part_data* p_chem = &p->chemistry_data;
   chemistry_add_part_to_sink(sp_chem, p_chem, gas_mass);
 
-  /* This BH swallowed a gas particle */
+  /* This sink swallowed a gas particle */
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
-
-  /* This BH lost a neighbour */
-  sp->num_ngbs--;
-  sp->ngb_mass -= gas_mass;
 
 }
 
@@ -329,7 +334,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Increase the masses of the sink. */
   spi->mass += spj->mass;
   spi->gpart->mass += spj->mass;
-  spi->subgrid_mass += spj->subgrid_mass;
 
   /* Collect the swallowed angular momentum */
   spi->swallowed_angular_momentum[0] += spj->swallowed_angular_momentum[0];
@@ -353,22 +357,10 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   const struct chemistry_sink_data* spj_chem = &spj->chemistry_data;
   chemistry_add_sink_to_sink(spi_chem, spj_chem);
 
-  /* Update the energy reservoir */
-  spi->energy_reservoir += spj->energy_reservoir;
-
-  /* Add up all the BH seeds */
-  spi->cumulative_number_seeds += spj->cumulative_number_seeds;
-
-  /* Add up all the gas particles we swallowed */
-  spi->number_of_gas_swallows += spj->number_of_gas_swallows;
-
-  /* Add the subgrid angular momentum that we swallowed */
-  spi->accreted_angular_momentum[0] += spj->accreted_angular_momentum[0];
-  spi->accreted_angular_momentum[1] += spj->accreted_angular_momentum[1];
-  spi->accreted_angular_momentum[2] += spj->accreted_angular_momentum[2];
-
-  /* We had another merger */
-  spi->number_of_mergers++;
+  /* This sink swallowed a sink particle */
+  spi->number_of_sink_swallows++;
+  spi->number_of_direct_sink_swallows++;
+  
 }
 
 

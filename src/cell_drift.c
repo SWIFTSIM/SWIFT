@@ -332,6 +332,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Mark the particle has not being swallowed */
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
 
+      /* Mark the particle has not being swallowed by a sink */
+      sink_mark_part_as_not_swallowed(&p->sink_data);
+
+
       /* Reset the gas particle-carried feedback fields */
       feedback_reset_part(p, xp);
 
@@ -1100,6 +1104,10 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
       /* Maximal smoothing length */
       cell_r_max = max(cell_r_max, sink->r_cut);
 
+      /* Mark the particle has not being swallowed */
+      sink_mark_sink_as_not_swallowed(&sink->merger_data);      
+      
+      
       /* Get ready for a density calculation */
       if (sink_is_active(sink, e)) {
         sink_init_sink(sink);

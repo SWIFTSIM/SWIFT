@@ -59,6 +59,15 @@ struct sink {
   
   /*! Total (physical) angular momentum accumulated by swallowing particles */
   float swallowed_angular_momentum[3];  
+
+  /*! Total number of sink merger events (including sink swallowed
+   * by merged-in sinks) */
+  int number_of_sink_swallows;  
+
+  /*! Total number of sink merger events (excluding sink swallowed
+   * by merged-in sinks) */
+  int number_of_direct_sink_swallows;  
+
   
   /*! Total number of gas particles swallowed (including particles swallowed
    * by merged-in sinks) */
@@ -67,13 +76,7 @@ struct sink {
   /*! Total number of gas particles swallowed (excluding particles swallowed
    * by merged-in sinks) */
   int number_of_direct_gas_swallows;
-  
-  /*! Total mass of the gas neighbours. */
-  float ngb_mass;
 
-  /*! Integer number of neighbours */
-  int num_ngbs;
-  
   /*! Chemistry information (e.g. metal content at birth, swallowed metal
    * content, etc.) */
   struct chemistry_sink_data chemistry_data;  
@@ -81,10 +84,6 @@ struct sink {
   /*! sink merger information (e.g. merging ID) */
   struct sink_sink_data merger_data;
   
-  /*! Subgrid mass of the sink */
-  float subgrid_mass;  
-    
-    
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

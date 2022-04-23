@@ -595,7 +595,6 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   struct xpart *xparts = c->hydro.xparts;
 
 
-
   /* Early abort?
    * (We only want cells for which we drifted the gas as these are
    * the only ones that could have gas particles that have been flagged
@@ -863,7 +862,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
             /* Swallow the sink particle (i.e. update the swallowing sink
              * properties with the properties of cell_sp) */
-            sink_swallow_sink(sp, cell_sp);
+            sink_swallow_sink(sp, cell_sp, e->cosmology);
             
 
             /* Release the space as we are done updating the spart */
@@ -880,7 +879,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
               /* Finally, remove the sink particle from the system
                * Recall that the gpart associated with it is also removed
                * at the same time. */
-              cell_remove_sink(e, c, cell_bp);
+              cell_remove_sink(e, c, cell_sp);
             }
 
             /* In any case, prevent the particle from being re-swallowed */
