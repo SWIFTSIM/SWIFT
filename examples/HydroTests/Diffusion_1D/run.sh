@@ -4,7 +4,7 @@
 if [ ! -e diffusion.hdf5 ]
 then
     echo "Generating initial conditions for the Sedov blast example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT

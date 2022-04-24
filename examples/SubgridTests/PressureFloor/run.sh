@@ -10,7 +10,7 @@ fi
 if [ ! -e coolingBox.hdf5 ]
 then
     echo "Generating initial conditions for the cooling box example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 rm pressureFloor_*
@@ -18,4 +18,4 @@ rm pressureFloor_*
 ../../swift --self-gravity --hydro --cooling --threads=8 pressureFloor.yml
 
 # Check if the simulation collapsed
-python plotDensity.py 80
+python3 plotDensity.py 80

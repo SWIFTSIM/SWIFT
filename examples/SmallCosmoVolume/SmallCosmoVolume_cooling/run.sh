@@ -22,4 +22,4 @@ fi
 ../../swift --cosmology --hydro --self-gravity --cooling --threads=8 small_cosmo_volume.yml 2>&1 | tee output.log
 
 # Plot the temperature evolution
-python plotTempEvolution.py
+python3 plotTempEvolution.py

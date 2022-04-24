@@ -9,7 +9,7 @@ fi
 if [ ! -e vacuum.hdf5 ]
 then
     echo "Generating initial conditions for the 3D vacuum expansion example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
@@ -23,4 +23,4 @@ then
 fi
 
 # Plot the result
-python plotSolution.py 1
+python3 plotSolution.py 1

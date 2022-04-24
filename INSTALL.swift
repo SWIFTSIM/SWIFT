@@ -180,7 +180,7 @@ before you can build it.
         documentation.
 
  - python:
-	Examples and solution script use python and rely on the numpy
+	Examples and solution script use python 3 and rely on the numpy
 	library version 1.8.2 or higher.
 
 

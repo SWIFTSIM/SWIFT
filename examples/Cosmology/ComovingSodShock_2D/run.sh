@@ -9,10 +9,10 @@ fi
 if [ ! -e sodShock.hdf5 ]
 then
     echo "Generating initial conditions for the Sod shock example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
 ../../swift --cosmology --hydro --threads=4 sodShock.yml 2>&1 | tee output.log
 
-python plotSolution.py 1
+python3 plotSolution.py 1

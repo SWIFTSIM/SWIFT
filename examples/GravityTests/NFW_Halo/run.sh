@@ -6,7 +6,7 @@ then
     if command -v python3 &>/dev/null; then
         python3 makeIC.py
     else 
-        python makeIC.py
+        python3 makeIC.py
     fi
 fi
 
@@ -16,5 +16,5 @@ fi
 if command -v python3 &>/dev/null; then
     python3 makePlots.py
 else 
-    python makePlots.py
+    python3 makePlots.py
 fi

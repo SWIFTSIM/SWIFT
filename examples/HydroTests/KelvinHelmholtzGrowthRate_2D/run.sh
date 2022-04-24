@@ -5,11 +5,11 @@ if [ ! -e kelvinHelmholtzGrowthRate.hdf5 ]
 then
     echo "Generating initial conditions for the Kelvin-Helmholtz growth rate " \
          "example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
 ../../swift --hydro --threads=1 kelvinHelmholtzGrowthRate.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plotSolution.py 100
+python3 plotSolution.py 100

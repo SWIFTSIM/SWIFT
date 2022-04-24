@@ -18,7 +18,7 @@ make clean; make -j 6
 cd examples/SedovBlast_3D/
 
 ./getGlass.sh
-python makeIC.py
+python3 makeIC.py
 
 ../swift --hydro --threads=16 --steps=5 sedov.yml -P SPH:h_tolerance:10 -P Snapshots:compression:7 
 
@@ -72,7 +72,7 @@ cd examples/SedovBlast_3D/
 mv sedov_0000.hdf5 sedov_vec.hdf5
 
 # Compare outputs
-if python ../check_ngbs.py sedov_naive.hdf5 sedov_serial.hdf5 
+if python3 ../check_ngbs.py sedov_naive.hdf5 sedov_serial.hdf5 
 then
   echo "SedovBlast_3D comparison between naive and serial passed"
 else
@@ -80,7 +80,7 @@ else
   exit 1
 fi
 
-if python ../check_ngbs.py sedov_naive.hdf5 sedov_vec.hdf5 
+if python3 ../check_ngbs.py sedov_naive.hdf5 sedov_vec.hdf5 
 then
   echo "SedovBlast_3D comparison between naive and vectorised passed"
 else
@@ -88,7 +88,7 @@ else
   exit 1
 fi
 
-if python ../check_ngbs.py sedov_serial.hdf5 sedov_vec.hdf5 
+if python3 ../check_ngbs.py sedov_serial.hdf5 sedov_vec.hdf5 
 then
   echo "SedovBlast_3D comparison between serial and vectorised passed"
 else
@@ -103,7 +103,7 @@ cd ../EAGLE_12/
 mv eagle_0000.hdf5 eagle_12_vec.hdf5
 
 # Compare outputs
-if python ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_serial.hdf5 
+if python3 ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_serial.hdf5 
 then
   echo "EAGLE_12 comparison between naive and serial passed"
 else
@@ -111,7 +111,7 @@ else
   exit 1
 fi
 
-if python ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_vec.hdf5 
+if python3 ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_vec.hdf5 
 then
   echo "EAGLE_12 comparison between naive and vectorised passed"
 else
@@ -119,7 +119,7 @@ else
   exit 1
 fi
 
-if python ../check_ngbs.py eagle_12_serial.hdf5 eagle_12_vec.hdf5 
+if python3 ../check_ngbs.py eagle_12_serial.hdf5 eagle_12_vec.hdf5 
 then
   echo "EAGLE_12 comparison between serial and vectorised passed"
 else
@@ -194,7 +194,7 @@ mpirun -np 4 ../swift_mpi --hydro --threads=16 --steps=5 sedov.yml -P SPH:h_tole
 mv sedov_0000.hdf5 sedov_vec.hdf5
 
 # Compare outputs
-if python ../check_ngbs.py sedov_naive.hdf5 sedov_serial.hdf5 
+if python3 ../check_ngbs.py sedov_naive.hdf5 sedov_serial.hdf5 
 then
   echo "SedovBlast_3D comparison between naive and serial passed (MPI)"
 else
@@ -202,7 +202,7 @@ else
   exit 1
 fi
 
-if python ../check_ngbs.py sedov_naive.hdf5 sedov_vec.hdf5 
+if python3 ../check_ngbs.py sedov_naive.hdf5 sedov_vec.hdf5 
 then
   echo "SedovBlast_3D comparison between naive and vectorised passed (MPI)"
 else
@@ -210,7 +210,7 @@ else
   exit 1
 fi
 
-if python ../check_ngbs.py sedov_serial.hdf5 sedov_vec.hdf5 
+if python3 ../check_ngbs.py sedov_serial.hdf5 sedov_vec.hdf5 
 then
   echo "SedovBlast_3D comparison between serial and vectorised passed (MPI)"
 else
@@ -225,7 +225,7 @@ mpirun -np 4 ../swift_mpi --hydro --threads=16 --steps=5 eagle_12.yml -P SPH:h_t
 mv eagle_0000.hdf5 eagle_12_vec.hdf5
 
 # Compare outputs
-if python ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_serial.hdf5 
+if python3 ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_serial.hdf5 
 then
   echo "EAGLE_12 comparison between naive and serial passed (MPI)"
 else
@@ -233,7 +233,7 @@ else
   exit 1
 fi
 
-if python ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_vec.hdf5 
+if python3 ../check_ngbs.py eagle_12_naive.hdf5 eagle_12_vec.hdf5 
 then
   echo "EAGLE_12 comparison between naive and vectorised passed (MPI)"
 else
@@ -241,7 +241,7 @@ else
   exit 1
 fi
 
-if python ../check_ngbs.py eagle_12_serial.hdf5 eagle_12_vec.hdf5 
+if python3 ../check_ngbs.py eagle_12_serial.hdf5 eagle_12_vec.hdf5 
 then
   echo "EAGLE_12 comparison between serial and vectorised passed (MPI)"
   exit 0

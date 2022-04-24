@@ -710,4 +710,4 @@ if __name__ == "__main__":
 
         if args.with_calls:
             print("We recommand to use the python package xdot available on pypi:")
-            print("  python -m xdot %s" % dot_output)
+            print("  python3 -m xdot %s" % dot_output)

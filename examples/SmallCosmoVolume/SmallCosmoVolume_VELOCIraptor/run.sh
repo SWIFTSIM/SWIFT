@@ -14,5 +14,5 @@ echo "Make a plot of the HMF"
 if command -v python3 &>/dev/null; then
     python3 haloevol.py
 else
-    python haloevol.py
+    python3 haloevol.py
 fi

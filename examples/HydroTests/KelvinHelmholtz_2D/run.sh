@@ -4,7 +4,7 @@
 if [ ! -e kelvinHelmholtz.hdf5 ]
 then
     echo "Generating initial conditions for the Kelvin-Helmholtz example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT

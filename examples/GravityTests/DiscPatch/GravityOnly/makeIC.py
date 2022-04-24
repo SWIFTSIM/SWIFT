@@ -38,7 +38,7 @@ import math
 # to obtain the 1/ch^2(x/b) profile from a uniform profile (a glass, say, or a uniform random variable), note that, when integrating in x
 # \int 0^x dx/ch^2(x) = tanh(x)-tanh(0) = \int_0^u du = u (where the last integral refers to a uniform density distribution), so that x = atanh(u)
 #
-# usage: python makeIC.py 1000
+# usage: python3 makeIC.py 1000
 
 # physical constants in cgs
 NEWTON_GRAVITY_CGS = 6.67430e-8

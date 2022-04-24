@@ -4,7 +4,7 @@
 if [ ! -e interactingBlastWaves.hdf5 ]
 then
     echo "Generating initial conditions for the Sedov blast example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
@@ -18,4 +18,4 @@ then
 fi
 
 # Plot the solution
-python plotSolution.py 4
+python3 plotSolution.py 4

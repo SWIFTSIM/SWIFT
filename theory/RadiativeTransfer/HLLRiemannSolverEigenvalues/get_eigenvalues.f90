@@ -375,7 +375,7 @@ subroutine write_eigenvals
   !   enddo
   ! enddo
 
-  ! Write for python plotting
+  ! Write for python3 plotting
   !--------------------------
   open(unit=1, file="eigenvals.txt")
   write(1, "(A2,I5)") "# ", n_points + 1

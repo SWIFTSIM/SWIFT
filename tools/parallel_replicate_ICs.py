@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Usage:
-    python parallel_replicate_ICs.py IC_file.hdf5 rep_fac
+    python3 parallel_replicate_ICs.py IC_file.hdf5 rep_fac
 
 where IC_file.hdf5 is the ICs file that you want to replicate and rep_fac is the
 replication factor in each dimension
@@ -11,7 +11,7 @@ Reads in a ICs file and replicates the particles in each dimension by the
 replication factor given and write a new IC called IC_file_xrep_fac.hdf5.
 
 Example:
-    python parallel_replicate_ICs.py EAGLE_ICs_50.hdf5 4
+    python3 parallel_replicate_ICs.py EAGLE_ICs_50.hdf5 4
 
 Running the above example will produce a tiled 50MPc box in each dimension to
 give a 200MPc box.
@@ -87,7 +87,7 @@ def main():
     # Parse command line arguments
     if len(sys.argv) < 3:
         print("Error: pass input file and replication factor (integer) as arguments.")
-        print("python replicate_ICs.py EAGLE_ICs_50.hdf5 4")
+        print("python3 replicate_ICs.py EAGLE_ICs_50.hdf5 4")
         sys.exit()
     else:
         inputFile = sys.argv[1]

@@ -1,5 +1,5 @@
 #!/bin/bash
-python plotSoundspeed.py
+python3 plotSoundspeed.py
 
 pdflatex -jobname=sph_flavours sph_flavours_standalone.tex
 bibtex sph_flavours.aux 

@@ -22,7 +22,7 @@ Plot the output of testEOS to show how the equation of state pressure and sound
 speed varies with density and specific internal energy.
 
 Usage:
-    python  testEOS.py  (mat_id)
+    python3  testEOS.py  (mat_id)
 
     Sys args (optional):
         mat_id | int | Material ID, see equation_of_state.h for the options.

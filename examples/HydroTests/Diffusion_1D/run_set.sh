@@ -13,12 +13,12 @@ do
     mkdir beta_$i
     cd beta_$i
 
-    python ../$make_ic_script
+    python3 ../$make_ic_script
 
     ../$swift_location $flags -P "SPH:diffusion_beta:${i}" ../$parameter
-    python ../$plot_script
+    python3 ../$plot_script
     ../$swift_location $flags -P "SPH:diffusion_beta:${i}" ../$parameter_fixed
-    python ../$plot_script -s diffusion_fixed_alpha -o diffusion_fixed_alpha.png
+    python3 ../$plot_script -s diffusion_fixed_alpha -o diffusion_fixed_alpha.png
 
     rm *.hdf5
 

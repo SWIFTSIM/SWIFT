@@ -43,13 +43,13 @@ if [ "$RUN_DM" = "1" ]; then
     echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
     mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C ./stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
 
-    # Create info file for python comparison script
+    # Create info file for python3 comparison script
     echo -e $INFO_FILE_TEXT > infoFile_$TEST.txt
     echo "vel_$TEST $VEL_OUTPUT/vel_$TEST" >> infoFile_$TEST.txt
     echo "stf_$TEST $OUTPUT/stf_0000.VELOCIraptor" >> infoFile_$TEST.txt
 
     # Run comparison script on VELOCIraptor output
-    if python $SCRIPT_PATH/catalogcomparisontolerancecheck.py infoFile_$TEST.txt toIfile.txt
+    if python3 $SCRIPT_PATH/catalogcomparisontolerancecheck.py infoFile_$TEST.txt toIfile.txt
     then
       echo "Catalog comparison passed: "$TEST
     else
@@ -87,13 +87,13 @@ if [ "$RUN_GAS" = "1" ]; then
     echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C ./stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
     mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C ./stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST
 
-    # Create info file for python comparison script
+    # Create info file for python3 comparison script
     echo -e $INFO_FILE_TEXT > infoFile_$TEST.txt
     echo "vel_$TEST $VEL_OUTPUT/vel_$TEST" >> infoFile_$TEST.txt
     echo "stf_$TEST $OUTPUT/stf_0000.VELOCIraptor" >> infoFile_$TEST.txt
 
     # Run comparison script on VELOCIraptor output
-    if python $SCRIPT_PATH/catalogcomparisontolerancecheck.py infoFile_$TEST.txt toIfile.txt
+    if python3 $SCRIPT_PATH/catalogcomparisontolerancecheck.py infoFile_$TEST.txt toIfile.txt
     then
       echo "Catalog comparison passed: "$TEST
     else
