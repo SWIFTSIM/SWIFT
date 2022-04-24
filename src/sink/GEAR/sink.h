@@ -254,7 +254,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   const float gas_mass = hydro_get_mass(p);
   const float sink_mass = sp->mass;
 
-  /* Increase the dynamical mass of the BH. */
+  /* Increase the dynamical mass of the sink. */
   sp->mass += gas_mass;
   sp->gpart->mass += gas_mass;
 
@@ -318,9 +318,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
  * @param spi The #sink to update.
  * @param spj The #sink that is swallowed.
  * @param cosmo The current cosmological model.
- * @param time Time since the start of the simulation (non-cosmo mode).
- * @param with_cosmology Are we running with cosmology?
- * @param props The properties of the black hole scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_swallow_sink(
     struct sink* spi, const struct sink* spj, const struct cosmology* cosmo) {

@@ -119,7 +119,7 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
     }   /* loop over the bparts in ci. */
   }     /* Do we have gas particles in the cell? */
 
-  /* When doing BH swallowing, we need a quick loop also over the BH
+  /* When doing sink swallowing, we need a quick loop also over the sink
    * neighbours */
 
   /* Loop over the sinks in ci. */
@@ -468,8 +468,8 @@ void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct c
   /* Otherwise, compute the pair directly. */
   else {
 
-    const int do_ci = ci->black_holes.count != 0 && cell_is_active_black_holes(ci, e);
-    const int do_cj = cj->black_holes.count != 0 && cell_is_active_black_holes(cj, e);
+    const int do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
+    const int do_cj = cj->sinks.count != 0 && cell_is_active_sinks(cj, e);
 
     if (do_ci) {
 
@@ -564,15 +564,15 @@ void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int time
 
 /**
  * @brief Process all the gas particles in a cell that have been flagged for
- * swallowing by a black hole.
+ * swallowing by a sink.
  *
  * This is done by recursing down to the leaf-level and skipping the sub-cells
  * that have not been drifted as they would not have any particles with
  * swallowing flag. We then loop over the particles with a flag and look into
- * the space-wide list of black holes for the particle with the corresponding
- * ID. If found, the BH swallows the gas particle and the gas particle is
- * removed. If the cell is local, we may be looking for a foreign BH, in which
- * case, we do not update the BH (that will be done on its node) but just remove
+ * the space-wide list of sink for the particle with the corresponding
+ * ID. If found, the sink swallows the gas particle and the gas particle is
+ * removed. If the cell is local, we may be looking for a foreign sink, in which
+ * case, we do not update the sink (that will be done on its node) but just remove
  * the gas particle.
  *
  * @param r The thread #runner.
@@ -627,7 +627,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
 
-      /* Get the ID of the black holes that will swallow this part */
+      /* Get the ID of the sink that will swallow this part */
       const long long swallow_id =
           sink_get_part_swallow_id(&p->sink_data);
 
@@ -642,7 +642,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         /* ID of the sink swallowing this particle */
         const long long sink_id = swallow_id;
 
-        /* Have we found this particle's BH already? */
+        /* Have we found this particle's sink already? */
         int found = 0;
 
         /* Let's look for the hungry sink in the local list */
@@ -692,14 +692,14 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
             break;
           }
 
-        } /* Loop over local BHs */
+        } /* Loop over local sinks */
 
 #ifdef WITH_MPI
   not implemented yet !
 #endif
 
-        /* If we have a local particle, we must have found the BH in one
-         * of our list of black holes. */
+        /* If we have a local particle, we must have found the sink in one
+         * of our list of sinks. */
         if (c->nodeID == e->nodeID && !found) {
           error("Gas particle %lld could not find sink %lld to be swallowed",
                 p->id, swallow_id);
@@ -754,17 +754,17 @@ void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
 }
 
 /**
- * @brief Process all the BH particles in a cell that have been flagged for
- * swallowing by a black hole.
+ * @brief Process all the sink particles in a cell that have been flagged for
+ * swallowing by a sink.
  *
  * This is done by recursing down to the leaf-level and skipping the sub-cells
  * that have not been drifted as they would not have any particles with
  * swallowing flag. We then loop over the particles with a flag and look into
- * the space-wide list of black holes for the particle with the corresponding
- * ID. If found, the BH swallows the BH particle and the BH particle is
- * removed. If the cell is local, we may be looking for a foreign BH, in which
- * case, we do not update the BH (that will be done on its node) but just remove
- * the BH particle.
+ * the space-wide list of sinks for the particle with the corresponding
+ * ID. If found, the sink swallows the sink particle and the sink particle is
+ * removed. If the cell is local, we may be looking for a foreign sink, in which
+ * case, we do not update the sink (that will be done on its node) but just remove
+ * the sink particle.
  *
  * @param r The thread #runner.
  * @param c The #cell.
@@ -788,8 +788,8 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
   struct sink *cell_sinks = c->sinks.parts;
 
   /* Early abort?
-   * (We only want cells for which we drifted the BH as these are
-   * the only ones that could have BH particles that have been flagged
+   * (We only want cells for which we drifted the sink as these are
+   * the only ones that could have sink particles that have been flagged
    * for swallowing) */
   if (c->sinks.count == 0 ||
       c->sinks.ti_old_part != e->ti_current) {
@@ -820,7 +820,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
       if (sink_is_inhibited(cell_sp, e)) continue;
 
 
-      /* Get the ID of the black holes that will swallow this bpart */
+      /* Get the ID of the sink that will swallow this sink */
       const long long swallow_id =
           sink_get_sink_swallow_id(&cell_sp->merger_data);
 
@@ -832,7 +832,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
           error("Trying to swallow an un-drifted particle.");
 #endif
 
-        /* ID of the BH swallowing this particle */
+        /* ID of the sink swallowing this particle */
         const long long sink_id = swallow_id;
 
         /* Have we found this particle's sink already? */
@@ -889,14 +889,14 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
             break;
           }
 
-        } /* Loop over local BHs */
+        } /* Loop over local sinks */
 
 #ifdef WITH_MPI
   not implemented yet !
 #endif
 
         /* If we have a local particle, we must have found the sink in one
-         * of our list of black holes. */
+         * of our list of sinks. */
         if (c->nodeID == e->nodeID && !found) {
           error("sink particle %lld could not find sink %lld to be swallowed",
                 cell_sp->id, swallow_id);

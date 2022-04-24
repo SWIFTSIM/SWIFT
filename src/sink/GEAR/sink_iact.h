@@ -96,7 +96,7 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
   /* See runner_iact_nonsym_bh_bh_swallow.
    * The sink with the smaller mass will be merged onto the one with the
    * larger mass.
-   * To avoid rounding issues, we additionally check for IDs if the BHs
+   * To avoid rounding issues, we additionally check for IDs if the sink
    * have the exact same mass. */
    
    /* We should check the relative energy */
