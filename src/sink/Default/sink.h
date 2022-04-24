@@ -48,11 +48,7 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
  * @param sink_props The properties of the sink particles scheme.
  */
 __attribute__((always_inline)) INLINE static void sink_first_init_sink(
-    struct sink* sp, const struct sink_props* sink_props) {
-
-  sp->r_cut = sink_props->cut_off_radius;
-  sp->time_bin = 0;
-}
+    struct sink* sp, const struct sink_props* sink_props) {}
 
 
 /**
@@ -71,21 +67,7 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
  * @param sp The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void sink_init_sink(
-    struct sink* sp) {
-#ifdef DEBUG_INTERACTIONS_SINKS
-  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
-    sp->ids_ngbs_accretion[i] = -1;
-  sp->num_ngb_accretion = 0;
-
-  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
-    sp->ids_ngbs_merger[i] = -1;
-  sp->num_ngb_merger = 0;
-
-  for (int i = 0; i < MAX_NUM_OF_NEIGHBOURS_SINKS; ++i)
-    sp->ids_ngbs_formation[i] = -1;
-  sp->num_ngb_formation = 0;
-#endif
-}
+    struct sink* sp) {}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -117,8 +99,9 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
 /**
  * @brief Calculate if the gas has the potential of becoming
  * a sink.
- *
- * No sink formation should occur, so return 0.
+ * 
+ * Return 0 if no sink formation should occur.
+ * Note: called in runner_do_sink_formation
  *
  * @param sink_props the sink properties to use.
  * @param p the gas particles.
@@ -139,7 +122,8 @@ INLINE static int sink_is_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor) {
 
-  return 0;
+  return 0;  
+
 }
 
 /**
@@ -147,6 +131,7 @@ INLINE static int sink_is_forming(
  * sink or not.
  *
  * No SF should occur, so return 0.
+ * Note: called in runner_do_sink_formation
  *
  * @param p The #part.
  * @param xp The #xpart.
@@ -159,6 +144,7 @@ INLINE static int sink_should_convert_to_sink(
     const struct part* p, const struct xpart* xp,
     const struct sink_props* sink_props, const struct engine* e,
     const double dt_sink) {
+
   return 0;
 }
 
@@ -185,6 +171,36 @@ INLINE static void sink_copy_properties(
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling) {}
+
+
+/**
+ * @brief Update the properties of a sink particles by swallowing
+ * a gas particle.
+ *
+ * @param sp The #sink to update.
+ * @param p The #part that is swallowed.
+ * @param xp The #xpart that is swallowed.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sink_swallow_part(
+    struct sink* sp, const struct part* p, const struct xpart* xp,
+    const struct cosmology* cosmo) {}
+
+
+/**
+ * @brief Update the properties of a sink particles by swallowing
+ * a sink particle.
+ *
+ * @param spi The #sink to update.
+ * @param spj The #sink that is swallowed.
+ * @param cosmo The current cosmological model.
+ * @param time Time since the start of the simulation (non-cosmo mode).
+ * @param with_cosmology Are we running with cosmology?
+ * @param props The properties of the black hole scheme.
+ */
+__attribute__((always_inline)) INLINE static void sink_swallow_sink(
+    struct sink* spi, const struct sink* spj, const struct cosmology* cosmo) {}
+
 
 /**
  * @brief Should the sink spawn a star particle?

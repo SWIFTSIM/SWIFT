@@ -24,4 +24,75 @@
  */
 struct sink_part_data {};
 
+
+/**
+ * @brief Sink-related fields carried by each *sink* particle.
+ */
+struct sink_sink_data {};
+
+
+
+/**
+ * @brief Return the ID of the sink that should swallow this #part.
+ *
+ * @param s_data The #part's #sink_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+sink_get_part_swallow_id(struct sink_part_data* s_data) {
+  
+  /* Return a non-existing ID */
+  return -1;
+}
+
+/**
+ * @brief Update a given #part's sink data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param s_data The #part's #sink_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_mark_part_as_not_swallowed(struct sink_part_data* s_data) {}
+
+/**
+ * @brief Update a given #part's sink data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param p_data The #part's #sink_part_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_mark_part_as_swallowed(struct sink_part_data* s_data) {}
+
+/**
+ * @brief Update a given #sink's sink data field to mark the particle has
+ * not yet been swallowed.
+ *
+ * @param s_data The #sink's #sink_sink_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_mark_sink_as_not_swallowed(struct sink_sink_data* s_data) {}
+
+/**
+ * @brief Update a given #sink's sink data field to mark the particle has
+ * having been been swallowed.
+ *
+ * @param s_data The #sink's #bsink_sink_data structure.
+ */
+__attribute__((always_inline)) INLINE static void
+sink_mark_sink_as_merged(struct sink_sink_data* s_data) {}
+
+
+/**
+ * @brief Return the ID of the sink that should swallow this #sink.
+ *
+ * @param s_data The #sink's #sink_sink_data structure.
+ */
+__attribute__((always_inline)) INLINE static long long
+sink_get_sink_swallow_id(struct sink_sink_data* s_data) {
+  
+  /* Return a non-existing ID */
+  return -1;
+}
+
+
+
 #endif /* SWIFT_SINK_STRUCT_DEFAULT_H */

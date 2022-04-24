@@ -288,6 +288,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->gpart->v_full[1] = sp->v[1];
   sp->gpart->v_full[2] = sp->v[2];
 
+  /*
   const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   message(
       "sink %lld swallowing gas particle %lld "
@@ -296,6 +297,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
       "Delta_v_rad = %f)",
       sp->id, p->id, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
       (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
+  */   
 
   /* Update the sink metal masses */
   struct chemistry_sink_data* sp_chem = &sp->chemistry_data;
@@ -307,9 +309,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   sp->number_of_direct_gas_swallows++;
 
 }
-
-
-
 
 
 /**
@@ -362,13 +361,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->number_of_direct_sink_swallows++;
   
 }
-
-
-
-
-
-
-
 
 
 

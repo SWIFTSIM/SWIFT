@@ -61,23 +61,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
 
 
 /**
- * @brief Compute sink swallow interaction between two particles (non-symmetric).
+ * @brief Compute sink-sink swallow interaction (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param ri Comoving cut off radius of particle i.
- * @param hj Comoving smoothing-length of particle j.
+ * @param rj Comoving cut off radius of particle j.
  * @param si First sink particle.
- * @param pj Second particle.
- * @param a Current scale factor.
- * @param H Current Hubble parameter.
+ * @param sj Second sink particle.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_swallow(const float r2, const float *dx,
-                                           const float hi, const float hj,
+runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
+                                           const float ri, const float rj,
                                            struct sink *restrict si,
-                                           const struct part *restrict pj,
-                                           const float a, const float H) {}
+                                           struct sink *restrict sj) {}
 
 
 

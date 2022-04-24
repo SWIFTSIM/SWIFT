@@ -657,7 +657,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
              */
             lock_lock(&s->lock);
 
-            /* Swallow the gas particle (i.e. update the BH properties) */
+            /* Swallow the gas particle (i.e. update the sink properties) */
             sink_swallow_part(sp, p, xp, e->cosmology);
 
             /* Release the space as we are done updating the spart */
@@ -869,7 +869,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            message("sink %lld swallowing sink particle %lld", sp->id, cell_sp->id);
+            //message("sink %lld swallowing sink particle %lld", sp->id, cell_sp->id);
 
             /* If the sink particle is local, remove it */
             if (c->nodeID == e->nodeID) {
