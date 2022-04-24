@@ -9,11 +9,11 @@ fi
 if [ ! -e vacuum.hdf5 ]
 then
     echo "Generating initial conditions for the 2D vacuum expansion example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
 ../../swift --hydro --threads=4 vacuum.yml 2>&1 | tee output.log
 
 # Plot the result
-python plotSolution.py 1
+python3 plotSolution.py 1

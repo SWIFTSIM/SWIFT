@@ -4,7 +4,7 @@
 if [ ! -e evrard.hdf5 ]
 then
     echo "Generating initial conditions for the Evrard collapse example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
@@ -18,4 +18,4 @@ then
 fi
 
 # Plot the solution
-python plotSolution.py 8
+python3 plotSolution.py 8
