@@ -104,12 +104,12 @@ enum task_types {
   task_type_fof_self,
   task_type_fof_pair,
   task_type_neutrino_weight,
-  task_type_sink_in,    /* Implicit */
-  task_type_sink_ghost1,/* Implicit */
-  task_type_sink_ghost2,/* Implicit */
-  task_type_sink_out,   /* Implicit */
-  task_type_rt_in,      /* Implicit */
-  task_type_rt_out,     /* Implicit */
+  task_type_sink_in,     /* Implicit */
+  task_type_sink_ghost1, /* Implicit */
+  task_type_sink_ghost2, /* Implicit */
+  task_type_sink_out,    /* Implicit */
+  task_type_rt_in,       /* Implicit */
+  task_type_rt_out,      /* Implicit */
   task_type_sink_formation,
   task_type_rt_ghost1,
   task_type_rt_ghost2,

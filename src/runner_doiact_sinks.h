@@ -22,39 +22,20 @@
    runner_dopair_FUNCTION, runner_doself_FUNCTION and runner_dosub_FUNCTION
    calling the pairwise interaction function runner_iact_FUNCTION. */
 
-
-
 void runner_doself_branch_sinks_swallow(struct runner *r, struct cell *c);
-void runner_dopair_branch_sinks_swallow(struct runner *r, struct cell *ci, struct cell *cj);
-void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int gettimer);
-void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct cell *cj, int gettimer);
+void runner_dopair_branch_sinks_swallow(struct runner *r, struct cell *ci,
+                                        struct cell *cj);
+void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci,
+                                     int gettimer);
+void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci,
+                                     struct cell *cj, int gettimer);
 
+void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
+                                      int timer);
+void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
+                                      struct cell *cj, int timer);
 
-void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c, int timer);
-void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer);
-
-void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c, int timer);
-void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci, struct cell *cj, int timer);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
+                                       int timer);
+void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
+                                       struct cell *cj, int timer);

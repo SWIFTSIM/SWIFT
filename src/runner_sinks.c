@@ -25,13 +25,11 @@
 
 /* Local headers. */
 #include "active.h"
-#include "sink.h"
 #include "cell.h"
 #include "engine.h"
-#include "timers.h"
+#include "sink.h"
 #include "space_getsid.h"
-
-
+#include "timers.h"
 
 /**
  * @brief Calculate gas and sink interaction around #sinks
@@ -49,10 +47,10 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  //const integertime_t ti_current = e->ti_current;
-  //const struct cosmology *cosmo = e->cosmology;
-  //const int with_cosmology = e->policy & engine_policy_cosmology;
-  //const int si_is_local = 1; /* SELF tasks are always local */
+  // const integertime_t ti_current = e->ti_current;
+  // const struct cosmology *cosmo = e->cosmology;
+  // const int with_cosmology = e->policy & engine_policy_cosmology;
+  // const int si_is_local = 1; /* SELF tasks are always local */
 
   /* Anything to do here? */
   if (c->sinks.count == 0) return;
@@ -62,7 +60,7 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   struct sink *restrict sinks = c->sinks.parts;
   struct part *restrict parts = c->hydro.parts;
-  //struct xpart *restrict xparts = c->hydro.xparts;   used by iact
+  // struct xpart *restrict xparts = c->hydro.xparts;   used by iact
 
   /* Do we actually have any gas neighbours? */
   if (c->hydro.count != 0) {
@@ -81,7 +79,6 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
       const float six[3] = {(float)(si->x[0] - c->loc[0]),
                             (float)(si->x[1] - c->loc[1]),
                             (float)(si->x[2] - c->loc[2])};
-
 
       /* Loop over the parts (gas) in cj. */
       for (int pjd = 0; pjd < count; pjd++) {
@@ -111,8 +108,10 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
         if (r2 < ri2) {
           runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj);
 
-          //if (si_is_local) {      /* SELF tasks are always local */
-          //runner_iact_nonsym_bh_gas_repos(r2, dx, hi, pj->h, bi, pj, xpj, with_cosmology, cosmo,e->gravity_properties, e->black_holes_properties, e->entropy_floor, ti_current, e->time);
+          // if (si_is_local) {      /* SELF tasks are always local */
+          // runner_iact_nonsym_bh_gas_repos(r2, dx, hi, pj->h, bi, pj, xpj,
+          // with_cosmology, cosmo,e->gravity_properties,
+          // e->black_holes_properties, e->entropy_floor, ti_current, e->time);
           //}
         }
       } /* loop over the parts in ci. */
@@ -135,9 +134,8 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
     const float ri2 = ri * ri;
     const float six[3] = {(float)(si->x[0] - c->loc[0]),
                           (float)(si->x[1] - c->loc[1]),
-                            (float)(si->x[2] - c->loc[2])};                          
-                          
-                          
+                          (float)(si->x[2] - c->loc[2])};
+
     /* Loop over the sinks in cj. */
     for (int sjd = 0; sjd < scount; sjd++) {
 
@@ -170,13 +168,13 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
       if (r2 < ri2 || r2 < rj2) {
         runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj);
 
-        //if (si_is_local) {
-        //  runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj, cosmo, e->gravity_properties, e->black_holes_properties, ti_current);
+        // if (si_is_local) {
+        //  runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj, cosmo,
+        //  e->gravity_properties, e->black_holes_properties, ti_current);
         //}
       }
     } /* loop over the sinks in ci. */
   }   /* loop over the sinks in ci. */
-
 
   if (timer) TIMER_TOC(timer_doself_sink_swallow);
 }
@@ -188,10 +186,9 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r, struct cell *restrict ci,
-                              struct cell *restrict cj) {
-
-
+void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
+                                               struct cell *restrict ci,
+                                               struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -202,10 +199,10 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r, struct cell *re
 #endif
 
   const struct engine *e = r->e;
-  //const integertime_t ti_current = e->ti_current;
-  //const struct cosmology *cosmo = e->cosmology;
-  //const int with_cosmology = e->policy & engine_policy_cosmology;
-  //const int si_is_local = ci->nodeID == e->nodeID;
+  // const integertime_t ti_current = e->ti_current;
+  // const struct cosmology *cosmo = e->cosmology;
+  // const int with_cosmology = e->policy & engine_policy_cosmology;
+  // const int si_is_local = ci->nodeID == e->nodeID;
 
   /* Anything to do here? */
   if (ci->sinks.count == 0) return;
@@ -215,7 +212,7 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r, struct cell *re
   const int count_j = cj->hydro.count;
   struct sink *restrict sinks_i = ci->sinks.parts;
   struct part *restrict parts_j = cj->hydro.parts;
-  //struct xpart *restrict xparts_j = cj->hydro.xparts;
+  // struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -271,8 +268,11 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r, struct cell *re
 
         if (r2 < ri2) {
           runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj);
-          //if (si_is_local) {
-          //    runner_iact_nonsym_bh_gas_repos(r2, dx, hi, hj, bi, pj, xpj, with_cosmology, cosmo, e->gravity_properties, e->black_holes_properties, e->entropy_floor, ti_current, e->time);
+          // if (si_is_local) {
+          //    runner_iact_nonsym_bh_gas_repos(r2, dx, hi, hj, bi, pj, xpj,
+          //    with_cosmology, cosmo, e->gravity_properties,
+          //    e->black_holes_properties, e->entropy_floor, ti_current,
+          //    e->time);
           //}
         }
       } /* loop over the parts in cj. */
@@ -329,38 +329,34 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r, struct cell *re
       if (r2 < ri2 || r2 < rj2) {
         runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj);
 
-        //if (si_is_local) {
-        //  runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj, cosmo,e->gravity_properties,e->black_holes_properties, ti_current);
+        // if (si_is_local) {
+        //  runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj,
+        //  cosmo,e->gravity_properties,e->black_holes_properties, ti_current);
         //}
       }
     } /* loop over the sinks in cj. */
   }   /* loop over the sinks in ci. */
-
 }
-
 
 /**
  * @brief Calculate swallow for ci #sinks part around the cj #gas and sinks and
- *                              cj #sinks part around the ci #gas and sinks 
- * 
+ *                              cj #sinks part around the ci #gas and sinks
+ *
  * @param r runner task
  * @param ci The first #cell
  * @param cj The second #cell
  */
-void runner_dopair_sinks_naive_swallow(struct runner *r, struct cell *restrict ci,
-                      struct cell *restrict cj, int timer) {
-
+void runner_dopair_sinks_naive_swallow(struct runner *r,
+                                       struct cell *restrict ci,
+                                       struct cell *restrict cj, int timer) {
 
   TIMER_TIC;
 
   runner_do_nonsym_pair_sinks_naive_swallow(r, ci, cj);
   runner_do_nonsym_pair_sinks_naive_swallow(r, cj, ci);
-  
+
   if (timer) TIMER_TOC(timer_dopair_sink_swallow);
 }
-
-
-
 
 /**
  * @brief Wrapper to runner_doself_sinks_swallow
@@ -381,8 +377,8 @@ void runner_doself_branch_sinks_swallow(struct runner *r, struct cell *c) {
 
   /* Did we mess up the recursion? */
   if (c->sinks.r_cut_max_old > c->dmin)
-    error("Cell smaller than the cut off radius");    
-    
+    error("Cell smaller than the cut off radius");
+
   runner_doself_sinks_swallow(r, c, 1);
 }
 
@@ -394,7 +390,8 @@ void runner_doself_branch_sinks_swallow(struct runner *r, struct cell *c) {
  * @param cj #cell cj
  *
  */
-void runner_dopair_branch_sinks_swallow(struct runner *r, struct cell *ci, struct cell *cj) {
+void runner_dopair_branch_sinks_swallow(struct runner *r, struct cell *ci,
+                                        struct cell *cj) {
 
   const struct engine *restrict e = r->e;
 
@@ -406,14 +403,12 @@ void runner_dopair_branch_sinks_swallow(struct runner *r, struct cell *ci, struc
 
   /* Anything to do here? */
   if (!do_ci && !do_cj) return;
-  
+
   /* Check that cells are drifted. */
-  if (do_ci &&
-      (!cell_are_sink_drifted(ci, e) || !cell_are_part_drifted(cj, e)))
+  if (do_ci && (!cell_are_sink_drifted(ci, e) || !cell_are_part_drifted(cj, e)))
     error("Interacting undrifted cells.");
 
-  if (do_cj &&
-      (!cell_are_part_drifted(ci, e) || !cell_are_sink_drifted(cj, e)))
+  if (do_cj && (!cell_are_part_drifted(ci, e) || !cell_are_sink_drifted(cj, e)))
     error("Interacting undrifted cells.");
 
   /* No sorted interactions here -> use the naive ones */
@@ -431,8 +426,8 @@ void runner_dopair_branch_sinks_swallow(struct runner *r, struct cell *ci, struc
  * @todo Hard-code the sid on the recursive calls to avoid the
  * redundant computations to find the sid on-the-fly.
  */
-void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct cell *cj,
-                    int timer) {
+void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci,
+                                     struct cell *cj, int timer) {
 
   TIMER_TIC;
 
@@ -445,7 +440,6 @@ void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct c
 
   const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
   const int should_do_cj = cj->sinks.count != 0 && cell_is_active_sinks(cj, e);
-
 
   if (!should_do_ci && !should_do_cj) return;
 
@@ -461,7 +455,8 @@ void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct c
       const int pid = csp->pairs[k].pid;
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-        runner_dosub_pair_sinks_swallow(r, ci->progeny[pid], cj->progeny[pjd], 0);
+        runner_dosub_pair_sinks_swallow(r, ci->progeny[pid], cj->progeny[pjd],
+                                        0);
     }
   }
 
@@ -495,8 +490,6 @@ void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct c
   }
 
   if (timer) TIMER_TOC(timer_dosub_pair_sink_swallow);
-
-
 }
 
 /**
@@ -506,7 +499,8 @@ void runner_dosub_pair_sinks_swallow(struct runner *r, struct cell *ci, struct c
  * @param ci The first #cell.
  * @param gettimer Do we have a timer ?
  */
-void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int timer) {
+void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci,
+                                     int timer) {
 
   TIMER_TIC;
 
@@ -517,12 +511,11 @@ void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int time
     error("This function should not be called on foreign cells");
 #endif
 
-    /* Should we even bother?
-     * In the swallow case we care about sink-sink and sink-gas
-     * interactions. */
+  /* Should we even bother?
+   * In the swallow case we care about sink-sink and sink-gas
+   * interactions. */
 
-  const int should_do_ci =
-      ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
+  const int should_do_ci = ci->sinks.count != 0 && cell_is_active_sinks(ci, e);
 
   if (!should_do_ci) return;
 
@@ -535,7 +528,8 @@ void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int time
         runner_dosub_self_sinks_swallow(r, ci->progeny[k], 0);
         for (int j = k + 1; j < 8; j++)
           if (ci->progeny[j] != NULL)
-            runner_dosub_pair_sinks_swallow(r, ci->progeny[k], ci->progeny[j], 0);
+            runner_dosub_pair_sinks_swallow(r, ci->progeny[k], ci->progeny[j],
+                                            0);
       }
   }
 
@@ -550,17 +544,9 @@ void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int time
 
     runner_doself_branch_sinks_swallow(r, ci);
   }
-  
+
   if (timer) TIMER_TOC(timer_dosub_self_sink_swallow);
 }
-
-
-
-
-
-
-
-
 
 /**
  * @brief Process all the gas particles in a cell that have been flagged for
@@ -572,15 +558,14 @@ void runner_dosub_self_sinks_swallow(struct runner *r, struct cell *ci, int time
  * the space-wide list of sink for the particle with the corresponding
  * ID. If found, the sink swallows the gas particle and the gas particle is
  * removed. If the cell is local, we may be looking for a foreign sink, in which
- * case, we do not update the sink (that will be done on its node) but just remove
- * the gas particle.
+ * case, we do not update the sink (that will be done on its node) but just
+ * remove the gas particle.
  *
  * @param r The thread #runner.
  * @param c The #cell.
  * @param timer Are we timing this?
  */
 void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
-
 
   struct engine *e = r->e;
   struct space *s = e->s;
@@ -591,9 +576,9 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   not implemented yet !
 #endif
 
-  struct part *parts = c->hydro.parts;
+      struct part *
+      parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
-
 
   /* Early abort?
    * (We only want cells for which we drifted the gas as these are
@@ -626,10 +611,8 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
       /* Ignore inhibited particles (they have already been removed!) */
       if (part_is_inhibited(p, e)) continue;
 
-
       /* Get the ID of the sink that will swallow this part */
-      const long long swallow_id =
-          sink_get_part_swallow_id(&p->sink_data);
+      const long long swallow_id = sink_get_part_swallow_id(&p->sink_data);
 
       /* Has this particle been flagged for swallowing? */
       if (swallow_id >= 0) {
@@ -695,20 +678,18 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-  not implemented yet !
+        not implemented yet !
 #endif
 
-        /* If we have a local particle, we must have found the sink in one
-         * of our list of sinks. */
-        if (c->nodeID == e->nodeID && !found) {
+            /* If we have a local particle, we must have found the sink in one
+             * of our list of sinks. */
+            if (c->nodeID == e->nodeID && !found) {
           error("Gas particle %lld could not find sink %lld to be swallowed",
                 p->id, swallow_id);
         }
       } /* Part was flagged for swallowing */
     }   /* Loop over the parts */
   }     /* Cell is not split */
-
-
 }
 
 /**
@@ -718,7 +699,8 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
+                                      int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -738,7 +720,7 @@ void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c, int time
  * @param timer Are we timing this?
  */
 void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
-                                struct cell *cj, int timer) {
+                                      struct cell *cj, int timer) {
 
   const struct engine *e = r->e;
 
@@ -763,8 +745,8 @@ void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
  * the space-wide list of sinks for the particle with the corresponding
  * ID. If found, the sink swallows the sink particle and the sink particle is
  * removed. If the cell is local, we may be looking for a foreign sink, in which
- * case, we do not update the sink (that will be done on its node) but just remove
- * the sink particle.
+ * case, we do not update the sink (that will be done on its node) but just
+ * remove the sink particle.
  *
  * @param r The thread #runner.
  * @param c The #cell.
@@ -772,12 +754,11 @@ void runner_do_sinks_gas_swallow_pair(struct runner *r, struct cell *ci,
  */
 void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
-
   struct engine *e = r->e;
   struct space *s = e->s;
-  //const int with_cosmology = (e->policy & engine_policy_cosmology);
-  //const struct black_holes_props *props = e->black_holes_properties;
-  //const int use_nibbling = props->use_nibbling;
+  // const int with_cosmology = (e->policy & engine_policy_cosmology);
+  // const struct black_holes_props *props = e->black_holes_properties;
+  // const int use_nibbling = props->use_nibbling;
 
   struct sink *sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
@@ -785,14 +766,14 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
   not implemented yet !
 #endif
 
-  struct sink *cell_sinks = c->sinks.parts;
+      struct sink *
+      cell_sinks = c->sinks.parts;
 
   /* Early abort?
    * (We only want cells for which we drifted the sink as these are
    * the only ones that could have sink particles that have been flagged
    * for swallowing) */
-  if (c->sinks.count == 0 ||
-      c->sinks.ti_old_part != e->ti_current) {
+  if (c->sinks.count == 0 || c->sinks.ti_old_part != e->ti_current) {
     return;
   }
 
@@ -818,7 +799,6 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
       /* Ignore inhibited particles (they have already been removed!) */
       if (sink_is_inhibited(cell_sp, e)) continue;
-
 
       /* Get the ID of the sink that will swallow this sink */
       const long long swallow_id =
@@ -863,18 +843,19 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
             /* Swallow the sink particle (i.e. update the swallowing sink
              * properties with the properties of cell_sp) */
             sink_swallow_sink(sp, cell_sp, e->cosmology);
-            
 
             /* Release the space as we are done updating the spart */
             if (lock_unlock(&s->lock) != 0)
               error("Failed to unlock the space.");
 
-            //message("sink %lld swallowing sink particle %lld", sp->id, cell_sp->id);
+            // message("sink %lld swallowing sink particle %lld", sp->id,
+            // cell_sp->id);
 
             /* If the sink particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 
-              message("sink %lld removing sink particle %lld", sp->id, cell_sp->id);
+              message("sink %lld removing sink particle %lld", sp->id,
+                      cell_sp->id);
 
               /* Finally, remove the sink particle from the system
                * Recall that the gpart associated with it is also removed
@@ -892,12 +873,12 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-  not implemented yet !
+        not implemented yet !
 #endif
 
-        /* If we have a local particle, we must have found the sink in one
-         * of our list of sinks. */
-        if (c->nodeID == e->nodeID && !found) {
+            /* If we have a local particle, we must have found the sink in one
+             * of our list of sinks. */
+            if (c->nodeID == e->nodeID && !found) {
           error("sink particle %lld could not find sink %lld to be swallowed",
                 cell_sp->id, swallow_id);
         }
@@ -905,8 +886,6 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
       } /* Part was flagged for swallowing */
     }   /* Loop over the parts */
   }     /* Cell is not split */
-
-
 }
 
 /**
@@ -916,7 +895,8 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this?
  */
-void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c, int timer) {
+void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
+                                       int timer) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
@@ -936,7 +916,7 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c, int tim
  * @param timer Are we timing this?
  */
 void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
-                               struct cell *cj, int timer) {
+                                       struct cell *cj, int timer) {
 
   const struct engine *e = r->e;
 

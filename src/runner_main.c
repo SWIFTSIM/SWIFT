@@ -33,10 +33,10 @@
 /* Local headers. */
 #include "engine.h"
 #include "feedback.h"
+#include "runner_doiact_sinks.h"
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
-#include "runner_doiact_sinks.h"
 
 /* Import the gravity loop functions. */
 #include "runner_doiact_grav.h"
@@ -137,8 +137,6 @@
 #include "runner_doiact_hydro.h"
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
-
-
 
 /**
  * @brief The #runner main thread routine.

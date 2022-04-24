@@ -31,11 +31,11 @@
 #include "rt.h"
 #include "runner.h"
 #include "runner_doiact_hydro_vec.h"
+#include "sink.h"
 #include "space_getsid.h"
 #include "star_formation_iact.h"
 #include "timers.h"
 #include "timestep_limiter_iact.h"
-#include "sink.h"
 
 /* Import the density loop functions. */
 #define FUNCTION density

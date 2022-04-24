@@ -19,8 +19,6 @@
 #ifndef SWIFT_GEAR_SINKS_IACT_H
 #define SWIFT_GEAR_SINKS_IACT_H
 
-
-
 /**
  * @brief do sink computation after the runner_iact_density (symmetric
  * version)
@@ -62,19 +60,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
    * the smallest potential. */
 
   const float r = sqrtf(r2);
-  
+
   if (r < sink_props->cut_off_radius) {
-    
+
     float potential_i = pi->gpart->potential;
     float potential_j = pj->gpart->potential;
-        
+
     /* if the potential is larger
      * prevent the particle to form a sink */
-    if(potential_i > potential_j)
-      pi->sink_data.can_form_sink = 0;
-  } 
+    if (potential_i > potential_j) pi->sink_data.can_form_sink = 0;
+  }
 }
-
 
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).
@@ -88,34 +84,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
-                                           const float ri, const float rj,
-                                           struct sink *restrict si,
-                                           struct sink *restrict sj) {
-
+                                      const float ri, const float rj,
+                                      struct sink *restrict si,
+                                      struct sink *restrict sj) {
 
   /* See runner_iact_nonsym_bh_bh_swallow.
    * The sink with the smaller mass will be merged onto the one with the
    * larger mass.
    * To avoid rounding issues, we additionally check for IDs if the sink
    * have the exact same mass. */
-   
-   /* We should check the relative energy */
-   
-  if ((sj->mass < si->mass) ||
-      (sj->mass == si->mass && sj->id < si->id)) {
 
+  /* We should check the relative energy */
 
-      /* This particle is swallowed by the sink with the largest mass of all the
-       * candidates wanting to swallow it (we use IDs to break ties)*/
-      if ((sj->merger_data.swallow_mass < si->mass) ||
-          (sj->merger_data.swallow_mass == si->mass &&
-           sj->merger_data.swallow_id < si->id)) {
+  if ((sj->mass < si->mass) || (sj->mass == si->mass && sj->id < si->id)) {
 
-        //message("sink %lld wants to swallow sink particle %lld", si->id, sj->id);
+    /* This particle is swallowed by the sink with the largest mass of all the
+     * candidates wanting to swallow it (we use IDs to break ties)*/
+    if ((sj->merger_data.swallow_mass < si->mass) ||
+        (sj->merger_data.swallow_mass == si->mass &&
+         sj->merger_data.swallow_id < si->id)) {
 
-        sj->merger_data.swallow_id = si->id;
-        sj->merger_data.swallow_mass = si->mass;
-      }
+      // message("sink %lld wants to swallow sink particle %lld", si->id,
+      // sj->id);
+
+      sj->merger_data.swallow_id = si->id;
+      sj->merger_data.swallow_mass = si->mass;
+    }
   }
 
 #ifdef DEBUG_INTERACTIONS_SINKS
@@ -127,7 +121,6 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
   ++si->num_ngb_formation;
 #endif
 }
-
 
 /**
  * @brief Compute sink-gas swallow interaction (non-symmetric).
@@ -141,23 +134,21 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_sinks_gas_swallow(const float r2, const float *dx,
-                                           const float ri, const float hj,
-                                           struct sink *restrict si,
-                                           struct part *restrict pj) {
+                                     const float ri, const float hj,
+                                     struct sink *restrict si,
+                                     struct part *restrict pj) {
 
+  /* See see runner_iact_nonsym_bh_gas_swallow.
+   * We first check if a gas particle has not been already marked to
+   * be swallowed by another sink particle. */
 
-    /* See see runner_iact_nonsym_bh_gas_swallow. 
-     * We first check if a gas particle has not been already marked to
-     * be swallowed by another sink particle. */
-    
-    /* We should check the relative energy */ 
-    
-    //message("sink %lld wants to swallow gas particle %lld", si->id, pj->id);
+  /* We should check the relative energy */
 
-    if (pj->sink_data.swallow_id < si->id) {
-      pj->sink_data.swallow_id = si->id;
-    }
+  // message("sink %lld wants to swallow gas particle %lld", si->id, pj->id);
 
+  if (pj->sink_data.swallow_id < si->id) {
+    pj->sink_data.swallow_id = si->id;
+  }
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /* Update ngb counters */
@@ -168,6 +159,5 @@ runner_iact_nonsym_sinks_gas_swallow(const float r2, const float *dx,
   ++si->num_ngb_formation;
 #endif
 }
-
 
 #endif

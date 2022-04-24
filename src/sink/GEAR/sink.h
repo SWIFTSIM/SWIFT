@@ -22,11 +22,11 @@
 #include <float.h>
 
 /* Local includes */
+#include "cooling.h"
 #include "minmax.h"
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
-#include "cooling.h"
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
 
   sp->r_cut = sink_props->cut_off_radius;
   sp->time_bin = 0;
-  
+
   sp->number_of_gas_swallows = 0;
   sp->number_of_direct_gas_swallows = 0;
   sp->number_of_sink_swallows = 0;
@@ -64,7 +64,6 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
 }
-
 
 /**
  * @brief Initialisation of particle data before the hydro density loop.
@@ -79,7 +78,6 @@ __attribute__((always_inline)) INLINE static void sink_init_part(
 
   cpd->can_form_sink = 1;
 }
-
 
 /**
  * @brief Initialisation of sink particle data before sink loops.
@@ -134,7 +132,7 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
 /**
  * @brief Calculate if the gas has the potential of becoming
  * a sink.
- * 
+ *
  * Return 0 if no sink formation should occur.
  * Note: called in runner_do_sink_formation
  *
@@ -158,23 +156,21 @@ INLINE static int sink_is_forming(
     const struct entropy_floor_properties* restrict entropy_floor) {
 
   /* the particle is not elligible */
-  if (!p->sink_data.can_form_sink)
-   return 0;
-  
+  if (!p->sink_data.can_form_sink) return 0;
+
   const float temperature_max = sink_props->maximal_temperature;
-  const float temperature = cooling_get_temperature(phys_const, hydro_props, us,cosmo, cooling, p, xp);
-    
+  const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
+                                                    cosmo, cooling, p, xp);
+
   const float density_threashold = sink_props->density_threashold;
   const float density = hydro_get_physical_density(p, cosmo);
-    
-  if (density > density_threashold && temperature < temperature_max)
-    {
-      message("forming a sink particle ! %lld",p->id);
-      return 1;
-    }
 
-  return 0;  
+  if (density > density_threashold && temperature < temperature_max) {
+    message("forming a sink particle ! %lld", p->id);
+    return 1;
+  }
 
+  return 0;
 }
 
 /**
@@ -196,9 +192,9 @@ INLINE static int sink_should_convert_to_sink(
     const struct sink_props* sink_props, const struct engine* e,
     const double dt_sink) {
 
-  /* We do not use a stockastic approach. 
+  /* We do not use a stockastic approach.
    * Once elligible (sink_is_forming), the gas particle form a sink */
-  
+
   return 1;
 }
 
@@ -225,17 +221,13 @@ INLINE static void sink_copy_properties(
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
     const struct cooling_function_data* restrict cooling) {
-      
 
-    /* First initialisation */
-    sink_init_sink(sink);
-  
-    /* Flag it as not swallowed */
-    sink_mark_sink_as_not_swallowed(&sink->merger_data);
+  /* First initialisation */
+  sink_init_sink(sink);
+
+  /* Flag it as not swallowed */
+  sink_mark_sink_as_not_swallowed(&sink->merger_data);
 }
-
-
-
 
 /**
  * @brief Update the properties of a sink particles by swallowing
@@ -297,7 +289,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
       "Delta_v_rad = %f)",
       sp->id, p->id, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
       (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
-  */   
+  */
 
   /* Update the sink metal masses */
   struct chemistry_sink_data* sp_chem = &sp->chemistry_data;
@@ -307,9 +299,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   /* This sink swallowed a gas particle */
   sp->number_of_gas_swallows++;
   sp->number_of_direct_gas_swallows++;
-
 }
-
 
 /**
  * @brief Update the properties of a sink particles by swallowing
@@ -326,7 +316,6 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   const float spi_dyn_mass = spi->mass;
   const float spj_dyn_mass = spj->mass;
 
-
   /* Increase the masses of the sink. */
   spi->mass += spj->mass;
   spi->gpart->mass += spj->mass;
@@ -337,16 +326,17 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->swallowed_angular_momentum[2] += spj->swallowed_angular_momentum[2];
 
   /* Update the sink momentum */
-  const float sink_mom[3] = {spi_dyn_mass * spi->v[0] + spj_dyn_mass * spj->v[0],
-                             spi_dyn_mass * spi->v[1] + spj_dyn_mass * spj->v[1],
-                             spi_dyn_mass * spi->v[2] + spj_dyn_mass * spj->v[2]};
+  const float sink_mom[3] = {
+      spi_dyn_mass * spi->v[0] + spj_dyn_mass * spj->v[0],
+      spi_dyn_mass * spi->v[1] + spj_dyn_mass * spj->v[1],
+      spi_dyn_mass * spi->v[2] + spj_dyn_mass * spj->v[2]};
 
   spi->v[0] = sink_mom[0] / spi->mass;
   spi->v[1] = sink_mom[1] / spi->mass;
   spi->v[2] = sink_mom[2] / spi->mass;
-  spi->gpart->v_full[0]   = spi->v[0];
-  spi->gpart->v_full[1]   = spi->v[1];
-  spi->gpart->v_full[2]   = spi->v[2];
+  spi->gpart->v_full[0] = spi->v[0];
+  spi->gpart->v_full[1] = spi->v[1];
+  spi->gpart->v_full[2] = spi->v[2];
 
   /* Update the sink metal masses */
   struct chemistry_sink_data* spi_chem = &spi->chemistry_data;
@@ -356,11 +346,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* This sink swallowed a sink particle */
   spi->number_of_sink_swallows++;
   spi->number_of_direct_sink_swallows++;
-  
 }
-
-
-
 
 /**
  * @brief Should the sink spawn a star particle?
@@ -381,23 +367,19 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const int with_cosmology,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
-  
+
   const float random_number = random_unit_interval(
       sink->id, e->ti_current, random_number_star_formation);
-  //return random_number < 1;  //1e-3;
-  
-  if (sink->n_stars>0)
-    {
-      if (random_number<1e-2)
-        {
-          //sink->n_stars--;
-          //message("%lld spawn a star : n_star is now %d",sink->id,sink->n_stars);
-          return 0;
-        }
-      else
-        return 0;    
-    }  
-  else
+  // return random_number < 1;  //1e-3;
+
+  if (sink->n_stars > 0) {
+    if (random_number < 1e-2) {
+      // sink->n_stars--;
+      // message("%lld spawn a star : n_star is now %d",sink->id,sink->n_stars);
+      return 0;
+    } else
+      return 0;
+  } else
     return 0;
 }
 

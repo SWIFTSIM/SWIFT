@@ -22,7 +22,6 @@
 /* Config parameters. */
 #include "../config.h"
 
-
 /* Select the correct sink model */
 #if defined(SINK_NONE)
 #include "./sink/Default/sink.h"

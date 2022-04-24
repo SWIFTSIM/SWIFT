@@ -430,7 +430,6 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
   }
 }
 
-
 /**
  * @brief Add the chemistry data of a sink particle to a sink.
  *
@@ -443,10 +442,9 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
 __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
     struct chemistry_sink_data* si_data,
     const struct chemistry_sink_data* sj_data) {
-  
+
   // To be implemented.
 }
-
 
 /**
  * @brief Add the chemistry data of a gas particle to a sink.
@@ -460,11 +458,9 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
 __attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
     struct chemistry_sink_data* sp_data,
     const struct chemistry_part_data* p_data, const double gas_mass) {
-  
+
   // To be implemented.
 }
-
-
 
 /**
  * @brief Transfer chemistry data of a gas particle to a black hole.
