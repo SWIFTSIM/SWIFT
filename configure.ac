@@ -2395,7 +2395,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, constant,mestel, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -2433,6 +2433,9 @@ case "$with_potential" in
    ;;
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
+   ;;
+   mestel)
+      AC_DEFINE([EXTERNAL_POTENTIAL_MESTEL], [1], [Mestel external potential])
    ;;
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])
