@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -265,6 +265,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate(s, t);
           cell_activate_drift_part(ci, s);
           cell_activate_drift_bpart(ci, s);
+          if (with_timestep_sync) cell_activate_sync_part(ci, s);
         }
       }
 
@@ -805,8 +806,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure we are not rebuilding on a zoom and natural cell pair */
-        if (ci->tl_cell_type <= 2 || cj->tl_cell_type <= 2)
-          error("We just decided to rebuild based on a hydro zoom and natural cell pair. "
+          if (ci->tl_cell_type <= 2 || cj->tl_cell_type <= 2)
+            error(
+                "We just decided to rebuild based on a hydro zoom and natural "
+                "cell pair. "
                 "This should never happen!");
 #endif
         }

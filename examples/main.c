@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -1071,7 +1071,7 @@ int main(int argc, char *argv[]) {
       pressure_floor_init(&pressure_floor_props, &prog_const, &us,
                           &hydro_properties, params);
     else
-      bzero(&pressure_floor_props, sizeof(struct pressure_floor_properties));
+      bzero(&pressure_floor_props, sizeof(struct pressure_floor_props));
 
     /* Initialise the stars properties */
     if (with_stars)
@@ -1312,22 +1312,23 @@ int main(int argc, char *argv[]) {
     neutrino_props_init(&neutrino_properties, &prog_const, &us, params, &cosmo,
                         with_neutrinos);
 
-	  /* Initialise the gravity properties */
-	  bzero(&gravity_properties, sizeof(struct gravity_props));
-	  if (with_self_gravity)
-		  gravity_props_init(
-				  &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
-				  with_external_gravity, with_baryon_particles, with_DM_particles,
-				  with_neutrinos, with_DM_background_particles, periodic, dim);
+    /* Initialise the gravity properties */
+    bzero(&gravity_properties, sizeof(struct gravity_props));
+    if (with_self_gravity)
+      gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
+                         with_cosmology, with_external_gravity,
+                         with_baryon_particles, with_DM_particles,
+                         with_neutrinos, with_DM_background_particles, periodic,
+                         s.dim, s.cdim);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
     space_init(&s, params, &cosmo, dim, &hydro_properties, &gravity_properties,
-    		       parts, gparts, sinks, sparts, bparts, Ngas, Ngpart, Nsink, Nspart,
-    		       Nbpart, Nnupart, periodic, replicate, remap_ids, generate_gas_in_ics,
-    		       with_hydro, with_self_gravity, with_star_formation, with_sink,
-               with_DM_background_particles, with_neutrinos, talking, dry_run,
-               nr_nodes);
+               parts, gparts, sinks, sparts, bparts, Ngas, Ngpart, Nsink,
+               Nspart, Nbpart, Nnupart, periodic, replicate, remap_ids,
+               generate_gas_in_ics, with_hydro, with_self_gravity,
+               with_star_formation, with_sink, with_DM_background_particles,
+               with_neutrinos, talking, dry_run, nr_nodes);
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
@@ -1478,9 +1479,9 @@ int main(int argc, char *argv[]) {
                 &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
                 &entropy_floor, &gravity_properties, &stars_properties,
                 &black_holes_properties, &sink_properties, &neutrino_properties,
-                &neutrino_response, &feedback_properties, &rt_properties, &mesh,
-                &potential, &cooling_func, &starform, &chemistry,
-                &extra_io_props, &fof_properties, &los_properties,
+                &neutrino_response, &feedback_properties, &pressure_floor_props,
+                &rt_properties, &mesh, &potential, &cooling_func, &starform,
+                &chemistry, &extra_io_props, &fof_properties, &los_properties,
                 &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_file);

@@ -329,10 +329,18 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
 
   /* If we read in radiation energy, we read in
    * total energy and store it as energy density.
+   * Same for fluxes.
    * Correct that now. */
   for (int g = 0; g < RT_NGROUPS; g++) {
     rtd->radiation[g].energy_density *= Vinv;
+    rtd->radiation[g].flux[0] *= Vinv;
+    rtd->radiation[g].flux[1] *= Vinv;
+    rtd->radiation[g].flux[2] *= Vinv;
 
+    /* Additional check with possible exit for ICs */
+    rt_check_unphysical_state_ICs(p, g, &rtd->radiation[g].energy_density,
+                                  rtd->radiation[g].flux,
+                                  phys_const->const_speed_light_c);
     /* Check for too high fluxes */
     rt_check_unphysical_state(&rtd->radiation[g].energy_density,
                               rtd->radiation[g].flux, /*e_old =*/0.f,
@@ -349,13 +357,20 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
  * @brief Computes the next radiative transfer time step size
  * of a given particle (during timestep tasks)
  *
- * @param p particle to work on
- * @param rt_props the RT properties struct
- * @param cosmo the cosmology
+ * @param p Particle to work on.
+ * @param rt_props RT properties struct
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static float rt_compute_timestep(
-    const struct part* restrict p, const struct rt_props* restrict rt_props,
-    const struct cosmology* restrict cosmo) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us) {
 
   /* just mimic the gizmo particle "size" for now */
   const float psize = cosmo->a * cosmo->a *
@@ -365,8 +380,10 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
              rt_props->CFL_condition;
 
   /* TODO: Add cooling time? */
+  float dt_cool = rt_tchem_get_tchem_time(p, xp, rt_props, cosmo, hydro_props,
+                                          phys_const, us);
 
-  return dt;
+  return min(dt, fabsf(dt_cool));
 }
 
 /**

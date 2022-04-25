@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -87,6 +87,7 @@
 #include "output_options.h"
 #include "partition.h"
 #include "potential.h"
+#include "pressure_floor.h"
 #include "profiler.h"
 #include "proxy.h"
 #include "restart.h"
@@ -1054,9 +1055,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->policy & engine_policy_hydro) {
     /* 2 self (density, force), 1 sort, 26/2 density pairs
        26/2 force pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
-       1 end_force, 2 extra space
+       1 end_force, 1 collect, 2 extra space
      */
-    n1 += 37;
+    n1 += 38;
     n2 += 2;
 #ifdef WITH_MPI
     n1 += 6;
@@ -1125,8 +1126,12 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* gradient: 1 self + 13 pairs                   |   14
      * transport: 1 self + 13 pairs                  | + 14
      * implicits: in + out, transport_out            | +  3
-     * others: ghost1, ghost2, thermochemistry       | +  3 */
-    n1 += 34;
+     * others: ghost1, ghost2, thermochemistry       | +  3
+     * 2 extra space                                 | +  2 */
+    n1 += 36;
+#ifdef WITH_MPI
+    n1 += 4; /* TODO: check this */
+#endif
   }
 
 #ifdef WITH_MPI
@@ -2568,8 +2573,9 @@ void engine_reconstruct_multipoles(struct engine *e) {
 
   if (e->s->with_zoom_region) {
     /* Compute void cell multipole */
-    cell_make_void_multipole(e->s, &e->s->cells_top[e->s->zoom_props->void_cell_index], e->ti_current,
-                             e->gravity_properties);
+    cell_make_void_multipole(
+        e->s, &e->s->cells_top[e->s->zoom_props->void_cell_index],
+        e->ti_current, e->gravity_properties);
   }
 
   if (e->verbose)
@@ -2852,8 +2858,9 @@ void engine_init(
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos,
     struct neutrino_response *neutrino_response,
-    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
-    const struct external_potential *potential,
+    struct feedback_props *feedback,
+    struct pressure_floor_props *pressure_floor, struct rt_props *rt,
+    struct pm_mesh *mesh, const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -2976,6 +2983,7 @@ void engine_init(
   e->cooling_func = cooling_func;
   e->star_formation = starform;
   e->feedback_props = feedback;
+  e->pressure_floor_props = pressure_floor;
   e->rt_props = rt;
   e->chemistry = chemistry;
   e->io_extra_props = io_extra_props;
@@ -3401,6 +3409,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->output_options);
     free((void *)e->external_potential);
     free((void *)e->black_holes_properties);
+    free((void *)e->pressure_floor_props);
     free((void *)e->rt_props);
     free((void *)e->sink_properties);
     free((void *)e->stars_properties);
@@ -3473,6 +3482,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
+  pressure_floor_struct_dump(e->pressure_floor_props, stream);
   rt_struct_dump(e->rt_props, stream);
   black_holes_struct_dump(e->black_holes_properties, stream);
   sink_struct_dump(e->sink_properties, stream);
@@ -3594,6 +3604,12 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
       (struct feedback_props *)malloc(sizeof(struct feedback_props));
   feedback_struct_restore(feedback_properties, stream);
   e->feedback_props = feedback_properties;
+
+  struct pressure_floor_props *pressure_floor_properties =
+      (struct pressure_floor_props *)malloc(
+          sizeof(struct pressure_floor_props));
+  pressure_floor_struct_restore(pressure_floor_properties, stream);
+  e->pressure_floor_props = pressure_floor_properties;
 
   struct rt_props *rt_properties =
       (struct rt_props *)malloc(sizeof(struct rt_props));

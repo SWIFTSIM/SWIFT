@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -325,9 +325,9 @@ enum cell_flags {
  * @brief What kind of top level cell is this cell?
  *
  * 0 = A background top level cell.
- * 1 = A background top level cell that is within the gravity criterion of the zoom region.
- * 2 = An ignored background top level cell (as it contains the zoom region).
- * 3 = A top level zoom cell.
+ * 1 = A background top level cell that is within the gravity criterion of the
+ * zoom region. 2 = An ignored background top level cell (as it contains the
+ * zoom region). 3 = A top level zoom cell.
  */
 enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell };
 
@@ -546,7 +546,8 @@ int cell_count_gparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current,
                           const struct gravity_props *const grav_props);
-void cell_make_void_multipole(struct space *s, struct cell *c, integertime_t ti_current,
+void cell_make_void_multipole(struct space *s, struct cell *c,
+                              integertime_t ti_current,
                               const struct gravity_props *const grav_props);
 void cell_check_multipole(struct cell *c,
                           const struct gravity_props *const grav_props);
@@ -666,7 +667,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
  * @param x, y, z Coordinates of particle/cell.
  */
 __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
-		                                                     const double x, const double y,
+                                                         const double x,
+                                                         const double y,
                                                          const double z) {
   /* Define variable to output */
   int cell_id;
@@ -684,7 +686,6 @@ __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
     const int j = y * s->iwidth[1];
     const int k = z * s->iwidth[2];
     cell_id = cell_getid(s->cdim, i, j, k);
-
   }
 #else
   /* Not compiled with zoom regions so we can use the simple version */
@@ -696,7 +697,7 @@ __attribute__((always_inline)) INLINE int cell_getid_pos(const struct space *s,
   return cell_id;
 }
 
- /**
+/**
  * @brief Does a #cell contain no particle at all.
  *
  * @param c The #cell.
@@ -722,12 +723,24 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
     const int periodic, const double dim[3]) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->width[0] != cj->width[0]) error("x cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])",
-  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
-  if (ci->width[1] != cj->width[1]) error("y cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])",
-  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
-  if (ci->width[2] != cj->width[2]) error("z cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f %f])",
-  		ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1], cj->width[2]);
+  if (ci->width[0] != cj->width[0])
+    error(
+        "x cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f "
+        "%f])",
+        ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1],
+        cj->width[2]);
+  if (ci->width[1] != cj->width[1])
+    error(
+        "y cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f "
+        "%f])",
+        ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1],
+        cj->width[2]);
+  if (ci->width[2] != cj->width[2])
+    error(
+        "z cells of different size! (ci->width=[%f %f %f] cj->width=[%f %f "
+        "%f])",
+        ci->width[0], ci->width[1], ci->width[2], cj->width[0], cj->width[1],
+        cj->width[2]);
 #endif
 
   const double cix_min = ci->loc[0];
@@ -1403,36 +1416,40 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
 
 #ifdef WITH_ZOOM_REGION
 
-  	/* Get some information from the space */
-	  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+    /* Get some information from the space */
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
 
-  	/* Get some zoom information from the space */
-		const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1], s->zoom_props->cdim[2]};
+    /* Get some zoom information from the space */
+    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                              s->zoom_props->cdim[2]};
 
-    if (((cdim[0] * cdim[1] * cdim[2]) + (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2])) > 32 * 32 * 32)  {
-    	/* print warning only once */
+    if (((cdim[0] * cdim[1] * cdim[2]) +
+         (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2])) > 32 * 32 * 32) {
+      /* print warning only once */
       if (last_cell_id == 1ULL) {
         message(
             "WARNING: Got (%d x %d x %d + %d x %d x %d) top level cells. "
             "Cell IDs are only guaranteed to be "
             "reproduceably unique if count is < 32^3",
-            cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1], zoom_cdim[2]);
+            cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1],
+            zoom_cdim[2]);
       }
       /* Do this in same line. Otherwise, bad things happen. */
       c->cellID = atomic_inc(&last_cell_id);
     } else {
-      c->cellID = (unsigned long long)(cell_getid_pos(s, c->loc[0], c->loc[1], c->loc[2]));
+      c->cellID = (unsigned long long)(cell_getid_pos(s, c->loc[0], c->loc[1],
+                                                      c->loc[2]));
     }
     /* in both cases, keep track of first prodigy index */
     atomic_inc(&last_leaf_cell_id);
 #else
 
     /* Get some information from the space */
-	  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
     const double iwidth[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
 
     if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
-    	      /* print warning only once */
+      /* print warning only once */
       if (last_cell_id == 1ULL) {
         message(
             "WARNING: Got > %d x %d x %d top level cells. "

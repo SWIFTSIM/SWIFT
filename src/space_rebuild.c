@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -48,7 +48,8 @@ extern unsigned long long last_leaf_cell_id;
  * @param repartitioned Did we just repartition?
  * @param verbose Print messages to stdout or not
  */
-void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gravity_properties, int verbose) {
+void space_rebuild(struct space *s, int repartitioned,
+                   struct gravity_props *gravity_properties, int verbose) {
 
   const ticks tic = getticks();
 
@@ -65,11 +66,11 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
 
   /* Re-grid if necessary, or just re-set the cell data. */
 #ifdef WITH_ZOOM_REGION
-	if (s->with_zoom_region) {
+  if (s->with_zoom_region) {
     space_regrid_zoom(s, gravity_properties, verbose);
-	} else {
-		space_regrid(s, verbose);
-	}
+  } else {
+    space_regrid(s, verbose);
+  }
 #else
   space_regrid(s, verbose);
 #endif
@@ -867,8 +868,8 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2]) {
-	      error("gpart not sorted into the right top-level cell!");
-      }
+      error("gpart not sorted into the right top-level cell!");
+    }
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -897,11 +898,11 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
                       verbose);
 #endif
 
-	/* Define variables to count particles in cell types */
-	int bkg_cell_particles = 0;
-	int zoom_cell_particles = 0;
+  /* Define variables to count particles in cell types */
+  int bkg_cell_particles = 0;
+  int zoom_cell_particles = 0;
 
-	/* Hook the cells up to the parts. Make list of local and non-empty cells */
+  /* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
   struct part *finger = s->parts;
   struct xpart *xfinger = s->xparts;
@@ -959,9 +960,13 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
       if (s->with_zoom_region) {
         /* Add the number of particles to the cell counter */
         if (c->tl_cell_type <= 2) {
-          bkg_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
+          bkg_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
         } else {
-          zoom_cell_particles += (c->hydro.count + c->grav.count + c->stars.count + c->sinks.count + c->black_holes.count);
+          zoom_cell_particles +=
+              (c->hydro.count + c->grav.count + c->stars.count +
+               c->sinks.count + c->black_holes.count);
         }
       }
 #endif
@@ -982,14 +987,16 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
         /* Add this cell to the appropriate list of local cells */
         if (c->tl_cell_type == zoom_tl_cell) {
 
-          s->zoom_props->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
+          s->zoom_props
+              ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
           s->zoom_props->nr_local_zoom_cells++;
 
-        } else if (c->tl_cell_type == tl_cell || c->tl_cell_type == tl_cell_neighbour) {
+        } else if (c->tl_cell_type == tl_cell ||
+                   c->tl_cell_type == tl_cell_neighbour) {
 
-          s->zoom_props->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
+          s->zoom_props
+              ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
           s->zoom_props->nr_local_bkg_cells++;
-
         }
       }
 #endif
@@ -1006,14 +1013,16 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
         /* Add this cell to the appropriate list of local cells */
         if (c->tl_cell_type == zoom_tl_cell) {
 
-          s->zoom_props->local_zoom_cells_with_particles_top[s->zoom_props->nr_local_zoom_cells_with_particles] = k;
+          s->zoom_props->local_zoom_cells_with_particles_top
+              [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
           s->zoom_props->nr_local_zoom_cells_with_particles++;
 
-        } else if (c->tl_cell_type == tl_cell || c->tl_cell_type == tl_cell_neighbour) {
+        } else if (c->tl_cell_type == tl_cell ||
+                   c->tl_cell_type == tl_cell_neighbour) {
 
-          s->zoom_props->local_bkg_cells_with_particles_top[s->zoom_props->nr_local_bkg_cells_with_particles] = k;
+          s->zoom_props->local_bkg_cells_with_particles_top
+              [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
           s->zoom_props->nr_local_bkg_cells_with_particles++;
-
         }
       }
 #endif
@@ -1030,16 +1039,16 @@ void space_rebuild(struct space *s, int repartitioned, struct gravity_props *gra
     if (s->with_zoom_region) {
       message("Have %d local particles in background cells",
               bkg_cell_particles);
-      message("Have %d local particles in zoom cells",
-              zoom_cell_particles);
+      message("Have %d local particles in zoom cells", zoom_cell_particles);
       s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
       s->zoom_props->nr_zoom_cell_particles = zoom_cell_particles;
     }
 #endif
 
-	  /* Lets report how many wanderers have been removed */
-	  if (s->with_hydro && s->zoom_props->nr_wanderers > 0)
-	    message("Converted %zu wandering particles to dark matter thus far", s->zoom_props->nr_wanderers);
+    /* Lets report how many wanderers have been removed */
+    if (s->with_hydro && s->zoom_props->nr_wanderers > 0)
+      message("Converted %zu wandering particles to dark matter thus far",
+              s->zoom_props->nr_wanderers);
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's

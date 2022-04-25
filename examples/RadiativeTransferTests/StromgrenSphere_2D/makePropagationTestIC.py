@@ -1,4 +1,23 @@
 #!/usr/bin/env python3
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
+
 
 # ---------------------------------------------------------------------
 # Add a single star in the center of a glass distribution
@@ -17,13 +36,19 @@ xp = parts["Coordinates"][:]
 h = parts["SmoothingLength"][:]
 glass.close()
 
-# replace the particle closest to the center
-# by the star
+# find particles closest to the center
+# and select a couple of them to put the star in their middle
 r = np.sqrt(np.sum((0.5 - xp) ** 2, axis=1))
-rmin = np.argmin(r)
-xs = xp[rmin]
-xp = np.delete(xp, rmin, axis=0)
-h = np.delete(h, rmin)
+mininds = np.argsort(r)
+center_parts = xp[mininds[:4]]
+xs = center_parts.sum(axis=0) / center_parts.shape[0]
+
+# Double-check all particles for boundaries
+for i in range(2):
+    mask = xp[:, i] < 0.0
+    xp[mask, i] += 1.0
+    mask = xp[:, i] > 1.0
+    xp[mask, i] -= 1.0
 
 
 unitL = unyt.cm

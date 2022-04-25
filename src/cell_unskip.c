@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -990,6 +990,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
       /* We have reached the bottom of the tree: activate drift */
       cell_activate_drift_bpart(ci, s);
       cell_activate_drift_part(ci, s);
+      if (with_timestep_sync) cell_activate_sync_part(ci, s);
     }
   }
 
@@ -1524,8 +1525,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #ifdef SWIFT_DEBUG_CHECKS
         /* Ensure we are not rebuilding on a zoom and natural cell pair */
         if (ci->tl_cell_type <= 2 || cj->tl_cell_type <= 2)
-          error("We just decided to rebuild based on a hydro zoom and natural cell pair. "
-                "This should never happen!");
+          error(
+              "We just decided to rebuild based on a hydro zoom and natural "
+              "cell pair. "
+              "This should never happen!");
 #endif
       }
 
@@ -2298,6 +2301,7 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self) {
         cell_activate_drift_part(ci, s);
         cell_activate_drift_bpart(ci, s);
+        if (with_timestep_sync) cell_activate_sync_part(ci, s);
       }
 
       /* Activate the drifts */

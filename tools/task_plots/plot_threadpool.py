@@ -13,7 +13,7 @@ options can be seen using the --help flag.
 This file is part of SWIFT.
 Copyright (c) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
-                   Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+                   Matthieu Schaller (schaller@strw.leidenuniv.nl)
           (c) 2017 Peter W. Draper (p.w.draper@durham.ac.uk)
 
 This program is free software: you can redistribute it and/or modify

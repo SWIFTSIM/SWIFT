@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -38,76 +38,76 @@
  */
 void space_regrid(struct space *s, int verbose) {
 
-	const size_t nr_parts = s->nr_parts;
-	const size_t nr_sparts = s->nr_sparts;
-	const size_t nr_bparts = s->nr_bparts;
-	const size_t nr_sinks = s->nr_sinks;
-	const ticks tic = getticks();
-	const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
+  const size_t nr_parts = s->nr_parts;
+  const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_sinks = s->nr_sinks;
+  const ticks tic = getticks();
+  const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-	/* Run through the cells and get the current h_max. */
-	// tic = getticks();
-	float h_max = s->cell_min / kernel_gamma / space_stretch;
-	if (nr_parts > 0) {
+  /* Run through the cells and get the current h_max. */
+  // tic = getticks();
+  float h_max = s->cell_min / kernel_gamma / space_stretch;
+  if (nr_parts > 0) {
 
-		/* Can we use the list of local non-empty top-level cells? */
-		if (s->local_cells_with_particles_top != NULL) {
-			for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
-				const struct cell *c =
-						&s->cells_top[s->local_cells_with_particles_top[k]];
-				if (c->hydro.h_max > h_max) {
-					h_max = c->hydro.h_max;
-				}
-				if (c->stars.h_max > h_max) {
-					h_max = c->stars.h_max;
-				}
-				if (c->black_holes.h_max > h_max) {
-					h_max = c->black_holes.h_max;
-				}
-				if (c->sinks.r_cut_max > h_max) {
-					h_max = c->sinks.r_cut_max / kernel_gamma;
-				}
-			}
+    /* Can we use the list of local non-empty top-level cells? */
+    if (s->local_cells_with_particles_top != NULL) {
+      for (int k = 0; k < s->nr_local_cells_with_particles; ++k) {
+        const struct cell *c =
+            &s->cells_top[s->local_cells_with_particles_top[k]];
+        if (c->hydro.h_max > h_max) {
+          h_max = c->hydro.h_max;
+        }
+        if (c->stars.h_max > h_max) {
+          h_max = c->stars.h_max;
+        }
+        if (c->black_holes.h_max > h_max) {
+          h_max = c->black_holes.h_max;
+        }
+        if (c->sinks.r_cut_max > h_max) {
+          h_max = c->sinks.r_cut_max / kernel_gamma;
+        }
+      }
 
-			/* Can we instead use all the top-level cells? */
-		} else if (s->cells_top != NULL) {
-			for (int k = 0; k < s->nr_cells; k++) {
-				const struct cell *c = &s->cells_top[k];
-				if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
-					h_max = c->hydro.h_max;
-				}
-				if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
-					h_max = c->stars.h_max;
-				}
-				if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
-					h_max = c->black_holes.h_max;
-				}
-				if (c->nodeID == engine_rank && c->sinks.r_cut_max > h_max) {
-					h_max = c->sinks.r_cut_max / kernel_gamma;
-				}
-			}
+      /* Can we instead use all the top-level cells? */
+    } else if (s->cells_top != NULL) {
+      for (int k = 0; k < s->nr_cells; k++) {
+        const struct cell *c = &s->cells_top[k];
+        if (c->nodeID == engine_rank && c->hydro.h_max > h_max) {
+          h_max = c->hydro.h_max;
+        }
+        if (c->nodeID == engine_rank && c->stars.h_max > h_max) {
+          h_max = c->stars.h_max;
+        }
+        if (c->nodeID == engine_rank && c->black_holes.h_max > h_max) {
+          h_max = c->black_holes.h_max;
+        }
+        if (c->nodeID == engine_rank && c->sinks.r_cut_max > h_max) {
+          h_max = c->sinks.r_cut_max / kernel_gamma;
+        }
+      }
 
-			/* Last option: run through the particles */
-		} else {
-			for (size_t k = 0; k < nr_parts; k++) {
-				if (s->parts[k].h > h_max) h_max = s->parts[k].h;
-			}
-			for (size_t k = 0; k < nr_sparts; k++) {
-				if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
-			}
-			for (size_t k = 0; k < nr_bparts; k++) {
-				if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
-			}
-			for (size_t k = 0; k < nr_sinks; k++) {
-				if (s->sinks[k].r_cut > h_max) h_max = s->sinks[k].r_cut / kernel_gamma;
-			}
-		}
-	}
+      /* Last option: run through the particles */
+    } else {
+      for (size_t k = 0; k < nr_parts; k++) {
+        if (s->parts[k].h > h_max) h_max = s->parts[k].h;
+      }
+      for (size_t k = 0; k < nr_sparts; k++) {
+        if (s->sparts[k].h > h_max) h_max = s->sparts[k].h;
+      }
+      for (size_t k = 0; k < nr_bparts; k++) {
+        if (s->bparts[k].h > h_max) h_max = s->bparts[k].h;
+      }
+      for (size_t k = 0; k < nr_sinks; k++) {
+        if (s->sinks[k].r_cut > h_max) h_max = s->sinks[k].r_cut / kernel_gamma;
+      }
+    }
+  }
 
 /* If we are running in parallel, make sure everybody agrees on
    how large the largest cell should be. */
 #ifdef WITH_MPI
-	{
+  {
     float buff;
     if (MPI_Allreduce(&h_max, &buff, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD) !=
         MPI_SUCCESS)
@@ -155,7 +155,7 @@ void space_regrid(struct space *s, int verbose) {
  * global partition is recomputed and the particles redistributed.
  * Be prepared to do that. */
 #ifdef WITH_MPI
-	double oldwidth[3] = {0., 0., 0.};
+  double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
@@ -188,157 +188,157 @@ void space_regrid(struct space *s, int verbose) {
   const int no_regrid = (s->cells_top == NULL && oldnodeIDs == NULL);
 #endif
 
-	/* Do we need to re-build the upper-level cells? */
-	// tic = getticks();
-	if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
-	    cdim[2] < s->cdim[2]) {
+  /* Do we need to re-build the upper-level cells? */
+  // tic = getticks();
+  if (s->cells_top == NULL || cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] ||
+      cdim[2] < s->cdim[2]) {
 
 /* Be verbose about this. */
 #ifdef SWIFT_DEBUG_CHECKS
-		message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
+    message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
     fflush(stdout);
 #endif
 
-		/* Free the old cells, if they were allocated. */
-		if (s->cells_top != NULL) {
-			space_free_cells(s);
-			swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
-			swift_free("local_cells_top", s->local_cells_top);
-			swift_free("cells_with_particles_top", s->cells_with_particles_top);
-			swift_free("local_cells_with_particles_top",
-			           s->local_cells_with_particles_top);
-			swift_free("cells_top", s->cells_top);
-			swift_free("multipoles_top", s->multipoles_top);
-		}
+    /* Free the old cells, if they were allocated. */
+    if (s->cells_top != NULL) {
+      space_free_cells(s);
+      swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
+      swift_free("local_cells_top", s->local_cells_top);
+      swift_free("cells_with_particles_top", s->cells_with_particles_top);
+      swift_free("local_cells_with_particles_top",
+                 s->local_cells_with_particles_top);
+      swift_free("cells_top", s->cells_top);
+      swift_free("multipoles_top", s->multipoles_top);
+    }
 
-		/* Also free the task arrays, these will be regenerated and we can use the
-		 * memory while copying the particle arrays. */
-		if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
+    /* Also free the task arrays, these will be regenerated and we can use the
+     * memory while copying the particle arrays. */
+    if (s->e != NULL) scheduler_free_tasks(&s->e->sched);
 
-		/* Set the new cell dimensions only if smaller. */
-		for (int k = 0; k < 3; k++) {
-			s->cdim[k] = cdim[k];
-			s->width[k] = s->dim[k] / cdim[k];
-			s->iwidth[k] = 1.0 / s->width[k];
-		}
-		const float dmin = min3(s->width[0], s->width[1], s->width[2]);
+    /* Set the new cell dimensions only if smaller. */
+    for (int k = 0; k < 3; k++) {
+      s->cdim[k] = cdim[k];
+      s->width[k] = s->dim[k] / cdim[k];
+      s->iwidth[k] = 1.0 / s->width[k];
+    }
+    const float dmin = min3(s->width[0], s->width[1], s->width[2]);
 
-		/* Allocate the highest level of cells. */
-		s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
+    /* Allocate the highest level of cells. */
+    s->tot_cells = s->nr_cells = cdim[0] * cdim[1] * cdim[2];
 
-		if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
-		                   s->nr_cells * sizeof(struct cell)) != 0)
-			error("Failed to allocate top-level cells.");
-		bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
+    if (swift_memalign("cells_top", (void **)&s->cells_top, cell_align,
+                       s->nr_cells * sizeof(struct cell)) != 0)
+      error("Failed to allocate top-level cells.");
+    bzero(s->cells_top, s->nr_cells * sizeof(struct cell));
 
-		/* Allocate the multipoles for the top-level cells. */
-		if (s->with_self_gravity) {
-			if (swift_memalign("multipoles_top", (void **)&s->multipoles_top,
-			                   multipole_align,
-			                   s->nr_cells * sizeof(struct gravity_tensors)) != 0)
-				error("Failed to allocate top-level multipoles.");
-			bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
-		}
+    /* Allocate the multipoles for the top-level cells. */
+    if (s->with_self_gravity) {
+      if (swift_memalign("multipoles_top", (void **)&s->multipoles_top,
+                         multipole_align,
+                         s->nr_cells * sizeof(struct gravity_tensors)) != 0)
+        error("Failed to allocate top-level multipoles.");
+      bzero(s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
+    }
 
-		/* Allocate the indices of local cells */
-		if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
-		                   SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-			error("Failed to allocate indices of local top-level cells.");
-		bzero(s->local_cells_top, s->nr_cells * sizeof(int));
+    /* Allocate the indices of local cells */
+    if (swift_memalign("local_cells_top", (void **)&s->local_cells_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells.");
+    bzero(s->local_cells_top, s->nr_cells * sizeof(int));
 
-		/* Allocate the indices of local cells with tasks */
-		if (swift_memalign("local_cells_with_tasks_top",
-		                   (void **)&s->local_cells_with_tasks_top,
-		                   SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-			error("Failed to allocate indices of local top-level cells with tasks.");
-		bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
+    /* Allocate the indices of local cells with tasks */
+    if (swift_memalign("local_cells_with_tasks_top",
+                       (void **)&s->local_cells_with_tasks_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of local top-level cells with tasks.");
+    bzero(s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
 
-		/* Allocate the indices of cells with particles */
-		if (swift_memalign("cells_with_particles_top",
-		                   (void **)&s->cells_with_particles_top,
-		                   SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-			error("Failed to allocate indices of top-level cells with particles.");
-		bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
+    /* Allocate the indices of cells with particles */
+    if (swift_memalign("cells_with_particles_top",
+                       (void **)&s->cells_with_particles_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error("Failed to allocate indices of top-level cells with particles.");
+    bzero(s->cells_with_particles_top, s->nr_cells * sizeof(int));
 
-		/* Allocate the indices of local cells with particles */
-		if (swift_memalign("local_cells_with_particles_top",
-		                   (void **)&s->local_cells_with_particles_top,
-		                   SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
-			error(
-					"Failed to allocate indices of local top-level cells with "
-					"particles.");
-		bzero(s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
+    /* Allocate the indices of local cells with particles */
+    if (swift_memalign("local_cells_with_particles_top",
+                       (void **)&s->local_cells_with_particles_top,
+                       SWIFT_STRUCT_ALIGNMENT, s->nr_cells * sizeof(int)) != 0)
+      error(
+          "Failed to allocate indices of local top-level cells with "
+          "particles.");
+    bzero(s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
 
-		/* Set the cells' locks */
-		for (int k = 0; k < s->nr_cells; k++) {
-			if (lock_init(&s->cells_top[k].hydro.lock) != 0)
-				error("Failed to init spinlock for hydro.");
-			if (lock_init(&s->cells_top[k].grav.plock) != 0)
-				error("Failed to init spinlock for gravity.");
-			if (lock_init(&s->cells_top[k].grav.mlock) != 0)
-				error("Failed to init spinlock for multipoles.");
-			if (lock_init(&s->cells_top[k].grav.star_formation_lock) != 0)
-				error("Failed to init spinlock for star formation (gpart).");
-			if (lock_init(&s->cells_top[k].stars.lock) != 0)
-				error("Failed to init spinlock for stars.");
-			if (lock_init(&s->cells_top[k].sinks.lock) != 0)
-				error("Failed to init spinlock for sinks.");
-			if (lock_init(&s->cells_top[k].sinks.sink_formation_lock) != 0)
-				error("Failed to init spinlock for sink formation.");
-			if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
-				error("Failed to init spinlock for black holes.");
-			if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
-				error("Failed to init spinlock for star formation (spart).");
-		}
+    /* Set the cells' locks */
+    for (int k = 0; k < s->nr_cells; k++) {
+      if (lock_init(&s->cells_top[k].hydro.lock) != 0)
+        error("Failed to init spinlock for hydro.");
+      if (lock_init(&s->cells_top[k].grav.plock) != 0)
+        error("Failed to init spinlock for gravity.");
+      if (lock_init(&s->cells_top[k].grav.mlock) != 0)
+        error("Failed to init spinlock for multipoles.");
+      if (lock_init(&s->cells_top[k].grav.star_formation_lock) != 0)
+        error("Failed to init spinlock for star formation (gpart).");
+      if (lock_init(&s->cells_top[k].stars.lock) != 0)
+        error("Failed to init spinlock for stars.");
+      if (lock_init(&s->cells_top[k].sinks.lock) != 0)
+        error("Failed to init spinlock for sinks.");
+      if (lock_init(&s->cells_top[k].sinks.sink_formation_lock) != 0)
+        error("Failed to init spinlock for sink formation.");
+      if (lock_init(&s->cells_top[k].black_holes.lock) != 0)
+        error("Failed to init spinlock for black holes.");
+      if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
+        error("Failed to init spinlock for star formation (spart).");
+    }
 
-		/* Set the cell location and sizes. */
-		for (int i = 0; i < cdim[0]; i++)
-			for (int j = 0; j < cdim[1]; j++)
-				for (int k = 0; k < cdim[2]; k++) {
-					const size_t cid = cell_getid(cdim, i, j, k);
-					struct cell *restrict c = &s->cells_top[cid];
-					c->loc[0] = i * s->width[0];
-					c->loc[1] = j * s->width[1];
-					c->loc[2] = k * s->width[2];
-					c->width[0] = s->width[0];
-					c->width[1] = s->width[1];
-					c->width[2] = s->width[2];
-					c->dmin = dmin;
+    /* Set the cell location and sizes. */
+    for (int i = 0; i < cdim[0]; i++)
+      for (int j = 0; j < cdim[1]; j++)
+        for (int k = 0; k < cdim[2]; k++) {
+          const size_t cid = cell_getid(cdim, i, j, k);
+          struct cell *restrict c = &s->cells_top[cid];
+          c->loc[0] = i * s->width[0];
+          c->loc[1] = j * s->width[1];
+          c->loc[2] = k * s->width[2];
+          c->width[0] = s->width[0];
+          c->width[1] = s->width[1];
+          c->width[2] = s->width[2];
+          c->dmin = dmin;
           c->tl_cell_type = tl_cell;
-					c->depth = 0;
-					c->split = 0;
-					c->hydro.count = 0;
-					c->grav.count = 0;
-					c->stars.count = 0;
-					c->sinks.count = 0;
-					c->top = c;
-					c->super = c;
-					c->hydro.super = c;
-					c->grav.super = c;
-					c->hydro.ti_old_part = ti_current;
-					c->grav.ti_old_part = ti_current;
-					c->stars.ti_old_part = ti_current;
-					c->sinks.ti_old_part = ti_current;
-					c->black_holes.ti_old_part = ti_current;
-					c->grav.ti_old_multipole = ti_current;
+          c->depth = 0;
+          c->split = 0;
+          c->hydro.count = 0;
+          c->grav.count = 0;
+          c->stars.count = 0;
+          c->sinks.count = 0;
+          c->top = c;
+          c->super = c;
+          c->hydro.super = c;
+          c->grav.super = c;
+          c->hydro.ti_old_part = ti_current;
+          c->grav.ti_old_part = ti_current;
+          c->stars.ti_old_part = ti_current;
+          c->sinks.ti_old_part = ti_current;
+          c->black_holes.ti_old_part = ti_current;
+          c->grav.ti_old_multipole = ti_current;
 #ifdef WITH_MPI
-					c->mpi.tag = -1;
+          c->mpi.tag = -1;
           c->mpi.recv = NULL;
           c->mpi.send = NULL;
 #endif  // WITH_MPI
-					if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
+          if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-					cell_assign_top_level_cell_index(c, s);
+          cell_assign_top_level_cell_index(c, s);
 #endif
-				}
+        }
 
-		/* Be verbose about the change. */
-		if (verbose)
-			message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
-			        cdim[2]);
+    /* Be verbose about the change. */
+    if (verbose)
+      message("set cell dimensions to [ %i %i %i ].", cdim[0], cdim[1],
+              cdim[2]);
 
 #ifdef WITH_MPI
-		if (oldnodeIDs != NULL) {
+    if (oldnodeIDs != NULL) {
       /* We have changed the top-level cell dimension, so need to redistribute
        * cells around the nodes. We repartition using the old space node
        * positions as a grid to resample. */
@@ -387,17 +387,17 @@ void space_regrid(struct space *s, int verbose) {
     }
 #endif /* WITH_MPI */
 
-		// message( "rebuilding upper-level cells took %.3f %s." ,
-		// clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
+    // message( "rebuilding upper-level cells took %.3f %s." ,
+    // clocks_from_ticks(double)(getticks() - tic), clocks_getunit());
 
-	}      /* re-build upper-level cells? */
-	else { /* Otherwise, just clean up the cells. */
+  }      /* re-build upper-level cells? */
+  else { /* Otherwise, just clean up the cells. */
 
-		/* Free the old cells, if they were allocated. */
-		space_free_cells(s);
-	}
+    /* Free the old cells, if they were allocated. */
+    space_free_cells(s);
+  }
 
-	if (verbose)
-		message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-		        clocks_getunit());
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
