@@ -103,6 +103,7 @@ int main(int argc, char *argv[]) {
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
+  struct pressure_floor_props pressure_floor_props;
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
   struct lightcone_array_props lightcone_array_properties;
