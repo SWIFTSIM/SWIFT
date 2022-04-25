@@ -1252,8 +1252,7 @@ void cell_set_grid_construction_level(struct cell *c,
 
   const int nr_parts = c->hydro.count;
   if (construction_level == NULL &&
-      (c->grid.unsplittable_flag ||
-       nr_parts < space_grid_split_threshold)) {
+      (c->grid.unsplittable_flag || nr_parts < space_grid_split_threshold)) {
     /* This is the first time we encounter a cell with the unsplittable flag
      * set, meaning that it or one of its direct neighbours is unsplittable, or
      * which has too few particles to split further. This is the construction
@@ -1271,20 +1270,6 @@ void cell_set_grid_construction_level(struct cell *c,
       if (c->progeny[k] != NULL)
         cell_set_grid_construction_level(c->progeny[k], construction_level);
     }
-}
-
-void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
-                                             void *extra_data) {
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &((struct cell *)map_data)[ind];
-
-#ifdef WITH_MPI
-    cell_ensure_tagged(c);
-#endif
-
-    /* Set construction level-pointer for the moving mesh */
-    cell_set_grid_construction_level(c, NULL);
-  }
 }
 
 void cell_set_neighbour_flags(struct cell *restrict ci,
@@ -1335,8 +1320,8 @@ void cell_set_neighbour_flags(struct cell *restrict ci,
   }
 }
 
-void cell_set_neighbour_flags_mapper(void *map_data, int num_elements,
-                                     void *extra_data) {
+void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
+                                             void *extra_data) {
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
   const int periodic = e->s->periodic;
@@ -1346,7 +1331,8 @@ void cell_set_neighbour_flags_mapper(void *map_data, int num_elements,
   const int *cdim = s->cdim;
   struct cell *cells = s->cells_top;
 
-  /* Loop through the elements, which are just byte offsets from NULL. */
+  /* Loop through the elements, which are just byte offsets from NULL, to set
+   * the neighbour flags. */
   for (int ind = 0; ind < num_elements; ind++) {
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
@@ -1384,22 +1370,39 @@ void cell_set_neighbour_flags_mapper(void *map_data, int num_elements,
           struct cell *cj = &cells[cjd];
 
           /* Treat pairs only once. */
-          if (cid >= cjd || cj->hydro.count == 0) continue;
+          const int ci_local = ci->nodeID == nodeID;
+          const int cj_local = cj->nodeID == nodeID;
+          if (cid >= cjd || cj->hydro.count == 0 || (!ci_local && !cj_local))
+            continue;
 
           /* Set neighbour flags for this cell and its neighbouring cell */
           int sid = (kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1));
           const int flip = runner_flip[sid];
           sid = sortlistID[sid];
           if (flip) {
-            cell_set_neighbour_flags(cj, ci, sid, ci->nodeID == nodeID,
-                                     cj->nodeID == nodeID);
+            cell_set_neighbour_flags(cj, ci, sid, ci_local, cj_local);
           } else {
-            cell_set_neighbour_flags(ci, cj, sid, ci->nodeID == nodeID,
-                                     cj->nodeID == nodeID);
+            cell_set_neighbour_flags(ci, cj, sid, ci_local, cj_local);
           }
         }
       }
-    }
+    } /* Now loop over all the neighbours of this cell */
+  }   /* Loop through the elements, which are just byte offsets from NULL. */
+
+  /* Now loop again through the cells to set the construction level */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Get the cell */
+    struct cell *c = &cells[cid];
+
+    /* Anything to do here? */
+    if (c->hydro.count == 0) continue;
+
+    /* Set construction level-pointer for the moving mesh */
+    if (c->nodeID == nodeID) cell_set_grid_construction_level(c, NULL);
   }
 }
 
