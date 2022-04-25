@@ -188,6 +188,21 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
 }
 
 /**
+ * @brief Exchange extra information about the grid construction between nodes.
+ *
+ * Note that this function assumes that the cell structures have already
+ * been exchanged, e.g. via #proxy_cells_exchange.
+ *
+ * @param proxies The list of #proxy that will send/recv tags
+ * @param num_proxies The number of proxies.
+ * @param s The space into which the tags will be unpacked.
+ */
+void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
+                         struct space *s) {
+  /* TODO */
+}
+
+/**
  * @brief Exchange cells with a remote node, first part.
  *
  * The first part of the transaction sends the local cell count and the packed
