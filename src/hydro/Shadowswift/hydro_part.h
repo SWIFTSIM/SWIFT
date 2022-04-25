@@ -192,10 +192,15 @@ struct part {
 
   struct {
 
+    /*! Volume of the corresponding voronoi cell */
     float volume;
 
-    double centroid[3];
+    /*! Centroid of the corresponding voronoi cell relative to the particles
+     * position. */
+    float centroid[3];
 
+    /*! Flags indicating to which neighbouring cells this particle has already
+     * been added. */
     int delaunay_flags;
 
   } geometry;

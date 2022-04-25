@@ -184,7 +184,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   vij[0] = 0.5f * (vi[0] + vj[0]) + fac * dx[0];
   vij[1] = 0.5f * (vi[1] + vj[1]) + fac * dx[1];
   vij[2] = 0.5f * (vi[2] + vj[2]) + fac * dx[2];
-#if defined(SWIFT_DEBUG_CHECKS) && defined(SHADOWFAX_FIX_CELLS)
+#if defined(SWIFT_DEBUG_CHECKS) && defined(SHADOWSWIFT_FIX_PARTICLES)
   assert(vij[0] == 0.f && vij[1] == 0.f && vij[2] == 0.);
 #endif
 

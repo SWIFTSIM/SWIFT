@@ -15,7 +15,8 @@
 __attribute__((always_inline)) INLINE static void
 hydro_gravity_extra_velocity_drift(float* fluid_v, const float* v,
                                      const float* v_full) {
-
+  /* TODO */
+  return;
   fluid_v[0] += v[0] - v_full[0];
   fluid_v[1] += v[1] - v_full[1];
   fluid_v[2] += v[2] - v_full[2];

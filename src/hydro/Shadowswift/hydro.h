@@ -39,16 +39,16 @@
 #include "dimension.h"
 #include "entropy_floor.h"
 #include "equation_of_state.h"
+#include "hydro_flux.h"
+#include "hydro_getters.h"
+#include "hydro_gradients.h"
+#include "hydro_gravity.h"
 #include "hydro_parameters.h"
 #include "hydro_properties.h"
 #include "hydro_setters.h"
-#include "hydro_getters.h"
 #include "hydro_slope_limiters.h"
-#include "hydro_gradients.h"
-#include "hydro_flux.h"
-#include "hydro_velocities.h"
-#include "hydro_gravity.h"
 #include "hydro_space.h"
+#include "hydro_velocities.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
 
@@ -225,8 +225,8 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
  * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
-    struct part* restrict p, struct xpart* restrict xp,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props) {
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
   /* Initialize time step criterion variables */
   p->timestepvars.vmax = 0.;
@@ -244,7 +244,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
-    struct part* restrict p) {}
+    struct part *restrict p) {}
 
 /**
  * @brief Finishes the gradient calculation and prepares the particle for the
@@ -258,7 +258,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
-    struct part* p) {
+    struct part *p) {
 
   hydro_gradients_finalize(p);
 
@@ -319,8 +319,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
-    struct part* restrict p, const struct xpart* restrict xp,
-    const struct cosmology* cosmo) {
+    struct part *restrict p, const struct xpart *restrict xp,
+    const struct cosmology *cosmo) {
   // MATTHIEU: Apply the entropy floor here.
 }
 
@@ -335,8 +335,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part* p, struct xpart* xp, const struct cosmology* cosmo,
-    const struct hydro_props* hydro_props) {
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props) {
 
   p->conserved.energy /= cosmo->a_factor_internal_energy;
 }
@@ -354,9 +354,9 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  * @param dt_therm The drift time-step for thermal quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part* p, struct xpart* xp, float dt_drift, float dt_therm,
-    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
-    const struct entropy_floor_properties* floor_props) {
+    struct part *p, struct xpart *xp, float dt_drift, float dt_therm,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct entropy_floor_properties *floor_props) {
 
   /* skip the drift if we are using Lloyd's algorithm */
   /* TODO */
@@ -390,7 +390,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_end_force(
-    struct part* p, const struct cosmology* cosmo) {
+    struct part *p, const struct cosmology *cosmo) {
 
   /* Reset force variables if we are using Lloyd's algorithm. */
   /* TODO */
@@ -399,44 +399,44 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 /**
  * @brief Convert conserved variables into primitive variables.
  *
- * This method also initializes the gradient variables (if gradients are used).
- *
  * @param p The particle to act upon.
  * @param volume The volume of the particle's associated voronoi cell
  */
 __attribute__((always_inline)) INLINE static void
 hydro_convert_conserved_to_primitive(struct part *restrict p,
-                                               struct xpart *restrict xp) {
-  float m = p->conserved.mass;
-  double energy;
-  if (m > 0.) {
-    p->rho = m / p->geometry.volume;
+                                     struct xpart *restrict xp) {
 
-    /* Update fluid_v */
-    hydro_velocities_from_momentum(p, p->fluid_v);
+  float W[5], Q[5];
+  hydro_part_get_conserved_variables(p, Q);
+  const float m_inv = (Q[0] != 0.0f) ? 1.0f / Q[0] : 0.0f;
+  const float volume_inv = 1.f / p->geometry.volume;
 
-    energy = p->conserved.energy;
+  W[0] = Q[0] * volume_inv;
+  hydro_velocities_from_momentum(&Q[1], m_inv, W[0], &W[1]);
 
-#ifdef SHADOWFAX_TOTAL_ENERGY
-    energy -=
-        0.5f * (momentum[0] * p->fluid_v[0] + momentum[1] * p->fluid_v[1] +
-                momentum[2] * p->fluid_v[2]);
+#ifdef EOS_ISOTHERMAL_GAS
+  /* although the pressure is not formally used anywhere if an isothermal eos
+     has been selected, we still make sure it is set to the correct value */
+  W[4] = gas_pressure_from_internal_energy(W[0], 0.0f);
+#else
+
+#ifdef SHADOWSWIFT_TOTAL_ENERGY
+  /* subtract the kinetic energy; we want the thermal energy */
+  Q[4] -= 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
 #endif
 
-    energy /= m;
-    p->P = gas_pressure_from_internal_energy(p->rho, energy);
+  W[4] = gas_pressure_from_internal_energy(W[0], Q[4] * m_inv);
+#endif
 
-    hydro_gravity_extra_velocity_drift(p->fluid_v, p->v, xp->v_full);
+  /* reset the primitive variables if we are using Lloyd's algorithm */
+  /* TODO */
 
-  } else {
-    p->rho = 0.f;
-    p->fluid_v[0] = 0.f;
-    p->fluid_v[1] = 0.f;
-    p->fluid_v[2] = 0.f;
-    p->P = 0.f;
-  }
+  hydro_part_set_primitive_variables(p, W);
 
-  if (m == 0. &&
+  /* TODO move this elsewhere? */
+  hydro_gravity_extra_velocity_drift(p->fluid_v, p->v, xp->v_full);
+
+  if (m_inv == 0. &&
       (p->fluid_v[0] != 0. || p->fluid_v[1] != 0. || p->fluid_v[2] != 0.)) {
     error("Nonzero fluid_v for particle with zero mass!");
   }
@@ -548,7 +548,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   /* Reset the fluxes so that they do not get used again in the kick1. */
   hydro_part_reset_fluxes(p);
 
-  /* Update conserved quantities */
+  /* Update primitive quantities */
   hydro_convert_conserved_to_primitive(p, xp);
 
   /* Update gpart */

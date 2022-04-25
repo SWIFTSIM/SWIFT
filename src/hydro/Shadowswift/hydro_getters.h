@@ -41,6 +41,24 @@ hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
 }
 
 /**
+ * @brief Get a 5-element state vector Q containing the conserved hydrodynamic
+ * variables.
+ *
+ * @param p Particle.
+ * @param Q Pointer to the array in which the result needs to be stored (of size
+ * 5 or more).
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_part_get_conserved_variables(const struct part* restrict p, float* Q) {
+
+  Q[0] = p->conserved.mass;
+  Q[1] = p->conserved.momentum[0];
+  Q[2] = p->conserved.momentum[1];
+  Q[3] = p->conserved.momentum[2];
+  Q[4] = p->conserved.energy;
+}
+
+/**
  * @brief Get the gradients of the primitive variables for the given particle.
  *
  * @param p Particle.

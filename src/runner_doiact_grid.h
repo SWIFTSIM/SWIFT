@@ -356,8 +356,8 @@ runner_doself_grid_construction_naive(struct cell *restrict c) {
 
   /* Loop over the parts in c. */
   for (int i = 0; i < count; i++) {
-#ifdef SHADOWFAX_HILBERT_ORDERING
-    int idx = c->hydro.hilbert_r_sort[i];
+#ifdef SHADOWSWIFT_HILBERT_ORDERING
+    int idx = c->grid.hilbert_r_sort[i];
 #else
     int pid = i;
 #endif

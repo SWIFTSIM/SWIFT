@@ -1746,8 +1746,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
         /* Self-interaction? */
         if (l->t->type == task_type_self)
-          runner_doself_subset_grid_construction(r, c, parts, pid,
-                                                 count);
+          runner_doself_subset_grid_construction(r, c, parts, pid, count);
 
         /* Otherwise, pair interaction? */
         else if (l->t->type == task_type_pair) {
@@ -1810,10 +1809,13 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   for (int i = 0; i < c->hydro.count; i++) {
     struct part *p = &c->hydro.parts[i];
     if (part_is_active_mask[i]) {
-      p->geometry.volume = c->grid.voronoi->cells[i].volume;
-      p->geometry.centroid[0] = c->grid.voronoi->cells[i].centroid[0];
-      p->geometry.centroid[1] = c->grid.voronoi->cells[i].centroid[1];
-      p->geometry.centroid[2] = c->grid.voronoi->cells[i].centroid[2];
+      p->geometry.volume = (float)c->grid.voronoi->cells[i].volume;
+      p->geometry.centroid[0] =
+          (float)(c->grid.voronoi->cells[i].centroid[0] - p->x[0]);
+      p->geometry.centroid[1] =
+          (float)(c->grid.voronoi->cells[i].centroid[1] - p->x[1]);
+      p->geometry.centroid[2] =
+          (float)(c->grid.voronoi->cells[i].centroid[2] - p->x[2]);
 
       if (e->policy & engine_policy_grid_hydro) {
 

@@ -82,28 +82,24 @@
 #define const_gizmo_min_wcorr 0.5f
 
 /* Options controlling ShadowSWIFT */
-/* Types of gradients to use for ShadowSWIFT */
-/* If no option is chosen, no gradients are used (first order scheme) */
+/* Option to enable gradients for ShadowSWIFT */
+/* If disabled, no gradients are used (first order scheme) */
 #define SHADOWSWIFT_GRADIENTS
-
 /* Always activate the slope limiters if we use gradients (the scheme becomes
  * unstable otherwise) */
 #ifdef SHADOWSWIFT_GRADIENTS
 #define SHADOWSWIFT_SLOPE_LIMITER_PER_FACE
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
-
 /* Option controlling output of grids */
-//#define SHADOWSWIFT_OUTPUT_GRIDS
-
-/* Option to enable the hilbert order insertion in the grid construction */
+#define SHADOWSWIFT_OUTPUT_GRIDS
+/* Option to enable the hilbert order insertion during the grid construction */
 //#define SHADOWSWIFT_HILBERT_ORDERING
-
 /* This option disables cell movement */
-//#define SHADOWSWIFT_FIX_CELLS
+//#define SHADOWSWIFT_FIX_PARTICLES
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
-//#define SHADOWSWIFT_STEER_CELL_MOTION
+//#define SHADOWSWIFT_STEER_MOTION
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWSWIFT_TOTAL_ENERGY
 
