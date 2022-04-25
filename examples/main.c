@@ -1314,7 +1314,7 @@ int main(int argc, char *argv[]) {
 
     /* Get cdim from parameter file for gravity property intialisation */
     /* Set the zoom cdim. */
-    int cdim[3]
+    int cdim[3];
     cdim[0] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                        space_max_top_level_cells_default);
     cdim[1] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
