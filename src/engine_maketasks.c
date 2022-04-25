@@ -4957,13 +4957,6 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* Set the grid construction level, is needed before splitting */
-  if (e->policy & engine_policy_grid) {
-    /* Set the construction level */
-    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper, NULL,
-                   nr_cells, 1, threadpool_auto_chunk_size, e);
-  }
-
   /* Split the tasks. */
   scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
 

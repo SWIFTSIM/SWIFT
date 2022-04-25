@@ -1344,6 +1344,17 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   }
 #endif
 
+  /* Set the grid construction level, is needed before splitting */
+  if (e->policy & engine_policy_grid) {
+    /* Set the construction level */
+    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper,
+                   NULL, e->s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  }
+
+#ifdef WITH_MPI
+  /* TODO exchange construction levels */
+#endif
+
   /* Re-build the tasks. */
   engine_maketasks(e);
 
