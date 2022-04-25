@@ -850,7 +850,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
-      /* Activate grid hydro tasks */
+      /* Activate grid hydro tasks for all pairs if at least one of the cells
+       * is active (regardless of whether they are local or not). */
       else if (t_subtype == task_subtype_slope_estimate ||
                t_subtype == task_subtype_slope_limiter ||
                t_subtype == task_subtype_flux) {
@@ -1308,6 +1309,46 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
 #endif
       }
+
+      /* Activate send and receive tasks for the grid */
+      else if (t->subtype == task_subtype_grid_construction) {
+#ifdef WITH_MPI
+        if (ci_nodeID != nodeID) {
+          /* cj local.
+           * There is another pair construction task with cj and ci
+           * swapped (so that cj, or a sub or parent cell of cj, is the left
+           * cell).
+           * Here we just need to make sure that the particles of cj are sent
+           * to ci's node if ci is active, so that the grid of ci can be
+           * constructed on the foreign node.
+           * If ci is active, we also need to activate the recv_faces task of ci
+           * so that cj can receive fluxes from ci. */
+          if (ci_active_hydro) {
+            /* Send the particles of cj to the foreign node */
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+
+            /* Receive the voronoi faces from the foreign node */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
+          }
+        }
+
+        else if (cj_nodeID != nodeID) {
+          /* ci is local.
+           * If ci is active, we need to receive the particles from cj to build
+           * ci's voronoi grid. We also need to send the voronoi grid to the
+           * foreign node. */
+          if (ci_active_hydro) {
+            /* Receive cj's particles from the foreign node */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+
+            /* Send ci's voronoi grid to the foreign node. */
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_faces,
+                                    cj_nodeID);
+          }
+        }
+#endif
+      }
     }
 
     /* End force for hydro ? */
@@ -1508,7 +1549,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_grid_hydro)) {
           error(
-              "Encountered flux ghost task without engine_policy_grid_hydro!");
+              "Encountered flux ghost task without "
+              "engine_policy_grid_hydro!");
         }
 #endif
         scheduler_activate(s, t);

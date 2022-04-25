@@ -84,7 +84,7 @@
 /* Options controlling ShadowSWIFT */
 /* Option to enable gradients for ShadowSWIFT */
 /* If disabled, no gradients are used (first order scheme) */
-#define SHADOWSWIFT_GRADIENTS
+//#define SHADOWSWIFT_GRADIENTS
 /* Always activate the slope limiters if we use gradients (the scheme becomes
  * unstable otherwise) */
 #ifdef SHADOWSWIFT_GRADIENTS
@@ -92,7 +92,7 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
 /* Option controlling output of grids */
-#define SHADOWSWIFT_OUTPUT_GRIDS
+//#define SHADOWSWIFT_OUTPUT_GRIDS
 /* Option to enable the hilbert order insertion during the grid construction */
 //#define SHADOWSWIFT_HILBERT_ORDERING
 /* This option disables cell movement */
@@ -102,6 +102,7 @@
 //#define SHADOWSWIFT_STEER_MOTION
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWSWIFT_TOTAL_ENERGY
+//#define WITH_MPI
 
 /* Source terms */
 #define SOURCETERMS_NONE

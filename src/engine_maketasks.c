@@ -565,6 +565,69 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Add send tasks for the grid pairs to a hierarchy of cells.
+ *
+ * @param e The #engine.
+ * @param ci The sending #cell.
+ * @param cj Dummy cell containing the nodeID of the receiving node.
+ */
+void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
+                               struct cell *cj) {
+
+#ifdef WITH_MPI
+  /* Recurse? */
+  if (ci->grid.construction_level == NULL) {
+    for (int k = 0; k < 8; k++)
+      if (ci->progeny[k] != NULL)
+        engine_addtasks_send_grid(e, ci->progeny[k], cj);
+    return;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (ci->grid.construction_level != ci)
+    error("Somehow ended up below the grid construction level!");
+#endif
+
+  struct link *l = NULL;
+  struct scheduler *s = &e->sched;
+  const int nodeID = cj->nodeID;
+
+  /* Check if any of the construction tasks are for the target node. */
+  for (l = ci->grid.construction; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID ||
+        (l->t->cj != NULL && l->t->cj->nodeID == nodeID))
+      break;
+
+  /* If so, attach send tasks. */
+  if (l != NULL) {
+    /* Make sure this cell is tagged. */
+    cell_ensure_tagged(ci);
+
+    /* Create the tasks and their dependencies */
+    struct task *t_grid_faces = scheduler_addtask(
+        s, task_type_send, task_subtype_faces, ci->mpi.tag, 0, ci, cj);
+
+    /* The send_faces task depends on the cell's gost_construction task. */
+    scheduler_addunlock(s, ci->grid.ghost, t_grid_faces);
+
+    /* Safety measure: collect dependencies and make sure data is sent before
+     * modifying it */
+#ifdef EXTRA_HYDRO_LOOP
+    scheduler_addunlock(s, t_grid_faces, ci->hydro.super->hydro.flux_ghost);
+#else
+    scheduler_addunlock(s, t_grid_faces, ci->hydro.super->hydro.flux_ghost);
+#endif
+
+    /* Add them to the local cell. */
+    engine_addlink(e, &ci->mpi.send, t_grid_faces);
+  }
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
  * @brief Add recv tasks for hydro pairs to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -1071,6 +1134,79 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_rt(e, c->progeny[k], t_rt_gradient, t_rt_transport,
                                 tend);
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Add recv tasks for grid pairs to a hierarchy of cells.
+ *
+ * A flux exchange interaction (where the grid is needed) is always at or above
+ * the grid construction level of a cell. This means that we must add
+ * dependencies on the recv_faces task for all the flux exchange interactions
+ * we find at or above the construction level.
+ *
+ * @param e The #engine.
+ * @param c The foreign #cell.
+ */
+void engine_addtasks_recv_grid(struct engine *e, struct cell *c) {
+
+#ifdef WITH_MPI
+
+  /* recurse? */
+  if (c->grid.construction_level == NULL) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) engine_addtasks_recv_grid(e, c->progeny[k]);
+    /* Nothing else to do here... */
+    return;
+  }
+
+#ifdef SWIFSWIFT_DEBUG_CHECKS
+  if (c->grid.construction_level != c)
+    error("Somehow ended up below the grid construction level...");
+#endif
+
+  /* Create the recv_faces task*/
+  struct scheduler *s = &e->sched;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure this cell has a valid tag. */
+  if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+  /* Create the tasks and their dependences?*/
+  struct task *t_grid_faces = scheduler_addtask(
+      s, task_type_recv, task_subtype_faces, c->mpi.tag, 0, c, NULL);
+
+  /* The recv_faces task depends on the cell's sorts?
+   * TODO: better dependency? */
+  scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_grid_faces);
+
+  /* Walk up the chain of parent cells to add dependencies for any hydro pair
+   * tasks higher up. */
+  for (struct cell *finger = c; c != NULL; c = c->parent) {
+    /* Create dependencies for the hydro (slope estimate or flux) tasks */
+#ifdef EXTRA_HYDRO_LOOP
+    for (struct link *l = finger->hydro.slope_estimate; l != NULL;
+         l = l->next) {
+      /* The slope estimate tasks depend on the recv_faces */
+#else
+    for (struct link *l = finger->hydro.flux; l != NULL; l = l->next) {
+      /* The flux exchange tasks depend on the recv_faces */
+#endif
+      struct task *t = l->t;
+#ifdef SWIFSWIFT_DEBUG_CHECKS
+      if (t->type == task_type_self)
+        error("Found self hydro task for cell proxy!");
+#endif
+      scheduler_addunlock(s, t_grid_faces, t);
+    }
+  }
+
+  /* Finally add it to the local cell. */
+  engine_addlink(e, &c->mpi.recv, t_grid_faces);
+
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -4227,17 +4363,21 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
 
           /* Is one of the cells local and does the neighbour have gas
            * particles? Also, only treat pairs once. */
-          if ((cid >= cjd) || (cj->hydro.count == 0)) continue;
+          if ((cid >= cjd) || (cj->hydro.count == 0) ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
 
           /* Construct a pair task for both directions, since the construction
-           * tasks are asymmetric. */
+           * tasks are asymmetric.
+           * MPI: we construct a pair interaction for both directions, even
+           * though we will only construct the voronoi grid of the local cell
+           * locally. The other pair interaction is very useful for
+           * bookkeeping purposes. */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
-          if (ci->nodeID == nodeID)
-            scheduler_addtask(sched, task_type_pair,
-                              task_subtype_grid_construction, sid, 0, ci, cj);
-          if (cj->nodeID == nodeID)
-            scheduler_addtask(sched, task_type_pair,
-                              task_subtype_grid_construction, sid, 0, cj, ci);
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_grid_construction, sid, 0, ci, cj);
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_grid_construction, sid, 0, cj, ci);
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
@@ -4326,8 +4466,9 @@ void engine_make_grid_hydroloop_dependencies(struct scheduler *sched,
 #endif
 
 /**
- * @brief Duplicates the grid construction loop and construct all the
- * dependencies for the hydro tasks
+ * @brief Constructs all the hydro loop tasks at the right level (based on the
+ * construction task structure) and creates the right dependencies for the
+ * hydro tasks.
  *
  * This is done by looping over all the previously constructed tasks
  * and adding another task involving the same cells but this time
@@ -4466,7 +4607,7 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
             engine_make_grid_hydroloop_dependencies(sched, cj, t_flux);
 #endif
 
-          /* link tasks to cells */
+            /* link tasks to cells */
 #ifdef EXTRA_HYDRO_LOOP
           engine_addlink(e, &ci->hydro.slope_estimate, t_slope_estimate);
           engine_addlink(e, &cj->hydro.slope_estimate, t_slope_estimate);
@@ -4818,13 +4959,9 @@ void engine_maketasks(struct engine *e) {
 
   /* Set the grid construction level, is needed before splitting */
   if (e->policy & engine_policy_grid) {
-    /* First set the neighbour flags */
-    threadpool_map(&e->threadpool, cell_set_neighbour_flags_mapper, NULL,
+    /* Set the construction level */
+    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper, NULL,
                    nr_cells, 1, threadpool_auto_chunk_size, e);
-    /* Then we can set the construction level */
-    threadpool_map(&e->threadpool, cell_set_grid_construction_level_mapper,
-                   cells, nr_cells, sizeof(struct cell),
-                   threadpool_auto_chunk_size, e);
   }
 
   /* Split the tasks. */

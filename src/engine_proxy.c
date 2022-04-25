@@ -60,7 +60,10 @@ void engine_makeproxies(struct engine *e) {
                                 cells[0].width[2]};
 
   /* Get some info about the physics */
-  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int combined_hydro_policy =
+      engine_policy_hydro | engine_policy_grid | engine_policy_grid_hydro;
+  /* All policies that require direct neighbours for pair interactions */
+  const int with_hydro = (e->policy & combined_hydro_policy);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
   const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
