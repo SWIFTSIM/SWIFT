@@ -20,6 +20,7 @@ task_colours = {
     "gravity": "red3",
     "RT": "springgreen",
     "sink": "lightseagreen",
+    "grid": "teal"
 }
 
 
@@ -157,6 +158,8 @@ def get_task_colour(taskname):
         colour = task_colours["RT"]
     elif task_is_sink(taskname):
         colour = task_colours["sink"]
+    elif task_is_grid(taskname):
+        colour = task_colours["grid"]
 
     return colour
 
@@ -218,6 +221,12 @@ def task_is_hydro(name):
         return True
     if "xv" in name and "bpart" not in name:
         return True
+    if "flux" in name:
+        return True
+    if "slope_estimate" in name:
+        return True
+    if "slope_limiter" in name:
+        return True
 
     task_name = [
         "sort",
@@ -265,6 +274,20 @@ def task_is_RT(name):
     if "_rt" in name:
         return True
     elif name.startswith("rt_"):
+        return True
+    return False
+
+def task_is_grid(name):
+    """
+    Does the task concern Grid construction?
+
+    Parameters
+    ----------
+
+    name: str
+        Task name
+    """
+    if "grid" in name:
         return True
     return False
 

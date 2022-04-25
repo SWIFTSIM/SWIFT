@@ -1247,6 +1247,18 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_sink_accretion:
       strcpy(cluster, "SinkAccretion");
       break;
+    case task_subtype_grid_construction:
+      strcpy(cluster, "GridConstruction");
+      break;
+    case task_subtype_slope_estimate:
+      strcpy(cluster, "SlopeEstimate");
+      break;
+    case task_subtype_slope_limiter:
+      strcpy(cluster, "SlopeLimiter");
+      break;
+    case task_subtype_flux:
+      strcpy(cluster, "Flux");
+      break;
     default:
       strcpy(cluster, "None");
       break;
