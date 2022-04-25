@@ -1315,7 +1315,7 @@ int main(int argc, char *argv[]) {
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity)
-      /* NOTE: In the zoom branch cdim is yet to be set by this point */
+      /* NOTE: In the zoom branch s.cdim is yet to be set by this point */
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                          with_cosmology, with_external_gravity,
                          with_baryon_particles, with_DM_particles,
