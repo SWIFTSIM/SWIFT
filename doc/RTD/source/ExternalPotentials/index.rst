@@ -310,6 +310,27 @@ follows the definitions of `Creasey, Theuns & Bower (2013)
 <https://adsabs.harvard.edu/abs/2013MNRAS.429.1922C>`_ equations (16) and (17).
 The potential is implemented along the x-axis.
 
+12. Mestel Disk Potential (``mestel``)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+An implementation of the "Mestel Disk" potential (Mestel 1963), which has a surface density and corresponding potential of the form
+
+ * :math:`\Sigma(r) = \Sigma_0\frac{r_0}{r} = \frac{v_0^2}{2\pi G r}`
+ * :math:`\phi(r) =  v_0^2\ln \left \frac{r}{r_0}( \right )`,
+
+The model has the property that the circular speed is independent of radius :math:`v_c = v_0`, and hence produces a disk with a flat rotation curve. Its free parameters are the aforementioned circular speed :math:`v_0` and a scale radius :math:`r_0` (which however only acts as an additive constant in the potential and is thus irrelevant for the dynamics), as well as the position (origin) of the potential.
+
+The code also imposes an extra limit of the size of the particles’ time-step, given by a specified fraction of the circular orbital time at the current radius of the particle. The other criteria (CFL, self-gravity, …) are applied on top of this criterion.
+
+The parameters are specified as:
+
+.. code:: YAML
+	  
+   MestelPotential:
+      position:         [3., 4., 5.]  # Location of the point mass (internal units)
+      v0:                        170.0  # Circular velocity
+      r0:                        16.0  # Scale Radius
+      timestep_mult:             0.01  # (Optional) Fraction of circular orbital time use as additional time-step criterion
+
 
 How to implement your own potential
 -----------------------------------
