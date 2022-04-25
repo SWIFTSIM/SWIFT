@@ -573,7 +573,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   struct sink *sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
 #ifdef WITH_MPI
-  not implemented yet !
+  error("MPI is not implemented yet for sink particles.");
 #endif
 
       struct part *
@@ -678,7 +678,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-        not implemented yet !
+        error("MPI is not implemented yet for sink particles.");
 #endif
 
             /* If we have a local particle, we must have found the sink in one
@@ -763,7 +763,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
   struct sink *sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
 #ifdef WITH_MPI
-  not implemented yet !
+  error("MPI is not implemented yet for sink particles.");
 #endif
 
       struct sink *
@@ -873,7 +873,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
         } /* Loop over local sinks */
 
 #ifdef WITH_MPI
-        not implemented yet !
+        error("MPI is not implemented yet for sink particles.");
 #endif
 
             /* If we have a local particle, we must have found the sink in one
