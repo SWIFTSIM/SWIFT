@@ -34,6 +34,14 @@
 #include "./mhd/DirectInduction/mhd.h"
 #include "./mhd/DirectInduction/mhd_iact.h"
 #define MHD_IMPLEMENTATION "MHD scheme using direct induction"
+#elif defined(DINDUCTION_MHD)
+#include "./mhd/DInduction/mhd.h"
+#include "./mhd/DInduction/mhd_iact.h"
+#define MHD_IMPLEMENTATION "MHD scheme using direct induction BASE"
+#elif defined(VECPOT_MHD)
+#include "./mhd/VPotential/mhd.h"
+#include "./mhd/VPotential/mhd_iact.h"
+#define MHD_IMPLEMENTATION "MHD scheme using vector potentials"
 #else
 #error "Invalid choice of MHD variant"
 #endif

@@ -30,6 +30,10 @@
 #include "./mhd/None/mhd_struct.h"
 #elif defined(DIRECT_INDUCTION_MHD)
 #include "./mhd/DirectInduction/mhd_struct.h"
+#elif defined(DINDUCTION_MHD)
+#include "./mhd/DInduction/mhd_struct.h"
+#elif defined(VECPOT_MHD)
+#include "./mhd/VPotential/mhd_struct.h"
 #else
 #error "Invalid choice of MHD variant"
 #endif
