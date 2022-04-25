@@ -1051,15 +1051,15 @@ void cell_free_grid_rec(struct cell *c) {
   /* Nothing to do as we have no tessellations */
 #else
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != c &&
+  if (c->grid.construction_level != on_construction_level &&
       (c->grid.voronoi != NULL || c->grid.delaunay != NULL))
     error("Grid allocated, but not on grid construction level!");
 #endif
-  if (c->grid.construction_level == NULL) {
+  if (c->grid.construction_level == above_construction_level) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_free_grid_rec(c->progeny[k]);
 
-  } else if (c->grid.construction_level == c) {
+  } else if (c->grid.construction_level == on_construction_level) {
     if (c->grid.voronoi != NULL) {
       voronoi_destroy(c->grid.voronoi);
       c->grid.voronoi = NULL;
@@ -1248,27 +1248,29 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
 }
 
 void cell_set_grid_construction_level(struct cell *c,
-                                      struct cell *construction_level) {
+                                      enum construction_level construction_level) {
 
   const int nr_parts = c->hydro.count;
-  if (construction_level == NULL &&
+  enum construction_level next_construction_level = construction_level;
+  if (construction_level == 0 &&
       (c->grid.unsplittable_flag || nr_parts < space_grid_split_threshold)) {
     /* This is the first time we encounter a cell with the unsplittable flag
      * set, meaning that it or one of its direct neighbours is unsplittable, or
      * which has too few particles to split further. This is the construction
      * level for this cell.
      */
-    construction_level = c;
+    construction_level = on_construction_level;
+    next_construction_level = below_construction_level;
   }
 
-  /* Set the super-cell */
+  /* Set the construction level */
   c->grid.construction_level = construction_level;
 
-  /* Recurse */
+  /* Recurse. */
   if (c->split)
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL)
-        cell_set_grid_construction_level(c->progeny[k], construction_level);
+        cell_set_grid_construction_level(c->progeny[k], next_construction_level);
     }
 }
 
@@ -1402,7 +1404,7 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
     if (c->hydro.count == 0) continue;
 
     /* Set construction level-pointer for the moving mesh */
-    if (c->nodeID == nodeID) cell_set_grid_construction_level(c, NULL);
+    if (c->nodeID == nodeID) cell_set_grid_construction_level(c, above_construction_level);
   }
 }
 

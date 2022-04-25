@@ -35,10 +35,10 @@
 #include "align.h"
 #include "cell_black_holes.h"
 #include "cell_grav.h"
+#include "cell_grid.h"
 #include "cell_hydro.h"
 #include "cell_sinks.h"
 #include "cell_stars.h"
-#include "cell_grid.h"
 #include "kernel_hydro.h"
 #include "multipole_struct.h"
 #include "part.h"
@@ -599,8 +599,10 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
-void cell_set_grid_construction_level_mapper(void *map_data, int num_elements, void *extra_data);
-void cell_set_split_grid_mapper(void *map_data, int num_elements, void *extra_data);
+void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
+                                             void *extra_data);
+void cell_set_split_grid_mapper(void *map_data, int num_elements,
+                                void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
 void cell_check_sort_flags(const struct cell *c);
@@ -1314,10 +1316,11 @@ __attribute__((always_inline)) INLINE static void cell_free_grid(
   /* Nothing to do as we have no tessellations */
 #else
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != c && (c->grid.voronoi != NULL || c->grid.delaunay != NULL))
+  if (c->grid.construction_level != on_construction_level &&
+      (c->grid.voronoi != NULL || c->grid.delaunay != NULL))
     error("Grid allocated, but not on grid construction level!");
 #endif
-  if (c->grid.construction_level == c) {
+  if (c->grid.construction_level == on_construction_level) {
     if (c->grid.voronoi != NULL) {
       voronoi_destroy(c->grid.voronoi);
       c->grid.voronoi = NULL;

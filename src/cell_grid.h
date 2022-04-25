@@ -9,10 +9,15 @@
 #include "shadowswift/delaunay.h"
 #include "const.h"
 
+enum construction_level {
+  above_construction_level,
+  on_construction_level,
+  below_construction_level,
+};
+
 struct cell_grid {
-  /*! Pointer to the parent cell of this cell containing the Voronoi grid (if
-   * any). */
-  struct cell *construction_level;
+  /*! Flag indicating the construction level location. */
+  enum construction_level construction_level;
 
   /*! Pointer to shallowest parent of this cell used in any pair construction
    * task. Can be above the construction level of this cell. We need to drift at

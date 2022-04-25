@@ -1638,10 +1638,10 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   if (c->grid.super == NULL)
-    error("Grid ghost run above grid construction level!");
+    error("Grid ghost run above grid super level!");
 
   /* Recurse? */
-  if (c->grid.construction_level == NULL) {
+  if (c->grid.construction_level == above_construction_level) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (!c->split) error("Supposedly above construction level, but not split!");
 #endif
@@ -1652,7 +1652,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != c)
+  if (c->grid.construction_level != on_construction_level)
     error("Somehow ended up below the construction level!");
 #endif
 

@@ -1093,7 +1093,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
 
     /* Since the grid construction tasks are asymmetric, whether a task
      * can be split depends only on ci. */
-    if (ci->grid.construction_level == NULL) {
+    if (ci->grid.construction_level == above_construction_level) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (!ci->split || (cj != NULL && !cj->split))
@@ -1241,7 +1241,7 @@ static void scheduler_splittask_grid_hydro(struct task *t,
     /* Self task? */
     if (t->type == task_type_self) {
       /* Should we split this task? */
-      if (ci->grid.construction_level == NULL) {
+      if (ci->grid.construction_level == above_construction_level) {
         /* Take a step back (we're going to recycle the current task)... */
         redo = 1;
 
@@ -1296,8 +1296,8 @@ static void scheduler_splittask_grid_hydro(struct task *t,
     else if (t->type == task_type_pair) {
       /* Should we split? I.e, are we above the grid construction level on at
        * least one side? */
-      if (ci->grid.construction_level == NULL ||
-          cj->grid.construction_level == NULL) {
+      if (ci->grid.construction_level == above_construction_level ||
+          cj->grid.construction_level == above_construction_level) {
         /* Take a step back (we're going to recycle the current task)... */
         redo = 1;
 
@@ -1349,12 +1349,12 @@ static void scheduler_splittask_grid_hydro(struct task *t,
       else {
         /* Do we need to switch ci and cj (so that t->ci will always be at its
          * construction level)? */
-        if (t->ci->grid.construction_level != t->ci) {
+        if (t->ci->grid.construction_level != on_construction_level) {
 #ifdef SWIFT_DEBUG_CHECKS
-          if (t->ci->grid.construction_level == NULL ||
-              t->cj->grid.construction_level == NULL)
+          if (t->ci->grid.construction_level == above_construction_level ||
+              t->cj->grid.construction_level == above_construction_level)
             error("Pair task should have been split further!");
-          if (t->cj->grid.construction_level != t->cj)
+          if (t->cj->grid.construction_level != on_construction_level)
             error("Pair flux exchange below construction level of both cells!");
 #endif
           struct cell *temp = t->ci;

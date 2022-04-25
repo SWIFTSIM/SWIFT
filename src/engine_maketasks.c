@@ -576,7 +576,7 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
 
 #ifdef WITH_MPI
   /* Recurse? */
-  if (ci->grid.construction_level == NULL) {
+  if (ci->grid.construction_level == above_construction_level) {
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_grid(e, ci->progeny[k], cj);
@@ -584,7 +584,7 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (ci->grid.construction_level != ci)
+  if (ci->grid.construction_level != on_construction_level)
     error("Somehow ended up below the grid construction level!");
 #endif
 
@@ -1155,7 +1155,7 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c) {
 #ifdef WITH_MPI
 
   /* recurse? */
-  if (c->grid.construction_level == NULL) {
+  if (c->grid.construction_level == above_construction_level) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) engine_addtasks_recv_grid(e, c->progeny[k]);
     /* Nothing else to do here... */
@@ -1163,7 +1163,7 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c) {
   }
 
 #ifdef SWIFSWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != c)
+  if (c->grid.construction_level != on_construction_level)
     error("Somehow ended up below the grid construction level...");
 #endif
 
@@ -1505,10 +1505,10 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
   /* Recurse until super level is reached. */
   else {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->grid.construction_level != NULL)
-      error("Somehow ended up below grid construction level!");
-    if (!c->split)
-      error("Cell is above grid construction level, but is not split!");
+    if (c->grid.super != NULL)
+      error("Somehow ended up below grid super level!");
+    if (!c->grid.split)
+      error("Cell is above grid super level, but is not split!");
 #endif
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
@@ -4573,11 +4573,11 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         int flipped = ci == ci_temp;
 
         /* Construction level ci == ci */
-        struct cell *construction_level_j = cj->grid.construction_level;
+        enum construction_level construction_level_j = cj->grid.construction_level;
 
         /* Should we add hydro pair interactions? */
-        if (construction_level_j == NULL ||
-            (construction_level_j == cj && !flipped)) {
+        if (construction_level_j == above_construction_level ||
+            (construction_level_j == on_construction_level && !flipped)) {
 
 #ifdef EXTRA_HYDRO_LOOP
           t_slope_estimate =

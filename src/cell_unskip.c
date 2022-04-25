@@ -2936,12 +2936,14 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
   int rebuild = 0;
 
-  /* If not at grid construction level, nothing else to do. */
-  if (c->grid.construction_level == NULL) return 0;
+  /* If above grid construction level, nothing else to do. */
+  if (c->grid.construction_level == above_construction_level) return rebuild;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->grid.construction_level != c)
-    error("Ended up below construction level!");
+  if (c->grid.construction_level == below_construction_level)
+    error(
+        "Trying to activate grid construction tasks, but not at construction "
+        "level!");
 #endif
 
   for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
@@ -3021,7 +3023,8 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
 #ifdef EXTRA_HYDRO_LOOP
     if (c->hydro.slope_estimate == NULL)
       error("Should have a slope estimation loop!");
-    if (c->hydro.slope_limiter == NULL) error("Should have a slope limiter loop!");
+    if (c->hydro.slope_limiter == NULL)
+      error("Should have a slope limiter loop!");
 #endif
 #endif
     struct task *t = l->t;
