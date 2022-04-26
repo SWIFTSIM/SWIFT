@@ -23,10 +23,6 @@ We have specific issues with the following compilers:
 
 + GCC 7.3.0 with the -mskylake-avx512 flag.
 
-When using the clang compiler, the hand-written vectorized routines
-have to be disabled. This is done at configuration time by adding
-the flag `--disable-hand-vec`.
-
 Dependencies
 ------------
 
@@ -132,6 +128,9 @@ MacOS, so it is best to leave it out. To configure:
 
   ./configure --disable-compiler-warnings --disable-doxygen-doc
 
+When using the clang compiler, the hand-written vectorized routines
+have to be disabled. This is done at configuration time by adding
+the flag `--disable-hand-vec`.
 
 Trouble Finding Libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~
