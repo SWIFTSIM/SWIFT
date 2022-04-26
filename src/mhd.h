@@ -49,11 +49,11 @@
 #elif defined(DINDUCTION_MHD) && defined(SPHENIX_SPH) // just tested
 #include "./mhd/DInduction/mhd.h"
 #include "./mhd/DInduction/mhd_iact.h"
-#define MHD_IMPLEMENTATION "MHD scheme using direct induction BASE"
+#define MHD_IMPLEMENTATION "Direct induction BASE"
 #elif defined(VECPOT_MHD) && defined(SPHENIX_SPH) // just that tested
 #include "./mhd/VPotential/mhd.h"
 #include "./mhd/VPotential/mhd_iact.h"
-#define MHD_IMPLEMENTATION "MHD scheme using vector potentials"
+#define MHD_IMPLEMENTATION "Vector potentials"
 #else
 #error "Invalid choice of MHD variant"
 #endif

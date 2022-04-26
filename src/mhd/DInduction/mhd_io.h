@@ -19,6 +19,8 @@
 #ifndef SWIFT_NONE_MHD_IO_H
 #define SWIFT_NONE_MHD_IO_H
 
+#include "io_properties.h"
+
 /**
  * @brief Specifies which particle fields to read from a dataset
  *
@@ -28,7 +30,9 @@
  */
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
-
+  
+  list[0]  = io_make_input_field("Bfield", FLOAT, 3, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, mhd_data.BPred); // CHECK XXX IF FULL STEP
   return 0;
 }
 
@@ -43,6 +47,14 @@ INLINE static int mhd_read_particles(struct part* parts,
 INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
+  
+  list[0] = io_make_output_field(
+      "Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f , parts, mhd_data.BPred, 
+      "Co-moving Magnetic field of the particles");
+  
+  list[1] = io_make_output_field(
+      "divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts, mhd_data.divB,
+      "co-moving DivB of the particles");
 
   return 0;
 }
@@ -51,6 +63,11 @@ INLINE static int mhd_write_particles(const struct part* parts,
  * @brief Writes the current model of MHD to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-INLINE static void mhd_write_flavour(hid_t h_grpsph) {}
+INLINE static void mhd_write_flavour(hid_t h_grpsph) {
+  /* write XXX atributes fo the implementation */
+  /* really detail here */
+  io_write_attribute_s(h_grpsph, "Direct Induction + instability subst ",
+                       "Dolag & Stasyszyn (2009), Dendner cleaning.");
+}
 
 #endif /* SWIFT_NONE_MHD_IO_H */
