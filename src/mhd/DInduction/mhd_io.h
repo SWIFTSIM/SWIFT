@@ -26,14 +26,15 @@
  *
  * @param parts The particle array.
  * @param list The list of i/o properties to read.
- * @param num_fields The number of i/o fields to read.
+ *
+ * @return number of fields readed
  */
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
   
   list[0]  = io_make_input_field("Bfield", FLOAT, 3, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mhd_data.BPred); // CHECK XXX IF FULL STEP
-  return 0;
+  return 1;
 }
 
 /**
@@ -42,7 +43,8 @@ INLINE static int mhd_read_particles(struct part* parts,
  * @param parts The particle array.
  * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
- * @param num_fields The number of i/o fields to write.
+ * 
+ * @return num_fields The number of i/o fields to write.
  */
 INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
@@ -56,7 +58,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts, mhd_data.divB,
       "co-moving DivB of the particles");
 
-  return 0;
+  return 2;
 }
 
 /**
