@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_MHD_IO_H
-#define SWIFT_NONE_MHD_IO_H
+#ifndef SWIFT_DI_MHD_IO_H
+#define SWIFT_DI_MHD_IO_H
 
 #include "io_properties.h"
 
@@ -72,4 +72,4 @@ INLINE static void mhd_write_flavour(hid_t h_grpsph) {
                        "Dolag & Stasyszyn (2009), Dendner cleaning.");
 }
 
-#endif /* SWIFT_NONE_MHD_IO_H */
+#endif /* SWIFT_DI_MHD_IO_H */

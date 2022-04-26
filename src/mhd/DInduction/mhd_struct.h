@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_MHD_STRUCT_H
-#define SWIFT_NONE_MHD_STRUCT_H
+#ifndef SWIFT_DI_MHD_STRUCT_H
+#define SWIFT_DI_MHD_STRUCT_H
 
 /**
  * @brief Particle-carried fields for the MHD scheme.
@@ -49,4 +49,4 @@ struct mhd_xpart_data {
   //float Bfld[3];
 };
 
-#endif /* SWIFT_NONE_MHD_STRUCT_H */
+#endif /* SWIFT_DI_MHD_STRUCT_H */
