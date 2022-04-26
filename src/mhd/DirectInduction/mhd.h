@@ -254,4 +254,15 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
   mhd_init_part(p);
 }
 
+/**
+ * @brief Print out the mhd fields of a particle.
+ *
+ * Function used for debugging purposes.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
+ */
+__attribute__((always_inline)) INLINE static void mhd_debug_particle(
+    const struct part *p, const struct xpart *xp) {}
+
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */
