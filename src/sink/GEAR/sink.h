@@ -227,6 +227,11 @@ INLINE static void sink_copy_properties(
 
   /* Flag it as not swallowed */
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
+  
+  /* Additional initialisation */
+  sink->n_stars = 3;
+  
+  
 }
 
 /**
