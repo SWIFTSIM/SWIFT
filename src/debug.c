@@ -36,6 +36,7 @@
 #include "engine.h"
 #include "hydro.h"
 #include "inline.h"
+#include "mhd.h"
 #include "part.h"
 #include "space.h"
 
@@ -154,6 +155,7 @@ void printParticle_single(const struct part *p, const struct xpart *xp) {
 
   printf("## Particle: id=%lld ", p->id);
   hydro_debug_particle(p, xp);
+  mhd_debug_particle(p, xp);
   printf("\n");
 }
 
