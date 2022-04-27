@@ -69,6 +69,19 @@ void initial_mass_function_print(const struct initial_mass_function *imf) {
   }
 }
 
+
+/** @brief Sample the initial mass function */
+void initial_mass_function_sample(const struct initial_mass_function *imf) {
+
+  
+  /* m in solar mass */
+
+
+}
+
+
+
+
 /**
  * @brief Integrate the #interpolation_1d data with the initial mass function.
  *
@@ -244,11 +257,12 @@ float initial_mass_function_get_integral_xi(
 float initial_mass_function_get_imf(const struct initial_mass_function *imf,
                                     float m) {
 
-#ifdef SWIFT_DEBUG_CHECKS
+  /* Check the mass to be within the limits */
+
   if (m > imf->mass_max || m < imf->mass_min)
     error("Mass below or above limits expecting %g < %g < %g.", imf->mass_min,
           m, imf->mass_max);
-#endif
+
 
   for (int i = 0; i < imf->n_parts; i++) {
     if (m <= imf->mass_limits[i + 1]) {
@@ -274,28 +288,41 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
 float initial_mass_function_get_integral_imf(
     const struct initial_mass_function *imf, float m1, float m2) {
 
-  /* Ensure the masses to be withing the limits */
-  m1 = min(m1, imf->mass_max);
-  m1 = max(m1, imf->mass_min);
 
-  m2 = min(m2, imf->mass_max);
-  m2 = max(m2, imf->mass_min);
+  /* Check that m2 is > m1 */
+  if (m1 > m2)
+    error("Mass m1 (=%g) larger or equal to m2 (=%g). This is not allowed", m1, m2);
 
-  for (int i = 0; i < imf->n_parts; i++) {
-    if (m1 <= imf->mass_limits[i + 1]) {
-      if (m2 < imf->mass_limits[i] || m2 > imf->mass_limits[i + 1]) {
-        error(
-            "The code does not support the integration over multiple parts of "
-            "the IMF");
-      }
-      const float exp = imf->exp[i] + 1.;
-      return imf->coef[i] * (pow(m2, exp) - pow(m1, exp)) / exp;
-    }
+  /* Check the masses to be within the limits */
+
+  if (m1 > imf->mass_max || m1 < imf->mass_min)
+    error("Mass m1 below or above limits expecting %g < %g < %g.", imf->mass_min,
+          m1, imf->mass_max);
+          
+  if (m2 > imf->mass_max || m2 < imf->mass_min)
+    error("Mass m2 below or above limits expecting %g < %g < %g.", imf->mass_min,
+          m2, imf->mass_max);
+                    
+  const int n=imf->n_parts;
+  float integral=0;
+  
+  /* loop over all segments */
+  for (int i=0; i<n; i++) {
+    float mmin = max(imf->mass_limits[i  ],m1);
+    float mmax = min(imf->mass_limits[i+1],m2);
+    
+    if (mmin<mmax) {
+        float p = imf->exp[i] + 1;
+        integral +=  (imf->coef[i]/p) * ( pow(mmax,p) - pow(mmin,p) );
+    } else        /* nothing in this segment go to the next one */
+      continue;   
+    
+    if (m2==mmax) /* nothing after this segment, stop */
+      break;
   }
+  
+  return integral;  
 
-  error("Failed to find correct function part: %g, %g larger than mass max %g.",
-        m1, m2, imf->mass_max);
-  return 0.;
 };
 
 /**
@@ -411,6 +438,17 @@ void initial_mass_function_init(struct initial_mass_function *imf,
 
   /* Compute the coefficients */
   initial_mass_function_compute_coefficients(imf);
+  
+  
+  /* Print info */
+  initial_mass_function_print(imf);
+  
+  
+  message("integral=%g",initial_mass_function_get_integral_imf(imf,0.1,0.7));
+  
+  exit(-1);
+  
+  
 }
 
 /**
