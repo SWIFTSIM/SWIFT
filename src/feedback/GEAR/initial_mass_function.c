@@ -64,9 +64,15 @@ void initial_mass_function_print(const struct initial_mass_function *imf) {
   message("Number of parts: %i", imf->n_parts);
   message("Mass interval: [%g, %g]", imf->mass_min, imf->mass_max);
   for (int i = 0; i < imf->n_parts; i++) {
-    message("[%g, %g]: %.2g * m^{%g}", imf->mass_limits[i],
+    message("[%7.3f, %7.3f]: %5.2g * m^{%g}", imf->mass_limits[i],
             imf->mass_limits[i + 1], imf->coef[i], imf->exp[i]);
   }
+  
+  message("Mass fractions");
+  for (int i = 0; i < imf->n_parts+1; i++)
+    message("m=%7.3f: x=%5.3f", imf->mass_limits[i], imf->mass_fraction[i]);
+  
+  
 }
 
 
@@ -288,7 +294,6 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
 float initial_mass_function_get_integral_imf(
     const struct initial_mass_function *imf, float m1, float m2) {
 
-
   /* Check that m2 is > m1 */
   if (m1 > m2)
     error("Mass m1 (=%g) larger or equal to m2 (=%g). This is not allowed", m1, m2);
@@ -326,7 +331,8 @@ float initial_mass_function_get_integral_imf(
 };
 
 /**
- * @brief Compute the coefficients of the initial mass function.
+ * @brief Compute the coefficients of the initial mass function
+ * as well as the mass fraction at the interface between IMF segments.
  *
  * @param imf The #initial_mass_function.
  */
@@ -359,6 +365,17 @@ void initial_mass_function_compute_coefficients(
   for (int i = 0; i < imf->n_parts; i++) {
     imf->coef[i] /= integral;
   }
+  
+  /* Allocate the memory for the mass fraction */
+  if ((imf->mass_fraction =
+           (float *)malloc(sizeof(float) * (imf->n_parts + 1))) == NULL)
+    error("Failed to allocate the IMF mass_fraction.");
+  
+  for (int i = 0; i < imf->n_parts+1; i++) {
+    imf->mass_fraction[i] = initial_mass_function_get_integral_imf(imf,imf->mass_min,imf->mass_limits[i]);
+  }  
+  
+
 }
 
 /**
@@ -442,9 +459,6 @@ void initial_mass_function_init(struct initial_mass_function *imf,
   
   /* Print info */
   initial_mass_function_print(imf);
-  
-  
-  message("integral=%g",initial_mass_function_get_integral_imf(imf,0.1,0.7));
   
   exit(-1);
   

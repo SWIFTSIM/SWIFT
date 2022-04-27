@@ -39,13 +39,16 @@ struct initial_mass_function {
   /*! Mass limits between IMF parts (n_parts + 1 elements). */
   float *mass_limits;
 
+  /*! Mass fraction computed at the interface between two IMF parts (n_parts + 1 elements). */
+  float *mass_fraction;
+
   /*! Exponent of each IMF parts (n_parts elements). */
   float *exp;
 
   /*! Coefficient of each IMF parts (n_parts elements). */
   float *coef;
 
-  /*! Number of parts in the function. */
+  /*! Number of parts (segments) in the function. */
   int n_parts;
 
   /*! Minimal mass contained in mass_limits, copied for more clarity. */
