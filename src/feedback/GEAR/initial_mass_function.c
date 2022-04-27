@@ -62,6 +62,7 @@ float initial_mass_function_get_exponent(
 void initial_mass_function_print(const struct initial_mass_function *imf) {
 
   message("Number of parts: %i", imf->n_parts);
+  message("Number of stars per mass units: %g", imf->N_tot);
   message("Mass interval: [%g, %g]", imf->mass_min, imf->mass_max);
   for (int i = 0; i < imf->n_parts; i++) {
     message("[%7.3f, %7.3f]: %5.2g * m^{%g}", imf->mass_limits[i],
@@ -71,18 +72,20 @@ void initial_mass_function_print(const struct initial_mass_function *imf) {
   message("Mass fractions");
   for (int i = 0; i < imf->n_parts+1; i++)
     message("m=%7.3f: x=%5.3f", imf->mass_limits[i], imf->mass_fraction[i]);
-  
-  
 }
 
 
 /** @brief Sample the initial mass function */
-void initial_mass_function_sample(const struct initial_mass_function *imf) {
+float initial_mass_function_sample(const struct initial_mass_function *imf, float f) {
 
+  for (int i = 0; i < imf->n_parts; i++)
+    if (f < imf->mass_fraction[i+1]) {
+      float pmin = pow(imf->mass_limits[i],imf->exp[i]);
+      return pow(imf->N_tot*imf->exp[i]/imf->coef[i]* (f-imf->mass_fraction[i]) + pmin ,1./imf->exp[i]);      
+    }  
+    
+  return -1;   
   
-  /* m in solar mass */
-
-
 }
 
 
@@ -282,8 +285,7 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
 };
 
 /**
- * @brief Compute the integral of the mass fraction of the initial mass
- * function.
+ * @brief Compute the the mass fraction (of stars) between m1 and m2 per mass unit.
  *
  * @param imf The #initial_mass_function.
  * @param m1 The lower mass to evaluate.
@@ -291,7 +293,7 @@ float initial_mass_function_get_imf(const struct initial_mass_function *imf,
  *
  * @return The integral of the mass fraction.
  */
-float initial_mass_function_get_integral_imf(
+float initial_mass_function_get_imf_mass_fraction(
     const struct initial_mass_function *imf, float m1, float m2) {
 
   /* Check that m2 is > m1 */
@@ -330,6 +332,57 @@ float initial_mass_function_get_integral_imf(
 
 };
 
+
+/**
+ * @brief Compute the number fraction (of stars) between m1 and m2 per mass unit.
+ *
+ * @param imf The #initial_mass_function.
+ * @param m1 The lower mass to evaluate.
+ * @param m2 The upper mass to evaluate.
+ *
+ * @return The integral of the mass fraction.
+ */
+float initial_mass_function_get_imf_number_fraction(
+    const struct initial_mass_function *imf, float m1, float m2) {
+
+  /* Check that m2 is > m1 */
+  if (m1 > m2)
+    error("Mass m1 (=%g) larger or equal to m2 (=%g). This is not allowed", m1, m2);
+
+  /* Check the masses to be within the limits */
+
+  if (m1 > imf->mass_max || m1 < imf->mass_min)
+    error("Mass m1 below or above limits expecting %g < %g < %g.", imf->mass_min,
+          m1, imf->mass_max);
+          
+  if (m2 > imf->mass_max || m2 < imf->mass_min)
+    error("Mass m2 below or above limits expecting %g < %g < %g.", imf->mass_min,
+          m2, imf->mass_max);
+                    
+  const int n=imf->n_parts;
+  float integral=0;
+  
+  /* loop over all segments */
+  for (int i=0; i<n; i++) {
+    float mmin = max(imf->mass_limits[i  ],m1);
+    float mmax = min(imf->mass_limits[i+1],m2);
+    
+    if (mmin<mmax) {
+        float p = imf->exp[i];
+        integral +=  (imf->coef[i]/p) * ( pow(mmax,p) - pow(mmin,p) );  
+    } else        /* nothing in this segment go to the next one */
+      continue;   
+    
+    if (m2==mmax) /* nothing after this segment, stop */
+      break;
+  }
+  
+  return integral;  
+
+};
+
+
+
 /**
  * @brief Compute the coefficients of the initial mass function
  * as well as the mass fraction at the interface between IMF segments.
@@ -365,6 +418,9 @@ void initial_mass_function_compute_coefficients(
   for (int i = 0; i < imf->n_parts; i++) {
     imf->coef[i] /= integral;
   }
+
+  /* Compute the total number of stars per mass unit */
+  imf->N_tot = initial_mass_function_get_imf_number_fraction(imf,imf->mass_min,imf->mass_max);
   
   /* Allocate the memory for the mass fraction */
   if ((imf->mass_fraction =
@@ -372,10 +428,9 @@ void initial_mass_function_compute_coefficients(
     error("Failed to allocate the IMF mass_fraction.");
   
   for (int i = 0; i < imf->n_parts+1; i++) {
-    imf->mass_fraction[i] = initial_mass_function_get_integral_imf(imf,imf->mass_min,imf->mass_limits[i]);
+    imf->mass_fraction[i] = initial_mass_function_get_imf_number_fraction(imf,imf->mass_min,imf->mass_limits[i])/imf->N_tot;
   }  
   
-
 }
 
 /**
@@ -459,9 +514,6 @@ void initial_mass_function_init(struct initial_mass_function *imf,
   
   /* Print info */
   initial_mass_function_print(imf);
-  
-  exit(-1);
-  
   
 }
 

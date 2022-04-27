@@ -56,6 +56,10 @@ struct initial_mass_function {
 
   /*! Maximal mass contained in mass_limits, copied for more clarity. */
   float mass_max;
+  
+  /*! Total number of stars (per mass unit) in the IMF. */
+  float N_tot;  
+  
 };
 
 /**
