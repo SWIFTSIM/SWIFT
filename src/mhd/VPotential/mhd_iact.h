@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_VP_MHD_IACT_H
-#define SWIFT_VP_MHD_IACT_H
+#ifndef SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
+#define SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
 
 /**
  * @brief MHD-Density interaction between two particles.
@@ -432,7 +432,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   float SAi = SourceAi + (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
-
+  /// DISSSIPATION
   const float Deta = 0.001f;
   const float mag_Disi =
       (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
@@ -440,4 +440,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.dAdt[i] += mj * 2.0 * Deta * mag_Disi * dA[i];
   return;
 }
-#endif /* SWIFT_VP_MHD_H */
+#endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */

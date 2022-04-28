@@ -81,6 +81,7 @@ void test(void) {
 
   /* --- Test the density loop --- */
   runner_iact_nonsym_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_mhd_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
@@ -115,6 +116,7 @@ void test(void) {
 
   /* --- Test the force loop --- */
   runner_iact_nonsym_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Check that the particles are the same */
   j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));

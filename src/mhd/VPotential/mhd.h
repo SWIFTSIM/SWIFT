@@ -16,9 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_VP_MHD_H
-#define SWIFT_VP_MHD_H
+#ifndef SWIFT_VECTOR_POTENTIAL_MHD_H
+#define SWIFT_VECTOR_POTENTIAL_MHD_H
 
+#include <float.h>
 #include "hydro.h"
 
 /**
@@ -466,4 +467,4 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
       p->mhd_data.divB, p->mhd_data.divA, p->mhd_data.Q0, p->mhd_data.Gau);
 }
 
-#endif /* SWIFT_VP_MHD_H */
+#endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */
