@@ -490,6 +490,44 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     struct part *restrict p, const struct cosmology *cosmo) {}
 
 /**
+ * @brief Prepare a particle for the gradient calculation.
+ *
+ * This function is called after the density loop and before the gradient loop.
+ * Nothing to do in this scheme as the gradient loop is not used.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ * @param hydro_props Hydrodynamic properties.
+ */
+__attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+
+/**
+ * @brief Resets the variables that are required for a gradient calculation.
+ *
+ * This function is called after hydro_prepare_gradient.
+ * Nothing to do in this scheme as the gradient loop is not used.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_gradient(
+    struct part *restrict p) {}
+
+/**
+ * @brief Finishes the gradient calculation.
+ *
+ * Nothing to do in this scheme as the gradient loop is not used.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void hydro_end_gradient(
+    struct part *p) {}
+
+/**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.
  *
  * In the desperate case where a particle has no neighbours (likely because
