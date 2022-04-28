@@ -59,10 +59,10 @@ INLINE static int mhd_write_particles(const struct part* parts,
       io_make_output_field("divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts,
                            mhd_data.divB, "co-moving DivB of the particles");
 
-  list[2] = io_make_output_field("TEST", FLOAT, 4, UNIT_CONV_NO_UNITS, -2.f,
-                                 parts, mhd_data.Test, "TEST FIELD");
+  //  list[2] = io_make_output_field("TEST", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f,
+  //                                 parts, mhd_data.Test, "TEST FIELD");
 
-  return 3;
+  return 2;
 }
 
 /**

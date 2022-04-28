@@ -42,7 +42,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
-  const float r_inv = r2 ? 1.f/sqrt(r2) : 0.0f;
+  const float r_inv = r2 ? 1.f / sqrt(r2) : 0.0f;
 
   const float b2_i = (pi->mhd_data.BPred[0] * pi->mhd_data.BPred[0] +
                       pi->mhd_data.BPred[1] * pi->mhd_data.BPred[1] +
@@ -223,7 +223,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
-
 
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */
