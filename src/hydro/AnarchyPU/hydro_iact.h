@@ -221,7 +221,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig = signal_velocity(pi, pj, mu_ij, const_viscosity_beta);
+  const float new_v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -286,7 +287,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig = signal_velocity(pi, pj, mu_ij, const_viscosity_beta);
+  const float new_v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);

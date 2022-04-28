@@ -38,10 +38,10 @@
  * @param phys_const physical constants struct
  * @param us internal units struct
  **/
-static void rt_interaction_rates_init(
-    struct rt_props* restrict rt_props,
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us);
+static void rt_interaction_rates_init(struct rt_props* restrict rt_props,
+                                      const struct phys_const* restrict
+                                          phys_const,
+                                      const struct unit_system* restrict us);
 
 /**
  * @brief Properties of the 'GEAR' radiative transfer model
