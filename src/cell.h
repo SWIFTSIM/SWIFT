@@ -210,6 +210,12 @@ struct pcell {
 
   } sinks;
 
+  /*! Grid variables */
+  struct {
+    /*! split flag */
+    int split;
+  } grid;
+
   /*! Maximal depth in that part of the tree */
   int maxdepth;
 

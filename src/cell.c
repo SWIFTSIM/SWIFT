@@ -1247,8 +1247,8 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   }
 }
 
-void cell_set_grid_construction_level(struct cell *c,
-                                      enum construction_level construction_level) {
+void cell_set_grid_construction_level(
+    struct cell *c, enum construction_level construction_level) {
 
   const int nr_parts = c->hydro.count;
   enum construction_level next_construction_level = construction_level;
@@ -1270,7 +1270,8 @@ void cell_set_grid_construction_level(struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL)
-        cell_set_grid_construction_level(c->progeny[k], next_construction_level);
+        cell_set_grid_construction_level(c->progeny[k],
+                                         next_construction_level);
     }
 }
 
@@ -1404,21 +1405,24 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
     if (c->hydro.count == 0) continue;
 
     /* Set construction level-pointer for the moving mesh */
-    if (c->nodeID == nodeID) cell_set_grid_construction_level(c, above_construction_level);
+    if (c->nodeID == nodeID)
+      cell_set_grid_construction_level(c, above_construction_level);
   }
 }
 
 /**
- * @brief Sets the grid.split and grid.complete flags.
+ * @brief Sets the grid.split flag.
  *
- * The grid.complete flag indicates whether this cell satisfies the completeness
- * criterion. I.e. the voronoi grid of this cell can only depend on particles
- * from directly neighbouring cells on the same level
- * The grid.split flag indicates that all the sub-cells of this cells also
+ * This cell satisfies the completeness criterion, i.e. the voronoi grid of this
+ * cell can only depend on particles from directly neighbouring cells on the
+ * same level. This is guaranteed if when we would split that cell in
+ * thirds along each dimension (i.e. in 27 smaller cells), every small cube
+ * would contain at least one particle.
+ * The grid.split flag indicates that all the sub-cells of this cells
  * satisfy the completeness criterion, meaning that the grid construction task
  * could safely be split.
  *
- * @return Whether this cell is complete.
+ * @return Whether this cell satisfies the above completeness criterion.
  * */
 int cell_set_splittable_grid(struct cell *c) {
   if (c == NULL) return 1;
@@ -1430,11 +1434,10 @@ int cell_set_splittable_grid(struct cell *c) {
       all_complete &= cell_set_splittable_grid(c->progeny[i]);
     }
 
-    /* If the criterion is valid for all sub-cells, it is valid for the cell
+    /* If the criterion is valid for all sub-cells, it is valid for this cell
      * itself and the cell can be safely split at least one level down. */
     if (all_complete) {
       c->grid.split = 1;
-      c->grid.complete = 1;
       return 1;
     }
   }
@@ -1463,7 +1466,6 @@ int cell_set_splittable_grid(struct cell *c) {
   }
 
   if (flags == criterion) {
-    c->grid.complete = 1;
     return 1;
   }
 

@@ -1521,7 +1521,7 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
   struct scheduler *s = &e->sched;
 
   /* Anything to do here? */
-  if (c->hydro.count == 0) return;
+  if (c->hydro.count == 0 || c->nodeID != e->nodeID) return;
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
@@ -4332,11 +4332,6 @@ void engine_make_grid_construction_tasks_mapper(void *map_data,
     /* Skip cells without hydro or star particles */
     if (ci->hydro.count == 0) continue;
 
-    if (!ci->grid.complete)
-      error(
-          "Top level cell found which does not satisfy the Voronoi "
-          "completeness criterion");
-
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_grid_construction,
@@ -4480,6 +4475,7 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              void *extra_data) {
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_slope_estimate = NULL;
   struct task *t_slope_limiter = NULL;
@@ -4493,8 +4489,10 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
     const long long flags = t->flags;
-    struct cell *const ci = t->ci;
-    struct cell *const cj = t->cj;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_local = ci->nodeID == nodeID;
+    const int cj_local = cj == NULL ? 0 : cj->nodeID == nodeID;
 
     /* Escape early */
     if (t_type == task_type_none) continue;
@@ -4502,14 +4500,22 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Grid construction interaction? */
     if (t_subtype == task_subtype_grid_construction) {
 
-      /* Grid construction depends on the drift */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
-
-      /* Grid construction task unlocks the construction ghost*/
-      scheduler_addunlock(sched, t, ci->grid.super->grid.ghost);
+      /* Set unlocks. Note that the grid construction will only be run for
+       * local ci. */
+      if (ci_local) {
+        /* Grid construction depends on the drift */
+        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        /* Grid construction task unlocks the construction ghost*/
+        scheduler_addunlock(sched, t, ci->grid.super->grid.ghost);
+      }
 
       /* Self task? */
       if (t_type == task_type_self) {
+
+        /* Local task? */
+        if (!ci_local) {
+          continue;
+        }
 
         /* No additional dependencies for self task */
 
@@ -4546,13 +4552,23 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       } else if (t_type == task_type_pair) {
 
-        /* Additional dependencies on sort and drift */
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
-        if (cj->hydro.super != ci->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+        /* Local task? */
+        if (!ci_local && !cj_local) continue;
 
-          /* t also depends on the drift of cj */
-          scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+        /* Add additional dependencies on sort and drift. Note that we will only
+         * run construction tasks for which ci is local. The dependency on the
+         * drift of ci has already been added above. */
+        if (ci_local) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
+
+          if (cj->hydro.super != ci->hydro.super) {
+            scheduler_addunlock(sched, cj->hydro.super->hydro.sorts, t);
+
+            if (cj_local) {
+              /* t also depends on the drift of cj */
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+            }
+          }
         }
 
         /* Create flux exchange task */
@@ -4573,7 +4589,8 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         int flipped = ci == ci_temp;
 
         /* Construction level ci == ci */
-        enum construction_level construction_level_j = cj->grid.construction_level;
+        enum construction_level construction_level_j =
+            cj->grid.construction_level;
 
         /* Should we add hydro pair interactions? */
         if (construction_level_j == above_construction_level ||
@@ -4592,18 +4609,20 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Create hydro loop dependencies. */
 #ifdef EXTRA_HYDRO_LOOP
-          engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
-                                                  t_slope_limiter, t_flux);
+          if (ci_local)
+            engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
+                                                    t_slope_limiter, t_flux);
           /* We also need a dependency on the construction task of cj, since the
            * interaction might be flipped */
-          if (cj->hydro.super != ci->hydro.super)
+          if (cj->hydro.super != ci->hydro.super && cj_local)
             engine_make_grid_hydroloop_dependencies(sched, cj, t_slope_estimate,
                                                     t_slope_limiter, t_flux);
 #else
-          engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
+          if (ci_local)
+            engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
           /* We also need a dependency on the construction task of cj, since the
            * interaction might be flipped */
-          if (cj->hydro.super != ci->hydro.super)
+          if (cj->hydro.super != ci->hydro.super && cj_local)
             engine_make_grid_hydroloop_dependencies(sched, cj, t_flux);
 #endif
 

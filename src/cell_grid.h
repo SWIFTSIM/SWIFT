@@ -13,6 +13,7 @@ enum construction_level {
   above_construction_level,
   on_construction_level,
   below_construction_level,
+  uninitialized,
 };
 
 struct cell_grid {
@@ -30,15 +31,7 @@ struct cell_grid {
 
   /*! Whether this cell can safely be split for grid construction (cell can be
    * split if all of it's progeny is complete). */
-  /* TODO send this over MPI (add it in cell_pack and cell_unpack) */
   int split;
-
-  /*! Flag indicating whether this cell satisfies the completeness criterion.
-   * The voronoi grid of a cell is guaranteed to be completed by only particles
-   * of its directly neighbouring cells if when we would split that cell in
-   * thirds along each dimension (i.e. in 27 smaller cells), every small cube
-   * would contain at least one particle. */
-   int complete;
 
   /*! Pointer to the voronoi struct of this cell (if any) */
   struct voronoi *voronoi;
