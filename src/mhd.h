@@ -50,10 +50,12 @@
 #include "./mhd/DInduction/mhd.h"
 #include "./mhd/DInduction/mhd_iact.h"
 #define MHD_IMPLEMENTATION "MHD scheme using direct induction BASE"
+#define EXTRA_HYDRO_LOOP
 #elif defined(VECTOR_POTENTIAL_MHD)
 #include "./mhd/VPotential/mhd.h"
 #include "./mhd/VPotential/mhd_iact.h"
 #define MHD_IMPLEMENTATION "Vector potentials"
+#define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of MHD variant"
 #endif
