@@ -42,6 +42,8 @@ __attribute__((always_inline)) INLINE static void  rt_debugging_check_nr_subcycl
   /* skip initialization */
   if (p->time_bin == 0) return;
 
+  /* TODO: this check may fail when running with limiter/sync. */
+
   int bindiff = p->time_bin - p->rt_data.time_bin;
   int subcycles_expect = 1;
   for (int b = 0; b < bindiff; b++)

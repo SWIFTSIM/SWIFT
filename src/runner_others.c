@@ -1127,10 +1127,12 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer)
 #endif
   }
 
-  if (c->cellID == PROBLEM_CELL) message("Updated cell %lld time from %lld -> %lld, current=%lld current_rt=%lld", 
+  if (c->cellID == PROBLEM_CELL) message("Updated cell %lld time from %lld -> %lld, current=%lld current_rt=%lld, min_step_size=%lld", 
                         c->cellID, c->hydro.ti_rt_end_min, 
                         c->hydro.ti_rt_end_min + c->hydro.ti_rt_min_step_size, 
-                        e->ti_current, e->ti_current_subcycle);
+                        e->ti_current, e->ti_current_subcycle,
+                        c->hydro.ti_rt_min_step_size
+                        );
   c->hydro.ti_rt_end_min  += c->hydro.ti_rt_min_step_size;
   if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);
 }

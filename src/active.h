@@ -201,8 +201,10 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_rt_end_min < e->ti_current)
     error(
-        "cell in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) and "
+        "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) and "
+        /* "cell in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) and " */
         "e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d",
+        c->cellID,
         c->hydro.ti_rt_end_min, c->hydro.ti_rt_end_min * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a, c->nodeID);
 #endif

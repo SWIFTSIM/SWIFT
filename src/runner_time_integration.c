@@ -1143,10 +1143,11 @@ if (p->id == PROBLEM_ID)
   if (c->cellID == PROBLEM_CELL) message("cell %lld Got ti_rt_beg_max %lld, was %lld",c->cellID,  ti_rt_beg_max, c->hydro.ti_rt_beg_max);
   c->hydro.ti_rt_beg_max = ti_rt_beg_max;
   if (c->cellID == PROBLEM_CELL) message("cell %lld Got ti_rt_min_step_size %lld, was %lld", c->cellID, ti_rt_min_step_size, c->hydro.ti_rt_min_step_size);
-  if (cell_is_active_hydro(c,e)){
+  if (cell_is_starting_hydro(c,e)){
     /* We only change the RT time steps when the cell is also hydro active.
      * Without this check here, ti_rt_min_step_size = max_nr_steps... */
     c->hydro.ti_rt_min_step_size = ti_rt_min_step_size;
+    if (c->cellID == PROBLEM_CELL) message("cell %lld set new ti_rt_min_step_size", c->cellID);
   }
   if (ti_rt_min_step_size == 0) error("Cell %lld got new rt step size = 0", c->cellID);
   c->grav.ti_end_min = ti_gravity_end_min;

@@ -258,7 +258,9 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
     error("Unksipping RT stuff without the policy being on");
 #endif
 
-  if (c->cellID == PROBLEM_CELL) message("Called cell %lld RA? %d", c->cellID, cell_is_rt_active(c, e));
+  if (c->cellID == PROBLEM_CELL)
+    message("Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld ti_current_subcycle %lld", 
+    c->cellID, sub_cycle, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min ,  e->ti_current_subcycle);
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -425,7 +427,7 @@ void engine_unskip(struct engine *e) {
         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
         (with_sinks && cell_is_active_sinks(c, e)) ||
         (with_black_holes && cell_is_active_black_holes(c, e)) ||
-        (with_rt && cell_is_active_hydro(c, e))) {
+        (with_rt && cell_is_rt_active(c, e))) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
