@@ -52,6 +52,8 @@ struct mhd_xpart_data {
   float Gau;
   /* Full step VPotential */
   float Bfld[3];
+  /* Full step VPotential */
+  float APot[3];
 };
 
 #endif /* SWIFT_VP_MHD_STRUCT_H */

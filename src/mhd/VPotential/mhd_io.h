@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DI_MHD_IO_H
-#define SWIFT_DI_MHD_IO_H
+#ifndef SWIFT_VP_MHD_IO_H
+#define SWIFT_VP_MHD_IO_H
 
 #include "io_properties.h"
 
@@ -78,4 +78,4 @@ INLINE static void mhd_write_flavour(hid_t h_grpsph) {
                        "Stasyszyn & Elstner (2015) + stuff");
 }
 
-#endif /* SWIFT_DI_MHD_IO_H */
+#endif /* SWIFT_VP_MHD_IO_H */
