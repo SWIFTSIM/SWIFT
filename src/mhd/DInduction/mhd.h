@@ -41,7 +41,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
-  const float r_inv = 1.f / sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  const float r_inv = r2 ? 1.f/sqrt(r2) : 0.0f;
 
   const float b2_i = (pi->mhd_data.BPred[0] * pi->mhd_data.BPred[0] +
                       pi->mhd_data.BPred[1] * pi->mhd_data.BPred[1] +
@@ -223,9 +224,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  p->mhd_data.Test[0] = 0.f;
-  p->mhd_data.Test[1] = 0.f;
-  p->mhd_data.Test[2] = 0.f;
 
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */
@@ -263,6 +261,10 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
+  /* MHD acceleration */
+  p->mhd_data.Test[0] = 0.f;
+  p->mhd_data.Test[1] = 0.f;
+  p->mhd_data.Test[2] = 0.f;
 
   /* Induction equation */
   p->mhd_data.dBdt[0] = 0.0f;
@@ -319,7 +321,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 /**
  * @brief Finishes the force calculation.
  *
- * Multiplies the force and accelerations by the appropiate constants
+ * Multiplies the force and accelerations by the appropriate constants
  * and add the self-contribution term. In most cases, there is little
  * to do here.
  *

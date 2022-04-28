@@ -233,6 +233,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float mag_faci = MU0_1 * f_ij * wi_dr * r_inv / (rhoi * rhoi);
   const float mag_facj = MU0_1 * f_ji * wj_dr * r_inv / (rhoj * rhoj);
   float Bi[3], Bj[3], dv[3];
+  float mm_i[3][3], mm_j[3][3];
 
   for (int i = 0; i < 3; i++) {
     Bi[i] = pi->mhd_data.BPred[i];
@@ -240,7 +241,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     dv[i] = pi->v[i] - pj->v[i];
   }
 
-  float mm_i[3][3], mm_j[3][3];
   ///////////////////////////// FORCE MAXWELL TENSOR
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
