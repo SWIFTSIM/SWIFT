@@ -995,11 +995,11 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
   }
 
-  /* Set up the tpwgts array. This is just ncon/nregions. */
+  /* Set up the tpwgts array. This is just 1/nregions. */
   real_t *tpwgts;
-  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
+  if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions * ncon)) == NULL)
     error("Failed to allocate tpwgts array");
-  for (int i = 0; i < nregions; i++) tpwgts[i] = ncon / (real_t)nregions;
+  for (int i = 0; i < nregions * ncon; i++) tpwgts[i] = 1.0 / (real_t)nregions;
 
   /* Common parameters. */
   idx_t options[4];
@@ -1014,8 +1014,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   if (edgew != NULL) wgtflag += 1;
   if (vertexw != NULL) wgtflag += 2;
 
-  real_t ubvec[1];
-  ubvec[0] = 1.001;
+  real_t ubvec[2] = {1.001, 1.001};
 
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
