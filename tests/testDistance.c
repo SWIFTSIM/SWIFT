@@ -35,6 +35,7 @@ void compute_interaction(struct part *pi, struct part *pj, float a, float H) {
 
     /* And interact them (density) */
     runner_iact_density(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_mhd_density(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_chemistry(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_pressure_floor(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_star_formation(r2, dx, pi->h, pj->h, pi, pj, a, H);
@@ -47,6 +48,7 @@ void compute_interaction(struct part *pi, struct part *pj, float a, float H) {
 
     /* And interact them (force) */
     runner_iact_force(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_mhd_force(r2, dx, pi->h, pj->h, pi, pj, a, H);
   }
 }
 

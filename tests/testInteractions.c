@@ -520,6 +520,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
     for (size_t i = 0; i < count; i++) {
       runner_iact_nonsym_force(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h,
                                &pi_serial, &pj_serial[i], a, H);
+      runner_iact_nonsym_mhd_force(r2[i], &(dx[3 * i]), pi_serial.h,
+                                   pj_serial[i].h, &pi_serial, &pj_serial[i], a,
+                                   H);
     }
     serial_time += getticks() - tic;
   }
