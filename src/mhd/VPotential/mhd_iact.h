@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_MHD_IACT_H
-#define SWIFT_NONE_MHD_IACT_H
+#ifndef SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
+#define SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
 
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -53,4 +53,4 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     struct part *restrict pi, const struct part *restrict pj, const float a,
     const float H) {}
 
-#endif /* SWIFT_NONE_MHD_H */
+#endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */

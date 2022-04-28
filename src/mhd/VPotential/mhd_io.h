@@ -16,8 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_MHD_IO_H
-#define SWIFT_NONE_MHD_IO_H
+#ifndef SWIFT_VECTOR_POTENTIAL_MHD_IO_H
+#define SWIFT_VECTOR_POTENTIAL_MHD_IO_H
 
 /**
  * @brief Specifies which particle fields to read from a dataset
@@ -53,4 +53,4 @@ INLINE static int mhd_write_particles(const struct part* parts,
  */
 INLINE static void mhd_write_flavour(hid_t h_grpsph) {}
 
-#endif /* SWIFT_NONE_MHD_IO_H */
+#endif /* SWIFT_VECTOR_POTENTIAL_MHD_IO_H */
