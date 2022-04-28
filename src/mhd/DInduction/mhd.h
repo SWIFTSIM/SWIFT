@@ -22,6 +22,58 @@
 #include "hydro.h"
 
 /**
+ * @brief Compute the MHD signal velocity between two gas particles,
+ *
+ * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
+ *
+ * Warning ONLY to be called just after preparation of the force loop.
+ *
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @brief pi The first #part.
+ * @brief pj The second #part.
+ * @brief mu_ij The velocity on the axis linking the particles, or zero if the
+ * particles are moving away from each other,
+ * @brief beta The non-linear viscosity constant.
+ */
+__attribute__((always_inline)) INLINE static float mhd_signal_velocity(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const float mu_ij, const float beta) {
+
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
+  const float r_inv = 1.f / sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+
+  const float b2_i = (pi->mhd_data.BPred[0] * pi->mhd_data.BPred[0] +
+                      pi->mhd_data.BPred[1] * pi->mhd_data.BPred[1] +
+                      pi->mhd_data.BPred[2] * pi->mhd_data.BPred[2]);
+  const float b2_j = (pj->mhd_data.BPred[0] * pj->mhd_data.BPred[0] +
+                      pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
+                      pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
+  const float vcsa2_i = ci * ci + MU0_1 * b2_i / pi->rho;
+  const float vcsa2_j = cj * cj + MU0_1 * b2_j / pj->rho;
+  float Bpro2_i =
+      (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
+       pi->mhd_data.BPred[2] * dx[2]) *
+      r_inv;
+  Bpro2_i *= Bpro2_i;
+  float mag_speed_i = sqrtf(
+      0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
+                                  4.f * ci * ci * Bpro2_i * MU0_1 / pi->rho),
+                                 0.f))));
+  float Bpro2_j =
+      (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
+       pj->mhd_data.BPred[2] * dx[2]) *
+      r_inv;
+  Bpro2_j *= Bpro2_j;
+  float mag_speed_j = sqrtf(
+      0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
+                                  4.f * cj * cj * Bpro2_j * MU0_1 / pj->rho),
+                                 0.f))));
+
+  return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
+}
+
+/**
  * @brief Returns the Dender Scalar Phi evolution
  * time the particle. NOTE: all variables in full step
  *
@@ -171,6 +223,10 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
+  p->mhd_data.Test[0] = 0.f;
+  p->mhd_data.Test[1] = 0.f;
+  p->mhd_data.Test[2] = 0.f;
+
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */
   float const DBDT_Corr = (p->mhd_data.phi / p->h);
@@ -190,6 +246,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
       p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I take
                                      // simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
+  // add the correct hydro acceleration?
   const float ACC_mhd = b2 / (p->h);
   /* Re normalize the correction in eth momentum from the DivB errors*/
   p->mhd_data.Q0 =
@@ -272,7 +329,12 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *restrict p, const struct cosmology *cosmo) {}
+    struct part *restrict p, const struct cosmology *cosmo) {
+
+  p->a_hydro[0] += p->mhd_data.Test[0];
+  p->a_hydro[1] += p->mhd_data.Test[1];
+  p->a_hydro[2] += p->mhd_data.Test[2];
+}
 
 /**
  * @brief Kick the additional variables

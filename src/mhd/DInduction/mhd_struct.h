@@ -23,10 +23,10 @@
  * @brief Particle-carried fields for the MHD scheme.
  */
 struct mhd_part_data {
-  
+
   /*! Full Step Magnetic field */
   float Bfld[3];
-  /*! Predicted Bfield */ 
+  /*! Predicted Bfield */
   float BPred[3];
   /*! Full step Divergence of B */
   float divB;
@@ -34,19 +34,20 @@ struct mhd_part_data {
   float Q1, Q0;
   /*! dB Direct Induction */
   float dBdt[3];
-  /* Full step Dedner Cleaning Scalar */	
+  /* Full step Dedner Cleaning Scalar */
   float phi;
+  float Test[3];
 };
 
 /**
  * @brief Particle-carried extra fields for the MHD scheme.
  */
 struct mhd_xpart_data {
-  
-  /* Dedner Cleaning Scalar */	
+
+  /* Dedner Cleaning Scalar */
   float phi;
   // NOT SURE
-  //float Bfld[3];
+  // float Bfld[3];
 };
 
 #endif /* SWIFT_DI_MHD_STRUCT_H */

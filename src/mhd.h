@@ -36,21 +36,21 @@
 #define MU0 1.0
 #define MU0_1 1.0
 #elif defined(MHD_MU0_4PI)
-#define MU0 4.0f*M_PI
-#define MU0_1 1.0/(4.0*M_PI)
+#define MU0 4.0f * M_PI
+#define MU0_1 1.0 / (4.0 * M_PI)
 #else
-#error "COMPILED WITH MHD but MU0 not defined" 
+#error "COMPILED WITH MHD but MU0 not defined"
 #endif
 // Flavor of MHD
 #if defined(DIRECT_INDUCTION_MHD)
 #include "./mhd/DirectInduction/mhd.h"
 #include "./mhd/DirectInduction/mhd_iact.h"
 #define MHD_IMPLEMENTATION "MHD scheme using direct induction"
-#elif defined(DINDUCTION_MHD) && defined(SPHENIX_SPH) // just tested
+#elif defined(DINDUCTION_MHD) && defined(SPHENIX_SPH)  // just tested
 #include "./mhd/DInduction/mhd.h"
 #include "./mhd/DInduction/mhd_iact.h"
 #define MHD_IMPLEMENTATION "Direct induction BASE"
-#elif defined(VECPOT_MHD) && defined(SPHENIX_SPH) // just that tested
+#elif defined(VECPOT_MHD) && defined(SPHENIX_SPH)  // just that tested
 #include "./mhd/VPotential/mhd.h"
 #include "./mhd/VPotential/mhd_iact.h"
 #define MHD_IMPLEMENTATION "Vector potentials"
