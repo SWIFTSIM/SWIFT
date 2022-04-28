@@ -1849,30 +1849,30 @@ case "$with_hydro" in
    ;;
 esac
 
-# MHD scheme.
-AC_ARG_WITH([mhd],
-   [AS_HELP_STRING([--with-mhd=<scheme>],
-      [Magneto Hydro dynamics to use @<:@none, direct-induction, DInduction, VPotential default:none@:>@]
+# SPMHD scheme.
+AC_ARG_WITH([spmhd],
+   [AS_HELP_STRING([--with-spmhd=<scheme>],
+      [Magneto Hydro Dynamics SPH scheme to use @<:@none, direct-induction, DInduction, VPotential default:none@:>@]
    )],
-   [with_mhd="$withval"],
-   [with_mhd="none"]
+   [with_spmhd="$withval"],
+   [with_spmhd="none"]
 )
 
-case "$with_mhd" in
+case "$with_spmhd" in
    none)
       AC_DEFINE([NONE_MHD], [1], [No mhd])
    ;;
    direct-induction)
       AC_DEFINE([DIRECT_INDUCTION_MHD], [1], [MHD using a direct induction method])
    ;;
-   DInduction)
+   direct-induction-fede)
       AC_DEFINE([DINDUCTION_MHD], [1], [MHD using yet another direct induction method (To dissapear)])
    ;;
-   VPotential)
+   vector-potential)
       AC_DEFINE([VECPOT_MHD], [1], [MHD using Vector Potentials])
    ;;
    *)
-      AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_mhd])
+      AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
    ;;
 esac
 
@@ -2800,7 +2800,7 @@ AC_MSG_RESULT([
    Lightcones enabled   : $enable_lightcone
 
    Hydro scheme       : $with_hydro
-   MHD scheme         : $with_mhd
+   SPMHD scheme       : $with_spmhd
    Dimensionality     : $with_dimension
    Kernel function    : $with_kernel
    Equation of state  : $with_eos
