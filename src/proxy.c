@@ -198,8 +198,131 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
  * @param s The space into which the tags will be unpacked.
  */
 void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
-                         struct space *s) {
-  /* TODO */
+                               struct space *s) {
+#ifdef WITH_MPI
+
+  ticks tic2 = getticks();
+
+  /* Run through the cells and get the size of the info that will be sent off.
+   */
+  int count_out = 0;
+  int *offset_out =
+      (int *)swift_malloc("info_offsets_out", s->nr_cells * sizeof(int));
+  if (offset_out == NULL) error("Error allocating memory for info offsets");
+
+  for (int k = 0; k < s->nr_cells; k++) {
+    offset_out[k] = count_out;
+    if (s->cells_top[k].mpi.sendto) {
+      count_out += s->cells_top[k].mpi.pcell_size;
+    }
+  }
+
+  /* Run through the proxies and get the count of incoming info. */
+  int count_in = 0;
+  int *offset_in =
+      (int *)swift_malloc("info_offsets_in", s->nr_cells * sizeof(int));
+  if (offset_in == NULL) error("Error allocating memory for info offsets");
+
+  for (int k = 0; k < num_proxies; k++) {
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      offset_in[proxies[k].cells_in[j] - s->cells_top] = count_in;
+      count_in += proxies[k].cells_in[j]->mpi.pcell_size;
+    }
+  }
+
+  /* Allocate the tags. */
+  int *extra_info_in = NULL;
+  int *extra_info_out = NULL;
+  if (swift_memalign("extra_info_in", (void **)&extra_info_in,
+                     SWIFT_CACHE_ALIGNMENT, sizeof(int) * count_in) != 0 ||
+      swift_memalign("extra_info_out", (void **)&extra_info_out,
+                     SWIFT_CACHE_ALIGNMENT, sizeof(int) * count_out) != 0)
+    error("Failed to allocate extra info buffers.");
+
+  /* Pack the local grid info. */
+  for (int k = 0; k < s->nr_cells; k++) {
+    if (s->cells_top[k].mpi.sendto) {
+      cell_pack_grid_extra(&s->cells_top[k], &extra_info_out[offset_out[k]]);
+    }
+  }
+
+  if (s->e->verbose)
+    message("Cell pack grid extra took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  /* Allocate the incoming and outgoing request handles. */
+  int num_reqs_out = 0;
+  int num_reqs_in = 0;
+  for (int k = 0; k < num_proxies; k++) {
+    num_reqs_in += proxies[k].nr_cells_in;
+    num_reqs_out += proxies[k].nr_cells_out;
+  }
+  MPI_Request *reqs_in = NULL;
+  int *cids_in = NULL;
+  if ((reqs_in = (MPI_Request *)malloc(sizeof(MPI_Request) *
+                                       (num_reqs_in + num_reqs_out))) == NULL ||
+      (cids_in = (int *)malloc(sizeof(int) * (num_reqs_in + num_reqs_out))) ==
+          NULL)
+    error("Failed to allocate MPI_Request arrays.");
+  MPI_Request *reqs_out = &reqs_in[num_reqs_in];
+  int *cids_out = &cids_in[num_reqs_in];
+
+  /* Emit the sends and recvs. */
+  for (int send_rid = 0, recv_rid = 0, k = 0; k < num_proxies; k++) {
+    for (int j = 0; j < proxies[k].nr_cells_in; j++) {
+      const int cid = proxies[k].cells_in[j] - s->cells_top;
+      cids_in[recv_rid] = cid;
+      int err =
+          MPI_Irecv(&extra_info_in[offset_in[cid]],
+                    proxies[k].cells_in[j]->mpi.pcell_size, MPI_INT,
+                    proxies[k].nodeID, cid, MPI_COMM_WORLD, &reqs_in[recv_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to irecv grid info.");
+      recv_rid += 1;
+    }
+    for (int j = 0; j < proxies[k].nr_cells_out; j++) {
+      const int cid = proxies[k].cells_out[j] - s->cells_top;
+      cids_out[send_rid] = cid;
+      int err = MPI_Isend(&extra_info_out[offset_out[cid]],
+                          proxies[k].cells_out[j]->mpi.pcell_size, MPI_INT,
+                          proxies[k].nodeID, cid, MPI_COMM_WORLD,
+                          &reqs_out[send_rid]);
+      if (err != MPI_SUCCESS) mpi_error(err, "Failed to isend grid info.");
+      send_rid += 1;
+    }
+  }
+
+  tic2 = getticks();
+
+  /* Wait for each recv and unpack the grid info into the local cells. */
+  for (int k = 0; k < num_reqs_in; k++) {
+    int pid = MPI_UNDEFINED;
+    MPI_Status status;
+    if (MPI_Waitany(num_reqs_in, reqs_in, &pid, &status) != MPI_SUCCESS ||
+        pid == MPI_UNDEFINED)
+      error("MPI_Waitany failed.");
+    const int cid = cids_in[pid];
+    cell_unpack_grid_extra(&extra_info_in[offset_in[cid]], &s->cells_top[cid]);
+  }
+
+  if (s->e->verbose)
+    message("Cell unpack grid extra took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  /* Wait for all the sends to have completed. */
+  if (MPI_Waitall(num_reqs_out, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
+    error("MPI_Waitall on sends failed.");
+
+  /* Clean up. */
+  swift_free("extra_info_in", extra_info_in);
+  swift_free("extra_info_out", extra_info_out);
+  swift_free("info_offsets_in", offset_in);
+  swift_free("info_offsets_out", offset_out);
+  free(reqs_in);
+  free(cids_in);
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
 }
 
 /**

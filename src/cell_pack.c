@@ -138,6 +138,40 @@ int cell_pack_tags(const struct cell *c, int *tags) {
 #endif
 }
 
+/**
+ * @brief Pack the extra grid info of the given cell and all it's sub-cells.
+ *
+ * @param c The #cell.
+ * @param info Pointer to an array of packed extra grid info (construction
+ * levels).
+ *
+ * @return The number of packed tags.
+ */
+int cell_pack_grid_extra(const struct cell *c, int *info) {
+#ifdef WITH_MPI
+
+  /* Start by packing the construction level of the current cell. */
+  info[0] = c->grid.construction_level;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      count += cell_pack_grid_extra(c->progeny[k], &info[count]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->mpi.pcell_size != count) error("Inconsistent info and pcell count!");
+#endif  // SWIFT_DEBUG_CHECKS
+
+  /* Return the number of packed tags used. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
 void cell_pack_part_swallow(const struct cell *c,
                             struct black_holes_part_data *data) {
 
@@ -314,6 +348,42 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->mpi.pcell_size != count) error("Inconsistent tag and pcell count!");
+#endif  // SWIFT_DEBUG_CHECKS
+
+  /* Return the total number of unpacked tags. */
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Unpack the extra grid info of a given cell and its sub-cells.
+ *
+ * @param tags An array of extra grid info (construction levels).
+ * @param c The #cell in which to unpack the tags.
+ *
+ * @return The number of tags created.
+ */
+int cell_unpack_grid_extra(const int *info, struct cell *restrict c) {
+#ifdef WITH_MPI
+
+  /* Unpack the current pcell. */
+  c->grid.construction_level = info[0];
+
+  /* Number of new cells created. */
+  int count = 1;
+
+  /* Fill the progeny recursively, depth-first. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL) {
+      count += cell_unpack_grid_extra(&info[count], c->progeny[k]);
+    }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->mpi.pcell_size != count) error("Inconsistent info and pcell count!");
 #endif  // SWIFT_DEBUG_CHECKS
 
   /* Return the total number of unpacked tags. */
