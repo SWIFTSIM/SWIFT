@@ -58,6 +58,9 @@ __attribute__((always_inline)) INLINE static float signal_velocity(
  * Non-MHD case.
  * This is eq. (103) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
  *
+ * Warning: Can ONLY to be called just after preparation of the force loop.
+ *
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @brief pi The first #part.
  * @brief pj The second #part.
  * @brief mu_ij The velocity on the axis linking the particles, or zero if the

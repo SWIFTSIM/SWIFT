@@ -1843,38 +1843,47 @@ case "$with_hydro" in
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
 
-
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
 esac
 
-# MHD scheme.
-AC_ARG_WITH([mhd],
-   [AS_HELP_STRING([--with-mhd=<scheme>],
-      [Magneto Hydro dynamics to use @<:@none, direct-induction, DInduction, VPotential default:none@:>@]
+# SPMHD scheme.
+AC_ARG_WITH([spmhd],
+   [AS_HELP_STRING([--with-spmhd=<scheme>],
+      [Magneto Hydro Dynamics SPH scheme to use @<:@none, direct-induction, direct-induction-fede, vector-potential default:none@:>@]
    )],
-   [with_mhd="$withval"],
-   [with_mhd="none"]
+   [with_spmhd="$withval"],
+   [with_spmhd="none"]
 )
 
-case "$with_mhd" in
+case "$with_spmhd" in
    none)
       AC_DEFINE([NONE_MHD], [1], [No mhd])
    ;;
    direct-induction)
       AC_DEFINE([DIRECT_INDUCTION_MHD], [1], [MHD using a direct induction method])
    ;;
-   DInduction)
+   direct-induction-fede)
       AC_DEFINE([DINDUCTION_MHD], [1], [MHD using yet another direct induction method (To dissapear)])
    ;;
-   VPotential)
-      AC_DEFINE([VECPOT_MHD], [1], [MHD using Vector Potentials])
+   vector-potential)
+      AC_DEFINE([VECTOR_POTENTIAL_MHD], [1], [MHD using Vector Potentials])
    ;;
    *)
-      AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_mhd])
+      AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
    ;;
 esac
+
+if test "$with_hydro" = "gizmo-mfm" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "gizmo-mfv" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "shadowfax" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
 
 #  Vacuum permeability
 AC_ARG_WITH([mu0],
@@ -2825,7 +2834,7 @@ AC_MSG_RESULT([
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
    
-   MHD scheme         : $with_mhd
+   SPMHD scheme       : $with_spmhd
    MHD Mu0            : $with_mu0
 
    Gravity scheme      : $with_gravity
