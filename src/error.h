@@ -51,6 +51,14 @@
 #define memdump(rank)
 #endif
 
+
+/* #define PROBLEM_ID 1546 */
+/* #define PROBLEM_CELL 123 */
+
+#define PROBLEM_ID 15412
+#define PROBLEM_CELL 202
+
+
 /**
  * @brief Error macro. Prints the message given in argument and aborts.
  *

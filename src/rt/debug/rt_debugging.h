@@ -34,8 +34,24 @@
  * @param p the particle to work on
  */
 __attribute__((always_inline)) INLINE static void  rt_debugging_count_subcycle( struct part* restrict p) {
-  if (p->id == 1546) message("Inc subcycle count %lld", p->id);
+  if (p->id == PROBLEM_ID) message("Inc subcycle count %lld", p->id);
   p->rt_data.debug_nsubcycles += 1;
+}
+
+__attribute__((always_inline)) INLINE static void  rt_debugging_check_nr_subcycles( struct part* restrict p) {
+  /* skip initialization */
+  if (p->time_bin == 0) return;
+
+  int bindiff = p->time_bin - p->rt_data.time_bin;
+  int subcycles_expect = 1;
+  for (int b = 0; b < bindiff; b++)
+    subcycles_expect *= 2;
+  if (p->rt_data.debug_nsubcycles != subcycles_expect)
+    error("Particle %lld didn't do the expected amount of subcycles: Expected %d, done %d; time bins %d RT: %d", 
+    p->id, 
+    subcycles_expect, 
+    p->rt_data.debug_nsubcycles,
+    p->time_bin, p->rt_data.time_bin);
 }
 
 /**
@@ -133,7 +149,7 @@ static void rt_debugging_start_of_step_hydro_mapper(void *restrict map_data,
     /* Can't check for subcycle = 0 here, it hasn't been reset yet */
     /* if (!p->rt_data.debug_rt_zeroth_cycle_on_main_step) */
     /*     message("??? %d %d %d", part_is_active(p, e), part_is_rt_active(p, e), p->rt_data.debug_nsubcycles); */
-    if (p->id == 1546)
+    if (p->id == PROBLEM_ID)
         message("Testing part %lld - HA %d RA %d SC %d PTB %d RTTB %d", p->id, part_is_active(p, e), part_is_rt_active(p, e), p->rt_data.debug_nsubcycles, p->time_bin, p->rt_data.time_bin);
   }
 }

@@ -1092,7 +1092,7 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer)
   /* Anything to do here? */
   if (count == 0) return;
 
-  if (c->cellID == 123) message("Called %lld RT active? %d", c->cellID, cell_is_rt_active(c, e));
+  if (c->cellID == PROBLEM_CELL) message("Called %lld RT active? %d", c->cellID, cell_is_rt_active(c, e));
   if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
@@ -1122,12 +1122,12 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer)
       rt_debug_sequence_check(p, 5, __func__);
       /* Mark that the subcycling has happened */
       rt_debugging_count_subcycle(p);
-      if (p->id == 1546) message("Got 1546 in cell %lld", c->cellID);
+      if (p->id == PROBLEM_ID) message("Got %lld in cell %lld", p->id, c->cellID);
     }
 #endif
   }
 
-  if (c->cellID == 123) message("Updated cell %lld time from %lld -> %lld, current=%lld current_rt=%lld", 
+  if (c->cellID == PROBLEM_CELL) message("Updated cell %lld time from %lld -> %lld, current=%lld current_rt=%lld", 
                         c->cellID, c->hydro.ti_rt_end_min, 
                         c->hydro.ti_rt_end_min + c->hydro.ti_rt_min_step_size, 
                         e->ti_current, e->ti_current_subcycle);

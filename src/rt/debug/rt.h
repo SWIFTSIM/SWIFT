@@ -20,8 +20,9 @@
 #define SWIFT_RT_DEBUG_H
 
 #include "rt_debugging.h"
-#define PROBLEM_ID 1546
+/* #define PROBLEM_ID 1546 */
 #define PROBLEM_ID2 1147
+
 
 /**
  * @file src/rt/debug/rt.h
@@ -83,6 +84,9 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
+  /* Before resetting the subcycle count, make sure we did the correct
+   * number of subcycles. */
+  rt_debugging_check_nr_subcycles(p);
   p->rt_data.debug_nsubcycles = 0;
   if (p->id == PROBLEM_ID || p->id == PROBLEM_ID2) {
     message("resetting nsubcycles part %lld callloc=%d", p->id, callloc);

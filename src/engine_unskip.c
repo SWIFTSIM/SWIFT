@@ -258,7 +258,7 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
     error("Unksipping RT stuff without the policy being on");
 #endif
 
-  if (c->cellID == 123) message("Called cell %lld RA? %d", c->cellID, cell_is_rt_active(c, e));
+  if (c->cellID == PROBLEM_CELL) message("Called cell %lld RA? %d", c->cellID, cell_is_rt_active(c, e));
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -314,7 +314,9 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
     /* Handle on the cell */
     struct cell *const c = &cells_top[local_cells[ind]];
 
-    if (c->cellID == 123) message("Caught cell %lld sub_cycle? %d active? %d activate advance cell time? %d", c->cellID, 0, cell_is_rt_active(c, e), c->hydro.rt_advance_cell_time != NULL);
+    if (c->cellID == PROBLEM_CELL)     
+        message("Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld ti_current_subcycle %lld", 
+        c->cellID, 0, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min ,  e->ti_current_subcycle);
     /* In what copy of the global list are we?
      * This gives us the broad type of task we are working on. */
     const ptrdiff_t delta = &local_cells[ind] - list_base;
@@ -550,7 +552,9 @@ void engine_unskip_sub_cycle(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (c->cellID == 123) message("Caught cell %lld sub_cycle? %d active? %d activate advance cell time? %d", c->cellID, 0, cell_is_rt_active(c, e), c->hydro.rt_advance_cell_time != NULL);
+    if (c->cellID == PROBLEM_CELL)
+    message("Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld ti_current_subcycle %lld", c->cellID, 1, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min ,  e->ti_current_subcycle);
+
     if (cell_is_empty(c)) continue;
 
     if (cell_is_rt_active(c, e)) {

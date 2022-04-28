@@ -207,7 +207,10 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
         e->ti_current * e->time_base, e->cosmology->a, c->nodeID);
 #endif
 
-  /* if (c->cellID == 123) message("Cell %lld active check: %lld %lld %d", c->cellID, c->hydro.ti_rt_end_min, e->ti_current_subcycle, c->hydro.ti_rt_end_min == e->ti_current_subcycle); */
+  /* if (c->cellID == PROBLEM_CELL) 
+   * message("Cell %lld active check: %lld %lld %d", 
+   * c->cellID, c->hydro.ti_rt_end_min, 
+   * e->ti_current_subcycle, c->hydro.ti_rt_end_min == e->ti_current_subcycle); */
   return (c->hydro.ti_rt_end_min == e->ti_current_subcycle);
 }
 
