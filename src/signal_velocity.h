@@ -23,16 +23,19 @@
 #include "../config.h"
 
 /* Local includes */
+#include "mhd.h"
 #include "part.h"
 
 #ifndef NONE_MHD
 
 /**
- * @brief Compute the signal velocity between two gas particles.
+ * @brief Compute the signal velocity between two gas particles,
  *
  * MHD case.
- * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
  *
+ * Warning: Can ONLY to be called just after preparation of the force loop.
+ *
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @brief pi The first #part.
  * @brief pj The second #part.
  * @brief mu_ij The velocity on the axis linking the particles, or zero if the
@@ -40,12 +43,10 @@
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float signal_velocity(
-    const struct part *restrict pi, const struct part *restrict pj,
-    const float mu_ij, const float beta) {
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const float mu_ij, const float beta) {
 
-  // TODO: Implement !
-
-  return -1.f;
+  return mhd_signal_velocity(dx, pi, pj, mu_ij, beta);
 }
 
 #else
@@ -56,6 +57,9 @@ __attribute__((always_inline)) INLINE static float signal_velocity(
  * Non-MHD case.
  * This is eq. (103) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
  *
+ * Warning: Can ONLY to be called just after preparation of the force loop.
+ *
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @brief pi The first #part.
  * @brief pj The second #part.
  * @brief mu_ij The velocity on the axis linking the particles, or zero if the
@@ -63,8 +67,8 @@ __attribute__((always_inline)) INLINE static float signal_velocity(
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float signal_velocity(
-    const struct part *restrict pi, const struct part *restrict pj,
-    const float mu_ij, const float beta) {
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const float mu_ij, const float beta) {
 
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
