@@ -239,6 +239,8 @@ DomainDecomposition:
   repartition_type: fullcosts # (Optional) The re-decomposition strategy, one of:
                               # "none", "fullcosts", "edgecosts", "memory" or
                               # "timecosts".
+  use_memory_weights: 1       # Use memory per cell as an additional weight if appropriate, may help with large 
+                              # memory imbalance and "fullcosts"/"timecosts".
   trigger:          0.05      # (Optional) Fractional (<1) CPU time difference between MPI ranks required to trigger a
                               # new decomposition, or number of steps (>1) between decompositions
   minfrac:          0.9       # (Optional) Fractional of all particles that should be updated in previous step when

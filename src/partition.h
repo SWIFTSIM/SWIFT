@@ -62,6 +62,7 @@ struct repartition {
 
   int use_fixed_costs;
   int use_ticks;
+  int use_memory_weights;
 
   /* The partition as a cell-list. */
   int ncelllist;
