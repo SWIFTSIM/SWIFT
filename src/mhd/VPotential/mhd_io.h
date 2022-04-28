@@ -24,12 +24,18 @@
  *
  * @param parts The particle array.
  * @param list The list of i/o properties to read.
- * @param num_fields The number of i/o fields to read.
+ *
+ * @return number of fields readed
  */
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
 
-  return 0;
+  list[0] =
+      io_make_input_field("Bfield", FLOAT, 3, COMPULSORY, UNIT_CONV_NO_UNITS,
+                          parts, mhd_data.BPred);  // CHECK XXX IF FULL STEP
+  list[1] = io_make_input_field("VecPot", FLOAT, 3, COMPULSORY,
+                                UNIT_CONV_NO_UNITS, parts, mhd_data.APred);
+  return 2;
 }
 
 /**
@@ -38,19 +44,36 @@ INLINE static int mhd_read_particles(struct part* parts,
  * @param parts The particle array.
  * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
- * @param num_fields The number of i/o fields to write.
+ *
+ * @return num_fields The number of i/o fields to write.
  */
 INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
 
-  return 0;
+  list[0] = io_make_output_field("Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f,
+                                 parts, mhd_data.BPred,
+                                 "Co-moving Magnetic field of the particles");
+
+  list[1] =
+      io_make_output_field("divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts,
+                           mhd_data.divB, "co-moving DivB of the particles");
+
+  //  list[2] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
+  //                                 parts, mhd_data.Gau, "Gauge scalar field");
+
+  return 2;
 }
 
 /**
  * @brief Writes the current model of MHD to the file
  * @param h_grpsph The HDF5 group in which to write
  */
-INLINE static void mhd_write_flavour(hid_t h_grpsph) {}
+INLINE static void mhd_write_flavour(hid_t h_grpsph) {
+  /* write XXX atributes fo the implementation */
+  /* really detail here */
+  io_write_attribute_s(h_grpsph, "Vector Potential + instability subst ",
+                       "Stasyszyn & Elstner (2015) + stuff");
+}
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_IO_H */
