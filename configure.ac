@@ -1843,7 +1843,6 @@ case "$with_hydro" in
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
 
-
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
@@ -1875,6 +1874,16 @@ case "$with_spmhd" in
       AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
    ;;
 esac
+
+if test "$with_hydro" = "gizmo-mfm" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "gizmo-mfv" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "shadowfax" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
 
 
 # Check if debugging interactions stars is switched on.
