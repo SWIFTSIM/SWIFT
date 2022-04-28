@@ -26,9 +26,9 @@
 #include "./mhd/None/mhd_io.h"
 #elif defined(DIRECT_INDUCTION_MHD)
 #include "./mhd/DirectInduction/mhd_io.h"
-#elif defined(DINDUCTION_MHD)
+#elif defined(DIRECT_INDUCTION_FEDE_MHD)
 #include "./mhd/DInduction/mhd_io.h"
-#elif defined(VECPOT_MHD)
+#elif defined(VECTOR_POTENTIAL_MHD)
 #include "./mhd/VPotential/mhd_io.h"
 #else
 #error "Invalid choice of MHD model"
