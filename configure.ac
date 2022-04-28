@@ -1851,7 +1851,7 @@ esac
 # SPMHD scheme.
 AC_ARG_WITH([spmhd],
    [AS_HELP_STRING([--with-spmhd=<scheme>],
-      [Magneto Hydro Dynamics SPH scheme to use @<:@none, direct-induction, DInduction, VPotential default:none@:>@]
+      [Magneto Hydro Dynamics SPH scheme to use @<:@none, direct-induction, direct-induction-fede, vector-potential default:none@:>@]
    )],
    [with_spmhd="$withval"],
    [with_spmhd="none"]
@@ -1885,6 +1885,25 @@ if test "$with_hydro" = "shadowfax" -a "$with_spmhd" != "none"; then
   AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
 fi
 
+#  Vacuum permeability
+AC_ARG_WITH([mu0],
+   [AS_HELP_STRING([--with-mu0=<mu0>],
+      [mu0 @<:@1, 4pi, default: 4pi@:>@]
+   )],
+   [with_mu0="$withval"],
+   [with_mu0="4pi"]
+)
+case "$with_mu0" in
+   1)
+      AC_DEFINE([MHD_MU0_1], [1.], [Mu_0 is 1])
+   ;;
+   4pi)
+      AC_DEFINE([MHD_MU0_4PI], [4.0*3.14], [Mu_0 is 4 PI])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown Mu0: $with_mu0])
+   ;;
+esac
 
 # Check if debugging interactions stars is switched on.
 AC_ARG_ENABLE([debug-interactions-stars],
@@ -2809,12 +2828,14 @@ AC_MSG_RESULT([
    Lightcones enabled   : $enable_lightcone
 
    Hydro scheme       : $with_hydro
-   SPMHD scheme       : $with_spmhd
    Dimensionality     : $with_dimension
    Kernel function    : $with_kernel
    Equation of state  : $with_eos
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
+   
+   SPMHD scheme       : $with_spmhd
+   MHD Mu0            : $with_mu0
 
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order

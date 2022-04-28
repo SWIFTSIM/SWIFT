@@ -30,10 +30,11 @@
 
 /**
  * @brief Compute the signal velocity between two gas particles,
- *
  * MHD case.
  *
- * Warning: Can ONLY to be called just after preparation of the force loop.
+ * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
+ *
+ * Warning ONLY to be called just after preparation of the force loop.
  *
  * @param dx Comoving vector separating both particles (pi - pj).
  * @brief pi The first #part.
