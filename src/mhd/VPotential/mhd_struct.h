@@ -16,17 +16,42 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_NONE_MHD_STRUCT_H
-#define SWIFT_NONE_MHD_STRUCT_H
+#ifndef SWIFT_VP_MHD_STRUCT_H
+#define SWIFT_VP_MHD_STRUCT_H
 
 /**
  * @brief Particle-carried fields for the MHD scheme.
  */
-struct mhd_part_data {};
+struct mhd_part_data {
+
+  /*! Full Step Magnetic field */
+  float Bfld[3];
+  /*! Predicted Bfield */
+  float BPred[3];
+  /*! Predicted BSmooth */
+  float BSmooth[3];
+  /*! Full step Divergence of B */
+  float divB;
+  /*! limiter force */
+  float Q0;
+  /* predicted VPotencial */
+  float APred[3];
+  /* predicted step Gauge, divA */
+  float Gau, divA;
+  /* VP evolution */
+  float dAdt[3];
+  float Test[3];
+};
 
 /**
  * @brief Particle-carried extra fields for the MHD scheme.
  */
-struct mhd_xpart_data {};
+struct mhd_xpart_data {
 
-#endif /* SWIFT_NONE_MHD_STRUCT_H */
+  /* Full step Gauge */
+  float Gau;
+  /* Full step VPotential */
+  float Bfld[3];
+};
+
+#endif /* SWIFT_VP_MHD_STRUCT_H */
