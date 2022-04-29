@@ -1312,14 +1312,25 @@ int main(int argc, char *argv[]) {
     neutrino_props_init(&neutrino_properties, &prog_const, &us, params, &cosmo,
                         with_neutrinos);
 
+    /* Get cdim from parameter file for gravity property intialisation */
+    /* Set the zoom cdim. */
+    int cdim[3];
+    cdim[0] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                       space_max_top_level_cells_default);
+    cdim[1] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                       space_max_top_level_cells_default);
+    cdim[2] = parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
+                                       space_max_top_level_cells_default);
+
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity)
+      /* NOTE: In the zoom branch s.cdim is yet to be set by this point */
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                          with_cosmology, with_external_gravity,
                          with_baryon_particles, with_DM_particles,
                          with_neutrinos, with_DM_background_particles, periodic,
-                         s.dim, s.cdim);
+                         dim, cdim);
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
