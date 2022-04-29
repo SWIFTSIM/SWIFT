@@ -63,6 +63,7 @@ def check_hydro_sanity(snapdata):
     - gradients always done?
     - thermochemistry always done?
     - RT transport calls >= RT gradient calls?
+    - number of subcycles != 0?
     """
 
     npart = snapdata[0].gas.coords.shape[0]
@@ -203,6 +204,25 @@ def check_hydro_sanity(snapdata):
                 print(
                     "RTCallsIactGradientInteraction",
                     gas.RTCallsIactGradientInteraction[fishy],
+                )
+            if break_on_diff:
+                quit()
+
+
+        #-------------------------------------------------------------
+        # Check that the subcycle counter isn't zero.
+        # We exect a particle to be radioactive at least each time it
+        # is hydro active, so the subcycle counter must never be zero.
+        #-------------------------------------------------------------
+
+        fishy = gas.nsubcycles <= 0
+        if fishy.any():
+            print("- cehcking hydro sanity pt 2.6; snapshot", snap.snapnr)
+            print("Found nsubcycles <= 0:", np.count_nonzero(fishy), "/", npart)
+            if print_diffs:
+                print(
+                    "nsubcycles:",
+                    gas.nsubcycles[fishy],
                 )
             if break_on_diff:
                 quit()
