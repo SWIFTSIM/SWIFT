@@ -421,11 +421,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Calculate monopole term */
   float B_mon_i =
-      (over_rho2_i * wi_dr * Bri + over_rho2_j * wj_dr * Brj) * r_inv;
+      - over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
   float B_mon_j =
-      (over_rho2_i * wi_dr * Bri + over_rho2_j * wj_dr * Brj) * r_inv;
+      - over_rho2_j * rhoj * (Bri - Brj) * wj_dr * r_inv;
   pi->B_mon += mj * B_mon_i;
-  pj->B_mon -= mi * B_mon_j;
+  pj->B_mon += mi * B_mon_j;
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = pressurei * over_rho2_i * dvdr * r_inv * wi_dr;
@@ -475,14 +475,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->B_over_rho_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
 
   /*Divergence diffusion */
-  const float dedner_cleaning_pref = dedner_beta * (over_rho2_i * psi_over_v_sigi * wi_dr * r_inv + over_rho2_j * psi_over_v_sigj * wj_dr);
-  pi->B_over_rho_dt[0] += mj * v_sig * dedner_cleaning_pref * dx[0];
-  pi->B_over_rho_dt[1] += mj * v_sig * dedner_cleaning_pref * dx[1];
-  pi->B_over_rho_dt[2] += mj * v_sig * dedner_cleaning_pref * dx[2];
+  float grad_psi_i = over_rho2_i * psi_over_v_sigi * pi->force.v_sig * wi_dr * r_inv;
+  grad_psi_i += over_rho2_j * psi_over_v_sigj * pj->force.v_sig * wj_dr;
+  float grad_psi_j = grad_psi_i;
 
-  pj->B_over_rho_dt[0] -= mi * v_sig * dedner_cleaning_pref * dx[0];
-  pj->B_over_rho_dt[1] -= mi * v_sig * dedner_cleaning_pref * dx[1];
-  pj->B_over_rho_dt[2] -= mi * v_sig * dedner_cleaning_pref * dx[2];
+  pi->B_over_rho_dt[0] -= mj * dedner_beta * grad_psi_i * dx[0];
+  pi->B_over_rho_dt[1] -= mj * dedner_beta * grad_psi_i * dx[1];
+  pi->B_over_rho_dt[2] -= mj * dedner_beta * grad_psi_i * dx[2];
+
+  pj->B_over_rho_dt[0] += mi * dedner_beta * grad_psi_j * dx[0];
+  pj->B_over_rho_dt[1] += mi * dedner_beta * grad_psi_j * dx[1];
+  pj->B_over_rho_dt[2] += mi * dedner_beta * grad_psi_j * dx[2];
 }
 
 
@@ -700,7 +703,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Calculate monopole term */
   float B_mon_i =
-      (over_rho2_i * wi_dr * Bri + over_rho2_j * wj_dr * Brj) * r_inv;
+      - over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
   pi->B_mon += mj * B_mon_i;
 
   /* Get the time derivative for u. */
@@ -736,10 +739,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->B_over_rho_dt[2] += mj * dB_dt_pref_i * dB_dt_i[2];
 
   /*Divergence diffusion */
-  const float dedner_cleaning_pref = dedner_beta * (over_rho2_i * psi_over_v_sigi * wi_dr * r_inv + over_rho2_j * psi_over_v_sigj * wj_dr);
-  pi->B_over_rho_dt[0] += mj * v_sig * dedner_cleaning_pref * dx[0];
-  pi->B_over_rho_dt[1] += mj * v_sig * dedner_cleaning_pref * dx[1];
-  pi->B_over_rho_dt[2] += mj * v_sig * dedner_cleaning_pref * dx[2];
+  /*Divergence diffusion */
+  float grad_psi_i = over_rho2_i * psi_over_v_sigi * pi->force.v_sig * wi_dr * r_inv;
+  grad_psi_i += over_rho2_j * psi_over_v_sigj * pj->force.v_sig * wj_dr;
+
+  pi->B_over_rho_dt[0] -= mj * dedner_beta * grad_psi_i * dx[0];
+  pi->B_over_rho_dt[1] -= mj * dedner_beta * grad_psi_i * dx[1];
+  pi->B_over_rho_dt[2] -= mj * dedner_beta * grad_psi_i * dx[2];
 }
 
 #endif /* SWIFT_MINIMAL_HYDRO_IACT_H */

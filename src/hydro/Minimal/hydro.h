@@ -752,8 +752,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->B_over_rho[1] += p->B_over_rho_dt[1] * dt_therm;
   p->B_over_rho[2] += p->B_over_rho_dt[2] * dt_therm;
 
-  p->psi_over_v_sig += p->psi_over_v_sig_dt * dt_therm;
-
   const float h_inv = 1.f / p->h;
 
   /* Predict smoothing length */
@@ -854,6 +852,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   const float delta_By = p->B_over_rho_dt[1] * dt_therm;
   const float delta_Bz = p->B_over_rho_dt[2] * dt_therm;
 
+  /* Integrate the Dedner scalar forward in time */
+  const float delta_psi_over_v_sig = p->psi_over_v_sig_dt * dt_therm;
+
   /* Integrate the internal energy forward in time */
   // const float delta_u = p->u_dt * dt_therm;
 
@@ -864,6 +865,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->B_over_rho_full[0] = xp->B_over_rho_full[0] + delta_Bx;
   xp->B_over_rho_full[1] = xp->B_over_rho_full[1] + delta_By;
   xp->B_over_rho_full[2] = xp->B_over_rho_full[2] + delta_Bz;
+
+  /* Integrate Dedner scalar in time */
+  p->psi_over_v_sig = p->psi_over_v_sig + delta_psi_over_v_sig;
 
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
