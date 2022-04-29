@@ -1073,6 +1073,8 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
     error("Found non grid construction task in scheduler_splittask_grid!");
 #endif
 
+  int nodeID = s->nodeID;
+
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
@@ -1086,7 +1088,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
     struct cell *cj = t->cj;
 
     /* Foreign task? */
-    if (ci->nodeID != s->nodeID) {
+    if (ci->nodeID != nodeID && (cj == NULL || cj->nodeID != nodeID)) {
       t->skip = 1;
       break;
     }
@@ -2282,6 +2284,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
           buff = t->buff = malloc(count);
 
+        } else if (t->subtype == task_subtype_faces) {
+
+          /* TODO */
+
         } else {
           error("Unknown communication sub-type");
         }
@@ -2387,6 +2393,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           size = count = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
           buff = t->buff = malloc(size);
           cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
+
+        } else if (t->subtype == task_subtype_faces) {
+
+          /* TODO */
 
         } else {
           error("Unknown communication sub-type");

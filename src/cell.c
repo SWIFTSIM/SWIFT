@@ -1068,7 +1068,7 @@ void cell_free_grid_rec(struct cell *c) {
       delaunay_destroy(c->grid.delaunay);
       c->grid.delaunay = NULL;
     }
-  } else {
+  } else if (c->grid.construction_level == below_construction_level) {
     error("Somehow ended up below grid construction level!");
   }
 #endif

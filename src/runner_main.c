@@ -604,6 +604,8 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_multipole) {
             cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
             free(t->buff);
+          } else if (t->subtype == task_subtype_faces) {
+            /* TODO */
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }

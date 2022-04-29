@@ -499,7 +499,7 @@ void engine_exchange_grid_extra(struct engine *e) {
 #ifdef WITH_MPI
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if(!(e->policy & engine_policy_grid))
+  if (!(e->policy & engine_policy_grid))
     error("Not running with grid, but trying to exchange grid information!");
 #endif
 
@@ -773,7 +773,8 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 #ifdef WITH_MPI
 
   const int nr_proxies = e->nr_proxies;
-  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_hydro =
+      e->policy & (engine_policy_hydro | engine_policy_grid_hydro);
   const int with_stars = e->policy & engine_policy_stars;
   const int with_black_holes = e->policy & engine_policy_black_holes;
   struct space *s = e->s;
