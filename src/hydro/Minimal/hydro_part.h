@@ -135,10 +135,10 @@ struct part {
   float B_mon;
 
   /*! Particle div(B) cleaning scalar field over signal velocity. */
-  float psi_over_v_sig;
+  float psi;
 
   /*! Time derivative of div(B) cleaning scalar field over signal velocity. */
-  float psi_over_v_sig_dt;
+  float psi_dt;
 
 
   /* Store density/force specific stuff. */

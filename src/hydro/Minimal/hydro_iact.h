@@ -229,8 +229,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   Bj[0] = pj->B_over_rho[0] * rhoj;
   Bj[1] = pj->B_over_rho[1] * rhoj;
   Bj[2] = pj->B_over_rho[2] * rhoj;
-  const float psi_over_v_sigi = pi->psi_over_v_sig;
-  const float psi_over_v_sigj = pj->psi_over_v_sig;
+  const float psi_i = pi->psi;
+  const float psi_j = pj->psi;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -475,8 +475,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->B_over_rho_dt[2] += mi * dB_dt_pref_j * dB_dt_j[2];
 
   /*Divergence diffusion */
-  float grad_psi_i = over_rho2_i * psi_over_v_sigi * pi->force.v_sig * wi_dr * r_inv;
-  grad_psi_i += over_rho2_j * psi_over_v_sigj * pj->force.v_sig * wj_dr;
+  float grad_psi_i = over_rho2_i * psi_i * wi_dr * r_inv;
+  grad_psi_i += over_rho2_j * psi_j * wj_dr * r_inv;
   float grad_psi_j = grad_psi_i;
 
   pi->B_over_rho_dt[0] -= mj * dedner_beta * grad_psi_i * dx[0];
@@ -536,8 +536,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   Bj[0] = pj->B_over_rho[0] * rhoj;
   Bj[1] = pj->B_over_rho[1] * rhoj;
   Bj[2] = pj->B_over_rho[2] * rhoj;
-  const float psi_over_v_sigi = pi->psi_over_v_sig;
-  const float psi_over_v_sigj = pj->psi_over_v_sig;
+  const float psi_i = pi->psi;
+  const float psi_j = pj->psi;
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -740,8 +740,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /*Divergence diffusion */
   /*Divergence diffusion */
-  float grad_psi_i = over_rho2_i * psi_over_v_sigi * pi->force.v_sig * wi_dr * r_inv;
-  grad_psi_i += over_rho2_j * psi_over_v_sigj * pj->force.v_sig * wj_dr;
+  float grad_psi_i = over_rho2_i * psi_i * wi_dr * r_inv;
+  grad_psi_i += over_rho2_j * psi_j *  wj_dr * r_inv;
 
   pi->B_over_rho_dt[0] -= mj * dedner_beta * grad_psi_i * dx[0];
   pi->B_over_rho_dt[1] -= mj * dedner_beta * grad_psi_i * dx[1];

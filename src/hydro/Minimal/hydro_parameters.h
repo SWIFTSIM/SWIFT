@@ -53,6 +53,7 @@
 #define monopole_beta 1.0f
 
 #define dedner_beta 1.0f
+#define dedner_gamma 0.5f
 
 /* The viscosity that the particles are reset to after being hit by a
  * feedback event. This should be set to the same value as the

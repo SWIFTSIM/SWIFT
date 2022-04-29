@@ -680,7 +680,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 
   p->B_mon = 0.0f;
 
-  p->psi_over_v_sig_dt = 0.0f;
+  p->psi_dt = 0.0f;
 }
 
 /**
@@ -816,10 +816,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 
   /* Dedner cleaning scalar time derivative */
   const float v_sig = p->force.v_sig;
+  const float v_sig2 = v_sig * v_sig;
   const float div_B = p->B_mon;
   const float div_v = p->density.div_v;
-  const float psi_over_v_sig = p->psi_over_v_sig;
-  p->psi_over_v_sig_dt = - v_sig * div_B - 0.5f * psi_over_v_sig * div_v - psi_over_v_sig * v_sig * h_inv; 
+  const float psi = p->psi;
+  p->psi_dt = - v_sig2 * div_B - dedner_gamma * psi * div_v - psi * v_sig * h_inv; 
 }
 
 /**
@@ -853,7 +854,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   const float delta_Bz = p->B_over_rho_dt[2] * dt_therm;
 
   /* Integrate the Dedner scalar forward in time */
-  const float delta_psi_over_v_sig = p->psi_over_v_sig_dt * dt_therm;
+  const float delta_psi = p->psi_dt * dt_therm;
 
   /* Integrate the internal energy forward in time */
   // const float delta_u = p->u_dt * dt_therm;
@@ -867,7 +868,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   xp->B_over_rho_full[2] = xp->B_over_rho_full[2] + delta_Bz;
 
   /* Integrate Dedner scalar in time */
-  p->psi_over_v_sig = p->psi_over_v_sig + delta_psi_over_v_sig;
+  p->psi = p->psi + delta_psi;
 
   /* Check against entropy floor */
   const float floor_A = entropy_floor(p, cosmo, floor_props);
