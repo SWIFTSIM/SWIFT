@@ -24,12 +24,12 @@
  * @brief Basic statistics
  *
  * @param parts The particle array.
- * @param statistic structure. 
+ * @param statistic structure.
  */
 INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
   /* example:
-   * s.E_mag+=10.f*parts->mhd_data.Bfld**2;
-   * s.eDivB+=.....;
+   * s->E_mag+=10.f*parts->mhd_data.Bfld**2;
+   * s->eDivB+=.....;
    *
    *
    * */
