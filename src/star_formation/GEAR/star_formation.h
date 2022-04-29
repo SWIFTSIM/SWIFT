@@ -72,15 +72,23 @@ INLINE static int star_formation_is_star_forming(
   const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
                                                     cosmo, cooling, p, xp);
 
+  const float density = hydro_get_physical_density(p, cosmo);
+
   const float temperature_max = starform->maximal_temperature;
+
+  const float density_threashold = starform->density_threashold;
 
   /* Check the temperature criterion */
   if (temperature > temperature_max) {
     return 0;
   }
 
+  /* Check the density threashold */
+  if (density < density_threashold) {
+    return 0;
+  }
+
   /* Get the required variables */
-  const float density = hydro_get_physical_density(p, cosmo);
   const float n_jeans_2_3 = starform->n_jeans_2_3;
 
   const float h = p->h * kernel_gamma * cosmo->a;

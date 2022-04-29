@@ -356,13 +356,24 @@ runner_iact_nonsym_feedback_apply(
       si->feedback_data.to_distribute.energy * Omega_frac;
 
   /* Apply energy conservation to recover the new thermal energy of the gas
+   *
    * Note: in some specific cases the new_thermal_energy could be lower
    * than the current_thermal_energy, this is mainly the case if the change
    * in mass is relatively small and the velocity vectors between both the
    * gas particle and the star particle have a small angle. */
-  const double new_thermal_energy = current_kinetic_energy_gas +
-                                    current_thermal_energy + injected_energy -
-                                    new_kinetic_energy_gas;
+  double new_thermal_energy = current_kinetic_energy_gas +
+                              current_thermal_energy + injected_energy -
+                              new_kinetic_energy_gas;
+
+  /* In rare configurations the new thermal energy could become negative.
+   * We must prevent that even if that implies a slight violation of the
+   * conservation of total energy.
+   * The minimum energy (in units of energy not energy per mass) is
+   * the total particle mass (including the mass to distribute) at the
+   * minimal internal energy per unit mass */
+  const double min_u = hydro_props->minimal_internal_energy * new_mass;
+
+  new_thermal_energy = max(new_thermal_energy, min_u);
 
   /* Convert this to a specific thermal energy */
   const double u_new_enrich = new_thermal_energy * new_mass_inv;

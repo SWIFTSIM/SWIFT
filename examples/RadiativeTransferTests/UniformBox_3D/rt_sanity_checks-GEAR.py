@@ -67,37 +67,48 @@ else:
     file_prefix = "output"
 
 
-def check_injection(snapdata, rundata):
+def check_essentials(snapdata, rundata):
     """
-    Do checks related to energy injections.
+    Check whether we have infs or nans.
+    Also check whether the maximal fluxes F = E * c are respected.
+        F: photon fluxes [erg/cm**2/s]
+        E: photon energy density [erg/cm**3]
+        c: reduced lightspeed that has been used
+    This might also reveal some unit issues.
 
     snapdata: list of swift_rt_GEAR_io.RTSnapData objects
-
     rundata: swift_rt_GEAR_io.Rundata object
     """
 
-    print("checking injection")
+    print("checking essentials")
+
+    cred = rundata.reduced_speed_of_light
+    ngroups = rundata.ngroups
 
     # ----------------------------------------------------------------
-    # Check 0: Make sure we don't have NaNs or Infs anywhere
+    # Check 1: Make sure we don't have NaNs or Infs anywhere
     # ----------------------------------------------------------------
     for snap in snapdata:
 
-        photon_energies = snap.gas.PhotonEnergies
-        ok = np.isfinite(photon_energies)
-        if not ok.all():
-            print("In snapshot", snap.snapnr, ":")
-            print("Found NaNs/infs in photon energies:", np.count_nonzero(ok == 0))
-            if break_on_diff:
-                quit()
+        for g in range(ngroups):
+            photon_energies = snap.gas.PhotonEnergies[g]
+            ok = np.isfinite(photon_energies)
+            if not ok.all():
+                print("In snapshot", snap.snapnr, ", group", g + 1, ":")
+                print(
+                    "  Found NaNs/infs in photon energies:", np.count_nonzero(ok == 0)
+                )
+                if break_on_diff:
+                    quit()
 
-        photon_fluxes = snap.gas.PhotonFluxes
-        ok = np.isfinite(photon_fluxes)
-        if not ok.any():
-            print("In snapshot", snap.snapnr, ":")
-            print("Found NaNs/infs in photon fluxes:", np.count_nonzero(ok == 0))
-            if break_on_diff:
-                quit()
+            photon_fluxes = snap.gas.PhotonFluxes[g]
+            ok = np.isfinite(photon_fluxes)
+            if not ok.any():
+                print("In snapshot", snap.snapnr, ", group", g + 1, ":")
+                print("  Found NaNs/infs in photon fluxes:", np.count_nonzero(ok == 0))
+                print(ok)
+                if break_on_diff:
+                    quit()
 
         if snap.has_stars:
             injected_energies = snap.stars.InjectedPhotonEnergy
@@ -112,6 +123,53 @@ def check_injection(snapdata, rundata):
                     quit()
 
     # ----------------------------------------------------------------
+    # Check 2: Make sure F <= c E
+    # ----------------------------------------------------------------
+
+    for snap in snapdata:
+
+        volumes = snap.gas.volumes
+        mask = volumes > 0.0
+
+        for g in range(ngroups):
+            photon_energies = snap.gas.PhotonEnergies[g]
+            photon_fluxes = snap.gas.PhotonFluxes[g]
+            photon_energy_densities = photon_energies[mask] / volumes[mask]
+            max_fluxes = (
+                cred * photon_energy_densities * (1.0 + float_comparison_tolerance)
+            )
+            groupfluxes = photon_fluxes[mask]
+            groupfluxnorm = np.sqrt(
+                groupfluxes[:, 0] ** 2 + groupfluxes[:, 1] ** 2 + groupfluxes[:, 2] ** 2
+            )
+
+            fishy = groupfluxnorm > max_fluxes
+
+            if fishy.any():
+                print("In snapshot", snap.snapnr, ", group", g + 1, ":")
+                print("  Found F > cE, count:", np.count_nonzero(fishy))
+                if print_additional_information:
+                    print("--- flux norms", groupfluxnorm[fishy])
+                    print("--- max fluxes", max_fluxes[fishy])
+                    print("--- ratio     ", groupfluxnorm[fishy] / max_fluxes[fishy])
+                    print("--- max:", groupfluxnorm.max())
+
+                if break_on_diff:
+                    quit()
+
+    return
+
+
+def check_injection(snapdata, rundata):
+    """
+    Do checks related to energy injections.
+
+    snapdata: list of swift_rt_GEAR_io.RTSnapData objects
+    rundata: swift_rt_GEAR_io.Rundata object
+    """
+
+    print("checking injection")
+    # ----------------------------------------------------------------
     # Check 1: Make sure the right amount of energy has been injected
     # into the gas
     # ----------------------------------------------------------------
@@ -123,24 +181,23 @@ def check_injection(snapdata, rundata):
     emission_rates = rundata.const_emission_rates
     ngroups = rundata.ngroups
 
-    initial_energies = np.sum(snapdata[0].gas.PhotonEnergies, axis=0)
-    initial_time = snapdata[0].time
+    initial_energies = [
+        np.sum(snapdata[0].gas.PhotonEnergies[g]) for g in range(ngroups)
+    ]
 
     # Check 1a) : sum initial energy + sum injected energy = sum current energy
     # --------------------------------------------------------------------------
     # TODO: this assumes no cosmological expansion
 
     for snap in snapdata[1:]:
-        dt = snap.time - initial_time
         # sum of each group over all particles
-        photon_energies = np.sum(snap.gas.PhotonEnergies, axis=0)
+        photon_energies = [np.sum(snap.gas.PhotonEnergies[g]) for g in range(ngroups)]
         if snap.has_stars:
-            # in case we only have 1 star, the sum returns a scalar, so add atleast_1d
-            injected_energies = np.atleast_1d(
-                np.sum(snap.stars.InjectedPhotonEnergy, axis=0)
-            )
+            injected_energies = [
+                np.sum(snap.stars.InjectedPhotonEnergy[:, g]) for g in range(ngroups)
+            ]
         else:
-            injected_energies = np.zeros(ngroups, dtype=np.float)
+            injected_energies = [0.0] * ngroups
 
         for g in range(ngroups):
             energy_expected = initial_energies[g] + injected_energies[g]
@@ -183,9 +240,11 @@ def check_injection(snapdata, rundata):
     if snapdata[0].has_stars:
         emission_at_initial_time = snapdata[0].stars.InjectedPhotonEnergy.sum(axis=0)
     else:
-        emission_at_initial_time = np.zeros(rundata.ngroups, dtype=np.float) * unyt.erg
+        emission_at_initial_time = (
+            np.zeros(rundata.ngroups, dtype=np.float64) * unyt.erg
+        )
 
-    if rundata.use_const_emission_rate and not rundata.hydro_controlled_injection:
+    if rundata.use_const_emission_rate:
         if len(snapdata) <= 2:
             # because it's useless to check only snap_0000
             print("Check 1b: You need at least 2 snapshots to do this particular test")
@@ -265,7 +324,7 @@ def check_injection(snapdata, rundata):
     # Create additional plots?
     # --------------------------------
 
-    if rundata.use_const_emission_rate and not rundata.hydro_controlled_injection:
+    if rundata.use_const_emission_rate:
         if not skip_plots and len(energies_for_plot) > 2:
             # Show me the plot that the injected energy
             # is correctly bounded
@@ -307,6 +366,7 @@ def main():
     """
     snapdata, rundata = get_snap_data(prefix=file_prefix)
 
+    check_essentials(snapdata, rundata)
     check_injection(snapdata, rundata)
 
     return

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -131,7 +131,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
     if ((right = (float *)malloc(sizeof(float) * c->stars.count)) == NULL)
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->stars.count; k++)
-      if (spart_is_active(&sparts[k], e) && feedback_is_active(&sparts[k], e)) {
+      if (spart_is_active(&sparts[k], e) &&
+          (feedback_is_active(&sparts[k], e) || with_rt)) {
         sid[scount] = k;
         h_0[scount] = sparts[k].h;
         left[scount] = 0.f;
@@ -156,6 +157,8 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
         /* Is this part within the timestep? */
         if (!spart_is_active(sp, e))
           error("Ghost applied to inactive particle");
+        if (!feedback_is_active(sp, e) && !with_rt)
+          error("Ghost applied to particle inactive for feedback and RT");
 #endif
 
         /* Get some useful values */
@@ -252,7 +255,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
               feedback_reset_feedback(sp, feedback_props);
             }
 
-            if (with_rt && !rt_props->hydro_controlled_injection) {
+            if (with_rt) {
 
               rt_reset_spart(sp);
 
@@ -423,7 +426,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, int timer) {
           feedback_reset_feedback(sp, feedback_props);
         }
 
-        if (with_rt && !rt_props->hydro_controlled_injection) {
+        if (with_rt) {
 
           rt_reset_spart(sp);
 
@@ -1028,6 +1031,7 @@ void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer) {
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
+        rt_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1249,6 +1253,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
             /* Compute variables required for the force loop */
             hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
             timestep_limiter_prepare_force(p, xp);
+            rt_prepare_force(p);
 
             /* The particle force values are now set.  Do _NOT_
                try to read any particle density variables! */
@@ -1411,6 +1416,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
         /* Compute variables required for the force loop */
         hydro_prepare_force(p, xp, cosmo, hydro_props, dt_alpha);
         timestep_limiter_prepare_force(p, xp);
+        rt_prepare_force(p);
 
         /* The particle force values are now set.  Do _NOT_
            try to read any particle density variables! */
@@ -1563,7 +1569,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
       /* Skip inactive parts */
       if (!part_is_active(p, e)) continue;
 
-      rt_injection_update_photon_density(p, e->rt_props);
+      rt_finalise_injection(p, e->rt_props);
     }
   }
 

@@ -975,6 +975,182 @@ be processed by the ``SpecWizard`` tool
      range_when_shooting_down_y: 100. # Range along the y-axis of LoS along y
      range_when_shooting_down_z: 100. # Range along the z-axis of LoS along z
 
+
+.. _Parameters_light_cone:
+
+Light Cone Outputs
+---------------------
+
+One or more light cone outputs can be configured by including ``LightconeX`` sections
+in the parameter file, where X is in the range 0-7. It is also possible to include a
+``LightconeCommon`` section for parameters which are the same for all lightcones. The
+parameters for each light cone are:
+
+* Switch to enable or disable a lightcone: ``enabled``
+
+This should be set to 1 to enable the corresponding lightcone or 0 to disable it.
+Has no effect if specified in the LightconeCommon section.
+
+* Directory in which to write light cone output: ``subdir``
+
+All light cone output files will be written in the specified directory.
+
+* Base name for particle and HEALPix map outputs: ``basename``.
+
+Particles will be written to files ``<basename>_XXXX.Y.hdf5``, where XXXX numbers the files
+written by a single MPI rank and Y is the MPI rank index. HEALPix maps are written to files
+with names ``<basename>.shell_X.hdf5``, where X is the index of the shell. The basename must
+be unique for each light cone so it cannot be specified in the LightconeCommon section.
+
+See :ref:`lightcone_adding_outputs_label` for information on adding new output quantities.
+
+* Location of the observer in the simulation box, in internal units: ``observer_position``
+
+* Size of in memory chunks used to store particles and map updates: ``buffer_chunk_size``
+
+During each time step buffered particles and HEALPix map updates are stored in a linked
+list of chunks of ``buffer_chunk_size`` elements. Additional chunks are allocated as needed.
+The map update process is parallelized over chunks so the chunks should be small enough that
+each MPI rank typically has more chunks than threads.
+
+* Maximum amount of map updates (in MB) to send on each iteration: ``max_map_update_send_size_mb``
+
+Flushing the map update buffer involves sending the updates to the MPI ranks with the affected
+pixel data. Sending all updates at once can consume a large amount of memory so this parameter
+allows updates to be applied over multiple iterations to reduce peak memory usage.
+
+* Redshift range to output each particle type: ``z_range_for_<type>``
+
+A two element array with the minimum and maximum redshift at which particles of type ``<type>``
+will be output as they cross the lightcone. ``<type>`` can be Gas, DM, DMBackground, Stars, BH
+or Neutrino. If this parameter is not present for a particular type then that type will not
+be output.
+
+* The number of buffered particles which triggers a write to disk: ``max_particles_buffered``
+
+If an MPI rank has at least max_particles_buffered particles which have crossed the lightcone,
+it will write them to disk at the end of the current time step.
+
+* Size of chunks in the particle output file
+
+This sets the HDF5 chunk size. Particle outputs must be chunked because the number of particles
+which will be written out is not known when the file is created.
+
+* Whether to use lossy compression in the particle outputs: ``particles_lossy_compression``
+
+If this is 1 then the HDF5 lossy compression filter named in the definition of each particle
+output field will be enabled. If this is 0 lossy compression is not applied.
+
+* Whether to use lossless compression in the particle outputs: ``particles_gzip_level``
+
+If this is non-zero the HDF5 deflate filter will be applied to lightcone particle output with
+the compression level set to the specified value. 
+
+* HEALPix map resolution: ``nside``
+
+* Name of the file with shell radii: ``radius_file.txt``
+
+This specifies the name of a file with the inner and outer radii of the shells used to make
+HEALPix maps. It should be a text file with a one line header and then two comma separated columns
+of numbers with the inner and outer radii. The units are determined by the header. The header must
+be one of the following:
+
+``# Minimum comoving distance, Maximum comoving distance``,
+``# Minimum redshift, Maximum redshift``, or
+``# Maximum expansion factor, Minimum expansion factor``. Comoving distances are in internal units.
+The shells must be in ascending order of radius and must not overlap.
+
+* Number of pending HEALPix map updates before the buffers are flushed: ``max_updates_buffered``
+
+In MPI mode applying updates to the HEALPix maps requires communication and forces synchronisation
+of all MPI ranks, so it is not done every time step. If any MPI rank has at least
+``max_updates_buffered`` pending updates at the end of a time step, then all ranks will apply
+their updates to the HEALPix maps.
+
+* Which types of HEALPix maps to create: ``map_names_file``
+
+This is the name of a file which specifies what quantities should be accumulated to HEALPix maps.
+The possible map types are defined in the lightcone_map_types array in ``lightcone_map_types.h``.
+See :ref:`lightcone_adding_outputs_label` if you'd like to add a new map type.
+
+* Whether to distribute HEALPix maps over multiple files: ``distributed_maps``
+
+If this is 0 then the code uses HDF5 collective writes to write each map to a single file. If this
+is 1 then each MPI rank writes its part of the HEALPix map to a separate file.
+
+The file contains two columns: the first column is the name of the map type and the second is the
+name of the compression filter to apply to it. See io_compression.c for the list of compression
+filter names. Set the filter name to ``on`` to disable compression.
+
+* Whether to use lossless compression in the HEALPix map outputs: ``maps_gzip_level``
+
+If this is non-zero the HDF5 deflate filter will be applied to the lightcone map output with
+the compression level set to the specified value. 
+
+The following shows a full set of light cone parameters for the case where we're making two
+light cones which only differ in the location of the observer:
+
+.. code:: YAML
+
+  LightconeCommon:
+
+    # Common parameters
+    subdir:            lightcones
+    buffer_chunk_size:      100000
+    max_particles_buffered: 1000000
+    hdf5_chunk_size:        10000
+ 
+    # Redshift ranges for particle types
+    z_range_for_Gas:           [0.0, 0.05]
+    z_range_for_DM:            [0.0, 0.05]
+    z_range_for_DMBackground:  [0.0, 0.05]
+    z_range_for_Stars:         [0.0, 0.05]
+    z_range_for_BH:            [0.0, 0.05]
+    z_range_for_Neutrino:      [0.0, 0.05]
+    
+    # Healpix map parameters
+    nside:                512
+    radius_file:          ./shell_radii.txt
+    max_updates_buffered: 100000
+    map_names_file:       map_names.txt
+    max_map_update_send_size_mb: 1.0
+    distributed_maps:     0
+
+    # Compression options
+    particles_lossy_compression: 0
+    particles_gzip_level:        6
+    maps_gzip_level:             6
+
+  Lightcone0:
+
+    enabled:  1
+    basename: lightcone0
+    observer_position: [35.5, 78.12, 12.45]
+
+  Lightcone0:
+
+    enabled:  1
+    basename: lightcone1
+    observer_position: [74.2, 10.80, 53.59]
+  
+
+An example of the radius file::
+
+  # Minimum comoving distance, Maximum comoving distance
+  0.0,   50.0
+  50.0,  100.0
+  150.0, 200.0
+  200.0, 400.0
+  400.0, 1000.0
+
+An example of the map names file::
+
+  TotalMass         on
+  SmoothedGasMass   on
+  UnsmoothedGasMass on
+  DarkMatterMass    on
+
+
 .. _Parameters_eos:
 
 Equation of State (EoS)

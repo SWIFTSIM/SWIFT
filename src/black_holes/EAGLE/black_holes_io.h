@@ -112,6 +112,15 @@ INLINE static void convert_bpart_vel(const struct engine* e,
   ret[2] *= cosmo->a_inv;
 }
 
+INLINE static void convert_bpart_potential(const struct engine* e,
+                                           const struct bpart* bp, float* ret) {
+
+  if (bp->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(bp->gpart);
+  else
+    ret[0] = 0.f;
+}
+
 INLINE static void convert_bpart_gas_vel(const struct engine* e,
                                          const struct bpart* bp, float* ret) {
 
@@ -161,7 +170,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 43;
+  *num_fields = 44;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -441,6 +450,10 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Accretion rates of black holes in units of their Eddington rates. "
       "This is based on the unlimited accretion rates, so these fractions "
       "can be above the limiting fEdd.");
+
+  list[43] = io_make_output_field_convert_bpart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
+      convert_bpart_potential, "Gravitational potentials of the particles");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

@@ -46,12 +46,13 @@ INLINE static int rt_read_particles(const struct part* parts,
     sprintf(fieldname, "PhotonEnergiesGroup%d", phg + 1);
     list[count++] =
         io_make_input_field(fieldname, FLOAT, 1, OPTIONAL, UNIT_CONV_ENERGY,
-                            parts, rt_data.conserved[phg].energy);
+                            parts, rt_data.radiation[phg].energy_density);
     sprintf(fieldname, "PhotonFluxesGroup%d", phg + 1);
     list[count++] = io_make_input_field(fieldname, FLOAT, 3, OPTIONAL,
-                                        UNIT_CONV_RADIATION_FLUX, parts,
-                                        rt_data.conserved[phg].flux);
+                                        UNIT_CONV_ENERGY_VELOCITY, parts,
+                                        rt_data.radiation[phg].flux);
   }
+
   list[count++] = io_make_input_field("MassFractionHI", FLOAT, 1, OPTIONAL,
                                       UNIT_CONV_NO_UNITS, parts,
                                       rt_data.tchem.mass_fraction_HI);
@@ -85,37 +86,54 @@ INLINE static int rt_read_stars(const struct spart* sparts,
 }
 
 /**
- * @brief Extract photon energies of conserved struct for all photon groups
+ * @brief Extract radiation energies of radiation struct for all photon groups
  * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
+ *
+ * @param engine the engine
+ * @param part the particle to extract data from
+ * @param xpart the according xpart to extract data from
+ * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_conserved_photon_energies(
-    const struct engine* engine, const struct part* part,
-    const struct xpart* xpart, float* ret) {
+INLINE static void rt_convert_radiation_energies(const struct engine* engine,
+                                                 const struct part* part,
+                                                 const struct xpart* xpart,
+                                                 float* ret) {
 
   for (int g = 0; g < RT_NGROUPS; g++) {
-    ret[g] = part->rt_data.conserved[g].energy;
+    ret[g] = part->rt_data.radiation[g].energy_density * part->geometry.volume;
   }
 }
 
 /**
- * @brief Extract photon energies of conserved struct for all photon groups
+ * @brief Extract radiation fluxes of radiation struct for all photon groups
  * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
+ *
+ * @param engine the engine
+ * @param part the particle to extract data from
+ * @param xpart the according xpart to extract data from
+ * @param ret (return) the extracted data
  */
-INLINE static void rt_convert_conserved_photon_fluxes(
-    const struct engine* engine, const struct part* part,
-    const struct xpart* xpart, float* ret) {
+INLINE static void rt_convert_radiation_fluxes(const struct engine* engine,
+                                               const struct part* part,
+                                               const struct xpart* xpart,
+                                               float* ret) {
 
   int i = 0;
   for (int g = 0; g < RT_NGROUPS; g++) {
-    ret[i++] = part->rt_data.conserved[g].flux[0];
-    ret[i++] = part->rt_data.conserved[g].flux[1];
-    ret[i++] = part->rt_data.conserved[g].flux[2];
+    ret[i++] = part->rt_data.radiation[g].flux[0];
+    ret[i++] = part->rt_data.radiation[g].flux[1];
+    ret[i++] = part->rt_data.radiation[g].flux[2];
   }
 }
 
 /**
- * @brief Extract mass fractions of ionizing species from tchem struct.
+ * @brief Extract mass fractions of constituent species from tchem struct.
  * Note: "allocation" of `float* ret` happens in io_copy_temp_buffer()
+ *
+ * @param engine the engine
+ * @param part the particle to extract data from
+ * @param xpart the according xpart to extract data from
+ * @param ret (return) the extracted data
  */
 INLINE static void rt_convert_mass_fractions(const struct engine* engine,
                                              const struct part* part,
@@ -132,6 +150,11 @@ INLINE static void rt_convert_mass_fractions(const struct engine* engine,
 /**
  * @brief Creates additional output fields for the radiative
  * transfer data of hydro particles.
+ *
+ * @param parts The particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
  */
 INLINE static int rt_write_particles(const struct part* parts,
                                      struct io_props* list) {
@@ -140,19 +163,19 @@ INLINE static int rt_write_particles(const struct part* parts,
 
   list[0] = io_make_output_field_convert_part(
       "PhotonEnergies", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY, 0, parts,
-      /*xparts=*/NULL, rt_convert_conserved_photon_energies,
+      /*xparts=*/NULL, rt_convert_radiation_energies,
       "Photon Energies (all groups)");
   list[1] = io_make_output_field_convert_part(
       "PhotonFluxes", FLOAT, 3 * RT_NGROUPS, UNIT_CONV_RADIATION_FLUX, 0, parts,
-      /*xparts=*/NULL, rt_convert_conserved_photon_fluxes,
+      /*xparts=*/NULL, rt_convert_radiation_fluxes,
       "Photon Fluxes (all groups; x, y, and z coordinates)");
   list[2] = io_make_output_field_convert_part(
       "IonMassFractions", FLOAT, 5, UNIT_CONV_NO_UNITS, 0, parts,
       /*xparts=*/NULL, rt_convert_mass_fractions,
-      "Mass fractions of all ionizing species");
+      "Mass fractions of all constituent species");
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  num_elements += 8;
+  num_elements += 7;
   list[3] =
       io_make_output_field("RTDebugInjectionDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_injection_done,
@@ -184,11 +207,6 @@ INLINE static int rt_write_particles(const struct part* parts,
       "RTDebugRadAbsorbedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_radiation_absorbed_tot,
       "Radiation absorbed by this part during its lifetime");
-  list[10] = io_make_output_field("RTDebugStarsInjectPrepTotCounts", ULONGLONG,
-                                  1, UNIT_CONV_NO_UNITS, 0, parts,
-                                  rt_data.debug_iact_stars_inject_prep_tot,
-                                  "Total interactions with stars during "
-                                  "injection prep during its lifetime");
 #endif
 
   return num_elements;
@@ -197,6 +215,11 @@ INLINE static int rt_write_particles(const struct part* parts,
 /**
  * @brief Creates additional output fields for the radiative
  * transfer data of star particles.
+ *
+ * @param sparts The star particle array.
+ * @param list The list of i/o properties to write.
+ *
+ * @return Returns the number of fields to write.
  */
 INLINE static int rt_write_stars(const struct spart* sparts,
                                  struct io_props* list) {
@@ -204,22 +227,21 @@ INLINE static int rt_write_stars(const struct spart* sparts,
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   num_elements += 4;
-  list[0] = io_make_output_field(
+  list[0] = io_make_output_field("RTDebugHydroIact", INT, 1, UNIT_CONV_NO_UNITS,
+                                 0, sparts, rt_data.debug_iact_hydro_inject,
+                                 "number of interactions between this star "
+                                 "particle and any particle during injection");
+  list[1] = io_make_output_field(
       "RTDebugEmissionRateSet", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts,
       rt_data.debug_emission_rate_set, "Stellar photon emission rates set?");
-  list[1] = io_make_output_field(
+  list[2] = io_make_output_field(
       "RTDebugRadEmittedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, sparts,
       rt_data.debug_radiation_emitted_tot,
       "Total radiation emitted during the lifetime of this star");
-  list[2] = io_make_output_field("RTDebugInjectedPhotonEnergy", FLOAT,
+  list[3] = io_make_output_field("RTDebugInjectedPhotonEnergy", FLOAT,
                                  RT_NGROUPS, UNIT_CONV_ENERGY, 0, sparts,
                                  rt_data.debug_injected_energy_tot,
                                  "Total radiation actually injected into gas");
-  list[3] = io_make_output_field("RTDebugHydroInjectPrepCountsTot", ULONGLONG,
-                                 1, UNIT_CONV_NO_UNITS, 0, sparts,
-                                 rt_data.debug_iact_hydro_inject_prep_tot,
-                                 "Total interactions with particles during "
-                                 "injection prep during its lifetime");
 #endif
 
   return num_elements;
@@ -245,12 +267,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Write scheme name */
   /* ----------------- */
-  if (rtp->hydro_controlled_injection) {
-    io_write_attribute_s(h_grp, "RT Scheme",
-                         RT_IMPLEMENTATION ", hydro controlled injection");
-  } else {
-    io_write_attribute_s(h_grp, "RT Scheme", RT_IMPLEMENTATION);
-  }
+  io_write_attribute_s(h_grp, "RT Scheme", RT_IMPLEMENTATION);
 
   /* Write photon group counts */
   /* ------------------------- */
@@ -258,13 +275,24 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Write photon group bin edges */
   /* ---------------------------- */
+
+  /* Note: photon frequency bin edges are kept in cgs. Convert them here to
+   * internal units so we're still compatible with swiftsimio. */
+  const float Hz_internal =
+      units_cgs_conversion_factor(internal_units, UNIT_CONV_INV_TIME);
+  const float Hz_internal_inv = 1.f / Hz_internal;
+  float photon_groups_internal[RT_NGROUPS];
+  for (int g = 0; g < RT_NGROUPS; g++)
+    photon_groups_internal[g] = rtp->photon_groups[g] * Hz_internal_inv;
+
   hid_t type_float = H5Tcopy(io_hdf5_type(FLOAT));
 
   hsize_t dims[1] = {RT_NGROUPS};
   hid_t space = H5Screate_simple(1, dims, NULL);
   hid_t dset = H5Dcreate(h_grp, "PhotonGroupEdges", type_float, space,
                          H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dset, type_float, H5S_ALL, H5S_ALL, H5P_DEFAULT, rtp->photon_groups);
+  H5Dwrite(dset, type_float, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           photon_groups_internal);
 
   /* Write unit conversion factors for this data set */
   char buffer[FIELD_BUFFER_SIZE] = {0};
@@ -398,8 +426,8 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   H5Dclose(dset_cred);
 
-  /* Write ionizing species mass fractions */
-  /* ------------------------------------- */
+  /* Write constituent species mass fractions */
+  /* ---------------------------------------- */
 
   char names_mf[5 * RT_LABELS_SIZE];
   strcpy(names_mf + 0 * RT_LABELS_SIZE, "HI\0");

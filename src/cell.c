@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -579,7 +579,6 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
-  c->hydro.rt_inject = NULL;
   c->hydro.rt_gradient = NULL;
   c->hydro.rt_transport = NULL;
   c->grav.grav = NULL;

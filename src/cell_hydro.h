@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -111,9 +111,6 @@ struct cell_hydro {
 
     /*! Radiative transfer ghost in task */
     struct task *rt_in;
-
-    /*! Task for self/pair injection step of radiative transfer */
-    struct link *rt_inject;
 
     /*! Radiative transfer ghost1 task (finishes up injection) */
     struct task *rt_ghost1;

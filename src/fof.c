@@ -2481,7 +2481,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   /* Set the root of outgoing particles. */
 
   /* Allocate array of outgoing cells and populate it */
-  struct cell **local_cells = malloc(num_cells_out * sizeof(struct cell *));
+  struct cell **local_cells =
+      (struct cell **)malloc(num_cells_out * sizeof(struct cell *));
   int count = 0;
   for (int i = 0; i < e->nr_proxies; i++) {
     for (int j = 0; j < e->proxies[i].nr_cells_out; j++) {

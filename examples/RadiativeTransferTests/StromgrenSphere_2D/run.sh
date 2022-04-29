@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#---------------------------------------
+# Runs the Stromgren Sphere example
+#---------------------------------------
+
 # make run.sh fail if a subcommand fails
 set -e
 set -o pipefail
@@ -18,11 +22,11 @@ fi
 # Run SWIFT with RT
 ../../swift \
     --hydro --threads=4 --stars --external-gravity \
-    --feedback --radiation --fpe \
+    --feedback --radiation \
     stromgrenSphere-2D.yml 2>&1 | tee output.log
 
 # Plot the photon propagation checks.
 # Make sure you set the correct photon group to plot
 # inside the script
-python3 ./plotPhotonPropagationCheck.py
+python3 ./plotSolution.py
 

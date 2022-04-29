@@ -519,6 +519,13 @@ static void parse_section_param(char *line, int *isFirstParam,
   /* Check for duplicate parameter name. */
   find_duplicate_params(params, paramName);
 
+  /* Choke on invalid input */
+  if (token == NULL)
+    error(
+        "Invalid parameter value for parameter '%s'. Cannot be an empty "
+        "string.",
+        paramName);
+
   strcpy(params->data[params->paramCount].name, paramName);
   strcpy(params->data[params->paramCount].value, token);
   params->data[params->paramCount].used = 0;

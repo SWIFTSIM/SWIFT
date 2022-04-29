@@ -13,7 +13,7 @@ fi
 if [ ! -e advection_2D.hdf5 ]
 then
     echo "Generating initial conditions for the 2D RT advection example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT with RT

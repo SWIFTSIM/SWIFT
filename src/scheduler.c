@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2016 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -1558,8 +1558,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                  t->subtype == task_subtype_force ||
                  t->subtype == task_subtype_limiter)
           cost = 1.f * (wscale * count_i) * count_i;
-        else if (t->subtype == task_subtype_rt_inject)
-          cost = 1.f * wscale * scount_i * count_i;
         else if (t->subtype == task_subtype_rt_gradient)
           cost = 1.f * wscale * count_i * count_i;
         else if (t->subtype == task_subtype_rt_transport)
@@ -1637,8 +1635,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           else
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
 
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_j;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -1719,8 +1715,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           } else {
             cost = 2.f * (wscale * count_i) * count_j * sid_scale[t->flags];
           }
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_j;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -1755,8 +1749,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
                    t->subtype == task_subtype_force ||
                    t->subtype == task_subtype_limiter) {
           cost = 1.f * (wscale * count_i) * count_i;
-        } else if (t->subtype == task_subtype_rt_inject) {
-          cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_gradient) {
           cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_transport) {
@@ -2061,6 +2053,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_rt_gradient ||
+                   t->subtype == task_subtype_rt_transport ||
                    t->subtype == task_subtype_part_prep1) {
 
           count = t->ci->hydro.count;
@@ -2166,6 +2160,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         } else if (t->subtype == task_subtype_xv ||
                    t->subtype == task_subtype_rho ||
                    t->subtype == task_subtype_gradient ||
+                   t->subtype == task_subtype_rt_gradient ||
+                   t->subtype == task_subtype_rt_transport ||
                    t->subtype == task_subtype_part_prep1) {
 
           count = t->ci->hydro.count;

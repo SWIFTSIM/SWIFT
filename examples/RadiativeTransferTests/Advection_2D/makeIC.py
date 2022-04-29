@@ -3,6 +3,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+#               2022 Tsang Keung Chan (chantsangkeung@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -35,7 +36,6 @@ from swiftsimio import Writer
 import unyt
 import numpy as np
 import h5py
-from matplotlib import pyplot as plt
 
 
 # define unit system to use
@@ -82,7 +82,7 @@ def initial_condition(x):
     # Assuming all photons flow in only one direction
     # (optically thin regime, "free streaming limit"),
     #  we have that |F| = c * E
-    F = np.zeros(3, dtype=np.float32)
+    F = np.zeros(3, dtype=np.float64)
     F[0] = c * E
 
     E_list.append(E)
@@ -98,7 +98,7 @@ def initial_condition(x):
     else:
         E = 1.0
 
-    F = np.zeros(3, dtype=np.float32)
+    F = np.zeros(3, dtype=np.float64)
     F[1] = c * E
 
     E_list.append(E)
@@ -116,9 +116,9 @@ def initial_condition(x):
         * np.exp(-((x[0] - mean) ** 2 + (x[1] - mean) ** 2) / (2 * sigma ** 2))
         + baseline
     )
-    F = np.zeros(3, dtype=np.float32)
-    F[0] = c * E * 1.414213562  # sqrt(2)
-    F[1] = c * E * 1.414213562  # sqrt(2)
+    F = np.zeros(3, dtype=np.float64)
+    F[0] = c * E / 1.414213562  # sqrt(2)
+    F[1] = c * E / 1.414213562  # sqrt(2)
 
     E_list.append(E)
     F_list.append(F)
@@ -135,13 +135,13 @@ def initial_condition(x):
         unit_vector = (dx / r, dy / r)
 
         E = 1.0
-        F = np.zeros(3, dtype=np.float32)
+        F = np.zeros(3, dtype=np.float64)
         F[0] = unit_vector[0] * c * E
         F[1] = unit_vector[1] * c * E
 
     else:
         E = 0.0
-        F = np.zeros(3, dtype=np.float32)
+        F = np.zeros(3, dtype=np.float64)
 
     E_list.append(E)
     F_list.append(F)
@@ -166,9 +166,9 @@ if __name__ == "__main__":
 
     w.gas.coordinates = pos
     w.gas.velocities = np.zeros((numPart, 3)) * (unyt.cm / unyt.s)
-    w.gas.masses = np.ones(numPart, dtype=np.float32) * 1000 * unyt.g
+    w.gas.masses = np.ones(numPart, dtype=np.float64) * 1000 * unyt.g
     w.gas.internal_energy = (
-        np.ones(numPart, dtype=np.float32) * (300.0 * unyt.kb * unyt.K) / (unyt.g)
+        np.ones(numPart, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / (unyt.g)
     )
 
     # Generate initial guess for smoothing lengths based on MIPS

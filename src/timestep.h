@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "cooling.h"
 #include "debug.h"
+#include "potential.h"
 #include "rt.h"
 #include "timeline.h"
 
@@ -175,7 +176,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Get the RT timestep */
   float new_dt_radiation = FLT_MAX;
   if (e->policy & engine_policy_rt)
-    new_dt_radiation = rt_compute_timestep(p, e->rt_props, e->cosmology);
+    new_dt_radiation = rt_compute_timestep(
+        p, xp, e->rt_props, e->cosmology, e->hydro_properties,
+        e->physical_constants, e->internal_units);
 
   float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav,
                       new_dt_chemistry, new_dt_radiation);
@@ -235,8 +238,12 @@ __attribute__((always_inline)) INLINE static integertime_t get_spart_timestep(
     new_dt_self = gravity_compute_timestep_self(
         sp->gpart, a_hydro, e->gravity_properties, e->cosmology);
 
+  float new_dt_rt = FLT_MAX;
+  if (e->policy & engine_policy_rt)
+    new_dt_rt = rt_compute_spart_timestep(sp, e->rt_props, e->cosmology);
+
   /* Take the minimum of all */
-  float new_dt = min3(new_dt_stars, new_dt_self, new_dt_ext);
+  float new_dt = min4(new_dt_stars, new_dt_self, new_dt_ext, new_dt_rt);
 
   /* Apply the maximal displacement constraint (FLT_MAX  if non-cosmological)*/
   new_dt = min(new_dt, e->dt_max_RMS_displacement);

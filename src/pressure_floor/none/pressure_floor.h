@@ -36,7 +36,7 @@ struct unit_system;
 /**
  * @brief Properties of the pressure floor in the NONE model.
  */
-struct pressure_floor_properties {};
+struct pressure_floor_props {};
 
 /**
  * @brief Compute the physical pressure floor of a given #part.
@@ -90,7 +90,7 @@ static INLINE float pressure_floor_get_comoving_pressure(
  * @param hydro_props The propoerties of the hydro scheme.
  * @param props The pressure floor properties to fill.
  */
-static INLINE void pressure_floor_init(struct pressure_floor_properties* props,
+static INLINE void pressure_floor_init(struct pressure_floor_props* props,
                                        const struct phys_const* phys_const,
                                        const struct unit_system* us,
                                        const struct hydro_props* hydro_props,
@@ -102,7 +102,7 @@ static INLINE void pressure_floor_init(struct pressure_floor_properties* props,
  * @param props The pressure floor properties.
  */
 static INLINE void pressure_floor_print(
-    const struct pressure_floor_properties* props) {
+    const struct pressure_floor_props* props) {
 
   message("Pressure floor is 'none'");
 }
@@ -175,5 +175,24 @@ pressure_floor_first_init_part(const struct phys_const* restrict phys_const,
                                const struct cosmology* restrict cosmo,
                                struct part* restrict p,
                                struct xpart* restrict xp) {}
+
+/**
+ * @brief Write a pressure_floor struct to the given FILE as a stream of bytes.
+ *
+ * @param pressure_floor the struct
+ * @param stream the file stream
+ */
+static INLINE void pressure_floor_struct_dump(
+    const struct pressure_floor_props* pressure_floor, FILE* stream) {}
+
+/**
+ * @brief Restore a pressure_floor struct from the given FILE as a stream of
+ * bytes.
+ *
+ * @param pressure_floor the struct
+ * @param stream the file stream
+ */
+static INLINE void pressure_floor_struct_restore(
+    struct pressure_floor_props* pressure_floor, FILE* stream) {}
 
 #endif /* SWIFT_PRESSURE_FLOOR_NONE_H */

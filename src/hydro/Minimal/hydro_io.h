@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -189,7 +189,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 12;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -230,15 +230,20 @@ INLINE static void hydro_write_particles(const struct part* parts,
       "Pressures", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
       xparts, convert_P, "Co-moving pressures of the particles");
 
-  list[9] = io_make_output_field("Accelerations", FLOAT, 3,
+  list[9] = io_make_output_field_convert_part(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, parts, xparts,
+      convert_part_potential,
+      "Co-moving gravitational potential at position of the particles");
+
+  list[10] = io_make_output_field("Accelerations", FLOAT, 3,
                                  UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
                                  "Acceleration of the particles");
 
-  list[10] = io_make_output_field("MonopoleTerm", FLOAT, 1,
+  list[11] = io_make_output_field("MonopoleTerm", FLOAT, 1,
                                   UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B_mon,
                                   "Monopole term associated to particle");
 
-  list[11] = io_make_output_field_convert_part(
+  list[12] = io_make_output_field_convert_part(
       "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
       xparts, convert_B, "Magnetic flux densities of the particles");
 }

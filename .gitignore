@@ -146,9 +146,11 @@ tests/test125cells.sh
 tests/test125cellsPerturbed.sh
 tests/testParser.sh
 tests/testReading.sh
+tests/testNeutrinoCosmology.sh
 tests/testSelectOutput.sh
 tests/unused_parser_output.yml
 tests/used_parser_output.yml
+tests/output_list_params.yml
 tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
@@ -375,3 +377,6 @@ sympy-plots-for-*.tex/
 
 # black formatting
 black_formatting_env
+
+# vscode
+*.json
