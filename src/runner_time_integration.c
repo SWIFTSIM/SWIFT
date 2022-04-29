@@ -668,10 +668,19 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   TIMER_TIC;
 
+  if (c->cellID == PROBLEM_CELL) message("Called cell %lld; activity check: H %d G %d S %d Sink %d BH %d; current time %lld rt %lld", c->cellID,
+      cell_is_active_hydro(c, e) , cell_is_active_gravity(c, e),
+      cell_is_active_stars(c, e) , cell_is_active_sinks(c, e),
+      cell_is_active_black_holes(c, e) /* RT active is meaningless here , cell_is_rt_active(c, e) */, 
+      ti_current, ti_current_subcycle
+  );
+
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
       !cell_is_active_black_holes(c, e)) {
+    /* Note: cell_is_rt_active is deliberately skipped. We only change
+     * the RT subcycling time steps when particles are hydro active. */
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
@@ -705,6 +714,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       struct part *restrict p = &parts[k];
       struct xpart *restrict xp = &xparts[k];
 
+      if (c->cellID == PROBLEM_CELL) 
+            message("Looping over parts in cell %lld: p %lld a? %d ti_rt_end_min %lld", 
+              c->cellID, 
+              p->id, part_is_active(p, e), ti_rt_end_min
+            );
+
       /* If particle needs updating */
       if (part_is_active(p, e)) {
 
@@ -732,17 +747,17 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         const integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
         /* if (c->cellID == PROBLEM_CELL) message("Got new RT time step %lld for part %lld ", p->id, ti_rt_new_step); */
 	
-/* if (c->cellID == PROBLEM_CELL) */
-if (p->id == PROBLEM_ID)
-    message("Timestep active change: ID %lld HY end %lld new step %lld time bin old %d time bin new %d RT new step %lld time bin old %d time bin new %d", 
-    p->id, 
-    ti_end, 
-    ti_new_step, 
-    p->time_bin, 
-    get_time_bin(ti_new_step), 
-    ti_rt_new_step, 
-    p->rt_data.time_bin, 
-    get_time_bin(ti_rt_new_step));
+        /* if (c->cellID == PROBLEM_CELL) */
+        if (p->id == PROBLEM_ID)
+        message("Timestep active change: ID %lld HY end %lld new step %lld time bin old %d time bin new %d RT new step %lld time bin old %d time bin new %d", 
+                  p->id, 
+                  ti_end, 
+                  ti_new_step, 
+                  p->time_bin, 
+                  get_time_bin(ti_new_step), 
+                  ti_rt_new_step, 
+                  p->rt_data.time_bin, 
+                  get_time_bin(ti_rt_new_step));
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
@@ -762,8 +777,14 @@ if (p->id == PROBLEM_ID)
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
         ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
 
-  /* if (c->cellID == PROBLEM_CELL) */
-  /*   message("Changing ti_rt_end_min? %lld %lld %lld", ti_rt_end_min, ti_current_subcycle + ti_rt_new_step, min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min)); */
+        if (c->cellID == PROBLEM_CELL)
+          message("Changing ti_rt_end_min? pID %lld | %lld %lld -> %lld | step %lld", 
+                    p->id,
+                    ti_rt_end_min, 
+                    ti_current_subcycle + ti_rt_new_step, 
+                    min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min),
+                    ti_new_step
+                    );
         ti_rt_end_min = min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min);
         ti_rt_beg_max = max(ti_current_subcycle + ti_rt_new_step, ti_rt_beg_max);
         ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_new_step);
@@ -803,11 +824,64 @@ if (p->id == PROBLEM_ID)
 
           /* Same for RT. */
           if (with_rt) {
-            /* Even though particle may have been hydro inactive, it might
-             * have been RT active. So add + 1 to current time, otherwise
-             * you end up with ti_rt_end = ti_current. */
-            /* TODO: double-check this comment. */
-            const integertime_t ti_rt_end = 
+            /* Here we assume that the particle is inactive, which is true
+             * for hydro, but not necessarily for a RT subcycle. RT time steps
+             * are only changed while the particle is hydro active.
+             * This allows in the first few steps to end up with results 
+             * ti_rt_end == ti_current_subcyle, so we need to pretend we're past
+             * ti_current_subcycle already. */
+
+
+            /* TODO: this is to figure out why I need + 1 */
+            if (c->cellID == PROBLEM_CELL) {
+              /* get_integer_time_end(integertime_t ti_current, timebin_t bin) { */
+              integertime_t dti = get_integer_timestep(p->rt_data.time_bin);
+              if (dti > 0) {
+                message("Cell %8lld Part %8lld inactive Computing RT integer_time_end   ; dti=%20lld ti_curr/dti %lf ceil %lf res %lf res_int %20lld", 
+                  c->cellID,
+                  p->id,
+                  dti, (double)ti_current_subcycle / (double)dti, 
+                  ceil((double)ti_current_subcycle / (double)dti), 
+                  dti * ceil((double)ti_current_subcycle / (double)dti), 
+                  (integertime_t) (dti * ceil((double)ti_current_subcycle / (double)dti))
+                );
+                message("Cell %8lld Part %8lld inactive Computing RT integer_time_end+1 ; dti=%20lld ti_curr/dti %lf ceil %lf res %lf res_int %20lld", 
+                  c->cellID,
+                  p->id,
+                  dti, (double)(ti_current_subcycle+ (integertime_t)1) / (double)dti, 
+                  ceil((double)(ti_current_subcycle+ (integertime_t)1) / (double)dti), 
+                  dti * ceil((double)(ti_current_subcycle +  (integertime_t)1) / (double)dti), 
+                  (integertime_t) (dti * ceil((double)(ti_current_subcycle + (integertime_t)1)/ (double)dti))
+                );
+                message("Cell %8lld Part %8lld inactive Computing RT integer_time_end+2 ; dti=%20lld ti_curr/dti %lf ceil %lf res %lf res_int %20lld", 
+                  c->cellID,
+                  p->id,
+                  dti, (double)(ti_current_subcycle+ (integertime_t)2) / (double)dti, 
+                  ceil((double)(ti_current_subcycle+ (integertime_t)2) / (double)dti), 
+                  dti * ceil((double)(ti_current_subcycle +  (integertime_t)2) / (double)dti), 
+                  (integertime_t) (dti * ceil((double)(ti_current_subcycle + (integertime_t)2)/ (double)dti))
+                );
+              }
+              dti = get_integer_timestep(p->time_bin);
+              if (dti > 0) {
+                message("Cell %8lld Part %8lld inactive Computing hydro integer_time_end; dti=%20lld ti_curr/dti %lf ceil %lf res %lf res_int %20lld", 
+                  c->cellID,
+                  p->id,
+                  dti, (double)ti_current/ (double)dti, 
+                  ceil((double)ti_current/ (double)dti), 
+                  dti * ceil((double)ti_current/ (double)dti), 
+                  (integertime_t) (dti * ceil((double)ti_current/ (double)dti))
+                );
+              }
+            }
+
+            /* const integertime_t dti_half = c->hydro.ti_rt_min_step_size / 2; */
+            /* const integertime_t ti_rt_end = */
+            /*   get_integer_time_end(ti_current_subcycle + dti_half, p->rt_data.time_bin); */
+            /* const integertime_t dti_half = get_integer_timestep(p->rt_data.time_bin) / 2; */
+            /* const integertime_t ti_rt_end =  */
+            /*   get_integer_time_end(ti_current_subcycle + dti_half, p->rt_data.time_bin); */
+            const integertime_t ti_rt_end =
               get_integer_time_end(ti_current_subcycle + 1, p->rt_data.time_bin);
             const integertime_t ti_rt_beg =
               get_integer_time_begin(ti_current_subcycle + 1, p->rt_data.time_bin);
@@ -1106,10 +1180,10 @@ if (p->id == PROBLEM_ID)
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
 
-  if (c->cellID == PROBLEM_CELL) message("cell %lld collecting progeny data %lld %lld", c->cellID, cp->hydro.ti_rt_end_min, ti_rt_end_min);
-	ti_rt_end_min = min(cp->hydro.ti_rt_end_min, ti_rt_end_min);
-	ti_rt_beg_max = max(cp->hydro.ti_rt_beg_max, ti_rt_beg_max);
-  ti_rt_min_step_size = min(cp->hydro.ti_rt_min_step_size, ti_rt_min_step_size);
+        if (c->cellID == PROBLEM_CELL) message("cell %lld collecting progeny data %lld %lld", c->cellID, cp->hydro.ti_rt_end_min, ti_rt_end_min);
+        ti_rt_end_min = min(cp->hydro.ti_rt_end_min, ti_rt_end_min);
+        ti_rt_beg_max = max(cp->hydro.ti_rt_beg_max, ti_rt_beg_max);
+        ti_rt_min_step_size = min(cp->hydro.ti_rt_min_step_size, ti_rt_min_step_size);
 	
         ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
@@ -1175,6 +1249,10 @@ if (p->id == PROBLEM_ID)
   if (c->black_holes.ti_end_min == e->ti_current &&
       c->black_holes.ti_end_min < max_nr_timesteps)
     error("End of next black holes step is current time!");
+  /* TODO MLADEN: check that this works without RT on */
+  if (c->hydro.ti_rt_end_min == e->ti_current &&
+      c->hydro.ti_rt_end_min < max_nr_timesteps)
+    error("Cell %lld End of next RT step is current time!", c->cellID);
 #endif
 
   if (timer) TIMER_TOC(timer_timestep);

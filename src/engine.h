@@ -262,7 +262,7 @@ struct engine {
   integertime_t ti_beg_max;
 
   /* Number of particles updated in the previous step */
-  long long updates, g_updates, s_updates, b_updates, sink_updates;
+  long long updates, g_updates, s_updates, b_updates, sink_updates, rt_updates;
 
   /* Number of updates since the last rebuild */
   long long updates_since_rebuild;

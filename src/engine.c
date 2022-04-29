@@ -2651,6 +2651,7 @@ int engine_step(struct engine *e) {
 
     //e->ti_old = e->ti_current;
     /* e->ti_current = e->ti_old + (sub_cycle + 1) * rt_step_size; */
+    e->rt_updates = 0ll;
     e->ti_current_subcycle = e->ti_current + (sub_cycle + 1) * rt_step_size;
     e->max_active_bin = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin = get_min_active_bin(e->ti_current_subcycle, e->ti_current_subcycle - rt_step_size);
@@ -2664,7 +2665,10 @@ int engine_step(struct engine *e) {
     engine_unskip_sub_cycle(e);
     /* engine_print_task_counts(e); */
     engine_launch(e, "cycles");
+    message("cycle %d - %lld particles updated", sub_cycle, e->rt_updates);
   }
+  /* TODO: move rt_updates reset somewhere else later */
+  e->rt_updates = 0ll;
 
   message("------------------ end cycles");
 

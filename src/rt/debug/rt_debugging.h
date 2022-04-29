@@ -272,7 +272,8 @@ __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(struct
   if (p->rt_data.debug_drifted != 1 && loc != 1) 
     /* The only place where we don't need to be kicked first is the
      * ghost1 (finalise injection) step, so skip the test there. */
-    error("called %s on particle %lld with wrong drift count=%d", function_name, p->id, p->rt_data.debug_drifted);
+    error("called %s on particle %lld with wrong drift count=%d", 
+        function_name, p->id, p->rt_data.debug_drifted);
 
 
   if (loc > 0) {

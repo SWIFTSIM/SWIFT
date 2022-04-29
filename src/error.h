@@ -58,7 +58,7 @@
 /* #define PROBLEM_ID 15412 */
 /* #define PROBLEM_CELL 202 */
 
-#define PROBLEM_ID -1
+#define PROBLEM_ID 7284
 #define PROBLEM_CELL 458
 
 /**

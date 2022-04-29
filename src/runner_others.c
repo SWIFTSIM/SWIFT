@@ -1086,7 +1086,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer) {
 
-  const struct engine *e = r->e;
+  struct engine *e = r->e;
   const int count = c->hydro.count;
 
   /* Anything to do here? */
@@ -1122,6 +1122,7 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer)
       rt_debug_sequence_check(p, 5, __func__);
       /* Mark that the subcycling has happened */
       rt_debugging_count_subcycle(p);
+      atomic_inc(&e->rt_updates);
       if (p->id == PROBLEM_ID) message("Got %lld in cell %lld", p->id, c->cellID);
     }
 #endif
