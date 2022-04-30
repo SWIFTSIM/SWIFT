@@ -146,8 +146,8 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
 
 /**
  * @brief Check that the #part in a #cell have been drifted to the current time.
- * This is just a prototype function to keep the iact functions clean. As we 
- * don't care about the drifts during the RT subcycling, this always just 
+ * This is just a prototype function to keep the iact functions clean. As we
+ * don't care about the drifts during the RT subcycling, this always just
  * returns true.
  *
  * @param c The #cell.
@@ -201,18 +201,21 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.ti_rt_end_min < e->ti_current)
     error(
-        "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) and "
-        /* "cell in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) and " */
+        "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
+        "and "
+        /* "cell in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) and "
+         */
         "e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d",
-        c->cellID,
-        c->hydro.ti_rt_end_min, c->hydro.ti_rt_end_min * e->time_base, e->ti_current,
+        c->cellID, c->hydro.ti_rt_end_min,
+        c->hydro.ti_rt_end_min * e->time_base, e->ti_current,
         e->ti_current * e->time_base, e->cosmology->a, c->nodeID);
 #endif
 
-  /* if (c->cellID == PROBLEM_CELL) 
-   * message("Cell %lld active check: %lld %lld %d", 
-   * c->cellID, c->hydro.ti_rt_end_min, 
-   * e->ti_current_subcycle, c->hydro.ti_rt_end_min == e->ti_current_subcycle); */
+  /* if (c->cellID == PROBLEM_CELL)
+   * message("Cell %lld active check: %lld %lld %d",
+   * c->cellID, c->hydro.ti_rt_end_min,
+   * e->ti_current_subcycle, c->hydro.ti_rt_end_min == e->ti_current_subcycle);
+   */
   return (c->hydro.ti_rt_end_min == e->ti_current_subcycle);
 }
 
@@ -396,7 +399,6 @@ __attribute__((always_inline)) INLINE static int part_is_rt_active(
 
   return (part_bin <= max_active_bin);
 }
-
 
 /**
  * @brief Is this g-particle finishing its time-step now ?

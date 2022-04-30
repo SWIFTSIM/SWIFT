@@ -51,7 +51,6 @@
 #define memdump(rank)
 #endif
 
-
 /* #define PROBLEM_ID 1546 */
 /* #define PROBLEM_CELL 123 */
 

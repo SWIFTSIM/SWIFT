@@ -1084,7 +1084,8 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
  * @param c The #cell.
  * @param timer Are we timing this ?
  */
-void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer) {
+void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
+                                    int timer) {
 
   struct engine *e = r->e;
   const int count = c->hydro.count;
@@ -1092,17 +1093,20 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer)
   /* Anything to do here? */
   if (count == 0) return;
 
-  if (c->cellID == PROBLEM_CELL) message("Called %lld RT active? %d", c->cellID, cell_is_rt_active(c, e));
+  if (c->cellID == PROBLEM_CELL)
+    message("Called %lld RT active? %d", c->cellID, cell_is_rt_active(c, e));
   if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
   if (c->split) {
     for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) runner_do_rt_advance_cell_time(r, c->progeny[k], 0);
+      if (c->progeny[k] != NULL)
+        runner_do_rt_advance_cell_time(r, c->progeny[k], 0);
   } else {
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  /* Do some debugging stuff on active particles before setting the cell time */
+    /* Do some debugging stuff on active particles before setting the cell time
+     */
 
     struct part *restrict parts = c->hydro.parts;
 
@@ -1123,17 +1127,19 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c, int timer)
       /* Mark that the subcycling has happened */
       rt_debugging_count_subcycle(p);
       atomic_inc(&e->rt_updates);
-      if (p->id == PROBLEM_ID) message("Got %lld in cell %lld", p->id, c->cellID);
+      if (p->id == PROBLEM_ID)
+        message("Got %lld in cell %lld", p->id, c->cellID);
     }
 #endif
   }
 
-  if (c->cellID == PROBLEM_CELL) message("Updated cell %lld time from %lld -> %lld, current=%lld current_rt=%lld, min_step_size=%lld", 
-                        c->cellID, c->hydro.ti_rt_end_min, 
-                        c->hydro.ti_rt_end_min + c->hydro.ti_rt_min_step_size, 
-                        e->ti_current, e->ti_current_subcycle,
-                        c->hydro.ti_rt_min_step_size
-                        );
-  c->hydro.ti_rt_end_min  += c->hydro.ti_rt_min_step_size;
+  if (c->cellID == PROBLEM_CELL)
+    message(
+        "Updated cell %lld time from %lld -> %lld, current=%lld "
+        "current_rt=%lld, min_step_size=%lld",
+        c->cellID, c->hydro.ti_rt_end_min,
+        c->hydro.ti_rt_end_min + c->hydro.ti_rt_min_step_size, e->ti_current,
+        e->ti_current_subcycle, c->hydro.ti_rt_min_step_size);
+  c->hydro.ti_rt_end_min += c->hydro.ti_rt_min_step_size;
   if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);
 }

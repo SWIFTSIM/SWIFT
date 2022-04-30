@@ -352,14 +352,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if (ci_active_rt) scheduler_activate(s, t);
       }
 
-      else if (t_type == task_type_self && t_subtype == task_subtype_rt_gradient) {
+      else if (t_type == task_type_self &&
+               t_subtype == task_subtype_rt_gradient) {
         cell_activate_drift_part(ci, s);
-        if (ci_active_rt && !ci_active_hydro) message("CELL RT ACTIVE BUT NOT HYDRO ACTIVE???");
+        if (ci_active_rt && !ci_active_hydro)
+          message("CELL RT ACTIVE BUT NOT HYDRO ACTIVE???");
       }
 
-      else if (t_type == task_type_sub_self && t_subtype == task_subtype_rt_gradient) {
+      else if (t_type == task_type_sub_self &&
+               t_subtype == task_subtype_rt_gradient) {
         cell_activate_subcell_hydro_tasks(ci, NULL, s, /*sub_cycle=*/0);
-        if (ci_active_rt && !ci_active_hydro) message("CELL RT ACTIVE BUT NOT HYDRO ACTIVE???");
+        if (ci_active_rt && !ci_active_hydro)
+          message("CELL RT ACTIVE BUT NOT HYDRO ACTIVE???");
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -786,7 +790,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
            * Therefore all the (subcell) sorts and drifts should already have
            * been activated properly in the hydro part of the activation. */
           scheduler_activate(s, t);
-
 
           /* Set the correct sorting flags */
           if (t_type == task_type_pair) {
@@ -1447,9 +1450,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
     else if (t->type == task_type_rt_ghost1 || t->type == task_type_rt_ghost2 ||
              t->type == task_type_rt_transport_out ||
-             t->type == task_type_rt_tchem || 
+             t->type == task_type_rt_tchem ||
              t->type == task_type_rt_advance_cell_time ||
-             t->type == task_type_rt_out){
+             t->type == task_type_rt_out) {
       if (cell_is_rt_active(t->ci, e)) scheduler_activate(s, t);
     }
 

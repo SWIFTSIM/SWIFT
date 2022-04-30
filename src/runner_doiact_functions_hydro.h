@@ -26,7 +26,8 @@
 
 #include "runner_doiact_hydro.h"
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT) || (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
 /* RT specific function calls */
 #define PART_IS_ACTIVE part_is_rt_active
 #define CELL_IS_ACTIVE cell_is_rt_active
@@ -1340,12 +1341,9 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   /* Have the cells been sorted? */
   if (!(ci->hydro.sorted & (1 << sid)) ||
       ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin)
-    error("Interacting unsorted cells %lld -> %lld. %d %d sid=%d", 
-        ci->cellID, cj->cellID, 
-        !(ci->hydro.sorted & (1 << sid)), 
-        sid,
-        ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin
-        );
+    error("Interacting unsorted cells %lld -> %lld. %d %d sid=%d", ci->cellID,
+          cj->cellID, !(ci->hydro.sorted & (1 << sid)), sid,
+          ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin);
   if (!(cj->hydro.sorted & (1 << sid)) ||
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells %lld -> %lld.", cj->cellID, ci->cellID);
@@ -1933,7 +1931,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   }     /* Loop over all cj */
 
   /* Clean-up if necessary */  // MATTHIEU: temporary disable this optimization
-  if (CELL_IS_ACTIVE(ci, e))  // && !cell_is_all_active_hydro(ci, e))
+  if (CELL_IS_ACTIVE(ci, e))   // && !cell_is_all_active_hydro(ci, e))
     free(sort_active_i);
   if (CELL_IS_ACTIVE(cj, e))  // && !cell_is_all_active_hydro(cj, e))
     free(sort_active_j);

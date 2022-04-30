@@ -118,7 +118,7 @@ struct pcell {
 
     /*! Minimal integer end-of-timestep in this cell for RT tasks */
     integertime_t ti_rt_end_min;
-    
+
     /*! Maximal integer beginning-of-timestep in this cell for hydro tasks */
     integertime_t ti_beg_max;
 
@@ -237,8 +237,8 @@ struct pcell_step {
     integertime_t ti_end_min;
 
     /*! Minimal integer end-of-timestep in this cell (rt) */
-    integertime_t ti_rt_end_min;    
-    
+    integertime_t ti_rt_end_min;
+
     /*! Maximal distance any #part has travelled since last rebuild */
     float dx_max_part;
   } hydro;
@@ -546,7 +546,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                             const int with_star_formation,
                             const int with_star_formation_sink);
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s);
-int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycle);
+int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
+                         const int sub_cycle);
 int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s);
 void cell_drift_part(struct cell *c, const struct engine *e, int force,
@@ -589,8 +590,7 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
 void cell_activate_subcell_external_grav_tasks(struct cell *ci,
                                                struct scheduler *s);
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
-                                   struct scheduler *s,
-                                   const int sub_cycle);
+                                    struct scheduler *s, const int sub_cycle);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);

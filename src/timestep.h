@@ -295,14 +295,17 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
   /* ---------------------------------------------------------------------- */
   /* Here we need to replace e->ti_current */
   /* const integertime_t new_dti = make_integer_timestep( */
-  /*     new_dt, p->rt_data.time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current_subcycle, */
+  /*     new_dt, p->rt_data.time_bin, p->limiter_data.min_ngb_time_bin,
+   * e->ti_current_subcycle, */
   /*     e->time_base_inv) / 4; */
 
   /* TODO: you'll need to use RT data later, but for now keep hydro
    * so you get nice constant factors in timesteps. */
-  const integertime_t new_dti = make_integer_timestep(
-      new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
-      e->time_base_inv) / 4;
+  const integertime_t new_dti =
+      make_integer_timestep(new_dt, p->time_bin,
+                            p->limiter_data.min_ngb_time_bin, e->ti_current,
+                            e->time_base_inv) /
+      4;
   /* TODO: don't forget to remove /4 */
 
   return new_dti;

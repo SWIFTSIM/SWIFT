@@ -53,7 +53,7 @@ struct rt_part_data {
   int debug_kicked;
 
   /*! part got drifted? */
-  /* Note: This gets reset for each particle after each step 
+  /* Note: This gets reset for each particle after each step
    * and subcycle via the debugging routines. */
   int debug_drifted;
 

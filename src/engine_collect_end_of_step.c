@@ -101,9 +101,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       ti_hydro_beg_max = max(ti_hydro_beg_max, c->hydro.ti_beg_max);
 
       if (c->hydro.ti_rt_end_min > e->ti_current)
-	ti_rt_end_min = min(c->hydro.ti_rt_end_min, ti_rt_end_min);
+        ti_rt_end_min = min(c->hydro.ti_rt_end_min, ti_rt_end_min);
       ti_rt_beg_max = max(c->hydro.ti_rt_beg_max, ti_rt_beg_max);
-      
+
       if (c->grav.ti_end_min > e->ti_current)
         ti_gravity_end_min = min(ti_gravity_end_min, c->grav.ti_end_min);
       ti_gravity_beg_max = max(ti_gravity_beg_max, c->grav.ti_beg_max);
@@ -165,7 +165,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     if (ti_rt_end_min > e->ti_current)
       data->ti_rt_end_min = min(ti_rt_end_min, data->ti_rt_end_min);
     data->ti_rt_beg_max = max(ti_rt_beg_max, data->ti_rt_beg_max);
-    
+
     if (ti_gravity_end_min > e->ti_current)
       data->ti_gravity_end_min =
           min(ti_gravity_end_min, data->ti_gravity_end_min);
@@ -260,9 +260,10 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
       data.sink_updated, data.b_updated, data.inhibited, data.g_inhibited,
       data.s_inhibited, data.sink_inhibited, data.b_inhibited,
-      data.ti_hydro_end_min, data.ti_hydro_beg_max,  data.ti_rt_end_min, data.ti_rt_beg_max,
-      data.ti_gravity_end_min, data.ti_gravity_beg_max, data.ti_stars_end_min, data.ti_stars_beg_max,
-      data.ti_sinks_end_min, data.ti_sinks_beg_max, data.ti_black_holes_end_min,
+      data.ti_hydro_end_min, data.ti_hydro_beg_max, data.ti_rt_end_min,
+      data.ti_rt_beg_max, data.ti_gravity_end_min, data.ti_gravity_beg_max,
+      data.ti_stars_end_min, data.ti_stars_beg_max, data.ti_sinks_end_min,
+      data.ti_sinks_beg_max, data.ti_black_holes_end_min,
       data.ti_black_holes_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
       data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,

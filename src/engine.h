@@ -218,7 +218,7 @@ struct engine {
 
   /* Maximal rt ti_beg for the next time-step */
   integertime_t ti_rt_beg_max;
-  
+
   /* Minimal gravity ti_end for the next time-step */
   integertime_t ti_gravity_end_min;
 

@@ -23,7 +23,6 @@
 /* #define PROBLEM_ID 1546 */
 #define PROBLEM_ID2 1147
 
-
 /**
  * @file src/rt/debug/rt.h
  * @brief Main header file for the debug radiative transfer scheme.
@@ -92,7 +91,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
     message("resetting nsubcycles part %lld callloc=%d", p->id, callloc);
   }
   p->rt_data.debug_kicked = 0;
-
 }
 
 /**
@@ -109,9 +107,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
 
   rt_debugging_reset_each_subcycle(p);
 }
-
-
-
 
 /**
  * @brief First initialisation of the RT hydro particle data.
@@ -360,7 +355,6 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
   p->rt_data.debug_injection_done += 1;
 }
 
-
 /**
  * @brief finishes up the gradient computation
  *
@@ -428,7 +422,8 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
   rt_debug_sequence_check(p, 4, __func__);
   p->rt_data.debug_thermochem_done += 1;
 
-  if (p->id == PROBLEM_ID) message("FINISHED PART %lld CYCLE %d", p->id, p->rt_data.debug_nsubcycles);
+  if (p->id == PROBLEM_ID)
+    message("FINISHED PART %lld CYCLE %d", p->id, p->rt_data.debug_nsubcycles);
   /* rt_do_thermochemistry(p); */
 }
 
@@ -474,9 +469,7 @@ __attribute__((always_inline)) INLINE static void rt_drift_part(
 
   if (p->id == 21702) message("Drifting %lld", p->id);
   p->rt_data.debug_drifted += 1;
-
 }
-
 
 /**
  * @brief Prepare a particle for the !HYDRO! force calculation.

@@ -250,7 +250,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
  * @param sub_cycle 1 if this is a call for a sub cycle, 0 otherwise
  */
 static void engine_do_unskip_rt(struct cell *c, struct engine *e,
-				const int sub_cycle) {
+                                const int sub_cycle) {
 
   /* Note: we only get this far if engine_policy_rt is flagged. */
 #ifdef SWIFT_DEBUG_CHECKS
@@ -259,8 +259,11 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
 #endif
 
   if (c->cellID == PROBLEM_CELL)
-    message("Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld ti_current_subcycle %lld", 
-    c->cellID, sub_cycle, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min ,  e->ti_current_subcycle);
+    message(
+        "Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld "
+        "ti_current_subcycle %lld",
+        c->cellID, sub_cycle, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min,
+        e->ti_current_subcycle);
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
@@ -316,9 +319,12 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
     /* Handle on the cell */
     struct cell *const c = &cells_top[local_cells[ind]];
 
-    if (c->cellID == PROBLEM_CELL)     
-        message("Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld ti_current_subcycle %lld", 
-        c->cellID, 0, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min ,  e->ti_current_subcycle);
+    if (c->cellID == PROBLEM_CELL)
+      message(
+          "Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld "
+          "ti_current_subcycle %lld",
+          c->cellID, 0, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min,
+          e->ti_current_subcycle);
     /* In what copy of the global list are we?
      * This gives us the broad type of task we are working on. */
     const ptrdiff_t delta = &local_cells[ind] - list_base;
@@ -520,7 +526,7 @@ void engine_unskip(struct engine *e) {
 }
 
 void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
-				       void *extra_data) {
+                                       void *extra_data) {
   /* Unpack the meta data */
   struct unskip_data *data = (struct unskip_data *)extra_data;
   struct engine *e = data->e;
@@ -539,7 +545,6 @@ void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
   }
 }
 
-
 void engine_unskip_sub_cycle(struct engine *e) {
 
   const ticks tic = getticks();
@@ -547,7 +552,7 @@ void engine_unskip_sub_cycle(struct engine *e) {
   const int with_rt = e->policy & engine_policy_rt;
 
   if (!with_rt) error("Unskipping sub-cycles when running without RT!");
-  
+
   /* Move the active local cells to the top of the list. */
   int *local_cells = e->s->local_cells_with_tasks_top;
   int num_active_cells = 0;
@@ -555,7 +560,11 @@ void engine_unskip_sub_cycle(struct engine *e) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
     if (c->cellID == PROBLEM_CELL)
-    message("Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld ti_current_subcycle %lld", c->cellID, 1, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min ,  e->ti_current_subcycle);
+      message(
+          "Caught cell %lld sub_cycle? %d active? %d ti_rt_end_min %lld "
+          "ti_current_subcycle %lld",
+          c->cellID, 1, cell_is_rt_active(c, e), c->hydro.ti_rt_end_min,
+          e->ti_current_subcycle);
 
     if (cell_is_empty(c)) continue;
 
@@ -563,7 +572,7 @@ void engine_unskip_sub_cycle(struct engine *e) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
-      num_active_cells += 1;      
+      num_active_cells += 1;
     }
   }
 
@@ -576,7 +585,7 @@ void engine_unskip_sub_cycle(struct engine *e) {
 
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, engine_do_unskip_sub_cycle_mapper, local_cells,
-                 num_active_cells, sizeof(int), /*chunk=*/1, &data);  
+                 num_active_cells, sizeof(int), /*chunk=*/1, &data);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

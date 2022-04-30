@@ -1441,8 +1441,7 @@ void cell_activate_subcell_external_grav_tasks(struct cell *ci,
  * @param sub_cycle Are we in a subcycle or not?
  */
 void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
-                                       struct scheduler *s,
-                                       const int sub_cycle) {
+                                    struct scheduler *s, const int sub_cycle) {
 
   /* Only do this during real time steps, not during subcycling. */
   if (sub_cycle) return;
@@ -1470,12 +1469,11 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
       /* Loop over all progenies and pairs of progenies */
       for (int j = 0; j < 8; j++) {
         if (ci->progeny[j] != NULL) {
-          cell_activate_subcell_rt_tasks(ci->progeny[j], NULL, s,
-                                            sub_cycle);
+          cell_activate_subcell_rt_tasks(ci->progeny[j], NULL, s, sub_cycle);
           for (int k = j + 1; k < 8; k++)
             if (ci->progeny[k] != NULL)
-              cell_activate_subcell_rt_tasks(ci->progeny[j], ci->progeny[k],
-                                                s, sub_cycle);
+              cell_activate_subcell_rt_tasks(ci->progeny[j], ci->progeny[k], s,
+                                             sub_cycle);
         }
       }
     } else {
@@ -1502,13 +1500,13 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] != NULL)
-          cell_activate_subcell_rt_tasks(ci->progeny[pid], cj->progeny[pjd],
-                                            s, sub_cycle);
+          cell_activate_subcell_rt_tasks(ci->progeny[pid], cj->progeny[pjd], s,
+                                         sub_cycle);
       }
     }
 
     /* Otherwise, activate the sorts and drifts. */
-    else if (ci_active || cj_active){
+    else if (ci_active || cj_active) {
 
       /* We are going to interact this pair, so store some values. */
       atomic_or(&ci->hydro.requires_sorts, 1 << sid);
@@ -2842,17 +2840,24 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
  *
  * @param c the #cell.
  * @param s the #scheduler.
- * @param sub_cycle 1 if this is unskipping during an RT subcycle, 0 if normal unskip
+ * @param sub_cycle 1 if this is unskipping during an RT subcycle, 0 if normal
+ * unskip
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
-int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycle) {
- 
+int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
+                         const int sub_cycle) {
+
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0; /* TODO: implement rebuild conditions? */
 
-  if (c->cellID == PROBLEM_CELL) message("Caught cell %lld sub_cycle? %d active? %d activate advance cell time? %d", c->cellID, sub_cycle, cell_is_rt_active(c, e), c->hydro.rt_advance_cell_time != NULL);
+  if (c->cellID == PROBLEM_CELL)
+    message(
+        "Caught cell %lld sub_cycle? %d active? %d activate advance cell time? "
+        "%d",
+        c->cellID, sub_cycle, cell_is_rt_active(c, e),
+        c->hydro.rt_advance_cell_time != NULL);
 
   /* Note: we only get this far if engine_policy_rt is flagged. */
   if (!(e->policy & engine_policy_rt)) error("Unskipping RT tasks without RT");
@@ -2878,27 +2883,29 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
 
       if (!sub_cycle) {
         /* Activate hydro drift */
-        if (t->type == task_type_self){
+        if (t->type == task_type_self) {
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         }
 
-        else if(t->type == task_type_pair) {
+        else if (t->type == task_type_pair) {
           atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
           atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
           ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
           cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
           /* Activate the drift tasks. */
-          if (ci_nodeID == nodeID && !sub_cycle) cell_activate_drift_part(ci, s);
-          if (cj_nodeID == nodeID && !sub_cycle) cell_activate_drift_part(cj, s);
+          if (ci_nodeID == nodeID && !sub_cycle)
+            cell_activate_drift_part(ci, s);
+          if (cj_nodeID == nodeID && !sub_cycle)
+            cell_activate_drift_part(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_hydro_sorts(cj, t->flags, s);
         }
-        
+
         /* Store current values of dx_max and h_max. */
-        else if (t->type == task_type_sub_self){
+        else if (t->type == task_type_sub_self) {
           cell_activate_subcell_rt_tasks(ci, NULL, s, sub_cycle);
         }
 
@@ -3020,7 +3027,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s, const int sub_cycl
     if (c->hydro.rt_transport_out != NULL)
       scheduler_activate(s, c->hydro.rt_transport_out);
     if (c->hydro.rt_tchem != NULL) scheduler_activate(s, c->hydro.rt_tchem);
-    if (c->hydro.rt_advance_cell_time != NULL) scheduler_activate(s, c->hydro.rt_advance_cell_time);
+    if (c->hydro.rt_advance_cell_time != NULL)
+      scheduler_activate(s, c->hydro.rt_advance_cell_time);
     if (c->hydro.rt_out != NULL) scheduler_activate(s, c->hydro.rt_out);
   }
 

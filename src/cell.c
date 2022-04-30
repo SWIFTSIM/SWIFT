@@ -1253,7 +1253,8 @@ void cell_check_timesteps(const struct cell *c, const integertime_t ti_current,
 
   if (c->hydro.ti_end_min == 0 && c->grav.ti_end_min == 0 &&
       c->stars.ti_end_min == 0 && c->black_holes.ti_end_min == 0 &&
-      c->sinks.ti_end_min == 0 && c->hydro.ti_rt_end_min == 0 && c->nr_tasks > 0)
+      c->sinks.ti_end_min == 0 && c->hydro.ti_rt_end_min == 0 &&
+      c->nr_tasks > 0)
     error("Cell without assigned time-step");
 
   if (c->split) {

@@ -35,7 +35,7 @@
  * @param p the particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_debugging_count_subcycle(
-    struct part* restrict p) {
+    struct part *restrict p) {
   p->rt_data.debug_nsubcycles += 1;
 }
 
@@ -44,8 +44,8 @@ __attribute__((always_inline)) INLINE static void rt_debugging_count_subcycle(
  * step such that the internal checks are still consistent.
  * @param p the particle to work on
  */
-__attribute__((always_inline)) INLINE static void rt_debugging_reset_each_subcycle(
-    struct part* restrict p) {
+__attribute__((always_inline)) INLINE static void
+rt_debugging_reset_each_subcycle(struct part *restrict p) {
 
   /* skip this for GEAR */
   p->rt_data.debug_calls_iact_gradient_interaction = 0;
@@ -56,7 +56,6 @@ __attribute__((always_inline)) INLINE static void rt_debugging_reset_each_subcyc
   p->rt_data.debug_transport_done = 0;
   p->rt_data.debug_thermochem_done = 0;
 }
-
 
 /**
  * @brief Debugging checks loop over all star particles after each time step
