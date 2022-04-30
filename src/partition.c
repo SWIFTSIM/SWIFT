@@ -921,7 +921,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         if (weights_e != NULL)
           memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nedge);
         if (weights_v != NULL)
-          memcpy(weights_v, &full_weights_v[j3], sizeof(idx_t) * nvt * ncon);
+          memcpy(weights_v, &full_weights_v[j3 * ncon], sizeof(idx_t) * nvt * ncon);
         if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
 
       } else {
@@ -934,7 +934,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
           res = MPI_Isend(&full_weights_e[j2], nvt * 26, IDX_T, rank, 2, comm,
                           &reqs[5 * rank + 2]);
         if (res == MPI_SUCCESS && weights_v != NULL)
-          res = MPI_Isend(&full_weights_v[j3], nvt * ncon, IDX_T, rank, 3, comm,
+          res = MPI_Isend(&full_weights_v[j3 * ncon], nvt * ncon, IDX_T, rank, 3, comm,
                           &reqs[5 * rank + 3]);
         if (refine && res == MPI_SUCCESS)
           res = MPI_Isend(&full_regionid[j3], nvt, IDX_T, rank, 4, comm,
