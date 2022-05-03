@@ -163,14 +163,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
  * @param dt Physical time step of the particle during the next step.
  */
 __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
-    struct part *p, float dt) {
-
-  /* Update the timestep used in the flux calculation */
-  p->flux.dt = dt;
-
-  /* Reset v_max */
-  p->timestepvars.vmax = 0.f;
-}
+    struct part *p, float dt) {}
 
 /**
  * @brief Prepares a particle for the density calculation.
@@ -227,9 +220,6 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
-
-  /* Initialize time step criterion variables */
-  p->timestepvars.vmax = 0.;
 
   hydro_gradients_init(p);
 }
@@ -491,71 +481,98 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
   }
 
-  float flux[5];
-  hydro_part_get_fluxes(p, flux);
+  if (p->flux.dt > 0.0f) {
+    float flux[5];
+    hydro_part_get_fluxes(p, flux);
 
-  /* Update conserved variables. */
-  p->conserved.mass += flux[0];
-  p->conserved.momentum[0] += flux[1];
-  p->conserved.momentum[1] += flux[2];
-  p->conserved.momentum[2] += flux[3];
+    /* Update conserved variables. */
+    p->conserved.mass += flux[0];
+    p->conserved.momentum[0] += flux[1];
+    p->conserved.momentum[1] += flux[2];
+    p->conserved.momentum[2] += flux[3];
 #if defined(EOS_ISOTHERMAL_GAS)
-  /* We use the EoS equation in a sneaky way here just to get the constant u */
-  p->conserved.energy =
-      p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
+    /* We use the EoS equation in a sneaky way here just to get the constant u
+     */
+    p->conserved.energy =
+        p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-  p->conserved.energy += flux[4];
+    p->conserved.energy += flux[4];
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
 
-  const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
-  p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
-  p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
-  p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
+    const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
+    p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
+    p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
+    p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
 #ifdef SHADOWSWIFT_TOTAL_ENERGY
-  p->conserved.energy -= Pcorr * (p->fluid_v[0] * p->gradients.P[0] +
-                                  p->fluid_v[1] * p->gradients.P[1] +
-                                  p->fluid_v[2] * p->gradients.P[2]);
+    p->conserved.energy -= Pcorr * (p->fluid_v[0] * p->gradients.P[0] +
+                                    p->fluid_v[1] * p->gradients.P[1] +
+                                    p->fluid_v[2] * p->gradients.P[2]);
 #endif
 #endif
 
-  /* Apply the minimal energy limit */
-  const float min_energy =
-      hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-  if (p->conserved.energy < min_energy * p->conserved.mass) {
-    p->conserved.energy = min_energy * p->conserved.mass;
-    p->flux.energy = 0.0f;
-  }
+    /* Apply the minimal energy limit */
+    const float min_energy =
+        hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
+    if (p->conserved.energy < min_energy * p->conserved.mass) {
+      p->conserved.energy = min_energy * p->conserved.mass;
+    }
 
-  // MATTHIEU: Apply the entropy floor here.
+    // MATTHIEU: Apply the entropy floor here.
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (p->conserved.mass < 0.) {
-    error(
-        "Negative mass after conserved variables update (mass: %g, dmass: %g)!",
-        p->conserved.mass, p->flux.mass);
-  }
+    if (p->conserved.mass < 0.) {
+      error(
+          "Negative mass after conserved variables update (mass: %g, dmass: %g)!",
+          p->conserved.mass, p->flux.mass);
+    }
 
-  if (p->conserved.energy < 0.) {
-    error(
-        "Negative energy after conserved variables update (energy: %g, "
-        "denergy: %g)!",
-        p->conserved.energy, p->flux.energy);
-  }
+    if (p->conserved.energy < 0.) {
+      error(
+          "Negative energy after conserved variables update (energy: %g, "
+          "denergy: %g)!",
+          p->conserved.energy, p->flux.energy);
+    }
 #endif
 
-  /* Reset the fluxes so that they do not get used again in the kick1. */
-  hydro_part_reset_fluxes(p);
+    /* Reset the fluxes so that they do not get used again in the kick1. */
+    hydro_part_reset_fluxes(p);
 
-  /* Update primitive quantities */
-  hydro_convert_conserved_to_primitive(p, xp);
+    /* Update primitive quantities */
+    hydro_convert_conserved_to_primitive(p, xp);
 
-  /* Update gpart */
-  hydro_gravity_update_gpart_mass(p);
+    /* Update gpart */
+    hydro_gravity_update_gpart_mass(p);
 
-  /* Set actual velocity of ShadowSWIFT particle (!= fluid_v) */
-  hydro_velocities_set(p, xp);
+    /* Set actual velocity of ShadowSWIFT particle (!= fluid_v) */
+    hydro_velocities_set(p, xp);
+  } else if (p->flux.dt == 0.0f) {
+    /* This can only occur in the beginning of the simulation. We simply need to
+     * reset the flux.dt to -1.0f */
+
+    /* Reset the fluxes so that they do not get used again in the kick1. */
+    hydro_part_reset_fluxes(p);
+
+    /* Update primitive quantities */
+    hydro_convert_conserved_to_primitive(p, xp);
+
+    /* Set actual velocity of ShadowSWIFT particle (!= fluid_v) */
+    hydro_velocities_set(p, xp);
+
+  } else {
+    /* flux.dt < 0 implies that we are in kick1. */
+
+    /* Update the timestep used in the flux calculation */
+    p->flux.dt = 2.f * dt_therm;
+
+    /* Reset v_max */
+    p->timestepvars.vmax = 0.f;
+  }
+
+  /* TODO: check for negative dt_therm (implying that we are rolling back a kick
+   * due to the timestep limiter or the timestep sync). This means that we must
+   * rescale the time integrated fluxes this particle has received. */
 
   /* undo the flux exchange and kick the particles towards their centroid */
   /* TODO Lloyd */
