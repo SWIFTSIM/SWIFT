@@ -19,8 +19,9 @@
 #ifndef SWIFT_VECTOR_POTENTIAL_MHD_H
 #define SWIFT_VECTOR_POTENTIAL_MHD_H
 
-#include <float.h>
 #include "hydro.h"
+
+#include <float.h>
 
 /**
  * @brief Compute the MHD signal velocity between two gas particles,

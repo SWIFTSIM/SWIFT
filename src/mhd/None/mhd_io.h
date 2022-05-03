@@ -24,7 +24,7 @@
  * @brief Basic statistics
  *
  * @param parts The particle array.
- * @param statistic structure. 
+ * @param statistic structure.
  */
 INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
   /* example:
