@@ -557,6 +557,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_faces) {
+            free(t->buff);
           }
           break;
         case task_type_recv:
@@ -605,7 +607,8 @@ void *runner_main(void *data) {
             cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
             free(t->buff);
           } else if (t->subtype == task_subtype_faces) {
-            /* TODO */
+            cell_unpack_voronoi_faces(ci, (struct pcell_faces *)t->buff);
+            free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }

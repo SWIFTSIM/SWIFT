@@ -693,3 +693,81 @@ int cell_unpack_sf_counts(struct cell *restrict c,
   return 0;
 #endif
 }
+
+/**
+ * @brief Pack this cells voronoi faces to send over MPI.
+ *
+ * @param c The #cell
+ * @param pcell The packed representation of the voronoi faces to fill in.
+ * @param count The number of voronoi faces to pack.
+ * */
+void cell_pack_voronoi_faces(struct cell *restrict c,
+                             struct pcell_faces *restrict pcell, size_t count) {
+#ifdef WITH_MPI
+
+  if (c->grid.voronoi == NULL)
+    error("Trying to pack voronoi faces, but no voronoi grid allocated!");
+
+  struct voronoi *vortess = c->grid.voronoi;
+
+  size_t count_total = 0;
+  for (int sid = 0; sid < 27; sid++) {
+    if (sid == 13) continue;
+
+    size_t sid_count = vortess->pair_index[sid];
+    if (sid_count == 0) continue;
+
+    pcell->counts[sid] = sid_count;
+    memcpy(&pcell->faces[count_total], vortess->pairs[sid],
+           sid_count * sizeof(struct voronoi_pair));
+    count_total += sid_count;
+  }
+
+#if SWIFT_DEBUG_CHECKS
+  if (count_total != count) error("Incorrect number of voronoi faces packed!");
+#endif
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Unpack this cells voronoi faces which were sent over MPI.
+ *
+ * @param c The #cell
+ * @param pcell The packed representation of the voronoi faces to unpack.
+ * */
+void cell_unpack_voronoi_faces(struct cell *restrict c,
+                               struct pcell_faces *restrict pcell) {
+#ifdef WITH_MPI
+
+  if (c->grid.voronoi != NULL) {
+    voronoi_destroy(c->grid.voronoi);
+    c->grid.voronoi = NULL;
+  }
+
+  c->grid.voronoi = malloc(sizeof(struct voronoi));
+  bzero(c->grid.voronoi, sizeof(struct voronoi));
+
+  struct voronoi *vortess = c->grid.voronoi;
+
+  size_t count_total = 0;
+  for (int sid = 0; sid < 27; sid++) {
+    if (sid == 13) continue;
+
+    size_t sid_count = pcell->counts[sid];
+    if (sid_count == 0) continue;
+
+    vortess->pair_index[sid] = sid_count;
+    vortess->pairs[sid] = (struct voronoi_pair *)malloc(
+        sid_count * sizeof(struct voronoi_pair));
+    memcpy(vortess->pairs[sid], &pcell->faces[count_total],
+           sid_count * sizeof(struct voronoi_pair));
+    count_total += sid_count;
+  }
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}

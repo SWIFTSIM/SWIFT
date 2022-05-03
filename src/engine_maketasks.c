@@ -675,8 +675,9 @@ void engine_addtasks_send_grid_hydro(struct engine *e, struct cell *ci,
       /* The faces can only be sent after the grid ghost */
       scheduler_addunlock(s, ci->grid.super->grid.ghost, t_faces);
 
-      /* The send_faces unlocks the flux ghost (TODO gradient ghost) */
-      scheduler_addunlock(s, t_faces, ci->hydro.super->hydro.flux_ghost);
+      /* The send_faces unlocks the flux ghost */
+      scheduler_addunlock(s, t_faces,
+                          ci->hydro.super->hydro.slope_estimate_ghost);
 
       /* Link to cell */
       engine_addlink(e, &ci->mpi.send, t_faces);
@@ -1304,15 +1305,16 @@ void engine_addtasks_recv_grid_hydro(struct engine *e, struct cell *c,
         s, task_type_recv, task_subtype_faces, c->mpi.tag, 0, c, NULL);
 
     /* Dependencies */
-    /* The faces can only be received after the sort? (TODO?) */
+    /* The faces can only be received after the sorts */
     scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_faces);
 
-    /* The recv_faces unlocks the flux pair interactions, which are on or above
-     * the construction level of a cell. */
+    /* The recv_faces unlocks the slope estimate pair interactions, which are on
+     * or above the construction level of a cell. */
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
-      /* Check if there are flux exchange interactions linked to this cell */
-      for (struct link *l = finger->hydro.flux; l != NULL; l = l->next) {
+      /* Check if there are slope estimate interactions linked to this cell */
+      for (struct link *l = finger->hydro.slope_estimate; l != NULL;
+           l = l->next) {
         if (l->t->type == task_type_pair) scheduler_addunlock(s, t_faces, l->t);
       }
     }

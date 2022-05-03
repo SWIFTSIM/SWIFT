@@ -5,9 +5,9 @@
 #ifndef SWIFTSIM_CELL_GRID_H
 #define SWIFTSIM_CELL_GRID_H
 
-#include "shadowswift/voronoi.h"
-#include "shadowswift/delaunay.h"
 #include "const.h"
+#include "shadowswift/delaunay.h"
+#include "shadowswift/voronoi.h"
 
 enum construction_level {
   above_construction_level,
@@ -53,8 +53,8 @@ struct cell_grid {
   integertime_t ti_old;
 };
 
-struct pcell_grid {
-  int face_counts[26];
+struct pcell_faces {
+  size_t counts[26];
 
   struct voronoi_pair faces[];
 };

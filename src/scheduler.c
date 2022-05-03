@@ -2286,7 +2286,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_faces) {
 
-          /* TODO */
+          /* Allocate a safe upper bound of the number of face that will be
+           * sent. (the average number of faces per cell is approx. 15 and we
+           * are only sending a subset of all the faces, so this should be
+           * safe.) TODO: This is not *really* safe of course... */
+          count = 16 * t->ci->hydro.count;
+          size = offsetof(struct pcell_faces, faces[count]);
+          buff = t->buff = malloc(size);
+          type = MPI_BYTE;
+          count = size;
 
         } else {
           error("Unknown communication sub-type");
@@ -2396,7 +2404,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_faces) {
 
-          /* TODO */
+          count = cell_get_voronoi_face_send_count(t->ci);
+          size = offsetof(struct pcell_faces, faces[count]);
+          buff = t->buff = malloc(size);
+          bzero(buff, size);
+          cell_pack_voronoi_faces(t->ci, (struct pcell_faces *)t->buff, count);
+          type = MPI_BYTE;
+          count = size;
 
         } else {
           error("Unknown communication sub-type");

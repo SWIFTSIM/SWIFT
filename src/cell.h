@@ -521,6 +521,10 @@ int cell_pack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
+void cell_pack_voronoi_faces(struct cell *restrict c,
+                             struct pcell_faces *restrict pcell, size_t count);
+void cell_unpack_voronoi_faces(struct cell *restrict c,
+                               struct pcell_faces *restrict pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -1484,6 +1488,21 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
   }
 
 #endif
+}
+
+/*! @brief return the total number of voronoi faces for all directions,
+ * excluding the local faces, which will be sent over mpi. */
+__attribute__((always_inline)) INLINE static size_t
+cell_get_voronoi_face_send_count(struct cell *c) {
+
+  if (c->grid.voronoi == NULL) return 0;
+
+  size_t count = 0;
+  for (int sid = 0; sid < 27; sid++) {
+    if (sid == 13) continue;
+    count += c->grid.voronoi->pair_index[sid];
+  }
+  return count;
 }
 
 #endif /* SWIFT_CELL_H */
