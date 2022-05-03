@@ -32,6 +32,19 @@ struct sink_props {
 
   /*! Minimal gas density for forming a star. */
   float density_threashold;
+  
+  /*! Mass of the stellar particle representing the low mass stars 
+   * (continuous IMF sampling). */
+  float stellar_particle_mass;  
+  
+  /*! Minimal mass of stars represented by discrete particles */
+  float minimal_discrete_mass;  
+
+  /*! Size of the calibration sample used to determine the probabilities
+   * to form stellar particles with mass stellar_particle_mass */
+  int size_of_calibration_sample;  
+  
+  
 };
 
 /**
@@ -57,6 +70,18 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->density_threashold =
       parser_get_param_float(params, "GEARSink:density_threashold");
+      
+  sp->stellar_particle_mass =
+      parser_get_param_float(params, "GEARSink:stellar_particle_mass");      
+      
+  sp->minimal_discrete_mass =
+      parser_get_param_float(params, "GEARSink:minimal_discrete_mass");   
+      
+  sp->size_of_calibration_sample =
+      parser_get_param_int(params, "GEARSink:size_of_calibration_sample");        
+      
+      
+      
 
   /* Apply unit change */
   sp->maximal_temperature /=
@@ -64,8 +89,11 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->density_threashold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
-  message("maximal_temperature = %g", sp->maximal_temperature);
-  message("density_threashold  = %g", sp->density_threashold);
+  sp->stellar_particle_mass*=phys_const->const_solar_mass;
+
+  message("maximal_temperature    = %g", sp->maximal_temperature);
+  message("density_threashold     = %g", sp->density_threashold);
+  message("stellar_particle_mass  = %g", sp->stellar_particle_mass);
 }
 
 /**
