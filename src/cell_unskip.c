@@ -2925,16 +2925,19 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
   int nodeID = e->nodeID;
 
-  /* Anyting to do here? */
-  if (!cell_is_active_hydro(c, e)) return 0;
+  int rebuild = 0;
+
+  /* Anything to do here? If c is not local or inactive, we do not need to
+   * construct its voronoi grid. The sorts and/or drift will be activated from
+   * a pair construction task of a neighbouring cell that *is* local if
+   * necessary. */
+  if (!cell_is_active_hydro(c, e) || c->nodeID != nodeID) return rebuild;
 
   /* Are we at super level? */
   if (c->grid.super == c) {
     /* TODO activate limiter? */
     scheduler_activate(s, c->grid.ghost);
   }
-
-  int rebuild = 0;
 
   /* If above grid construction level, nothing else to do. */
   if (c->grid.construction_level == above_construction_level) return rebuild;
@@ -2952,19 +2955,18 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
-    int ci_nodeID = ci->nodeID;
     int cj_nodeID = cj != NULL ? cj->nodeID : -1;
 
-    /* Self task? */
+    /* Local self task? */
     if (t->type == task_type_self) {
 
       scheduler_activate(s, t);
 
       /* Activate hydro drift */
-      if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+      cell_activate_drift_part(ci, s);
     }
 
-    /* Pair task? */
+    /* Pair task for constructing the grid of c? */
     else if (t->type == task_type_pair && ci == c) {
 
       scheduler_activate(s, t);
@@ -2975,8 +2977,9 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
       ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
       cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
-      /* Activate the drift tasks. */
-      if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+      /* Activate the drift tasks for local cells only. If we reach this point
+       * we already know that c is local. */
+      cell_activate_drift_part(ci, s);
       if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
       /* Check the sorts and activate them if needed. */
@@ -2993,6 +2996,49 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 }
 
 /**
+ * @brief Un-skips all hydro tasks from a given linked list.
+ *
+ * @param l Linked list of hydro interaction tasks.
+ * @param s the #scheduler
+ *
+ * @return 1 If the space needs rebuilding. 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static void
+cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
+
+  struct engine *e = s->space->e;
+  int nodeID = e->nodeID;
+  int counter = 0;
+
+  for (; l != NULL; l = l->next) {
+#ifdef SWIFT_DEBUG_CHECKS
+    counter++;
+    if (counter > 27)
+      error("Cells should have not more than 27 hydro interaction tasks!");
+#endif
+
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+    const int ci_active = cell_is_active_hydro(ci, e);
+    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+
+    /* Only activate self tasks for local active cells */
+    if (t->type == task_type_self && ci_active && ci_nodeID == nodeID) {
+      scheduler_activate(s, t);
+    }
+    /* Only activate pair tasks that involve at least one active and one local
+     * cell (not necessarily the same). */
+    else if (t->type == task_type_pair && (ci_active || cj_active) &&
+             (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+    }
+  }
+}
+
+/**
  * @brief Un-skips all the moving mesh hydro tasks associated with a given cell
  * and checks if the space needs to be rebuilt.
  *
@@ -3004,88 +3050,30 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
-  const int with_timestep_limiter =
-      (e->policy & engine_policy_timestep_limiter);
 
 #ifdef WITH_MPI
   if (e->policy & engine_policy_sinks) error("TODO");
 #endif
   int rebuild = 0;
 
-  /* Un-skip the flux exchange tasks involved with this cell. */
-#ifdef SWIFT_DEBUG_CHECKS
-  int counter = 0;
-#endif
-  for (struct link *l = c->hydro.flux; l != NULL; l = l->next) {
-#ifdef SWIFT_DEBUG_CHECKS
-    counter++;
-    if (counter > 27) error("Cells should have not more than 14 flux tasks!");
-#ifdef EXTRA_HYDRO_LOOP
+  /* Anything to do here? If c is inactive, we do not need to activate any self
+   * or ghost tasks and any pair tasks will be activated from the neighbouring
+   * active cell if necessary. */
+  if (!cell_is_active_hydro(c, e)) return rebuild;
+
+  /* Un-skip the hydro interaction tasks involved with this cell. */
+  if (c->hydro.flux != NULL) {
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(EXTRA_HYDRO_LOOP)
     if (c->hydro.slope_estimate == NULL)
       error("Should have a slope estimation loop!");
     if (c->hydro.slope_limiter == NULL)
       error("Should have a slope limiter loop!");
 #endif
-#endif
-    struct task *t = l->t;
-    struct cell *ci = t->ci;
-    struct cell *cj = t->cj;
-    const int ci_active = cell_is_active_hydro(ci, e);
-    const int cj_active = (cj != NULL) ? cell_is_active_hydro(cj, e) : 0;
-#ifdef SWIFT_DEBUG_CHECKS
-    if (ci != c && cj != c)
-      error("Found task linked to cell which shouldn't be!");
-#endif
-#ifdef WITH_MPI
-    const int ci_nodeID = ci->nodeID;
-    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
-#else
-    const int ci_nodeID = nodeID;
-    const int cj_nodeID = nodeID;
-#endif
 
-    /* Only activate tasks that involve a local active cell. */
-    if ((ci_active && ci_nodeID == nodeID) ||
-        (cj_active && cj_nodeID == nodeID)) {
-      scheduler_activate(s, t);
-
-      /* Activate hydro drift */
-      if (t->type == task_type_self) {
-        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-        if (ci_nodeID == nodeID && with_timestep_limiter)
-          cell_activate_limiter(ci, s);
-      }
-
-      /* Set the correct sorting flags and activate hydro drifts */
-      else if (t->type == task_type_pair) {
-        /* Store some values. */
-        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
-
-        /* Activate the drift tasks. */
-        if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-        if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-
-        /* Activate the limiter tasks. */
-        if (ci_nodeID == nodeID && with_timestep_limiter)
-          cell_activate_limiter(ci, s);
-        if (cj_nodeID == nodeID && with_timestep_limiter)
-          cell_activate_limiter(cj, s);
-
-        /* Check the sorts and activate them if needed. */
-        cell_activate_hydro_sorts(ci, t->flags, s);
-        cell_activate_hydro_sorts(cj, t->flags, s);
-      }
-    }
-
-    /* Only interested in pair interactions as of here. */
-    if (t->type == task_type_pair || t->type == task_type_sub_pair) {
-      /* Check whether there was too much particle motion, i.e. the
-         cell neighbour conditions were violated. */
-      /* TODO */
-    }
+    cell_unskip_grid_hydro_interaction_tasks(c->hydro.slope_estimate, s);
+    cell_unskip_grid_hydro_interaction_tasks(c->hydro.slope_limiter, s);
+    cell_unskip_grid_hydro_interaction_tasks(c->hydro.flux, s);
   }
 
   /* Unskip all the other task types. */
