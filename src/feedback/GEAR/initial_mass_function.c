@@ -17,10 +17,8 @@
  *
  ******************************************************************************/
 
-/* Include header */
-#include "initial_mass_function.h"
-
 /* local headers */
+#include "initial_mass_function.h"
 #include "hdf5_functions.h"
 #include "stellar_evolution_struct.h"
 

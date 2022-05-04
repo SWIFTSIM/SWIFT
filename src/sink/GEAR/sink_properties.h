@@ -25,6 +25,8 @@
 
 /* Local header */
 #include <random.h>
+#include <feedback_properties.h>
+
 
 /**
  * @brief Properties of sink in the Default model.
@@ -105,7 +107,6 @@ INLINE static double f_zero(double Pc, void *params) {
 
 
 
-
 /**
  * @brief Initialise the probabilities to get a stellar mass (continuous
  * sampling of the IMF)
@@ -116,22 +117,53 @@ INLINE static double f_zero(double Pc, void *params) {
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
  */
-INLINE static void sink_props_init_probabilities(struct sink_props *sp) {
+INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct initial_mass_function *imf,
+  const struct phys_const *phys_const) {
 
-  /* random generator */
+  /* random number generator */
   gsl_rng * r = gsl_rng_alloc (gsl_rng_ranlux);
-  
   /* set the seed */
   gsl_rng_set(r,0);
+  
+
+  /* get the slope of the last IMF portion */
+  float exp      = imf->exp[imf->n_parts-1];
+  
+  /* get the IMF mass limits (all in Msol) */
+  float mass_min = imf->mass_min;
+  float mass_max = imf->mass_max;
+  float minimal_discrete_mass = sp->minimal_discrete_mass;
+  float stellar_particle_mass = sp->stellar_particle_mass/phys_const->const_solar_mass;
+  
+  /* sanity check */
+  if (minimal_discrete_mass < imf->mass_limits[imf->n_parts-1])  
+    error("minimal_discrete_mass (=%8.3f) cannot be smaller than the mass limit (=%8.3f) of the last IMF segment,",
+    minimal_discrete_mass, imf->mass_limits[imf->n_parts-1]);
     
+  /* Compute the total IMF mass from the mass of the continuous part */
+  //initial_mass_function_get_total_imf_from_a_sub_imf_mass(imf,minimal_discrete_mass,stellar_particle_mass);
+  
+
+  /* Compute the IMF mass below the minimal IMF discrete mass (continuous part) */
+  double Mc = initial_mass_function_get_imf_mass_fraction(imf,mass_min,minimal_discrete_mass);
+  
+  double Mtot = stellar_particle_mass/Mc;
+  double Md   = Mtot-stellar_particle_mass;
+  Mc   = stellar_particle_mass;
+  
+  message("Mass of the continuous part : %g",Mc);
+  message("Mass of the discrete   part : %g",Md);
+  message("Total IMF mass              : %g",Mtot);
   
   struct f_zero_params params;
-  params.Mc      = 45.02843206491189;
-  params.Md      = 4.971567793485943; 
-  params.mmin    = 8;
-  params.mmax    = 30;
-  params.exp     = -1.3;
-  params.n       = 100000;
+  
+  params.Mc      = Mc;
+  params.Md      = Md; 
+  
+  params.mmin    = minimal_discrete_mass;
+  params.mmax    = mass_max;
+  params.exp     = exp;
+  params.n       = sp->size_of_calibration_sample;
   params.r       = r;
   
   const gsl_root_fsolver_type *T;
@@ -148,12 +180,13 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp) {
   int status;
   int iter = 0;
   int max_iter = 100;
+  double root;
   
   do
     {
       iter++;
       status = gsl_root_fsolver_iterate (s);
-      double root = gsl_root_fsolver_root (s);
+      root = gsl_root_fsolver_root (s);
       double x_lo = gsl_root_fsolver_x_lower (s);
       double x_hi = gsl_root_fsolver_x_upper (s);
       status = gsl_root_test_interval (x_lo, x_hi, 0, 1e-4);
@@ -162,9 +195,13 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp) {
     }
   while (status == GSL_CONTINUE && iter < max_iter);
 
-
-
-
+  /* the final probabilities */
+  double Pc = root;
+  double Pd = 1 - Pc;
+  
+  message("probability of the continuous part : %g",Pc); 
+  message("probability of the discrete   part : %g",Pd);
+  
 
   /* free the solver */
   gsl_root_fsolver_free (s);
@@ -187,7 +224,7 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp) {
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
  */
-INLINE static void sink_props_init(struct sink_props *sp,
+INLINE static void sink_props_init(struct sink_props *sp, struct feedback_props *fp,
                                    const struct phys_const *phys_const,
                                    const struct unit_system *us,
                                    struct swift_params *params,
@@ -221,7 +258,23 @@ INLINE static void sink_props_init(struct sink_props *sp,
   sp->stellar_particle_mass*=phys_const->const_solar_mass;
   
   
-  sink_props_init_probabilities(sp);
+  /* here, we need to differenciate between the stellar models */
+  struct initial_mass_function *imf;
+  struct stellar_model* sm;
+  
+  sm = &fp->stellar_model;
+  imf = &sm->imf;
+  
+  
+  /* Initialize for the stellar models (PopII) */
+  sink_props_init_probabilities(sp, imf, phys_const);
+  
+  /* Now initialize the first stars. */
+  //if (fp->metallicity_max_first_stars != -1) {
+  // sm = &fp->stellar_model_first_stars;
+  // imf = &sm->imf;
+  // sink_props_init_probabilities(sp,imf);  
+  //}
   
 
   message("maximal_temperature         = %g", sp->maximal_temperature);
