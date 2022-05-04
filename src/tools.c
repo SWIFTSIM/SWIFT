@@ -793,7 +793,9 @@ void engine_single_force(double *dim, long long int pid,
 }
 
 /**
- * Returns a random number (uniformly distributed) in [a,b[
+ * Returns a random number (uniformly distributed) in [a,b)
+ *
+ * This function is *not* thread-safe.
  */
 double random_uniform(double a, double b) {
   return (rand() / (double)RAND_MAX) * (b - a) + a;

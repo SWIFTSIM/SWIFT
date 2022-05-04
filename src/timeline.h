@@ -56,7 +56,7 @@ typedef int8_t timebin_t;
  * @param bin The time bin of interest.
  */
 __attribute__((const)) static INLINE integertime_t
-get_integer_timestep(timebin_t bin) {
+get_integer_timestep(const timebin_t bin) {
 
   if (bin <= 0) return 0;
   return 1LL << (bin + 1);
@@ -71,9 +71,11 @@ get_integer_timestep(timebin_t bin) {
  * We use a fast (but exact for any non-zero value) logarithm in base 2
  * calculation based on the bit representation of the number:
  * log_2(x) = (number of bits in the type) - (number of leading 0-bits in x) - 1
+ *
+ * @param time_step An integer time-step length.
  */
 __attribute__((const)) static INLINE timebin_t
-get_time_bin(integertime_t time_step) {
+get_time_bin(const integertime_t time_step) {
 
   /* ((int) log_2(time_step)) - 1 */
   return (timebin_t)((8 * sizeof(integertime_t) - 2) -
@@ -86,8 +88,8 @@ get_time_bin(integertime_t time_step) {
  * @param bin The time bin of interest.
  * @param time_base the minimal time-step size of the simulation.
  */
-__attribute__((const)) static INLINE double get_timestep(timebin_t bin,
-                                                         double time_base) {
+__attribute__((const)) static INLINE double get_timestep(
+    const timebin_t bin, const double time_base) {
 
   return get_integer_timestep(bin) * time_base;
 }
@@ -95,12 +97,14 @@ __attribute__((const)) static INLINE double get_timestep(timebin_t bin,
 /**
  * @brief Returns the integer time corresponding to the start of the time-step
  * given by a time-bin.
+ * If the current time is a possible beginning for the given time-bin, return
+ * the current time minus the time-step size.
  *
  * @param ti_current The current time on the integer time line.
  * @param bin The time bin of interest.
  */
 __attribute__((const)) static INLINE integertime_t
-get_integer_time_begin(integertime_t ti_current, timebin_t bin) {
+get_integer_time_begin(const integertime_t ti_current, const timebin_t bin) {
 
   const integertime_t dti = get_integer_timestep(bin);
   if (dti == 0)
@@ -110,20 +114,27 @@ get_integer_time_begin(integertime_t ti_current, timebin_t bin) {
 }
 
 /**
- * @brief Returns the integer time corresponding to the start of the time-step
+ * @brief Returns the integer time corresponding to the end of the time-step
  * given by a time-bin.
+ * If the current time is a possible end for the given time-bin, return the
+ * current time.
  *
  * @param ti_current The current time on the integer time line.
  * @param bin The time bin of interest.
  */
 __attribute__((const)) static INLINE integertime_t
-get_integer_time_end(integertime_t ti_current, timebin_t bin) {
+get_integer_time_end(const integertime_t ti_current, const timebin_t bin) {
 
   const integertime_t dti = get_integer_timestep(bin);
   if (dti == 0)
     return 0;
-  else
-    return dti * ceil((double)ti_current / (double)dti);
+  else {
+    const integertime_t mod = ti_current % dti;
+    if (mod == 0)
+      return ti_current;
+    else
+      return ti_current - mod + dti;
+  }
 }
 
 /**
@@ -132,7 +143,7 @@ get_integer_time_end(integertime_t ti_current, timebin_t bin) {
  * @param time The current point on the time line.
  */
 __attribute__((const)) static INLINE timebin_t
-get_max_active_bin(integertime_t time) {
+get_max_active_bin(const integertime_t time) {
 
   if (time == 0) return num_time_bins;
 
@@ -149,7 +160,7 @@ get_max_active_bin(integertime_t time) {
  * @param ti_old The last synchronisation point on the time line.
  */
 __attribute__((const)) static INLINE timebin_t
-get_min_active_bin(integertime_t ti_current, integertime_t ti_old) {
+get_min_active_bin(const integertime_t ti_current, const integertime_t ti_old) {
 
   const timebin_t min_bin = get_max_active_bin(ti_current - ti_old);
   return min_bin;
