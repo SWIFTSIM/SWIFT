@@ -90,7 +90,6 @@ float initial_mass_function_sample(const struct initial_mass_function *imf, floa
 
 
 
-
 /**
  * @brief Integrate the #interpolation_1d data with the initial mass function.
  *
@@ -510,7 +509,6 @@ void initial_mass_function_init(struct initial_mass_function *imf,
 
   /* Compute the coefficients */
   initial_mass_function_compute_coefficients(imf);
-  
   
   /* Print info */
   initial_mass_function_print(imf);
