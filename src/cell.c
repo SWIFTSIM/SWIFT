@@ -950,7 +950,7 @@ void cell_make_void_multipole(struct space *s, struct cell *c,
 
     /* We only need the particles in the void cell */
 
-    /* Allocate array to hold particles and intialise counter */
+    /* Allocate array to hold particles and initialise counter */
     struct gpart *void_parts = NULL;
     if (swift_memalign("void_parts", (void **)&void_parts, gpart_align,
                        s->size_gparts * sizeof(struct gpart)) != 0)
