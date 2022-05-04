@@ -1035,7 +1035,7 @@ void space_rebuild(struct space *s, int repartitioned,
     /* Compute void cell multipole */
     cell_make_void_multipole(
         s, &s->cells_top[s->zoom_props->void_cell_index],
-        ti_current, gravity_props);
+        ti_current, gravigty_properties);
   }
   
   if (verbose) {
