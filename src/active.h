@@ -211,11 +211,6 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
         e->ti_current * e->time_base, e->cosmology->a, c->nodeID);
 #endif
 
-  /* if (c->cellID == PROBLEM_CELL)
-   * message("Cell %lld active check: %lld %lld %d",
-   * c->cellID, c->hydro.ti_rt_end_min,
-   * e->ti_current_subcycle, c->hydro.ti_rt_end_min == e->ti_current_subcycle);
-   */
   return (c->hydro.ti_rt_end_min == e->ti_current_subcycle);
 }
 
@@ -384,17 +379,20 @@ __attribute__((always_inline)) INLINE static int part_is_active_no_debug(
 __attribute__((always_inline)) INLINE static int part_is_rt_active(
     const struct part *p, const struct engine *e) {
 
-  const timebin_t max_active_bin = e->max_active_bin;
+  /* TODO Mladen: Using e->max_active_bin leads to no errors here.
+   * Figure out why this passes your debugging checks. */
+  const timebin_t max_active_bin = e->max_active_bin_subcycle;
   const timebin_t part_bin = p->rt_data.time_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  const integertime_t ti_current = e->ti_current;
-  const integertime_t ti_end = get_integer_time_end(ti_current, p->time_bin);
-  if (ti_end < ti_current)
+  const integertime_t ti_current_subcycle = e->ti_current_subcycle;
+  const integertime_t ti_end =
+      get_integer_time_end(ti_current_subcycle, p->rt_data.time_bin);
+  if (ti_end < ti_current_subcycle)
     error(
-        "particle in an impossible time-zone! p->ti_end=%lld "
-        "e->ti_current=%lld",
-        ti_end, ti_current);
+        "particle in an impossible time-zone! p->ti_end_subcycle=%lld "
+        "e->ti_current_subcycle=%lld",
+        ti_end, ti_current_subcycle);
 #endif
 
   return (part_bin <= max_active_bin);

@@ -137,16 +137,6 @@ get_integer_time_end(const integertime_t ti_current, const timebin_t bin) {
   }
 }
 
-__attribute__((const)) static INLINE integertime_t
-get_integer_time_end_mladen(integertime_t ti_current, timebin_t bin) {
-  const integertime_t dti = get_integer_timestep(bin);
-  if (dti == 0)
-    return 0;
-  else {
-    const integertime_t mod = ti_current % dti;
-    return ti_current - mod + dti;
-  }
-}
 /**
  * @brief Returns the highest active time bin at a given point on the time line.
  *

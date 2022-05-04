@@ -222,15 +222,10 @@ def check_all_hydro_is_equal(snapdata):
         if (compare.gas.ThermochemistryDone[nzs] == 0).any():
             print("Oh no 3")
 
-
-
-        #---------------------------------------------------------------
-        # Check numbers of subcycles. 
-        #---------------------------------------------------------------
-        fishy = (
-            ref.gas.nsubcycles
-            != compare.gas.nsubcycles
-        )
+        # ---------------------------------------------------------------
+        # Check numbers of subcycles.
+        # ---------------------------------------------------------------
+        fishy = ref.gas.nsubcycles != compare.gas.nsubcycles
         if fishy.any():
             print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
             print(
@@ -239,12 +234,12 @@ def check_all_hydro_is_equal(snapdata):
                 )
             )
             if not skip_last_snap:
-                print("Note, this might be acceptable behaviour for the final snapshot. You currently aren't skipping it in this check.")
+                print(
+                    "Note, this might be acceptable behaviour for the final snapshot. You currently aren't skipping it in this check."
+                )
 
             if break_on_diff:
                 quit()
-
-
 
     return
 

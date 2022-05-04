@@ -266,7 +266,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
   /* Get the RT timestep */
   float new_dt_radiation = FLT_MAX;
   if (e->policy & engine_policy_rt)
-    new_dt_radiation = rt_compute_timestep(p, e->rt_props, e->cosmology);
+    new_dt_radiation = rt_compute_timestep(
+        p, xp, e->rt_props, e->cosmology, e->hydro_properties,
+        e->physical_constants, e->internal_units);
 
   float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav,
                       new_dt_chemistry, new_dt_radiation);
@@ -305,7 +307,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
       make_integer_timestep(new_dt, p->time_bin,
                             p->limiter_data.min_ngb_time_bin, e->ti_current,
                             e->time_base_inv) /
-      4;
+      8;
   /* TODO: don't forget to remove /4 */
 
   return new_dti;

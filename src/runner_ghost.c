@@ -1587,11 +1587,6 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (count == 0) return;
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  if (c->cellID == PROBLEM_CELL)
-    message("Cell %lld active? %d %d", c->cellID, cell_is_active_hydro(c, e),
-            cell_is_rt_active(c, e));
-#endif
   if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
@@ -1617,15 +1612,6 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
       /* First reset everything that needs to be reset for the following
        * subcycle */
       rt_reset_part_each_subcycle(p);
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-      if (p->id == PROBLEM_ID)
-        message("check part %lld %d %d %d | cell %lld %d %d", p->id,
-                part_is_active(p, e), part_is_rt_active(p, e),
-                p->rt_data.debug_nsubcycles, c->cellID,
-                cell_is_active_hydro(c, e), cell_is_rt_active(c, e));
-
-#endif
 
       /* Now finish up injection */
       rt_finalise_injection(p, e->rt_props);

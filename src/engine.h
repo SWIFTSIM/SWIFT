@@ -186,7 +186,6 @@ struct engine {
   /* The current system time. */
   double time;
   integertime_t ti_current;
-  integertime_t ti_current_subcycle;
 
   /* The earliest time any particle may still need to be drifted from */
   integertime_t ti_earliest_undrifted;
@@ -196,6 +195,11 @@ struct engine {
 
   /* The lowest active bin at this time */
   timebin_t min_active_bin;
+
+  /* RT sub-cycling counterparts for timestepping vars */
+  integertime_t ti_current_subcycle;
+  timebin_t max_active_bin_subcycle;
+  timebin_t min_active_bin_subcycle;
 
   /* Time step */
   double time_step;
@@ -704,6 +708,7 @@ void engine_config(int restart, int fof, struct engine *e,
                    const char *restart_file, struct repartition *reparttype);
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
+void engine_run_rt_sub_cycles(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
                            int clean_h_values);
 int engine_step(struct engine *e);

@@ -121,7 +121,7 @@ SUBTYPES = [
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
-    "rt_advance_cell_time", 
+    "rt_advance_cell_time",
     #  "count",
 ]
 
