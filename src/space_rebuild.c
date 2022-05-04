@@ -1028,6 +1028,16 @@ void space_rebuild(struct space *s, int repartitioned,
 #endif
     }
   }
+
+  /* Populate the void cell multipole with the newly populated
+     zoom cells */
+  if (e->s->with_zoom_region) {
+    /* Compute void cell multipole */
+    cell_make_void_multipole(
+        e->s, &e->s->cells_top[e->s->zoom_props->void_cell_index],
+        e->ti_current, e->gravity_properties);
+  }
+  
   if (verbose) {
     message("Have %d local top-level cells with particles (total=%d)",
             s->nr_local_cells_with_particles, s->nr_cells);
