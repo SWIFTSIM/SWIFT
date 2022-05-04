@@ -58,6 +58,7 @@
 #include "engine.h"
 #include "error.h"
 #include "partition.h"
+#include "proxy.h"
 #include "restart.h"
 #include "space.h"
 #include "threadpool.h"
@@ -78,6 +79,10 @@ const char *repartition_name[] = {
 
 /* Local functions, if needed. */
 static int check_complete(struct space *s, int verbose, int nregions);
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+static double estimate_global_memuse_balance(struct space *s, int *acelllist,
+                                             int *bcelllist, double *cellsizes);
+#endif
 
 /*
  * Repartition fixed costs per type/subtype. These are determined from the
@@ -478,7 +483,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   /* Other particle types are assumed to correlate with processing time. */
   if (s->nr_parts > 0) {
     mapper_data.counts = counts;
-    hsize = (double)sizeof(struct part);
+    hsize = (double)(sizeof(struct part) + sizeof(struct xpart));
     mapper_data.size = hsize;
     threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
                    s->nr_parts, sizeof(struct part), space_splitsize,
@@ -809,7 +814,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       error("Failed to allocate full adjncy array.");
     idx_t *full_weights_v = NULL;
     if (weights_v != NULL)
-      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells * ncon)) == NULL)
+      if ((full_weights_v = (idx_t *)malloc(sizeof(idx_t) * ncells * ncon)) ==
+          NULL)
         error("Failed to allocate full vertex weights array");
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
@@ -921,7 +927,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         if (weights_e != NULL)
           memcpy(weights_e, &full_weights_e[j2], sizeof(idx_t) * nedge);
         if (weights_v != NULL)
-          memcpy(weights_v, &full_weights_v[j3 * ncon], sizeof(idx_t) * nvt * ncon);
+          memcpy(weights_v, &full_weights_v[j3 * ncon],
+                 sizeof(idx_t) * nvt * ncon);
         if (refine) memcpy(regionid, full_regionid, sizeof(idx_t) * nvt);
 
       } else {
@@ -934,8 +941,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
           res = MPI_Isend(&full_weights_e[j2], nvt * 26, IDX_T, rank, 2, comm,
                           &reqs[5 * rank + 2]);
         if (res == MPI_SUCCESS && weights_v != NULL)
-          res = MPI_Isend(&full_weights_v[j3 * ncon], nvt * ncon, IDX_T, rank, 3, comm,
-                          &reqs[5 * rank + 3]);
+          res = MPI_Isend(&full_weights_v[j3 * ncon], nvt * ncon, IDX_T, rank,
+                          3, comm, &reqs[5 * rank + 3]);
         if (refine && res == MPI_SUCCESS)
           res = MPI_Isend(&full_regionid[j3], nvt, IDX_T, rank, 4, comm,
                           &reqs[5 * rank + 4]);
@@ -1208,7 +1215,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
  *        sizeof number of cells.
  */
 static void pick_metis(int nodeID, struct space *s, int nregions,
-                       double *vertexw, int ncon, double *edgew, int *celllist) {
+                       double *vertexw, int ncon, double *edgew,
+                       int *celllist) {
 
   /* Total number of cells. */
   int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
@@ -1319,11 +1327,11 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     idx_t objval;
 
     /* Dump graph in METIS format */
-    /* dumpMETISGraph("metis_graph", idx_ncells, idx_ncon, xadj, adjncy, weights_v,
-       NULL, weights_e); */
+    /* dumpMETISGraph("metis_graph", idx_ncells, idx_ncon, xadj, adjncy,
+       weights_v, NULL, weights_e); */
 
-    if (METIS_PartGraphKway(&idx_ncells, &idx_ncon, xadj, adjncy, weights_v, NULL,
-                            weights_e, &idx_nregions, NULL, NULL, options,
+    if (METIS_PartGraphKway(&idx_ncells, &idx_ncon, xadj, adjncy, weights_v,
+                            NULL, weights_e, &idx_nregions, NULL, NULL, options,
                             &objval, regionid) != METIS_OK)
       error("Call to METIS_PartGraphKway failed.");
 
@@ -1539,9 +1547,9 @@ static void partition_gather_weights(void *map_data, int num_elements,
  * @param nr_tasks the number of tasks.
  */
 static void repart_edge_metis(int vweights, int eweights, int timebins,
-                              struct repartition *repartition,
-                              int nodeID, int nr_nodes, struct space *s,
-                              struct task *tasks, int nr_tasks) {
+                              struct repartition *repartition, int nodeID,
+                              int nr_nodes, struct space *s, struct task *tasks,
+                              int nr_tasks) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
@@ -1614,20 +1622,17 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
   }
 
-  /* Allocate cell list for the partition. If not already done. */
+  /* Allocate cell list for the partition. If not already done. Keep a copy of
+   * the old list for later comparisons or restoration. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
+  if (repartition->ncelllist != nr_cells) refine = 0;
 #endif
-  if (repartition->ncelllist != nr_cells) {
-#ifdef HAVE_PARMETIS
-    refine = 0;
-#endif
-    free(repartition->celllist);
-    repartition->ncelllist = 0;
-    if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
-      error("Failed to allocate celllist");
-    repartition->ncelllist = nr_cells;
-  }
+  int *old_celllist = repartition->celllist;
+  repartition->ncelllist = 0;
+  if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+    error("Failed to allocate celllist");
+  repartition->ncelllist = nr_cells;
 
   /* We need to rescale the sum of the weights so that the sums of the two
    * types of weights are less than IDX_MAX, that is the range of idx_t.  */
@@ -1694,18 +1699,17 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     }
   }
 
-
   /* If we are also using size based weights in the vertices, then we need to
    * accumulate those and merge with the vertex weights from above. */
+  double *weights_size = NULL;
   int ncon = 1;
   if (repartition->use_memory_weights) {
     message("Using memory weights on the vertex");
     ncon = 2;
-    double *weights_s = NULL;
-    if ((weights_s = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
+    if ((weights_size = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
       error("Failed to allocate vertex size arrays.");
-    bzero(weights_s, sizeof(double) * nr_cells);
-    accumulate_sizes(s, 1, weights_s);
+    bzero(weights_size, sizeof(double) * nr_cells);
+    accumulate_sizes(s, 1, weights_size);
 
     /* Now we merge. */
     double *weights_vs = NULL;
@@ -1715,11 +1719,10 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
     for (int k = 0, j = 0; k < nr_cells; k++, j += 2) {
       weights_vs[j] = weights_v[k];
-      weights_vs[j + 1] = weights_s[k];
+      weights_vs[j + 1] = weights_size[k];
     }
 
     free(weights_v);
-    free(weights_s);
     weights_v = weights_vs;
   }
 
@@ -1734,7 +1737,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
                   repartition->celllist);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights_v, ncon, weights_e, repartition->celllist);
+  pick_metis(nodeID, s, nr_nodes, weights_v, ncon, weights_e,
+             repartition->celllist);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
@@ -1757,6 +1761,24 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     }
   }
 
+  /* Time to check if things if the memory use could be badly out of balance
+   * with respect to what we had before, this can cause issues like the
+   * inability to restart. */
+  if (repartition->use_memory_weights) {
+    if (old_celllist != NULL) {
+      double deltamem = estimate_global_memuse_balance(s, repartition->celllist,
+                                                       old_celllist, 
+                                                       weights_size);
+      message("deltamem = %f", deltamem);
+    } else {
+      message("no old_celllist?");
+    }
+    free(weights_size);
+  }
+
+  /* Check how much the memory balance has changed. We don't want any extreme
+   * changes as they can make it impossible to restart (apparently). */
+
   /* If partition failed continue with the current one, but make this clear. */
   if (failed) {
     if (nodeID == 0)
@@ -1772,6 +1794,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   /* Clean up. */
   free(inds);
+  free(old_celllist);
   if (vweights) free(weights_v);
   if (eweights) free(weights_e);
 }
@@ -2150,9 +2173,11 @@ void partition_init(struct partition *partition,
 
   /* When repartitioning we can also use cell memory use as an additional
    * weight to the vertices of the graph. Not to be used for all types. */
-  int use_memory_weights =
-    parser_get_opt_param_int(params, "DomainDecomposition:use_memory_weights", 1);
+#if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
+  int use_memory_weights = parser_get_opt_param_int(
+      params, "DomainDecomposition:use_memory_weights", 1);
   repartition->use_memory_weights = 0;
+#endif
 
   /* Now let's check what the user wants as a repartition strategy */
   parser_get_opt_param_string(params, "DomainDecomposition:repartition_type",
@@ -2644,3 +2669,260 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
                         "repartition celllist");
   }
 }
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+/**
+ * @brief Estimate the memory for a node by summing particle sizes over the
+ *        list of cells on it. Also add any expected foreign cells so that we
+ *        get a better estimate.
+ *
+ * Note this function needs to follow the logic of engine_makeproxies as much
+ * as possible so that we can identify the expected proxy cells. It must have
+ * no side-effects on the #space or #engine.
+ *
+ * @result the sum for this node.
+ */
+static double estimate_node_memuse(
+    int nodeID, double *cellsizes, int *celllist, int periodic, int nr_nodes,
+    const int cdim[3], const double dim[3], struct cell *cells, double delta_m,
+    double delta_p, int with_hydro, int with_gravity, double r_max,
+    double theta_crit, double max_mesh_dist, int *proxy_ind) {
+
+  double sum = 0;
+
+  const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
+
+  int nr_proxies = 0;
+  for (int k = 0; k < nr_nodes; k++) proxy_ind[k] = -1;
+
+  /* Loop over each cell in the space. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get the cell ID. */
+        const int cid = cell_getid(cdim, i, j, k);
+
+        /* If on our node, we add to the sum. */
+        if (celllist[cid] == nodeID) sum += cellsizes[cid];
+
+        /* Loop over all its neighbours neighbours in range. Looking for any
+         * expected proxy cells on remote nodes, those also add to the size of
+         * this node. */
+        for (int ii = -delta_m; ii <= delta_p; ii++) {
+          int iii = i + ii;
+          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+          iii = (iii + cdim[0]) % cdim[0];
+          for (int jj = -delta_m; jj <= delta_p; jj++) {
+            int jjj = j + jj;
+            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+            jjj = (jjj + cdim[1]) % cdim[1];
+            for (int kk = -delta_m; kk <= delta_p; kk++) {
+              int kkk = k + kk;
+              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+              kkk = (kkk + cdim[2]) % cdim[2];
+
+              /* Get the cell ID. */
+              const int cjd = cell_getid(cdim, iii, jjj, kkk);
+
+              /* Early abort  */
+              if (cid >= cjd) continue;
+
+              /* Early abort (both same node) */
+              if (celllist[cid] == nodeID && celllist[cjd] == nodeID) continue;
+
+              /* Early abort (both foreign node) */
+              if (celllist[cid] != nodeID && celllist[cjd] != nodeID) continue;
+
+              int could_proxy = 0;
+
+              /* In the hydro case, only care about direct neighbours */
+              if (with_hydro) {
+
+                /* This is super-ugly but checks for direct neighbours */
+                /* with periodic BC */
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                      abs(i - iii + cdim[0]) <= 1) &&
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                      abs(j - jjj + cdim[1]) <= 1) &&
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                      abs(k - kkk + cdim[2]) <= 1)))
+                  could_proxy = 1;
+              }
+
+              /* In the gravity case, check distances using the MAC. */
+              if (with_gravity) {
+
+                /* First just add the direct neighbours. Then look for
+                   some further out if the opening angle demands it */
+
+                /* This is super-ugly but checks for direct neighbours */
+                /* with periodic BC */
+                if (((abs(i - iii) <= 1 || abs(i - iii - cdim[0]) <= 1 ||
+                      abs(i - iii + cdim[0]) <= 1) &&
+                     (abs(j - jjj) <= 1 || abs(j - jjj - cdim[1]) <= 1 ||
+                      abs(j - jjj + cdim[1]) <= 1) &&
+                     (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
+                      abs(k - kkk + cdim[2]) <= 1))) {
+
+                  could_proxy = 1;
+                } else {
+
+                  /* We don't have multipoles yet (or their CoMs) so we will
+                     have to cook up something based on cell locations only. We
+                     hence need a lower limit on the distance that the CoMs in
+                     those cells could have and an upper limit on the distance
+                     of the furthest particle in the multipole from its CoM.
+                     We then can decide whether we are too close for an M2L
+                     interaction and hence require a proxy as this pair of cells
+                     cannot rely on just an M2L calculation. */
+
+                  /* Minimal distance between any two points in the cells */
+                  const double min_dist_CoM2 = cell_min_dist2_same_size(
+                      &cells[cid], &cells[cjd], periodic, dim);
+
+                  /* Are we beyond the distance where the truncated forces are 0
+                   * but not too far such that M2L can be used? */
+                  if (periodic) {
+
+                    if ((min_dist_CoM2 < max_mesh_dist2) &&
+                        !(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2))
+                      could_proxy = 1;
+
+                  } else {
+
+                    if (!(4. * r_max * r_max <
+                          theta_crit * theta_crit * min_dist_CoM2)) {
+                      could_proxy = 1;
+                    }
+                  }
+                }
+              }
+
+              /* Abort if not in range at all */
+              if (could_proxy == 0) continue;
+
+              /* Really a proxy cell? */
+              if (celllist[cid] == nodeID && celllist[cjd] != nodeID) {
+
+                /* Do we already have a relationship with this node? Avoid
+                 * counting twice. */
+                int proxy_id = proxy_ind[celllist[cjd]];
+                if (proxy_id < 0) {
+
+                  /* New proxy so accumulate. */
+                  sum += cellsizes[cjd];
+                  proxy_ind[celllist[cjd]] = nr_proxies;
+                  nr_proxies += 1;
+                }
+              }
+
+              /* Same for the symmetric case? */
+              if (celllist[cjd] == nodeID && celllist[cid] != nodeID) {
+
+                /* Do we already have a relationship with this node? */
+                int proxy_id = proxy_ind[celllist[cid]];
+                if (proxy_id < 0) {
+                  sum += cellsizes[cid];
+                  proxy_ind[celllist[cid]] = nr_proxies;
+                  nr_proxies += 1;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return sum;
+}
+
+/**
+ * @brief Estimate the change in memory balance between two partitions.
+ *
+ * @param s the #space
+ * @param acelllist a partition cell list.
+ * @param bcelllist a partition cell list.
+ * @param cellsizes the memory used by particles in each cell.
+ * @result the largest fraction change in memory per node.
+ */
+static double estimate_global_memuse_balance(struct space *s, int *acelllist,
+                                             int *bcelllist, double *cellsizes) {
+
+  /* Shared information about how the need for proxies is decided.
+   * See engine_makeproxies(). */
+  struct cell *cells = s->cells_top;
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int periodic = s->periodic;
+  const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
+                                cells[0].width[2]};
+
+  /* Get some info about the physics */
+  struct engine *e = s->e;
+  const int with_hydro = (e->policy & engine_policy_hydro);
+  const int with_gravity = (e->policy & engine_policy_self_gravity);
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
+  const double max_mesh_dist = e->mesh->r_cut_max;
+
+  /* Distance between centre of the cell and corners */
+  const double r_diag2 = cell_width[0] * cell_width[0] +
+                         cell_width[1] * cell_width[1] +
+                         cell_width[2] * cell_width[2];
+  const double r_diag = 0.5 * sqrt(r_diag2);
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double r_max = 2 * r_diag;
+
+  /* Space for proxy indices. */
+  int *proxy_ind = NULL;
+  if ((proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
+    error("Failed to allocate proxy index.");
+
+  /* Compute how many cells away we need to walk */
+  int delta_cells = 1; /*hydro case */
+
+  /* Gravity needs to take the opening angle into account */
+  if (with_gravity) {
+    const double distance = 2. * r_max * theta_crit_inv;
+    delta_cells = (int)(distance / cells[0].dmin) + 1;
+  }
+
+  /* Turn this into upper and lower bounds for loops */
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (delta_cells >= cdim[0] / 2) {
+    if (cdim[0] % 2 == 0) {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2 - 1;
+    } else {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2;
+    }
+  }
+
+  // XXX loop over all nodes... Gathering sums.
+  double delta_mem = 0.0;
+  for (int nodeID = 0; nodeID < e->nr_nodes; nodeID++) {
+    message("estimating memuse for node: %d", nodeID); fflush(stdout);
+    double atotal = estimate_node_memuse(nodeID, cellsizes, acelllist, periodic, e->nr_nodes, cdim, dim,
+                                         cells, delta_m, delta_p, with_hydro, with_gravity, r_max,
+                                         theta_crit, max_mesh_dist, proxy_ind);
+
+    double btotal = estimate_node_memuse(nodeID, cellsizes, bcelllist, periodic, e->nr_nodes, cdim, dim,
+                                         cells, delta_m, delta_p, with_hydro, with_gravity, r_max,
+                                         theta_crit, max_mesh_dist, proxy_ind);
+    message("%d: %f -> %f", nodeID, atotal, btotal);
+    double diff = fabs(atotal - btotal);
+    if (diff > delta_mem) delta_mem = diff;
+  }
+
+  return delta_mem;
+}
+
+#endif
