@@ -709,8 +709,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           error("Computing time-step of rogue particle.");
 
         if (with_rt) {
-          const integertime_t ti_rt_end =
-              get_integer_time_end(ti_current_subcycle, p->rt_data.time_bin);
+          const integertime_t ti_rt_end = get_integer_time_end(
+              ti_current_subcycle, p->rt_time_data.time_bin);
           if (ti_rt_end != ti_current_subcycle)
             error("Computing RT time-step of rogue particle");
         }
@@ -726,7 +726,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
-        p->rt_data.time_bin = get_time_bin(ti_rt_new_step);
+        p->rt_time_data.time_bin = get_time_bin(ti_rt_new_step);
 
         /* Update the tracers properties */
         tracers_after_timestep(p, xp, e->internal_units, e->physical_constants,
@@ -789,16 +789,16 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
              * ti_rt_end == ti_current_subcyle, so we need to pretend we're past
              * ti_current_subcycle already. */
 
-            integertime_t ti_rt_end =
-                get_integer_time_end(ti_current_subcycle, p->rt_data.time_bin);
+            integertime_t ti_rt_end = get_integer_time_end(
+                ti_current_subcycle, p->rt_time_data.time_bin);
             /* get_integer_time_end wil return ti_current if it is a viable
              * end time for this bin. Make sure that we increase the end time
              * here. */
             if (ti_rt_end == ti_current_subcycle)
-              ti_rt_end += get_integer_timestep(p->rt_data.time_bin);
+              ti_rt_end += get_integer_timestep(p->rt_time_data.time_bin);
 
             const integertime_t ti_rt_beg = get_integer_time_begin(
-                ti_current_subcycle + 1, p->rt_data.time_bin);
+                ti_current_subcycle + 1, p->rt_time_data.time_bin);
 
             ti_rt_end_min = min(ti_rt_end, ti_rt_end_min);
             ti_rt_beg_max = max(ti_rt_beg, ti_rt_beg_max);

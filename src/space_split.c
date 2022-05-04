@@ -474,7 +474,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
       /* When does this particle's time-step start and end? */
       const timebin_t time_bin = parts[k].time_bin;
-      const timebin_t time_bin_rt = parts[k].rt_data.time_bin;
+      const timebin_t time_bin_rt = parts[k].rt_time_data.time_bin;
       const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
       const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
       const integertime_t ti_rt_end =

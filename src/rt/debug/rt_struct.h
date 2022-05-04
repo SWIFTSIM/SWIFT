@@ -69,9 +69,6 @@ struct rt_part_data {
   /*! thermochemistry done? */
   int debug_thermochem_done;
 
-  /*! Time-bin this particle uses for RT interactions */
-  timebin_t time_bin;
-
   /* Subcycling flags */
 
   /*! Current subcycle wrt (last) hydro step */

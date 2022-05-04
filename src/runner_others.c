@@ -1051,9 +1051,10 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 
       /* Finish the force loop */
       const integertime_t ti_current_subcycle = e->ti_current_subcycle;
-      const integertime_t ti_step = get_integer_timestep(p->rt_data.time_bin);
-      const integertime_t ti_begin =
-          get_integer_time_begin(ti_current_subcycle + 1, p->rt_data.time_bin);
+      const integertime_t ti_step =
+          get_integer_timestep(p->rt_time_data.time_bin);
+      const integertime_t ti_begin = get_integer_time_begin(
+          ti_current_subcycle + 1, p->rt_time_data.time_bin);
       const integertime_t ti_end = ti_begin + ti_step;
 
 #ifdef SWIFT_DEBUG_CHECKS

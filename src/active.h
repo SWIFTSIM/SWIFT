@@ -382,12 +382,12 @@ __attribute__((always_inline)) INLINE static int part_is_rt_active(
   /* TODO Mladen: Using e->max_active_bin leads to no errors here.
    * Figure out why this passes your debugging checks. */
   const timebin_t max_active_bin = e->max_active_bin_subcycle;
-  const timebin_t part_bin = p->rt_data.time_bin;
+  const timebin_t part_bin = p->rt_time_data.time_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
   const integertime_t ti_current_subcycle = e->ti_current_subcycle;
   const integertime_t ti_end =
-      get_integer_time_end(ti_current_subcycle, p->rt_data.time_bin);
+      get_integer_time_end(ti_current_subcycle, p->rt_time_data.time_bin);
   if (ti_end < ti_current_subcycle)
     error(
         "particle in an impossible time-zone! p->ti_end_subcycle=%lld "
