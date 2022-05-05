@@ -232,7 +232,9 @@ rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
  * @param n The number of pieces to split into.
  */
 __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
-                                                                double n) {}
+                                                                double n) {
+  error("RT can't run with split particles for now.");
+}
 
 /**
  * @brief Exception handle a hydro part not having any neighbours in ghost task
@@ -336,7 +338,6 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
     struct part* restrict p, struct rt_props* props) {
 
   rt_debug_sequence_check(p, 1, "rt_ghost1/rt_finalise_injection");
-  /* rt_debug_kick_check(p); */
 
   p->rt_data.debug_injection_done += 1;
 }
@@ -350,7 +351,6 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
     struct part* restrict p, const struct cosmology* cosmo) {
 
-  /* rt_debug_kick_check(p); */
   rt_debug_sequence_check(p, 2, __func__);
 
   if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
@@ -412,7 +412,8 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
 }
 
 /**
- * @brief Extra operations done during the kick.
+ * @brief Extra operations done during the kick. This needs to be
+ * done before the particle mass is updated in the hydro_kick_extra.
  *
  * @param p Particle to act upon.
  * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.

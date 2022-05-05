@@ -38,12 +38,20 @@ __attribute__((always_inline)) INLINE static void rt_debugging_count_subcycle(
   p->rt_data.debug_nsubcycles += 1;
 }
 
+/**
+ * @brief Check that the particle completed the correct number of subcycles.
+ * This is checked in every rt_reset_part, before the subcycling count is reset.
+ * @param p the particle to work on
+ */
 __attribute__((always_inline)) INLINE static void
 rt_debugging_check_nr_subcycles(struct part *restrict p) {
+
   /* skip initialization */
   if (p->time_bin == 0) return;
 
   /* TODO: this check may fail when running with limiter/sync. */
+
+  /* TODO: update this check to the proper user provided parameter */
 
   int bindiff = p->time_bin - p->rt_time_data.time_bin;
   if (bindiff != 3) error("Particle %lld Got bindiff = %d", p->id, bindiff);
@@ -64,6 +72,7 @@ rt_debugging_check_nr_subcycles(struct part *restrict p) {
  */
 __attribute__((always_inline)) INLINE static void
 rt_debugging_reset_each_subcycle(struct part *restrict p) {
+
   p->rt_data.debug_calls_iact_gradient_interaction = 0;
   p->rt_data.debug_calls_iact_transport_interaction = 0;
 

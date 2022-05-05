@@ -54,7 +54,7 @@ struct rt_part_data {
 
   /*! part got drifted? */
   /* Note: This gets reset for each particle after each step
-   * and subcycle via the debugging routines. */
+   * via the debugging routines. */
   int debug_drifted;
 
   /*! calls from ghost1 tasks */
