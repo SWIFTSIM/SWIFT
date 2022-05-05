@@ -61,14 +61,25 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {}
 
 /**
- * @brief Reset of the RT hydro particle data not related to the density.
+ * @brief Reset the RT hydro particle data not related to the hydro density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
+ * are both called individually. Also an extra call to rt_reset_part is made
+ * in space_convert_rt_quantities_after_zeroth_step(). To reset RT data needed
+ * in each RT sub-cycle, use rt_reset_part_each_subcycle().
  * are both called individually.
  * @param p particle to work on
  * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
     struct part* restrict p, const struct cosmology* cosmo) {}
+
+/**
+ * @brief Reset RT particle data which needs to be reset each sub-cycle.
+ *
+ * @param p the particle to work on
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
+    struct part* restrict p){};
 
 /**
  * @brief First initialisation of the RT hydro particle data.
@@ -305,6 +316,17 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     struct part* p, float dt_therm, float dt_grav, float dt_hydro,
     float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {}
+
+/**
+ * @brief Extra operations done during the drift.
+ * Note that we only drift when the particle is hydro-active, not when it's
+ * radioactive.
+ *
+ * @param p Particle to act upon.
+ * @param dt_drift timestep of the drift
+ */
+__attribute__((always_inline)) INLINE static void rt_drift_part(
+    struct part* p, float dt_drift) {}
 
 /**
  * @brief Prepare a particle for the !HYDRO! force calculation.
