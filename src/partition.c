@@ -1766,9 +1766,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
    * inability to restart. */
   if (repartition->use_memory_weights) {
     if (old_celllist != NULL) {
-      double deltamem = estimate_global_memuse_balance(s, repartition->celllist,
-                                                       old_celllist, 
-                                                       weights_size);
+      double deltamem = estimate_global_memuse_balance(
+          s, repartition->celllist, old_celllist, weights_size);
       message("deltamem = %f", deltamem);
     } else {
       message("no old_celllist?");
@@ -2683,20 +2682,22 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
  *
  * @result the sum for this node.
  */
-static double estimate_node_memuse(
-    int nodeID, double *cellsizes, int *celllist, int periodic, int nr_nodes,
-    const int cdim[3], const double dim[3], struct cell *cells, double delta_m,
-    double delta_p, int with_hydro, int with_gravity, double r_max,
-    double theta_crit, double max_mesh_dist, int *proxy_ind) {
+static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
+                                   int *celllist, int periodic, int nr_nodes,
+                                   const int cdim[3], const double dim[3],
+                                   struct cell *cells, double delta_m,
+                                   double delta_p, int with_hydro,
+                                   int with_gravity, double r_max,
+                                   double theta_crit, double max_mesh_dist) {
 
   double sum = 0;
 
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-
-  int nr_proxies = 0;
-  for (int k = 0; k < nr_nodes; k++) proxy_ind[k] = -1;
+  int *used = (int *)calloc(nr_cells, sizeof(int));
 
   /* Loop over each cell in the space. */
+  int nr_locals = 0;
+  int nr_remotes = 0;
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
@@ -2706,9 +2707,10 @@ static double estimate_node_memuse(
 
         /* If on our node, we add to the sum. */
         if (celllist[cid] == nodeID) sum += cellsizes[cid];
+        if (celllist[cid] == nodeID) nr_locals++;
 
         /* Loop over all its neighbours neighbours in range. Looking for any
-         * expected proxy cells on remote nodes, those also add to the size of
+         * expected cells on remote nodes, those also add to the size of
          * this node. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
@@ -2735,7 +2737,7 @@ static double estimate_node_memuse(
               /* Early abort (both foreign node) */
               if (celllist[cid] != nodeID && celllist[cjd] != nodeID) continue;
 
-              int could_proxy = 0;
+              int found = 0;
 
               /* In the hydro case, only care about direct neighbours */
               if (with_hydro) {
@@ -2748,7 +2750,7 @@ static double estimate_node_memuse(
                       abs(j - jjj + cdim[1]) <= 1) &&
                      (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
                       abs(k - kkk + cdim[2]) <= 1)))
-                  could_proxy = 1;
+                  found = 1;
               }
 
               /* In the gravity case, check distances using the MAC. */
@@ -2766,7 +2768,7 @@ static double estimate_node_memuse(
                      (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
                       abs(k - kkk + cdim[2]) <= 1))) {
 
-                  could_proxy = 1;
+                  found = 1;
                 } else {
 
                   /* We don't have multipoles yet (or their CoMs) so we will
@@ -2789,45 +2791,33 @@ static double estimate_node_memuse(
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
                         !(4. * r_max * r_max <
                           theta_crit * theta_crit * min_dist_CoM2))
-                      could_proxy = 1;
+                      found = 1;
 
                   } else {
 
                     if (!(4. * r_max * r_max <
                           theta_crit * theta_crit * min_dist_CoM2)) {
-                      could_proxy = 1;
+                      found = 1;
                     }
                   }
                 }
               }
 
-              /* Abort if not in range at all */
-              if (could_proxy == 0) continue;
-
-              /* Really a proxy cell? */
-              if (celllist[cid] == nodeID && celllist[cjd] != nodeID) {
-
-                /* Do we already have a relationship with this node? Avoid
-                 * counting twice. */
-                int proxy_id = proxy_ind[celllist[cjd]];
-                if (proxy_id < 0) {
-
-                  /* New proxy so accumulate. */
-                  sum += cellsizes[cjd];
-                  proxy_ind[celllist[cjd]] = nr_proxies;
-                  nr_proxies += 1;
+              if (found) {
+                if (celllist[cid] == nodeID && celllist[cjd] != nodeID) {
+                  // Need to stop multiple sums of these values.
+                  if (!used[cjd]) {
+                    nr_remotes++;
+                    sum += cellsizes[cjd];
+                    used[cjd] = 1;
+                  }
                 }
-              }
-
-              /* Same for the symmetric case? */
-              if (celllist[cjd] == nodeID && celllist[cid] != nodeID) {
-
-                /* Do we already have a relationship with this node? */
-                int proxy_id = proxy_ind[celllist[cid]];
-                if (proxy_id < 0) {
-                  sum += cellsizes[cid];
-                  proxy_ind[celllist[cid]] = nr_proxies;
-                  nr_proxies += 1;
+                if (celllist[cjd] == nodeID && celllist[cid] != nodeID) {
+                  if (!used[cid]) {
+                    nr_remotes++;
+                    sum += cellsizes[cid];
+                    used[cid] = 1;
+                  }
                 }
               }
             }
@@ -2836,6 +2826,8 @@ static double estimate_node_memuse(
       }
     }
   }
+  // message("summed %d locals and %d remotes", nr_locals, nr_remotes);
+  free(used);
   return sum;
 }
 
@@ -2849,10 +2841,11 @@ static double estimate_node_memuse(
  * @result the largest fraction change in memory per node.
  */
 static double estimate_global_memuse_balance(struct space *s, int *acelllist,
-                                             int *bcelllist, double *cellsizes) {
+                                             int *bcelllist,
+                                             double *cellsizes) {
 
-  /* Shared information about how the need for proxies is decided.
-   * See engine_makeproxies(). */
+  /* Shared information about how the need for proxies to exchange cells is
+   * decided, must follow the logic of engine_makeproxies(). */
   struct cell *cells = s->cells_top;
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -2876,11 +2869,6 @@ static double estimate_global_memuse_balance(struct space *s, int *acelllist,
 
   /* Maximal distance from shifted CoM to any corner */
   const double r_max = 2 * r_diag;
-
-  /* Space for proxy indices. */
-  int *proxy_ind = NULL;
-  if ((proxy_ind = (int *)malloc(sizeof(int) * e->nr_nodes)) == NULL)
-    error("Failed to allocate proxy index.");
 
   /* Compute how many cells away we need to walk */
   int delta_cells = 1; /*hydro case */
@@ -2909,15 +2897,16 @@ static double estimate_global_memuse_balance(struct space *s, int *acelllist,
   // XXX loop over all nodes... Gathering sums.
   double delta_mem = 0.0;
   for (int nodeID = 0; nodeID < e->nr_nodes; nodeID++) {
-    message("estimating memuse for node: %d", nodeID); fflush(stdout);
-    double atotal = estimate_node_memuse(nodeID, cellsizes, acelllist, periodic, e->nr_nodes, cdim, dim,
-                                         cells, delta_m, delta_p, with_hydro, with_gravity, r_max,
-                                         theta_crit, max_mesh_dist, proxy_ind);
+    double atotal = estimate_node_memuse(
+        nodeID, cellsizes, s->nr_cells, acelllist, periodic, e->nr_nodes, cdim,
+        dim, cells, delta_m, delta_p, with_hydro, with_gravity, r_max,
+        theta_crit, max_mesh_dist);
 
-    double btotal = estimate_node_memuse(nodeID, cellsizes, bcelllist, periodic, e->nr_nodes, cdim, dim,
-                                         cells, delta_m, delta_p, with_hydro, with_gravity, r_max,
-                                         theta_crit, max_mesh_dist, proxy_ind);
-    message("%d: %f -> %f", nodeID, atotal, btotal);
+    double btotal = estimate_node_memuse(
+        nodeID, cellsizes, s->nr_cells, bcelllist, periodic, e->nr_nodes, cdim,
+        dim, cells, delta_m, delta_p, with_hydro, with_gravity, r_max,
+        theta_crit, max_mesh_dist);
+    if (engine_rank == 0) message("%d: %f -> %f", nodeID, atotal, btotal);
     double diff = fabs(atotal - btotal);
     if (diff > delta_mem) delta_mem = diff;
   }
