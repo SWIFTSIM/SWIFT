@@ -42,6 +42,10 @@ struct sink_props {
   /*! Minimal gas density for forming a star. */
   float density_threashold;
   
+  /*! Size of the calibration sample used to determine the probabilities
+   * to form stellar particles with mass stellar_particle_mass */
+  int size_of_calibration_sample;    
+  
   /*! Mass of the stellar particle representing the low mass stars 
    * (continuous IMF sampling). */
   float stellar_particle_mass;  
@@ -49,9 +53,13 @@ struct sink_props {
   /*! Minimal mass of stars represented by discrete particles */
   float minimal_discrete_mass;  
 
-  /*! Size of the calibration sample used to determine the probabilities
-   * to form stellar particles with mass stellar_particle_mass */
-  int size_of_calibration_sample;  
+  /*! Mass of the stellar particle representing the low mass stars 
+   * (continuous IMF sampling). First stars */
+  float stellar_particle_mass_first_stars;  
+  
+  /*! Minimal mass of stars represented by discrete particles. 
+   * First stars. */
+  float minimal_discrete_mass_first_stars;  
   
 };
 
@@ -118,7 +126,7 @@ INLINE static double f_zero(double Pc, void *params) {
  * @param cosmo The cosmological model.
  */
 INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct initial_mass_function *imf,
-  const struct phys_const *phys_const) {
+  const struct phys_const *phys_const,int first_stars) {
 
   /* random number generator */
   gsl_rng * r = gsl_rng_alloc (gsl_rng_ranlux);
@@ -132,28 +140,52 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct i
   /* get the IMF mass limits (all in Msol) */
   float mass_min = imf->mass_min;
   float mass_max = imf->mass_max;
-  float minimal_discrete_mass = sp->minimal_discrete_mass;
-  float stellar_particle_mass = sp->stellar_particle_mass/phys_const->const_solar_mass;
+  
+  float minimal_discrete_mass;
+  float stellar_particle_mass;
+  
+  if (!first_stars) {
+    minimal_discrete_mass = sp->minimal_discrete_mass;
+    stellar_particle_mass = sp->stellar_particle_mass/phys_const->const_solar_mass;
+  } else {
+    minimal_discrete_mass = sp->minimal_discrete_mass_first_stars;
+    stellar_particle_mass = sp->stellar_particle_mass_first_stars/phys_const->const_solar_mass;  
+  }  
+  
   
   /* sanity check */
   if (minimal_discrete_mass < imf->mass_limits[imf->n_parts-1])  
     error("minimal_discrete_mass (=%8.3f) cannot be smaller than the mass limit (=%8.3f) of the last IMF segment,",
     minimal_discrete_mass, imf->mass_limits[imf->n_parts-1]);
     
-  /* Compute the total IMF mass from the mass of the continuous part */
-  //initial_mass_function_get_total_imf_from_a_sub_imf_mass(imf,minimal_discrete_mass,stellar_particle_mass);
-  
-
   /* Compute the IMF mass below the minimal IMF discrete mass (continuous part) */
-  double Mc = initial_mass_function_get_imf_mass_fraction(imf,mass_min,minimal_discrete_mass);
+  double Mtot, Md, Mc;
+  Mc = initial_mass_function_get_imf_mass_fraction(imf,mass_min,minimal_discrete_mass);
+    
   
-  double Mtot = stellar_particle_mass/Mc;
-  double Md   = Mtot-stellar_particle_mass;
-  Mc   = stellar_particle_mass;
+  if (Mc > 0) {
+    Mtot = stellar_particle_mass/Mc;
+    Md   = Mtot-stellar_particle_mass;
+    Mc   = stellar_particle_mass;
+  } else {
+    Mtot = stellar_particle_mass;
+    Md   = Mtot;
+    Mc   = 0;
+  }  
   
   message("Mass of the continuous part : %g",Mc);
   message("Mass of the discrete   part : %g",Md);
   message("Total IMF mass              : %g",Mtot);
+  
+  /* if no continous part, return */
+  if (Mc == 0){
+    imf->sink_Pc = 0;
+    imf->sink_stellar_particle_mass = 0;
+    message("probability of the continuous part : %g",0.); 
+    message("probability of the discrete   part : %g",1.);
+    return;
+  }  
+  
   
   struct f_zero_params params;
   
@@ -198,6 +230,8 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct i
   /* the final probabilities */
   double Pc = root;
   double Pd = 1 - Pc;
+  imf->sink_Pc = Pc;
+  imf->sink_stellar_particle_mass = Mc;
   
   message("probability of the continuous part : %g",Pc); 
   message("probability of the discrete   part : %g",Pd);
@@ -209,8 +243,6 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct i
 
   /* free the random generator */
   gsl_rng_free (r);
-
-  exit(-1);
 
 }
 
@@ -239,14 +271,20 @@ INLINE static void sink_props_init(struct sink_props *sp, struct feedback_props 
   sp->density_threashold =
       parser_get_param_float(params, "GEARSink:density_threashold");
       
+  sp->size_of_calibration_sample =
+      parser_get_param_int(params, "GEARSink:size_of_calibration_sample");         
+      
   sp->stellar_particle_mass =
       parser_get_param_float(params, "GEARSink:stellar_particle_mass");      
       
   sp->minimal_discrete_mass =
       parser_get_param_float(params, "GEARSink:minimal_discrete_mass");   
       
-  sp->size_of_calibration_sample =
-      parser_get_param_int(params, "GEARSink:size_of_calibration_sample");        
+  sp->stellar_particle_mass_first_stars =
+      parser_get_param_float(params, "GEARSink:stellar_particle_mass_first_stars");      
+      
+  sp->minimal_discrete_mass_first_stars =
+      parser_get_param_float(params, "GEARSink:minimal_discrete_mass_first_stars");      
       
       
   /* Apply unit change */
@@ -256,6 +294,7 @@ INLINE static void sink_props_init(struct sink_props *sp, struct feedback_props 
   sp->density_threashold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 
   sp->stellar_particle_mass*=phys_const->const_solar_mass;
+  sp->stellar_particle_mass_first_stars*=phys_const->const_solar_mass;
   
   
   /* here, we need to differenciate between the stellar models */
@@ -267,23 +306,25 @@ INLINE static void sink_props_init(struct sink_props *sp, struct feedback_props 
   
   
   /* Initialize for the stellar models (PopII) */
-  sink_props_init_probabilities(sp, imf, phys_const);
-  
+  sink_props_init_probabilities(sp, imf, phys_const, 0);
+    
   /* Now initialize the first stars. */
-  //if (fp->metallicity_max_first_stars != -1) {
-  // sm = &fp->stellar_model_first_stars;
-  // imf = &sm->imf;
-  // sink_props_init_probabilities(sp,imf);  
-  //}
+  if (fp->metallicity_max_first_stars != -1) {
+     sm = &fp->stellar_model_first_stars;
+     imf = &sm->imf;
+     sink_props_init_probabilities(sp, imf, phys_const, 1);  
+  }
   
-
-  message("maximal_temperature         = %g", sp->maximal_temperature);
-  message("density_threashold          = %g", sp->density_threashold);
-  message("stellar_particle_mass       = %g", sp->stellar_particle_mass);
-  message("minimal_discrete_mass       = %g", sp->minimal_discrete_mass);
-  message("size_of_calibration_sample  = %d", sp->size_of_calibration_sample);
-
-
+  message("maximal_temperature               = %g", sp->maximal_temperature);
+  message("density_threashold                = %g", sp->density_threashold);
+  message("size_of_calibration_sample        = %d", sp->size_of_calibration_sample);
+  
+  message("stellar_particle_mass             = %g", sp->stellar_particle_mass);
+  message("minimal_discrete_mass             = %g", sp->minimal_discrete_mass);
+  
+  message("stellar_particle_mass_first_stars = %g", sp->stellar_particle_mass_first_stars);
+  message("minimal_discrete_mass_first_stars = %g", sp->minimal_discrete_mass_first_stars);
+ 
 }
 
 /**

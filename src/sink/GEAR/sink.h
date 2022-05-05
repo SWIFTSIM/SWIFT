@@ -39,6 +39,66 @@ __attribute__((always_inline)) INLINE static float sink_compute_timestep(
   return FLT_MAX;
 }
 
+
+
+/**
+ * @brief Update the target mass of the sink particle.
+ *
+ * @param e The #engine
+ * @param sink the sink particle.
+ * @param sink_props the sink properties to use.
+ * @param phys_const the physical constants in internal units.
+ * @param cosmo the cosmological parameters and properties.
+ */
+INLINE static void sink_update_target_mass(struct sink* sink,
+                                  const struct sink_props* sink_props,
+                                  const struct engine* e, int rloop) {
+
+
+  float random_number= random_unit_interval_part_ID_and_loop_idx(sink->id, rloop, e->ti_current,random_number_sink_formation);
+        
+  struct feedback_props*  feedback_props = e->feedback_props;
+  
+  /* Pick the correct table. (if only one table, threshold is < 0) */
+  
+  const float metal =
+      chemistry_get_sink_total_iron_mass_fraction_for_feedback(sink);
+  const float threshold = feedback_props->metallicity_max_first_stars;
+
+  
+  struct stellar_model* model;
+  double minimal_discrete_mass;
+  
+  if(metal >= threshold) {
+    model = &feedback_props->stellar_model;
+    minimal_discrete_mass = sink_props->minimal_discrete_mass_first_stars;
+  } else {
+    model = &feedback_props->stellar_model_first_stars;
+    minimal_discrete_mass = sink_props->minimal_discrete_mass;
+  }  
+  
+  const struct initial_mass_function *imf=&model->imf;
+  
+  
+  if (random_number < imf->sink_Pc) {
+    // we are dealing with the continous part of the IMF
+    sink->target_mass = imf->sink_stellar_particle_mass;
+    sink->target_type = 0;
+  } else {
+    // we are dealing with the discrete part of the IMF  
+    random_number = random_unit_interval_part_ID_and_loop_idx(sink->id, rloop+1, e->ti_current,random_number_sink_formation);
+    double m = random_sample_power_law(minimal_discrete_mass, imf->mass_max, imf->exp[imf->n_parts-1], random_number);
+    sink->target_mass = m;
+    sink->target_type = 1;
+  }
+  
+sink->target_mass = sink->target_mass*1e5;
+
+}        
+
+
+
+
 /**
  * @brief Initialises the sink-particles for the first time
  *
@@ -63,6 +123,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->swallowed_angular_momentum[2] = 0.f;
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
+    
 }
 
 /**
@@ -229,8 +290,17 @@ INLINE static void sink_copy_properties(
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
   
   /* Additional initialisation */
-  sink->n_stars = 3;
   
+  /* setup the target mass for sink star formation */
+  sink_update_target_mass(sink, sink_props, e, 0);
+  
+  /* test the mass distribution */
+  //for (int i=0;i<1000000;i++)
+  //  {
+  //    sink_update_target_mass(sink, sink_props, e, i);
+  //    message("%g %d",sink->target_mass,sink->target_type);
+  //  }
+  //exit(-1);  
   
 }
 
@@ -353,10 +423,12 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->number_of_direct_sink_swallows++;
 }
 
+
+                          
+
 /**
  * @brief Should the sink spawn a star particle?
  *
- * Nothing to do here.
  *
  * @param e The #engine
  * @param sink the sink particle.
@@ -373,19 +445,11 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
 
-  const float random_number = random_unit_interval(
-      sink->id, e->ti_current, random_number_star_formation);
-  // return random_number < 1;  //1e-3;
-
-  if (sink->n_stars > 0) {
-    if (random_number < 1e-2) {
-      // sink->n_stars--;
-      // message("%lld spawn a star : n_star is now %d",sink->id,sink->n_stars);
-      return 0;
-    } else
-      return 0;
-  } else
-    return 0;
+  if(sink->mass > sink->target_mass*phys_const->const_solar_mass) 
+    return 1;
+  else
+    return 0;  
+    
 }
 
 /**

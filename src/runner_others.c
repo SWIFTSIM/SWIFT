@@ -247,11 +247,18 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
         error("TODO");
 #endif
 
-        /* Spawn as many sink as necessary */
+        /* loop counter for the random seed. Start by 1 as 0 is used at init (sink_copy_properties) */
+        int loop = 1;
+         
+        /* Spawn as many sink as necessary */        
         while (sink_spawn_star(s, e, sink_props, cosmo, with_cosmology,
                                phys_const, us)) {
 
-          /* Create a new star */
+
+      
+
+          /* Create a new star with a mass s->target_mass */
+                    
           struct spart *sp = cell_spawn_new_spart_from_sink(e, c, s);
           if (sp == NULL)
             error("Run out of available star particles or gparts");
@@ -259,10 +266,32 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
           /* Copy the properties to the star particle */
           sink_copy_properties_to_star(s, sp, e, sink_props, cosmo,
                                        with_cosmology, phys_const, us);
+                         
+                                       
+          sp->mass =  s->target_mass*phys_const->const_solar_mass;   
+          message("%lld spawn a star (%lld) with mass %g (%g Msol) type=%d  loop=%d",s->id,sp->id,sp->mass,s->target_mass,s->target_type,loop);                         
+                                       
+                                       
 
           /* Update the h_max */
           c->stars.h_max = max(c->stars.h_max, sp->h);
           c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
+          
+          /* count the number of stars spawned by this particle */
+          s->n_stars++;
+          
+          /* Update the mass */
+          //message("mass %g -> %g",s->mass,s->mass - s->target_mass*phys_const->const_solar_mass);  
+          s->mass = s->mass - s->target_mass*phys_const->const_solar_mass;
+          
+          
+          /* Sample the IMF to the get next target mass */
+          sink_update_target_mass(s, sink_props, e, loop);
+          //message("new target mass %g",s->target_mass*phys_const->const_solar_mass);  
+          
+          /* increase loop counter */
+          loop++;
+                    
         }
       }
     } /* Loop over the particles */

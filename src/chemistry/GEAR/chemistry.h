@@ -568,6 +568,23 @@ chemistry_get_star_total_iron_mass_fraction_for_feedback(
   return sp->chemistry_data.metal_mass_fraction[0];
 }
 
+
+/**
+ * @brief Returns the total iron mass fraction of the
+ * sink particle to be used in feedback/enrichment related routines.
+ * We assume iron to be stored at index 0.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_sink_total_iron_mass_fraction_for_feedback(
+    const struct sink* restrict sink) {
+
+  return sink->chemistry_data.metal_mass[0]/sink->mass;
+}
+
+
+
 /**
  * @brief Returns the abundances (metal mass fraction) of the
  * star particle to be used in feedback/enrichment related routines.

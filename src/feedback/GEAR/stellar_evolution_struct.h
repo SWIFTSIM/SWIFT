@@ -59,6 +59,12 @@ struct initial_mass_function {
   
   /*! Total number of stars (per mass unit) in the IMF. */
   float N_tot;  
+
+  /*! Probability to generate a star out of the continuous part of the IMF. */
+  float sink_Pc;  
+
+  /*! Stellar mass of the continous part of the IMF (in solar mass). */
+  float sink_stellar_particle_mass;  
   
 };
 
