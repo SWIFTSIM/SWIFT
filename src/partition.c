@@ -2696,8 +2696,6 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
   int *used = (int *)calloc(nr_cells, sizeof(int));
 
   /* Loop over each cell in the space. */
-  int nr_locals = 0;
-  int nr_remotes = 0;
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
       for (int k = 0; k < cdim[2]; k++) {
@@ -2706,8 +2704,7 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
         const int cid = cell_getid(cdim, i, j, k);
 
         /* If on our node, we add to the sum. */
-        if (celllist[cid] == nodeID) sum += cellsizes[cid];
-        if (celllist[cid] == nodeID) nr_locals++;
+        if (celllist[cid] == nodeID) sum += (cellsizes[cid] * engine_redistribute_alloc_margin);
 
         /* Loop over all its neighbours neighbours in range. Looking for any
          * expected cells on remote nodes, those also add to the size of
@@ -2807,15 +2804,13 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
                 if (celllist[cid] == nodeID && celllist[cjd] != nodeID) {
                   // Need to stop multiple sums of these values.
                   if (!used[cjd]) {
-                    nr_remotes++;
-                    sum += cellsizes[cjd];
+                    sum += (cellsizes[cjd] * engine_foreign_alloc_margin);
                     used[cjd] = 1;
                   }
                 }
                 if (celllist[cjd] == nodeID && celllist[cid] != nodeID) {
                   if (!used[cid]) {
-                    nr_remotes++;
-                    sum += cellsizes[cid];
+                    sum += (cellsizes[cid] * engine_foreign_alloc_margin);
                     used[cid] = 1;
                   }
                 }
@@ -2826,7 +2821,6 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
       }
     }
   }
-  // message("summed %d locals and %d remotes", nr_locals, nr_remotes);
   free(used);
   return sum;
 }
