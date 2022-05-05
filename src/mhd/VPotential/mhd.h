@@ -77,15 +77,15 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 }
 
 /**
- * @brief Returns the Dender Scalar Phi evolution
+ * @brief Returns the Dedner Scalar Phi evolution
  * time the particle. NOTE: all variables in full step
  *
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
-    const struct part *restrict p) {
+    const struct part *restrict p, const float Gauge) {
   return (-p->mhd_data.divA * p->viscosity.v_sig * p->viscosity.v_sig * 0.01 -
-          2.0f * p->viscosity.v_sig * p->mhd_data.Gau / p->h * 0.1);
+          2.0f * p->viscosity.v_sig * Gauge / p->h);
 }
 
 /**
@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
           ? cosmo->a * hydro_properties->CFL_condition *
                 sqrtf(p->rho / (MU0_1 * p->mhd_data.divB * p->mhd_data.divB))
           : FLT_MAX;
-  const float Deta = 0.001f;  // PROPOERTIES TODO/XXX //WAIT no comoving?
+  const float Deta = 0.000f;  // PROPOERTIES TODO/XXX //WAIT no comoving?
   const float dt_eta =
       cosmo->a * hydro_properties->CFL_condition * p->h * p->h / Deta * 0.5;
 
@@ -198,6 +198,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.BSmooth[0] = 0.f;
   p->mhd_data.BSmooth[1] = 0.f;
   p->mhd_data.BSmooth[2] = 0.f;
+  p->mhd_data.GauSmooth = 0.f;
   p->mhd_data.Q0 = 0.f;  // XXX make union for clarification
 }
 
@@ -214,9 +215,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   // Self Contribution
   for (int i = 0; i < 3; i++)
     p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
+  p->mhd_data.GauSmooth += p->mass * kernel_root * p->mhd_data.Gau;
   p->mhd_data.Q0 += p->mass * kernel_root;
 
   for (int i = 0; i < 3; i++) p->mhd_data.BSmooth[i] /= p->mhd_data.Q0;
+  p->mhd_data.GauSmooth /= p->mhd_data.Q0;
 }
 
 /**
@@ -265,15 +268,17 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(
-      p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I take
-                                     // simplify becasue of ACC_mhd also.
+  // const float ACC_corr = fabs(
+  //    p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I
+  //    take
+  // simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  const float ACC_mhd = b2 / (p->h);
+  // const float ACC_mhd = b2 / (p->h);
   /* Re normalize the correction in eth momentum from the DivB errors*/
-  p->mhd_data.Q0 =
-      ACC_corr > ACC_mhd ? p->mhd_data.Q0 / ACC_corr * p->h : p->mhd_data.Q0;
+  // p->mhd_data.Q0 =
+  //    ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr :
+  //    p->mhd_data.Q0;
 }
 
 /**
@@ -314,7 +319,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.BPred[1] = p->mhd_data.BSmooth[1];
   p->mhd_data.BPred[2] = p->mhd_data.BSmooth[2];
 
-  p->mhd_data.Gau = xp->mhd_data.Gau;
+  // p->mhd_data.Gau = xp->mhd_data.Gau;
+  p->mhd_data.Gau = p->mhd_data.GauSmooth;
 
   p->mhd_data.APred[0] = xp->mhd_data.APot[0];
   p->mhd_data.APred[1] = xp->mhd_data.APot[1];
@@ -346,7 +352,12 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
-  p->mhd_data.Gau += hydro_get_dGau_dt(p) * dt_therm;
+  // p->mhd_data.Gau += hydro_get_dGau_dt(p,p->mhd_data.Gau) * dt_therm;
+  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau) * dt_therm;
+  change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
+                   ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
+                   : change_Gau;
+  p->mhd_data.Gau += change_Gau;
 }
 
 /**
@@ -394,7 +405,13 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.APot[1] += p->mhd_data.dAdt[1] * dt_therm;
   xp->mhd_data.APot[2] += p->mhd_data.dAdt[2] * dt_therm;
   // this is fine ? XXX
-  xp->mhd_data.Gau = p->mhd_data.Gau + hydro_get_dGau_dt(p) * dt_therm;
+  // xp->mhd_data.Gau = p->mhd_data.Gau + hydro_get_dGau_dt(p) * dt_therm;
+  // Dont allow middle change
+  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau) * dt_therm;
+  change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
+                   ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
+                   : change_Gau;
+  xp->mhd_data.Gau += change_Gau;
 }
 
 /**

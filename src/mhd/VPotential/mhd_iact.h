@@ -169,6 +169,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
     pj->mhd_data.BSmooth[i] += pi->mass * wj * pi->mhd_data.BPred[i];
   }
+  pi->mhd_data.GauSmooth += pj->mass * wi * pj->mhd_data.Gau;
+  pj->mhd_data.GauSmooth += pi->mass * wj * pi->mhd_data.Gau;
   pi->mhd_data.Q0 += pj->mass * wi;
   pj->mhd_data.Q0 += pi->mass * wj;
 
@@ -207,6 +209,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   for (int i = 0; i < 3; i++)
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
+  pi->mhd_data.GauSmooth += pj->mass * wi * pj->mhd_data.Gau;
   pi->mhd_data.Q0 += pj->mass * wi;
 
   return;
@@ -320,7 +323,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
   }
   /// DISSSIPATION
-  const float Deta = 0.001f;
+  const float Deta = 0.000f;
   const float mag_Disi =
       (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   const float mag_Disj =
@@ -433,7 +436,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   /// DISSSIPATION
-  const float Deta = 0.001f;
+  const float Deta = 0.000f;
   const float mag_Disi =
       (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++)

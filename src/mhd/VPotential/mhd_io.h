@@ -86,10 +86,13 @@ INLINE static int mhd_write_particles(const struct part* parts,
       io_make_output_field("divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts,
                            mhd_data.divB, "co-moving DivB of the particles");
 
-  //  list[2] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
-  //                                 parts, mhd_data.Gau, "Gauge scalar field");
+  list[2] = io_make_output_field("Gau", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
+                                 parts, mhd_data.Gau, "Gauge scalar field");
 
-  return 2;
+  list[3] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
+                                 parts, mhd_data.divA, "divA");
+
+  return 4;
 }
 
 /**
