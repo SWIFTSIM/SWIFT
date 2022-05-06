@@ -258,6 +258,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
       black_holes_mark_part_as_not_swallowed(
           &global_parts[k_parts].black_holes_data);
+
+      /* Mark the particles as not having been swallowed by a sink */
+      sink_mark_part_as_not_swallowed(&p->sink_data);
+      sink_mark_part_as_not_swallowed(&global_parts[k_parts].sink_data);
     }
   }
 }

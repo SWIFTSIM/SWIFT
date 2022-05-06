@@ -431,34 +431,35 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
 }
 
 /**
- * @brief Initialise the chemistry properties of a black hole with
- * the chemistry properties of the gas it is born from.
+ * @brief Add the chemistry data of a sink particle to a sink.
  *
  * Nothing to do here.
  *
- * @param bp_data The black hole data to initialise.
- * @param p_data The gas data to use.
+ * @param si_data The black hole data to add to.
+ * @param sj_data The gas data to use.
  * @param gas_mass The mass of the gas particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
-    struct chemistry_bpart_data* bp_data,
-    const struct chemistry_part_data* p_data, const double gas_mass) {
-  error("Loic: to be implemented");
+__attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
+    struct chemistry_sink_data* si_data,
+    const struct chemistry_sink_data* sj_data) {
+
+  // To be implemented.
 }
 
 /**
- * @brief Add the chemistry data of a gas particle to a black hole.
+ * @brief Add the chemistry data of a gas particle to a sink.
  *
  * Nothing to do here.
  *
- * @param bp_data The black hole data to add to.
+ * @param sp_data The sink data to add to.
  * @param p_data The gas data to use.
  * @param gas_mass The mass of the gas particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
-    struct chemistry_bpart_data* bp_data,
+__attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
+    struct chemistry_sink_data* sp_data,
     const struct chemistry_part_data* p_data, const double gas_mass) {
-  error("Loic: to be implemented");
+
+  // To be implemented.
 }
 
 /**

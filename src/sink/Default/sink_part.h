@@ -64,6 +64,9 @@ struct sink {
 
 #endif
 
+  /*! sink merger information (e.g. merging ID) */
+  struct sink_sink_data merger_data;
+
 #ifdef DEBUG_INTERACTIONS_SINKS
   /*! Number of interactions in merger SELF and PAIR */
   int num_ngb_merger;

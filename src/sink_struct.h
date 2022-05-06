@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2022 Yves Revaz (yves.revaz@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,23 +16,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
+#ifndef SWIFT_SINK_STRUCT_H
+#define SWIFT_SINK_STRUCT_H
+
+/**
+ * @file src/sink_struct.h
+ * @brief Branches between the different sink functions.
+ */
 
 /* Config parameters. */
 #include "../config.h"
+#include "inline.h"
 
-/* Local headers. */
-#include "active.h"
-#include "cell.h"
-#include "engine.h"
-#include "feedback.h"
-#include "runner.h"
-#include "sink.h"
-#include "space_getsid.h"
-#include "timers.h"
+/* Import the right black holes definition */
+#if defined(SINK_NONE)
+#include "./sink/Default/sink_struct.h"
+#elif defined(SINK_GEAR)
+#include "./sink/GEAR/sink_struct.h"
+#else
+#error "Invalid choice of sink model."
+#endif
 
-/* Import the sink compute formation loop functions. */
-#define FUNCTION merger
-#define FUNCTION_TASK_LOOP TASK_LOOP_MERGER
-#include "runner_doiact_functions_sinks_merger.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#endif /* SWIFT_SINK_STRUCT_H */
