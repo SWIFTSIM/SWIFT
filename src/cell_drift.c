@@ -36,6 +36,7 @@
 #include "neutrino.h"
 #include "pressure_floor.h"
 #include "rt.h"
+#include "sink.h"
 #include "star_formation.h"
 #include "tracers.h"
 
@@ -331,6 +332,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Mark the particle has not being swallowed */
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
 
+      /* Mark the particle has not being swallowed by a sink */
+      sink_mark_part_as_not_swallowed(&p->sink_data);
+
       /* Reset the gas particle-carried feedback fields */
       feedback_reset_part(p, xp);
 
@@ -344,6 +348,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
         tracers_after_init(p, xp, e->internal_units, e->physical_constants,
                            with_cosmology, e->cosmology, e->hydro_properties,
                            e->cooling_func, e->time);
+        sink_init_part(p);
         rt_init_part(p);
 
         /* Update the maximal active smoothing length in the cell */
@@ -1097,6 +1102,9 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
 
       /* Maximal smoothing length */
       cell_r_max = max(cell_r_max, sink->r_cut);
+
+      /* Mark the particle has not being swallowed */
+      sink_mark_sink_as_not_swallowed(&sink->merger_data);
 
       /* Get ready for a density calculation */
       if (sink_is_active(sink, e)) {
