@@ -25,6 +25,7 @@
 #include "feedback_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
+#include "sink_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
