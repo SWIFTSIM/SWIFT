@@ -784,20 +784,13 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
           /* Same for RT. */
           if (with_rt) {
-            /* Here we assume that the particle is inactive, which is true
-             * for hydro, but not necessarily for a RT subcycle. RT time steps
-             * are only changed while the particle is hydro active.
-             * This allows in the first few steps to end up with results
-             * ti_rt_end == ti_current_subcyle, so we need to pretend we're past
-             * ti_current_subcycle already. */
-
+            /* Here we assume that the particle is inactive, which is true for
+             * hydro, but not necessarily for a RT subcycle. RT time steps are
+             * only changed while the particle is hydro active. This allows to
+             * end up with results ti_rt_end == ti_current_subcyle, so we need
+             * to pretend we're past ti_current_subcycle already. */
             integertime_t ti_rt_end = get_integer_time_end(
-                ti_current_subcycle, p->rt_time_data.time_bin);
-            /* get_integer_time_end wil return ti_current if it is a viable
-             * end time for this bin. Make sure that we increase the end time
-             * here. */
-            if (ti_rt_end == ti_current_subcycle)
-              ti_rt_end += get_integer_timestep(p->rt_time_data.time_bin);
+                ti_current_subcycle + 1, p->rt_time_data.time_bin);
 
             const integertime_t ti_rt_beg = get_integer_time_begin(
                 ti_current_subcycle + 1, p->rt_time_data.time_bin);
