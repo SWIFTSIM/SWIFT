@@ -1089,10 +1089,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
 
-        ti_rt_end_min = min(cp->hydro.ti_rt_end_min, ti_rt_end_min);
-        ti_rt_beg_max = max(cp->hydro.ti_rt_beg_max, ti_rt_beg_max);
+        ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+        ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
         ti_rt_min_step_size =
-            min(cp->hydro.ti_rt_min_step_size, ti_rt_min_step_size);
+            min(cp->rt.ti_rt_min_step_size, ti_rt_min_step_size);
 
         ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
@@ -1120,12 +1120,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->hydro.ti_rt_end_min = ti_rt_end_min;
-  c->hydro.ti_rt_beg_max = ti_rt_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
   if (cell_is_starting_hydro(c, e)) {
     /* We only change the RT time steps when the cell is also hydro active.
      * Without this check here, ti_rt_min_step_size = max_nr_steps... */
-    c->hydro.ti_rt_min_step_size = ti_rt_min_step_size;
+    c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
   }
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
@@ -1153,8 +1153,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       c->black_holes.ti_end_min < max_nr_timesteps)
     error("End of next black holes step is current time!");
   /* TODO MLADEN: check that this works without RT on */
-  if (c->hydro.ti_rt_end_min == e->ti_current &&
-      c->hydro.ti_rt_end_min < max_nr_timesteps)
+  if (c->rt.ti_rt_end_min == e->ti_current &&
+      c->rt.ti_rt_end_min < max_nr_timesteps)
     error("Cell %lld End of next RT step is current time!", c->cellID);
 #endif
 
@@ -1201,8 +1201,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
       ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-      ti_rt_end_min = min(cp->hydro.ti_rt_end_min, ti_rt_end_min);
-      ti_rt_beg_max = max(cp->hydro.ti_rt_beg_max, ti_rt_beg_max);
+      ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
       ti_grav_end_min = min(ti_grav_end_min, cp->grav.ti_end_min);
       ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
       ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
@@ -1232,8 +1232,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->hydro.ti_rt_end_min = ti_rt_end_min;
-  c->hydro.ti_rt_beg_max = ti_rt_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
   c->grav.ti_end_min = ti_grav_end_min;
   c->grav.ti_beg_max = ti_grav_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;

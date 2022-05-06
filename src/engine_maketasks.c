@@ -526,19 +526,19 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
           s, task_type_send, task_subtype_rt_transport, ci->mpi.tag, 0, ci, cj);
 
       /* The send_gradient task depends on the cell's ghost1 task. */
-      scheduler_addunlock(s, ci->hydro.super->hydro.rt_ghost1, t_rt_gradient);
+      scheduler_addunlock(s, ci->hydro.super->rt.rt_ghost1, t_rt_gradient);
 
       /* The send_transport task depends on the cell's ghost2 task. */
-      scheduler_addunlock(s, ci->hydro.super->hydro.rt_ghost2, t_rt_transport);
+      scheduler_addunlock(s, ci->hydro.super->rt.rt_ghost2, t_rt_transport);
 
       /* Safety measure: collect dependencies and make sure data is sent before
        * modifying it */
-      scheduler_addunlock(s, t_rt_gradient, ci->hydro.super->hydro.rt_ghost2);
+      scheduler_addunlock(s, t_rt_gradient, ci->hydro.super->rt.rt_ghost2);
 
       /* Safety measure: collect dependencies and make sure data is sent before
        * modifying it */
       scheduler_addunlock(s, t_rt_transport,
-                          ci->hydro.super->hydro.rt_transport_out);
+                          ci->hydro.super->rt.rt_transport_out);
 
       /* Drift before you send. Especially intended to cover inactive cells
        * being sent. */
@@ -1051,13 +1051,13 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
       scheduler_addunlock(s, c->hydro.sorts, t_rt_transport);
     }
 
-    for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
+    for (struct link *l = c->rt.rt_gradient; l != NULL; l = l->next) {
       /* RT gradient tasks mustn't run before we receive necessary data */
       scheduler_addunlock(s, t_rt_gradient, l->t);
       scheduler_addunlock(s, l->t, t_rt_transport);
     }
 
-    for (struct link *l = c->hydro.rt_transport; l != NULL; l = l->next) {
+    for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
       /* RT transport tasks mustn't run before we receive necessary data */
       scheduler_addunlock(s, t_rt_transport, l->t);
       /* add dependency for the timestep communication tasks */
@@ -1623,54 +1623,53 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       /* Radiative Transfer */
       if (with_rt) {
         /* RT ghost in task */
-        c->hydro.rt_in =
+        c->rt.rt_in =
             scheduler_addtask(s, task_type_rt_in, task_subtype_none, 0,
                               /* implicit= */ 1, c, NULL);
-        scheduler_addunlock(s, c->super->kick2, c->hydro.rt_in);
+        scheduler_addunlock(s, c->super->kick2, c->rt.rt_in);
         /* Star formation */
         if (c->top->hydro.count > 0 && with_star_formation)
-          scheduler_addunlock(s, c->top->hydro.star_formation, c->hydro.rt_in);
+          scheduler_addunlock(s, c->top->hydro.star_formation, c->rt.rt_in);
         /* Star formation from sinks */
         if (with_star_formation_sink &&
             (c->top->hydro.count > 0 || c->top->sinks.count > 0))
           scheduler_addunlock(s, c->top->sinks.star_formation_sink,
-                              c->hydro.rt_in);
+                              c->rt.rt_in);
         if (with_feedback)
-          scheduler_addunlock(s, c->stars.stars_out, c->hydro.rt_in);
+          scheduler_addunlock(s, c->stars.stars_out, c->rt.rt_in);
         /* TODO: check/add dependencies from Loic's new sink SF tasks */
 
         /* RT ghost out task */
-        c->hydro.rt_out =
+        c->rt.rt_out =
             scheduler_addtask(s, task_type_rt_out, task_subtype_none, 0,
                               /* implicit= */ 1, c, NULL);
-        scheduler_addunlock(s, c->hydro.rt_out, c->super->timestep);
+        scheduler_addunlock(s, c->rt.rt_out, c->super->timestep);
 
         /* non-implicit ghost 1 */
-        c->hydro.rt_ghost1 = scheduler_addtask(
-            s, task_type_rt_ghost1, task_subtype_none, 0, 0, c, NULL);
-        scheduler_addunlock(s, c->hydro.rt_in, c->hydro.rt_ghost1);
+        c->rt.rt_ghost1 = scheduler_addtask(s, task_type_rt_ghost1,
+                                            task_subtype_none, 0, 0, c, NULL);
+        scheduler_addunlock(s, c->rt.rt_in, c->rt.rt_ghost1);
 
         /* non-implicit ghost 2 */
-        c->hydro.rt_ghost2 = scheduler_addtask(
-            s, task_type_rt_ghost2, task_subtype_none, 0, 0, c, NULL);
+        c->rt.rt_ghost2 = scheduler_addtask(s, task_type_rt_ghost2,
+                                            task_subtype_none, 0, 0, c, NULL);
 
         /* implicit transport out */
-        c->hydro.rt_transport_out =
+        c->rt.rt_transport_out =
             scheduler_addtask(s, task_type_rt_transport_out, task_subtype_none,
                               0, /*implicit= */ 1, c, NULL);
 
         /* non-implicit ghost 2 */
-        c->hydro.rt_tchem = scheduler_addtask(s, task_type_rt_tchem,
-                                              task_subtype_none, 0, 0, c, NULL);
+        c->rt.rt_tchem = scheduler_addtask(s, task_type_rt_tchem,
+                                           task_subtype_none, 0, 0, c, NULL);
 
         /* Advance cell time for subcycling */
-        c->hydro.rt_advance_cell_time =
+        c->rt.rt_advance_cell_time =
             scheduler_addtask(s, task_type_rt_advance_cell_time,
                               task_subtype_none, 0, 0, c, NULL);
-        scheduler_addunlock(s, c->hydro.rt_transport_out, c->hydro.rt_tchem);
-        scheduler_addunlock(s, c->hydro.rt_tchem,
-                            c->hydro.rt_advance_cell_time);
-        scheduler_addunlock(s, c->hydro.rt_advance_cell_time, c->hydro.rt_out);
+        scheduler_addunlock(s, c->rt.rt_transport_out, c->rt.rt_tchem);
+        scheduler_addunlock(s, c->rt.rt_tchem, c->rt.rt_advance_cell_time);
+        scheduler_addunlock(s, c->rt.rt_advance_cell_time, c->rt.rt_out);
       }
 
       /* Subgrid tasks: black hole feedback */
@@ -2461,8 +2460,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
       }
       if (with_rt) {
-        engine_addlink(e, &ci->hydro.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &ci->hydro.rt_transport, t_rt_transport);
+        engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
+        engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2606,14 +2605,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       if (with_rt) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_rt_gradient);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.rt_ghost1,
+        scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
                             t_rt_gradient);
         scheduler_addunlock(sched, t_rt_gradient,
-                            ci->hydro.super->hydro.rt_ghost2);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.rt_ghost2,
+                            ci->hydro.super->rt.rt_ghost2);
+        scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
                             t_rt_transport);
         scheduler_addunlock(sched, t_rt_transport,
-                            ci->hydro.super->hydro.rt_transport_out);
+                            ci->hydro.super->rt.rt_transport_out);
       }
     }
 
@@ -2740,10 +2739,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
       }
       if (with_rt) {
-        engine_addlink(e, &ci->hydro.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &cj->hydro.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &ci->hydro.rt_transport, t_rt_transport);
-        engine_addlink(e, &cj->hydro.rt_transport, t_rt_transport);
+        engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
+        engine_addlink(e, &cj->rt.rt_gradient, t_rt_gradient);
+        engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
+        engine_addlink(e, &cj->rt.rt_transport, t_rt_transport);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -2930,14 +2929,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_rt) {
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                               t_rt_gradient);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.rt_ghost1,
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
                               t_rt_gradient);
           scheduler_addunlock(sched, t_rt_gradient,
-                              ci->hydro.super->hydro.rt_ghost2);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.rt_ghost2,
+                              ci->hydro.super->rt.rt_ghost2);
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
                               t_rt_transport);
           scheduler_addunlock(sched, t_rt_transport,
-                              ci->hydro.super->hydro.rt_transport_out);
+                              ci->hydro.super->rt.rt_transport_out);
         }
 
       } else /*(ci->nodeID != nodeID) */ {
@@ -3074,14 +3073,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           if (with_rt) {
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
                                 t_rt_gradient);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.rt_ghost1,
+            scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost1,
                                 t_rt_gradient);
             scheduler_addunlock(sched, t_rt_gradient,
-                                cj->hydro.super->hydro.rt_ghost2);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.rt_ghost2,
+                                cj->hydro.super->rt.rt_ghost2);
+            scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost2,
                                 t_rt_transport);
             scheduler_addunlock(sched, t_rt_transport,
-                                cj->hydro.super->hydro.rt_transport_out);
+                                cj->hydro.super->rt.rt_transport_out);
           }
 
           if (with_timestep_limiter) {
@@ -3233,8 +3232,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->black_holes.feedback, t_bh_feedback);
       }
       if (with_rt) {
-        engine_addlink(e, &ci->hydro.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &ci->hydro.rt_transport, t_rt_transport);
+        engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
+        engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -3384,14 +3383,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_rt) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_rt_gradient);
         scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_rt_gradient);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.rt_ghost1,
+        scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
                             t_rt_gradient);
         scheduler_addunlock(sched, t_rt_gradient,
-                            ci->hydro.super->hydro.rt_ghost2);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.rt_ghost2,
+                            ci->hydro.super->rt.rt_ghost2);
+        scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
                             t_rt_transport);
         scheduler_addunlock(sched, t_rt_transport,
-                            ci->hydro.super->hydro.rt_transport_out);
+                            ci->hydro.super->rt.rt_transport_out);
       }
     }
 
@@ -3529,10 +3528,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->black_holes.feedback, t_bh_feedback);
       }
       if (with_rt) {
-        engine_addlink(e, &ci->hydro.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &cj->hydro.rt_gradient, t_rt_gradient);
-        engine_addlink(e, &ci->hydro.rt_transport, t_rt_transport);
-        engine_addlink(e, &cj->hydro.rt_transport, t_rt_transport);
+        engine_addlink(e, &ci->rt.rt_gradient, t_rt_gradient);
+        engine_addlink(e, &cj->rt.rt_gradient, t_rt_gradient);
+        engine_addlink(e, &ci->rt.rt_transport, t_rt_transport);
+        engine_addlink(e, &cj->rt.rt_transport, t_rt_transport);
       }
 
 #ifdef EXTRA_HYDRO_LOOP
@@ -3718,14 +3717,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_rt) {
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
                               t_rt_gradient);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.rt_ghost1,
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
                               t_rt_gradient);
           scheduler_addunlock(sched, t_rt_gradient,
-                              ci->hydro.super->hydro.rt_ghost2);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.rt_ghost2,
+                              ci->hydro.super->rt.rt_ghost2);
+          scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost2,
                               t_rt_transport);
           scheduler_addunlock(sched, t_rt_transport,
-                              ci->hydro.super->hydro.rt_transport_out);
+                              ci->hydro.super->rt.rt_transport_out);
         }
       } else /* ci->nodeID != nodeID */ {
 
@@ -3860,14 +3859,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           if (with_rt) {
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
                                 t_rt_gradient);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.rt_ghost1,
+            scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost1,
                                 t_rt_gradient);
             scheduler_addunlock(sched, t_rt_gradient,
-                                cj->hydro.super->hydro.rt_ghost2);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.rt_ghost2,
+                                cj->hydro.super->rt.rt_ghost2);
+            scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost2,
                                 t_rt_transport);
             scheduler_addunlock(sched, t_rt_transport,
-                                cj->hydro.super->hydro.rt_transport_out);
+                                cj->hydro.super->rt.rt_transport_out);
           }
 
           if (with_timestep_limiter) {

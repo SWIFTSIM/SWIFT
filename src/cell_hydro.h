@@ -103,33 +103,6 @@ struct cell_hydro {
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
-    /*! Radiative transfer ghost in task */
-    struct task *rt_in;
-
-    /*! Radiative transfer ghost1 task (finishes up injection) */
-    struct task *rt_ghost1;
-
-    /*! Task for self/pair gradient step of radiative transfer */
-    struct link *rt_gradient;
-
-    /*! Radiative transfer ghost2 task */
-    struct task *rt_ghost2;
-
-    /*! Task for self/pair transport step of radiative transfer */
-    struct link *rt_transport;
-
-    /*! Radiative transfer transport out task */
-    struct task *rt_transport_out;
-
-    /*! Radiative transfer thermochemistry task */
-    struct task *rt_tchem;
-
-    /*! Radiative transfer cell time advancement task */
-    struct task *rt_advance_cell_time;
-
-    /*! Radiative transfer ghost out task */
-    struct task *rt_out;
-
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
 
@@ -183,15 +156,6 @@ struct cell_hydro {
   /*! Maximum beginning of (integer) time step in this cell for hydro tasks.
    */
   integertime_t ti_beg_max;
-
-  /*! Minimum end of (integer) time step in this cell for RT tasks. */
-  integertime_t ti_rt_end_min;
-
-  /*! Maximum beginning of (integer) time step in this cell for RT tasks. */
-  integertime_t ti_rt_beg_max;
-
-  /*! Minimum (integer) time step size in this cell for RT tasks. */
-  integertime_t ti_rt_min_step_size;
 
   /*! Spin lock for various uses (#part case). */
   swift_lock_type lock;

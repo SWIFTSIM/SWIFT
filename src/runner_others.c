@@ -1131,7 +1131,7 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 #endif
   }
 
-  c->hydro.ti_rt_end_min += c->hydro.ti_rt_min_step_size;
+  c->rt.ti_rt_end_min += c->rt.ti_rt_min_step_size;
 
   if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);
 }

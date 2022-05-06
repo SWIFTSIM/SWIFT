@@ -200,15 +200,15 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.ti_end_min = -1;
     c->stars.ti_end_min = -1;
     c->black_holes.ti_end_min = -1;
-    c->hydro.rt_in = NULL;
-    c->hydro.rt_ghost1 = NULL;
-    c->hydro.rt_gradient = NULL;
-    c->hydro.rt_ghost2 = NULL;
-    c->hydro.rt_transport = NULL;
-    c->hydro.rt_transport_out = NULL;
-    c->hydro.rt_tchem = NULL;
-    c->hydro.rt_advance_cell_time = NULL;
-    c->hydro.rt_out = NULL;
+    c->rt.rt_in = NULL;
+    c->rt.rt_ghost1 = NULL;
+    c->rt.rt_gradient = NULL;
+    c->rt.rt_ghost2 = NULL;
+    c->rt.rt_transport = NULL;
+    c->rt.rt_transport_out = NULL;
+    c->rt.rt_tchem = NULL;
+    c->rt.rt_advance_cell_time = NULL;
+    c->rt.rt_out = NULL;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;

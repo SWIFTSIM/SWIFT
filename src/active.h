@@ -199,19 +199,19 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->hydro.ti_rt_end_min < e->ti_current)
+  if (c->rt.ti_rt_end_min < e->ti_current)
     error(
         "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
         "and "
         /* "cell in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) and "
          */
         "e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d",
-        c->cellID, c->hydro.ti_rt_end_min,
-        c->hydro.ti_rt_end_min * e->time_base, e->ti_current,
-        e->ti_current * e->time_base, e->cosmology->a, c->nodeID);
+        c->cellID, c->rt.ti_rt_end_min, c->rt.ti_rt_end_min * e->time_base,
+        e->ti_current, e->ti_current * e->time_base, e->cosmology->a,
+        c->nodeID);
 #endif
 
-  return (c->hydro.ti_rt_end_min == e->ti_current_subcycle);
+  return (c->rt.ti_rt_end_min == e->ti_current_subcycle);
 }
 
 /**

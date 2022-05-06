@@ -100,9 +100,9 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
         ti_hydro_end_min = min(ti_hydro_end_min, c->hydro.ti_end_min);
       ti_hydro_beg_max = max(ti_hydro_beg_max, c->hydro.ti_beg_max);
 
-      if (c->hydro.ti_rt_end_min > e->ti_current)
-        ti_rt_end_min = min(c->hydro.ti_rt_end_min, ti_rt_end_min);
-      ti_rt_beg_max = max(c->hydro.ti_rt_beg_max, ti_rt_beg_max);
+      if (c->rt.ti_rt_end_min > e->ti_current)
+        ti_rt_end_min = min(c->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(c->rt.ti_rt_beg_max, ti_rt_beg_max);
 
       if (c->grav.ti_end_min > e->ti_current)
         ti_gravity_end_min = min(ti_gravity_end_min, c->grav.ti_end_min);

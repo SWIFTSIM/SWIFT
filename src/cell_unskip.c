@@ -2855,7 +2855,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
   /* Note: we only get this far if engine_policy_rt is flagged. */
   if (!(e->policy & engine_policy_rt)) error("Unskipping RT tasks without RT");
 
-  for (struct link *l = c->hydro.rt_gradient; l != NULL; l = l->next) {
+  for (struct link *l = c->rt.rt_gradient; l != NULL; l = l->next) {
 
     struct task *t = l->t;
     struct cell *ci = t->ci;
@@ -2977,7 +2977,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     }
   }
 
-  for (struct link *l = c->hydro.rt_transport; l != NULL; l = l->next) {
+  for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
     /* I assume that all hydro related subcell unskipping/activation necessary
      * here is being done in the hydro part of cell_unskip */
 
@@ -3004,9 +3004,9 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* Activate transport_out for each cell that is part of
          * a pair/sub_pair task as to not miss any dependencies */
         if (ci_nodeID == nodeID)
-          scheduler_activate(s, ci->hydro.super->hydro.rt_transport_out);
+          scheduler_activate(s, ci->hydro.super->rt.rt_transport_out);
         if (cj_nodeID == nodeID)
-          scheduler_activate(s, cj->hydro.super->hydro.rt_transport_out);
+          scheduler_activate(s, cj->hydro.super->rt.rt_transport_out);
       }
     }
   }
@@ -3014,15 +3014,15 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
   /* Unskip all the other task types */
 
   if (cell_is_rt_active(c, e)) {
-    if (c->hydro.rt_in != NULL) scheduler_activate(s, c->hydro.rt_in);
-    if (c->hydro.rt_ghost1 != NULL) scheduler_activate(s, c->hydro.rt_ghost1);
-    if (c->hydro.rt_ghost2 != NULL) scheduler_activate(s, c->hydro.rt_ghost2);
-    if (c->hydro.rt_transport_out != NULL)
-      scheduler_activate(s, c->hydro.rt_transport_out);
-    if (c->hydro.rt_tchem != NULL) scheduler_activate(s, c->hydro.rt_tchem);
-    if (c->hydro.rt_advance_cell_time != NULL)
-      scheduler_activate(s, c->hydro.rt_advance_cell_time);
-    if (c->hydro.rt_out != NULL) scheduler_activate(s, c->hydro.rt_out);
+    if (c->rt.rt_in != NULL) scheduler_activate(s, c->rt.rt_in);
+    if (c->rt.rt_ghost1 != NULL) scheduler_activate(s, c->rt.rt_ghost1);
+    if (c->rt.rt_ghost2 != NULL) scheduler_activate(s, c->rt.rt_ghost2);
+    if (c->rt.rt_transport_out != NULL)
+      scheduler_activate(s, c->rt.rt_transport_out);
+    if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
+    if (c->rt.rt_advance_cell_time != NULL)
+      scheduler_activate(s, c->rt.rt_advance_cell_time);
+    if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
   }
 
   return rebuild;

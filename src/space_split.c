@@ -309,10 +309,10 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
         ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-        ti_rt_end_min = min(ti_rt_end_min, cp->hydro.ti_rt_end_min);
-        ti_rt_beg_max = max(ti_rt_beg_max, cp->hydro.ti_rt_beg_max);
+        ti_rt_end_min = min(ti_rt_end_min, cp->rt.ti_rt_end_min);
+        ti_rt_beg_max = max(ti_rt_beg_max, cp->rt.ti_rt_beg_max);
         ti_rt_min_step_size =
-            min(ti_rt_min_step_size, cp->hydro.ti_rt_min_step_size);
+            min(ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
         ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
         ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
         ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
@@ -651,9 +651,9 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->hydro.h_max_active = h_max_active;
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->hydro.ti_rt_end_min = ti_rt_end_min;
-  c->hydro.ti_rt_beg_max = ti_rt_beg_max;
-  c->hydro.ti_rt_min_step_size = ti_rt_min_step_size;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+  c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;

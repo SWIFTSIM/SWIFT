@@ -833,9 +833,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             /* Activate transport_out for each cell that is part of
              * a pair/sub_pair task as to not miss any dependencies */
             if (ci_nodeID == nodeID)
-              scheduler_activate(s, ci->hydro.super->hydro.rt_transport_out);
+              scheduler_activate(s, ci->hydro.super->rt.rt_transport_out);
             if (cj_nodeID == nodeID)
-              scheduler_activate(s, cj->hydro.super->hydro.rt_transport_out);
+              scheduler_activate(s, cj->hydro.super->rt.rt_transport_out);
           }
         }
       }
