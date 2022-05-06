@@ -125,6 +125,12 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
   internal_const->const_light_year =
       const_light_year_cgs /
       units_general_cgs_conversion_factor(us, dimension_length);
+  internal_const->const_solar_radius =
+      const_solar_radius_cgs /
+      units_general_cgs_conversion_factor(us, dimension_length);
+  internal_const->const_earth_radius =
+      const_earth_radius_cgs /
+      units_general_cgs_conversion_factor(us, dimension_length);
 
   const float dimension_power[5] = {1, 2, -3, 0, 0}; /* [g cm^2 s^-3] */
   internal_const->const_solar_luminosity =
@@ -169,9 +175,10 @@ void phys_const_print(const struct phys_const *internal_const) {
   message("%25s = %e", "Electron-Volt", internal_const->const_electron_volt);
   message("%25s = %e", "Proton mass", internal_const->const_proton_mass);
   message("%25s = %e", "Year", internal_const->const_year);
+  message("%25s = %e", "Parsec", internal_const->const_parsec);
   message("%25s = %e", "Astronomical Unit",
           internal_const->const_astronomical_unit);
-  message("%25s = %e", "Parsec", internal_const->const_parsec);
+  message("%25s = %e", "Earth radius", internal_const->const_earth_radius);
   message("%25s = %e", "Solar mass", internal_const->const_solar_mass);
   message("%25s = %e", "Solar luminosity",
           internal_const->const_solar_luminosity);
@@ -226,6 +233,8 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
                        const_astronomical_unit_cgs);
   io_write_attribute_d(h_grp_cgs, "parsec", const_parsec_cgs);
   io_write_attribute_d(h_grp_cgs, "light_year", const_light_year_cgs);
+  io_write_attribute_d(h_grp_cgs, "solar_radius", const_solar_radius_cgs);
+  io_write_attribute_d(h_grp_cgs, "earth_radius", const_earth_radius_cgs);
   io_write_attribute_d(h_grp_cgs, "solar_mass", const_solar_mass_cgs);
   io_write_attribute_d(h_grp_cgs, "earth_mass", const_earth_mass_cgs);
   io_write_attribute_d(h_grp_cgs, "solar_luminosity",
@@ -262,6 +271,8 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
                        p->const_astronomical_unit);
   io_write_attribute_d(h_grp_int, "parsec", p->const_parsec);
   io_write_attribute_d(h_grp_int, "light_year", p->const_light_year);
+  io_write_attribute_d(h_grp_int, "solar_radius", p->const_solar_radius);
+  io_write_attribute_d(h_grp_int, "earth_radius", p->const_earth_radius);
   io_write_attribute_d(h_grp_int, "solar_mass", p->const_solar_mass);
   io_write_attribute_d(h_grp_int, "earth_mass", p->const_earth_mass);
   io_write_attribute_d(h_grp_cgs, "solar_luminosity",
