@@ -1089,7 +1089,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct star_formation *star_formation = e->star_formation;
   const struct hydro_props *hydro_props = e->hydro_properties;
-  const struct rt_props *rt_props = e->rt_props;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_rt = (e->policy & engine_policy_rt);
@@ -1298,7 +1297,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
             if (with_rt) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
-              rt_debugging_check_nr_subcycles(p, rt_props);
+              rt_debugging_check_nr_subcycles(p, e->rt_props);
 #endif
               rt_reset_part(p);
               rt_reset_part(p, cosmo);
@@ -1476,7 +1475,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
         if (with_rt) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
-          rt_debugging_check_nr_subcycles(p, rt_props);
+          rt_debugging_check_nr_subcycles(p, e->rt_props);
 #endif
           rt_reset_part(p, cosmo);
         }

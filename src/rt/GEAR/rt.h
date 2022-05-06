@@ -659,7 +659,9 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
 __attribute__((always_inline)) INLINE static void rt_drift_part(
     struct part* p, float dt_drift) {
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_drifted += 1;
+#endif
 }
 
 /**
