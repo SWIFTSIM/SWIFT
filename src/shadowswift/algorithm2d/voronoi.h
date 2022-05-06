@@ -72,7 +72,8 @@ struct voronoi {
    *  contains all pairs that are completely contained within this cell, while
    *  pairs[1] corresponds to pairs crossing the boundary between this cell and
    *  the cell with coordinates that are lower in all coordinate directions (the
-   *  cell to the left, front, bottom, sid=0), and so on. */
+   *  cell to the left, front, bottom, sid=0), and so on. SID 27 is reserved
+   *  for boundary condition particles (e.g. reflective boundary conditions). */
   struct voronoi_pair *pairs[28];
 
   /*! @brief Current number of pairs per cell index. */

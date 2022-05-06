@@ -24,7 +24,7 @@
  * @param mode Flag indicating in which mode we operate (0 or 1).
  * */
 void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
-                   int mode) {
+            int mode) {
 
   TIMER_TIC;
 
@@ -40,7 +40,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 #ifdef SWIFT_DEBUG_CHECKS
     if (cell_is_active_hydro(cj, e) && mode == 0)
       error(
-          "Flux exchange for cell above construction level, indicating the "
+          "Hydro interaction for cell above construction level, indicating the "
           "pair has been flipped, but cj is active!");
 #endif
     /* Retrieve SID and shift */
@@ -100,17 +100,43 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
     /* Anything to do here? If the mode is 0, we always proceed, else we only
      * treat faces between an active particle of ci and an inactive particle of
      * cj. The other faces should already have been treated in another function
-     * call. */
+     * call with ci and cj (or their parents) reversed. */
     if (mode == 0 || !part_is_active(part_right, e)) {
-      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+      /* Flux exchange always symmetric */
+      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+#else
+      int ci_local = ci->nodeID == e->nodeID;
+      int cj_local = cj->nodeID == e->nodeID;
+      int left_active = part_is_active(part_left, e);
+      int right_active = part_is_active(part_right, e);
+
+      /* Only do the gradient calculations for local active particles */
+      if (ci_local && left_active && cj_local && right_active) {
+        IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
+             1);
+      } else if (ci_local && left_active) {
+        IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift,
+             0);
+      } else if (cj_local && right_active) {
+        /* The pair needs to be flipped around */
+        /* The midpoint from the reference frame of the right particle */
+        double midpoint[3] = {pair->midpoint[0] - shift[0],
+                              pair->midpoint[1] - shift[1],
+                              pair->midpoint[2] - shift[2]};
+        /* The reversed shift */
+        double r_shift[3] = {-shift[0], -shift[1], -shift[2]};
+        IACT(part_right, part_left, midpoint, pair->surface_area, r_shift, 0);
+      }
+#endif
     }
   } /* loop over voronoi faces between ci and cj */
 
   TIMER_TOC(TIMER_DOPAIR);
 }
 
-void DOPAIR_BRANCH(
-    struct runner *restrict r, struct cell *ci, struct cell *cj) {
+void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
+                   struct cell *cj) {
   struct engine *e = r->e;
 
   int ci_active = cell_is_active_hydro(ci, e);
@@ -118,7 +144,7 @@ void DOPAIR_BRANCH(
 
   if (!ci_active) {
     if (!cj_active)
-      error("Flux exchange activated between two inactive cells!");
+      error("Hydro interaction activated between two inactive cells!");
 
     /* Exchange flux from cj to ci only (in mode 0, but does not actually
      * matter in this case). */
@@ -142,16 +168,17 @@ void DOPAIR_BRANCH(
   }
 }
 
-void DOSELF(
-    struct runner *restrict r, struct cell *restrict c) {
+void DOSELF(struct runner *restrict r, struct cell *restrict c) {
 
   TIMER_TIC;
 
+  struct engine *e = r->e;
+
 #ifdef SWIFT_DEBUG_CHECKS
   assert(c->grid.voronoi != NULL);
+  if (c->nodeID != e->nodeID)
+    error("Activated self hydro task for non-local cell!");
 #endif
-
-  struct engine *e = r->e;
 
   double shift[3] = {0., 0., 0.};
 
@@ -166,10 +193,15 @@ void DOSELF(
     struct part *part_left = &c->hydro.parts[pair->left_idx];
     struct part *part_right = &c->hydro.parts[pair->right_idx];
 
-    if (part_is_active(part_left, e)) {
-      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift);
-    } else if (part_is_active(part_right, e)) {
-      IACT(part_right, part_left, pair->midpoint, pair->surface_area, shift);
+    const int left_is_active = part_is_active(part_left, e);
+    const int right_is_active = part_is_active(part_right, e);
+
+    if (left_is_active && right_is_active) {
+      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 1);
+    } else if (left_is_active) {
+      IACT(part_left, part_right, pair->midpoint, pair->surface_area, shift, 0);
+    } else if (right_is_active) {
+      IACT(part_right, part_left, pair->midpoint, pair->surface_area, shift, 0);
     }
   }
 

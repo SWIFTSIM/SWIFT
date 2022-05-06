@@ -1313,38 +1313,46 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Activate send and receive tasks for the grid */
       else if (t->subtype == task_subtype_grid_construction) {
 #ifdef WITH_MPI
-        if (ci_nodeID != nodeID) {
-          /* cj local.
-           * There is another pair construction task with cj and ci
-           * swapped (so that cj, or a sub or parent cell of cj, is the left
-           * cell).
-           * Here we just need to make sure that the particles of cj are sent
-           * to ci's node if ci is active, so that the grid of ci can be
-           * constructed on the foreign node.
-           * If ci is active, we also need to activate the recv_faces task of ci
-           * so that cj can receive fluxes from ci. */
-          if (ci_active_hydro) {
+        /* If either cell is active, we will do the hydro interactions on both
+         * nodes. This means that we will need to always send and receive the
+         * particle positions, whereas the faces can of course only be sent if
+         * the local cell is active (or recieved if the remote cell is active).
+         */
+        if (ci_active_hydro || cj_active_hydro) {
+          if (ci_nodeID != nodeID) {
+            /* cj local.
+             * There is another pair construction task with cj and ci
+             * swapped (so that cj, or a sub or parent cell of cj, is the left
+             * cell).
+             * Here we just need to make sure that the particles of cj are sent
+             * to ci's node if ci is active, so that the grid of ci can be
+             * constructed on the foreign node.
+             * If ci is active, we also need to activate the recv_faces task of
+             * ci so that cj can receive fluxes from ci. */
+
             /* Send the particles of cj to the foreign node */
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
                                     ci_nodeID);
-
-            /* Receive the voronoi faces from the foreign node */
-            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
+            if (ci_active_hydro) {
+              /* Receive the voronoi faces from the foreign node */
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
+            }
           }
-        }
 
-        else if (cj_nodeID != nodeID) {
-          /* ci is local.
-           * If ci is active, we need to receive the particles from cj to build
-           * ci's voronoi grid. We also need to send the voronoi grid to the
-           * foreign node. */
-          if (ci_active_hydro) {
+          else if (cj_nodeID != nodeID) {
+            /* ci is local.
+             * If ci is active, we need to receive the particles from cj to
+             * build ci's voronoi grid. We also need to send the voronoi grid to
+             * the foreign node. */
+
             /* Receive cj's particles from the foreign node */
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
 
-            /* Send ci's voronoi grid to the foreign node. */
-            scheduler_activate_send(s, ci->mpi.send, task_subtype_faces,
-                                    cj_nodeID);
+            if (ci_active_hydro) {
+              /* Send ci's voronoi grid to the foreign node. */
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_faces,
+                                      cj_nodeID);
+            }
           }
         }
 #endif

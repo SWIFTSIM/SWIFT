@@ -24,20 +24,20 @@
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
 
-
 /**
-* @brief Update the slope estimates of particles pi and pj.
-*
-* @param pi Particle i (the "left" particle). This particle must always be
-* active.
-* @param pj Particle j (the "right" particle).
-* @param centroid Centroid of the face between pi and pj.
-* @param surface_area Surface area of the face.
-* @param shift Shift to apply to the coordinates of pj.
+ * @brief Update the slope estimates of particles pi and pj.
+ *
+ * @param pi Particle i (the "left" particle). This particle must always be
+ * active.
+ * @param pj Particle j (the "right" particle).
+ * @param centroid Centroid of the face between pi and pj.
+ * @param surface_area Surface area of the face.
+ * @param shift Shift to apply to the coordinates of pj.
+ * @param symmetric Whether to do the slope estimate for both particles.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
     struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift) {
+    float surface_area, const double *shift, int symmetric) {
   if (!surface_area) {
     /* particle is not a cell neighbour: do nothing */
     return;
@@ -54,15 +54,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
      The coordinates of the centroid of the face of the voronoi cell of particle
      pi are given in the case of periodic boundary conditions. */
   const double c[3] = {centroid[0] - 0.5 * (pi->x[0] + pj->x[0] + shift[0]),
-                 centroid[1] - 0.5 * (pi->x[1] + pj->x[1] + shift[1]),
-                 centroid[2] - 0.5 * (pi->x[2] + pj->x[2] + shift[2])};
+                       centroid[1] - 0.5 * (pi->x[1] + pj->x[1] + shift[1]),
+                       centroid[2] - 0.5 * (pi->x[2] + pj->x[2] + shift[2])};
 
   /* Update gradient estimate pi */
   double r = sqrt(r2);
   hydro_gradients_collect(pi, pj, c, dx, r, surface_area);
 
   /* Also update gradient estimate pj? */
-  if (pj->flux.dt >= 0) {
+  if (symmetric) {
     double mindx[3];
     mindx[0] = -dx[0];
     mindx[1] = -dx[1];
@@ -72,25 +72,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_estimate(
 }
 
 /**
-* @brief Collect info necessary for limiting the gradient estimates.
-*
-* @param pi Particle i (the "left" particle). This particle must always be
-* active.
-* @param pj Particle j (the "right" particle).
-* @param centroid Centroid of the face between pi and pj.
-* @param surface_area Surface area of the face.
-* @param shift Shift to apply to the coordinates of pj.
+ * @brief Collect info necessary for limiting the gradient estimates.
+ *
+ * @param pi Particle i (the "left" particle). This particle must always be
+ * active.
+ * @param pj Particle j (the "right" particle).
+ * @param centroid Centroid of the face between pi and pj.
+ * @param surface_area Surface area of the face.
+ * @param shift Shift to apply to the coordinates of pj.
+ * @param symmetric Whether to do the slope limiting for both particles.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
-    struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift) {
+    struct part *pi, struct part *pj, const double *centroid,
+    float surface_area, const double *shift, int symmetric) {
 
   float f_ij[3] = {centroid[0] - pi->x[0], centroid[1] - pi->x[1],
-                    centroid[2] - pi->x[2]};
+                   centroid[2] - pi->x[2]};
   hydro_slope_limit_cell_collect(pi, pj, f_ij);
 
   /* Also treat pj? */
-  if (pj->flux.dt >= 0) {
+  if (symmetric) {
     float f_ji[3] = {centroid[0] - pj->x[0] - shift[0],
                       centroid[1] - pj->x[1] - shift[1],
                       centroid[2] - pj->x[2] - shift[2]};
@@ -116,10 +117,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_slope_limiter(
  * @param centroid Centroid of the face between pi and pj.
  * @param surface_area Surface area of the face.
  * @param shift Shift to apply to the coordinates of pj.
+ * @param symmetric Unused, flux exchange must be manifestly symmetric.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     struct part *pi, struct part *pj, double const *centroid,
-    float surface_area, const double *shift) {
+    float surface_area, const double *shift, int symmetric) {
 
   /* Initialize local variables */
   /* Vector from pj to pi */
@@ -151,7 +153,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   }
 
   double dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-               (pi->v[2] - pj->v[2]) * dx[2];
+                (pi->v[2] - pj->v[2]) * dx[2];
   /* Velocity on the axis linking the particles */
   /* This velocity will be the same as dvdr for MFM, so hopefully this gets
      optimised out. */
@@ -190,9 +192,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
 
   /* get the time step for the flux exchange. This is always the smallest time
      step among the two particles */
-  const float min_dt = (pj->flux.dt > 0.f)
-                           ? fminf(pi->flux.dt, pj->flux.dt)
-                           : pi->flux.dt;
+  const float min_dt =
+      (pj->flux.dt > 0.f) ? fminf(pi->flux.dt, pj->flux.dt) : pi->flux.dt;
 
   float xij_i[3];
   for (int k = 0; k < 3; k++) {
@@ -250,7 +251,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     const float H) {}
 
 /**
-* @brief Not used in ShadowSWIFT.
+ * @brief Not used in ShadowSWIFT.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -258,17 +259,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     const float H) {}
 
 /**
-* @brief Not used in ShadowSWIFT
-*
-* @param r2 Comoving squared distance between particle i and particle j.
-* @param dx Comoving distance vector between the particles (dx = pi->x -
-* pj->x).
-* @param hi Comoving smoothing-length of particle i.
-* @param hj Comoving smoothing-length of particle j.
-* @param pi Particle i.
-* @param pj Particle j.
-* @param a Current scale factor.
-* @param H Current Hubble parameter.
+ * @brief Not used in ShadowSWIFT
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,

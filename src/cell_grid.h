@@ -54,7 +54,7 @@ struct cell_grid {
 };
 
 struct pcell_faces {
-  size_t counts[26];
+  size_t counts[27];
 
   struct voronoi_pair faces[];
 };

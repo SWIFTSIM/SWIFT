@@ -2927,14 +2927,14 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
   int rebuild = 0;
 
-  /* Anything to do here? If c is not local or inactive, we do not need to
+  /* Anything to do here? If c is inactive, we do not need to
    * construct its voronoi grid. The sorts and/or drift will be activated from
    * a pair construction task of a neighbouring cell that *is* local if
    * necessary. */
-  if (!cell_is_active_hydro(c, e) || c->nodeID != nodeID) return rebuild;
+  if (!cell_is_active_hydro(c, e)) return rebuild;
 
-  /* Are we at super level? */
-  if (c->grid.super == c) {
+  /* Are we at super level and local? */
+  if (c->grid.super == c && c->nodeID == nodeID) {
     /* TODO activate limiter? */
     scheduler_activate(s, c->grid.ghost);
   }
@@ -2955,9 +2955,14 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
+    int ci_nodeID = ci->nodeID;
     int cj_nodeID = cj != NULL ? cj->nodeID : -1;
 
-    /* Local self task? */
+    /* At least one local cell? */
+    if (ci_nodeID != nodeID && cj_nodeID != nodeID) continue;
+
+    /* Local self task? Note that we are sure that ci == c is local at this
+     * point. */
     if (t->type == task_type_self) {
 
       scheduler_activate(s, t);
@@ -2969,26 +2974,57 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     /* Pair task for constructing the grid of c? */
     else if (t->type == task_type_pair && ci == c) {
 
-      scheduler_activate(s, t);
+      /* Only construct the grid for local cells */
+      if (ci_nodeID == nodeID) {
+        scheduler_activate(s, t);
 
-      /* Set the correct sorting flags and activate hydro drifts */
-      atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
-      atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
-      ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
-      cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+        /* We only need sorts for the grid construction.
+         * Set the correct sorting flags */
+        atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+        atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+        ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+        cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+        cell_activate_hydro_sorts(ci, t->flags, s);
+        cell_activate_hydro_sorts(cj, t->flags, s);
+      }
 
-      /* Activate the drift tasks for local cells only. If we reach this point
-       * we already know that c is local. */
-      cell_activate_drift_part(ci, s);
+      /* Activate the drift tasks for local cells only. The particles also need
+       * to be drifted for the hydro interactions. */
+      if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
       if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
-
-      /* Check the sorts and activate them if needed. */
-      cell_activate_hydro_sorts(ci, t->flags, s);
-      cell_activate_hydro_sorts(cj, t->flags, s);
 
       /* Check if we need to rebuild.
        * TODO: Maybe try to avoid checking the same pair twice */
       rebuild = cell_need_rebuild_for_grid_pair(ci, cj);
+
+#ifdef WITH_MPI
+      /* Activate send and recieve tasks */
+      if (ci_nodeID != nodeID) { /* cj local */
+
+        /* Send the particles of cj to the foreign node, to construct the
+         * voronoi grid over there */
+        scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+
+        /* Receive the voronoi faces from the foreign node */
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
+
+        /* Receive the particles used to construct the voronoi faces from the
+         * foreign node. */
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+
+      } else if (cj_nodeID != nodeID) { /* ci local */
+
+        /* Receive cj's particles from the foreign node */
+        scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+
+        /* Send ci's voronoi grid to the foreign node. */
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_faces, cj_nodeID);
+
+        /* Send ci's particles used to construct the voronoi grid to the
+         * foreign node. */
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+      }
+#endif
     }
   }
 
@@ -3009,7 +3045,9 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
   struct engine *e = s->space->e;
   int nodeID = e->nodeID;
   int counter = 0;
+  const int is_flux_interaction = l->t->subtype == task_subtype_flux;
 
+  /* Loop over tasks in linked list */
   for (; l != NULL; l = l->next) {
 #ifdef SWIFT_DEBUG_CHECKS
     counter++;
@@ -3025,17 +3063,44 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
     const int ci_nodeID = ci->nodeID;
     const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
 
-    /* Only activate self tasks for local active cells */
-    if (t->type == task_type_self && ci_active && ci_nodeID == nodeID) {
-      scheduler_activate(s, t);
-    }
-    /* Only activate pair tasks that involve at least one active and one local
-     * cell (not necessarily the same). */
-    else if (t->type == task_type_pair && (ci_active || cj_active) &&
-             (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
-      scheduler_activate(s, t);
-    }
-  }
+    if (t->type == task_type_self) {
+
+      /* Only activate self tasks for local active cells */
+      if (ci_active && ci_nodeID == nodeID) scheduler_activate(s, t);
+
+    } else if (t->type == task_type_pair) {
+
+      if (is_flux_interaction) {
+
+        /* Only activate pair flux interactions that involve at least one active
+         * and one local cell (not necessarily the same). This is necessary to
+         * keep the flux exchange manifestly symmetric over MPI (inactive local
+         * particles might receive a flux contribution from an active remote
+         * particle) */
+        if ((ci_active || cj_active) &&
+            (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+        }
+
+      } else {
+
+        /* Only non-flux interactions (slope estimate or slope limiter) that
+         * involve at least one cell which is active *AND* local. These
+         * interactions only modify the active particles of pairs. The slope
+         * (limiting) information of remote particles is calculated on the
+         * remote node and will be communicated over MPI.  */
+        if ((ci_active && ci_nodeID == nodeID) ||
+            (cj_active && cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+        }
+
+      } /* Flux interaction? */
+
+    } else {
+      error("Unsupported hydro interaction task type!");
+    } /* Self task? */
+
+  } /* Loop over tasks in linked list */
 }
 
 /**
