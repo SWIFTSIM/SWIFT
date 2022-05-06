@@ -1,0 +1,53 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.9891E43   # 10^10 solar masses 
+  UnitLength_in_cgs:   3.08567758E21   # 1 kpc 
+  UnitVelocity_in_cgs: 1E5   # km/s
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters for the self-gravity scheme
+Gravity:
+  MAC:                           adaptive  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
+  eta:          0.025               # Constant dimensionless multiplier for time integration.
+  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
+  max_physical_baryon_softening: 0.01  # Physical softening length (in internal units)
+  mesh_side_length:        32
+
+# Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
+TimeIntegration:
+  time_begin:        0.    # The starting time of the simulation (in internal units).
+  time_end:          0.5    # The end time of the simulation (in internal units).
+  dt_min:            1e-6  # The minimal time-step size of the simulation (in internal units).
+  dt_max:            1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  subdir: snap
+  basename:   snapshot      # Common part of the name of output files
+  time_first: 0.          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 0.1        # Time difference between consecutive outputs (in internal units)
+
+Scheduler:
+  max_top_level_cells: 3 
+
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:           1e-1     # Time between statistics output
+  time_first:             0.     # (Optional) Time of the first stats output if non-cosmological time-integration (in internal units)
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          jeansbox.hdf5  # The file to read
+  periodic:                    1    # Are we running with periodic ICs?
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_max:                 0.2
+  minimal_temperature:   1
+  
