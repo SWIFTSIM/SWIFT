@@ -3117,6 +3117,8 @@ void engine_init(
   e->ps_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
+  e->max_nr_rt_subcycles = parser_get_opt_param_int(
+      params, "TimeIntegration:max_nr_rt_subcycles", /*default=*/0);
   e->dt_max_RMS_displacement = FLT_MAX;
   e->max_RMS_displacement_factor = parser_get_opt_param_double(
       params, "TimeIntegration:max_dt_RMS_factor", 0.25);

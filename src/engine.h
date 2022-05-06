@@ -201,6 +201,9 @@ struct engine {
   timebin_t max_active_bin_subcycle;
   timebin_t min_active_bin_subcycle;
 
+  /* Maximal number of radiative transfer sub-cycles per hydro step */
+  int max_nr_rt_subcycles;
+
   /* Time step */
   double time_step;
 

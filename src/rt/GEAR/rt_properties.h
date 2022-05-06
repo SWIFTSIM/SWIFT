@@ -452,14 +452,6 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   /* Finishers */
   /* --------- */
-
-  /* After initialisation, print params to screen */
-  rt_props_print(rtp);
-
-  /* Print a final message. */
-  if (engine_rank == 0) {
-    message("Radiative transfer initialized");
-  }
 }
 
 /**
