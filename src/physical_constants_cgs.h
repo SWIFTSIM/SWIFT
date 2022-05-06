@@ -109,6 +109,12 @@ const double const_parsec_cgs = 3.08567758149e18;
 /*! Light-year [cm] */
 const double const_light_year_cgs = 9.46063e17;
 
+/*! Solar radius [cm] */
+const double const_solar_radius_cgs = 6.957e10;
+
+/*! Earth radius [cm] */
+const double const_earth_radius_cgs = 6.3781e8;
+
 #ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
 
 /*! Mass of the Sun [g] */
