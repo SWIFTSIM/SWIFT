@@ -109,6 +109,12 @@ const double const_parsec_cgs = 3.08567758149e18;
 /*! Light-year [cm] */
 const double const_light_year_cgs = 9.46063e17;
 
+/*! Solar radius [cm] */
+const double const_solar_radius_cgs = 6.957e10;
+
+/*! Earth radius [cm] */
+const double const_earth_radius_cgs = 6.3781e8;
+
 #ifdef SWIFT_USE_GADGET2_PHYSICAL_CONSTANTS
 
 /*! Mass of the Sun [g] */
@@ -123,6 +129,9 @@ const double const_solar_mass_cgs = 1.98841e33;
 
 /*! Mass of the Earth [g] */
 const double const_earth_mass_cgs = 5.97217e27;
+
+/*! Luminosity of the Sun [g cm^2 s^-3] */
+const double const_solar_luminosity_cgs = 3.828e33;
 
 /*! Temperature of the CMB at present day [K] */
 const double const_T_CMB_0_cgs = 2.7255;

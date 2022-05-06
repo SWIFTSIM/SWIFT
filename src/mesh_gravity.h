@@ -50,6 +50,10 @@ struct pm_mesh {
   /*! Whether mesh is distributed between MPI ranks */
   int distributed_mesh;
 
+  /*! Whether or not to use local patches rather than
+   * direct atomic writes to the mesh when running without MPI */
+  int use_local_patches;
+
   /*! Integer time-step end of the mesh force for the last step */
   integertime_t ti_end_mesh_last;
 

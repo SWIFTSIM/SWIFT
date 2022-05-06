@@ -26,6 +26,12 @@ struct sink_props {
 
   /*! Cut off radius */
   float cut_off_radius;
+
+  /*! Maximal gas temperature for forming a star. */
+  float maximal_temperature;
+
+  /*! Minimal gas density for forming a star. */
+  float density_threashold;
 };
 
 /**
@@ -45,6 +51,21 @@ INLINE static void sink_props_init(struct sink_props *sp,
 
   sp->cut_off_radius =
       parser_get_param_float(params, "GEARSink:cut_off_radius");
+
+  sp->maximal_temperature =
+      parser_get_param_float(params, "GEARSink:maximal_temperature");
+
+  sp->density_threashold =
+      parser_get_param_float(params, "GEARSink:density_threashold");
+
+  /* Apply unit change */
+  sp->maximal_temperature /=
+      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
+  sp->density_threashold /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+  message("maximal_temperature = %g", sp->maximal_temperature);
+  message("density_threashold  = %g", sp->density_threashold);
 }
 
 /**

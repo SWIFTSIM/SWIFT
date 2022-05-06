@@ -26,6 +26,7 @@
 #include "mesh_gravity_patch.h"
 
 /* Local includes. */
+#include "atomic.h"
 #include "cell.h"
 #include "error.h"
 #include "row_major_id.h"
@@ -100,15 +101,57 @@ void pm_mesh_patch_init(struct pm_mesh_patch *patch, const struct cell *cell,
 }
 
 /**
+ * @brief Write the content of a mesh patch back to the global mesh
+ * using atomic operations.
+ *
+ * @param global_mesh The global mesh to write to.
+ * @param patch The #pm_mesh_patch object to write from.
+ */
+void pm_add_patch_to_global_mesh(double *const global_mesh,
+                                 const struct pm_mesh_patch *patch) {
+
+  const int N = patch->N;
+  const int size_i = patch->mesh_size[0];
+  const int size_j = patch->mesh_size[1];
+  const int size_k = patch->mesh_size[2];
+  const int mesh_min_i = patch->mesh_min[0];
+  const int mesh_min_j = patch->mesh_min[1];
+  const int mesh_min_k = patch->mesh_min[2];
+
+  /* Remind the compiler that the arrays are nicely aligned */
+  swift_declare_aligned_ptr(const double, mesh, patch->mesh,
+                            SWIFT_CACHE_ALIGNMENT);
+
+  for (int i = 0; i < size_i; ++i) {
+    for (int j = 0; j < size_j; ++j) {
+      for (int k = 0; k < size_k; ++k) {
+
+        const int ii = i + mesh_min_i;
+        const int jj = j + mesh_min_j;
+        const int kk = k + mesh_min_k;
+
+        const int patch_index = pm_mesh_patch_index(patch, i, j, k);
+        const int mesh_index = row_major_id_periodic(ii, jj, kk, N);
+
+        atomic_add_d(&global_mesh[mesh_index], mesh[patch_index]);
+      }
+    }
+  }
+}
+
+/**
  * @brief Set all values in a mesh patch to zero
  *
  * @param patch A pointer to the mesh patch
  */
 void pm_mesh_patch_zero(struct pm_mesh_patch *patch) {
 
+  /* Remind the compiler that the arrays are nicely aligned */
+  swift_declare_aligned_ptr(double, mesh, patch->mesh, SWIFT_CACHE_ALIGNMENT);
+
   const int num =
       patch->mesh_size[0] * patch->mesh_size[1] * patch->mesh_size[2];
-  memset(patch->mesh, 0, num * sizeof(double));
+  memset(mesh, 0, num * sizeof(double));
 }
 
 /**
@@ -118,7 +161,7 @@ void pm_mesh_patch_zero(struct pm_mesh_patch *patch) {
  */
 void pm_mesh_patch_clean(struct pm_mesh_patch *patch) {
 
-  swift_free("mesh_patch", patch->mesh);
+  if (patch->mesh) swift_free("mesh_patch", patch->mesh);
 
   /* Zero everything and give a silly mesh size to help debugging */
   memset(patch, 0, sizeof(struct pm_mesh_patch));
