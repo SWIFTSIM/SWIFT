@@ -713,6 +713,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
               ti_current_subcycle, p->rt_time_data.time_bin);
           if (ti_rt_end != ti_current_subcycle)
             error("Computing RT time-step of rogue particle");
+#ifdef SWIFT_RT_DEBUG_CHECKS
+#endif
         }
 #endif
 

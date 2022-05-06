@@ -1781,8 +1781,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* Do we have work to do? */
   if (!(e->policy & engine_policy_rt)) return;
-    /* TODO:
-     * if (dont do subcycling) return; */
+  if (e->max_nr_rt_subcycles <= 1) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Print info before it's gone */
@@ -2457,7 +2456,8 @@ int engine_step(struct engine *e) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* if we're running the debug RT scheme, set some flags and do some
    * checks before each step. */
-  rt_debugging_checks_start_of_step(e, e->verbose);
+  if (e->policy & engine_policy_rt)
+    rt_debugging_checks_start_of_step(e, e->verbose);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

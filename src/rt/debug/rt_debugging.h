@@ -21,6 +21,7 @@
 
 #include "active.h"
 #include "rt_properties.h"
+#include "timeline.h"
 
 /**
  * @file src/rt/debug/rt_debugging.h
@@ -42,27 +43,53 @@ __attribute__((always_inline)) INLINE static void rt_debugging_count_subcycle(
  * @brief Check that the particle completed the correct number of subcycles.
  * This is checked in every rt_reset_part, before the subcycling count is reset.
  * @param p the particle to work on
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void
-rt_debugging_check_nr_subcycles(struct part *restrict p) {
+rt_debugging_check_nr_subcycles(struct part *restrict p,
+                                const struct rt_props *rt_props) {
+
+  /* NOTE: we need to do this check somewhere in the hydro tasks.
+   * (1) it needs to be done when all tasks are active and before the
+   * particle hydro time step is changed.
+   * (2) If you do it during RT tasks, it won't properly check how
+   * many sub-cycles you did during a single hydro task.
+   * (3) You can't do it during the timestep task, since between
+   * the hydro and the timestep we already do an RT step. */
 
   /* skip initialization */
   if (p->time_bin == 0) return;
+  if (p->rt_time_data.time_bin == 0)
+    error("Got part %lld with RT time bin 0", p->id);
 
   /* TODO: this check may fail when running with limiter/sync. */
 
-  /* TODO: update this check to the proper user provided parameter */
+  timebin_t bindiff = p->time_bin - p->rt_time_data.time_bin;
+  /* TODO: this assumes that max_nr_subcycles is not an upper limit,
+   * but a fixed number of sub-cycles */
+  timebin_t bindiff_expect = 0;
+  while (!(rt_props->debug_max_nr_subcycles & (1 << bindiff_expect)) ||
+         bindiff_expect == num_time_bins)
+    ++bindiff_expect;
+  if (bindiff_expect == num_time_bins)
+    error(
+        "Couldn't determine expected time bin difference. Max nr subcycles %d "
+        "bindiff %d",
+        rt_props->debug_max_nr_subcycles, bindiff);
 
-  int bindiff = p->time_bin - p->rt_time_data.time_bin;
-  if (bindiff != 3) error("Particle %lld Got bindiff = %d", p->id, bindiff);
+  if (bindiff != bindiff_expect)
+    error("Particle %lld Got bindiff=%d expect=%d; timebins=%d rt=%d", p->id,
+          bindiff, bindiff_expect, p->time_bin, p->rt_time_data.time_bin);
+
   int subcycles_expect = (1 << bindiff);
   if (p->rt_data.debug_nsubcycles != subcycles_expect)
-    error(
-        "Particle %lld didn't do the expected amount of subcycles: Expected "
-        "%d, done %d; time bins %d RT: %d",
-        p->id, subcycles_expect, p->rt_data.debug_nsubcycles, p->time_bin,
-        p->rt_time_data.time_bin);
-  if (p->rt_data.debug_nsubcycles != 8) message("Oh no?");
+
+    if (p->rt_data.debug_nsubcycles != rt_props->debug_max_nr_subcycles)
+      error(
+          "Particle %lld didn't do the expected amount of subcycles: Expected "
+          "%d, done %d; time bins %d RT: %d",
+          p->id, subcycles_expect, p->rt_data.debug_nsubcycles, p->time_bin,
+          p->rt_time_data.time_bin);
 }
 
 /**

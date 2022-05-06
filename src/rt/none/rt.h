@@ -66,7 +66,6 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * are both called individually. Also an extra call to rt_reset_part is made
  * in space_convert_rt_quantities_after_zeroth_step(). To reset RT data needed
  * in each RT sub-cycle, use rt_reset_part_each_subcycle().
- * are both called individually.
  * @param p particle to work on
  * @param cosmo Cosmology.
  */

@@ -122,6 +122,9 @@ struct rt_props {
    * but a placeholder to sum up a global variable */
   unsigned long long debug_radiation_absorbed_tot;
 
+  /* Max number of subcycles per hydro step */
+  int debug_max_nr_subcycles;
+
   /* Total radiation energy in the gas. It's being reset every step. */
   float debug_total_radiation_conserved_energy[RT_NGROUPS];
   float debug_total_star_emitted_energy[RT_NGROUPS];
@@ -430,6 +433,11 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   rtp->debug_radiation_absorbed_tot = 0ULL;
   rtp->debug_radiation_absorbed_this_step = 0ULL;
+
+  /* Don't make it an optional parameter here so we crash
+   * if I forgot to provide it */
+  rtp->debug_max_nr_subcycles =
+      parser_get_param_int(params, "TimeIntegration:max_nr_rt_subcycles");
 
   for (int g = 0; g < RT_NGROUPS; g++)
     rtp->debug_total_star_emitted_energy[g] = 0.f;

@@ -80,9 +80,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
-  /* Before resetting the subcycle count, make sure we did the correct
-   * number of subcycles. */
-  rt_debugging_check_nr_subcycles(p);
   p->rt_data.debug_nsubcycles = 0;
   p->rt_data.debug_kicked = 0;
 }

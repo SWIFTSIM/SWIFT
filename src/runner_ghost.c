@@ -1089,8 +1089,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct chemistry_global_data *chemistry = e->chemistry;
   const struct star_formation *star_formation = e->star_formation;
   const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct rt_props *rt_props = e->rt_props;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_rt = (e->policy & engine_policy_rt);
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
@@ -1294,7 +1296,13 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-            rt_reset_part(p, cosmo);
+            if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+              rt_debugging_check_nr_subcycles(p, rt_props);
+#endif
+              rt_reset_part(p);
+              rt_reset_part(p, cosmo);
+            }
 
             /* Ok, we are done with this particle */
             continue;
@@ -1466,7 +1474,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-        rt_reset_part(p, cosmo);
+        if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+          rt_debugging_check_nr_subcycles(p, rt_props);
+#endif
+          rt_reset_part(p, cosmo);
+        }
       }
 
       /* We now need to treat the particles whose smoothing length had not
