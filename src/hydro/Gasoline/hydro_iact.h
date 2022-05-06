@@ -197,8 +197,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
 
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -281,8 +279,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
 
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);

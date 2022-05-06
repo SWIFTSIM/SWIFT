@@ -41,6 +41,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 /**
  * @brief Compute the signal velocity between two gas particles
  *
+ * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3
+ *
  * @param dx Comoving vector separating both particles (pi - pj).
  * @brief pi The first #part.
  * @brief pj The second #part.
