@@ -176,6 +176,9 @@ struct part {
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;
+
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
 
