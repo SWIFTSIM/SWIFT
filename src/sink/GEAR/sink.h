@@ -27,6 +27,8 @@
 #include "random.h"
 #include "sink_part.h"
 #include "sink_properties.h"
+#include "feedback.h"
+
 
 /**
  * @brief Computes the time-step of a given sink particle.
@@ -92,8 +94,6 @@ INLINE static void sink_update_target_mass(struct sink* sink,
     sink->target_type = 1;
   }
   
-sink->target_mass = sink->target_mass*1e5;
-
 }        
 
 
@@ -456,7 +456,6 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
  * @brief Copy the properties of the sink particle towards the new star.
  * This function also needs to update the sink particle.
  *
- * Nothing to do here.
  *
  * @param e The #engine
  * @param sink the sink particle.
@@ -473,7 +472,55 @@ INLINE static void sink_copy_properties_to_star(
     const int with_cosmology, const struct phys_const* phys_const,
     const struct unit_system* restrict us) {
 
+  /* set the mass */
+  sp->mass =  sink->target_mass*phys_const->const_solar_mass;   
+  
+  /* set feedback type */
+  sp->feedback_data.type = sink->target_type;
+  
+  /* Initialize the feedback */
+  if (sp->feedback_data.type == 1)
+    feedback_init_after_star_formation(sp, e->feedback_props);
+  
+
+
+  /* sph smoothing */
   sp->h = sink->r_cut;
+    
+  /* mass at birth */
+  sp->sf_data.birth_mass = sp->mass;
+  
+  /* Store either the birth_scale_factor or birth_time depending  */
+  if (with_cosmology) {
+    sp->birth_scale_factor = cosmo->a;
+  } else {
+    sp->birth_time = e->time;
+  }
+  
+
+  /* Store the tracers data */
+  //sp->tracers_data = sink->tracers_data;
+
+  /* Move over the splitting data */
+  //sp->split_data = sink->split_data;
+
+  ///* Store the birth density in the star particle */
+  //sp->sf_data.birth_density = hydro_get_physical_density(p, cosmo);
+
+  ///* Store the birth temperature*/
+  //sp->sf_data.birth_temperature = cooling_get_temperature(
+  //    phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
+
+  /* Copy the chemistry properties */
+  //chemistry_copy_star_formation_properties(p, xp, sp);
+
+  /* Copy the progenitor id */
+  sp->sf_data.progenitor_id = sink->id;
+
+
+
+
 }
 
 #endif /* SWIFT_GEAR_SINK_H */
