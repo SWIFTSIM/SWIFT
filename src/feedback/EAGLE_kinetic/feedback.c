@@ -197,7 +197,7 @@ INLINE static void compute_SNII_feedback(
     if (prob_kinetic < 1.) {
 
       for (int i = 0; i < ngb_gas_N; i++) {
-        const double rand_kinetic = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_kinetic = random_unit_interval_part_ID_and_index(
             sp->id, i, ti_begin, random_number_stellar_feedback_2);
 
         if (rand_kinetic < prob_kinetic) number_of_kin_SN_events++;

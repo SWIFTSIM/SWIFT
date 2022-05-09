@@ -131,6 +131,7 @@ tests/testMaths
 tests/testAtomic
 tests/testRandom
 tests/testRandomSpacing
+tests/testRandomPoisson
 tests/testThreadpool
 tests/testParser
 tests/testFeedback

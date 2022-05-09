@@ -205,7 +205,7 @@ INLINE static void compute_SNII_feedback(
       delta_u = delta_T * conv_factor;
 
       for (int i = 0; i < ngb_gas_N; i++) {
-        const double rand_thermal = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_thermal = random_unit_interval_part_ID_and_index(
             sp->id, i, ti_begin, random_number_stellar_feedback_3);
         if (rand_thermal < prob) number_of_SN_events++;
       }
