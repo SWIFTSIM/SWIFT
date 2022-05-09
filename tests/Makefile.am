@@ -27,7 +27,7 @@ endif
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex testRandom testRandomSpacing testErfc \
+        testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
         testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
@@ -42,7 +42,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths testRandom testExp \
                  testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-                 testAdiabaticIndex testRiemannExact testRiemannTRRS \
+                 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson \
                  testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
@@ -62,6 +62,8 @@ testMaths_SOURCES = testMaths.c
 testAtomic_SOURCES = testAtomic.c
 
 testRandom_SOURCES = testRandom.c
+
+testRandomPoisson_SOURCES = testRandomPoisson.c
 
 testRandomSpacing_SOURCES = testRandomSpacing.c
 
