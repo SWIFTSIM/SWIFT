@@ -1152,9 +1152,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   if (c->black_holes.ti_end_min == e->ti_current &&
       c->black_holes.ti_end_min < max_nr_timesteps)
     error("End of next black holes step is current time!");
-  /* TODO MLADEN: check that this works without RT on */
-  if (c->rt.ti_rt_end_min == e->ti_current &&
-      c->rt.ti_rt_end_min < max_nr_timesteps)
+  /* Contrary to sinks, stars, bhs etc, we may have "rt particles"
+   * without running with RT. So additional if (with_rt) check is
+   * needed here. */
+  if (with_rt && (c->rt.ti_rt_end_min == e->ti_current &&
+                  c->rt.ti_rt_end_min < max_nr_timesteps))
     error("Cell %lld End of next RT step is current time!", c->cellID);
 #endif
 
