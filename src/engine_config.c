@@ -545,11 +545,23 @@ void engine_config(int restart, int fof, struct engine *e,
     if (e->policy & engine_policy_rt) {
       rt_props_print(e->rt_props);
       if (e->nodeID == 0) {
-        if (e->max_nr_rt_subcycles == 0)
+        if (e->max_nr_rt_subcycles <= 1)
           message("WARNING: running without RT sub-cycling.");
-        else
+        else {
+          /* Make sure max_nr_rt_subcycles is an acceptable power of 2 */
+          timebin_t power_subcycles = 0;
+          while ((e->max_nr_rt_subcycles > (1 << power_subcycles)) &&
+                 power_subcycles < num_time_bins)
+            ++power_subcycles;
+          if (power_subcycles == num_time_bins)
+            error("TimeIntegration:max_nr_rt_subcycles=%d too big",
+                  e->max_nr_rt_subcycles);
+          if ((1 << power_subcycles) > e->max_nr_rt_subcycles)
+            error("TimeIntegration:max_nr_rt_subcycles=%d not a power of 2",
+                  e->max_nr_rt_subcycles);
           message("Running up to %d RT sub-cycles per hydro step.",
                   e->max_nr_rt_subcycles);
+        }
       }
     }
 
