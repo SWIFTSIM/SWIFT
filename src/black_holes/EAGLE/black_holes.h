@@ -936,7 +936,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
          * ray directions in the isotropic case or the first N closest particles
          * in the other modes. */
         for (int i = 0; i < bp->num_ngbs; i++) {
-          const double rand = random_unit_interval_part_ID_and_ray_idx(
+          const double rand = random_unit_interval_part_ID_and_index(
               bp->id, i, ti_begin, random_number_BH_feedback);
 
           /* Increase the counter if we are lucky */
