@@ -126,6 +126,38 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief A wrapper to the engine_do_drift_all_gpart_mapper for zoom cells
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void zoom_engine_do_drift_all_gpart_mapper(void *map_data,
+                                           int num_elements,
+                                           void *extra_data) {
+
+  /* Call the mapper function */
+  engine_do_drift_all_gpart_mapper(map_data, num_elements,
+                                   extra_data);
+}
+
+/**
+ * @brief A wrapper to the engine_do_drift_all_gpart_mapper for background cells
+ *
+ * @param map_data An array of #cell%s.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to an #engine.
+ */
+void bkg_engine_do_drift_all_gpart_mapper(void *map_data,
+                                          int num_elements,
+                                          void *extra_data) {
+
+  /* Call the mapper function */
+  engine_do_drift_all_gpart_mapper(map_data, num_elements,
+                                   extra_data);
+}
+
+/**
  * @brief Mapper function to drift *all* the #spart to the current time.
  *
  * @param map_data An array of #cell%s.
@@ -352,9 +384,20 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_gparts > 0) {
-      threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
-                     e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
-                     threadpool_auto_chunk_size, e);
+      if (s->with_zoom_region) {
+        threadpool_map(&e->threadpool, bkg_engine_do_drift_all_gpart_mapper,
+                       e->s->zoom_region_properties->local_bkg_cells_top,
+                       e->s->zoom_region_properties->nr_local_bkg_cells,
+                       sizeof(int), threadpool_auto_chunk_size, e);
+        threadpool_map(&e->threadpool, zoom_engine_do_drift_all_gpart_mapper,
+                       e->s->zoom_region_properties->local_zoom_cells_top,
+                       e->s->zoom_region_properties->nr_local_zoom_cells,
+                       sizeof(int), threadpool_auto_chunk_size, e);
+        } else {
+        threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
+                       e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
+                       threadpool_auto_chunk_size, e);
+      }
     }
     if (e->s->nr_sparts > 0) {
       threadpool_map(&e->threadpool, engine_do_drift_all_spart_mapper,
