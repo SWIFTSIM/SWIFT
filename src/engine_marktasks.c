@@ -849,12 +849,25 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_activate_hydro_sorts(cj, t->flags, s);
         }
       }
-
-      /* Activate grid hydro tasks for all pairs if at least one of the cells
-       * is active (regardless of whether they are local or not). */
+      /* Activate slope estimate or limiter task only for pairs with at least
+       * one active *AND* local cell (must be the same cell). */
       else if (t_subtype == task_subtype_slope_estimate ||
-               t_subtype == task_subtype_slope_limiter ||
-               t_subtype == task_subtype_flux) {
+               t_subtype == task_subtype_slope_limiter) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid_hydro)) {
+          error(
+              "Encountered slope estimate/limiter task without "
+              "engine_policy_grid_hydro!");
+        }
+#endif
+        if ((ci_active_hydro && ci_nodeID == nodeID) ||
+            (cj_active_hydro && cj_nodeID == nodeID)) {
+          scheduler_activate(s, t);
+        }
+      }
+      /* Activate flux tasks for all pairs if at least one of the cells
+       * is active (regardless of whether they are local or not). */
+      else if (t_subtype == task_subtype_flux) {
         if (ci_active_hydro || cj_active_hydro) {
 #ifdef SWIFT_DEBUG_CHECKS
           if (!(e->policy & engine_policy_grid_hydro)) {
@@ -1312,47 +1325,106 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
       /* Activate send and receive tasks for the grid */
       else if (t->subtype == task_subtype_grid_construction) {
+        /* TODO: trigger rebuild if necessary */
 #ifdef WITH_MPI
-        /* If either cell is active, we will do the hydro interactions on both
-         * nodes. This means that we will need to always send and receive the
-         * particle positions, whereas the faces can of course only be sent if
-         * the local cell is active (or recieved if the remote cell is active).
-         */
-        if (ci_active_hydro || cj_active_hydro) {
-          if (ci_nodeID != nodeID) {
-            /* cj local.
-             * There is another pair construction task with cj and ci
-             * swapped (so that cj, or a sub or parent cell of cj, is the left
-             * cell).
-             * Here we just need to make sure that the particles of cj are sent
-             * to ci's node if ci is active, so that the grid of ci can be
-             * constructed on the foreign node.
-             * If ci is active, we also need to activate the recv_faces task of
-             * ci so that cj can receive fluxes from ci. */
+        if (ci_active_hydro && ci_nodeID != nodeID) {
+          /* cj local.
+           * There is another pair construction task with cj and ci
+           * swapped (so that cj, or a sub or parent cell of cj, is the left
+           * cell).
+           * Here we just need to make sure that the particles of cj are sent
+           * to ci's node if ci is active, so that the grid of ci can be
+           * constructed on the foreign node.
+           * If ci is active, we also need to activate the recv_faces task of
+           * ci so that cj can receive fluxes from ci. */
 
-            /* Send the particles of cj to the foreign node */
+          /* Send the particles of cj to the foreign node */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          /* Receive the voronoi faces from the foreign node */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
+        } else if (ci_active_hydro && cj_nodeID != nodeID) {
+          /* ci is local.
+           * If ci is active, we need to receive the particles from cj to
+           * build ci's voronoi grid. We also need to send the voronoi grid to
+           * the foreign node. */
+
+          /* Receive cj's particles from the foreign node */
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+
+          /* Send ci's voronoi grid to the foreign node. */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_faces,
+                                  cj_nodeID);
+        }
+#endif
+      }
+
+      /* Activate send and receive tasks for grid slope estimate/limiter */
+      else if (t->subtype == task_subtype_slope_estimate ||
+               t->subtype == task_subtype_slope_limiter) {
+#ifdef WITH_MPI
+        /* We do the slope estimate/limiter only on nodes where the local cell
+         * of the pair is active. */
+        if (ci_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (cj_active_hydro) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (ci_active_hydro) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
                                     ci_nodeID);
-            if (ci_active_hydro) {
-              /* Receive the voronoi faces from the foreign node */
-              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
-            }
           }
-
-          else if (cj_nodeID != nodeID) {
-            /* ci is local.
-             * If ci is active, we need to receive the particles from cj to
-             * build ci's voronoi grid. We also need to send the voronoi grid to
-             * the foreign node. */
-
-            /* Receive cj's particles from the foreign node */
+        } else if (cj_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (ci_active_hydro) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-
-            if (ci_active_hydro) {
-              /* Send ci's voronoi grid to the foreign node. */
-              scheduler_activate_send(s, ci->mpi.send, task_subtype_faces,
-                                      cj_nodeID);
-            }
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (cj_active_hydro) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+          }
+        }
+#endif
+      }
+      /* Activate send and receive tasks for grid flux exchange */
+      else if (t->subtype == task_subtype_flux) {
+#ifdef WITH_MPI
+        /* We do the flux interactions on both nodes as long as at least one of
+         * the cells is active */
+        if (ci_nodeID != nodeID) {
+          /* If local cell is active, send gradients to remote */
+          if (cj_active_hydro) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
+                                    ci_nodeID);
+          }
+          /* If remote cell is active, recv updated gradients from remote */
+          if (ci_active_hydro) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
+          }
+          /* If one of the cells is active, make sure, we are receiving and
+           * sending the updated particle positions */
+          if (ci_active_hydro || cj_active_hydro) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+          }
+        } else if (cj_nodeID != nodeID) {
+          /* If local cell is active, send gradients to remote */
+          if (ci_active_hydro) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
+                                    cj_nodeID);
+          }
+          /* If remote cell is active, recv updated gradients from remote */
+          if (cj_active_hydro) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
+          }
+          /* If one of the cells is active, make sure, we are receiving and
+           * sending the updated particle positions */
+          if (ci_active_hydro || cj_active_hydro) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
           }
         }
 #endif

@@ -575,13 +575,18 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
  * @param cj Dummy cell containing the nodeID of the receiving node.
  */
 void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
-                               struct cell *cj, struct task *t_xv) {
+                               struct cell *cj, struct task *t_xv,
+                               struct task *t_gradient, int with_hydro) {
 
 #ifdef WITH_MPI
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
   struct link *l = NULL;
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
+  int added_t_xv = 0;
 
   /* Check if any of the construction tasks are for the target node, i.e. the
    * cell for which we will be constructing the grid (t->ci) lives on the target
@@ -589,7 +594,7 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
   for (l = ci->grid.construction; l != NULL; l = l->next)
     if (l->t->ci->nodeID == nodeID && l->t->type == task_type_pair) break;
 
-  /* If so, attach send tasks. */
+  /* Found construction task for target node? If so, attach send tasks. */
   if (l != NULL) {
 
 #ifdef SWIFSWIFT_DEBUG_CHECKS
@@ -604,102 +609,114 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
 
       t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv, ci->mpi.tag,
                                0, ci, cj);
+
+      /* Drift before you send */
+      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
+
+      /* The send_xv task should unlock the super_grid-cell's ghost task. */
+      scheduler_addunlock(s, t_xv, ci->grid.super->grid.ghost);
     }
-
-    /* Drift before you send */
-    scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
-
-    /* The send_xv task should unlock the super_grid-cell's ghost task. */
-    scheduler_addunlock(s, t_xv, ci->grid.super->grid.ghost);
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_xv);
+    added_t_xv = 1;
   }
 
-  /* Recurse? */
-  if (ci->grid.split)
-    for (int k = 0; k < 8; k++)
-      if (ci->progeny[k] != NULL)
-        engine_addtasks_send_grid(e, ci->progeny[k], cj, t_xv);
+  if (with_hydro) {
 
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
-}
+    /* Are we at the construction level, meaning that we might have to send
+     * faces? */
+    if (ci->grid.construction_level == on_construction_level) {
 
-/**
- * @brief Add send tasks for the grid hydro pairs to a hierarchy of cells.
- *
- * We need to send the voronoi faces, needed for the flux interaction or the
- * gradient estimation, on the construction level and we need to
- * send the slope limiter information and gradients, needed for the flux
- * interaction.
- *
- * @param e The #engine.
- * @param ci The sending #cell.
- * @param cj Dummy cell containing the nodeID of the receiving node.
- * @param t_gradients Pointer to the task sending the gradients and slope
- * limiter info
- */
-void engine_addtasks_send_grid_hydro(struct engine *e, struct cell *ci,
-                                     struct cell *cj,
-                                     struct task *t_gradients) {
+      /* We only need to send faces if this cell is directly neighbouring a cell
+       * of the target node. I.e. one of the tasks for constructiong *this*
+       * cells grid has a cj from the target node. */
+      for (l = ci->grid.construction; l != NULL; l = l->next)
+        if (l->t->ci == ci && l->t->type == task_type_pair &&
+            l->t->cj->nodeID == nodeID)
+          break;
 
-#ifdef WITH_MPI
+      /* Found construction task for target node? If so, create send_faces
+       * tasks. */
+      if (l != NULL) {
+        /* Make sure this cell is tagged. */
+        cell_ensure_tagged(ci);
 
-  struct link *l = NULL;
-  struct scheduler *s = &e->sched;
-  const int nodeID = cj->nodeID;
+        struct task *t_faces = scheduler_addtask(
+            s, task_type_send, task_subtype_faces, ci->mpi.tag, 0, ci, cj);
 
-  /* Do we maybe need to send faces? */
-  if (ci->grid.construction_level == on_construction_level) {
+        /* add unlocks  */
+        /* The faces can only be sent after the grid ghost */
+        scheduler_addunlock(s, ci->grid.super->grid.ghost, t_faces);
 
-    /* Check if ci is neighbouring the target node. */
-    for (l = ci->grid.construction; l != NULL; l = l->next)
-      if (l->t->cj != NULL && l->t->cj->nodeID == nodeID) break;
+        /* The send_faces unlocks the flux ghost */
+        scheduler_addunlock(s, t_faces,
+                            ci->hydro.super->hydro.slope_estimate_ghost);
 
-    /* If so, create send tasks. */
+        /* Link to cell */
+        engine_addlink(e, &ci->mpi.send, t_faces);
+      }
+
+    } /* At construction level? */
+
+    /* Is this cell linked to any hydro interactions with the target node? */
+    for (l = ci->hydro.slope_estimate; l != NULL; l = l->next)
+      if (l->t->type == task_type_pair &&
+          (l->t->ci->nodeID == nodeID || l->t->cj->nodeID == nodeID))
+        break;
+
+    /* TODO also make sure xv are being sent at this point l*/
+
+    /* If so, add t_xv and gradient task */
     if (l != NULL) {
 
-#ifdef SWIFSWIFT_DEBUG_CHECKS
-      if (l->t->ci != ci) error("Task incorrectly linked to cell!");
-#endif
+      /* Create the gradient task? */
+      if (t_gradient == NULL) {
 
-      /* Make sure this cell is tagged. */
-      cell_ensure_tagged(ci);
+        /* Make sure this cell is tagged. */
+        cell_ensure_tagged(ci);
 
-      struct task *t_faces = scheduler_addtask(
-          s, task_type_send, task_subtype_faces, ci->mpi.tag, 0, ci, cj);
-      struct task *t_gradient = scheduler_addtask(
-          s, task_type_send, task_subtype_gradient, ci->mpi.tag, 0, ci, cj);
+        t_gradient = scheduler_addtask(s, task_type_send, task_subtype_gradient,
+                                       ci->mpi.tag, 0, ci, cj);
 
-      /* Dependencies */
-      /* The faces can only be sent after the grid ghost */
-      scheduler_addunlock(s, ci->grid.super->grid.ghost, t_faces);
+        /* Slope limit before you send */
+        scheduler_addunlock(s, ci->hydro.super->hydro.slope_limiter_ghost,
+                            t_gradient);
 
-      /* The send_faces unlocks the flux ghost */
-      scheduler_addunlock(s, t_faces,
-                          ci->hydro.super->hydro.slope_estimate_ghost);
+        /* The gradient task should unlock the super-cell's flux ghost task. */
+        scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.flux_ghost);
+      }
 
-      /* The gradients can only be sent after the slope limiter */
-      scheduler_addunlock(s, ci->hydro.super->hydro.slope_limiter_ghost, t_gradient);
-
-      /* The gradients unlocks the flux ghost */
-      scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.flux_ghost);
-
-      /* Link to cell */
-      engine_addlink(e, &ci->mpi.send, t_faces);
+      /* Add it to the local cell. */
       engine_addlink(e, &ci->mpi.send, t_gradient);
+
+      if (!added_t_xv) {
+        if (t_xv == NULL) {
+
+          /* Make sure this cell is tagged. */
+          cell_ensure_tagged(ci);
+
+          t_xv = scheduler_addtask(s, task_type_send, task_subtype_xv,
+                                   ci->mpi.tag, 0, ci, cj);
+
+          /* Drift before you send */
+          scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
+
+          /* The send_xv task should unlock the super_grid-cell's ghost task. */
+          scheduler_addunlock(s, t_xv, ci->grid.super->grid.ghost);
+        }
+        /* add it to cell */
+        engine_addlink(e, &ci->mpi.send, t_xv);
+      }
     }
   }
 
-  /* TODO send gradients */
-
   /* Recurse? */
   if (ci->grid.split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
-        engine_addtasks_send_grid_hydro(e, ci->progeny[k], cj, t_gradients);
+        engine_addtasks_send_grid(e, ci->progeny[k], cj, t_xv, t_gradient,
+                                  with_hydro);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1228,19 +1245,24 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
  * @param c The foreign #cell.
  */
 void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
-                               struct task *t_xv) {
+                               struct task *t_xv, struct task *t_gradient,
+                               int with_hydro) {
 
 #ifdef WITH_MPI
 
-  /* Create the recv_faces task*/
   struct scheduler *s = &e->sched;
+  int nodeID = e->nodeID;
+  int added_t_xv = 0;
+  struct link *l = NULL;
 
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
-  /* Is this cell linked to any grid construction interactions? */
-  if (c->grid.construction != NULL) {
+  /* Is this cell linked to any local grid construction interactions? */
+  for (l = c->grid.construction; l != NULL; l = l->next)
+    if (l->t->ci->nodeID == nodeID) break;
 
+  if (l != NULL) {
     /* Do we still need to create the task? */
     if (t_xv == NULL) {
 
@@ -1251,139 +1273,129 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
       t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv, c->mpi.tag,
                                0, c, NULL);
+
+      /* Create dependencies */
+      /* t_xv unlocks the sorts */
+      if (c->hydro.super->hydro.sorts != NULL)
+        scheduler_addunlock(s, t_xv, c->hydro.super->hydro.sorts);
     }
 
-    /* Create dependencies */
-    /* t_xv unlocks the sorts */
-    if (c->hydro.sorts != NULL) scheduler_addunlock(s, t_xv, c->hydro.sorts);
-
     /* t_xv unlocks the grid construction tasks that recieve particles from c */
-    for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
+    for (l = c->grid.construction; l != NULL; l = l->next) {
       if (l->t->cj == c) {
         scheduler_addunlock(s, t_xv, l->t);
       }
     }
 
-    /* t_xv also unlocks any pair hydro tasks at or above the construction
-     * level */
-    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
-      for (struct link *l = finger->hydro.slope_estimate; l != NULL;
-           l = l->next) {
-        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_xv, l->t);
-      }
-      for (struct link *l = finger->hydro.slope_limiter; l != NULL;
-           l = l->next) {
-        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_xv, l->t);
-      }
-      for (struct link *l = finger->hydro.flux; l != NULL; l = l->next) {
-        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_xv, l->t);
-      }
-    }
-
     /* Link to cell */
     engine_addlink(e, &c->mpi.recv, t_xv);
+    added_t_xv = 1;
   }
 
-  /* Recurse? */
-  if (c->grid.split)
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL)
-        engine_addtasks_recv_grid(e, c->progeny[k], t_xv);
+  if (with_hydro) {
 
-#else
-  error("SWIFT was not compiled with MPI support.");
-#endif
-}
-
-/**
- * @brief Add recv tasks for the grid hydro pairs to a hierarchy of cells.
- *
- * We need to send the voronoi faces, needed for the flux interaction or the
- * gradient estimation, on the construction level and we need to
- * send the slope limiter information and gradients, needed for the flux
- * interaction.
- *
- * @param e The #engine.
- * @param c The receiving #cell (proxy).
- * @param tend The top-level time-step communication #task.
- * limiter info
- */
-void engine_addtasks_recv_grid_hydro(struct engine *e, struct cell *c,
-                                     struct task *tend) {
-
-#ifdef WITH_MPI
-
-  struct scheduler *s = &e->sched;
-
-  /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
-
-  /* Do we need to receive faces? */
-  if (c->grid.construction_level == on_construction_level) {
+    /* Are we at the construction level, meaning that we have to recieve faces?
+     */
+    if (c->grid.construction_level == on_construction_level) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Make sure this cell has a valid tag. */
-    if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+      /* Make sure this cell has a valid tag. */
+      if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-    struct task *t_faces = scheduler_addtask(
-        s, task_type_recv, task_subtype_faces, c->mpi.tag, 0, c, NULL);
-    struct task *t_gradient = scheduler_addtask(
-        s, task_type_recv, task_subtype_gradient, c->mpi.tag, 0, c, NULL);
+      struct task *t_faces = scheduler_addtask(
+          s, task_type_recv, task_subtype_faces, c->mpi.tag, 0, c, NULL);
 
-    /* Dependencies */
-    /* The faces can only be received after the sorts */
-    scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_faces);
+      /* Dependencies */
+      /* The faces can only be received after the sorts */
+      scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_faces);
 
-    /* The recv_faces unlocks the hydro pair interactions, which are on
-     * or above the construction level of a cell. */
-    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+      /* The recv_faces unlocks the hydro pair interactions, which are on
+       * or above the construction level of a cell. */
+      for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
 
-      /* Check if there are slope estimate interactions linked to this cell */
-      for (struct link *l = finger->hydro.slope_estimate; l != NULL;
-           l = l->next) {
-        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_faces, l->t);
+        /* Check if there are slope estimate interactions linked to this cell */
+        for (l = finger->hydro.slope_estimate; l != NULL; l = l->next) {
+          if (l->t->type == task_type_pair)
+            scheduler_addunlock(s, t_faces, l->t);
+        }
+        for (l = finger->hydro.flux; l != NULL; l = l->next) {
+          if (l->t->type == task_type_pair)
+            scheduler_addunlock(s, t_faces, l->t);
+        }
       }
-      for (struct link *l = finger->hydro.slope_limiter; l != NULL;
-           l = l->next) {
-        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_faces, l->t);
-      }
-      for (struct link *l = finger->hydro.flux; l != NULL; l = l->next) {
-        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_faces, l->t);
-      }
+
+      /* Link to cell */
+      engine_addlink(e, &c->mpi.recv, t_faces);
     }
 
-    for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+    /* Is this cell linked to any hydro interactions, meaning that we have to
+     * recieve the gradients and particle positions? */
+    if (c->hydro.slope_estimate != NULL) {
+
+      /* Need to create t_gradient? */
+      if (t_gradient == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Make sure this cell has a valid tag. */
+        if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+        t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
+                                       c->mpi.tag, 0, c, NULL);
+      }
+
+      /* Dependencies */
       /* The gradients can only be recieved after the pair_slope_limiter */
-      for (struct link *l = finger->hydro.slope_limiter; l != NULL;
-           l = l->next) {
+      for (l = c->hydro.slope_limiter; l != NULL; l = l->next) {
         if (l->t->type == task_type_pair)
           scheduler_addunlock(s, l->t, t_gradient);
       }
       /* The gradients unlock the flux exchange */
-      for (struct link *l = finger->hydro.flux; l != NULL; l = l->next) {
+      for (l = c->hydro.flux; l != NULL; l = l->next) {
         if (l->t->type == task_type_pair)
           scheduler_addunlock(s, t_gradient, l->t);
       }
+
+      /* add it to cell */
+      engine_addlink(e, &c->mpi.recv, t_gradient);
+
+      /* Still need to add t_xv? */
+      if (!added_t_xv) {
+        if (t_xv == NULL) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Make sure this cell has a valid tag. */
+          if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
+#endif /* SWIFT_DEBUG_CHECKS */
+
+          t_xv = scheduler_addtask(s, task_type_recv, task_subtype_xv,
+                                   c->mpi.tag, 0, c, NULL);
+
+          /* t_xv unlocks the sorts */
+          if (c->hydro.super->hydro.sorts != NULL)
+            scheduler_addunlock(s, t_xv, c->hydro.super->hydro.sorts);
+        }
+        /* add it to cell */
+        engine_addlink(e, &c->mpi.recv, t_xv);
+      }
+
+      /* Additional dependencies for t_xv */
+      /* The recv_xv task should unlock the pair hydro tasks. */
+      for (l = c->hydro.slope_estimate; l != NULL; l = l->next) {
+        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_xv, l->t);
+      }
+      for (l = c->hydro.flux; l != NULL; l = l->next) {
+        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_xv, l->t);
+      }
     }
-
-    /* Link to cell */
-    engine_addlink(e, &c->mpi.recv, t_faces);
-  }
-
-  /* TODO recv gradients */
-
-  /* If there are flux exchange interactions linked to this cell, they should
-   * unlock the tend task. */
-  for (struct link *l = c->hydro.flux; l != NULL; l = l->next) {
-    scheduler_addunlock(s, l->t, tend);
   }
 
   /* Recurse? */
   if (c->grid.split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_grid_hydro(e, c->progeny[k], tend);
+        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_gradient,
+                                  with_hydro);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4895,13 +4907,8 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
     if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_grid(e, ci, cj, NULL);
-
-    /* Add the send tasks for the cells in the proxy that have a grid hydro
-     * connection */
-    if ((e->policy & engine_policy_grid_hydro) &&
-        (type & proxy_cell_type_hydro))
-      engine_addtasks_send_grid_hydro(e, ci, cj, NULL);
+      engine_addtasks_send_grid(e, ci, cj, NULL, NULL,
+                                e->policy & engine_policy_grid_hydro);
   }
 }
 
@@ -4977,13 +4984,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
     if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_grid(e, ci, /*t_xv*/ NULL);
-
-    /* Add the send tasks for the cells in the proxy that have a grid hydro
-     * connection */
-    if ((e->policy & engine_policy_grid_hydro) &&
-        (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_grid_hydro(e, ci, tend);
+      engine_addtasks_recv_grid(e, ci, /*t_xv*/ NULL, /*t_gradient*/ NULL,
+                                e->policy & engine_policy_grid_hydro);
   }
 }
 

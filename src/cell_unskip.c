@@ -2962,7 +2962,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
     if (ci_nodeID != nodeID && cj_nodeID != nodeID) continue;
 
     /* Local self task? Note that we are sure that ci == c is local at this
-     * point. */
+     * point (since cj_nodeID = -1). */
     if (t->type == task_type_self) {
 
       scheduler_activate(s, t);
@@ -2988,13 +2988,13 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         cell_activate_hydro_sorts(cj, t->flags, s);
       }
 
-      /* Activate the drift tasks for local cells only. The particles also need
-       * to be drifted for the hydro interactions. */
+      /* Activate the drift tasks for local cells only. Note that the particles
+       * of cj have to be drifted locally even if ci is not local, because they
+       * will be sent of to ci's node. */
       if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
       if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-      /* Check if we need to rebuild.
-       * TODO: Maybe try to avoid checking the same pair twice */
+      /* Check if we need to rebuild. */
       rebuild = cell_need_rebuild_for_grid_pair(ci, cj);
 
 #ifdef WITH_MPI
@@ -3005,12 +3005,9 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
          * voronoi grid over there */
         scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
 
-        /* Receive the voronoi faces from the foreign node */
+        /* Receive the voronoi faces from the foreign node once they are
+         * constructed */
         scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
-
-        /* Receive the particles used to construct the voronoi faces from the
-         * foreign node. */
-        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
 
       } else if (cj_nodeID != nodeID) { /* ci local */
 
@@ -3019,10 +3016,6 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
         /* Send ci's voronoi grid to the foreign node. */
         scheduler_activate_send(s, ci->mpi.send, task_subtype_faces, cj_nodeID);
-
-        /* Send ci's particles used to construct the voronoi grid to the
-         * foreign node. */
-        scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
       }
 #endif
     }
@@ -3080,6 +3073,42 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
         if ((ci_active || cj_active) &&
             (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
           scheduler_activate(s, t);
+
+#ifdef WITH_MPI
+          if (ci_nodeID != nodeID) {
+            /* If one of the cells is active, make sure, we are receiving and
+             * sending the latest particle positions */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+            /* If the local cell is active, send its gradients away for the flux
+             * calculation. */
+            if (cj_active) {
+              scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
+                                      ci_nodeID);
+            }
+            /* If remote cell is active, recv gradients for flux calculation */
+            if (ci_active) {
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
+            }
+          } else if (cj_nodeID != nodeID) {
+            /* If one of the cells is active, make sure, we are receiving and
+             * sending the latest particle positions */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+            /* If the local cell is active, send its gradients away for the flux
+             * calculation. */
+            if (ci_active) {
+              scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
+                                      cj_nodeID);
+            }
+            /* If remote cell is active, recv gradients for flux calculation */
+            if (cj_active) {
+              scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
+            }
+          }
+#endif
         }
 
       } else {
@@ -3093,6 +3122,29 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
             (cj_active && cj_nodeID == nodeID)) {
           scheduler_activate(s, t);
         }
+#ifdef WITH_MPI
+        if (ci_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (cj_active) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (ci_active) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
+                                    ci_nodeID);
+          }
+        } else if (cj_nodeID != nodeID) {
+          /* If the local cell is active, receive data from remote node */
+          if (ci_active) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          }
+          /* If the foreign cell is active, send data to remote */
+          if (cj_active) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+          }
+        }
+#endif
 
       } /* Flux interaction? */
 
@@ -3143,16 +3195,6 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
-
-    for (struct link *l = c->hydro.slope_estimate; l != NULL; l = l->next) {
-      scheduler_activate(s, l->t);
-    }
-    for (struct link *l = c->hydro.slope_limiter; l != NULL; l = l->next) {
-      scheduler_activate(s, l->t);
-    }
-
-    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
-      scheduler_activate(s, l->t);
 
     if (c->hydro.slope_estimate_ghost != NULL)
       scheduler_activate(s, c->hydro.slope_estimate_ghost);
