@@ -288,7 +288,7 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding sink on a foreign node");
-  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->sinks.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of sink performed above the leaf level");
 
   /* Progeny number at each level */
@@ -339,7 +339,7 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
 
   /* Number of particles to shift in order to get a free space. */
   const size_t n_copy = &top->sinks.parts[top->sinks.count] - c->sinks.parts;
-
+  
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->sinks.parts + n_copy > top->sinks.parts + top->sinks.count)
     error("Copying beyond the allowed range");
