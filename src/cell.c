@@ -943,8 +943,8 @@ void cell_make_void_multipole(struct space *s, struct cell *c,
   /* Reset everything */
   gravity_reset(c->grav.multipole);
 
-  /* Get top-level cells array */
-  struct cell *cells = s->cells_top;
+  /* /\* Get top-level cells array *\/ */
+  /* struct cell *cells = s->cells_top; */
 
   /* if (s->nr_gparts > 0) { */
 
@@ -1050,16 +1050,13 @@ void cell_make_void_multipole(struct space *s, struct cell *c,
      r_max = max(r_max, c_zoom->grav.multipole->r_max + sqrt(r2));
    }
    /* Alternative upper limit of max CoM<->gpart distance */
-   const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] *
-   0.5
+   const double dx = c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] * 0.5
                      ? c->grav.multipole->CoM[0] - c->loc[0]
                      : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-   const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] *
-   0.5
+   const double dy = c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] * 0.5
                      ? c->grav.multipole->CoM[1] - c->loc[1]
                      : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-   const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] *
-   0.5
+   const double dz = c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] * 0.5
                      ? c->grav.multipole->CoM[2] - c->loc[2]
                      : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
   
