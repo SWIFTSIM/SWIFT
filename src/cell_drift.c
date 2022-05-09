@@ -137,6 +137,23 @@ void cell_set_ti_old_bpart(struct cell *c, const integertime_t ti) {
 }
 
 /**
+ * @brief Recursively set the sinks' ti_old_part to the current time.
+ *
+ * @param c The cell to update.
+ * @param ti The current integer time.
+ */
+void cell_set_ti_old_sink(struct cell *c, const integertime_t ti) {
+
+  c->sinks.ti_old_part = ti;
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) cell_set_ti_old_sink(c->progeny[k], ti);
+    }
+  }
+}
+
+
+/**
  * @brief Recursively drifts the #part in a cell hierarchy.
  *
  * @param c The #cell.
@@ -995,7 +1012,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force) {
     cell_clear_flag(c, cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
 
     /* Update the time of the last drift */
-    c->sinks.ti_old_part = ti_current;
+    cell_set_ti_old_sink(c, ti_current);
 
     return;
   }
