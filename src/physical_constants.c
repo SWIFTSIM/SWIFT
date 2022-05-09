@@ -275,7 +275,7 @@ void phys_const_print_snapshot(hid_t h_file, const struct phys_const *p) {
   io_write_attribute_d(h_grp_int, "earth_radius", p->const_earth_radius);
   io_write_attribute_d(h_grp_int, "solar_mass", p->const_solar_mass);
   io_write_attribute_d(h_grp_int, "earth_mass", p->const_earth_mass);
-  io_write_attribute_d(h_grp_cgs, "solar_luminosity",
+  io_write_attribute_d(h_grp_int, "solar_luminosity",
                        p->const_solar_luminosity);
   io_write_attribute_d(h_grp_int, "T_CMB_0", p->const_T_CMB_0);
   io_write_attribute_d(h_grp_int, "primordial_He_fraction",
