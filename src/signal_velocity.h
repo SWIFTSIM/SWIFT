@@ -22,17 +22,14 @@
 /* Config parameters. */
 #include "../config.h"
 
-/* Local includes */
-#include "mhd.h"
-#include "part.h"
-
 #ifndef NONE_MHD
+
+/* Include MHD definition of signal velocity */
+#include "mhd.h"
 
 /**
  * @brief Compute the signal velocity between two gas particles,
  * MHD case.
- *
- * This is eq. (131) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
  *
  * Warning ONLY to be called just after preparation of the force loop.
  *
@@ -52,11 +49,12 @@ __attribute__((always_inline)) INLINE static float signal_velocity(
 
 #else
 
+/* Include hydro definition of signal velocity */
+#include "hydro.h"
+
 /**
- * @brief Compute the signal velocity between two gas particles.
- *
+ * @brief Compute the signal velocity between two gas particles,
  * Non-MHD case.
- * This is eq. (103) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
  *
  * Warning: Can ONLY to be called just after preparation of the force loop.
  *
@@ -71,10 +69,7 @@ __attribute__((always_inline)) INLINE static float signal_velocity(
     const float dx[3], const struct part *restrict pi,
     const struct part *restrict pj, const float mu_ij, const float beta) {
 
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-
-  return ci + cj - beta * mu_ij;
+  return hydro_signal_velocity(dx, pi, pj, mu_ij, beta);
 }
 
 #endif

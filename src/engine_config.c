@@ -37,6 +37,7 @@
 #include "fof.h"
 #include "mpiuse.h"
 #include "part.h"
+#include "pressure_floor.h"
 #include "proxy.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
@@ -491,6 +492,7 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {
       if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+      if (e->nodeID == 0) pressure_floor_print(e->pressure_floor_props);
       if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
     }
 
@@ -796,13 +798,13 @@ void engine_config(int restart, int fof, struct engine *e,
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);
     space_extra_parts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_parts", space_extra_parts);
+        params, "Scheduler:cell_extra_parts", space_extra_parts_default);
     space_extra_sparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_sparts", space_extra_sparts);
+        params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
     space_extra_gparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_gparts", space_extra_gparts);
+        params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
     space_extra_bparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_bparts", space_extra_bparts);
+        params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */

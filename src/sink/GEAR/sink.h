@@ -22,6 +22,7 @@
 #include <float.h>
 
 /* Local includes */
+#include "cooling.h"
 #include "minmax.h"
 #include "random.h"
 #include "sink_part.h"
@@ -52,10 +53,35 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
 
   sp->r_cut = sink_props->cut_off_radius;
   sp->time_bin = 0;
+
+  sp->number_of_gas_swallows = 0;
+  sp->number_of_direct_gas_swallows = 0;
+  sp->number_of_sink_swallows = 0;
+  sp->number_of_direct_sink_swallows = 0;
+  sp->swallowed_angular_momentum[0] = 0.f;
+  sp->swallowed_angular_momentum[1] = 0.f;
+  sp->swallowed_angular_momentum[2] = 0.f;
+
+  sink_mark_sink_as_not_swallowed(&sp->merger_data);
 }
 
 /**
- * @brief Prepares a sink-particle for its interactions
+ * @brief Initialisation of particle data before the hydro density loop.
+ * Note: during initalisation (space_init)
+ *
+ * @param p The particle to act upon
+ */
+__attribute__((always_inline)) INLINE static void sink_init_part(
+    struct part* restrict p) {
+
+  struct sink_part_data* cpd = &p->sink_data;
+
+  cpd->can_form_sink = 1;
+}
+
+/**
+ * @brief Initialisation of sink particle data before sink loops.
+ * Note: during initalisation (space_init_sinks)
  *
  * @param sp The particle to act upon
  */
@@ -107,7 +133,8 @@ __attribute__((always_inline)) INLINE static void sink_kick_extra(
  * @brief Calculate if the gas has the potential of becoming
  * a sink.
  *
- * No sink formation should occur, so return 0.
+ * Return 0 if no sink formation should occur.
+ * Note: called in runner_do_sink_formation
  *
  * @param sink_props the sink properties to use.
  * @param p the gas particles.
@@ -128,7 +155,22 @@ INLINE static int sink_is_forming(
     const struct cooling_function_data* restrict cooling,
     const struct entropy_floor_properties* restrict entropy_floor) {
 
-  return 1;
+  /* the particle is not elligible */
+  if (!p->sink_data.can_form_sink) return 0;
+
+  const float temperature_max = sink_props->maximal_temperature;
+  const float temperature = cooling_get_temperature(phys_const, hydro_props, us,
+                                                    cosmo, cooling, p, xp);
+
+  const float density_threashold = sink_props->density_threashold;
+  const float density = hydro_get_physical_density(p, cosmo);
+
+  if (density > density_threashold && temperature < temperature_max) {
+    message("forming a sink particle ! %lld", p->id);
+    return 1;
+  }
+
+  return 0;
 }
 
 /**
@@ -136,6 +178,7 @@ INLINE static int sink_is_forming(
  * sink or not.
  *
  * No SF should occur, so return 0.
+ * Note: called in runner_do_sink_formation
  *
  * @param p The #part.
  * @param xp The #xpart.
@@ -148,10 +191,11 @@ INLINE static int sink_should_convert_to_sink(
     const struct part* p, const struct xpart* xp,
     const struct sink_props* sink_props, const struct engine* e,
     const double dt_sink) {
-  const float random_number =
-      random_unit_interval(p->id, e->ti_current, random_number_star_formation);
 
-  return random_number < 5e-4;
+  /* We do not use a stockastic approach.
+   * Once elligible (sink_is_forming), the gas particle form a sink */
+
+  return 1;
 }
 
 /**
@@ -176,7 +220,133 @@ INLINE static void sink_copy_properties(
     const struct phys_const* phys_const,
     const struct hydro_props* restrict hydro_props,
     const struct unit_system* restrict us,
-    const struct cooling_function_data* restrict cooling) {}
+    const struct cooling_function_data* restrict cooling) {
+
+  /* First initialisation */
+  sink_init_sink(sink);
+
+  /* Flag it as not swallowed */
+  sink_mark_sink_as_not_swallowed(&sink->merger_data);
+}
+
+/**
+ * @brief Update the properties of a sink particles by swallowing
+ * a gas particle.
+ *
+ * @param sp The #sink to update.
+ * @param p The #part that is swallowed.
+ * @param xp The #xpart that is swallowed.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sink_swallow_part(
+    struct sink* sp, const struct part* p, const struct xpart* xp,
+    const struct cosmology* cosmo) {
+
+  /* Get the current dynamical masses */
+  const float gas_mass = hydro_get_mass(p);
+  const float sink_mass = sp->mass;
+
+  /* Increase the dynamical mass of the sink. */
+  sp->mass += gas_mass;
+  sp->gpart->mass += gas_mass;
+
+  /* Physical velocity difference between the particles */
+  const float dv[3] = {(sp->v[0] - p->v[0]) * cosmo->a_inv,
+                       (sp->v[1] - p->v[1]) * cosmo->a_inv,
+                       (sp->v[2] - p->v[2]) * cosmo->a_inv};
+
+  /* Physical distance between the particles */
+  const float dx[3] = {(sp->x[0] - p->x[0]) * cosmo->a,
+                       (sp->x[1] - p->x[1]) * cosmo->a,
+                       (sp->x[2] - p->x[2]) * cosmo->a};
+
+  /* Collect the swallowed angular momentum */
+  sp->swallowed_angular_momentum[0] +=
+      gas_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
+  sp->swallowed_angular_momentum[1] +=
+      gas_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
+  sp->swallowed_angular_momentum[2] +=
+      gas_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+
+  /* Update the sink momentum */
+  const float sink_mom[3] = {sink_mass * sp->v[0] + gas_mass * p->v[0],
+                             sink_mass * sp->v[1] + gas_mass * p->v[1],
+                             sink_mass * sp->v[2] + gas_mass * p->v[2]};
+
+  sp->v[0] = sink_mom[0] / sp->mass;
+  sp->v[1] = sink_mom[1] / sp->mass;
+  sp->v[2] = sink_mom[2] / sp->mass;
+  sp->gpart->v_full[0] = sp->v[0];
+  sp->gpart->v_full[1] = sp->v[1];
+  sp->gpart->v_full[2] = sp->v[2];
+
+  /*
+  const float dr = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+  message(
+      "sink %lld swallowing gas particle %lld "
+      "(Delta_v = [%f, %f, %f] U_V, "
+      "Delta_x = [%f, %f, %f] U_L, "
+      "Delta_v_rad = %f)",
+      sp->id, p->id, -dv[0], -dv[1], -dv[2], -dx[0], -dx[1], -dx[2],
+      (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
+  */
+
+  /* Update the sink metal masses */
+  struct chemistry_sink_data* sp_chem = &sp->chemistry_data;
+  const struct chemistry_part_data* p_chem = &p->chemistry_data;
+  chemistry_add_part_to_sink(sp_chem, p_chem, gas_mass);
+
+  /* This sink swallowed a gas particle */
+  sp->number_of_gas_swallows++;
+  sp->number_of_direct_gas_swallows++;
+}
+
+/**
+ * @brief Update the properties of a sink particles by swallowing
+ * a sink particle.
+ *
+ * @param spi The #sink to update.
+ * @param spj The #sink that is swallowed.
+ * @param cosmo The current cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void sink_swallow_sink(
+    struct sink* spi, const struct sink* spj, const struct cosmology* cosmo) {
+
+  /* Get the current dynamical masses */
+  const float spi_dyn_mass = spi->mass;
+  const float spj_dyn_mass = spj->mass;
+
+  /* Increase the masses of the sink. */
+  spi->mass += spj->mass;
+  spi->gpart->mass += spj->mass;
+
+  /* Collect the swallowed angular momentum */
+  spi->swallowed_angular_momentum[0] += spj->swallowed_angular_momentum[0];
+  spi->swallowed_angular_momentum[1] += spj->swallowed_angular_momentum[1];
+  spi->swallowed_angular_momentum[2] += spj->swallowed_angular_momentum[2];
+
+  /* Update the sink momentum */
+  const float sink_mom[3] = {
+      spi_dyn_mass * spi->v[0] + spj_dyn_mass * spj->v[0],
+      spi_dyn_mass * spi->v[1] + spj_dyn_mass * spj->v[1],
+      spi_dyn_mass * spi->v[2] + spj_dyn_mass * spj->v[2]};
+
+  spi->v[0] = sink_mom[0] / spi->mass;
+  spi->v[1] = sink_mom[1] / spi->mass;
+  spi->v[2] = sink_mom[2] / spi->mass;
+  spi->gpart->v_full[0] = spi->v[0];
+  spi->gpart->v_full[1] = spi->v[1];
+  spi->gpart->v_full[2] = spi->v[2];
+
+  /* Update the sink metal masses */
+  struct chemistry_sink_data* spi_chem = &spi->chemistry_data;
+  const struct chemistry_sink_data* spj_chem = &spj->chemistry_data;
+  chemistry_add_sink_to_sink(spi_chem, spj_chem);
+
+  /* This sink swallowed a sink particle */
+  spi->number_of_sink_swallows++;
+  spi->number_of_direct_sink_swallows++;
+}
 
 /**
  * @brief Should the sink spawn a star particle?
@@ -197,10 +367,20 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
                                   const int with_cosmology,
                                   const struct phys_const* phys_const,
                                   const struct unit_system* restrict us) {
+
   const float random_number = random_unit_interval(
       sink->id, e->ti_current, random_number_star_formation);
+  // return random_number < 1;  //1e-3;
 
-  return random_number < 1e-3;
+  if (sink->n_stars > 0) {
+    if (random_number < 1e-2) {
+      // sink->n_stars--;
+      // message("%lld spawn a star : n_star is now %d",sink->id,sink->n_stars);
+      return 0;
+    } else
+      return 0;
+  } else
+    return 0;
 }
 
 /**

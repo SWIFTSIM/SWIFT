@@ -24,7 +24,7 @@ import math
 import random
 
 # Generates N particles in a spherically symmetric distribution with density profile ~r^(-2)
-# usage: python makeIC.py 1000: generate 1000 particles
+# usage: python3 makeIC.py 1000: generate 1000 particles
 
 # Some constants
 

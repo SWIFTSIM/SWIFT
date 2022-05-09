@@ -28,7 +28,7 @@
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_properties.h"
 #else
-#error "Invalid choice of black hole model"
+#error "Invalid choice of sink model"
 #endif
 
 #endif /* SWIFT_SINK_PROPERTIES_H */

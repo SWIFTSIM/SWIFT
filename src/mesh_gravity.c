@@ -215,6 +215,7 @@ struct cic_mapper_data {
   double* rho;
   double* potential;
   int N;
+  int use_local_patches;
   double fac;
   double dim[3];
   float const_G;
@@ -260,10 +261,8 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
   /* Pointer to the chunk to be processed */
   int* local_cells = (int*)map_data;
 
-  // MATTHIEU: This could in principle be improved by creating a local mesh
-  //           with just the extent required for the cell. Assignment can
-  //           then be done without atomics. That local mesh is then added
-  //           atomically to the global one.
+  /* A temporary patch of the global mesh */
+  struct pm_mesh_patch patch;
 
   /* Loop over the elements assigned to this thread */
   for (int i = 0; i < num; ++i) {
@@ -271,8 +270,26 @@ void cell_gpart_to_mesh_CIC_mapper(void* map_data, int num, void* extra) {
     /* Pointer to local cell */
     const struct cell* c = &cells[local_cells[i]];
 
-    /* Assign this cell's content to the mesh */
-    cell_gpart_to_mesh_CIC(c, rho, N, fac, dim, nu_model);
+    /* Skip empty cells */
+    if (c->grav.count == 0) continue;
+
+    if (data->use_local_patches) {
+
+      /* Do a CIC interpolation of all the particles in this cell onto
+         the local patch (allocates memory in the patch) */
+      accumulate_cell_to_local_patch(N, fac, dim, c, &patch, nu_model);
+
+      /* Copy the local patch values back onto the global mesh */
+      pm_add_patch_to_global_mesh(rho, &patch);
+
+      /* Free the allocated memory */
+      pm_mesh_patch_clean(&patch);
+
+    } else {
+
+      /* Assign this cell's content directly atomically to the mesh */
+      cell_gpart_to_mesh_CIC(c, rho, N, fac, dim, nu_model);
+    }
   }
 }
 
@@ -880,6 +897,7 @@ void compute_potential_global(struct pm_mesh* mesh, const struct space* s,
   data.rho = rho;
   data.potential = NULL;
   data.N = N;
+  data.use_local_patches = mesh->use_local_patches;
   data.fac = cell_fac;
   data.dim[0] = dim[0];
   data.dim[1] = dim[1];
@@ -1136,6 +1154,7 @@ void pm_mesh_init(struct pm_mesh* mesh, const struct gravity_props* props,
   mesh->periodic = 1;
   mesh->N = N;
   mesh->distributed_mesh = props->distributed_mesh;
+  mesh->use_local_patches = props->mesh_uses_local_patches;
   mesh->dim[0] = dim[0];
   mesh->dim[1] = dim[1];
   mesh->dim[2] = dim[2];

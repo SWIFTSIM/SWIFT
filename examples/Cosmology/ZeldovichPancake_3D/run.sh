@@ -4,7 +4,7 @@
 if [ ! -e zeldovichPancake.hdf5 ]
 then
     echo "Generating initial conditions for the 3D Zeldovich pancake example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
@@ -13,5 +13,5 @@ fi
 # Plot the result
 for i in {0..119}
 do 
-    python plotSolution.py $i
+    python3 plotSolution.py $i
 done
