@@ -58,7 +58,8 @@ int main(int argc, char* argv[]) {
   double mean = 0., mean2 = 0.;
   for (int i = 0; i < N; ++i) {
 
-    const double r = random_poisson(id, lambda, offset + i, type);
+    const double r =
+        random_poisson(id, lambda, offset + i, (enum random_number_type)type);
 
     mean += r;
     mean2 += r * r;
