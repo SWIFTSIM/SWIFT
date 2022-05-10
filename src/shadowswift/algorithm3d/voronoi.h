@@ -96,7 +96,8 @@ struct voronoi {
 /* Forward declarations */
 inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
                                    int left_part_idx_in_d,
-                                   int right_part_idx_in_d, double *vertices,
+                                   int right_part_idx_in_d,
+                                   const int *part_is_active, double *vertices,
                                    int n_vertices);
 inline static void voronoi_check_grid(struct voronoi *restrict v);
 inline static void voronoi_destroy(struct voronoi *restrict v);
@@ -215,9 +216,16 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     int v3 = t->vertices[3];
 
     /* if the tetrahedron is inactive or not linked to a non-ghost, non-dummy
-     * vertex, it is not a grid vertex and we can skip it. */
-    if (!t->active || (v0 >= d->vertex_end && v1 >= d->vertex_end &&
-                       v2 >= d->vertex_end && v3 >= d->vertex_end)) {
+     * vertex, corresponding to an active particle, it is not a grid vertex and
+     * we can skip it. */
+    if (!t->active || ((v0 >= d->vertex_end || v0 < d->vertex_start ||
+                        !part_is_active[v0 - d->vertex_start]) &&
+                       (v1 >= d->vertex_end || v1 < d->vertex_start ||
+                        !part_is_active[v1 - d->vertex_start]) &&
+                       (v2 >= d->vertex_end || v2 < d->vertex_start ||
+                        !part_is_active[v2 - d->vertex_start]) &&
+                       (v3 >= d->vertex_end || v3 < d->vertex_start ||
+                        !part_is_active[v3 - d->vertex_start]))) {
       voronoi_vertices[3 * i] = NAN;
       voronoi_vertices[3 * i + 1] = NAN;
       voronoi_vertices[3 * i + 2] = NAN;
@@ -489,8 +497,8 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
           neighbour_flags[next_non_axis_idx_in_d] |= 1;
         }
       }
-      if (voronoi_new_face(v, d, gen_idx_in_d, axis_idx_in_d, face_vertices,
-                           face_vertices_index)) {
+      if (voronoi_new_face(v, d, gen_idx_in_d, axis_idx_in_d, part_is_active,
+                           face_vertices, face_vertices_index)) {
         /* The face is not degenerate */
         nface++;
       }
@@ -582,14 +590,16 @@ inline static void voronoi_destroy(struct voronoi *restrict v) {
  */
 inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
                                    int left_part_idx_in_d,
-                                   int right_part_idx_in_d, double *vertices,
+                                   int right_part_idx_in_d,
+                                   const int *part_is_active, double *vertices,
                                    int n_vertices) {
   int sid;
   int right_part_idx;
   /* Local pair? */
   if (right_part_idx_in_d < d->ngb_offset) {
     right_part_idx = right_part_idx_in_d - d->vertex_start;
-    if (right_part_idx_in_d < left_part_idx_in_d) {
+    if (right_part_idx_in_d < left_part_idx_in_d &&
+        part_is_active[right_part_idx]) {
       /* Pair was already added. Find it and add it to the cell_pair_connections
        * if necessary. If no pair is found, the face must have been degenerate.
        * Return early. */
