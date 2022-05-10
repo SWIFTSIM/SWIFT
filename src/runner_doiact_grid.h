@@ -283,12 +283,8 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
   /* Flip sid if needed */
   if (flipped) sid = 26 - sid;
 
-    /* Mark cell face as inside of simulation volume */
-#ifdef SWIFT_DEBUG_CHECKS
-  if (ci->grid.delaunay->sid_is_inside_face[sid])
-    error("Already ran construction task for this sid!");
-#endif
-  ci->grid.delaunay->sid_is_inside_face[sid] |= 1;
+  /* Mark cell face as inside of simulation volume */
+  ci->grid.delaunay->sid_is_inside_face_mask |= 1 << sid;
 
   /* Get some other useful values. */
   const float hi_max = ci->hydro.h_max_active;

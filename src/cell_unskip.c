@@ -3037,8 +3037,10 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
 
   struct engine *e = s->space->e;
   int nodeID = e->nodeID;
-  int counter = 0;
   const int is_flux_interaction = l->t->subtype == task_subtype_flux;
+#ifdef SWIFT_DEBUG_CHECKS
+  int counter = 0;
+#endif
 
   /* Loop over tasks in linked list */
   for (; l != NULL; l = l->next) {

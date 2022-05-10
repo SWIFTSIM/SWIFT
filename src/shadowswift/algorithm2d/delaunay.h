@@ -33,7 +33,8 @@ struct delaunay {
   /*! @brief Inverse side length of the simulation volume. */
   double inverse_side;
 
-  /*! @brief Flags that keep track whether a local vertex has been added or not */
+  /*! @brief Flags that keep track whether a local vertex has been added or not
+   */
   int* vertex_added;
 
   /*! @brief Vertex positions. This array is a copy of the array defined in
@@ -152,7 +153,7 @@ struct delaunay {
    * have been tried to be added for a given sid. If this is 0 for a given sid,
    * this means that this cell should get the reflective boundary condition
    * applied for that sid. */
-  int sid_is_inside_face[27];
+  unsigned long int sid_is_inside_face_mask;
 };
 
 inline static void delaunay_init_vertex(struct delaunay* restrict d, int v,
@@ -423,8 +424,8 @@ inline static void delaunay_check_tessellation(struct delaunay* restrict d) {
  * @param d Delaunay tessellation.
  */
 inline static void delaunay_reset(struct delaunay* restrict d,
-                                 const double* cell_loc,
-                                 const double* cell_width, int vertex_size) {
+                                  const double* cell_loc,
+                                  const double* cell_width, int vertex_size) {
 
   if (vertex_size == 0) {
     /* Don't bother for empty cells */
@@ -526,10 +527,7 @@ inline static void delaunay_reset(struct delaunay* restrict d,
    * Also sid=13 does not correspond to a face and is always set to 1 as well.
    * We only set the sid's corresponding to the cardinal directions to 0
    * (only faces perpendicular to one of the axes can be boundary faces). */
-  const int default_sid_mask[27] = {1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1,
-                                    1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1};
-  memcpy(d->sid_is_inside_face, default_sid_mask,
-         sizeof(d->sid_is_inside_face));
+  d->sid_is_inside_face_mask = DEFAULT_SID_MASK;
 
   /* Perform potential log output and sanity checks */
   delaunay_log("Post init or reset check");
@@ -555,12 +553,13 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
     return NULL;
   }
 
-  struct delaunay *d = malloc(sizeof(struct delaunay));
+  struct delaunay* d = malloc(sizeof(struct delaunay));
 
   d->active = 1;
 
   /* allocate memory for the vertex arrays */
-  d->vertex_added = (int*)swift_malloc("delaunay.vertex_added", vertex_size * sizeof(int));
+  d->vertex_added =
+      (int*)swift_malloc("delaunay.vertex_added", vertex_size * sizeof(int));
 
   d->vertices =
       (double*)swift_malloc("c.h.d.vertices", vertex_size * 2 * sizeof(double));
@@ -652,7 +651,7 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   d->ngb_index = -1;
   d->ngb_size = 0;
   d->ngb_offset = -1;
-  bzero(d->sid_is_inside_face, 27 * sizeof(int));
+  d->sid_is_inside_face_mask = 0;
 
   /* Free delaunay struct itself */
   free(d);
@@ -1351,8 +1350,10 @@ inline static int delaunay_add_vertex(struct delaunay* restrict d, int v,
 }
 
 inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
-                                             double x, double y, double z, int ngb_idx) {
+                                             double x, double y, double z,
+                                             int ngb_idx) {
   /* Vertex already added? */
+  v = v + d->vertex_start;
   if (d->vertex_added[v]) return;
 
   /* Update last triangle to be a triangle connected to the neighbouring
@@ -1362,12 +1363,12 @@ inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
     if (d->vertex_end - d->vertex_start <= ngb_idx)
       error("Invalid neighbour index passed to delaunay_add_new_vertex!");
 #endif
-    if (d->vertex_added[ngb_idx])
-      d->last_triangle = d->vertex_triangles[ngb_idx];
+    if (d->vertex_added[ngb_idx + d->vertex_start])
+      d->last_triangle = d->vertex_triangles[ngb_idx + d->vertex_start];
   }
 
   delaunay_init_vertex(d, v, x, y);
-  if (delaunay_add_vertex(d, v, x, y) != 0) {
+  if (delaunay_add_vertex(d, v, x, y) == -1) {
     error("Local vertices cannot be added twice!");
   }
   d->vertex_added[v] = 1;
@@ -1379,10 +1380,6 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
   if (d->active != 1) {
     error("Trying to add a vertex to an inactive Delaunay tessellation!");
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-//  assert(!c->split);
-#endif
 
   /* Update last triangle to be a triangle connected to the neighbouring
    * vertex. */
