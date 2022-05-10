@@ -60,13 +60,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
 
-  double dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
-  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
-  pi->mhd_data.divB -= faci * dBdr;
-  pj->mhd_data.divB -= facj * dBdr;
-
   double dA[3];
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
@@ -115,12 +108,6 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
 
-  double dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
-  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
-  pi->mhd_data.divB -= faci * dBdr;
-
   double dA[3];
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
@@ -165,6 +152,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   kernel_deval(ui, &wi, &wi_dx);
   kernel_deval(uj, &wj, &wj_dx);
 
+  const float hi_inv = 1.0f / hi;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float wi_dr = hid_inv * wi_dx;
+  const float hj_inv = 1.0f / hj;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+  const float wj_dr = hjd_inv * wj_dx;
+
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  const float faci = pj->mass * wi_dr * r_inv / pi->rho;
+  const float facj = pi->mass * wj_dr * r_inv / pj->rho;
+
+  double dB[3];
+  for (int i = 0; i < 3; ++i)
+    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
+  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
+  pi->mhd_data.divB -= faci * dBdr;
+  pj->mhd_data.divB -= facj * dBdr;
+
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
     pj->mhd_data.BSmooth[i] += pi->mass * wj * pi->mhd_data.BPred[i];
@@ -206,6 +211,19 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   const float ui = r / hi;
 
   kernel_deval(ui, &wi, &wi_dx);
+
+  const float hi_inv = 1.0f / hi;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float wi_dr = hid_inv * wi_dx;
+
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  const float faci = pj->mass * wi_dr * r_inv / pi->rho;
+
+  double dB[3];
+  for (int i = 0; i < 3; ++i)
+    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
+  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
+  pi->mhd_data.divB -= faci * dBdr;
 
   for (int i = 0; i < 3; i++)
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];

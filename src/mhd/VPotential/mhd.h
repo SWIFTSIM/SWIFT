@@ -128,8 +128,6 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *restrict p) {
 
-  p->mhd_data.divB = 0.f;
-
   p->mhd_data.divA = 0.f;
   // XXX todo, really is not the predicted variable will be the full step
   p->mhd_data.BPred[0] = 0.f;
@@ -158,10 +156,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   //    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
   const float a_inv2 = cosmo->a2_inv;
-  const float a_inv = 1.f / cosmo->a;
+  // const float a_inv = 1.f / cosmo->a;
   const float rho_inv = 1.f / p->rho;
-
-  p->mhd_data.divB *= h_inv_dim_plus_one * a_inv * rho_inv;
 
   p->mhd_data.divA *= h_inv_dim_plus_one * a_inv2 * rho_inv;
   for (int i = 0; i < 3; i++)
@@ -195,6 +191,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
     struct part *restrict p) {
 
+  p->mhd_data.divB = 0.f;
+
   p->mhd_data.BSmooth[0] = 0.f;
   p->mhd_data.BSmooth[1] = 0.f;
   p->mhd_data.BSmooth[2] = 0.f;
@@ -211,6 +209,11 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
     struct part *p) {
+
+  // const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
+  // const float a_inv2 = cosmo->a2_inv;
+  // const float rho_inv = 1.f / p->rho;
+  // COSMO FACTORS
 
   // Self Contribution
   for (int i = 0; i < 3; i++)
