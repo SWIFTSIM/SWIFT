@@ -22,7 +22,7 @@
  * @param c Cell containing the vertices
  */
 static inline void get_hilbert_keys(const struct cell *restrict c,
-                                    int *restrict keys) {
+                                    unsigned long *restrict keys) {
   /* TODO only calculate (and later sort) the keys for the active particles! */
   for (int i = 0; i < c->hydro.count; i++) {
     float dx_max = c->hydro.dx_max_part;
@@ -353,7 +353,7 @@ runner_doself_grid_construction_naive(struct cell *restrict c) {
   /* Loop over the parts in c. */
   for (int i = 0; i < count; i++) {
 #ifdef SHADOWSWIFT_HILBERT_ORDERING
-    int idx = c->grid.hilbert_r_sort[i];
+    int pid = c->grid.hilbert_r_sort[i];
 #else
     int pid = i;
 #endif
@@ -459,7 +459,7 @@ runner_doself_branch_grid_construction(struct runner *restrict r,
 
   /* Calculate hilbert keys + sort
    * TODO: Move this to the sorts and avoid doing it every timestep? */
-  int *hilbert_keys = (int *)malloc(count * sizeof(int));
+  unsigned long *hilbert_keys = (unsigned long *)malloc(count * sizeof(unsigned long));
   get_hilbert_keys(c, hilbert_keys);
 
   c->grid.hilbert_r_sort = (int *)malloc(count * sizeof(int));
