@@ -26,6 +26,7 @@
 #include "cell.h"
 
 /* Local headers. */
+#include "active.h"
 #include "engine.h"
 #include "hydro.h"
 #include "sink_properties.h"
@@ -353,6 +354,10 @@ struct sink *cell_add_sink(struct engine *e, struct cell *const c) {
 
     /* Update the sink->gpart links (shift by 1) */
     for (size_t i = 0; i < n_copy; ++i) {
+
+      /* Skip inhibited (swallowed) sink particles */
+      if (sink_is_inhibited(&c->sinks.parts[i + 1], e)) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->sinks.parts[i + 1].gpart == NULL) {
         error("Incorrectly linked sink!");
