@@ -1131,6 +1131,9 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 #endif
   }
 
+  /* Note: c->rt.ti_rt_min_step_size may be greater than
+   * c->super->rt.ti_rt_min_step_size. This is expected behaviour.
+   * We only update the cell's own time after it's been active. */
   c->rt.ti_rt_end_min += c->rt.ti_rt_min_step_size;
 
   if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);

@@ -750,6 +750,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
 
   /* Otherwise, pair interation */
   else {
+
     /* Should we even bother? */
     if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
     if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
@@ -1452,7 +1453,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
   ci->hydro.h_max_old = ci->hydro.h_max;
 
   const int ci_active = cell_is_rt_active(ci, e);
-  const int cj_active = ((cj != NULL) && cell_is_rt_active(ci, e));
+  const int cj_active = ((cj != NULL) && cell_is_rt_active(cj, e));
 
   if (cj != NULL) {
     cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
@@ -1484,6 +1485,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
 
   /* Otherwise, pair interation */
   else {
+
     /* Should we even bother? */
     if (!ci_active && !cj_active) return;
     if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
@@ -1522,7 +1524,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
       cell_activate_hydro_sorts(ci, sid, s);
       cell_activate_hydro_sorts(cj, sid, s);
     }
-  } /* Otherwise, pair interation */
+  }
 }
 
 /**

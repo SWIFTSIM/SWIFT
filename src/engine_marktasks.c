@@ -347,23 +347,24 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate RT tasks */
-      else if (t_subtype == task_subtype_rt_gradient ||
-               t_subtype == task_subtype_rt_transport) {
-        if (ci_active_rt) scheduler_activate(s, t);
-      }
-
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_rt_gradient) {
-        cell_activate_drift_part(ci, s);
-        if (ci_active_rt && !ci_active_hydro)
-          message("CELL RT ACTIVE BUT NOT HYDRO ACTIVE???");
+        if (ci_active_rt) {
+          scheduler_activate(s, t);
+          cell_activate_drift_part(ci, s);
+        }
       }
 
       else if (t_type == task_type_sub_self &&
                t_subtype == task_subtype_rt_gradient) {
-        cell_activate_subcell_hydro_tasks(ci, NULL, s, /*sub_cycle=*/0);
-        if (ci_active_rt && !ci_active_hydro)
-          message("CELL RT ACTIVE BUT NOT HYDRO ACTIVE???");
+        if (ci_active_rt) {
+          scheduler_activate(s, t);
+          cell_activate_subcell_rt_tasks(ci, NULL, s, /*sub_cycle=*/0);
+        }
+      }
+
+      else if (t_subtype == task_subtype_rt_transport) {
+        if (ci_active_rt) scheduler_activate(s, t);
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -786,9 +787,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         if ((ci_nodeID == nodeID && ci_active_rt) ||
             (cj_nodeID == nodeID && cj_active_rt)) {
 
-          /* The gradient and transport task subtypes mirror the hydro tasks.
-           * Therefore all the (subcell) sorts and drifts should already have
-           * been activated properly in the hydro part of the activation. */
           scheduler_activate(s, t);
 
           /* Set the correct sorting flags */
@@ -812,7 +810,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* Store current values of dx_max and h_max. */
           else if (t_type == task_type_sub_pair) {
-            cell_activate_subcell_rt_tasks(t->ci, t->cj, s, /*sub_cycle=*/0);
+            cell_activate_subcell_rt_tasks(ci, cj, s, /*sub_cycle=*/0);
           }
         }
       }
