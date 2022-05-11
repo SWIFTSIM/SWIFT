@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -218,9 +218,6 @@ void hydro_props_print(const struct hydro_props *p) {
 
   /* Print equation of state first */
   eos_print(&eos);
-
-  /* Then the pressure floor */
-  pressure_floor_print(&pressure_floor_props);
 
   /* Now SPH */
   message("Hydrodynamic scheme: %s in %dD.", SPH_IMPLEMENTATION,

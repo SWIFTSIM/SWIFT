@@ -47,10 +47,6 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  // const integertime_t ti_current = e->ti_current;
-  // const struct cosmology *cosmo = e->cosmology;
-  // const int with_cosmology = e->policy & engine_policy_cosmology;
-  // const int si_is_local = 1; /* SELF tasks are always local */
 
   /* Anything to do here? */
   if (c->sinks.count == 0) return;
@@ -60,7 +56,6 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
   const int count = c->hydro.count;
   struct sink *restrict sinks = c->sinks.parts;
   struct part *restrict parts = c->hydro.parts;
-  // struct xpart *restrict xparts = c->hydro.xparts;   used by iact
 
   /* Do we actually have any gas neighbours? */
   if (c->hydro.count != 0) {
@@ -107,12 +102,6 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
 
         if (r2 < ri2) {
           runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj);
-
-          // if (si_is_local) {      /* SELF tasks are always local */
-          // runner_iact_nonsym_bh_gas_repos(r2, dx, hi, pj->h, bi, pj, xpj,
-          // with_cosmology, cosmo,e->gravity_properties,
-          // e->black_holes_properties, e->entropy_floor, ti_current, e->time);
-          //}
         }
       } /* loop over the parts in ci. */
     }   /* loop over the bparts in ci. */
@@ -167,11 +156,6 @@ void runner_doself_sinks_swallow(struct runner *r, struct cell *c, int timer) {
 
       if (r2 < ri2 || r2 < rj2) {
         runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj);
-
-        // if (si_is_local) {
-        //  runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj, cosmo,
-        //  e->gravity_properties, e->black_holes_properties, ti_current);
-        //}
       }
     } /* loop over the sinks in ci. */
   }   /* loop over the sinks in ci. */
@@ -190,19 +174,7 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
                                                struct cell *restrict ci,
                                                struct cell *restrict cj) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-  if (ci->nodeID != engine_rank) error("Should be run on a different node");
-#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
-  if (cj->nodeID != engine_rank) error("Should be run on a different node");
-#endif
-#endif
-
   const struct engine *e = r->e;
-  // const integertime_t ti_current = e->ti_current;
-  // const struct cosmology *cosmo = e->cosmology;
-  // const int with_cosmology = e->policy & engine_policy_cosmology;
-  // const int si_is_local = ci->nodeID == e->nodeID;
 
   /* Anything to do here? */
   if (ci->sinks.count == 0) return;
@@ -212,7 +184,6 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
   const int count_j = cj->hydro.count;
   struct sink *restrict sinks_i = ci->sinks.parts;
   struct part *restrict parts_j = cj->hydro.parts;
-  // struct xpart *restrict xparts_j = cj->hydro.xparts;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -268,12 +239,6 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 
         if (r2 < ri2) {
           runner_iact_nonsym_sinks_gas_swallow(r2, dx, ri, hj, si, pj);
-          // if (si_is_local) {
-          //    runner_iact_nonsym_bh_gas_repos(r2, dx, hi, hj, bi, pj, xpj,
-          //    with_cosmology, cosmo, e->gravity_properties,
-          //    e->black_holes_properties, e->entropy_floor, ti_current,
-          //    e->time);
-          //}
         }
       } /* loop over the parts in cj. */
     }   /* loop over the sinks in ci. */
@@ -328,11 +293,6 @@ void runner_do_nonsym_pair_sinks_naive_swallow(struct runner *r,
 
       if (r2 < ri2 || r2 < rj2) {
         runner_iact_nonsym_sinks_sink_swallow(r2, dx, ri, rj, si, sj);
-
-        // if (si_is_local) {
-        //  runner_iact_nonsym_bh_bh_repos(r2, dx, hi, hj, bi, bj,
-        //  cosmo,e->gravity_properties,e->black_holes_properties, ti_current);
-        //}
       }
     } /* loop over the sinks in cj. */
   }   /* loop over the sinks in ci. */
@@ -576,8 +536,7 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
   error("MPI is not implemented yet for sink particles.");
 #endif
 
-      struct part *
-      parts = c->hydro.parts;
+  struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
 
   /* Early abort?
@@ -681,9 +640,9 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
         error("MPI is not implemented yet for sink particles.");
 #endif
 
-            /* If we have a local particle, we must have found the sink in one
-             * of our list of sinks. */
-            if (c->nodeID == e->nodeID && !found) {
+        /* If we have a local particle, we must have found the sink in one
+         * of our list of sinks. */
+        if (c->nodeID == e->nodeID && !found) {
           error("Gas particle %lld could not find sink %lld to be swallowed",
                 p->id, swallow_id);
         }
@@ -756,9 +715,6 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
-  // const int with_cosmology = (e->policy & engine_policy_cosmology);
-  // const struct black_holes_props *props = e->black_holes_properties;
-  // const int use_nibbling = props->use_nibbling;
 
   struct sink *sinks = s->sinks;
   const size_t nr_sink = s->nr_sinks;
@@ -766,8 +722,7 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
   error("MPI is not implemented yet for sink particles.");
 #endif
 
-      struct sink *
-      cell_sinks = c->sinks.parts;
+  struct sink *cell_sinks = c->sinks.parts;
 
   /* Early abort?
    * (We only want cells for which we drifted the sink as these are
@@ -876,9 +831,9 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
         error("MPI is not implemented yet for sink particles.");
 #endif
 
-            /* If we have a local particle, we must have found the sink in one
-             * of our list of sinks. */
-            if (c->nodeID == e->nodeID && !found) {
+        /* If we have a local particle, we must have found the sink in one
+         * of our list of sinks. */
+        if (c->nodeID == e->nodeID && !found) {
           error("sink particle %lld could not find sink %lld to be swallowed",
                 cell_sp->id, swallow_id);
         }

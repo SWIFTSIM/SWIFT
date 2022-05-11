@@ -10,7 +10,7 @@ fi
 if [ ! -e coolingBox.hdf5 ]
 then
     echo "Generating initial conditions for the cooling box example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Get the Grackle cooling table
@@ -24,4 +24,4 @@ fi
 ../../swift --hydro --cooling --threads=4 -n 1000 coolingBox.yml
 
 # Check energy conservation and cooling rate
-python plotEnergy.py
+python3 plotEnergy.py

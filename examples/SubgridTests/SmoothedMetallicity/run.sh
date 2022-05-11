@@ -9,11 +9,11 @@ fi
 if [ ! -e smoothed_metallicity.hdf5 ]
 then
     echo "Generating initial conditions for the SmoothedMetallicity example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
 ../../swift --steps=1 --hydro --threads=4 smoothed_metallicity.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plotSolution.py 1
+python3 plotSolution.py 1

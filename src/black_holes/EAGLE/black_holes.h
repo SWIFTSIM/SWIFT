@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Coypright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -140,8 +140,6 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   /* Set the initial targetted heating temperature, used for the
    * BH time step determination */
   bp->AGN_delta_T = props->AGN_delta_T_desired;
-
-  black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
 /**
@@ -938,7 +936,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
          * ray directions in the isotropic case or the first N closest particles
          * in the other modes. */
         for (int i = 0; i < bp->num_ngbs; i++) {
-          const double rand = random_unit_interval_part_ID_and_ray_idx(
+          const double rand = random_unit_interval_part_ID_and_index(
               bp->id, i, ti_begin, random_number_BH_feedback);
 
           /* Increase the counter if we are lucky */

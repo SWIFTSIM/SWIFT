@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -40,7 +40,7 @@ struct engine;
  * @brief The different task types.
  *
  * Be sure to update the taskID_names array in tasks.c if you modify this list!
- * Also update the python task plotting scripts!
+ * Also update the python3 task plotting scripts!
  */
 enum task_types {
   task_type_none = 0,

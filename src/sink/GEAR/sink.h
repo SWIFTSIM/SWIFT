@@ -423,12 +423,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->number_of_direct_sink_swallows++;
 }
 
-
-                          
-
 /**
  * @brief Should the sink spawn a star particle?
- *
  *
  * @param e The #engine
  * @param sink the sink particle.
@@ -455,7 +451,6 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
 /**
  * @brief Copy the properties of the sink particle towards the new star.
  * This function also needs to update the sink particle.
- *
  *
  * @param e The #engine
  * @param sink the sink particle.

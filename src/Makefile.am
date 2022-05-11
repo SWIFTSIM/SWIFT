@@ -1,6 +1,6 @@
 # This file is part of SWIFT.
 # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
-#                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+#                    Matthieu Schaller (schaller@strw.leidenuniv.nl).
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,6 +63,7 @@ include_HEADERS += black_holes.h black_holes_io.h black_holes_properties.h black
 include_HEADERS += feedback.h feedback_struct.h feedback_properties.h 
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
+include_HEADERS += sink.h sink_struct.h sink_io.h sink_properties.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += chemistry_csds.h star_formation_csds.h
 include_HEADERS += mesh_gravity.h mesh_gravity_mpi.h mesh_gravity_patch.h mesh_gravity_sort.h row_major_id.h
@@ -153,7 +154,7 @@ AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c
 AM_SOURCES += chemistry.c cosmology.c velociraptor_interface.c 
 AM_SOURCES += output_list.c velociraptor_dummy.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
 AM_SOURCES += fof.c fof_catalogue_io.c
-AM_SOURCES += hashmap.c pressure_floor.c
+AM_SOURCES += hashmap.c
 AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c
 AM_SOURCES += runner_neutrino.c
 AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c 
@@ -415,10 +416,9 @@ nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor.h pressure_floor/non
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h 
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h 
 nobase_noinst_HEADERS += sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h sink/Default/sink_properties.h 
-nobase_noinst_HEADERS += sink/Default/sink_iact.h
+nobase_noinst_HEADERS += sink/Default/sink_iact.h sink/Default/sink_struct.h
 nobase_noinst_HEADERS += sink/GEAR/sink.h sink/GEAR/sink_io.h sink/GEAR/sink_part.h sink/GEAR/sink_properties.h 
-nobase_noinst_HEADERS += sink/GEAR/sink_iact.h
-nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h
+nobase_noinst_HEADERS += sink/GEAR/sink_iact.h sink/GEAR/sink_struct.h
 nobase_noinst_HEADERS += neutrino.h neutrino_properties.h neutrino_io.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino.h neutrino/Default/relativity.h neutrino/Default/fermi_dirac.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino_properties.h neutrino/Default/neutrino_io.h

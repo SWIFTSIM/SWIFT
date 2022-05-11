@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -2773,15 +2773,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_star_density);
         }
       }
-      if (with_sink) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_sink_swallow);
-
-        if (ci->hydro.super != cj->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_sink_swallow);
-        }
-      }
       if (with_rt) {
         scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_rt_gradient);
 
@@ -3568,15 +3559,6 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (ci->hydro.super != cj->hydro.super) {
           scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
                               t_star_density);
-        }
-      }
-
-      if (with_sink) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
-                            t_sink_swallow);
-        if (ci->hydro.super != cj->hydro.super) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
-                              t_sink_swallow);
         }
       }
 

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020  Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2020  Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,6 +21,9 @@
 #include "../config.h"
 
 #ifdef HAVE_HDF5
+
+/* Some standard headers. */
+#include <libgen.h>
 
 /* Local headers */
 #include "engine.h"

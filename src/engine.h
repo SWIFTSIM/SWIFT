@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -298,8 +298,8 @@ struct engine {
   long long count_inhibited_bparts;
 #endif
 
-  /* Maximal ID of the parts (used for the generation of new IDs when splitting)
-   */
+  /* Maximal ID of the parts, *excluding* background particles
+   * (used for the generation of new IDs when splitting) */
   long long max_parts_id;
 
   /* Total mass in the simulation */
