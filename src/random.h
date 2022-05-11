@@ -45,9 +45,6 @@
  * 126247697
  * 193877777
  * 303595777
- * 384160001
- * 406586897
- * 562448657
  */
 enum random_number_type {
   random_number_star_formation = 0LL,
@@ -57,6 +54,8 @@ enum random_number_type {
   random_number_stellar_feedback_3 = 9762399103LL,
   random_number_isotropic_SNII_feedback_ray_theta = 3298327511LL,
   random_number_isotropic_SNII_feedback_ray_phi = 6311114273LL,
+  random_number_isotropic_SNIa_feedback_ray_theta = 11134675471LL,
+  random_number_isotropic_SNIa_feedback_ray_phi = 5165786851LL,
   random_number_isotropic_AGN_feedback_ray_theta = 8899891613LL,
   random_number_isotropic_AGN_feedback_ray_phi = 10594523341LL,
   random_number_stellar_enrichment = 2936881973LL,
@@ -64,6 +63,14 @@ enum random_number_type {
   random_number_BH_swallow = 4947009007LL,
   random_number_BH_reposition = 59969537LL,
   random_number_snapshot_sampling = 6561001LL,
+  random_number_stellar_winds = 5947309451LL,
+  random_number_HII_regions = 8134165677LL,
+  random_number_enrichment_1 = 7245742351LL,
+  random_number_enrichment_2 = 1156895281LL,
+  random_number_enrichment_3 = 2189989727LL,
+  random_number_mosaic_powerlaw = 406586897LL,
+  random_number_mosaic_schechter = 562448657LL,
+  random_number_mosaic_poisson = 384160001LL,
 };
 
 #ifndef __APPLE__
@@ -204,7 +211,7 @@ INLINE static double random_unit_interval(int64_t id,
  * @return a random number in the interval [0, 1.[.
  */
 INLINE static double random_unit_interval_two_IDs(
-    int64_t id_star, int64_t id_gas, const integertime_t ti_current,
+    const int64_t id_star, const int64_t id_gas, const integertime_t ti_current,
     const enum random_number_type type) {
 
   /* We need to combine the gas and star IDs such that we do not get correlation
@@ -220,27 +227,68 @@ INLINE static double random_unit_interval_two_IDs(
 /**
  * @brief Returns a pseudo-random number in the range [0, 1[.
  *
- * We generate numbers that are always reproducible for a given stellar particle
- * ID, ray index and simulation time (on the integer time-line). If more than
- * one number per time-step per particle is needed, additional randomness can be
- * obtained by using the type argument.
+ * We generate numbers that are always reproducible for a given particle
+ * ID, integer index and simulation time (on the integer time-line). If more
+ * than one number per time-step per particle is needed, additional randomness
+ * can be obtained by using the type argument.
  *
- * @param id_star The ID of the (stellar) particle for which to generate a
- * number.
- * @param ray_idx The index of the ray used in the isotropic feedback
- * @param ti_current The time (on the time-line) for which to generate a number.
- * @param type The #random_number_type to generate.
- * @return a random number in the interval [0, 1.[.
+ * @param id the particle ID.
+ * @param index A integer added to the randomness.
+ * @param ti_current The current integer time.
+ * @param type The type of random number (aka.  #random_number_type seed).
  */
-INLINE static double random_unit_interval_part_ID_and_ray_idx(
-    int64_t id_star, const int ray_idx, const integertime_t ti_current,
+INLINE static double random_unit_interval_part_ID_and_index(
+    const int64_t id, const int index, const integertime_t ti_current,
     const enum random_number_type type) {
 
   /* For better mixing, we apply a non-linear transformation y=1+x^3 */
-  const long long ray_idx_3 = ray_idx * ray_idx * ray_idx;
-  const long long ray_idx_3_one = ray_idx_3 + 1LL;
+  const long long index_3 = index * index * index;
+  const long long index_3_one = index_3 + 1LL;
 
-  return random_unit_interval_two_IDs(id_star, ray_idx_3_one, ti_current, type);
+  return random_unit_interval_two_IDs(id, index_3_one, ti_current, type);
+}
+
+/**
+ * @brief Return a random integer following a Poisson distribution.
+ *
+ * Uses the Knuth-Junhao method to avoid underflow when lambda is large.
+ *
+ * @param id The ID of the particle for which to generate a number.
+ * @param lambda The parameter of the Poisson distribution.
+ * @param ti_current The time (on the time-line) for which to generate a number.
+ * @param type The #random_number_type to generate.
+ */
+INLINE static int random_poisson(const int64_t id, const double lambda,
+                                 const integertime_t ti_current,
+                                 const enum random_number_type type) {
+
+  const double step = 500.;
+  const double exp_step = exp(step);
+
+  double lambda_left = lambda;
+  int k = 0;
+  double p = 1.;
+
+  do {
+
+    k++;
+    const double r =
+        random_unit_interval_part_ID_and_index(id, k, ti_current, type);
+    p *= r;
+
+    while (p < 1. && lambda_left > 0.) {
+
+      if (lambda_left > step) {
+        p *= exp_step;
+        lambda_left -= step;
+      } else {
+        p *= exp(lambda_left);
+        lambda_left = 0.;
+      }
+    };
+  } while (p > 1.);
+
+  return k - 1;
 }
 
 #endif /* SWIFT_RANDOM_H */

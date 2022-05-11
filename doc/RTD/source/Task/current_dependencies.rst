@@ -54,3 +54,17 @@ As the hydrodynamics are described in :ref:`hydro`, we are only showing the grav
     The first rectangle groups the tasks that compute the smoothing length of the stars and
     the second one the tasks that deposit the energy into the surrounding gas.
     This was done with SWIFT v0.9.0.
+
+
+.. figure:: sink.png
+    :width: 400px
+    :align: center
+    :figclass: align-center
+    :alt: Task dependencies for the sink scheme.
+
+    This figure shows the task dependencies for the sink scheme.
+    The first rectangle groups the tasks that determine if sink particles will swallow other
+    sink particles or gas particles.
+    In the second one, the gas particles tagged as "to be swallowed" are effectively swallowed.
+    In the third one, the sink particles tagged as "to be swallowed" are effectively swallowed.
+    This was done with SWIFT v0.9.0.

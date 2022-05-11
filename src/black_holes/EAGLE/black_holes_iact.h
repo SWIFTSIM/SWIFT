@@ -183,12 +183,12 @@ runner_iact_nonsym_bh_gas_density(
         to randomly select the direction of the ith ray */
 
         /* Random number in [0, 1[ */
-        const double rand_theta = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_theta = random_unit_interval_part_ID_and_index(
             bi->id, i, ti_current,
             random_number_isotropic_AGN_feedback_ray_theta);
 
         /* Random number in [0, 1[ */
-        const double rand_phi = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_phi = random_unit_interval_part_ID_and_index(
             bi->id, i, ti_current,
             random_number_isotropic_AGN_feedback_ray_phi);
 

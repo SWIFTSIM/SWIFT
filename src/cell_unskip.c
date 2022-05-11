@@ -2554,7 +2554,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
 
   /* Un-skip the star formation tasks involved with this cell. */
-  for (struct link *l = c->sinks.compute_formation; l != NULL; l = l->next) {
+  for (struct link *l = c->sinks.swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -2658,7 +2658,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
-  for (struct link *l = c->sinks.merger; l != NULL; l = l->next) {
+  for (struct link *l = c->sinks.do_sink_swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -2683,7 +2683,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
     }
   }
 
-  for (struct link *l = c->sinks.accretion; l != NULL; l = l->next) {
+  for (struct link *l = c->sinks.do_gas_swallow; l != NULL; l = l->next) {
     struct task *t = l->t;
     struct cell *ci = t->ci;
     struct cell *cj = t->cj;
@@ -2722,7 +2722,10 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
       (cell_is_active_sinks(c, e) || cell_is_active_hydro(c, e))) {
 
     if (c->sinks.sink_in != NULL) scheduler_activate(s, c->sinks.sink_in);
-    if (c->sinks.ghost != NULL) scheduler_activate(s, c->sinks.ghost);
+    if (c->sinks.sink_ghost1 != NULL)
+      scheduler_activate(s, c->sinks.sink_ghost1);
+    if (c->sinks.sink_ghost2 != NULL)
+      scheduler_activate(s, c->sinks.sink_ghost2);
     if (c->sinks.sink_out != NULL) scheduler_activate(s, c->sinks.sink_out);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);

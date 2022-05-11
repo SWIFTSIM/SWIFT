@@ -37,6 +37,7 @@
 #include "fof.h"
 #include "mpiuse.h"
 #include "part.h"
+#include "pressure_floor.h"
 #include "proxy.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
@@ -491,6 +492,7 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {
       if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+      if (e->nodeID == 0) pressure_floor_print(e->pressure_floor_props);
       if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
     }
 
