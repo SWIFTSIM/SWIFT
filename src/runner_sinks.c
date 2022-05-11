@@ -663,7 +663,7 @@ void runner_do_sinks_gas_swallow_self(struct runner *r, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
-  if (!cell_is_active_sinks(c, r->e))
+  if (!cell_is_active_sinks(c, r->e) && !cell_is_active_hydro(c, r->e))
     error("Running self task on inactive cell");
 #endif
 
@@ -855,7 +855,7 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != r->e->nodeID) error("Running self task on foreign node");
-  if (!cell_is_active_sinks(c, r->e))
+  if (!cell_is_active_sinks(c, r->e) && !cell_is_active_hydro(c, r->e))
     error("Running self task on inactive cell");
 #endif
 
