@@ -1681,6 +1681,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     }
     if (c->top->hydro.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
+      cell_activate_super_sink_drifts(c->top, s);
     }
   }
 

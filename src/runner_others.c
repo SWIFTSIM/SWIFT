@@ -558,7 +558,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
-    error("Running star formation task on a foreign node!");
+    error("Running sink formation task on a foreign node!");
 #endif
 
   /* Anything to do here? */
