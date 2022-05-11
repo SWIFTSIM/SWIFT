@@ -33,8 +33,9 @@ INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
   float b2 = parts->mhd_data.BPred[0] * parts->mhd_data.BPred[0] +
              parts->mhd_data.BPred[1] * parts->mhd_data.BPred[1] +
              parts->mhd_data.BPred[2] * parts->mhd_data.BPred[2];
-  s->E_mag += MU0_1 * 0.5 * b2;
+  s->E_mag += 0.5 * b2;
   // DivB error, with a small threshold for small Bfields
+  // WARNING MU0 internal units
   s->eDivB += fabs(parts->mhd_data.divB * parts->h / sqrt(b2 + 1.e-5));
   s->H_cross += parts->v[0] * parts->mhd_data.BPred[0] +
                 parts->v[1] * parts->mhd_data.BPred[1] +
@@ -80,10 +81,10 @@ INLINE static int mhd_write_particles(const struct part* parts,
       io_make_output_field("divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts,
                            mhd_data.divB, "co-moving DivB of the particles");
 
-  //  list[2] = io_make_output_field("TEST", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f,
-  //                                 parts, mhd_data.Test, "TEST FIELD");
+    list[2] = io_make_output_field("Phi", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
+                                   parts, mhd_data.phi, "Dedner scalar field");
 
-  return 2;
+  return 3;
 }
 
 /**
@@ -94,7 +95,7 @@ INLINE static void mhd_write_flavour(hid_t h_grpsph) {
   /* write XXX atributes fo the implementation */
   /* really detail here */
   io_write_attribute_s(h_grpsph, "Direct Induction + instability subst ",
-                       "Dolag & Stasyszyn (2009), Dendner cleaning.");
+                       "Dolag & Stasyszyn (2009), Dedner cleaning.");
 }
 
 #endif /* SWIFT_DI_MHD_IO_H */

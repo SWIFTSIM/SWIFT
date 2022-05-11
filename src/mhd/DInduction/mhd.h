@@ -50,8 +50,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float b2_j = (pj->mhd_data.BPred[0] * pj->mhd_data.BPred[0] +
                       pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
                       pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
-  const float vcsa2_i = ci * ci + MU0_1 * b2_i / pi->rho;
-  const float vcsa2_j = cj * cj + MU0_1 * b2_j / pj->rho;
+  const float vcsa2_i = ci * ci + b2_i / pi->rho;
+  const float vcsa2_j = cj * cj + b2_j / pj->rho;
   float Bpro2_i =
       (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
        pi->mhd_data.BPred[2] * dx[2]) *
@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   Bpro2_i *= Bpro2_i;
   float mag_speed_i = sqrtf(
       0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
-                                  4.f * ci * ci * Bpro2_i * MU0_1 / pi->rho),
+                                  4.f * ci * ci * Bpro2_i / pi->rho),
                                  0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   Bpro2_j *= Bpro2_j;
   float mag_speed_j = sqrtf(
       0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
-                                  4.f * cj * cj * Bpro2_j * MU0_1 / pj->rho),
+                                  4.f * cj * cj * Bpro2_j / pj->rho),
                                  0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
@@ -105,7 +105,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   return p->mhd_data.divB != 0.f
              ? cosmo->a * hydro_properties->CFL_condition *
-                   sqrtf(p->rho / (MU0_1 * p->mhd_data.divB * p->mhd_data.divB))
+                   sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB))
              : FLT_MAX;
 }
 
@@ -229,12 +229,12 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
-  float const DBDT_True = b2 * sqrt(1.f / p->rho * MU0_1 / 2.f) / p->h;
+  float const DBDT_True = b2 * sqrt(1.f / p->rho / 2.f) / p->h;
   /* Re normalize the correction in the Induction equation */
   p->mhd_data.Q1 = DBDT_Corr / DBDT_True > 0.5f ? 0.5f / DBDT_Corr : 1.0f;
 
   /* Estimation of the tensile instability due divB */
-  p->mhd_data.Q0 = pressure / (b2 / 2.0f * MU0_1);  // Plasma Beta
+  p->mhd_data.Q0 = pressure / (b2 / 2.0f );  // Plasma Beta
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
@@ -403,7 +403,11 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *restrict p, struct xpart *restrict xp) {
+    struct part *restrict p, struct xpart *restrict xp, const float mu0) {
+
+  p->mhd_data.BPred[0] /= mu0;
+  p->mhd_data.BPred[1] /= mu0;
+  p->mhd_data.BPred[2] /= mu0;
 
   p->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
   p->mhd_data.Bfld[1] = p->mhd_data.BPred[1];

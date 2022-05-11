@@ -18,11 +18,12 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_NONE_MHD_PARAMETERS_H
-#define SWIFT_NONE_MHD_PARAMETERS_H
+#ifndef SWIFT_DI_MHD_PARAMETERS_H
+#define SWIFT_DI_MHD_PARAMETERS_H
 
 /* Configuration file */
 #include "config.h"
+#include <math.h>
 
 /* Global headers */
 #if defined(HAVE_HDF5)
@@ -42,6 +43,8 @@
  *        mhd schemes as defaults for run-time parameters
  *        as well as a number of compile-time parameters.
  */
+
+#define mhd_propos_default_mu0 4.f*M_PI
 
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
@@ -67,6 +70,7 @@ struct mhd_global_data {
   float hyp_dedner;
   float par_dedner;
   float mhd_eta;
+  float mu0;
 };
 
 /* Functions for reading from parameter file */
@@ -99,6 +103,8 @@ static INLINE void mhd_init(struct swift_params* params,
                                                mhd_propos_dedner_hyperbolic);
   mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
                                                mhd_propos_dedner_parabolic);
+  mhd->mu0 = parser_get_opt_param_float(params, "MHD:mu0",
+                                               mhd_propos_default_mu0);
   //  mhd->mhd_eta = parser_get_opt_param_float(
   //      params, "MHD:diffusion_eta", mhd_propos_default_difussion_eta);
 }
@@ -122,6 +128,7 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
+  message("MU0: %.3f", mhd->mu0);
   message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
           mhd->par_dedner);
   message("NOT IMPLEMENTED! MHD global dissipation Eta: %.3f", mhd->mhd_eta);
@@ -142,4 +149,4 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 //}
 #endif
 
-#endif /* SWIFT_NONE_MHD_PARAMETERS_H */
+#endif /* SWIFT_DI_MHD_PARAMETERS_H */
