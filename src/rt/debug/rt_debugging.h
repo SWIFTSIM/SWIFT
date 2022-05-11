@@ -248,12 +248,6 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
   struct space *s = e->s;
   if (!(e->policy & engine_policy_rt)) return;
 
-#ifdef WITH_MPI
-  /* Since we aren't sending data back, none of these checks will
-   * pass a run over MPI. */
-  return;
-#endif
-
   const ticks tic = getticks();
 
   /* reset values before the particle loops.
@@ -275,6 +269,13 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
     threadpool_map(&e->threadpool, rt_debugging_end_of_step_stars_mapper,
                    s->sparts, s->nr_sparts, sizeof(struct spart),
                    threadpool_auto_chunk_size, /*extra_data=*/e);
+
+#ifdef WITH_MPI
+  /* Since we aren't sending data back, none of these checks will
+   * pass a run over MPI. Make sure you run the threadpool functions
+   * first though so certain variables can get reset properly. */
+  return;
+#endif
 
   /* Have we accidentally invented or deleted some radiation somewhere? */
 
@@ -317,8 +318,8 @@ __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
 
   /* Have we been drifted? */
   if (p->rt_data.debug_drifted != 1 && loc != 1)
-    /* The only place where we don't need to be kicked first is the
-     * ghost1 (finalise injection) step, so skip the test there. */
+    /* The only place where we don't need to be kicked first is the */
+    /* ghost1 (finalise injection) step, so skip the test there. */
     error("called %s on particle %lld with wrong drift count=%d", function_name,
           p->id, p->rt_data.debug_drifted);
 
