@@ -1539,6 +1539,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             (c->top->hydro.count > 0 || c->top->sinks.count > 0)) {
           scheduler_addunlock(s, c->hydro.super->sinks.sink_out,
                               c->top->hydro.star_formation_sink);
+          scheduler_addunlock(s, c->hydro.super->sinks.sink_in,
+			      c->top->hydro.sink_formation);
         }
       }
 
