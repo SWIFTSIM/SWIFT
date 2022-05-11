@@ -226,7 +226,7 @@ struct io_props {
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_input_field_(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum DATA_IMPORTANCE importance, enum unit_conversion_factor units,
     char* field, size_t partSize, const float default_value) {
   struct io_props r;
@@ -273,9 +273,9 @@ INLINE static struct io_props io_make_input_field_(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, char* field,
-    size_t partSize, const char description[DESCRIPTION_BUFFER_SIZE]) {
+    size_t partSize, const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -324,11 +324,11 @@ INLINE static struct io_props io_make_output_field_(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_INT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
     conversion_func_part_int functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -370,11 +370,11 @@ INLINE static struct io_props io_make_output_field_convert_part_INT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
     conversion_func_part_float functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -416,11 +416,11 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
     conversion_func_part_double functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -462,11 +462,11 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
     const struct part* parts, const struct xpart* xparts,
     conversion_func_part_long_long functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -516,10 +516,10 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_INT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
     const struct gpart* gparts, conversion_func_gpart_int functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -559,10 +559,10 @@ INLINE static struct io_props io_make_output_field_convert_gpart_INT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
     const struct gpart* gparts, conversion_func_gpart_float functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -602,10 +602,10 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
     const struct gpart* gparts, conversion_func_gpart_double functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -645,10 +645,10 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
     const struct gpart* gparts, conversion_func_gpart_long_long functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -697,10 +697,10 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_spart_INT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
     const struct spart* sparts, conversion_func_spart_int functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -740,10 +740,10 @@ INLINE static struct io_props io_make_output_field_convert_spart_INT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
     const struct spart* sparts, conversion_func_spart_float functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -783,10 +783,10 @@ INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
     const struct spart* sparts, conversion_func_spart_double functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -826,10 +826,10 @@ INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
     const struct spart* sparts, conversion_func_spart_long_long functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -878,10 +878,10 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_bpart_INT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
     const struct bpart* bparts, conversion_func_bpart_int functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -921,10 +921,10 @@ INLINE static struct io_props io_make_output_field_convert_bpart_INT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
     const struct bpart* bparts, conversion_func_bpart_float functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -964,10 +964,10 @@ INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
     const struct bpart* bparts, conversion_func_bpart_double functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -1007,10 +1007,10 @@ INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
     const struct bpart* bparts, conversion_func_bpart_long_long functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -1059,10 +1059,10 @@ INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_sink_INT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
     const struct sink* sinks, conversion_func_sink_int functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -1102,10 +1102,10 @@ INLINE static struct io_props io_make_output_field_convert_sink_INT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_sink_FLOAT(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
     const struct sink* sinks, conversion_func_sink_float functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -1145,10 +1145,10 @@ INLINE static struct io_props io_make_output_field_convert_sink_FLOAT(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_sink_DOUBLE(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
     const struct sink* sinks, conversion_func_sink_double functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -1188,10 +1188,10 @@ INLINE static struct io_props io_make_output_field_convert_sink_DOUBLE(
  * Do not call this function directly. Use the macro defined above.
  */
 INLINE static struct io_props io_make_output_field_convert_sink_LONGLONG(
-    const char name[FIELD_BUFFER_SIZE], enum IO_DATA_TYPE type, int dimension,
+    const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
     const struct sink* sinks, conversion_func_sink_long_long functionPtr,
-    const char description[DESCRIPTION_BUFFER_SIZE]) {
+    const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
