@@ -81,11 +81,10 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
-    const struct part *restrict p) {
-  return (-p->mhd_data.divB * p->viscosity.v_sig * p->viscosity.v_sig -
-          2.0f * p->viscosity.v_sig * p->mhd_data.phi /
-              p->h  //(0.5 *2.0) gadget
-          - 0.5f * p->mhd_data.phi * p->viscosity.div_v);
+    const struct part *restrict p, const float hyp, const float par) {
+  return (-hyp * p->mhd_data.divB * p->viscosity.v_sig * p->viscosity.v_sig -
+          par * p->viscosity.v_sig * p->mhd_data.phi / p->h -
+          0.5f * p->mhd_data.phi * p->viscosity.div_v);
 }
 
 /**
@@ -313,8 +312,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.BPred[0] += p->mhd_data.dBdt[0] * dt_therm;
   p->mhd_data.BPred[1] += p->mhd_data.dBdt[1] * dt_therm;
   p->mhd_data.BPred[2] += p->mhd_data.dBdt[2] * dt_therm;
-
-  p->mhd_data.phi += hydro_get_dphi_dt(p) * dt_therm;
+  const float hyp = hydro_props->mhd.hyp_dedner;
+  const float par = hydro_props->mhd.par_dedner;
+  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par) * dt_therm;
 }
 
 /**
@@ -364,7 +364,9 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   p->mhd_data.Bfld[1] += p->mhd_data.dBdt[1] * dt_therm;
   p->mhd_data.Bfld[2] += p->mhd_data.dBdt[2] * dt_therm;
 
-  xp->mhd_data.phi += hydro_get_dphi_dt(p) * dt_therm;
+  const float hyp = hydro_props->mhd.hyp_dedner;
+  const float par = hydro_props->mhd.par_dedner;
+  xp->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par) * dt_therm;
 }
 
 /**
