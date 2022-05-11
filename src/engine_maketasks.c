@@ -1703,10 +1703,13 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
   /* Recurse until super level is reached. */
   else {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->grid.super != NULL)
-      error("Somehow ended up below grid super level!");
-    if (!c->grid.split)
-      error("Cell is above grid super level, but is not split!");
+    if (c->nodeID == e->nodeID) {
+      if (c->grid.super != NULL)
+        error("Somehow ended up below grid super level!");
+      if (!c->grid.split) {
+        error("Cell is above grid super level, but is not split!");
+      }
+    }
 #endif
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
@@ -1719,32 +1722,39 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
   struct scheduler *s = &e->sched;
 
   /* Anything to do here? */
-  if (c->hydro.count == 0 || c->nodeID != e->nodeID) return;
+  if (c->hydro.count == 0) return;
 
   /* Are we in a super-cell ? */
   if (c->hydro.super == c) {
+    /* Local tasks only... */
+    if (c->nodeID == e->nodeID) {
 #ifdef EXTRA_HYDRO_LOOP
-    /* Add the task finishing the gradient calculation */
-    c->hydro.slope_estimate_ghost = scheduler_addtask(
-        s, task_type_slope_estimate_ghost, task_subtype_none, 0, 0, c, NULL);
+      /* Add the task finishing the gradient calculation */
+      c->hydro.slope_estimate_ghost = scheduler_addtask(
+          s, task_type_slope_estimate_ghost, task_subtype_none, 0, 0, c, NULL);
 
-    /* Add the task finishing the gradient limiting procedure */
-    c->hydro.slope_limiter_ghost = scheduler_addtask(
-        s, task_type_slope_limiter_ghost, task_subtype_none, 0, 0, c, NULL);
+      /* Add the task finishing the gradient limiting procedure */
+      c->hydro.slope_limiter_ghost = scheduler_addtask(
+          s, task_type_slope_limiter_ghost, task_subtype_none, 0, 0, c, NULL);
 #endif
 
-    /* Add the task finishing the flux_exchange */
-    c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
-                                            task_subtype_none, 0, 0, c, NULL);
+      /* Add the task finishing the flux_exchange */
+      c->hydro.flux_ghost = scheduler_addtask(s, task_type_flux_ghost,
+                                              task_subtype_none, 0, 0, c, NULL);
 
-    /* Add unlock */
-    scheduler_addunlock(s, c->hydro.flux_ghost, c->super->kick2);
+      /* Add unlock */
+      scheduler_addunlock(s, c->hydro.flux_ghost, c->super->kick2);
+    }
   }
   /* Recurse until super level is reached. */
   else {
 #ifdef SWIFT_DEBUG_CHECKS
-    if (c->hydro.super != NULL) error("Somehow ended up below super level!");
-    if (!c->split) error("Cell is above super level, but is not split!");
+    if (c->nodeID == e->nodeID) {
+      if (c->hydro.super != NULL) error("Somehow ended up below super level!");
+      if (!c->grid.split) {
+        error("Cell is above grid super level, but is not split!");
+      }
+    }
 #endif
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
@@ -5006,8 +5016,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
     if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_grid(e, ci, /*t_xv*/ NULL, /*t_gradient*/ NULL,
-                                tend, e->policy & engine_policy_grid_hydro);
+      engine_addtasks_recv_grid(e, ci, /*t_xv*/ NULL, /*t_gradient*/ NULL, tend,
+                                e->policy & engine_policy_grid_hydro);
   }
 }
 
