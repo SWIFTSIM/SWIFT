@@ -1243,10 +1243,14 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
  *
  * @param e The #engine.
  * @param c The foreign #cell.
+ * @param t_xv The recv_xv #task, if it has already been created.
+ * @param t_gradient The recv_gradient #task if it has already been created.
+ * @param tend The top-level time-step communication #task.
+ * @param with_hydro Flag indicating whether (moving mesh) hydro is enabled.
  */
 void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
                                struct task *t_xv, struct task *t_gradient,
-                               int with_hydro) {
+                               struct task *tend, int with_hydro) {
 
 #ifdef WITH_MPI
 
@@ -1379,13 +1383,17 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
         engine_addlink(e, &c->mpi.recv, t_xv);
       }
 
-      /* Additional dependencies for t_xv */
+      /* Additional dependencies for t_xv and tend */
       /* The recv_xv task should unlock the pair hydro tasks. */
       for (l = c->hydro.slope_estimate; l != NULL; l = l->next) {
         if (l->t->type == task_type_pair) scheduler_addunlock(s, t_xv, l->t);
       }
       for (l = c->hydro.flux; l != NULL; l = l->next) {
-        if (l->t->type == task_type_pair) scheduler_addunlock(s, t_xv, l->t);
+        if (l->t->type == task_type_pair) {
+          scheduler_addunlock(s, t_xv, l->t);
+          /* The flux unlocks the recv_tend */
+          scheduler_addunlock(s, l->t, tend);
+        }
       }
     }
   }
@@ -1394,7 +1402,7 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
   if (c->grid.split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_gradient,
+        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_gradient, tend,
                                   with_hydro);
 
 #else
@@ -4985,7 +4993,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection */
     if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_grid(e, ci, /*t_xv*/ NULL, /*t_gradient*/ NULL,
-                                e->policy & engine_policy_grid_hydro);
+                                tend, e->policy & engine_policy_grid_hydro);
   }
 }
 
