@@ -49,6 +49,8 @@ __attribute__((always_inline)) INLINE static void
 rt_debugging_check_nr_subcycles(struct part *restrict p,
                                 const struct rt_props *rt_props) {
 
+  /* TODO: this check may fail when running with limiter/sync. */
+
   /* NOTE: we need to do this check somewhere in the hydro tasks.
    * (1) it needs to be done when all tasks are active and before the
    * particle hydro time step is changed.
@@ -62,15 +64,27 @@ rt_debugging_check_nr_subcycles(struct part *restrict p,
   if (p->rt_time_data.time_bin == 0)
     error("Got part %lld with RT time bin 0", p->id);
 
-  /* TODO: this check may fail when running with limiter/sync. */
-
   timebin_t bindiff = p->time_bin - p->rt_time_data.time_bin;
+
+  if (rt_props->debug_max_nr_subcycles <= 1) {
+    /* Running without subcycling. */
+    if (bindiff != 0)
+      error("Running without subcycling but got bindiff=%d for part=%lld",
+            bindiff, p->id);
+    if (p->rt_data.debug_nsubcycles != 1)
+      error("Running without subcycling but got part=%lld subcycle count=%d",
+            p->id, p->rt_data.debug_nsubcycles);
+    return;
+  }
+
   /* TODO: this assumes that max_nr_subcycles is not an upper limit,
    * but a fixed number of sub-cycles */
   timebin_t bindiff_expect = 0;
-  while (!(rt_props->debug_max_nr_subcycles & (1 << bindiff_expect)) ||
-         bindiff_expect == num_time_bins)
+
+  while (!(rt_props->debug_max_nr_subcycles & (1 << bindiff_expect)) &&
+         bindiff_expect != num_time_bins)
     ++bindiff_expect;
+
   if (bindiff_expect == num_time_bins)
     error(
         "Couldn't determine expected time bin difference. Max nr subcycles %d "
