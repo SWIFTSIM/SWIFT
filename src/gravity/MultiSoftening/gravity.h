@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2016 Tom Theuns (tom.theuns@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
