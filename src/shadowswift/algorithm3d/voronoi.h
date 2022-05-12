@@ -237,12 +237,7 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     /* Extract coordinates from the Delaunay vertices (generators)
      * FUTURE NOTE: In swift we should read this from the particles themselves!
      * */
-    double *v0d, *v1d, *v2d, *v3d;
-    unsigned long *v0ul, *v1ul, *v2ul, *v3ul;
-    if (v0 < d->vertex_end || v0 >= d->ngb_offset) {
-      v0d = &d->rescaled_vertices[3 * v0];
-      v0ul = &d->integer_vertices[3 * v0];
-    } else {
+    if (v0 >= d->vertex_end && v0 < d->ngb_offset) {
       /* This could mean that a neighbouring cell of this grids cell is empty!
        * Or that we did not add all the necessary ghost vertex_indices to the
        * delaunay tesselation. */
@@ -250,31 +245,32 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
           "Vertex is part of tetrahedron with Dummy vertex! This could mean "
           "that one of the neighbouring cells is empty.");
     }
-    if (v1 < d->vertex_end || v1 >= d->ngb_offset) {
-      v1d = &d->rescaled_vertices[3 * v1];
-      v1ul = &d->integer_vertices[3 * v1];
-    } else {
+    double *v0d = &d->rescaled_vertices[3 * v0];
+    unsigned long *v0ul = &d->integer_vertices[3 * v0];
+
+    if (v1 >= d->vertex_end && v1 < d->ngb_offset) {
       error(
           "Vertex is part of tetrahedron with Dummy vertex! This could mean "
           "that one of the neighbouring cells is empty.");
     }
-    if (v2 < d->vertex_end || v2 >= d->ngb_offset) {
-      v2d = &d->rescaled_vertices[3 * v2];
-      v2ul = &d->integer_vertices[3 * v2];
-    } else {
-      error(
-          "Vertex is part of tetrahedron with Dummy vertex! This could mean "
-          "that "
-          "one of the neighbouring cells is empty.");
-    }
-    if (v3 < d->vertex_end || v3 >= d->ngb_offset) {
-      v3d = &d->rescaled_vertices[3 * v3];
-      v3ul = &d->integer_vertices[3 * v3];
-    } else {
+    double *v1d = &d->rescaled_vertices[3 * v1];
+    unsigned long *v1ul = &d->integer_vertices[3 * v1];
+
+    if (v2 >= d->vertex_end && v2 < d->ngb_offset) {
       error(
           "Vertex is part of tetrahedron with Dummy vertex! This could mean "
           "that one of the neighbouring cells is empty.");
     }
+    double *v2d = &d->rescaled_vertices[3 * v2];
+    unsigned long *v2ul = &d->integer_vertices[3 * v2];
+
+    if (v3 >= d->vertex_end && v3 < d->ngb_offset) {
+      error(
+          "Vertex is part of tetrahedron with Dummy vertex! This could mean "
+          "that one of the neighbouring cells is empty.");
+    }
+    double *v3d = &d->rescaled_vertices[3 * v3];
+    unsigned long *v3ul = &d->integer_vertices[3 * v3];
 
     geometry3d_compute_circumcenter_adaptive(
         &d->geometry, v0d, v1d, v2d, v3d, v0ul, v1ul, v2ul, v3ul,

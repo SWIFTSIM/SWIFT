@@ -94,7 +94,7 @@
 /* Option controlling output of grids */
 //#define SHADOWSWIFT_OUTPUT_GRIDS
 /* Option to enable the hilbert order insertion during the grid construction */
-//#define SHADOWSWIFT_HILBERT_ORDERING
+#define SHADOWSWIFT_HILBERT_ORDERING
 /* This option disables cell movement */
 //#define SHADOWSWIFT_FIX_PARTICLES
 /* This option enables cell steering, i.e. trying to keep the cells regular by
