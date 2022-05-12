@@ -40,53 +40,55 @@
 enum DATA_IMPORTANCE { COMPULSORY = 1, OPTIONAL = 0, UNUSED = -1 };
 
 /* Helper typedefs */
-typedef void (*conversion_func_part_float)(const struct engine*,
-                                           const struct part*,
-                                           const struct xpart*, float*);
-typedef void (*conversion_func_part_int)(const struct engine*,
-                                         const struct part*,
-                                         const struct xpart*, int*);
-typedef void (*conversion_func_part_double)(const struct engine*,
-                                            const struct part*,
-                                            const struct xpart*, double*);
-typedef void (*conversion_func_part_long_long)(const struct engine*,
-                                               const struct part*,
-                                               const struct xpart*, long long*);
-typedef void (*conversion_func_gpart_float)(const struct engine*,
-                                            const struct gpart*, float*);
-typedef void (*conversion_func_gpart_int)(const struct engine*,
-                                          const struct gpart*, int*);
-typedef void (*conversion_func_gpart_double)(const struct engine*,
-                                             const struct gpart*, double*);
-typedef void (*conversion_func_gpart_long_long)(const struct engine*,
-                                                const struct gpart*,
-                                                long long*);
-typedef void (*conversion_func_spart_float)(const struct engine*,
-                                            const struct spart*, float*);
-typedef void (*conversion_func_spart_int)(const struct engine*,
-                                          const struct spart*, int*);
-typedef void (*conversion_func_spart_double)(const struct engine*,
-                                             const struct spart*, double*);
-typedef void (*conversion_func_spart_long_long)(const struct engine*,
-                                                const struct spart*,
-                                                long long*);
-typedef void (*conversion_func_bpart_float)(const struct engine*,
-                                            const struct bpart*, float*);
-typedef void (*conversion_func_bpart_int)(const struct engine*,
-                                          const struct bpart*, int*);
-typedef void (*conversion_func_bpart_double)(const struct engine*,
-                                             const struct bpart*, double*);
-typedef void (*conversion_func_bpart_long_long)(const struct engine*,
-                                                const struct bpart*,
-                                                long long*);
-typedef void (*conversion_func_sink_float)(const struct engine*,
-                                           const struct sink*, float*);
-typedef void (*conversion_func_sink_int)(const struct engine*,
-                                         const struct sink*, int*);
-typedef void (*conversion_func_sink_double)(const struct engine*,
-                                            const struct sink*, double*);
-typedef void (*conversion_func_sink_long_long)(const struct engine*,
-                                               const struct sink*, long long*);
+typedef void (*conversion_func_part_float)(const struct engine *,
+                                           const struct part *,
+                                           const struct xpart *, float *);
+typedef void (*conversion_func_part_int)(const struct engine *,
+                                         const struct part *,
+                                         const struct xpart *, int *);
+typedef void (*conversion_func_part_double)(const struct engine *,
+                                            const struct part *,
+                                            const struct xpart *, double *);
+typedef void (*conversion_func_part_long_long)(const struct engine *,
+                                               const struct part *,
+                                               const struct xpart *,
+                                               long long *);
+typedef void (*conversion_func_gpart_float)(const struct engine *,
+                                            const struct gpart *, float *);
+typedef void (*conversion_func_gpart_int)(const struct engine *,
+                                          const struct gpart *, int *);
+typedef void (*conversion_func_gpart_double)(const struct engine *,
+                                             const struct gpart *, double *);
+typedef void (*conversion_func_gpart_long_long)(const struct engine *,
+                                                const struct gpart *,
+                                                long long *);
+typedef void (*conversion_func_spart_float)(const struct engine *,
+                                            const struct spart *, float *);
+typedef void (*conversion_func_spart_int)(const struct engine *,
+                                          const struct spart *, int *);
+typedef void (*conversion_func_spart_double)(const struct engine *,
+                                             const struct spart *, double *);
+typedef void (*conversion_func_spart_long_long)(const struct engine *,
+                                                const struct spart *,
+                                                long long *);
+typedef void (*conversion_func_bpart_float)(const struct engine *,
+                                            const struct bpart *, float *);
+typedef void (*conversion_func_bpart_int)(const struct engine *,
+                                          const struct bpart *, int *);
+typedef void (*conversion_func_bpart_double)(const struct engine *,
+                                             const struct bpart *, double *);
+typedef void (*conversion_func_bpart_long_long)(const struct engine *,
+                                                const struct bpart *,
+                                                long long *);
+typedef void (*conversion_func_sink_float)(const struct engine *,
+                                           const struct sink *, float *);
+typedef void (*conversion_func_sink_int)(const struct engine *,
+                                         const struct sink *, int *);
+typedef void (*conversion_func_sink_double)(const struct engine *,
+                                            const struct sink *, double *);
+typedef void (*conversion_func_sink_long_long)(const struct engine *,
+                                               const struct sink *,
+                                               long long *);
 
 /**
  * @brief The properties of a given dataset for i/o
@@ -118,31 +120,31 @@ struct io_props {
   float scale_factor_exponent;
 
   /* Pointer to the field of the first particle in the array */
-  char* field;
+  char *field;
 
   /* Lossy compression scheme to use for this field */
   enum lossy_compression_schemes lossy_compression;
 
   /* Pointer to the start of the temporary buffer used in i/o */
-  char* start_temp_c;
-  int* start_temp_i;
-  float* start_temp_f;
-  double* start_temp_d;
-  long long* start_temp_l;
+  char *start_temp_c;
+  int *start_temp_i;
+  float *start_temp_f;
+  double *start_temp_d;
+  long long *start_temp_l;
 
   /* Pointer to the engine */
-  const struct engine* e;
+  const struct engine *e;
 
   /* The size of the particles */
   size_t partSize;
 
   /* The particle arrays */
-  const struct part* parts;
-  const struct xpart* xparts;
-  const struct gpart* gparts;
-  const struct spart* sparts;
-  const struct bpart* bparts;
-  const struct sink* sinks;
+  const struct part *parts;
+  const struct xpart *xparts;
+  const struct gpart *gparts;
+  const struct spart *sparts;
+  const struct bpart *bparts;
+  const struct sink *sinks;
 
   /* Are we converting? */
   int conversion;
@@ -189,7 +191,7 @@ struct io_props {
 INLINE static void safe_strcpy(char *restrict dst, const char *restrict src,
                                size_t dst_len) {
   strncpy(dst, src, dst_len - 1);
-  dst[dst_len-1] = '\0';
+  dst[dst_len - 1] = '\0';
 }
 
 /**
@@ -205,7 +207,7 @@ INLINE static void safe_strcpy(char *restrict dst, const char *restrict src,
  */
 #define io_make_input_field(name, type, dim, importance, units, part, field) \
   io_make_input_field_(name, type, dim, importance, units,                   \
-                       (char*)(&(part[0]).field), sizeof(part[0]), 0.)
+                       (char *)(&(part[0]).field), sizeof(part[0]), 0.)
 
 /**
  * @brief Constructs an #io_props from its parameters with a user-defined
@@ -224,7 +226,7 @@ INLINE static void safe_strcpy(char *restrict dst, const char *restrict src,
 #define io_make_input_field_default(name, type, dim, importance, units, part, \
                                     field, def)                               \
   io_make_input_field_(name, type, dim, importance, units,                    \
-                       (char*)(&(part[0]).field), sizeof(part[0]), def)
+                       (char *)(&(part[0]).field), sizeof(part[0]), def)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -242,7 +244,7 @@ INLINE static void safe_strcpy(char *restrict dst, const char *restrict src,
 INLINE static struct io_props io_make_input_field_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum DATA_IMPORTANCE importance, enum unit_conversion_factor units,
-    char* field, size_t partSize, const float default_value) {
+    char *field, size_t partSize, const float default_value) {
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
 
@@ -270,7 +272,7 @@ INLINE static struct io_props io_make_input_field_(
 #define io_make_output_field(name, type, dim, units, a_exponent, part, field, \
                              desc)                                            \
   io_make_output_field_(name, type, dim, units, a_exponent,                   \
-                        (char*)(&(part[0]).field), sizeof(part[0]), desc)
+                        (char *)(&(part[0]).field), sizeof(part[0]), desc)
 
 /**
  * @brief Construct an #io_props from its parameters
@@ -288,7 +290,7 @@ INLINE static struct io_props io_make_input_field_(
  */
 INLINE static struct io_props io_make_output_field_(
     const char *name, enum IO_DATA_TYPE type, int dimension,
-    enum unit_conversion_factor units, float a_exponent, char* field,
+    enum unit_conversion_factor units, float a_exponent, char *field,
     size_t partSize, const char *description) {
 
   struct io_props r;
@@ -340,9 +342,8 @@ INLINE static struct io_props io_make_output_field_(
 INLINE static struct io_props io_make_output_field_convert_part_INT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
-    const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_int functionPtr,
-    const char *description) {
+    const struct part *parts, const struct xpart *xparts,
+    conversion_func_part_int functionPtr, const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -386,9 +387,8 @@ INLINE static struct io_props io_make_output_field_convert_part_INT(
 INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
-    const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_float functionPtr,
-    const char *description) {
+    const struct part *parts, const struct xpart *xparts,
+    conversion_func_part_float functionPtr, const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -432,9 +432,8 @@ INLINE static struct io_props io_make_output_field_convert_part_FLOAT(
 INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
-    const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_double functionPtr,
-    const char *description) {
+    const struct part *parts, const struct xpart *xparts,
+    conversion_func_part_double functionPtr, const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -478,9 +477,8 @@ INLINE static struct io_props io_make_output_field_convert_part_DOUBLE(
 INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t partSize,
-    const struct part* parts, const struct xpart* xparts,
-    conversion_func_part_long_long functionPtr,
-    const char *description) {
+    const struct part *parts, const struct xpart *xparts,
+    conversion_func_part_long_long functionPtr, const char *description) {
 
   struct io_props r;
   bzero(&r, sizeof(struct io_props));
@@ -532,7 +530,7 @@ INLINE static struct io_props io_make_output_field_convert_part_LONGLONG(
 INLINE static struct io_props io_make_output_field_convert_gpart_INT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_int functionPtr,
+    const struct gpart *gparts, conversion_func_gpart_int functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -575,7 +573,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_INT(
 INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_float functionPtr,
+    const struct gpart *gparts, conversion_func_gpart_float functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -618,7 +616,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_FLOAT(
 INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_double functionPtr,
+    const struct gpart *gparts, conversion_func_gpart_double functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -661,7 +659,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_DOUBLE(
 INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t gpartSize,
-    const struct gpart* gparts, conversion_func_gpart_long_long functionPtr,
+    const struct gpart *gparts, conversion_func_gpart_long_long functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -713,7 +711,7 @@ INLINE static struct io_props io_make_output_field_convert_gpart_LONGLONG(
 INLINE static struct io_props io_make_output_field_convert_spart_INT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
-    const struct spart* sparts, conversion_func_spart_int functionPtr,
+    const struct spart *sparts, conversion_func_spart_int functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -756,7 +754,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_INT(
 INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
-    const struct spart* sparts, conversion_func_spart_float functionPtr,
+    const struct spart *sparts, conversion_func_spart_float functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -799,7 +797,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_FLOAT(
 INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
-    const struct spart* sparts, conversion_func_spart_double functionPtr,
+    const struct spart *sparts, conversion_func_spart_double functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -842,7 +840,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_DOUBLE(
 INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t spartSize,
-    const struct spart* sparts, conversion_func_spart_long_long functionPtr,
+    const struct spart *sparts, conversion_func_spart_long_long functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -894,7 +892,7 @@ INLINE static struct io_props io_make_output_field_convert_spart_LONGLONG(
 INLINE static struct io_props io_make_output_field_convert_bpart_INT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
-    const struct bpart* bparts, conversion_func_bpart_int functionPtr,
+    const struct bpart *bparts, conversion_func_bpart_int functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -937,7 +935,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_INT(
 INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
-    const struct bpart* bparts, conversion_func_bpart_float functionPtr,
+    const struct bpart *bparts, conversion_func_bpart_float functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -980,7 +978,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_FLOAT(
 INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
-    const struct bpart* bparts, conversion_func_bpart_double functionPtr,
+    const struct bpart *bparts, conversion_func_bpart_double functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -1023,7 +1021,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_DOUBLE(
 INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t bpartSize,
-    const struct bpart* bparts, conversion_func_bpart_long_long functionPtr,
+    const struct bpart *bparts, conversion_func_bpart_long_long functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -1075,7 +1073,7 @@ INLINE static struct io_props io_make_output_field_convert_bpart_LONGLONG(
 INLINE static struct io_props io_make_output_field_convert_sink_INT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
-    const struct sink* sinks, conversion_func_sink_int functionPtr,
+    const struct sink *sinks, conversion_func_sink_int functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -1118,7 +1116,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_INT(
 INLINE static struct io_props io_make_output_field_convert_sink_FLOAT(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
-    const struct sink* sinks, conversion_func_sink_float functionPtr,
+    const struct sink *sinks, conversion_func_sink_float functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -1161,7 +1159,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_FLOAT(
 INLINE static struct io_props io_make_output_field_convert_sink_DOUBLE(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
-    const struct sink* sinks, conversion_func_sink_double functionPtr,
+    const struct sink *sinks, conversion_func_sink_double functionPtr,
     const char *description) {
 
   struct io_props r;
@@ -1204,7 +1202,7 @@ INLINE static struct io_props io_make_output_field_convert_sink_DOUBLE(
 INLINE static struct io_props io_make_output_field_convert_sink_LONGLONG(
     const char *name, enum IO_DATA_TYPE type, int dimension,
     enum unit_conversion_factor units, float a_exponent, size_t sinkSize,
-    const struct sink* sinks, conversion_func_sink_long_long functionPtr,
+    const struct sink *sinks, conversion_func_sink_long_long functionPtr,
     const char *description) {
 
   struct io_props r;
