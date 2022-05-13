@@ -8,6 +8,7 @@
 #include "../delaunay.h"
 #include "../queues.h"
 #include "./geometry.h"
+#include "part.h"
 #include "tetrahedron.h"
 
 /**
@@ -29,10 +30,6 @@ struct voronoi_pair {
    * that swift cell is foreign. For local particles, this is also the index of
    * the corresponding cell in this voronoi tesselation. */
   int right_idx;
-
-  /*! idx of the particle on the right of this pair in the delaunay tesselation.
-   */
-  int right_del_idx;
 
   /*! Surface area of the interface. */
   double surface_area;
@@ -147,8 +144,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
   if (v->cells_size < v->number_of_cells) {
     /* allocate memory for the voronoi cells */
     v->cells = (struct voronoi_cell *)swift_realloc(
-        "voronoi", v->cells,
-        v->number_of_cells * sizeof(struct voronoi_cell));
+        "voronoi", v->cells, v->number_of_cells * sizeof(struct voronoi_cell));
     v->cells_size = v->number_of_cells;
   }
 
@@ -190,6 +186,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
  * @param part_is_active Flags indicating whether the particle is active.
  */
 inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
+                                 const struct part *parts,
                                  const int *part_is_active) {
 
   /* the number of cells equals the number of non-ghost and non-dummy
@@ -349,9 +346,9 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     /* get the generator position, we use it during centroid/volume
        calculations */
     voronoi_assert(gen_idx_in_d < d->vertex_end);
-    double ax = d->vertices[3 * gen_idx_in_d];
-    double ay = d->vertices[3 * gen_idx_in_d + 1];
-    double az = d->vertices[3 * gen_idx_in_d + 2];
+    double ax = parts[i].x[0];
+    double ay = parts[i].x[1];
+    double az = parts[i].x[2];
 
 #ifdef VORONOI_STORE_GENERATORS
     this_cell->x[0] = ax;
@@ -645,7 +642,6 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
   /* Initialize pair */
   this_pair->left_idx = left_part_idx_in_d - d->vertex_start;
   this_pair->right_idx = right_part_idx;
-  this_pair->right_del_idx = right_part_idx_in_d;
 
 #ifdef VORONOI_STORE_FACES
 #ifdef SWIFT_DEBUG_CHECKS

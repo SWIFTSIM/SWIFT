@@ -10,7 +10,7 @@
 #include "tetrahedron.h"
 
 struct delaunay {
-  /* Activity flag, useful for debugging. */
+  /*! Activity flag, useful for debugging. */
   int active;
 
   /*! @brief Anchor of the simulation volume. */
@@ -25,10 +25,6 @@ struct delaunay {
   /*! @brief Flags that keep track whether a local vertex has been added or not
    */
   int* vertex_added;
-
-  /*! @brief Vertex positions. This array is a copy of the array defined in
-   *  main() and we probably want to get rid of it in a SWIFT implementation. */
-  double* vertices;
 
   /*! @brief Vertex positions, rescaled to the range 1-2. Kept here in case we
    *  want to adopt hybrid geometrical checks (floating point checks when safe,
@@ -203,8 +199,6 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   /* allocate memory for all the arrays and queues */
   d->vertex_added = (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
-  d->vertices =
-      (double*)swift_malloc("delaunay", vertex_size * 3 * sizeof(double));
   d->vertex_size = vertex_size;
   d->rescaled_vertices =
       (double*)swift_malloc("delaunay", vertex_size * 3 * sizeof(double));
@@ -365,7 +359,6 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   d->active = 0;
 
   swift_free("delaunay", d->vertex_added);
-  swift_free("delaunay", d->vertices);
   swift_free("delaunay", d->rescaled_vertices);
   swift_free("delaunay", d->integer_vertices);
   swift_free("delaunay", d->vertex_tetrahedron_links);
@@ -379,7 +372,6 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   swift_free("delaunay", d->ngb_part_idx);
 
   d->vertex_added = NULL;
-  d->vertices = NULL;
   d->rescaled_vertices = NULL;
   d->integer_vertices = NULL;
   d->vertex_tetrahedron_links = NULL;
@@ -467,11 +459,6 @@ inline static void delaunay_init_tetrahedron(struct delaunay* d, int t, int v0,
 inline static void delaunay_init_vertex(struct delaunay* restrict d,
                                         const int v, double x, double y,
                                         double z) {
-  /* store a copy of the vertex coordinates (we should get rid of this for
-     SWIFT) */
-  d->vertices[3 * v] = x;
-  d->vertices[3 * v + 1] = y;
-  d->vertices[3 * v + 2] = z;
 
   /* compute the rescaled coordinates. We do this because floating point values
      in the range [1,2[ all have the same exponent (0), which guarantees that
@@ -524,8 +511,6 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
   if (d->vertex_index == d->vertex_size) {
     /* dynamically grow the size of the arrays with a factor 2 */
     d->vertex_size <<= 1;
-    d->vertices = (double*)swift_realloc("delaunay", d->vertices,
-                                         d->vertex_size * 3 * sizeof(double));
     d->rescaled_vertices = (double*)swift_realloc(
         "delaunay", d->rescaled_vertices, d->vertex_size * 3 * sizeof(double));
     d->integer_vertices = (unsigned long int*)swift_realloc(
@@ -2262,9 +2247,13 @@ inline static void delaunay_consolidate(struct delaunay* restrict d) {
 inline static void delaunay_write_tessellation(
     const struct delaunay* restrict d, FILE* file, const size_t* offset) {
 
-  for (int i = 0; i < d->vertex_index; ++i) {
-    fprintf(file, "V\t%lu\t%g\t%g\t%g\n", *offset + i, d->vertices[3 * i],
-            d->vertices[3 * i + 1], d->vertices[3 * i + 2]);
+  for (int i = d->vertex_start; i < d->vertex_index; ++i) {
+    double vertex[3] = {
+        (d->rescaled_vertices[3 * i] - 1.) * d->side + d->anchor[0],
+        (d->rescaled_vertices[3 * i + 1] - 1.) * d->side + d->anchor[1],
+        (d->rescaled_vertices[3 * i + 2] - 1.) * d->side + d->anchor[2]};
+    fprintf(file, "V\t%lu\t%g\t%g\t%g\n", *offset + i, vertex[0],
+            vertex[1], vertex[2]);
   }
   for (int i = 4; i < d->tetrahedra_index; ++i) {
     if (!d->tetrahedra[i].active) {
@@ -2299,14 +2288,6 @@ inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
 inline static int delaunay_vertex_is_valid(struct delaunay* restrict d, int v) {
   return (v >= d->vertex_start && v < d->vertex_end) ||
          (v >= d->ngb_offset && v < d->ngb_index + d->ngb_offset);
-}
-
-/*! @brief stores the coordinates of the vertex at given idx in out */
-inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx,
-                                          double* out /*ret*/) {
-  out[0] = d->vertices[3 * idx];
-  out[1] = d->vertices[3 * idx + 1];
-  out[2] = d->vertices[3 * idx + 2];
 }
 
 /**

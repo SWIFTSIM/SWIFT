@@ -1681,7 +1681,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
     error("Can't allocate memory for pid.");
   double *search_radii = NULL;
-  if ((search_radii = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
+  if ((search_radii = (double *)malloc(sizeof(double) * c->hydro.count)) ==
+      NULL)
     error("Can't allocate memory for search radii.");
   for (int k = 0; k < c->hydro.count; k++)
     if (part_is_active(&parts[k], e)) {
@@ -1808,7 +1809,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   int *part_is_active_mask = (int *)malloc(c->hydro.count * sizeof(int));
   for (int i = 0; i < c->hydro.count; i++)
     part_is_active_mask[i] = part_is_active(&parts[i], e);
-  voronoi_build(c->grid.voronoi, c->grid.delaunay, part_is_active_mask);
+  voronoi_build(c->grid.voronoi, c->grid.delaunay, c->hydro.parts,
+                part_is_active_mask);
 #ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
   /* The delaunay tesselation is no longer needed */
   delaunay_destroy(c->grid.delaunay);
