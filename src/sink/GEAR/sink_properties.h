@@ -19,9 +19,6 @@
 #ifndef SWIFT_DEFAULT_SINK_PROPERTIES_H
 #define SWIFT_DEFAULT_SINK_PROPERTIES_H
 
-/* Standard header */
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_roots.h>
 
 /* Local header */
 #include <random.h>
@@ -64,56 +61,6 @@ struct sink_props {
 };
 
 
-struct f_zero_params {
-    double Mc;
-    double Md; 
-    double mmin;
-    double mmax;
-    double exp;
-    int n;
-    gsl_rng * r;
-};
-
-
-INLINE static double f_zero(double Pc, void *params) {
-
-  struct f_zero_params *p
-    = (struct f_zero_params *) params;
-
-  double Mc   = p->Mc;
-  double Md   = p->Md; 
-  double mmin = p->mmin;
-  double mmax = p->mmax;
-  double exp  = p->exp;
-  int   n    = p->n;
-  gsl_rng *r = p->r;
-  
-
-  /* mass of the continuous part of the IMF */ 
-  double Mcs = 0;  
-  
-  /* mass of the discrete part of the IMF */ 
-  double Mds = 0;
-  
-  for (int i = 0; i < n; i++) {
-    
-    double xc = gsl_rng_uniform(r);
-    
-    /* discrete part */
-    if (xc < Pc)
-      Mcs = Mcs + Mc;
-      
-    /* continuous part */  
-    else {
-      double m = random_sample_power_law(mmin, mmax, exp, gsl_rng_uniform(r));
-      Mds = Mds + m;
-    }
-  }
-    
-  return (double) (Mcs/Mds) - (Mc/Md);
-};
-
-
 
 /**
  * @brief Initialise the probabilities to get a stellar mass (continuous
@@ -128,14 +75,6 @@ INLINE static double f_zero(double Pc, void *params) {
 INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct initial_mass_function *imf,
   const struct phys_const *phys_const,int first_stars) {
 
-  /* random number generator */
-  gsl_rng * r = gsl_rng_alloc (gsl_rng_ranlux);
-  /* set the seed */
-  gsl_rng_set(r,0);
-  
-
-  /* get the slope of the last IMF portion */
-  float exp      = imf->exp[imf->n_parts-1];
   
   /* get the IMF mass limits (all in Msol) */
   float mass_min = imf->mass_min;
@@ -151,7 +90,6 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct i
     minimal_discrete_mass = sp->minimal_discrete_mass_first_stars;
     stellar_particle_mass = sp->stellar_particle_mass_first_stars/phys_const->const_solar_mass;  
   }  
-  
   
   /* sanity check */
   if (minimal_discrete_mass < imf->mass_limits[imf->n_parts-1])  
@@ -172,77 +110,40 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct i
     Md   = Mtot;
     Mc   = 0;
   }  
+
+  /* Compute the number of stars in the continuous part of the IMF */
+  double Nc = initial_mass_function_get_imf_number_fraction(imf,mass_min,minimal_discrete_mass)*Mtot;
   
-  message("Mass of the continuous part : %g",Mc);
-  message("Mass of the discrete   part : %g",Md);
-  message("Total IMF mass              : %g",Mtot);
+  /* Compute the number of stars in the discrete part of the IMF */
+  double Nd = initial_mass_function_get_imf_number_fraction(imf,minimal_discrete_mass,mass_max)*Mtot;
+  
+  message("Mass of the continuous part            : %g",Mc);
+  message("Mass of the discrete   part            : %g",Md);
+  message("Total IMF mass                         : %g",Mtot);
+  message("Number of stars in the continuous part : %g",Nc);
+  message("Number of stars in the discrete   part : %g",Nd);
+
   
   /* if no continous part, return */
   if (Mc == 0){
     imf->sink_Pc = 0;
     imf->sink_stellar_particle_mass = 0;
-    message("probability of the continuous part : %g",0.); 
-    message("probability of the discrete   part : %g",1.);
+    message("probability of the continuous part    : %g",0.); 
+    message("probability of the discrete   part    : %g",1.);
     return;
   }  
-  
-  
-  struct f_zero_params params;
-  
-  params.Mc      = Mc;
-  params.Md      = Md; 
-  
-  params.mmin    = minimal_discrete_mass;
-  params.mmax    = mass_max;
-  params.exp     = exp;
-  params.n       = sp->size_of_calibration_sample;
-  params.r       = r;
-  
-  const gsl_root_fsolver_type *T;
-  gsl_root_fsolver *s;
-  gsl_function F;
-  
-  F.function = &f_zero;
-  F.params = &params;
-  
-  T = gsl_root_fsolver_bisection;
-  s = gsl_root_fsolver_alloc(T);
-  gsl_root_fsolver_set(s, &F, 0, 0.99);  
-  
-  int status;
-  int iter = 0;
-  int max_iter = 100;
-  double root;
-  
-  do
-    {
-      iter++;
-      status = gsl_root_fsolver_iterate (s);
-      root = gsl_root_fsolver_root (s);
-      double x_lo = gsl_root_fsolver_x_lower (s);
-      double x_hi = gsl_root_fsolver_x_upper (s);
-      status = gsl_root_test_interval (x_lo, x_hi, 0, 1e-4);
-        
-      message("%5d %.7f", iter, root);
-    }
-  while (status == GSL_CONTINUE && iter < max_iter);
 
-  /* the final probabilities */
-  double Pc = root;
+  /* Compute the probabilities */
+  double Pc = 1/(1+Nd);
   double Pd = 1 - Pc;
   imf->sink_Pc = Pc;
   imf->sink_stellar_particle_mass = Mc;
   
-  message("probability of the continuous part : %g",Pc); 
-  message("probability of the discrete   part : %g",Pd);
+  message("probability of the continuous part     : %g",Pc); 
+  message("probability of the discrete   part     : %g",Pd);
   
+  exit(-1);
 
-  /* free the solver */
-  gsl_root_fsolver_free (s);
-  
-
-  /* free the random generator */
-  gsl_rng_free (r);
 
 }
 
