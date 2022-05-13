@@ -142,9 +142,6 @@ INLINE static void sink_props_init_probabilities(struct sink_props *sp, struct i
   message("probability of the continuous part     : %g",Pc); 
   message("probability of the discrete   part     : %g",Pd);
   
-  exit(-1);
-
-
 }
 
 
