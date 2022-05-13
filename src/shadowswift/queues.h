@@ -42,5 +42,10 @@ typedef struct int3 {
 
 #define QUEUE_TYPE int3
 #include "queues/generic_fifo_queue.h"
+#undef QUEUE_TYPE
+
+#define QUEUE_TYPE int
+#include "queues/generic_fifo_queue.h"
+#undef QUEUE_TYPE
 
 #endif  // SWIFTSIM_SHADOWSWIFT_QUEUES_H

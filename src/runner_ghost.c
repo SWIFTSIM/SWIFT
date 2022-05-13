@@ -1637,8 +1637,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
  */
 void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
-  if (c->grid.super == NULL)
-    error("Grid ghost run above grid super level!");
+  if (c->grid.super == NULL) error("Grid ghost run above grid super level!");
 
   /* Recurse? */
   if (c->grid.construction_level == above_construction_level) {
@@ -1677,13 +1676,17 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   if (!cell_is_active_hydro(c, e)) return;
 
   /* Init the list of active particles that have to be updated and their
-   * current smoothing lengths. */
+   * search radii. */
   int *pid = NULL;
   if ((pid = (int *)malloc(sizeof(int) * c->hydro.count)) == NULL)
     error("Can't allocate memory for pid.");
+  double *search_radii = NULL;
+  if ((search_radii = (double *)malloc(sizeof(double) * c->hydro.count)) == NULL)
+    error("Can't allocate memory for search radii.");
   for (int k = 0; k < c->hydro.count; k++)
     if (part_is_active(&parts[k], e)) {
       pid[count] = k;
+      search_radii[count] = 0.;
       ++count;
     }
 
@@ -1700,6 +1703,9 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     /* Reset the maximal search radius of all un-converged particles */
     float h_max_unconverged = 0.f;
 
+    /* Get the updated search radii of the remaining active parts */
+    delaunay_get_search_radii(c->grid.delaunay, pid, count, search_radii);
+
     /* Loop over the remaining active parts in this cell and check if they have
      * converged. */
     for (int i = 0; i < count; i++) {
@@ -1707,8 +1713,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       /* Get a direct pointer on the part. */
       struct part *p = &parts[pid[i]];
 
-      float r_new = (float)delaunay_get_search_radius(
-          c->grid.delaunay, pid[i] + c->grid.delaunay->vertex_start);
+      float r_new = (float)search_radii[i];
       if (r_new >= p->h) {
         /* Un-converged particle */
         p->h *= 1.2f;
@@ -1777,6 +1782,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Be clean */
   free(pid);
+  free(search_radii);
 
   /* Update h_max */
   c->hydro.h_max = h_max;
@@ -1803,6 +1809,11 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   for (int i = 0; i < c->hydro.count; i++)
     part_is_active_mask[i] = part_is_active(&parts[i], e);
   voronoi_build(c->grid.voronoi, c->grid.delaunay, part_is_active_mask);
+#ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
+  /* The delaunay tesselation is no longer needed */
+  delaunay_destroy(c->grid.delaunay);
+  c->grid.delaunay = NULL;
+#endif
 
   /* Set the geometry properties of the particles and prepare the particles for
    * the gradient calculation */
@@ -1944,7 +1955,9 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
-  /* TODO what actually needs to happen here? */
+#ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
+  cell_free_grid_rec(c);
+#endif
 
   if (timer) TIMER_TOC(timer_do_flux_ghost);
 }

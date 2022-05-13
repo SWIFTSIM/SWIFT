@@ -102,7 +102,9 @@
 //#define SHADOWSWIFT_STEER_MOTION
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWSWIFT_TOTAL_ENERGY
-//#define WITH_MPI
+/* This option destroys the  grids as soon as they are no longer needed, saving
+ * on memory. */
+#define SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
 
 /* Source terms */
 #define SOURCETERMS_NONE

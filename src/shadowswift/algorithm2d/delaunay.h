@@ -68,11 +68,6 @@ struct delaunay {
    *  loop through the triangle vertices during Voronoi grid construction. */
   int* vertex_triangle_index;
 
-  /*! @brief Vertex search radii. For every vertex, this array contains twice
-   *  the radius of the largest circumcircle of the triangles that vertex is
-   *  part of. */
-  double* search_radii;
-
   /*! @brief Next available index within the vertex array. Corresponds to the
    *  actual size of the vertex array. */
   int vertex_index;
@@ -188,9 +183,6 @@ inline static void delaunay_init_vertex(struct delaunay* restrict d, int v,
      We use negative values so that we can later detect missing links. */
   d->vertex_triangles[v] = -1;
   d->vertex_triangle_index[v] = -1;
-
-  /* initialise the search radii to the largest possible value */
-  d->search_radii[v] = DBL_MAX;
 }
 
 /**
@@ -214,22 +206,20 @@ inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
   if (d->vertex_index == d->vertex_size) {
     /* dynamically grow the size of the arrays with a factor 2 */
     d->vertex_size <<= 1;
-    d->vertices = (double*)swift_realloc("c.h.d.vertices", d->vertices,
+    d->vertices = (double*)swift_realloc("delaunay", d->vertices,
                                          d->vertex_size * 2 * sizeof(double));
     d->rescaled_vertices =
-        (double*)swift_realloc("c.h.d.rescaled_vertices", d->rescaled_vertices,
+        (double*)swift_realloc("delaunay", d->rescaled_vertices,
                                d->vertex_size * 2 * sizeof(double));
     d->integer_vertices = (unsigned long int*)swift_realloc(
-        "c.h.d.integer_vertices", d->integer_vertices,
+        "delaunay", d->integer_vertices,
         d->vertex_size * 2 * sizeof(unsigned long int));
     d->vertex_triangles =
-        (int*)swift_realloc("c.h.d.vertex_triangles", d->vertex_triangles,
+        (int*)swift_realloc("delaunay", d->vertex_triangles,
                             d->vertex_size * sizeof(int));
     d->vertex_triangle_index = (int*)swift_realloc(
-        "c.h.d.vertex_triangle_index", d->vertex_triangle_index,
+        "delaunay", d->vertex_triangle_index,
         d->vertex_size * sizeof(int));
-    d->search_radii = (double*)swift_realloc(
-        "c.h.d.search_radii", d->search_radii, d->vertex_size * sizeof(double));
   }
 
   delaunay_init_vertex(d, d->vertex_index, x, y);
@@ -259,7 +249,7 @@ inline static int delaunay_new_triangle(struct delaunay* restrict d) {
        reallocate it in memory */
     d->triangle_size <<= 1;
     d->triangles = (struct triangle*)swift_realloc(
-        "c.h.d.triangles", d->triangles,
+        "delaunay", d->triangles,
         d->triangle_size * sizeof(struct triangle));
   }
 
@@ -513,11 +503,6 @@ inline static void delaunay_reset(struct delaunay* restrict d,
   d->last_triangle = first_triangle;
 
   d->vertex_start = 0;
-  /* initialise the last vertex index to a negative value to signal that the
-     Delaunay tessellation was not consolidated yet.
-     delaunay_update_search_radii() will not work until delaunay_consolidate()
-     was called. Neither will it be possible to convert the Delaunay
-     tessellation into a Voronoi grid before this happens. */
   d->vertex_end = vertex_size;
 
   d->ngb_offset = d->vertex_index;
@@ -559,37 +544,35 @@ inline static struct delaunay* delaunay_malloc(const double* cell_loc,
 
   /* allocate memory for the vertex arrays */
   d->vertex_added =
-      (int*)swift_malloc("delaunay.vertex_added", vertex_size * sizeof(int));
+      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
 
   d->vertices =
-      (double*)swift_malloc("c.h.d.vertices", vertex_size * 2 * sizeof(double));
+      (double*)swift_malloc("delaunay", vertex_size * 2 * sizeof(double));
   d->rescaled_vertices = (double*)swift_malloc(
-      "c.h.d.rescaled_vertices", vertex_size * 2 * sizeof(double));
+      "delaunay", vertex_size * 2 * sizeof(double));
   d->integer_vertices = (unsigned long int*)swift_malloc(
-      "c.h.d.integer_vertices", vertex_size * 2 * sizeof(unsigned long int));
+      "delaunay", vertex_size * 2 * sizeof(unsigned long int));
   d->vertex_triangles =
-      (int*)swift_malloc("c.h.d.vertex_triangles", vertex_size * sizeof(int));
-  d->vertex_triangle_index = (int*)swift_malloc("c.h.d.vertex_triangle_index",
+      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
+  d->vertex_triangle_index = (int*)swift_malloc("delaunay",
                                                 vertex_size * sizeof(int));
-  d->search_radii =
-      (double*)swift_malloc("c.h.d.search_radii", vertex_size * sizeof(double));
   d->vertex_size = vertex_size;
 
   /* allocate memory for the triangle array */
   d->triangle_size = 6 * vertex_size;
   d->triangles = (struct triangle*)swift_malloc(
-      "c.h.d.triangles", d->triangle_size * sizeof(struct triangle));
+      "delaunay", d->triangle_size * sizeof(struct triangle));
 
   /* allocate memory for the queue (note that the queue size of 10 was chosen
      arbitrarily, and a proper value should be chosen based on performance
      measurements) */
-  d->queue = (int*)swift_malloc("c.h.d.queue", 10 * sizeof(int));
+  d->queue = (int*)swift_malloc("delaunay", 10 * sizeof(int));
   d->queue_size = 10;
 
   d->ngb_cell_sids =
-      (int*)swift_malloc("c.h.d.ngb_cell_sids", vertex_size * sizeof(int));
+      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
   d->ngb_part_idx =
-      (int*)swift_malloc("c.h.d.ngb_part_idx", vertex_size * sizeof(int));
+      (int*)swift_malloc("delaunay", vertex_size * sizeof(int));
   d->ngb_size = vertex_size;
 
   /* initialise the structure used to perform exact geometrical tests */
@@ -610,17 +593,16 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   assert(d->active);
   assert(d->vertices != NULL);
 #endif
-  swift_free("delaunay.vertex_added", d->vertex_added);
-  swift_free("c.h.d.vertices", d->vertices);
-  swift_free("c.h.d.rescaled_vertices", d->rescaled_vertices);
-  swift_free("c.h.d.integer_vertices", d->integer_vertices);
-  swift_free("c.h.d.vertex_triangles", d->vertex_triangles);
-  swift_free("c.h.d.vertex_triangle_index", d->vertex_triangle_index);
-  swift_free("c.h.d.search_radii", d->search_radii);
-  swift_free("c.h.d.triangles", d->triangles);
-  swift_free("c.h.d.queue", d->queue);
-  swift_free("c.h.d.ngb_cell_sids", d->ngb_cell_sids);
-  swift_free("c.h.d.ngb_part_idx", d->ngb_part_idx);
+  swift_free("delaunay", d->vertex_added);
+  swift_free("delaunay", d->vertices);
+  swift_free("delaunay", d->rescaled_vertices);
+  swift_free("delaunay", d->integer_vertices);
+  swift_free("delaunay", d->vertex_triangles);
+  swift_free("delaunay", d->vertex_triangle_index);
+  swift_free("delaunay", d->triangles);
+  swift_free("delaunay", d->queue);
+  swift_free("delaunay", d->ngb_cell_sids);
+  swift_free("delaunay", d->ngb_part_idx);
   geometry_destroy(&d->geometry);
 
   d->vertex_added = NULL;
@@ -628,7 +610,6 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   d->rescaled_vertices = NULL;
   d->integer_vertices = NULL;
   d->vertex_triangles = NULL;
-  d->search_radii = NULL;
   d->triangles = NULL;
   d->queue = NULL;
   d->ngb_cell_sids = NULL;
@@ -696,9 +677,6 @@ inline static double delaunay_get_radius(const struct delaunay* restrict d,
  * addition of normal vertices. All vertices added after this point are
  * considered to be ghost vertices.
  *
- * This function will also enable running delaunay_update_search_radii() and
- * will make it possible to construct a Voronoi grid based on the tessellation.
- *
  * @param d Delaunay tessellation.
  */
 inline static void delaunay_consolidate(struct delaunay* restrict d) {
@@ -706,63 +684,37 @@ inline static void delaunay_consolidate(struct delaunay* restrict d) {
 }
 
 /**
- * @brief Update the search radii of all vertices based on the given radius.
+ * @brief Computes the delaunay search radii for a list of particles.
  *
- * If the current search radius of a vertex is larger than the given value,
- * the search radius is recomputed based on all the triangles that vertex is
- * part of (and set to twice the largest circumcircle radius among those
- * triangles). This function also counts the vertices for which this updated
- * radius is still larger than the given radius.
+ * For a given generator, we must loop over all the triangles connected to this
+ * generator and compute the maximal circum-radius.
+ * This is fairly straightforward in the 2D case.
  *
- * This function is meant to be called after all ghost vertices with a distance
- * smaller than the given radius to all of the vertices have been added to the
- * tessellation.
- *
- * @param d Delaunay tessellation.
- * @param r Radius.
- * @return Number of vertices with a search radius larger than the given radius.
- */
-inline static int delaunay_update_search_radii(struct delaunay* restrict d,
-                                               double r) {
-  int count = 0;
-  for (int i = d->vertex_start; i < d->vertex_end; ++i) {
-    if (d->search_radii[i] > r) {
-      int t0 = d->vertex_triangles[i + d->vertex_start];
-      int vi0 = d->vertex_triangle_index[i + d->vertex_start];
-      int vi0p1 = (vi0 + 1) % 3;
-      d->search_radii[i] = 2. * delaunay_get_radius(d, t0);
-      int t1 = d->triangles[t0].neighbours[vi0p1];
-      int vi1 = d->triangles[t0].index_in_neighbour[vi0p1];
-      while (t1 != t0) {
-        d->search_radii[i] =
-            fmax(d->search_radii[i], 2. * delaunay_get_radius(d, t1));
-        int vi1p2 = (vi1 + 2) % 3;
-        vi1 = d->triangles[t1].index_in_neighbour[vi1p2];
-        t1 = d->triangles[t1].neighbours[vi1p2];
-      }
-      if (d->search_radii[i] > r) {
-        ++count;
-      }
+ * @param d The #delaunay tesselation
+ * @param pid The indices of the particles to compute the search radius for
+ * @param count The number of particles.
+ * @param r (return) The search radii.
+ * */
+inline static void delaunay_get_search_radii(struct delaunay* restrict d,
+                                             const int* restrict pid, int count,
+                                             /*return*/ double* restrict r) {
+  /* Loop over the particles */
+  for (int i = 0; i < count; i++) {
+    int vi = i + d->vertex_start;
+    int t0 = d->vertex_triangles[vi];
+    int vi0 = d->vertex_triangle_index[vi];
+    int vi0p1 = (vi0 + 1) % 3;
+    double search_radius = 2. * delaunay_get_radius(d, t0);
+    int t1 = d->triangles[t0].neighbours[vi0p1];
+    int vi1 = d->triangles[t0].index_in_neighbour[vi0p1];
+    while (t1 != t0) {
+      search_radius = fmax(search_radius, 2. * delaunay_get_radius(d, t1));
+      int vi1p2 = (vi1 + 2) % 3;
+      vi1 = d->triangles[t1].index_in_neighbour[vi1p2];
+      t1 = d->triangles[t1].neighbours[vi1p2];
     }
+    r[i] = search_radius;
   }
-  return count;
-}
-
-inline static double delaunay_get_search_radius(struct delaunay* restrict d,
-                                                int vi) {
-  int t0 = d->vertex_triangles[vi];
-  int vi0 = d->vertex_triangle_index[vi];
-  int vi0p1 = (vi0 + 1) % 3;
-  double r = 2. * delaunay_get_radius(d, t0);
-  int t1 = d->triangles[t0].neighbours[vi0p1];
-  int vi1 = d->triangles[t0].index_in_neighbour[vi0p1];
-  while (t1 != t0) {
-    r = max(r, 2. * delaunay_get_radius(d, t1));
-    int vi1p2 = (vi1 + 2) % 3;
-    vi1 = d->triangles[t1].index_in_neighbour[vi1p2];
-    t1 = d->triangles[t1].neighbours[vi1p2];
-  }
-  return r;
 }
 
 /**
@@ -953,7 +905,7 @@ inline static void delaunay_enqueue(struct delaunay* restrict d, int t) {
   if (d->queue_index == d->queue_size) {
     /* there isn't: increase the size of the queue with a factor 2. */
     d->queue_size <<= 1;
-    d->queue = (int*)swift_realloc("c.h.d.queue", d->queue,
+    d->queue = (int*)swift_realloc("delaunay", d->queue,
                                    d->queue_size * sizeof(int));
   }
 
@@ -1405,9 +1357,9 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
     if (d->ngb_index == d->ngb_size) {
       d->ngb_size <<= 1;
       d->ngb_cell_sids = (int*)swift_realloc(
-          "c.h.d.ngb_cell_sids", d->ngb_cell_sids, d->ngb_size * sizeof(int));
+          "delaunay", d->ngb_cell_sids, d->ngb_size * sizeof(int));
       d->ngb_part_idx = (int*)swift_realloc(
-          "c.h.d.ngb_part_idx", d->ngb_part_idx, d->ngb_size * sizeof(int));
+          "delaunay", d->ngb_part_idx, d->ngb_size * sizeof(int));
     }
     delaunay_assert(d->ngb_index == v - d->ngb_offset);
     d->ngb_cell_sids[d->ngb_index] = cell_sid;

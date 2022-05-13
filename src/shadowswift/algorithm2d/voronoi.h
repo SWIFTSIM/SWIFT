@@ -182,7 +182,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
   if (v->pair_index[sid] == v->pair_size[sid]) {
     v->pair_size[sid] <<= 1;
     v->pairs[sid] = (struct voronoi_pair *)swift_realloc(
-        "c.h.v.pairs", v->pairs[sid],
+        "voronoi", v->pairs[sid],
         v->pair_size[sid] * sizeof(struct voronoi_pair));
   }
 
@@ -268,7 +268,7 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
   v->active = 0;
 
   if (v->cells != NULL) {
-    swift_free("c.h.v.cells", v->cells);
+    swift_free("voronoi", v->cells);
     v->cells = NULL;
     v->number_of_cells = 0;
     v->cells_size = 0;
@@ -280,7 +280,7 @@ static inline void voronoi_destroy(struct voronoi *restrict v) {
 
   for (int i = 0; i < 28; i++) {
     if (v->pairs[i] != NULL) {
-      swift_free("c.h.v.pairs", v->pairs[i]);
+      swift_free("voronoi", v->pairs[i]);
       v->pairs[i] = NULL;
       v->pair_index[i] = 0;
       v->pair_size[i] = 0;
@@ -298,13 +298,13 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
   v->number_of_cells = number_of_cells;
   /* allocate memory for the voronoi cells */
   v->cells = (struct voronoi_cell *)swift_malloc(
-      "c.h.v.cells", v->number_of_cells * sizeof(struct voronoi_cell));
+      "voronoi", v->number_of_cells * sizeof(struct voronoi_cell));
   v->cells_size = v->number_of_cells;
 
   /* Allocate memory for the voronoi pairs (faces). */
   for (int i = 0; i < 28; ++i) {
     v->pairs[i] = (struct voronoi_pair *)swift_malloc(
-        "c.h.v.pairs", 10 * sizeof(struct voronoi_pair));
+        "voronoi", 10 * sizeof(struct voronoi_pair));
     v->pair_index[i] = 0;
     v->pair_size[i] = 10;
   }
@@ -326,7 +326,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
   if (v->cells_size < v->number_of_cells) {
     /* allocate memory for the voronoi cells */
     v->cells = (struct voronoi_cell *)swift_realloc(
-        "c.h.v.cells", v->cells,
+        "voronoi", v->cells,
         v->number_of_cells * sizeof(struct voronoi_cell));
     v->cells_size = v->number_of_cells;
   }

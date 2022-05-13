@@ -111,13 +111,13 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
   v->number_of_cells = number_of_cells;
   /* allocate memory for the voronoi cells */
   v->cells = (struct voronoi_cell *)swift_malloc(
-      "c.h.v.cells", v->number_of_cells * sizeof(struct voronoi_cell));
+      "voronoi", v->number_of_cells * sizeof(struct voronoi_cell));
   v->cells_size = v->number_of_cells;
 
   /* Allocate memory for the voronoi pairs (faces). */
   for (int sid = 0; sid < 28; ++sid) {
     v->pairs[sid] = (struct voronoi_pair *)swift_malloc(
-        "c.h.v.pairs", 10 * sizeof(struct voronoi_pair));
+        "voronoi", 10 * sizeof(struct voronoi_pair));
     v->pair_index[sid] = 0;
     v->pair_size[sid] = 10;
   }
@@ -129,7 +129,7 @@ inline static struct voronoi *voronoi_malloc(int number_of_cells, double dmin) {
   /* Allocate memory for the face_vertices */
   v->face_vertices_size = 100 * number_of_cells;
   v->face_vertices = (double *)swift_malloc(
-      "c.h.v.face_vertices", 3 * v->face_vertices_size * sizeof(double));
+      "voronoi", 3 * v->face_vertices_size * sizeof(double));
   v->face_vertices_index = 0;
 #endif
 
@@ -147,7 +147,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
   if (v->cells_size < v->number_of_cells) {
     /* allocate memory for the voronoi cells */
     v->cells = (struct voronoi_cell *)swift_realloc(
-        "c.h.v.cells", v->cells,
+        "voronoi", v->cells,
         v->number_of_cells * sizeof(struct voronoi_cell));
     v->cells_size = v->number_of_cells;
   }
@@ -535,25 +535,27 @@ inline static void voronoi_destroy(struct voronoi *restrict v) {
     return;
   }
 
-  swift_free("c.h.v.cells", v->cells);
+  swift_free("voronoi", v->cells);
   v->cells = NULL;
   v->number_of_cells = 0;
   v->cells_size = 0;
 
   for (int sid = 0; sid < 28; ++sid) {
-    swift_free("c.h.v.pairs", v->pairs[sid]);
+    swift_free("voronoi", v->pairs[sid]);
     v->pairs[sid] = NULL;
     v->pair_index[sid] = 0;
     v->pair_size[sid] = 0;
   }
   int2_lifo_queue_destroy(&v->cell_pair_connections);
 #ifdef VORONOI_STORE_FACES
-  swift_free("c.h.v.face_vertices", v->face_vertices);
+  swift_free("voronoi", v->face_vertices);
   v->face_vertices = NULL;
   v->face_vertices_size = 0;
   v->face_vertices_index = 0;
 #endif
   v->active = 0;
+
+  free(v);
 }
 
 /**
@@ -626,7 +628,7 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
   if (v->pair_index[sid] == v->pair_size[sid]) {
     v->pair_size[sid] <<= 1;
     v->pairs[sid] = (struct voronoi_pair *)swift_realloc(
-        "c.h.v.pairs", v->pairs[sid],
+        "voronoi", v->pairs[sid],
         v->pair_size[sid] * sizeof(struct voronoi_pair));
   }
 

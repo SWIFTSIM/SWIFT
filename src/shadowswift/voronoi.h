@@ -10,7 +10,7 @@
 //#define VORONOI_STORE_FACES
 
 /*! @brief Store cell generators. */
-#define VORONOI_STORE_GENERATORS
+//#define VORONOI_STORE_GENERATORS
 
 /*! @brief Activate runtime assertions. */
 //#define VORONOI_DO_ASSERTIONS
