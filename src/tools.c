@@ -806,8 +806,8 @@ void engine_single_force(double *dim, long long int pid,
  *
  * This function is *not* thread-safe.
  */
-double random_uniform(double a, double b) {
-  return (rand() / (double)RAND_MAX) * (b - a) + a;
+double random_uniform(const double a, const double b) {
+  return (rand() / (((double)RAND_MAX) + 1.0)) * (b - a) + a;
 }
 
 /**
