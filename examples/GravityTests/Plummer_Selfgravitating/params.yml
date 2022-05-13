@@ -1,0 +1,38 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988e+43 # 10^10 Solar masses
+  UnitLength_in_cgs:   3.086e+21 # kpc
+  UnitVelocity_in_cgs: 1e5       # km / s
+  UnitCurrent_in_cgs:  1         # Amperes
+  UnitTemp_in_cgs:     1         # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin:          0.      # The starting time of the simulation (in internal units).
+  time_end:            2.0     # The end time of the simulation (in internal units).
+  dt_min:              1e-11   # The minimal time-step size of the simulation (in internal units).
+  dt_max:              1e-3    # The maximal time-step size of the simulation (in internal units).
+
+# Parameters for the self-gravity scheme
+Gravity:
+  eta:                           0.002      # Constant dimensionless multiplier for time integration.
+  MAC:                           geometric  # Choice of mulitpole acceptance criterion: 'adaptive' OR 'geometric'.
+  epsilon_fmm:                   0.001      # Tolerance parameter for the adaptive multipole acceptance criterion.
+  theta_cr:                      0.7        # Opening angle for the purely gemoetric criterion.
+  max_physical_DM_softening:     0.005      # Physical softening length (in internal units).
+  
+# Parameters governing the snapshots
+Snapshots:
+  basename:            snap/snapshot  # Common part of the name of output files
+  time_first:          0.      # Time of the first output (in internal units)
+  delta_time:          2e-1    # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-3    # Time between statistics output
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:          plummer.hdf5 # The file to read
+  shift:              [2.,2.,2.]
+  periodic:           0
