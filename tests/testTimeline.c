@@ -52,6 +52,7 @@ void test_get_integer_time_end(timebin_t bin_min, timebin_t bin_max,
 
       /* we can't have more than this many steps of this size */
       max_step = max_nr_timesteps_test / dti;
+
       if (max_step == 0)
         error("max step == 0? bin %d max_nr_steps %lld", bin,
               max_nr_timesteps_test);
@@ -231,10 +232,11 @@ void test_get_integer_time_begin(timebin_t bin_min, timebin_t bin_max,
       if (set_time_begin >= max_nr_timesteps_test)
         error("Time begin %lld >= max_nr_timesteps %lld?", set_time_begin,
               max_nr_timesteps);
-      if (set_time_begin < (integertime_t)0) error("Time begin < 0?");
+      if (set_time_begin < (integertime_t)0)
+        error("Time begin < 0? set_time_begin=%lld", set_time_begin);
 
-      /* Now mimick a "current time" by removing a fraction of dti from
-       * the step, and see whether we recover the correct time_end */
+      /* Now mimick a "current time" by adding a fraction to dti from
+       * the step, and see whether we recover the correct time_begin */
       displacement = (integertime_t)(random_uniform(0., 1.) * dti);
       ti_current = set_time_begin + displacement;
 
