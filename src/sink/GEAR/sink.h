@@ -449,6 +449,68 @@ INLINE static int sink_spawn_star(struct sink* sink, const struct engine* e,
 }
 
 /**
+ * @brief Separate the #spart and #part by randomly moving both of them.
+ *
+ * @param e The #engine.
+ * @param p The #part generating a star.
+ * @param xp The #xpart generating a star.
+ * @param sp The new #spart.
+ */
+INLINE static void sink_star_formation_separate_particles(const struct engine* e,
+							  struct sink* si,
+							  struct spart* sp) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (si->x[0] != sp->x[0] || si->x[1] != sp->x[1] || si->x[2] != sp->x[2]) {
+    error(
+        "Moving particles that are not at the same location."
+        " (%g, %g, %g) - (%g, %g, %g)",
+        si->x[0], si->x[1], si->x[2], sp->x[0], sp->x[1], sp->x[2]);
+  }
+#endif
+
+  /* Move a bit the particle in order to avoid
+     division by 0.
+  */
+  const float max_displacement = 0.1;
+  const double delta_x =
+      2.f * random_unit_interval(si->id, e->ti_current,
+                                 (enum random_number_type)0) -
+      1.f;
+  const double delta_y =
+      2.f * random_unit_interval(si->id, e->ti_current,
+                                 (enum random_number_type)1) -
+      1.f;
+  const double delta_z =
+      2.f * random_unit_interval(si->id, e->ti_current,
+                                 (enum random_number_type)2) -
+      1.f;
+
+  sp->x[0] += delta_x * max_displacement * si->r_cut;
+  sp->x[1] += delta_y * max_displacement * si->r_cut;
+  sp->x[2] += delta_z * max_displacement * si->r_cut;
+
+  /* Copy the position to the gpart */
+  sp->gpart->x[0] = sp->x[0];
+  sp->gpart->x[1] = sp->x[1];
+  sp->gpart->x[2] = sp->x[2];
+
+  /* Do the sink particle. */
+  const double mass_ratio = sp->mass / si->mass;
+  const double dx[3] = {mass_ratio * delta_x * max_displacement * si->r_cut,
+                        mass_ratio * delta_y * max_displacement * si->r_cut,
+                        mass_ratio * delta_z * max_displacement * si->r_cut};
+
+  si->x[0] -= dx[0];
+  si->x[1] -= dx[1];
+  si->x[2] -= dx[2];
+
+  /* Copy the position to the gpart */
+  si->gpart->x[0] = si->x[0];
+  si->gpart->x[1] = si->x[1];
+  si->gpart->x[2] = si->x[2];
+}
+
+/**
  * @brief Copy the properties of the sink particle towards the new star.
  * This function also needs to update the sink particle.
  *
@@ -467,6 +529,8 @@ INLINE static void sink_copy_properties_to_star(
     const int with_cosmology, const struct phys_const* phys_const,
     const struct unit_system* restrict us) {
 
+  sink_star_formation_separate_particles(e, sink, sp);
+  
   /* set the mass */
   sp->mass =  sink->target_mass*phys_const->const_solar_mass;   
   
