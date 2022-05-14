@@ -221,6 +221,10 @@ struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
 
     /* Update the spart->gpart links (shift by 1) */
     for (size_t i = 0; i < n_copy; ++i) {
+
+      /* Skip inhibited star particles */
+      if (spart_is_inhibited(&c->stars.parts[i + 1], e)) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
       if (c->stars.parts[i + 1].gpart == NULL) {
         error("Incorrectly linked spart!");
@@ -494,6 +498,10 @@ struct gpart *cell_add_gpart(struct engine *e, struct cell *c) {
     /* Update the gpart->spart links (shift by 1) */
     struct gpart *gparts = c->grav.parts;
     for (size_t i = 0; i < n_copy; ++i) {
+
+      /* Skip inhibited particles */
+      if (gpart_is_inhibited(&c->grav.parts[i + 1], e)) continue;
+
       if (gparts[i + 1].type == swift_type_gas) {
         s->parts[-gparts[i + 1].id_or_neg_offset].gpart++;
       } else if (gparts[i + 1].type == swift_type_stars) {
