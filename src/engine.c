@@ -1733,7 +1733,6 @@ void engine_launch(struct engine *e, const char *call) {
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
-
 }
 
 /**
@@ -1799,15 +1798,15 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     if (!engine_is_done(e)) error("Got rt_step_size = 0");
     return;
   }
-  /* At this point, the non-RT ti_end_min is up-to-date for the next 
-   * normal step. Use that and the time of the previous regular step 
+  /* At this point, the non-RT ti_end_min is up-to-date for the next
+   * normal step. Use that and the time of the previous regular step
    * to get how many subcycles we need. */
   const int nr_rt_cycles = (e->ti_end_min - e->ti_current) / rt_step_size;
 
   /* TODO: turn != into > once you're done abusing max_nr_rt_subcycles */
-  if (nr_rt_cycles != e->max_nr_rt_subcycles) 
-    error("Not doing the proper number of subcycles. Expect=%d got=%d", 
-        e->max_nr_rt_subcycles, nr_rt_cycles);
+  if (nr_rt_cycles != e->max_nr_rt_subcycles)
+    error("Not doing the proper number of subcycles. Expect=%d got=%d",
+          e->max_nr_rt_subcycles, nr_rt_cycles);
 
   /* Note: zeroth sub-cycle already happened during the regular tasks,
    * so we need to do one less than that. */

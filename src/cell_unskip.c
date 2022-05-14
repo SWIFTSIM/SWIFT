@@ -3023,8 +3023,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 #ifdef SWIFT_RT_DEBUG_CHECKS
     /* foreign cells need to have their own rt_advance_cell_time task
      * so sub-cycling can proceed as intended and without further comms. */
-    else { 
-      if (c->nodeID != nodeID) 
+    else {
+      if (c->nodeID != nodeID)
         error("Foreign cell doesn't have advance_cell_time task???");
     }
 #endif

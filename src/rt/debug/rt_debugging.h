@@ -392,30 +392,29 @@ __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
   if (loc > 1) {
     /* is injection done? */
     if (p->rt_data.debug_injection_done != 1)
-      error(
-          "called %s on part %lld when finalise injection count is %d ID",
-          function_name, p->id, p->rt_data.debug_injection_done);
+      error("called %s on part %lld when finalise injection count is %d ID",
+            function_name, p->id, p->rt_data.debug_injection_done);
   }
 
   if (loc > 2) {
     /* are gradients done? */
     if (p->rt_data.debug_gradients_done != 1)
-      error(
-          "called %s on part %lld when gradients_done count is %d", function_name, p->id, p->rt_data.debug_gradients_done);
+      error("called %s on part %lld when gradients_done count is %d",
+            function_name, p->id, p->rt_data.debug_gradients_done);
   }
 
   if (loc > 3) {
     /* is transport done? */
     if (p->rt_data.debug_transport_done != 1)
-      error(
-          "called %s on part %lld when transport_done != 1: %d", function_name, p->id, p->rt_data.debug_transport_done);
+      error("called %s on part %lld when transport_done != 1: %d",
+            function_name, p->id, p->rt_data.debug_transport_done);
   }
 
   if (loc > 4) {
     /* is thermochemistry done? */
     if (p->rt_data.debug_thermochem_done != 1)
-      error(
-          "called %s on part %lld with thermochem_done count=%d", function_name, p->id, p->rt_data.debug_thermochem_done);
+      error("called %s on part %lld with thermochem_done count=%d",
+            function_name, p->id, p->rt_data.debug_thermochem_done);
   }
 }
 

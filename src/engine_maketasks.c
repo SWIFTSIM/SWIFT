@@ -1049,7 +1049,8 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
 
     /* Also create the rt_advance_cell_time tasks for the foreign cells
      * for the sub-cycling. */
-    c->rt.rt_advance_cell_time = scheduler_addtask(s, task_type_rt_advance_cell_time, task_subtype_none, 0, 0, c, NULL);
+    c->rt.rt_advance_cell_time = scheduler_addtask(
+        s, task_type_rt_advance_cell_time, task_subtype_none, 0, 0, c, NULL);
 
     if (c->hydro.sorts != NULL) {
       scheduler_addunlock(s, c->hydro.sorts, t_rt_transport);
@@ -1073,7 +1074,7 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
     /* In normal steps, tend mustn't run before rt_advance_cell_time or the
      * cell's ti_rt_end_min will be updated wrongly. In sub-cycles, we don't
      * have the tend tasks, so there's no worry about that. (That's the reason
-     * we need the rt_advanced_cell_time to complete the sub-cycles in the first 
+     * we need the rt_advanced_cell_time to complete the sub-cycles in the first
      * place) */
     scheduler_addunlock(s, c->rt.rt_advance_cell_time, tend);
   }
