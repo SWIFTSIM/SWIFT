@@ -217,6 +217,9 @@ struct pcell {
     /*! Minimal integer end-of-timestep in this cell for RT tasks */
     integertime_t ti_rt_end_min;
 
+    /*! smallest RT time-step size in this cell */
+    integertime_t ti_rt_min_step_size;
+
   } rt;
 
   /*! Maximal depth in that part of the tree */
@@ -274,6 +277,9 @@ struct pcell_step {
 
     /*! Minimal integer end-of-timestep in this cell (rt) */
     integertime_t ti_rt_end_min;
+
+    /*! smallest RT time-step size in this cell */
+    integertime_t ti_rt_min_step_size;
 
   } rt;
 };

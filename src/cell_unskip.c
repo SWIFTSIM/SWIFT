@@ -2877,7 +2877,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
       scheduler_activate(s, t);
 
       if (!sub_cycle) {
-        /* Activate hydro drift */
+        /* Activate drifts and sorts only during main/normal steps. */
+
         if (t->type == task_type_self) {
           if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         }
@@ -2889,10 +2890,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
           cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
           /* Activate the drift tasks. */
-          if (ci_nodeID == nodeID && !sub_cycle)
-            cell_activate_drift_part(ci, s);
-          if (cj_nodeID == nodeID && !sub_cycle)
-            cell_activate_drift_part(cj, s);
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
@@ -2980,8 +2979,6 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
   }
 
   for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
-    /* I assume that all hydro related subcell unskipping/activation necessary
-     * here is being done in the hydro part of cell_unskip */
 
     struct task *t = l->t;
     struct cell *ci = t->ci;
@@ -3014,7 +3011,6 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
   }
 
   /* Unskip all the other task types */
-
   if (cell_is_rt_active(c, e)) {
     if (c->rt.rt_in != NULL) scheduler_activate(s, c->rt.rt_in);
     if (c->rt.rt_ghost1 != NULL) scheduler_activate(s, c->rt.rt_ghost1);
@@ -3024,6 +3020,14 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
     if (c->rt.rt_advance_cell_time != NULL)
       scheduler_activate(s, c->rt.rt_advance_cell_time);
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    /* foreign cells need to have their own rt_advance_cell_time task
+     * so sub-cycling can proceed as intended and without further comms. */
+    else { 
+      if (c->nodeID != nodeID) 
+        error("Foreign cell doesn't have advance_cell_time task???");
+    }
+#endif
     if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
   }
 

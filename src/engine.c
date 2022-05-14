@@ -1733,6 +1733,7 @@ void engine_launch(struct engine *e, const char *call) {
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+
 }
 
 /**
@@ -1783,7 +1784,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   if (!(e->policy & engine_policy_rt)) return;
   if (e->max_nr_rt_subcycles <= 1) return;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_RT_DEBUG_CHECKS
   /* Print info before it's gone */
   message(
       "step %6d cycle   0 (during regular tasks) min_active_bin=%2d "
@@ -1792,18 +1793,21 @@ void engine_run_rt_sub_cycles(struct engine *e) {
       e->rt_updates);
 #endif
 
-  /* Move forward in time */
-  e->ti_old = e->ti_current;
+  const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_current;
+  if (rt_step_size == 0) {
+    /* When we arrive at the final step, the rt_step_size can be == 0 */
+    if (!engine_is_done(e)) error("Got rt_step_size = 0");
+    return;
+  }
+  /* At this point, the non-RT ti_end_min is up-to-date for the next 
+   * normal step. Use that and the time of the previous regular step 
+   * to get how many subcycles we need. */
+  const int nr_rt_cycles = (e->ti_end_min - e->ti_current) / rt_step_size;
 
-  const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_old;
-  /* When we arrive at the final step, the rt_step_size can be == 0 */
-  if (rt_step_size == 0) return;
-  /* At this point, the non-RT ti_end_min is up-to-date. Use that and
-   * the time of the previous regular step to get how many subcycles
-   * we need. */
-  const int nr_rt_cycles = (e->ti_end_min - e->ti_old) / rt_step_size;
-  /* TODO: Add check that this doesn't exceed user-set max nr of
-   * subcycles later.*/
+  /* TODO: turn != into > once you're done abusing max_nr_rt_subcycles */
+  if (nr_rt_cycles != e->max_nr_rt_subcycles) 
+    error("Not doing the proper number of subcycles. Expect=%d got=%d", 
+        e->max_nr_rt_subcycles, nr_rt_cycles);
 
   /* Note: zeroth sub-cycle already happened during the regular tasks,
    * so we need to do one less than that. */
@@ -1826,7 +1830,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
     engine_unskip_sub_cycle(e);
     engine_launch(e, "cycles");
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_RT_DEBUG_CHECKS
     message(
         "step %6d cycle %3d time=%13.6e     min_active_bin=%d "
         "max_active_bin=%d rt_updates=%18lld",
@@ -1835,12 +1839,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 #endif
   }
 
-  /* Once we're done, clean up after ourselves */
   e->rt_updates = 0ll;
-  /* e->ti_old = ti_old_store; */
-  /* e->ti_current = -1; we NEVER update e->ti_current */
-  /* e->max_active_bin = get_max_active_bin(e->ti_end_min); */
-  /* e->min_active_bin = get_min_active_bin(e->ti_current, e->ti_old); */
 }
 
 /**

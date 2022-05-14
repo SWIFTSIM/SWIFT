@@ -259,6 +259,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,
                  ti_old_part, ti_current, e, replication_list, c->loc);
 
+      /* Additional radiative transfer drift operations */
       if (with_rt) rt_drift_part(p, dt_drift);
 
       /* Update the tracers properties */

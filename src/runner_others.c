@@ -1079,7 +1079,8 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 }
 
 /**
- * @brief Update the cell's t_rt_end_min so that the sub-cycling is consistent
+ * @brief Update the cell's t_rt_end_min so that the sub-cycling can proceed
+ * with correct cell times.
  *
  * @param r The #runner thread.
  * @param c The #cell.
@@ -1093,7 +1094,6 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 
   /* Anything to do here? */
   if (count == 0) return;
-
   if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
@@ -1102,10 +1102,11 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         runner_do_rt_advance_cell_time(r, c->progeny[k], 0);
-  } else {
+  }
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  else {
     /* Do some debugging stuff on active particles before
-     * setting the cell time */
+     * setting the cell time. */
 
     struct part *restrict parts = c->hydro.parts;
 
@@ -1115,21 +1116,31 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
 
-      /* Skip inhibited parts */
-      if (part_is_inhibited(p, e)) continue;
+      if (c->nodeID == e->nodeID) {
+        /* Skip inhibited parts */
+        if (part_is_inhibited(p, e)) continue;
 
-      /* Skip inactive parts */
-      if (!part_is_rt_active(p, e)) continue;
+        /* Skip inactive parts */
+        /* Note: parts on foreign cells will fail this check on the first
+         * step because they haven't been updated since the timestep task
+         * ran on their local node. */
+        if (!part_is_rt_active(p, e)) continue;
 
-      /* Run checks. */
-      rt_debug_sequence_check(p, 5, __func__);
-      /* Mark that the subcycling has happened */
-      rt_debugging_count_subcycle(p);
-      /* TODO: do this better? without atomics?*/
-      atomic_inc(&e->rt_updates);
+        /* Run checks. */
+        rt_debug_sequence_check(p, 5, __func__);
+        /* Mark that the subcycling has happened */
+        rt_debugging_count_subcycle(p);
+        /* Not the best way of counting updates, but we do it
+         * in debugging mode only, so leave it as is for now. */
+        atomic_inc(&e->rt_updates);
+      } else {
+        /* The last thing we know of foreign cells is that
+         * they should've finished the gradients. */
+        rt_debug_sequence_check(p, 3, __func__);
+      }
     }
-#endif
   }
+#endif
 
   /* Note: c->rt.ti_rt_min_step_size may be greater than
    * c->super->rt.ti_rt_min_step_size. This is expected behaviour.
