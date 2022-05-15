@@ -35,7 +35,33 @@
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const struct sink_props *sink_props) {}
+    const float H, const struct sink_props *sink_props) {
+      
+  /* In order to prevent the formation of two sink particles at a distance
+   * smaller than the sink cutoff radius, we keep only gas particles with
+   * the smallest potential. */
+
+  const float r = sqrtf(r2);
+
+  /* if the distance is less than the cut off radius */
+  if (r < sink_props->cut_off_radius) {
+
+    float potential_i = pi->gpart->potential;
+    float potential_j = pj->gpart->potential;
+
+    /* prevent the particle with the largest potential to form a sink */
+    if (potential_i > potential_j) {
+      pi->sink_data.can_form_sink = 0;
+      return;
+    }  
+    
+    if (potential_j > potential_i) {
+      pj->sink_data.can_form_sink = 0;
+      return;
+    }  
+    
+  }            
+}
 
 /**
  * @brief do sink computation after the runner_iact_density (non symmetric
@@ -83,7 +109,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
  * @param sj Second sink particle.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
+runner_iact_nonsym_sinks_sink_swallow(const float r2, const float dx[3],
                                       const float ri, const float rj,
                                       struct sink *restrict si,
                                       struct sink *restrict sj) {
@@ -133,7 +159,7 @@ runner_iact_nonsym_sinks_sink_swallow(const float r2, const float *dx,
  * @param pj Second particle.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_sinks_gas_swallow(const float r2, const float *dx,
+runner_iact_nonsym_sinks_gas_swallow(const float r2, const float dx[3],
                                      const float ri, const float hj,
                                      struct sink *restrict si,
                                      struct part *restrict pj) {
