@@ -35,7 +35,7 @@
 __attribute__((always_inline)) INLINE static void runner_iact_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const struct sink_props *sink_props) {}
+    const float H, const float cut_off_radius) {}
 
 /**
  * @brief do sink computation after the runner_iact_density (non symmetric
@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sink(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sink(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const struct sink_props *sink_props) {}
+    const float H, const float cut_off_radius) {}
 
 /**
  * @brief Compute sink-sink swallow interaction (non-symmetric).

@@ -48,6 +48,9 @@ void test(void) {
   const float H = 1.f;
   const integertime_t ti_current = 1;
   const double time_base = 1e-5;
+  /* sink cut-off radius */
+  const float rcut = 0.5;
+  
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
@@ -195,12 +198,14 @@ void test(void) {
   runner_iact_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_star_formation(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_sink(r2, dx, pi.h, pj.h, &pi, &pj, a, H, rcut);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_sink(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H, rcut);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
@@ -208,6 +213,7 @@ void test(void) {
   runner_iact_nonsym_chemistry(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_sink(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H, rcut);
 
   /* Check that the particles are the same */
   i_not_ok = memcmp(&pi, &pi2, sizeof(struct part));
