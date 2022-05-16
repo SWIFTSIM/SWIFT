@@ -405,9 +405,9 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp, const float mu0) {
 
-  p->mhd_data.BPred[0] /= mu0;
-  p->mhd_data.BPred[1] /= mu0;
-  p->mhd_data.BPred[2] /= mu0;
+  p->mhd_data.BPred[0] /= sqrt(mu0);
+  p->mhd_data.BPred[1] /= sqrt(mu0);
+  p->mhd_data.BPred[2] /= sqrt(mu0);
 
   p->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
   p->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
