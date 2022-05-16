@@ -631,7 +631,7 @@ void engine_init(
     struct output_options *output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
     long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
@@ -652,7 +652,8 @@ void engine_init(
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file);
+                   int verbose, const char *restart_file,
+                   struct repartition *reparttype);
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,
