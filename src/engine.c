@@ -2815,7 +2815,6 @@ void engine_numa_policies(int rank, int verbose) {
  * @param Nnuparts Total number of neutrino DM particles.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
- * @param reparttype What type of repartition algorithm are we using ?
  * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
  * @param cosmo The #cosmology used for this run.
@@ -2843,7 +2842,7 @@ void engine_init(
     struct output_options *output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
     long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
@@ -2881,7 +2880,6 @@ void engine_init(
   e->total_nr_neutrino_gparts = Nnuparts;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
-  e->reparttype = reparttype;
   e->ti_old = 0;
   e->ti_current = 0;
   e->ti_earliest_undrifted = 0;

@@ -55,4 +55,6 @@ double clocks_get_hours_since_start(void);
 void clocks_get_cputimes_used(double *usertime, double *systime);
 int clocks_random_seed(void);
 
+const char *clocks_now(int swift);
+
 #endif /* SWIFT_CLOCKS_H */

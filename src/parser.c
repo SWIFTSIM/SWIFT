@@ -1268,10 +1268,11 @@ void parser_write_params_to_file(const struct swift_params *params,
     fprintf(file, "# SWIFT used parameter file\n");
   else
     fprintf(file, "# SWIFT unused parameter file\n");
-  fprintf(file, "# Code version: %s\n", package_version());
+  fprintf(file, "# code version: %s\n", package_version());
   fprintf(file, "# git revision: %s\n", git_revision());
   fprintf(file, "# git branch: %s\n", git_branch());
   fprintf(file, "# git date: %s\n", git_date());
+  fprintf(file, "# current date: %s\n", clocks_now(1 /* swift */));
 
   /* Flags to track which parameters are written. */
   int *written = (int *)calloc(params->paramCount, sizeof(int));
@@ -1396,4 +1397,39 @@ int parser_get_section_id(const struct swift_params *params, const char *name) {
     if (strcmp(section_name, name) == 0) return section_id;
   }
   return -1;
+}
+
+/**
+ * @brief Compares two param structs and sets the used flag of any
+ *        parameters with different values to 1, all other parameters
+ *        are set to unused.
+ *
+ * @param refparams Structure that holds the parameters to compare to.
+ * @param params Structure that holds the parameters to check.
+ *
+ * @result the number of changed values found.
+ */
+int parser_compare_params(const struct swift_params *refparams,
+                          struct swift_params *params) {
+
+  int changed = 0;
+  for (int j = 0; j < params->paramCount; j++) {
+
+    /* All parameters are unused until found to differ to a reference
+     * parameter. */
+    params->data[j].used = 0;
+
+    for (int i = 0; i < refparams->paramCount; i++) {
+      if (strcmp(refparams->data[i].name, params->data[j].name) == 0) {
+        if (strcmp(refparams->data[i].value, params->data[j].value) != 0) {
+
+          /* Same parameter, values differ. */
+          params->data[j].used = 1;
+          changed++;
+        }
+        break;
+      }
+    }
+  }
+  return changed;
 }
