@@ -327,7 +327,7 @@ int clocks_random_seed(void) {
 const char *clocks_now(int swift) {
   static char now[64];
   time_t tm = time(NULL);
-  struct tm* timeinfo = localtime(&tm);
+  struct tm *timeinfo = localtime(&tm);
   if (swift) {
     strftime(now, 64, "%T %F %Z", timeinfo);
   } else {
