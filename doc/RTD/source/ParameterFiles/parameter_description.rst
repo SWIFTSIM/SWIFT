@@ -53,13 +53,15 @@ a compulsory parameter is missing an error will be raised at
 start-up.
 
 Finally, SWIFT outputs two YAML files at the start of a run. The first one
-``used_parameters.yml`` contains all the parameters that were used for this run,
-**including all the optional parameters left unspecified with their default
-values**. This file can be used to start an exact copy of the run. The second
-file, ``unused_parameters.yml`` contains all the values that were not read from
-the parameter file. This can be used to simplify the parameter file or check
-that nothing important was ignored (for instance because the code is not
-configured to use some options).
+``used_parameters.yml`` contains all the parameters that were used for this
+run, **including all the optional parameters left unspecified with their
+default values**. This file can be used to start an exact copy of the run. The
+second file, ``unused_parameters.yml`` contains all the values that were not
+read from the parameter file. This can be used to simplify the parameter file
+or check that nothing important was ignored (for instance because the code is
+not configured to use some options). Note that on restart a new file
+``used_parameters.yml.stepno`` is created and any changed parameters will be
+written to it.
 
 The rest of this page describes all the SWIFT parameters, split by
 section. A list of all the possible parameters is kept in the file
