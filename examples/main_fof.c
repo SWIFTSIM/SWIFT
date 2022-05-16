@@ -657,8 +657,7 @@ int main(int argc, char *argv[]) {
       /*extra_io_props=*/NULL, &fof_properties, /*los_properties=*/NULL,
       /*lightcone_properties=*/NULL, &ics_metadata);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
-                nr_threads, nr_threads, with_aff, talking, NULL,
-                &reparttype);
+                nr_threads, nr_threads, with_aff, talking, NULL, &reparttype);
 
   /* Get some info to the user. */
   if (myrank == 0) {
