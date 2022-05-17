@@ -122,6 +122,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *restrict p) {
 
   p->mhd_data.divB = 0.f;
+  
 }
 
 /**
@@ -225,13 +226,13 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */
-  float const DBDT_Corr = (p->mhd_data.phi / p->h);
+  float const DBDT_Corr = fabs(p->mhd_data.phi / p->h);
   const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
-  float const DBDT_True = b2 * sqrt(1.f / p->rho / 2.f) / p->h;
+  float const DBDT_True = b2 * sqrt(0.5 / p->rho) / p->h; // b * v_alfven /h 
   /* Re normalize the correction in the Induction equation */
-  p->mhd_data.Q1 = DBDT_Corr / DBDT_True > 0.5f ? 0.5f / DBDT_Corr : 1.0f;
+  p->mhd_data.Q1 = DBDT_Corr > 0.5f * DBDT_True ? 0.5f * DBDT_True / DBDT_Corr : 1.0f;
 
   /* Estimation of the tensile instability due divB */
   p->mhd_data.Q0 = pressure / (b2 / 2.0f );  // Plasma Beta
@@ -246,7 +247,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   const float ACC_mhd = b2 / (p->h);
   /* Re normalize the correction in eth momentum from the DivB errors*/
   p->mhd_data.Q0 =
-      ACC_corr > ACC_mhd ? p->mhd_data.Q0 / ACC_corr * p->h : p->mhd_data.Q0;
+      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr: p->mhd_data.Q0;
 }
 
 /**
@@ -260,9 +261,9 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
   /* MHD acceleration */
-  p->mhd_data.Test[0] = 0.f;
-  p->mhd_data.Test[1] = 0.f;
-  p->mhd_data.Test[2] = 0.f;
+  //p->mhd_data.Test[0] = 0.f;
+  //p->mhd_data.Test[1] = 0.f;
+  //p->mhd_data.Test[2] = 0.f;
 
   /* Induction equation */
   p->mhd_data.dBdt[0] = 0.0f;
@@ -332,9 +333,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  p->a_hydro[0] += p->mhd_data.Test[0];
-  p->a_hydro[1] += p->mhd_data.Test[1];
-  p->a_hydro[2] += p->mhd_data.Test[2];
+//  p->a_hydro[0] += p->mhd_data.Test[0];
+//  p->a_hydro[1] += p->mhd_data.Test[1];
+//  p->a_hydro[2] += p->mhd_data.Test[2];
 }
 
 /**

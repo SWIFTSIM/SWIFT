@@ -256,11 +256,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
-      // pi->a_hydro[i] += mj * (mm_i[i][j]*mag_faci+mm_j[i][j]*mag_facj) *
-      // dx[j]; pj->a_hydro[i] -= mi * (mm_i[i][j]*mag_faci+mm_j[i][j]*mag_facj)
-      // * dx[j]; pi->a_hydro[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
-      // (Bi[j]*mag_faci+Bj[j]*mag_facj)*dx[j]; pj->a_hydro[i] +=
-      // pj->mhd_data.Q0 * mi * Bj[i] * (Bi[j]*mag_faci+Bj[j]*mag_facj)*dx[j];
+      pi->a_hydro[i] += mj * (mm_i[i][j]*mag_faci+mm_j[i][j]*mag_facj) * dx[j]; 
+      pj->a_hydro[i] -= mi * (mm_i[i][j]*mag_faci+mm_j[i][j]*mag_facj) * dx[j]; 
+      pi->a_hydro[i] -= pi->mhd_data.Q0 * mj * Bi[i] * (Bi[j]*mag_faci+Bj[j]*mag_facj)*dx[j]; 
+      pj->a_hydro[i] += pj->mhd_data.Q0 * mi * Bj[i] * (Bi[j]*mag_faci+Bj[j]*mag_facj)*dx[j];
+      /* TEST CASE */
+      /*
       pi->mhd_data.Test[i] +=
           mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
       pj->mhd_data.Test[i] -=
@@ -269,6 +270,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                               (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
       pj->mhd_data.Test[i] += pj->mhd_data.Q0 * mi * Bj[i] *
                               (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
+      */
     }
   /////////////////////////// DIRECT INDUCTION
   const float mag_Indi = wi_dr * r_inv / rhoi;

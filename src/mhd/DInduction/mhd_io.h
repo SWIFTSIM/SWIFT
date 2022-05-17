@@ -71,7 +71,7 @@ INLINE static int mhd_read_particles(struct part* parts,
  */
 INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
-                                      struct io_props* list) {
+                                      struct io_props* list, const float mu0) {
 
   list[0] = io_make_output_field("Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f,
                                  parts, mhd_data.BPred,
