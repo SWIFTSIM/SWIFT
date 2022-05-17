@@ -1798,15 +1798,14 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     if (!engine_is_done(e)) error("Got rt_step_size = 0");
     return;
   }
-  /* At this point, the non-RT ti_end_min is up-to-date for the next
-   * normal step. Use that and the time of the previous regular step
-   * to get how many subcycles we need. */
+  /* At this point, the non-RT ti_end_min is up-to-date. Use that and
+   * the time of the previous regular step to get how many subcycles
+   * we need. */
   const int nr_rt_cycles = (e->ti_end_min - e->ti_current) / rt_step_size;
-
-  /* TODO: turn != into > once you're done abusing max_nr_rt_subcycles */
-  if (nr_rt_cycles != e->max_nr_rt_subcycles)
-    error("Not doing the proper number of subcycles. Expect=%d got=%d; updates=%lld, g_updates=%lld, s_updates=%lld",
-          e->max_nr_rt_subcycles, nr_rt_cycles, e->updates, e->g_updates, e->s_updates);
+  /* You can't check here that the number of cycles is exactly the number
+   * you fixed it to be. E.g. stars or gravity may reduce the time step
+   * sizes for some main steps such that they coincide with the RT bins,
+   * yielding effectively no subcycles. (At least for low numbers.) */
 
   /* Note: zeroth sub-cycle already happened during the regular tasks,
    * so we need to do one less than that. */
@@ -1838,6 +1837,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 #endif
   }
 
+  /* Once we're done, clean up after ourselves */
   e->rt_updates = 0ll;
 }
 
