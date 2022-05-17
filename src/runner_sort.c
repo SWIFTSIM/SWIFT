@@ -387,6 +387,20 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
         entries[count].i = 0;
         runner_do_sort_ascending(entries, count);
         atomic_or(&c->hydro.sorted, 1 << j);
+
+        /* if (c->cellID == 27 || c->cellID == 141){ */
+        /* if (c->cellID == 141){ */
+        /*   for (int k = 0; k < count; k++){ */
+        /*     [> struct sort_entry * finger = cell_get_hydro_sorts(c, j); <] */
+        /*     [> message("\t Cell %lld sort entry %d count=%d d=%.6g i=%d",
+         * c->cellID, j, count, finger[k].d, finger[k].i); <] */
+        /*     message("\t Cell %lld local=%d pID=%lld loc=%.6g %.6g %.6g",
+         * c->cellID, c->nodeID == engine_rank, c->hydro.parts[k].id,
+         * c->hydro.parts[k].x[0], c->hydro.parts[k].x[1],
+         * c->hydro.parts[k].x[2]); */
+        /*   } */
+        /*   fflush(stdout); */
+        /* } */
       }
   }
 
@@ -397,7 +411,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     struct sort_entry *finger = cell_get_hydro_sorts(c, j);
     for (int k = 1; k < count; k++) {
       if (finger[k].d < finger[k - 1].d)
-        error("Sorting failed, ascending array.");
+        error("Sorting failed, ascending array. ID=%lld", c->cellID);
       if (finger[k].i >= count) error("Sorting failed, indices borked.");
     }
   }

@@ -169,6 +169,15 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
+      if (ci->nodeID != engine_rank && ci->cellID == 141)
+        message("Cell %lld running task %s/%s", ci->cellID,
+                taskID_names[t->type], subtaskID_names[t->subtype]);
+      if (cj != NULL) {
+        if (cj->nodeID != engine_rank && cj->cellID == 141)
+          message("Cell %lld running task %s/%s", cj->cellID,
+                  taskID_names[t->type], subtaskID_names[t->subtype]);
+      }
+
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;

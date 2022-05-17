@@ -61,6 +61,9 @@ struct cell_rt {
     /*! Radiative transfer cell time advancement task */
     struct task *rt_advance_cell_time;
 
+    /*! Block the sorting task if cell is RT active but hydro inactive */
+    struct task *rt_block_sort;
+
     /*! Radiative transfer ghost out task */
     struct task *rt_out;
 

@@ -2921,6 +2921,10 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
+          /* If we don't have any active hydro tasks, make sure the sort tasks
+           * don't run before the recv */
+          if (!cell_is_active_hydro(ci, e))
+            scheduler_activate(s, ci->rt.rt_block_sort);
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -2950,6 +2954,10 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
+          /* If we don't have any active hydro tasks, make sure the sort tasks
+           * don't run before the recv */
+          if (!cell_is_active_hydro(cj, e))
+            scheduler_activate(s, cj->rt.rt_block_sort);
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -3018,16 +3026,27 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     if (c->rt.rt_transport_out != NULL)
       scheduler_activate(s, c->rt.rt_transport_out);
     if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
-    if (c->rt.rt_advance_cell_time != NULL)
+    if (c->rt.rt_advance_cell_time != NULL) {
       scheduler_activate(s, c->rt.rt_advance_cell_time);
 #ifdef SWIFT_RT_DEBUG_CHECKS
-    /* foreign cells need to have their own rt_advance_cell_time task
-     * so sub-cycling can proceed as intended and without further comms. */
-    else {
-      if (c->nodeID != nodeID)
-        error("Foreign cell doesn't have advance_cell_time task???");
-    }
+    } else {
+      /* foreign cells need to have their own rt_advance_cell_time task */
+      /* so sub-cycling can proceed as intended and without further comms. */
+
+      /* Perhaps we're at a too high level for the task to exist. */
+      /* Leave if cell has progeny. */
+
+      /* TODO: FIX THIS CHECK */
+      /* int has_progeny = 0; */
+      /* for (int k = 0; k < 8; k++) { */
+      /*   if (c->progeny[k] != NULL) has_progeny = 1; */
+      /*   break; */
+      /* } */
+      /* if ((c->nodeID != nodeID) && (!has_progeny)) */
+      /* error("Foreign cell doesn't have advance_cell_time task??? cell=%lld",
+       * c->cellID); */
 #endif
+    }
     if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
   }
 

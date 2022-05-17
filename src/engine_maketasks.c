@@ -1012,11 +1012,15 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
  * created.
  * @param t_rt_transport The recv_rt_transport #task, if it has already been
  * created.
+ * @param t_rt_advance_cell_time The rt_advance_cell_time #task, if it has
+ * already been created
  * @param tend The top-level time-step communication #task.
  */
 void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
                              struct task *t_rt_gradient,
-                             struct task *t_rt_transport, struct task *tend) {
+                             struct task *t_rt_transport,
+                             struct task *t_rt_advance_cell_time,
+                             struct task *tend) {
 
 #ifdef WITH_MPI
   struct scheduler *s = &e->sched;
@@ -1037,22 +1041,44 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
         s, task_type_recv, task_subtype_rt_gradient, c->mpi.tag, 0, c, NULL);
     t_rt_transport = scheduler_addtask(
         s, task_type_recv, task_subtype_rt_transport, c->mpi.tag, 0, c, NULL);
+    /* Also create the rt_advance_cell_time tasks for the foreign cells
+     * for the sub-cycling. */
+    t_rt_advance_cell_time = scheduler_addtask(
+        s, task_type_rt_advance_cell_time, task_subtype_none, 0, 0, c, NULL);
+    if (c->rt.rt_advance_cell_time != NULL)
+      error("replacing rt_advance_cell_time for cell %lld", c->cellID);
+    c->rt.rt_advance_cell_time = t_rt_advance_cell_time;
+
+    /* Block the sort in cases where you have active RT but inacive
+     * hydro on a foreign cell so it doesn't sort bevore receiving */
+    c->rt.rt_block_sort =
+        scheduler_addtask(s, task_type_rt_block_sort, task_subtype_none, 0,
+                          /* implicit= */ 1, c, NULL);
+    scheduler_addunlock(s, c->rt.rt_block_sort, c->hydro.sorts);
 
     /* Make sure the second receive doens't get enqueued before the first one is
      * done */
+    /* TODO: trying this out */
+    scheduler_addunlock(s, t_rt_gradient, c->rt.rt_block_sort);
     scheduler_addunlock(s, t_rt_gradient, t_rt_transport);
+
+    /* In normal steps, tend mustn't run before rt_advance_cell_time or the
+     * cell's ti_rt_end_min will be updated wrongly. In sub-cycles, we don't
+     * have the tend tasks, so there's no worry about that. (Them missing is
+     * the reason we need the rt_advanced_cell_time to complete the sub-cycles
+     * in the first place) */
+    scheduler_addunlock(s, t_rt_advance_cell_time, tend);
   }
 
   if (t_rt_gradient != NULL) {
     engine_addlink(e, &c->mpi.recv, t_rt_gradient);
     engine_addlink(e, &c->mpi.recv, t_rt_transport);
 
-    /* Also create the rt_advance_cell_time tasks for the foreign cells
-     * for the sub-cycling. */
-    c->rt.rt_advance_cell_time = scheduler_addtask(
-        s, task_type_rt_advance_cell_time, task_subtype_none, 0, 0, c, NULL);
-
     if (c->hydro.sorts != NULL) {
+      /* If the foreign cell is inactive, a recv transport task won't be
+       * active, so sorts may occur before the recv gradient. */
+      /* TODO: trying this out */
+      /* scheduler_addunlock(s, t_rt_gradient, c->hydro.sorts); */
       scheduler_addunlock(s, c->hydro.sorts, t_rt_transport);
     }
 
@@ -1063,20 +1089,15 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
     }
 
     for (struct link *l = c->rt.rt_transport; l != NULL; l = l->next) {
-      /* RT transport tasks mustn't run before we receive necessary data */
+      /* RT transport tasks (iact, not comm tasks!!) mustn't run before we
+       * receive necessary data */
       scheduler_addunlock(s, t_rt_transport, l->t);
       /* add dependency for the timestep communication tasks */
+      /* TODO: is this still necessary with rt_advance_cell_time? */
       scheduler_addunlock(s, l->t, tend);
       /* advance cell time mustn't run before transport is done */
-      scheduler_addunlock(s, l->t, c->rt.rt_advance_cell_time);
+      scheduler_addunlock(s, l->t, t_rt_advance_cell_time);
     }
-
-    /* In normal steps, tend mustn't run before rt_advance_cell_time or the
-     * cell's ti_rt_end_min will be updated wrongly. In sub-cycles, we don't
-     * have the tend tasks, so there's no worry about that. (That's the reason
-     * we need the rt_advanced_cell_time to complete the sub-cycles in the first
-     * place) */
-    scheduler_addunlock(s, c->rt.rt_advance_cell_time, tend);
   }
 
   /* Recurse? */
@@ -1084,7 +1105,7 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_rt(e, c->progeny[k], t_rt_gradient, t_rt_transport,
-                                tend);
+                                t_rt_advance_cell_time, tend);
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -4202,7 +4223,8 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
      * connection. */
     if ((e->policy & engine_policy_rt) && (type & proxy_cell_type_hydro))
       engine_addtasks_recv_rt(e, ci, /*t_rt_gradient=*/NULL,
-                              /*t_rt_transport=*/NULL, tend);
+                              /*t_rt_transport=*/NULL,
+                              /*t_rt_advance_cell_time=*/NULL, tend);
   }
 }
 
@@ -4611,6 +4633,8 @@ void engine_maketasks(struct engine *e) {
   /* Set the tasks age. */
   e->tasks_age = 0;
 
+  message("--------------------------------------- Finished marktasks");
+  fflush(stdout);
   if (e->verbose)
     message("took %.3f %s (including reweight).",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
