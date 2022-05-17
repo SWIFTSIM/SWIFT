@@ -4633,7 +4633,7 @@ void engine_maketasks(struct engine *e) {
   /* Set the tasks age. */
   e->tasks_age = 0;
 
-  message("--------------------------------------- Finished marktasks");
+  message("--------------------------------------- Finished maketasks");
   fflush(stdout);
   if (e->verbose)
     message("took %.3f %s (including reweight).",

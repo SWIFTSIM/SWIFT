@@ -2850,6 +2850,9 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                          const int sub_cycle) {
 
+  /* Do we have work here? */
+  if (c->hydro.count == 0) return 0;
+
   struct engine *e = s->space->e;
   const int nodeID = e->nodeID;
   int rebuild = 0; /* TODO: implement rebuild conditions? */

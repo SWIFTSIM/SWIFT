@@ -56,7 +56,7 @@ else:
     file_prefix = "output"
 
 
-def check_hydro_sanity(snapdata):
+def check_hydro_sanity(snapdata, rundata):
     """
     Sanity checks for hydro variables.
     - injection always done?
@@ -69,6 +69,7 @@ def check_hydro_sanity(snapdata):
     npart = snapdata[0].gas.coords.shape[0]
 
     print("Checking hydro")
+    warning_printed = False
 
     # ----------------------------------------------
     # check absolute values of every snapshot
@@ -187,8 +188,15 @@ def check_hydro_sanity(snapdata):
         # at least the number of calls to transport interactions
         # in RT interactions
         # --------------------------------------------------------------
-        fishy = gas.RTCallsIactTransportInteraction < gas.RTCallsIactGradientInteraction
-        if fishy.any():
+        if rundata.with_mpi:
+            check = False
+            if not warning_printed:
+                print("- MPI run: skipping hydro sanity interaction call count checks")
+                warning_printed = True
+        else:
+            fishy = gas.RTCallsIactTransportInteraction < gas.RTCallsIactGradientInteraction
+            check = fishy.any()
+        if check:
             print("- checking hydro sanity pt2.5; snapshot", snap.snapnr)
             print(
                 "--- Found RT transport calls iact < gradient calls iact:",
@@ -226,7 +234,7 @@ def check_hydro_sanity(snapdata):
     return
 
 
-def check_stars_sanity(snapdata):
+def check_stars_sanity(snapdata, rundata):
     """
     Sanity checks for stars variables.
     - total calls keep increasing?
@@ -266,7 +274,7 @@ def check_stars_sanity(snapdata):
     return
 
 
-def check_stars_hydro_interaction_sanity(snapdata):
+def check_stars_hydro_interaction_sanity(snapdata, rundata):
     """
     Sanity checks for hydro vs star interaction
     call counts.
@@ -345,9 +353,9 @@ def main():
         prefix=file_prefix, skip_snap_zero=skip_snap_zero, skip_last_snap=skip_last_snap
     )
 
-    check_hydro_sanity(snapdata)
-    check_stars_sanity(snapdata)
-    check_stars_hydro_interaction_sanity(snapdata)
+    check_hydro_sanity(snapdata, rundata)
+    check_stars_sanity(snapdata, rundata)
+    check_stars_hydro_interaction_sanity(snapdata, rundata)
 
     return
 

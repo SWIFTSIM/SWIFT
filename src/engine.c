@@ -1805,8 +1805,8 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
   /* TODO: turn != into > once you're done abusing max_nr_rt_subcycles */
   if (nr_rt_cycles != e->max_nr_rt_subcycles)
-    error("Not doing the proper number of subcycles. Expect=%d got=%d",
-          e->max_nr_rt_subcycles, nr_rt_cycles);
+    error("Not doing the proper number of subcycles. Expect=%d got=%d; updates=%lld, g_updates=%lld, s_updates=%lld",
+          e->max_nr_rt_subcycles, nr_rt_cycles, e->updates, e->g_updates, e->s_updates);
 
   /* Note: zeroth sub-cycle already happened during the regular tasks,
    * so we need to do one less than that. */

@@ -113,42 +113,6 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
 
-  if (timer == 2) {
-
-    if (c->cellID == 141) {
-      /* if (c->cellID == 27 || c->cellID == 141){ */
-      for (int k = 0; k < c->hydro.count; k++) {
-        /* struct sort_entry * finger = cell_get_hydro_sorts(c, j); */
-        /* message("\t Cell %lld sort entry %d count=%d d=%.6g i=%d", c->cellID,
-         * j, count, finger[k].d, finger[k].i); */
-        message(
-            "\t Cell %lld local=%d RECV gradient pID=%lld loc=%.6g %.6g %.6g",
-            c->cellID, c->nodeID == engine_rank, c->hydro.parts[k].id,
-            c->hydro.parts[k].x[0], c->hydro.parts[k].x[1],
-            c->hydro.parts[k].x[2]);
-      }
-      fflush(stdout);
-    }
-  }
-
-  if (timer == 3) {
-
-    if (c->cellID == 141) {
-      /* if (c->cellID == 27 || c->cellID == 141){ */
-      for (int k = 0; k < c->hydro.count; k++) {
-        /* struct sort_entry * finger = cell_get_hydro_sorts(c, j); */
-        /* message("\t Cell %lld sort entry %d count=%d d=%.6g i=%d", c->cellID,
-         * j, count, finger[k].d, finger[k].i); */
-        message(
-            "\t Cell %lld local=%d RECV transport pID=%lld loc=%.6g %.6g %.6g",
-            c->cellID, c->nodeID == engine_rank, c->hydro.parts[k].id,
-            c->hydro.parts[k].x[0], c->hydro.parts[k].x[1],
-            c->hydro.parts[k].x[2]);
-      }
-      fflush(stdout);
-    }
-  }
-
   if (timer) TIMER_TOC(timer_dorecv_part);
 
 #else

@@ -359,9 +359,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_rt_gradient) {
         if (ci_active_rt) {
           scheduler_activate(s, t);
-          if (ci->cellID == 141)
-            message("Called subcell on cell %lld loc=1 active=%d", ci->cellID,
-                    cell_is_rt_active(ci, e));
           cell_activate_subcell_rt_tasks(ci, NULL, s, /*sub_cycle=*/0);
         }
       }
@@ -806,34 +803,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
             /* Check the sorts and activate them if needed. */
-            if (ci->cellID == 141)
-              message(
-                  "Called activate sort on cell i %lld j %lld loc=3.1 active "
-                  "i=%d j=%d",
-                  ci->cellID, cj->cellID, cell_is_rt_active(ci, e),
-                  cell_is_rt_active(cj, e));
-
             cell_activate_hydro_sorts(ci, t->flags, s);
-
-            if (cj->cellID == 141)
-              message(
-                  "Called activate sort on cell i %lld j %lld loc=3.2 active "
-                  "i=%d j=%d",
-                  ci->cellID, cj->cellID, cell_is_rt_active(ci, e),
-                  cell_is_rt_active(cj, e));
-
             cell_activate_hydro_sorts(cj, t->flags, s);
-
           }
 
           /* Store current values of dx_max and h_max. */
           else if (t_type == task_type_sub_pair) {
-            if (ci->cellID == 141)
-              message("Called subcell on cell i %lld j %lld loc=2.1",
-                      ci->cellID, cj->cellID);
-            if (cj->cellID == 141)
-              message("Called subcell on cell i %lld j %lld loc=2.2",
-                      ci->cellID, cj->cellID);
             cell_activate_subcell_rt_tasks(ci, cj, s, /*sub_cycle=*/0);
           }
         }
@@ -1244,11 +1219,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_rt) {
-            /* if (cj->cellID == 204)  */
-            /*   message("================= marking recv gradient loc=0 %lld
-             * %lld active %d %d hydro %d %d",  */
-            /*       ci->cellID, cj->cellID, ci_active_rt, cj_active_rt,
-             * cell_is_active_hydro(ci, e), cell_is_active_hydro(cj, e)); */
 
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
             /* If we don't have any active hydro tasks, make sure the sort tasks
@@ -1256,11 +1226,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (!ci_active_hydro) scheduler_activate(s, ci->rt.rt_block_sort);
 
             if (ci_active_rt) {
-              /* if (cj->cellID == 204)  */
-              /*   message("================= marking recv transport loc=0 %lld
-               * %lld active %d %d hydro %d %d",  */
-              /*       ci->cellID, cj->cellID, ci_active_rt, cj_active_rt,
-               * cell_is_active_hydro(ci, e), cell_is_active_hydro(cj, e)); */
               /* We only need updates later on if the other cell is active as
                * well */
               scheduler_activate_recv(s, ci->mpi.recv,
@@ -1271,11 +1236,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Is the foreign cell active and will need stuff from us? */
           if (ci_active_rt) {
 
-            /* if (cj->cellID == 204)  */
-            /*   message("================= marking send gradient loc=1 %lld
-             * %lld active %d %d hydro %d %d", */
-            /*       ci->cellID, cj->cellID, ci_active_rt, cj_active_rt,
-             * cell_is_active_hydro(ci, e), cell_is_active_hydro(cj, e)); */
             scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
                                     ci_nodeID);
 
@@ -1283,11 +1243,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                particles will be drifted, only those that are needed. */
             cell_activate_drift_part(cj, s);
 
-            /* if (cj->cellID == 204)  */
-            /*   message("================= marking send transport loc=1 %lld
-             * %lld active %d %d hydro %d %d",  */
-            /*       ci->cellID, cj->cellID, ci_active_rt, cj_active_rt,
-             * cell_is_active_hydro(ci, e), cell_is_active_hydro(cj, e)); */
             if (cj_active_rt) {
               scheduler_activate_send(s, cj->mpi.send,
                                       task_subtype_rt_transport, ci_nodeID);
@@ -1298,11 +1253,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_rt) {
-            /* if (cj->cellID == 204)  */
-            /*   message("================= marking recv gradient loc=2 %lld
-             * %lld active %d %d hydro %d %d", */
-            /*       ci->cellID, cj->cellID, ci_active_rt, cj_active_rt,
-             * cell_is_active_hydro(ci, e), cell_is_active_hydro(cj, e)); */
+
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
 
             /* If we don't have any active hydro tasks, make sure the sort tasks
@@ -1312,11 +1263,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (cj_active_rt) {
               /* We only need updates later on if the other cell is active as
                * well */
-              /* if (cj->cellID == 204)  */
-              /* message("================= marking recv transport loc=2 %lld
-               * %lld active %d %d hydro %d %d", */
-              /*     ci->cellID, cj->cellID, ci_active_rt, cj_active_rt,
-               * cell_is_active_hydro(ci, e), cell_is_active_hydro(cj, e)); */
               scheduler_activate_recv(s, cj->mpi.recv,
                                       task_subtype_rt_transport);
             }
@@ -1325,10 +1271,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Is the foreign cell active and will need stuff from us? */
           if (cj_active_rt) {
 
-            /* if (cj->cellID == 204) message("================= marking send
-             * gradient loc=3 %lld %lld active %d %d hydro %d %d", ci->cellID,
-             * cj->cellID, ci_active_rt, cj_active_rt, cell_is_active_hydro(ci,
-             * e), cell_is_active_hydro(cj, e)); */
             scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
                                     cj_nodeID);
 
@@ -1339,10 +1281,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (ci_active_rt) {
               /* We only need updates later on if the other cell is active as
                * well */
-              /* if (cj->cellID == 204) message("================= marking send
-               * transport loc=3 %lld %lld active %d %d hydro %d %d",
-               * ci->cellID, cj->cellID, ci_active_rt, cj_active_rt,
-               * cell_is_active_hydro(ci, e), cell_is_active_hydro(cj, e)); */
               scheduler_activate_send(s, ci->mpi.send,
                                       task_subtype_rt_transport, cj_nodeID);
             }
@@ -1532,21 +1470,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         cell_activate_super_sink_drifts(t->ci, s);
       }
     }
-
-    /* if (t->cj != NULL){ */
-    /*   if (t->cj->cellID == 141) { */
-    /*     message("======================================== marking cell j %lld
-     * %s %s active? %d", t->cj->cellID, taskID_names[t->type],
-     * subtaskID_names[t->subtype], cell_is_rt_active(t->cj, e)); */
-    /*   } */
-    /* } */
-    /* if (t->ci->cellID == 141) { */
-    /*   message("======================================== marking cell i %lld
-     * %s %s active? %d", t->ci->cellID, taskID_names[t->type],
-     * subtaskID_names[t->subtype], cell_is_rt_active(t->ci, e)); */
-    /* } */
-    /*  */
-    /*  */
   }
 }
 

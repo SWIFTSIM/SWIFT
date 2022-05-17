@@ -104,6 +104,8 @@ class Rundata(object):
         self.const_emission_rates = None
         self.reduced_speed_of_light = -1.0
 
+        self.with_mpi = False
+
         return
 
 
@@ -219,6 +221,11 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
                 quit()
 
     rundata.reduced_speed_of_light = firstfile.metadata.reduced_lightspeed
+
+    with_mpi = False
+    if firstfile.metadata.code["MPI library"] != b'Non-MPI version of SWIFT':
+        with_mpi = True
+    rundata.with_mpi = with_mpi
 
     # -------------------
     # Read in all files

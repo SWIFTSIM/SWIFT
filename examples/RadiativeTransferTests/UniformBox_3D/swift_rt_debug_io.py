@@ -96,6 +96,7 @@ class Rundata(object):
 
     def __init__(self):
         self.has_stars = False  # assume we don't have stars, check while reading in
+        self.with_mpi = False
 
         return
 
@@ -167,6 +168,13 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             "Compile swift --with-rt=debug",
         )
 
+
+    with_mpi = False
+    mpistr = F["Code"].attrs["MPI library"]
+    if mpistr != b'Non-MPI version of SWIFT':
+        with_mpi = True
+    rundata.with_mpi = with_mpi
+
     F.close()
 
     for f in hdf5files:
@@ -232,8 +240,8 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         rundata.has_stars = rundata.has_stars or snap.has_stars
 
     if len(snapdata) == 0:
-        print(
-            "Didn't read in snapshot data. Do you only have 2 snapshots in total and skipping the first and the last?"
-        )
+        print("Didn't read in snapshot data.")
+        print("Do you only have 2 snapshots and are skipping the first and the last?")
+        quit()
 
     return snapdata, rundata
