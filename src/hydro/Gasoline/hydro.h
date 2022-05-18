@@ -542,9 +542,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->smooth_pressure_gradient[1] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
   p->smooth_pressure_gradient[2] *= hydro_gamma_minus_one * h_inv_dim_plus_one;
 
-  /* Finish calculation of the velocity gradient tensor */
+  /* Finish calculation of the velocity gradient tensor, and
+   * guard against FPEs here. */
   const float velocity_gradient_norm =
-      p->weighted_wcount > 0.f ? 3.f * cosmo->a2_inv / p->weighted_wcount : 0.f;
+      p->weighted_wcount == 0.f ? 0.f
+                                : 3.f * cosmo->a2_inv / p->weighted_wcount;
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
