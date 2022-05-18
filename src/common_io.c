@@ -1675,7 +1675,7 @@ void io_select_hydro_fields(const struct part* const parts,
 
   hydro_write_particles(parts, xparts, list, num_fields);
 
-  *num_fields += mhd_write_particles(parts, xparts, list + *num_fields, e->hydro_properties->mhd.mu0);
+  *num_fields += mhd_write_particles(parts, xparts, list + *num_fields);
 
   *num_fields += particle_splitting_write_particles(
       parts, xparts, list + *num_fields, with_cosmology);

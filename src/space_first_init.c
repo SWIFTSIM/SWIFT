@@ -110,7 +110,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     hydro_first_init_part(&p[k], &xp[k]);
-    mhd_first_init_part(&p[k], &xp[k],hydro_props->mhd.mu0);
+    mhd_first_init_part(&p[k], &xp[k], hydro_props->mhd.mu0);
     p[k].limiter_data.min_ngb_time_bin = num_time_bins + 1;
     p[k].limiter_data.wakeup = time_bin_not_awake;
     p[k].limiter_data.to_be_synchronized = 0;

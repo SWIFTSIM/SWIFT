@@ -59,6 +59,15 @@ INLINE static int mhd_read_particles(struct part* parts,
                           parts, mhd_data.BPred);  // CHECK XXX IF FULL STEP
   return 1;
 }
+/*TODO
+ *
+ * */
+INLINE static void convert_B(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+  ret[0] = p->mhd_data.BPred[0] * sqrt(e->hydro_properties->mhd.mu0);
+  ret[1] = p->mhd_data.BPred[1] * sqrt(e->hydro_properties->mhd.mu0);
+  ret[2] = p->mhd_data.BPred[2] * sqrt(e->hydro_properties->mhd.mu0);
+}
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -71,18 +80,21 @@ INLINE static int mhd_read_particles(struct part* parts,
  */
 INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
-                                      struct io_props* list, const float mu0) {
+                                      struct io_props* list) {
 
-  list[0] = io_make_output_field("Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f,
-                                 parts, mhd_data.BPred,
-                                 "Co-moving Magnetic field of the particles");
+  /*  list[0] = io_make_output_field("Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS,
+     -2.f, parts, mhd_data.BPred, "Co-moving Magnetic field of the particles");
+  */
+  list[0] = io_make_output_field_convert_part(
+      "Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f, parts, xparts, convert_B,
+      "Co-moving Magnetic field of the particles");
 
   list[1] =
       io_make_output_field("divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts,
                            mhd_data.divB, "co-moving DivB of the particles");
 
-    list[2] = io_make_output_field("Phi", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
-                                   parts, mhd_data.phi, "Dedner scalar field");
+  list[2] = io_make_output_field("Phi", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
+                                 parts, mhd_data.phi, "Dedner scalar field");
 
   return 3;
 }
