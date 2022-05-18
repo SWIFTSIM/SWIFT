@@ -1653,6 +1653,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* If the local cell is inactive and the remote cell is active, we
+         * still need to recieve stuff to be able to do the force interaction
+         * on this node as well. */
+        else if (ci_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
+#endif
+        }
+#endif
 
         /* If the foreign cell is active, we want its particles for the limiter
          */
@@ -1686,6 +1698,22 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* If the foreign cell is inactive, but the local cell is active,
+         * we still need to send stuff to be able to do the force interaction
+         * on both nodes */
+        else if (cj_active) {
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(cj, s);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
+                                  ci_nodeID);
+#endif
+        }
+#endif
 
         /* If the local cell is active, send its particles for the limiting. */
         if (cj_active && with_timestep_limiter) {
@@ -1726,6 +1754,18 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* If the local cell is inactive and the remote cell is active, we
+         * still need to recieve stuff to be able to do the force interaction
+         * on this node as well. */
+        else if (cj_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
+#endif
+        }
+#endif
 
         /* If the foreign cell is active, we want its particles for the limiter
          */
@@ -1760,6 +1800,22 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
           }
         }
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+        /* If the foreign cell is inactive, but the local cell is active,
+         * we still need to send stuff to be able to do the force interaction
+         * on both nodes */
+        else if (ci_active) {
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          /* Drift the cell which will be sent; note that not all sent
+             particles will be drifted, only those that are needed. */
+          cell_activate_drift_part(ci, s);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+#ifdef EXTRA_HYDRO_LOOP
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
+                                  cj_nodeID);
+#endif
+        }
+#endif
 
         /* If the local cell is active, send its particles for the limiting. */
         if (ci_active && with_timestep_limiter) {
@@ -1793,7 +1849,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   }
 
   /* Unskip all the other task types. */
-  if (c->nodeID == nodeID && cell_is_active_hydro(c, e)) {
+  int c_active = cell_is_active_hydro(c, e);
+  if (c->nodeID == nodeID && c_active) {
     for (struct link *l = c->hydro.gradient; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
@@ -1823,6 +1880,58 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
     }
   }
+#if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
+  /* Additionally unskip force interactions between inactive local cell and
+   * active remote cell. (The cell unskip will only be called for active cells,
+   * so, we have to do this now, from the active remote cell). */
+  else if (c->nodeID != nodeID && c_active) {
+    for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+      struct task *t = l->t;
+      if (t->type != task_type_pair && t->type != task_type_sub_pair) continue;
+
+      struct cell *ci = l->t->ci;
+      struct cell *cj = l->t->cj;
+
+      const int ci_active = cell_is_active_hydro(ci, e);
+      const int cj_active = cell_is_active_hydro(cj, e);
+      const int ci_nodeID = ci->nodeID;
+      const int cj_nodeID = cj->nodeID;
+      if ((!ci_active && ci_nodeID == nodeID && cj_active &&
+           cj_nodeID != nodeID) ||
+          (!cj_active && cj_nodeID == nodeID && ci_active &&
+           ci_nodeID != nodeID)) {
+        scheduler_activate(s, l->t);
+
+        if (t->type == task_type_pair) {
+          /* Store some values. */
+          atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+          atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+          ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+          cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+          /* Activate the drift tasks. */
+          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+          /* Activate the limiter tasks. */
+          if (ci_nodeID == nodeID && with_timestep_limiter)
+            cell_activate_limiter(ci, s);
+          if (cj_nodeID == nodeID && with_timestep_limiter)
+            cell_activate_limiter(cj, s);
+
+          /* Check the sorts and activate them if needed. */
+          cell_activate_hydro_sorts(ci, t->flags, s);
+          cell_activate_hydro_sorts(cj, t->flags, s);
+        }
+
+        /* Store current values of dx_max and h_max. */
+        else if (t->type == task_type_sub_pair) {
+          cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
+        }
+      }
+    }
+  }
+#endif
 
   return rebuild;
 }
