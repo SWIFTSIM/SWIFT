@@ -21,6 +21,8 @@
 
 #include "hydro.h"
 
+#include <float.h>
+
 /**
  * @brief Compute the MHD signal velocity between two gas particles,
  *
@@ -58,18 +60,18 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
       r_inv;
   Bpro2_i *= Bpro2_i;
   float mag_speed_i = sqrtf(
-      0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
-                                  4.f * ci * ci * Bpro2_i / pi->rho),
-                                 0.f))));
+      0.5 * (vcsa2_i +
+             sqrtf(max((vcsa2_i * vcsa2_i - 4.f * ci * ci * Bpro2_i / pi->rho),
+                       0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
        pj->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_j *= Bpro2_j;
   float mag_speed_j = sqrtf(
-      0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
-                                  4.f * cj * cj * Bpro2_j / pj->rho),
-                                 0.f))));
+      0.5 * (vcsa2_j +
+             sqrtf(max((vcsa2_j * vcsa2_j - 4.f * cj * cj * Bpro2_j / pj->rho),
+                       0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
 }
@@ -82,9 +84,17 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
     const struct part *restrict p, const float hyp, const float par) {
-  return (-hyp * p->mhd_data.divB * p->viscosity.v_sig * p->viscosity.v_sig -
-          par * p->viscosity.v_sig * p->mhd_data.phi / p->h -
-          0.5f * p->mhd_data.phi * p->viscosity.div_v);
+#ifdef SPHENIX_SPH
+  const float v_sig = p->viscosity.v_sig;
+//    const float div_v = p->viscosity.div_v;
+#elif MINIMAL_SPH
+  const float v_sig = p->force.v_sig;
+//    const float div_v = p->force.div_v;
+#endif
+  return (-hyp * p->mhd_data.divB * v_sig * v_sig -
+          par * v_sig * p->mhd_data.phi / p->h);
+  //-
+  //        0.5f * p->mhd_data.phi * div_v);
 }
 
 /**
@@ -122,7 +132,6 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *restrict p) {
 
   p->mhd_data.divB = 0.f;
-  
 }
 
 /**
@@ -163,7 +172,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
+
+  p->force.balsara = 1.f;
+}
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
@@ -230,12 +242,13 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
-  float const DBDT_True = b2 * sqrt(0.5 / p->rho) / p->h; // b * v_alfven /h 
+  float const DBDT_True = b2 * sqrt(0.5 / p->rho) / p->h;  // b * v_alfven /h
   /* Re normalize the correction in the Induction equation */
-  p->mhd_data.Q1 = DBDT_Corr > 0.5f * DBDT_True ? 0.5f * DBDT_True / DBDT_Corr : 1.0f;
+  p->mhd_data.Q1 =
+      DBDT_Corr > 0.5f * DBDT_True ? 0.5f * DBDT_True / DBDT_Corr : 1.0f;
 
   /* Estimation of the tensile instability due divB */
-  p->mhd_data.Q0 = pressure / (b2 / 2.0f );  // Plasma Beta
+  p->mhd_data.Q0 = pressure / (b2 / 2.0f);  // Plasma Beta
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
@@ -247,7 +260,9 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   const float ACC_mhd = b2 / (p->h);
   /* Re normalize the correction in eth momentum from the DivB errors*/
   p->mhd_data.Q0 =
-      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr: p->mhd_data.Q0;
+      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+  p->mhd_data.Q0 = 1.f;
+  p->mhd_data.Q1 = 1.f;
 }
 
 /**
@@ -261,9 +276,9 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *restrict p) {
   /* MHD acceleration */
-  //p->mhd_data.Test[0] = 0.f;
-  //p->mhd_data.Test[1] = 0.f;
-  //p->mhd_data.Test[2] = 0.f;
+  // p->mhd_data.Test[0] = 0.f;
+  // p->mhd_data.Test[1] = 0.f;
+  // p->mhd_data.Test[2] = 0.f;
 
   /* Induction equation */
   p->mhd_data.dBdt[0] = 0.0f;
@@ -333,9 +348,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-//  p->a_hydro[0] += p->mhd_data.Test[0];
-//  p->a_hydro[1] += p->mhd_data.Test[1];
-//  p->a_hydro[2] += p->mhd_data.Test[2];
+  //  p->a_hydro[0] += p->mhd_data.Test[0];
+  //  p->a_hydro[1] += p->mhd_data.Test[1];
+  //  p->a_hydro[2] += p->mhd_data.Test[2];
 }
 
 /**

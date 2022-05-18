@@ -23,6 +23,7 @@
 
 /* Configuration file */
 #include "config.h"
+
 #include <math.h>
 
 /* Global headers */
@@ -44,7 +45,7 @@
  *        as well as a number of compile-time parameters.
  */
 
-#define mhd_propos_default_mu0 4.f*M_PI
+#define mhd_propos_default_mu0 4.f * M_PI
 
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
@@ -103,8 +104,8 @@ static INLINE void mhd_init(struct swift_params* params,
                                                mhd_propos_dedner_hyperbolic);
   mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
                                                mhd_propos_dedner_parabolic);
-  mhd->mu0 = parser_get_opt_param_float(params, "MHD:mu0",
-                                               mhd_propos_default_mu0);
+  mhd->mu0 =
+      parser_get_opt_param_float(params, "MHD:mu0", mhd_propos_default_mu0);
   //  mhd->mhd_eta = parser_get_opt_param_float(
   //      params, "MHD:diffusion_eta", mhd_propos_default_difussion_eta);
 }

@@ -36,7 +36,7 @@ struct mhd_part_data {
   float dBdt[3];
   /* Full step Dedner Cleaning Scalar */
   float phi;
-  float Test[3];
+  // float Test[3];
 };
 
 /**
