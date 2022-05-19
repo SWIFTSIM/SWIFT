@@ -31,6 +31,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "active.h"
 #include "engine.h"
 #include "feedback.h"
 #include "runner_doiact_sinks.h"
@@ -202,10 +203,24 @@ void *runner_main(void *data) {
       const int task_index = t->type * task_subtype_count + t->subtype;
       const int *task_mask = &sched->task_graph_mask[task_index * mask_size];
       if (ci != NULL) {
-        cell_recursively_check_task_mask(ci, t, task_mask);
+        /* we don't care about inactive cells, since for those the order of
+           tasks really does not matter */
+        const int ci_is_active =
+            cell_is_active_hydro(ci, e) || cell_is_active_gravity(ci, e) ||
+            cell_is_active_gravity_mm(ci, e) || cell_is_active_stars(ci, e) ||
+            cell_is_active_sinks(ci, e);
+        if (ci_is_active) {
+          cell_recursively_check_task_mask(ci, t, task_mask);
+        }
       }
       if (cj != NULL) {
-        cell_recursively_check_task_mask(cj, t, task_mask);
+        const int cj_is_active =
+            cell_is_active_hydro(cj, e) || cell_is_active_gravity(cj, e) ||
+            cell_is_active_gravity_mm(cj, e) || cell_is_active_stars(cj, e) ||
+            cell_is_active_sinks(cj, e);
+        if (cj_is_active) {
+          cell_recursively_check_task_mask(cj, t, task_mask);
+        }
       }
 
       /* Check that we haven't scheduled an inactive task */
