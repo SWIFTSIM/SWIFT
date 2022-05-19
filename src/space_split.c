@@ -701,10 +701,31 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
+  /* Get cell counts */
+  const int gcount = c->grav.count;
+
+  /* Initialise the thread local particle arrays */
+  struct gpart* temp_gparts = NULL;
+  
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
+
+    /* Populate the temporary versions of the particles
+       to avoid memory movement overhead in sorts */
+    if (swift_memalign("temp_gparts", (void**)&temp_gparts,
+                       gpart_align,
+                       gcount * sizeof(struct gpart)) != 0)
+      error("Error while allocating temporart memory for gparts");
+    memcpy(temp_gparts, c->grav.parts, gcount * sizeof(struct gpart)));
+
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
+
+    /* Replace the cell parts with the buffers */
+    memcpy(c->grav.parts, temp_gparts, gcount);
+
+    /* Free up thread local memory */
+    swift_free("temp_gparts", temp_gparts);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
