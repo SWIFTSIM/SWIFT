@@ -31,6 +31,7 @@
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
 #include "rt_struct.h"
+#include "sink_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -155,6 +156,9 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;
 
   /*! Additional data used by the pressure floor */
   struct pressure_floor_part_data pressure_floor_data;

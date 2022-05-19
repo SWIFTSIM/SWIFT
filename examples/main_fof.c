@@ -333,7 +333,7 @@ int main(int argc, char *argv[]) {
     message("sizeof(cell)        is %4zi bytes.", sizeof(struct cell));
   }
 
-  /* Read the parameter file */
+  /* Read the parameter file. */
   struct swift_params *params =
       (struct swift_params *)malloc(sizeof(struct swift_params));
   if (params == NULL) error("Error allocating memory for the parameter file.");
@@ -646,7 +646,7 @@ int main(int argc, char *argv[]) {
       N_total[swift_type_count], N_total[swift_type_sink],
       N_total[swift_type_stars], N_total[swift_type_black_hole],
       N_total[swift_type_dark_matter_background], N_total[swift_type_neutrino],
-      engine_policies, talking, &reparttype, &us, &prog_const, &cosmo,
+      engine_policies, talking, &us, &prog_const, &cosmo,
       /*hydro_properties=*/NULL, /*entropy_floor=*/NULL, &gravity_properties,
       /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
       /*sink_properties=*/NULL, &neutrino_properties,
@@ -657,7 +657,7 @@ int main(int argc, char *argv[]) {
       /*extra_io_props=*/NULL, &fof_properties, /*los_properties=*/NULL,
       /*lightcone_properties=*/NULL, &ics_metadata);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
-                nr_threads, nr_threads, with_aff, talking, NULL);
+                nr_threads, nr_threads, with_aff, talking, NULL, &reparttype);
 
   /* Get some info to the user. */
   if (myrank == 0) {

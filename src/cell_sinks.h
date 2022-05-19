@@ -42,14 +42,14 @@ struct cell_sinks {
     /*! Pointer to the #sink data. */
     struct sink *parts;
 
-    /*! Linked list of the tasks computing this cell's sink formation checks. */
-    struct link *compute_formation;
+    /*! Linked list of the tasks computing this cell's sink swallow. */
+    struct link *swallow;
 
-    /*! Linked list of the tasks computing this cell's sink accretion. */
-    struct link *accretion;
+    /*! Linked list of the tasks computing this cell's sink do_gas_swallow. */
+    struct link *do_gas_swallow;
 
-    /*! Linked list of the tasks computing this cell's sink merger. */
-    struct link *merger;
+    /*! Linked list of the tasks computing this cell's sink do_sink_swallow. */
+    struct link *do_sink_swallow;
 
     /*! The drift task for sinks */
     struct task *drift;
@@ -57,8 +57,12 @@ struct cell_sinks {
     /*! Implicit tasks marking the entry of the sink block of tasks */
     struct task *sink_in;
 
-    /*! Implicit tasks marking the separation between merger and accretion */
-    struct task *ghost;
+    /*! Implicit tasks marking the end of sink swallow */
+    struct task *sink_ghost1;
+
+    /*! Implicit tasks marking the separation between do_gas_swallow and
+     * do_sink_swallow */
+    struct task *sink_ghost2;
 
     /*! Implicit tasks marking the exit of the sink block of tasks */
     struct task *sink_out;

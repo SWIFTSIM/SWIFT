@@ -25,8 +25,8 @@ import random
 import numpy as np
 
 # Generates N particles in a spherical distribution centred on [0,0,0], to be moved in an isothermal potential
-# usage: python makeIC.py 1000 0 : generate 1000 particles on circular orbits
-#        python makeIC.py 1000 1 : generate 1000 particles with Lz/L uniform in [0,1]
+# usage: python3 makeIC.py 1000 0 : generate 1000 particles on circular orbits
+#        python3 makeIC.py 1000 1 : generate 1000 particles with Lz/L uniform in [0,1]
 # all particles move in the xy plane, and start at y=0
 
 # physical constants in cgs

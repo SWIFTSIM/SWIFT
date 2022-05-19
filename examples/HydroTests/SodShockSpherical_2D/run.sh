@@ -9,7 +9,7 @@ fi
 if [ ! -e sodShock.hdf5 ]
 then
     echo "Generating initial conditions for the Sod shock example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
@@ -21,4 +21,4 @@ then
     echo "Fetching reference solution for 2D spherical Sod shock example..."
     ./getReference.sh
 fi
-python plotSolution.py 1
+python3 plotSolution.py 1

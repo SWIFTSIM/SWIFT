@@ -38,6 +38,7 @@
 #include "lightcone/lightcone_array.h"
 #include "line_of_sight.h"
 #include "parallel_io.h"
+#include "power_spectrum.h"
 #include "serial_io.h"
 #include "single_io.h"
 
@@ -81,6 +82,12 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       /* Drift all particles first (may have just been done). */
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
 
+        /* Free the foreign particles to get more breathing space. */
+#ifdef WITH_MPI
+      if (e->free_foreign_when_dumping_restart)
+        space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
+#endif
+
 #ifdef WITH_LIGHTCONE
       /* Flush lightcone buffers before dumping restarts */
       lightcone_array_flush(e->lightcone_array_properties, &(e->threadpool),
@@ -90,12 +97,6 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 #ifdef WITH_MPI
       MPI_Barrier(MPI_COMM_WORLD);
 #endif
-#endif
-
-      /* Free the foreign particles to get more breathing space. */
-#ifdef WITH_MPI
-      if (e->free_foreign_when_dumping_restart)
-        space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
 #endif
 
       restart_write(e, e->restart_file);
@@ -253,12 +254,14 @@ void engine_check_for_dumps(struct engine *e) {
   const int with_stf = (e->policy & engine_policy_structure_finding);
   const int with_los = (e->policy & engine_policy_line_of_sight);
   const int with_fof = (e->policy & engine_policy_fof);
+  const int with_power = (e->policy & engine_policy_power_spectra);
 
   /* What kind of output are we getting? */
   enum output_type {
     output_none,
     output_snapshot,
     output_statistics,
+    output_ps,
     output_stf,
     output_los,
   };
@@ -283,6 +286,14 @@ void engine_check_for_dumps(struct engine *e) {
     if (e->ti_next_snapshot < ti_output) {
       ti_output = e->ti_next_snapshot;
       type = output_snapshot;
+    }
+  }
+
+  /* Do we want a power-spectrum? */
+  if (e->ti_end_min > e->ti_next_ps && e->ti_next_ps > 0) {
+    if (e->ti_next_ps < ti_output) {
+      ti_output = e->ti_next_ps;
+      type = output_ps;
     }
   }
 
@@ -365,6 +376,12 @@ void engine_check_for_dumps(struct engine *e) {
 #endif
         }
 
+        /* Do we want power spectrum outputs? */
+        if (with_power && e->snapshot_invoke_ps) {
+          calc_all_power_spectra(e->power_data, e->s, &e->threadpool,
+                                 e->verbose);
+        }
+
         /* Dump... */
         engine_dump_snapshot(e);
 
@@ -439,6 +456,16 @@ void engine_check_for_dumps(struct engine *e) {
 
         break;
 
+      case output_ps:
+
+        /* Compute the PS */
+        calc_all_power_spectra(e->power_data, e->s, &e->threadpool, e->verbose);
+
+        /* Move on */
+        engine_compute_next_ps_time(e);
+
+        break;
+
       default:
         error("Invalid dump type");
     }
@@ -462,6 +489,14 @@ void engine_check_for_dumps(struct engine *e) {
       if (e->ti_next_snapshot < ti_output) {
         ti_output = e->ti_next_snapshot;
         type = output_snapshot;
+      }
+    }
+
+    /* Do we want a power-spectrum? */
+    if (e->ti_end_min > e->ti_next_ps && e->ti_next_ps > 0) {
+      if (e->ti_next_ps < ti_output) {
+        ti_output = e->ti_next_ps;
+        type = output_ps;
       }
     }
 
@@ -835,6 +870,76 @@ void engine_compute_next_fof_time(struct engine *e) {
 }
 
 /**
+ * @brief Computes the next time (on the time line) for a power-spectrum dump
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_ps_time(struct engine *e) {
+  /* Do output_list file case */
+  if (e->output_list_ps) {
+    output_list_read_next_time(e->output_list_ps, e, "power spectrum",
+                               &e->ti_next_ps);
+    return;
+  }
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_ps;
+  else
+    time_end = e->time_end + e->delta_time_ps;
+
+  /* Find next ps above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_ps_output;
+  else
+    time = e->time_first_ps_output;
+
+  int found_ps_time = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_ps = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_ps = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_ps > e->ti_current) {
+      found_ps_time = 1;
+      break;
+    }
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_ps;
+    else
+      time += e->delta_time_ps;
+  }
+
+  /* Deal with last line of sight */
+  if (!found_ps_time) {
+    e->ti_next_ps = -1;
+    if (e->verbose) message("No further PS output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const double next_ps_time =
+          exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time for power spectrum set to a=%e.",
+                next_ps_time);
+    } else {
+      const double next_ps_time = e->ti_next_ps * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time for power spectrum set to t=%e.",
+                next_ps_time);
+    }
+  }
+}
+
+/**
  * @brief Initialize all the output_list required by the engine
  *
  * @param e The #engine.
@@ -909,5 +1014,19 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
           exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
     else
       e->time_first_los = e->ti_next_los * e->time_base + e->time_begin;
+  }
+
+  /* Deal with power-spectra */
+  e->output_list_ps = NULL;
+  output_list_init(&e->output_list_ps, e, "PowerSpectrum", &e->delta_time_ps);
+
+  if (e->output_list_ps) {
+    engine_compute_next_ps_time(e);
+
+    if (e->policy & engine_policy_cosmology)
+      e->a_first_ps_output =
+          exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
+    else
+      e->time_first_ps_output = e->ti_next_ps * e->time_base + e->time_begin;
   }
 }

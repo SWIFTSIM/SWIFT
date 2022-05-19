@@ -121,6 +121,10 @@ struct gravity_props {
   /*! Whether mesh is distributed between MPI ranks when we use MPI  */
   int distributed_mesh;
 
+  /*! Whether or not to use local patches rather than
+   * direct atomic writes to the mesh when running without MPI */
+  int mesh_uses_local_patches;
+
   /*! Mesh smoothing scale in units of top-level cell size */
   float a_smooth;
 

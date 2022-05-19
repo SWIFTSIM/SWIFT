@@ -219,9 +219,6 @@ void hydro_props_print(const struct hydro_props *p) {
   /* Print equation of state first */
   eos_print(&eos);
 
-  /* Then the pressure floor */
-  pressure_floor_print(&pressure_floor_props);
-
   /* Now SPH */
   message("Hydrodynamic scheme: %s in %dD.", SPH_IMPLEMENTATION,
           (int)hydro_dimension);

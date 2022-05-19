@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -136,7 +136,7 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
 
   list[1] = io_make_output_field_convert_gpart(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vel,
-      "Peculiar velocities of the stars. This is a * dx/dt where x is the "
+      "Peculiar velocities of the particles. This is a * dx/dt where x is the "
       "co-moving position of the particles.");
 
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
