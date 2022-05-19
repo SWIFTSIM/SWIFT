@@ -270,9 +270,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
         mi / a * mag_Indj *
         ((Bj[i] * dv[(i + 1) % 3] - Bj[(i + 1) % 3] * dv[i]) * dx[(i + 1) % 3] +
          (Bj[i] * dv[(i + 2) % 3] - Bj[(i + 2) % 3] * dv[i]) * dx[(i + 2) % 3]);
-    pi->mhd_data.dBdt[i] += pi->mhd_data.Q1 * mj * mag_Indi *
+    pi->mhd_data.dBdt[i] += pi->mhd_data.Q1 * mj * a * a * mag_Indi *
                             (pi->mhd_data.phi - pj->mhd_data.phi) * dx[i];
-    pj->mhd_data.dBdt[i] += pj->mhd_data.Q1 * mi * mag_Indj *
+    pj->mhd_data.dBdt[i] += pj->mhd_data.Q1 * mi * a * a * mag_Indj *
                             (pi->mhd_data.phi - pj->mhd_data.phi) * dx[i];
   }
 

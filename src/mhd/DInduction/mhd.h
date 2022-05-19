@@ -23,6 +23,8 @@
 
 #include <float.h>
 
+#include "mhd_parameters.h"
+
 /**
  * @brief Compute the MHD signal velocity between two gas particles,
  *
@@ -366,6 +368,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
+  const float a3= cosmo->a*cosmo->a*cosmo->a;
   /* Integrate the magnetic field */  // XXX check is Bfld is a p or xp
   p->mhd_data.Bfld[0] += p->mhd_data.dBdt[0] * dt_therm;
   p->mhd_data.Bfld[1] += p->mhd_data.dBdt[1] * dt_therm;
@@ -373,7 +376,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
-  xp->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par) * dt_therm;
+  xp->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par) * dt_therm * a3;
 }
 
 /**
@@ -410,8 +413,16 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *restrict p, struct xpart *restrict xp, const float mu0) {
+    struct part *restrict p, struct xpart *restrict xp, const struct mhd_global_data mhd_data) {
 
+  const float mu0 = mhd_data.mu0;
+  const float define_Bfield_in_ics = mhd_data.define_Bfield_in_ics;
+  if(define_Bfield_in_ics)
+	{
+       p->mhd_data.BPred[0] = define_Bfield_in_ics;
+       p->mhd_data.BPred[1] = 0.f;
+       p->mhd_data.BPred[2] = 0.f;
+	}
   p->mhd_data.BPred[0] /= sqrt(mu0);
   p->mhd_data.BPred[1] /= sqrt(mu0);
   p->mhd_data.BPred[2] /= sqrt(mu0);
