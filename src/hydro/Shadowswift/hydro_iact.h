@@ -214,9 +214,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   assert(pi->flux.dt >= 0);
   assert(min_dt >= 0);
 #endif
-  if (pj->rho == 0 && pi->rho != 0 && min_dt > 0) {
-    pi->fluid_v[0] = pi->fluid_v[0];
-  }
 
   float totflux[5];
 

@@ -91,17 +91,16 @@ __attribute__((always_inline)) INLINE static void hydro_part_update_fluxes_left(
 
 #ifndef SHADOWSWIFT_TOTAL_ENERGY
   const float ekin =
-      0.5f * (p->fluid_v[0] * p->fluid_v[0] + p->fluid_v[1] * p->fluid_v[1] +
-              p->fluid_v[2] * p->fluid_v[2]);
-  p->flux.energy += fluxes[1] * p->fluid_v[0];
-  p->flux.energy += fluxes[2] * p->fluid_v[1];
-  p->flux.energy += fluxes[3] * p->fluid_v[2];
+      0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
+  p->flux.energy += fluxes[1] * p->v[0];
+  p->flux.energy += fluxes[2] * p->v[1];
+  p->flux.energy += fluxes[3] * p->v[2];
   p->flux.energy -= fluxes[0] * ekin;
 #endif
 
   if (dx[0] < 0) {
     p->flux_count -= 1;
-  } else  {
+  } else {
     p->flux_count += 1;
   }
 }
@@ -130,17 +129,16 @@ hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
 
 #ifndef SHADOWSWIFT_TOTAL_ENERGY
   const float ekin =
-      0.5f * (p->fluid_v[0] * p->fluid_v[0] + p->fluid_v[1] * p->fluid_v[1] +
-              p->fluid_v[2] * p->fluid_v[2]);
-  p->flux.energy -= fluxes[1] * p->fluid_v[0];
-  p->flux.energy -= fluxes[2] * p->fluid_v[1];
-  p->flux.energy -= fluxes[3] * p->fluid_v[2];
+      0.5f * (p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2]);
+  p->flux.energy -= fluxes[1] * p->v[0];
+  p->flux.energy -= fluxes[2] * p->v[1];
+  p->flux.energy -= fluxes[3] * p->v[2];
   p->flux.energy += fluxes[0] * ekin;
 #endif
 
   if (dx[0] < 0) {
     p->flux_count += 1;
-  } else  {
+  } else {
     p->flux_count -= 1;
   }
 }
@@ -155,7 +153,7 @@ hydro_part_update_fluxes_right(struct part* restrict p, const float* fluxes,
  */
 __attribute__((always_inline)) INLINE static float
 hydro_flux_density_drift_term(const float mass_flux, const float dt,
-                                   const float volume) {
+                              const float volume) {
 
   if (volume > 0.0f) {
     return mass_flux * dt / volume;

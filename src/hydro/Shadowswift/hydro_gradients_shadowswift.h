@@ -55,11 +55,11 @@ __attribute__((always_inline)) INLINE void hydro_gradients_collect(
 
   hydro_gradients_single_quantity(pi->rho, pj->rho, cLR, dx, r, surface_area,
                                   pi->gradients.rho);
-  hydro_gradients_single_quantity(pi->fluid_v[0], pj->fluid_v[0], cLR, dx, r,
+  hydro_gradients_single_quantity(pi->v[0], pj->v[0], cLR, dx, r,
                                   surface_area, pi->gradients.v[0]);
-  hydro_gradients_single_quantity(pi->fluid_v[1], pj->fluid_v[1], cLR, dx, r,
+  hydro_gradients_single_quantity(pi->v[1], pj->v[1], cLR, dx, r,
                                   surface_area, pi->gradients.v[1]);
-  hydro_gradients_single_quantity(pi->fluid_v[2], pj->fluid_v[2], cLR, dx, r,
+  hydro_gradients_single_quantity(pi->v[2], pj->v[2], cLR, dx, r,
                                   surface_area, pi->gradients.v[2]);
   hydro_gradients_single_quantity(pi->P, pj->P, cLR, dx, r, surface_area,
                                   pi->gradients.P);

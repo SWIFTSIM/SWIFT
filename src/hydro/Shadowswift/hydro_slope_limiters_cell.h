@@ -109,13 +109,13 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_cell(
       p->limiter.extrapolations.rho[0], p->limiter.extrapolations.rho[1]);
 
   hydro_slope_limit_cell_quantity(
-      p->gradients.v[0], p->fluid_v[0], p->limiter.v[0][0], p->limiter.v[0][1],
+      p->gradients.v[0], p->v[0], p->limiter.v[0][0], p->limiter.v[0][1],
       p->limiter.extrapolations.v[0][0], p->limiter.extrapolations.v[0][1]);
   hydro_slope_limit_cell_quantity(
-      p->gradients.v[1], p->fluid_v[1], p->limiter.v[1][0], p->limiter.v[1][1],
+      p->gradients.v[1], p->v[1], p->limiter.v[1][0], p->limiter.v[1][1],
       p->limiter.extrapolations.v[1][0], p->limiter.extrapolations.v[1][1]);
   hydro_slope_limit_cell_quantity(
-      p->gradients.v[2], p->fluid_v[2], p->limiter.v[2][0], p->limiter.v[2][1],
+      p->gradients.v[2], p->v[2], p->limiter.v[2][0], p->limiter.v[2][1],
       p->limiter.extrapolations.v[2][0], p->limiter.extrapolations.v[2][1]);
 
   hydro_slope_limit_cell_quantity(

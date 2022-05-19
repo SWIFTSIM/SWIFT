@@ -20,7 +20,7 @@
 #define SWIFT_SHADOWSWIFT_HYDRO_VELOCITIES_H
 
 /**
- * @brief Initialize the GIZMO particle velocities before the start of the
+ * @brief Initialize the ShadowSWIFT particle velocities before the start of the
  * actual run based on the initial value of the primitive velocity.
  *
  * @param p The particle to act upon.
@@ -30,18 +30,14 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
     struct part* restrict p, struct xpart* restrict xp) {
 
 #ifdef SHADOWSWIFT_FIX_PARTICLES
-  p->v[0] = 0.0f;
-  p->v[1] = 0.0f;
-  p->v[2] = 0.0f;
+  xp->v_full[0] = 0.0f;
+  xp->v_full[1] = 0.0f;
+  xp->v_full[2] = 0.0f;
 #else
-  p->v[0] = p->fluid_v[0];
-  p->v[1] = p->fluid_v[1];
-  p->v[2] = p->fluid_v[2];
-#endif
-
   xp->v_full[0] = p->v[0];
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
+#endif
 }
 
 /**
@@ -79,20 +75,19 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     struct part* restrict p, struct xpart* restrict xp) {
 
 /* We first set the particle velocity. */
+float v[3];
+
 #ifdef SHADOWSWIFT_FIX_PARTICLES
-
-  p->v[0] = 0.0f;
-  p->v[1] = 0.0f;
-  p->v[2] = 0.0f;
-
+  v[0] = 0.0f;
+  v[1] = 0.0f;
+  v[2] = 0.0f;
 #else  // SHADOWSWIFT_FIX_PARTICLES
 
   if (p->conserved.mass > 0.0f && p->rho > 0.0f) {
 
-    /* Normal case: set particle velocity to fluid velocity. */
-    p->v[0] = p->fluid_v[0];
-    p->v[1] = p->fluid_v[1];
-    p->v[2] = p->fluid_v[2];
+    /* Normal case: calculate particle velocity from momentum. */
+    const float inverse_mass = 1.0f / p->conserved.mass;
+    hydro_velocities_from_momentum(p->conserved.momentum, inverse_mass, p->rho, v);
 
 #ifdef SHADOWSWIFT_STEER_MOTION
     /* Add a correction to the velocity to keep particle positions close enough
@@ -116,30 +111,30 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
       if (d < 1.1f * etaR) {
         fac *= 5.0f * (d - 0.9f * etaR) / etaR;
       }
-      p->v[0] += ds[0] * fac;
-      p->v[1] += ds[1] * fac;
-      p->v[2] += ds[2] * fac;
+      v[0] += ds[0] * fac;
+      v[1] += ds[1] * fac;
+      v[2] += ds[2] * fac;
     }
 
 #endif  // SHADOWSWIFT_STEER_MOTION
   } else {
     /* Vacuum particles have no fluid velocity. */
-    p->v[0] = 0.0f;
-    p->v[1] = 0.0f;
-    p->v[2] = 0.0f;
+    v[0] = 0.0f;
+    v[1] = 0.0f;
+    v[2] = 0.0f;
   }
 
 #endif
 
   /* Now make sure all velocity variables are up to date. */
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  xp->v_full[0] = v[0];
+  xp->v_full[1] = v[1];
+  xp->v_full[2] = v[2];
 
   if (p->gpart) {
-    p->gpart->v_full[0] = p->v[0];
-    p->gpart->v_full[1] = p->v[1];
-    p->gpart->v_full[2] = p->v[2];
+    p->gpart->v_full[0] = v[0];
+    p->gpart->v_full[1] = v[1];
+    p->gpart->v_full[2] = v[2];
   }
 }
 

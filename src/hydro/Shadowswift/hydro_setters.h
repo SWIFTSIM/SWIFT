@@ -30,9 +30,9 @@ __attribute__((always_inline)) INLINE static void
 hydro_part_set_primitive_variables(struct part* restrict p, const float* W) {
 
   p->rho = W[0];
-  p->fluid_v[0] = W[1];
-  p->fluid_v[1] = W[2];
-  p->fluid_v[2] = W[3];
+  p->v[0] = W[1];
+  p->v[1] = W[2];
+  p->v[2] = W[3];
   p->P = W[4];
 }
 
@@ -298,9 +298,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_internal_energy(
 #ifdef SHADOWSWIFT_TOTAL_ENERGY
   /* add the kinetic energy */
   p->conserved.energy += 0.5f * p->conserved.mass *
-                         (p->conserved.momentum[0] * p->fluid_v[0] +
-                          p->conserved.momentum[1] * p->fluid_v[1] +
-                          p->conserved.momentum[2] * p->fluid_v[2]);
+                         (p->conserved.momentum[0] * p->v[0] +
+                          p->conserved.momentum[1] * p->v[1] +
+                          p->conserved.momentum[2] * p->v[2]);
 #endif
   p->P = hydro_gamma_minus_one * p->rho * u;
 }
@@ -322,9 +322,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_entropy(
 #ifdef SHADOWSWIFT_TOTAL_ENERGY
   /* add the kinetic energy */
   p->conserved.energy += 0.5f * p->conserved.mass *
-                         (p->conserved.momentum[0] * p->fluid_v[0] +
-                          p->conserved.momentum[1] * p->fluid_v[1] +
-                          p->conserved.momentum[2] * p->fluid_v[2]);
+                         (p->conserved.momentum[0] * p->v[0] +
+                          p->conserved.momentum[1] * p->v[1] +
+                          p->conserved.momentum[2] * p->v[2]);
 #endif
   p->P = S * pow_gamma(p->rho);
 }

@@ -96,9 +96,6 @@ struct part {
   /*! Particle position. */
   double x[3];
 
-  /*! Particle predicted velocity. */
-  float v[3];
-
   /*! Particle acceleration. */
   float a_hydro[3];
 
@@ -110,7 +107,7 @@ struct part {
   float rho;
 
   /* Fluid velocity. */
-  float fluid_v[3];
+  float v[3];
 
   /* Pressure. */
   float P;

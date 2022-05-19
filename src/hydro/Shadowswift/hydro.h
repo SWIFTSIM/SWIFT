@@ -356,9 +356,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   // MATTHIEU: Apply the entropy floor here.
 
-  /* add the gravitational contribution to the fluid velocity drift
-   * TODO: Move this to the kick? */
-  hydro_gravity_extra_velocity_drift(&W[1], p->v, xp->v_full);
+  /* add the gravitational contribution to the fluid velocity drift */
+  /* The fluid velocity is now drifted directly by drift_part() */
+  //  hydro_gravity_extra_velocity_drift(&W[1], p->v, xp->v_full);
+
+  /* TODO Predict primitive variables forward? Would be with outdated gradients,
+   * so maybe better in flux? */
 
   hydro_part_set_primitive_variables(p, W);
 
@@ -423,12 +426,8 @@ hydro_convert_conserved_to_primitive(struct part *restrict p,
 
   hydro_part_set_primitive_variables(p, W);
 
-  /* TODO move this elsewhere? */
-  hydro_gravity_extra_velocity_drift(p->fluid_v, p->v, xp->v_full);
-
-  if (m_inv == 0. &&
-      (p->fluid_v[0] != 0. || p->fluid_v[1] != 0. || p->fluid_v[2] != 0.)) {
-    error("Nonzero fluid_v for particle with zero mass!");
+  if (m_inv == 0. && (p->v[0] != 0. || p->v[1] != 0. || p->v[2] != 0.)) {
+    error("Nonzero v for particle with zero mass!");
   }
 
   if (p->rho < 0.) {
@@ -466,6 +465,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
        need to check whether gpart exists though.*/
     float a_grav[3];
 
+    /* TODO also add mesh acceleration? */
     a_grav[0] = p->gpart->a_grav[0];
     a_grav[1] = p->gpart->a_grav[1];
     a_grav[2] = p->gpart->a_grav[2];
@@ -506,9 +506,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
     p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
 #ifdef SHADOWSWIFT_TOTAL_ENERGY
-    p->conserved.energy -= Pcorr * (p->fluid_v[0] * p->gradients.P[0] +
-                                    p->fluid_v[1] * p->gradients.P[1] +
-                                    p->fluid_v[2] * p->gradients.P[2]);
+    p->conserved.energy -=
+        Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
+                 p->v[2] * p->gradients.P[2]);
 #endif
 #endif
 
@@ -524,7 +524,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #ifdef SWIFT_DEBUG_CHECKS
     if (p->conserved.mass < 0.) {
       error(
-          "Negative mass after conserved variables update (mass: %g, dmass: %g)!",
+          "Negative mass after conserved variables update (mass: %g, dmass: "
+          "%g)!",
           p->conserved.mass, p->flux.mass);
     }
 
@@ -539,26 +540,23 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Reset the fluxes so that they do not get used again in the kick1. */
     hydro_part_reset_fluxes(p);
 
-    /* Update primitive quantities */
+    /* Update primitive quantities. Note that this also updates the fluid
+     * velocity p->v. */
     hydro_convert_conserved_to_primitive(p, xp);
 
-    /* Update gpart */
+    /* Update gpart mass */
     hydro_gravity_update_gpart_mass(p);
 
-    /* Set actual velocity of ShadowSWIFT particle (!= fluid_v) */
-    hydro_velocities_set(p, xp);
   } else if (p->flux.dt == 0.0f) {
-    /* This can only occur in the beginning of the simulation. We simply need to
-     * reset the flux.dt to -1.0f */
+    /* This can only occur in kick2 the beginning of the simulation. We simply
+     * need to reset the flux.dt to -1.0f and calculate the primitive
+     * quantities. */
 
     /* Reset the fluxes so that they do not get used again in the kick1. */
     hydro_part_reset_fluxes(p);
 
     /* Update primitive quantities */
     hydro_convert_conserved_to_primitive(p, xp);
-
-    /* Set actual velocity of ShadowSWIFT particle (!= fluid_v) */
-    hydro_velocities_set(p, xp);
 
   } else {
     /* flux.dt < 0 implies that we are in kick1. */
@@ -568,6 +566,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     /* Reset v_max */
     p->timestepvars.vmax = 0.f;
+
+    /* Now that we have received both half kicks, we can set the actual
+     * velocity of the ShadowSWIFT particle (!= fluid velocity) */
+    hydro_velocities_set(p, xp);
   }
 
   /* TODO: check for negative dt_therm (implying that we are rolling back a kick

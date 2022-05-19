@@ -34,9 +34,9 @@ __attribute__((always_inline)) INLINE static void
 hydro_part_get_primitive_variables(const struct part* restrict p, float* W) {
 
   W[0] = p->rho;
-  W[1] = p->fluid_v[0];
-  W[2] = p->fluid_v[1];
-  W[3] = p->fluid_v[2];
+  W[1] = p->v[0];
+  W[2] = p->v[1];
+  W[3] = p->v[2];
   W[4] = p->P;
 }
 
@@ -302,13 +302,13 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 
   if (p->conserved.mass > 0.) {
     const float m_inv = 1.0f / p->conserved.mass;
-    v[0] = p->fluid_v[0] + p->flux.momentum[0] * dt_kick_hydro * m_inv;
-    v[1] = p->fluid_v[1] + p->flux.momentum[1] * dt_kick_hydro * m_inv;
-    v[2] = p->fluid_v[2] + p->flux.momentum[2] * dt_kick_hydro * m_inv;
+    v[0] = p->v[0] + p->flux.momentum[0] * dt_kick_hydro * m_inv;
+    v[1] = p->v[1] + p->flux.momentum[1] * dt_kick_hydro * m_inv;
+    v[2] = p->v[2] + p->flux.momentum[2] * dt_kick_hydro * m_inv;
   } else {
-    v[0] = p->fluid_v[0];
-    v[1] = p->fluid_v[1];
-    v[2] = p->fluid_v[2];
+    v[0] = p->v[0];
+    v[1] = p->v[1];
+    v[2] = p->v[2];
   }
 
   // MATTHIEU: Bert is this correct? Also, we need to add the mesh kick!

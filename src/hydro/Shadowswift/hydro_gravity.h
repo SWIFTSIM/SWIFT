@@ -13,17 +13,22 @@
  * @param v_full (Drifted) particle velocity.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gravity_extra_velocity_drift(float* fluid_v, const float* v,
-                                     const float* v_full) {
-  /* TODO */
-  return;
-  fluid_v[0] += v[0] - v_full[0];
-  fluid_v[1] += v[1] - v_full[1];
-  fluid_v[2] += v[2] - v_full[2];
+hydro_gravity_extra_velocity_drift(struct part *p) {
+  /* TODO This is not longer used */
+
+  /* First transfer the velocity drift to the actual fluid velocity */
+//  p->fluid_v[0] += p->v[0] - p->v_old[0];
+//  p->fluid_v[1] += p->v[1] - p->v_old[1];
+//  p->fluid_v[2] += p->v[2] - p->v_old[2];
+
+  /* Update v_old */
+//  p->v_old[0] = p->v[0];
+//  p->v_old[1] = p->v[1];
+//  p->v_old[2] = p->v[2];
 }
 
 /**
- * @brief Get the term required to update the MFV energy due to the change in
+ * @brief Get the term required to update the energy due to the change in
  * gravitational energy.
  *
  * @param dt_kick_corr Time step for the potential energy correction.
@@ -54,7 +59,7 @@ hydro_gravity_energy_update_term(const float dt_kick_corr,
 }
 
 /**
- * @brief Get the term required to update the MFV mass due to the mass flux.
+ * @brief Get the term required to update the mass due to the mass flux.
  *
  * @param mass_flux Mass flux rate.
  * @param dt Time step (in comoving units).

@@ -78,12 +78,12 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limiter_prepare(
     struct part *p) {
   p->limiter.rho[0] = p->rho;
   p->limiter.rho[1] = p->rho;
-  p->limiter.v[0][0] = p->fluid_v[0];
-  p->limiter.v[0][1] = p->fluid_v[0];
-  p->limiter.v[1][0] = p->fluid_v[1];
-  p->limiter.v[1][1] = p->fluid_v[1];
-  p->limiter.v[2][0] = p->fluid_v[2];
-  p->limiter.v[2][1] = p->fluid_v[2];
+  p->limiter.v[0][0] = p->v[0];
+  p->limiter.v[0][1] = p->v[0];
+  p->limiter.v[1][0] = p->v[1];
+  p->limiter.v[1][1] = p->v[1];
+  p->limiter.v[2][0] = p->v[2];
+  p->limiter.v[2][1] = p->v[2];
   p->limiter.P[0] = p->P;
   p->limiter.P[1] = p->P;
 
