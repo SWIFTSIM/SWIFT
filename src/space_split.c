@@ -60,7 +60,7 @@ void space_split_recursive(struct space *s, struct cell *c,
                            int gcount) {
 
   const int count = c->hydro.count;
-  if (gcount == NULL)
+  if (gparts == NULL)
     gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
@@ -291,7 +291,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff, NULL, NULL);
+                              progeny_gbuff, progeny_sink_buff, NULL, 0);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
