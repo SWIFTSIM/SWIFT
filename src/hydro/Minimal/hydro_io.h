@@ -189,7 +189,7 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                          struct io_props* list,
                                          int* num_fields) {
 
-  *num_fields = 13;
+  *num_fields = 15;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -243,7 +243,15 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                   UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, B_mon,
                                   "Monopole term associated to particle");
 
-  list[12] = io_make_output_field_convert_part(
+  list[12] = io_make_output_field("DednerScalar", FLOAT, 1,
+                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, psi,
+                                  "Dedner scalar associated to particle");
+
+  list[13] = io_make_output_field("DednerScalardt", FLOAT, 1,
+                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, psi_dt,
+                                  "Time derivative of dedner scalar associated to particle");
+
+  list[14] = io_make_output_field_convert_part(
       "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
       xparts, convert_B, "Magnetic flux densities of the particles");
 }
