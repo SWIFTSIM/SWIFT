@@ -727,7 +727,8 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
                           temp_gparts, gcount);
 
     /* Replace the cell parts with the local copies */
-    memcpy(c->grav.parts, temp_gparts, gcount);
+    c->grav.parts = temp_gparts
+    /* memcpy(c->grav.parts, temp_gparts, gcount); */
 
     /* Free up thread local memory */
     swift_free("temp_gparts", temp_gparts);
