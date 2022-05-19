@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -37,6 +37,8 @@
 #include "clocks.h"
 #include "collectgroup.h"
 #include "ic_info.h"
+#include "lightcone/lightcone.h"
+#include "lightcone/lightcone_array.h"
 #include "mesh_gravity.h"
 #include "output_options.h"
 #include "parser.h"
@@ -49,6 +51,7 @@
 #include "velociraptor_interface.h"
 
 struct black_holes_properties;
+struct extra_io_properties;
 struct external_potential;
 
 /**
@@ -83,8 +86,9 @@ enum engine_policy {
   engine_policy_line_of_sight = (1 << 24),
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
+  engine_policy_power_spectra = (1 << 27),
 };
-#define engine_maxpolicy 27
+#define engine_maxpolicy 28
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -101,7 +105,8 @@ enum engine_step_properties {
   engine_step_prop_stf = (1 << 6),
   engine_step_prop_fof = (1 << 7),
   engine_step_prop_mesh = (1 << 8),
-  engine_step_prop_done = (1 << 9),
+  engine_step_prop_power_spectra = (1 << 9),
+  engine_step_prop_done = (1 << 10),
 };
 
 /* Some constants */
@@ -181,6 +186,9 @@ struct engine {
   /* The current system time. */
   double time;
   integertime_t ti_current;
+
+  /* The earliest time any particle may still need to be drifted from */
+  integertime_t ti_earliest_undrifted;
 
   /* The highest active bin at this time */
   timebin_t max_active_bin;
@@ -292,8 +300,8 @@ struct engine {
   long long count_inhibited_bparts;
 #endif
 
-  /* Maximal ID of the parts (used for the generation of new IDs when splitting)
-   */
+  /* Maximal ID of the parts, *excluding* background particles
+   * (used for the generation of new IDs when splitting) */
   long long max_parts_id;
 
   /* Total mass in the simulation */
@@ -327,6 +335,7 @@ struct engine {
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
+  int snapshot_invoke_ps;
   struct unit_system *snapshot_units;
   int snapshot_use_delta_from_edge;
   double snapshot_delta_from_edge;
@@ -362,6 +371,18 @@ struct engine {
   /* FOF information */
   int run_fof;
   int dump_catalogue_when_seeding;
+
+  /* power spectrum information */
+  double a_first_ps_output;
+  double time_first_ps_output;
+  double delta_time_ps;
+  int ps_output_count;
+
+  /* Output_List for the power spectrum */
+  struct output_list *output_list_ps;
+
+  /* Integer time of the next ps output */
+  integertime_t ti_next_ps;
 
   /* Statistics information */
   double a_first_statistics;
@@ -481,6 +502,9 @@ struct engine {
   /* The mesh used for long-range gravity forces */
   struct pm_mesh *mesh;
 
+  /* Properties and pointers for the power spectrum */
+  struct power_spectrum_data *power_data;
+
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
 
@@ -493,11 +517,17 @@ struct engine {
   /* Properties of the sellar feedback model */
   struct feedback_props *feedback_props;
 
+  /* Properties of the pressure floor scheme */
+  struct pressure_floor_props *pressure_floor_props;
+
   /* Properties of the radiative transfer model */
   struct rt_props *rt_props;
 
   /* Properties of the chemistry model */
   const struct chemistry_global_data *chemistry;
+
+  /* Properties used to compute the extra i/o fields */
+  struct extra_io_properties *io_extra_props;
 
   /*! The FOF properties data. */
   struct fof_props *fof_properties;
@@ -564,6 +594,9 @@ struct engine {
   /* Line of sight properties. */
   struct los_props *los_properties;
 
+  /* Line of sight properties. */
+  struct lightcone_array_props *lightcone_array_properties;
+
   /* Line of sight outputs information. */
   struct output_list *output_list_los;
   double a_first_los;
@@ -571,6 +604,9 @@ struct engine {
   double delta_time_los;
   integertime_t ti_next_los;
   int los_output_count;
+
+  /* Lightcone information */
+  int flush_lightcone_maps;
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Run brute force checks only on steps when all gparts active? */
@@ -595,6 +631,7 @@ void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_compute_next_los_time(struct engine *e);
+void engine_compute_next_ps_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
@@ -613,7 +650,7 @@ void engine_init(
     struct output_options *output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
     long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
@@ -621,17 +658,22 @@ void engine_init(
     const struct black_holes_props *black_holes, const struct sink_props *sinks,
     const struct neutrino_props *neutrinos,
     struct neutrino_response *neutrino_response,
-    struct feedback_props *feedback, struct rt_props *rt, struct pm_mesh *mesh,
+    struct feedback_props *feedback,
+    struct pressure_floor_props *pressure_floor, struct rt_props *rt,
+    struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
+    struct extra_io_properties *io_extra_props,
     struct fof_props *fof_properties, struct los_props *los_properties,
+    struct lightcone_array_props *lightcone_array_properties,
     struct ic_info *ics_metadata);
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file);
+                   int verbose, const char *restart_file,
+                   struct repartition *reparttype);
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,

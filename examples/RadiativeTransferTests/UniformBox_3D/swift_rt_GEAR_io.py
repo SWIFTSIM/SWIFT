@@ -28,6 +28,7 @@
 import os
 import unyt
 import swiftsimio
+import numpy as np
 
 
 class RTGasData(object):
@@ -92,7 +93,6 @@ class Rundata(object):
     def __init__(self):
         self.units = None
 
-        self.hydro_controlled_injection = False
         self.use_const_emission_rate = False
         self.has_stars = False  # assume we don't have stars, check while reading in
 
@@ -194,17 +194,25 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
 
         if len(rundata.const_emission_rates) != rundata.ngroups:
             print("Got number of emission rates different from number of groups?")
-            print(rundata.const_emission_rates, "vs", rundata.ngroups)
+            print(
+                "paramfile:",
+                len(rundata.const_emission_rates),
+                "vs",
+                rundata.ngroups,
+                "groups",
+            )
             if len(rundata.const_emission_rates) > rundata.ngroups:
-                print("Only using first", rundata.ngroups, "emission rates")
                 rundata.const_emission_rates = rundata.const_emission_rates[
                     : rundata.ngroups
                 ]
+                print(
+                    "Only using first",
+                    rundata.ngroups,
+                    "emission rates:",
+                    rundata.const_emission_rates,
+                )
             else:
                 quit()
-
-    if "hydro controlled" in scheme:
-        rundata.hydro_controlled_injection = True
 
     rundata.reduced_speed_of_light = firstfile.metadata.reduced_lightspeed
 
@@ -265,7 +273,8 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             Stars.IDs = data.stars.particle_ids
             Stars.coords = data.stars.coordinates
             Stars.h = data.stars.smoothing_lengths
-            Stars.InjectedPhotonEnergy = data.stars.rtdebug_injected_photon_energy
+            inj = np.atleast_2d(data.stars.rtdebug_injected_photon_energy)
+            Stars.InjectedPhotonEnergy = np.reshape(inj, (Stars.IDs.shape[0], ngroups))
             newsnap.stars = Stars
             newsnap.nstars = Stars.IDs.shape[0]
         except AttributeError:

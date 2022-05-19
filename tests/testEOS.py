@@ -1,6 +1,6 @@
 ###############################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+# Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #               2018 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@ Plot the output of testEOS to show how the equation of state pressure and sound
 speed varies with density and specific internal energy.
 
 Usage:
-    python  testEOS.py  (mat_id)
+    python3  testEOS.py  (mat_id)
 
     Sys args (optional):
         mat_id | int | Material ID, see equation_of_state.h for the options.
@@ -77,7 +77,7 @@ Di_material = {
     "SS08_water": Di_type["SESAME"] * type_factor + 3,  # Senft & Stewart (2008)
 }
 # Invert so the mat_id are the keys
-Di_mat_id = {mat_id: mat for mat, mat_id in Di_material.items()}
+Di_mat_id = {mat_id: mat for mat, mat_id in list(Di_material.items())}
 
 # Unit conversion
 Ba_to_Mbar = 1e-12

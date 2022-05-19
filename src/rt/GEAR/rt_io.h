@@ -49,7 +49,7 @@ INLINE static int rt_read_particles(const struct part* parts,
                             parts, rt_data.radiation[phg].energy_density);
     sprintf(fieldname, "PhotonFluxesGroup%d", phg + 1);
     list[count++] = io_make_input_field(fieldname, FLOAT, 3, OPTIONAL,
-                                        UNIT_CONV_RADIATION_FLUX, parts,
+                                        UNIT_CONV_ENERGY_VELOCITY, parts,
                                         rt_data.radiation[phg].flux);
   }
 
@@ -175,7 +175,7 @@ INLINE static int rt_write_particles(const struct part* parts,
       "Mass fractions of all constituent species");
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  num_elements += 8;
+  num_elements += 7;
   list[3] =
       io_make_output_field("RTDebugInjectionDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_injection_done,
@@ -207,11 +207,6 @@ INLINE static int rt_write_particles(const struct part* parts,
       "RTDebugRadAbsorbedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_radiation_absorbed_tot,
       "Radiation absorbed by this part during its lifetime");
-  list[10] = io_make_output_field("RTDebugStarsInjectPrepTotCounts", ULONGLONG,
-                                  1, UNIT_CONV_NO_UNITS, 0, parts,
-                                  rt_data.debug_iact_stars_inject_prep_tot,
-                                  "Total interactions with stars during "
-                                  "injection prep during its lifetime");
 #endif
 
   return num_elements;
@@ -232,22 +227,21 @@ INLINE static int rt_write_stars(const struct spart* sparts,
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   num_elements += 4;
-  list[0] = io_make_output_field(
+  list[0] = io_make_output_field("RTDebugHydroIact", INT, 1, UNIT_CONV_NO_UNITS,
+                                 0, sparts, rt_data.debug_iact_hydro_inject,
+                                 "number of interactions between this star "
+                                 "particle and any particle during injection");
+  list[1] = io_make_output_field(
       "RTDebugEmissionRateSet", INT, 1, UNIT_CONV_NO_UNITS, 0, sparts,
       rt_data.debug_emission_rate_set, "Stellar photon emission rates set?");
-  list[1] = io_make_output_field(
+  list[2] = io_make_output_field(
       "RTDebugRadEmittedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, sparts,
       rt_data.debug_radiation_emitted_tot,
       "Total radiation emitted during the lifetime of this star");
-  list[2] = io_make_output_field("RTDebugInjectedPhotonEnergy", FLOAT,
+  list[3] = io_make_output_field("RTDebugInjectedPhotonEnergy", FLOAT,
                                  RT_NGROUPS, UNIT_CONV_ENERGY, 0, sparts,
                                  rt_data.debug_injected_energy_tot,
                                  "Total radiation actually injected into gas");
-  list[3] = io_make_output_field("RTDebugHydroInjectPrepCountsTot", ULONGLONG,
-                                 1, UNIT_CONV_NO_UNITS, 0, sparts,
-                                 rt_data.debug_iact_hydro_inject_prep_tot,
-                                 "Total interactions with particles during "
-                                 "injection prep during its lifetime");
 #endif
 
   return num_elements;
@@ -273,12 +267,7 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Write scheme name */
   /* ----------------- */
-  if (rtp->hydro_controlled_injection) {
-    io_write_attribute_s(h_grp, "RT Scheme",
-                         RT_IMPLEMENTATION ", hydro controlled injection");
-  } else {
-    io_write_attribute_s(h_grp, "RT Scheme", RT_IMPLEMENTATION);
-  }
+  io_write_attribute_s(h_grp, "RT Scheme", RT_IMPLEMENTATION);
 
   /* Write photon group counts */
   /* ------------------------- */

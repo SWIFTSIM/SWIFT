@@ -80,7 +80,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 /**
  * @brief Initialises particle quantities that can't be set
  * otherwise before the zeroth step is finished. E.g. because
- * they require the particle density to be known.
+ * they require the particle density and time step to be known.
  *
  * @param p particle to work on
  * @param rt_props RT properties struct
@@ -120,7 +120,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
 /**
  * @brief Initialises particle quantities that can't be set
  * otherwise before the zeroth step is finished. E.g. because
- * they require the star density to be known.
+ * they require the star density and time step to be known.
  * @param sp star particle to work on
  * @param time current system time
  * @param star_age age of the star *at the end of the step*
@@ -180,13 +180,20 @@ __attribute__((always_inline)) INLINE static void rt_convert_quantities(
  * @brief Computes the next radiative transfer time step size
  * of a given particle (during timestep tasks)
  *
- * @param p particle to work on
- * @param rt_props the RT properties struct
- * @param cosmo the cosmology
+ * @param p Particle to work on.
+ * @param rt_props RT properties struct
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param dt The time-step of this particle.
  */
 __attribute__((always_inline)) INLINE static float rt_compute_timestep(
-    const struct part* restrict p, const struct rt_props* restrict rt_props,
-    const struct cosmology* restrict cosmo) {
+    const struct part* restrict p, const struct xpart* restrict xp,
+    struct rt_props* rt_props, const struct cosmology* restrict cosmo,
+    const struct hydro_props* hydro_props,
+    const struct phys_const* restrict phys_const,
+    const struct unit_system* restrict us) {
 
   return FLT_MAX;
 }
@@ -306,8 +313,9 @@ __attribute__((always_inline)) INLINE static void rt_prepare_force(
  * @brief Clean the allocated memory inside the RT properties struct.
  *
  * @param props the #rt_props.
+ * @param restart did we restart?
  */
 __attribute__((always_inline)) INLINE static void rt_clean(
-    struct rt_props* props) {}
+    struct rt_props* props, int restart) {}
 
 #endif /* SWIFT_RT_NONE_H */

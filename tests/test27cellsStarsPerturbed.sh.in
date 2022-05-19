@@ -10,7 +10,7 @@
 
     if [ -e star_brute_force_27_perturbed.dat ]
     then
-	if python @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed.dat 6
+	if python3 @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed.dat 6
 	then
 	    echo "Accuracy test passed"
 	else
@@ -34,7 +34,7 @@
 
     if [ -e star_brute_force_27_perturbed.dat ]
     then
-	if python @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed_h.dat 6
+	if python3 @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed_h.dat 6
 	then
 	    echo "Accuracy test passed"
 	else
@@ -59,7 +59,7 @@
 
     if [ -e star_brute_force_27_perturbed.dat ]
     then
-	if python @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed_h2.dat 6
+	if python3 @srcdir@/difffloat.py star_brute_force_27_perturbed.dat swift_star_dopair_27_perturbed.dat @srcdir@/star_tolerance_27_perturbed_h2.dat 6
 	then
 	    echo "Accuracy test passed"
 	else

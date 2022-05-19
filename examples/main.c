@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -90,8 +90,10 @@ int main(int argc, char *argv[]) {
   struct cooling_function_data cooling_func;
   struct cosmology cosmo;
   struct external_potential potential;
+  struct extra_io_properties extra_io_props;
   struct star_formation starform;
   struct pm_mesh mesh;
+  struct power_spectrum_data pow_data;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
   struct hydro_props hydro_properties;
@@ -102,8 +104,10 @@ int main(int argc, char *argv[]) {
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
+  struct pressure_floor_props pressure_floor_props;
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
+  struct lightcone_array_props lightcone_array_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
   struct space s;
@@ -168,6 +172,7 @@ int main(int argc, char *argv[]) {
   int with_hydro = 0;
   int with_stars = 0;
   int with_fof = 0;
+  int with_lightcone = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
   int with_black_holes = 0;
@@ -184,6 +189,7 @@ int main(int argc, char *argv[]) {
   int with_gear = 0;
   int with_line_of_sight = 0;
   int with_rt = 0;
+  int with_power = 0;
   int verbose = 0;
   int nr_threads = 1;
   int nr_pool_threads = -1;
@@ -237,6 +243,9 @@ int main(int argc, char *argv[]) {
           'u', "fof", &with_fof,
           "Run Friends-of-Friends algorithm to perform black hole seeding.",
           NULL, 0, 0),
+
+      OPT_BOOLEAN(0, "lightcone", &with_lightcone,
+                  "Generate lightcone outputs.", NULL, 0, 0),
       OPT_BOOLEAN('x', "velociraptor", &with_structure_finding,
                   "Run with structure finding.", NULL, 0, 0),
       OPT_BOOLEAN(0, "line-of-sight", &with_line_of_sight,
@@ -335,6 +344,8 @@ int main(int argc, char *argv[]) {
                 "Fraction of the total step's time spent in a task to trigger "
                 "a dump of the task plot on this step",
                 NULL, 0, 0),
+      OPT_BOOLEAN(0, "power", &with_power, "Run with power spectrum outputs.",
+                  NULL, 0, 0),
       OPT_END(),
   };
   struct argparse argparse;
@@ -539,6 +550,14 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (with_lightcone) {
+#ifndef WITH_LIGHTCONE
+    error("Running with lightcone output but compiled without it!");
+#endif
+    if (!with_cosmology)
+      error("Error: cannot make lightcones without --cosmology.");
+  }
+
   if (!with_stars && with_star_formation) {
     if (myrank == 0) {
       argparse_usage(&argparse);
@@ -600,6 +619,8 @@ int main(int argc, char *argv[]) {
         "chosen\n");
   }
   if (with_rt && !with_stars) {
+    /* In principle we can run without stars, but I don't trust the user to
+     * remember to add the flag every time they want to run RT. */
     error(
         "Error: Cannot use radiative transfer without stars, --stars must be "
         "chosen\n");
@@ -613,10 +634,6 @@ int main(int argc, char *argv[]) {
     error("Error: Cannot use radiative transfer and cooling simultaneously");
   }
 
-#ifdef WITH_MPI
-  /* Temporary, this will be removed in due time */
-  error("Error: Cannot use radiative transfer with MPI\n");
-#endif
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
@@ -729,6 +746,9 @@ int main(int argc, char *argv[]) {
   /* Read the parameter file */
   struct swift_params *params =
       (struct swift_params *)malloc(sizeof(struct swift_params));
+
+  /* In scope reference for a potential copy when restarting. */
+  struct swift_params *refparams = NULL;
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
     message("Reading runtime parameters from file '%s'", param_filename);
@@ -961,9 +981,14 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    /* Keep a copy of the params from the restart. */
+    refparams = (struct swift_params *)malloc(sizeof(struct swift_params));
+    memcpy(refparams, e.parameter_file, sizeof(struct swift_params));
+
     /* And initialize the engine with the space and policies. */
     engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_file);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_file,
+                  &reparttype);
 
     /* Check if we are already done when given steps on the command-line. */
     if (e.step >= nsteps && nsteps > 0)
@@ -1059,7 +1084,7 @@ int main(int argc, char *argv[]) {
       pressure_floor_init(&pressure_floor_props, &prog_const, &us,
                           &hydro_properties, params);
     else
-      bzero(&pressure_floor_props, sizeof(struct pressure_floor_properties));
+      bzero(&pressure_floor_props, sizeof(struct pressure_floor_props));
 
     /* Initialise the stars properties */
     if (with_stars)
@@ -1133,6 +1158,10 @@ int main(int argc, char *argv[]) {
     chemistry_init(params, &us, &prog_const, &chemistry);
     if (myrank == 0) chemistry_print(&chemistry);
 
+    /* Initialise the extra i/o */
+    bzero(&extra_io_props, sizeof(struct extra_io_properties));
+    extra_io_init(params, &us, &prog_const, &cosmo, &extra_io_props);
+
     /* Initialise the FOF properties */
     bzero(&fof_properties, sizeof(struct fof_props));
 #ifdef WITH_FOF
@@ -1147,6 +1176,17 @@ int main(int argc, char *argv[]) {
       }
     }
 #endif
+
+    /* Initialize power spectra calculation */
+    if (with_power) {
+#ifdef HAVE_FFTW
+      power_init(&pow_data, params, nr_threads);
+#else
+      error("No FFTW library found. Cannot compute power spectra.");
+#endif
+    } else {
+      bzero(&pow_data, sizeof(struct power_spectrum_data));
+    }
 
     /* Be verbose about what happens next */
     if (myrank == 0) message("Reading ICs from file '%s'", ICfileName);
@@ -1308,6 +1348,16 @@ int main(int argc, char *argv[]) {
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
 
+    /* Initialise the lightcone properties */
+    bzero(&lightcone_array_properties, sizeof(struct lightcone_array_props));
+#ifdef WITH_LIGHTCONE
+    if (with_lightcone)
+      lightcone_array_init(&lightcone_array_properties, &s, &cosmo, params, &us,
+                           &prog_const, verbose);
+    else
+      lightcone_array_properties.nr_lightcones = 0;
+#endif
+
     if (myrank == 0) {
       clocks_gettime(&toc);
       message("space_init took %.3f %s.", clocks_diff(&tic, &toc),
@@ -1318,10 +1368,11 @@ int main(int argc, char *argv[]) {
     /* Initialise the gravity properties */
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity)
-      gravity_props_init(
-          &gravity_properties, params, &prog_const, &cosmo, with_cosmology,
-          with_external_gravity, with_baryon_particles, with_DM_particles,
-          with_neutrinos, with_DM_background_particles, periodic, s.dim);
+      gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
+                         with_cosmology, with_external_gravity,
+                         with_baryon_particles, with_DM_particles,
+                         with_neutrinos, with_DM_background_particles, periodic,
+                         s.dim, s.cdim);
 
     /* Initialize the neutrino response if used */
     bzero(&neutrino_response, sizeof(struct neutrino_response));
@@ -1442,21 +1493,24 @@ int main(int argc, char *argv[]) {
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
     if (with_sink) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
+    if (with_power) engine_policies |= engine_policy_power_spectra;
 
     /* Initialize the engine with the space and policies. */
     engine_init(&e, &s, params, output_options, N_total[swift_type_gas],
                 N_total[swift_type_count], N_total[swift_type_sink],
                 N_total[swift_type_stars], N_total[swift_type_black_hole],
                 N_total[swift_type_dark_matter_background],
-                N_total[swift_type_neutrino], engine_policies, talking,
-                &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
-                &entropy_floor, &gravity_properties, &stars_properties,
-                &black_holes_properties, &sink_properties, &neutrino_properties,
-                &neutrino_response, &feedback_properties, &rt_properties, &mesh,
-                &potential, &cooling_func, &starform, &chemistry,
-                &fof_properties, &los_properties, &ics_metadata);
+                N_total[swift_type_neutrino], engine_policies, talking, &us,
+                &prog_const, &cosmo, &hydro_properties, &entropy_floor,
+                &gravity_properties, &stars_properties, &black_holes_properties,
+                &sink_properties, &neutrino_properties, &neutrino_response,
+                &feedback_properties, &pressure_floor_props, &rt_properties,
+                &mesh, &pow_data, &potential, &cooling_func, &starform,
+                &chemistry, &extra_io_props, &fof_properties, &los_properties,
+                &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_file);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_file,
+                  &reparttype);
 
     /* Compute some stats for the star formation */
     if (with_star_formation) {
@@ -1538,6 +1592,10 @@ int main(int argc, char *argv[]) {
                    /*seed_black_holes=*/0, /*buffers allocated=*/1);
       }
 
+      /* If we want power spectra, output them now as well */
+      if (with_power)
+        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
+
       engine_dump_snapshot(&e);
     }
 
@@ -1552,7 +1610,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) {
     printf(
         "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s [%s] "
-        "%6s %s [%s] \n",
+        "%6s %12s [%s] \n",
         "Step", "Time", "Scale-factor", "Redshift", "Time-step", "Time-bins",
         "Updates", "g-Updates", "s-Updates", "sink-Updates", "b-Updates",
         "Wall-clock time", clocks_getunit(), "Props", "Dead time",
@@ -1569,12 +1627,28 @@ int main(int argc, char *argv[]) {
     error("Failed to generate restart filename");
 
   /* dump the parameters as used. */
-  if (!restart && myrank == 0) {
+  if (myrank == 0) {
 
-    /* used parameters */
-    parser_write_params_to_file(params, "used_parameters.yml", /*used=*/1);
-    /* unused parameters */
-    parser_write_params_to_file(params, "unused_parameters.yml", /*used=*/0);
+    const char *usedname = "used_parameters.yml";
+    const char *unusedname = "unused_parameters.yml";
+    if (restart) {
+
+      /* The used parameters can change, so try to track that. */
+      struct swift_params tmp;
+      memcpy(&tmp, params, sizeof(struct swift_params));
+      parser_compare_params(refparams, &tmp);
+
+      /* We write a file, even if nothing has changed. */
+      char pname[64];
+      sprintf(pname, "%s.%d", usedname, e.step);
+      parser_write_params_to_file(&tmp, pname, /*used=*/1);
+
+    } else {
+
+      /* Write the fully populated used and unused files. */
+      parser_write_params_to_file(params, usedname, /*used=*/1);
+      parser_write_params_to_file(params, unusedname, /*used=*/0);
+    }
   }
 
   /* Dump memory use report if collected for the 0 step. */
@@ -1704,7 +1778,7 @@ int main(int argc, char *argv[]) {
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
         "%12lld"
-        " %21.3f %6d %21.3f\n",
+        " %21.3f %6d %17.3f\n",
         e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
         e.min_active_bin, e.max_active_bin, e.updates, e.g_updates, e.s_updates,
         e.sink_updates, e.b_updates, e.wallclock_time, e.step_props, dead_time);
@@ -1712,7 +1786,7 @@ int main(int argc, char *argv[]) {
 
     fprintf(e.file_timesteps,
             "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld"
-            " %12lld %21.3f %6d %21.3f\n",
+            " %12lld %21.3f %6d %17.3f\n",
             e.step, e.time, e.cosmology->a, e.cosmology->z, e.time_step,
             e.min_active_bin, e.max_active_bin, e.updates, e.g_updates,
             e.s_updates, e.sink_updates, e.b_updates, e.wallclock_time,
@@ -1769,6 +1843,10 @@ int main(int argc, char *argv[]) {
                    /*seed_black_holes=*/0, /*buffers allocated=*/1);
       }
 
+      if (with_power) {
+        calc_all_power_spectra(e.power_data, e.s, &e.threadpool, e.verbose);
+      }
+
 #ifdef HAVE_VELOCIRAPTOR
       if (with_structure_finding && e.snapshot_invoke_stf &&
           !e.stf_this_timestep)
@@ -1788,6 +1866,16 @@ int main(int argc, char *argv[]) {
       if (e.output_list_stf->final_step_dump && !e.stf_this_timestep)
         velociraptor_invoke(&e, /*linked_with_snap=*/0);
     }
+#endif
+
+    /* Write out any remaining lightcone data at the end of the run */
+#ifdef WITH_LIGHTCONE
+    lightcone_array_flush(e.lightcone_array_properties, &(e.threadpool),
+                          e.cosmology, e.internal_units, e.snapshot_units,
+                          /*flush_map_updates=*/1, /*flush_particles=*/1,
+                          /*end_file=*/1, /*dump_all_shells=*/1);
+    lightcone_array_write_index(e.lightcone_array_properties, e.internal_units,
+                                e.snapshot_units);
 #endif
   }
 
@@ -1809,13 +1897,17 @@ int main(int argc, char *argv[]) {
   if (with_cosmology) cosmology_clean(e.cosmology);
   if (e.neutrino_properties->use_linear_response)
     neutrino_response_clean(e.neutrino_response);
-  if (with_self_gravity) pm_mesh_clean(e.mesh);
+  if (with_self_gravity && s.periodic) pm_mesh_clean(e.mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);
-  if (with_rt) rt_clean(e.rt_props);
+  if (with_lightcone) lightcone_array_clean(e.lightcone_array_properties);
+  if (with_rt) rt_clean(e.rt_props, restart);
+  if (with_power) power_clean(e.power_data);
+  extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
+  if (restart) free(refparams);
   free(output_options);
 
 #ifdef WITH_MPI

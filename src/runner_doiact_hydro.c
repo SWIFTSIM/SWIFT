@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -31,6 +31,7 @@
 #include "rt.h"
 #include "runner.h"
 #include "runner_doiact_hydro_vec.h"
+#include "sink.h"
 #include "space_getsid.h"
 #include "star_formation_iact.h"
 #include "timers.h"

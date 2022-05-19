@@ -48,15 +48,6 @@ static void rt_interaction_rates_init(struct rt_props* restrict rt_props,
  */
 struct rt_props {
 
-  /* Are we running with hydro or star controlled injection?
-   * This is added to avoid #ifdef macros as far as possible */
-  int hydro_controlled_injection;
-
-  /* Do we need to run a conversion after the zeroth
-   * step, but before the first step? */
-  int convert_stars_after_zeroth_step;
-  int convert_parts_after_zeroth_step;
-
   /* Are we using constant stellar emission rates? */
   int use_const_emission_rates;
 
@@ -114,20 +105,16 @@ struct rt_props {
   /*! grackle chemistry data */
   chemistry_data grackle_chemistry_data;
 
+  /* TODO: cleanup later with all other grackle stuff */
   /*! grackle chemistry data storage
    * (needed for local function calls) */
-  chemistry_data_storage* grackle_chemistry_rates;
+  /* chemistry_data_storage* grackle_chemistry_rates; */
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  /* Do extended tests where we assume that all parts
-   * have spart neighbours? */
-  /* skip this for GEAR */
-  /* int debug_do_all_parts_have_stars_checks; */
-
   /* radiation emitted by stars this step. This is not really a property,
    * but a placeholder to sum up a global variable. It's being reset
    * every timestep. */
-  int debug_radiation_emitted_this_step;
+  unsigned long long debug_radiation_emitted_this_step;
 
   /* total radiation emitted by stars. This is not really a property,
    * but a placeholder to sum up a global variable */
@@ -135,31 +122,14 @@ struct rt_props {
 
   /* radiation absorbed by gas this step. This is not really a property,
    * but a placeholder to sum up a global variable */
-  int debug_radiation_absorbed_this_step;
+  unsigned long long debug_radiation_absorbed_this_step;
 
   /* total radiation absorbed by gas. This is not really a property,
    * but a placeholder to sum up a global variable */
   unsigned long long debug_radiation_absorbed_tot;
 
-  /* Interactions of a star with gas during injection prep this step. This is
-   * not really a property, but a placeholder to sum up a global variable */
-  int debug_star_injection_prep_iacts_with_parts_this_step;
-
-  /* Interactions of a star with gas during injection prep. This is not
-   * really a property, but a placeholder to sum up a global variable */
-  unsigned long long debug_star_injection_prep_iacts_with_parts_tot;
-
-  /* Interactions of a star with gas during injection prep this step. This is
-   * not really a property, but a placeholder to sum up a global variable */
-  int debug_part_injection_prep_iacts_with_stars_this_step;
-
-  /* Interactions of a star with gas during injection prep. This is not
-   * really a property, but a placeholder to sum up a global variable */
-  unsigned long long debug_part_injection_prep_iacts_with_stars_tot;
-
   /* Total radiation energy in the gas. It's being reset every step. */
   float debug_total_radiation_conserved_energy[RT_NGROUPS];
-  float debug_total_radiation_energy_density[RT_NGROUPS];
   float debug_total_star_emitted_energy[RT_NGROUPS];
 
   /* Files to write energy budget to after every step */
@@ -169,6 +139,45 @@ struct rt_props {
 };
 
 /**
+ * @brief open up files to write some debugging check outputs.
+ * This function is temporary for development, and shouldn't stay
+ * long.
+ *
+ * @param rtp #rt_props struct
+ * @param mode open files with this mode. "w" for new file, "a" for append.
+ **/
+#ifdef SWIFT_RT_DEBUG_CHECKS
+static void rt_props_open_debugging_files(struct rt_props* rtp,
+                                          const char* mode) {
+#ifdef WITH_MPI
+  return;
+#endif
+
+  rtp->conserved_energy_filep = fopen("RT_conserved_energy_budget.txt", mode);
+  if (rtp->conserved_energy_filep == NULL)
+    error("Couldn't open RT conserved energy budget file to write in");
+  rtp->star_emitted_energy_filep = fopen("RT_star_injected_energy.txt", mode);
+  if (rtp->star_emitted_energy_filep == NULL)
+    error("Couldn't open RT star energy budget file to write in");
+
+  if (strcmp(mode, "w") == 0 && rtp->use_const_emission_rates) {
+    /* If we're starting a new file, dump the header first */
+    FILE* files[2] = {rtp->conserved_energy_filep,
+                      rtp->star_emitted_energy_filep};
+    for (int f = 0; f < 2; f++) {
+      fprintf(files[f], "# Emission rates: ");
+      const double solar_luminosity = 3.826e33; /* erg/s */
+      for (int g = 0; g < RT_NGROUPS; g++) {
+        fprintf(files[f], "%12.6e ",
+                rtp->stellar_const_emission_rates[g] * solar_luminosity);
+      }
+      fprintf(files[f], "\n");
+    }
+  }
+};
+#endif
+
+/**
  * @brief initialize grackle during rt_props_init
  *
  * @param rtp #rt_props struct
@@ -176,6 +185,11 @@ struct rt_props {
  **/
 __attribute__((always_inline)) INLINE static void rt_props_init_grackle(
     struct rt_props* rtp, const struct unit_system* us) {
+
+  /* TODO: cleanup later with all other grackle stuff */
+  /* #ifdef SWIFT_RT_DEBUG_CHECKS */
+  /*   grackle_verbose = 1; */
+  /* #endif */
 
   /* Initialize units */
   /* ---------------- */
@@ -196,7 +210,11 @@ __attribute__((always_inline)) INLINE static void rt_props_init_grackle(
   /* -------------------- */
   /* More details on https://grackle.readthedocs.io/en/latest/Parameters.html */
 
-  rtp->grackle_chemistry_data = _set_default_chemistry_parameters();
+  /* TODO: cleanup later with all other grackle stuff */
+  /* rtp->grackle_chemistry_data = _set_default_chemistry_parameters(); */
+  if (set_default_chemistry_parameters(&rtp->grackle_chemistry_data) == 0) {
+    error("Error in set_default_chemistry_parameters.");
+  }
   /* chemistry on */
   rtp->grackle_chemistry_data.use_grackle = 1;
   /* cooling on */
@@ -224,14 +242,16 @@ __attribute__((always_inline)) INLINE static void rt_props_init_grackle(
   rtp->grackle_chemistry_data.HydrogenFractionByMass =
       rtp->hydrogen_mass_fraction;
 
+  /* TODO: cleanup later with all other grackle stuff */
   /* Initialize the chemistry_data_storage object to be
    * able to use local functions */
-  chemistry_data_storage* chem_data_storage =
-      malloc(sizeof(chemistry_data_storage));
-  rtp->grackle_chemistry_rates = chem_data_storage;
-  if (!_initialize_chemistry_data(&rtp->grackle_chemistry_data,
-                                  rtp->grackle_chemistry_rates,
-                                  &rtp->grackle_units)) {
+  /* chemistry_data_storage* chem_data_storage = */
+  /*     malloc(sizeof(chemistry_data_storage)); */
+  /* rtp->grackle_chemistry_rates = chem_data_storage; */
+  /* if (!_initialize_chemistry_data(&rtp->grackle_chemistry_data, */
+  /*                                 rtp->grackle_chemistry_rates, */
+  /*                                 &rtp->grackle_units)) { */
+  if (initialize_chemistry_data(&rtp->grackle_units) == 0) {
     error("Error in _initialize_chemistry_data");
   }
 }
@@ -292,21 +312,8 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     const struct unit_system* us, struct swift_params* params,
     struct cosmology* cosmo) {
 
-#ifdef RT_HYDRO_CONTROLLED_INJECTION
-  rtp->hydro_controlled_injection = 1;
-#else
-  rtp->hydro_controlled_injection = 0;
-#endif
-
   /* Make sure we reset debugging counters correctly after
    * zeroth step. */
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  rtp->convert_parts_after_zeroth_step = 1;
-  rtp->convert_stars_after_zeroth_step = 1;
-#else
-  rtp->convert_parts_after_zeroth_step = 0;
-  rtp->convert_stars_after_zeroth_step = rtp->hydro_controlled_injection;
-#endif
 
   /* Read in photon frequency group properties */
   /* ----------------------------------------- */
@@ -468,32 +475,16 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rtp->debug_radiation_emitted_tot = 0ULL;
+  rtp->debug_radiation_emitted_this_step = 0ULL;
+
   rtp->debug_radiation_absorbed_tot = 0ULL;
-  rtp->debug_star_injection_prep_iacts_with_parts_tot = 0LL;
-  rtp->debug_part_injection_prep_iacts_with_stars_tot = 0LL;
+  rtp->debug_radiation_absorbed_this_step = 0ULL;
+
   for (int g = 0; g < RT_NGROUPS; g++)
     rtp->debug_total_star_emitted_energy[g] = 0.f;
 
-  /* Open up files for energy budgets */
-  rtp->conserved_energy_filep = fopen("RT_conserved_energy_budget.txt", "w");
-  if (rtp->conserved_energy_filep == NULL)
-    error("Couldn't open RT conserved energy budget file to write in");
-  rtp->star_emitted_energy_filep = fopen("RT_star_injected_energy.txt", "w");
-  if (rtp->star_emitted_energy_filep == NULL)
-    error("Couldn't open RT star energy budget file to write in");
+  rt_props_open_debugging_files(rtp, "w");
 
-  if (rtp->use_const_emission_rates) {
-    FILE* files[2] = {rtp->conserved_energy_filep,
-                      rtp->star_emitted_energy_filep};
-    for (int f = 0; f < 2; f++) {
-      fprintf(files[f], "# Emission rates: ");
-      const double solar_luminosity = 3.826e33; /* erg/s */
-      for (int g = 0; g < RT_NGROUPS; g++)
-        fprintf(files[f], "%12.6e ",
-                rtp->stellar_const_emission_rates[g] * solar_luminosity);
-      fprintf(files[f], "\n");
-    }
-  }
 #endif
 
   /* Grackle setup */
@@ -528,6 +519,10 @@ __attribute__((always_inline)) INLINE static void rt_struct_dump(
 
   restart_write_blocks((void*)props, sizeof(struct rt_props), 1, stream,
                        "RT props", "RT properties struct");
+  /* The RT parameters, in particular the reduced speed of light, are
+   * not defined at compile time. So we need to read them in again. */
+  restart_write_blocks(&rt_params, sizeof(struct rt_parameters), 1, stream,
+                       "RT global parameters", "RT global parameters struct");
 }
 
 /**
@@ -542,6 +537,14 @@ __attribute__((always_inline)) INLINE static void rt_struct_restore(
 
   restart_read_blocks((void*)props, sizeof(struct rt_props), 1, stream, NULL,
                       "RT properties struct");
+  /* The RT parameters, in particular the reduced speed of light, are
+   * not defined at compile time. So we need to write them down. */
+  restart_read_blocks(&rt_params, sizeof(struct rt_parameters), 1, stream, NULL,
+                      "RT global parameters struct");
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* Reset the file pointers for temporary stats */
+  rt_props_open_debugging_files(props, "a");
+#endif
 }
 
 #endif /* SWIFT_RT_PROPERTIES_GEAR_H */

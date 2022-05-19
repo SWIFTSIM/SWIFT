@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -155,7 +155,7 @@ void cell_recursively_shift_gparts(struct cell *c,
 struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
-  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->stars.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of spart performed above the leaf level");
 
   /* Progeny number at each level */

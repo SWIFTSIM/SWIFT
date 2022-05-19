@@ -1,6 +1,6 @@
 # This file is part of SWIFT.
 # Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
-#                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+#                    Matthieu Schaller (schaller@strw.leidenuniv.nl).
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) $(OPENMP_CFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) $(OPENMP_CFLAGS) $(CHEALPIX_CFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(GSL_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS)
+EXTRA_LIBS = $(GSL_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(CHEALPIX_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -52,7 +52,7 @@ include_HEADERS += csds.h active.h timeline.h xmf.h gravity_properties.h gravity
 include_HEADERS += gravity_softened_derivatives.h vector_power.h collectgroup.h hydro_space.h sort_part.h 
 include_HEADERS += chemistry.h chemistry_io.h chemistry_struct.h cosmology.h restart.h space_getsid.h utilities.h 
 include_HEADERS += cbrt.h exp10.h velociraptor_interface.h swift_velociraptor_part.h output_list.h 
-include_HEADERS += csds_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h
+include_HEADERS += csds_io.h tracers_io.h tracers.h tracers_struct.h star_formation_io.h extra_io.h
 include_HEADERS += fof.h fof_struct.h fof_io.h fof_catalogue_io.h
 include_HEADERS += multipole.h multipole_accept.h multipole_struct.h binomial.h integer_power.h sincos.h 
 include_HEADERS += star_formation_struct.h star_formation.h star_formation_iact.h 
@@ -63,10 +63,22 @@ include_HEADERS += black_holes.h black_holes_io.h black_holes_properties.h black
 include_HEADERS += feedback.h feedback_struct.h feedback_properties.h 
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
+include_HEADERS += sink.h sink_struct.h sink_io.h sink_properties.h
 include_HEADERS += particle_splitting.h particle_splitting_struct.h
 include_HEADERS += chemistry_csds.h star_formation_csds.h
 include_HEADERS += mesh_gravity.h mesh_gravity_mpi.h mesh_gravity_patch.h mesh_gravity_sort.h row_major_id.h
-include_HEADERS += hdf5_object_to_blob.h ic_info.h
+include_HEADERS += hdf5_object_to_blob.h ic_info.h particle_buffer.h exchange_structs.h
+include_HEADERS += lightcone/lightcone.h lightcone/lightcone_particle_io.h lightcone/lightcone_replications.h
+include_HEADERS += lightcone/lightcone_crossing.h lightcone/lightcone_array.h lightcone/lightcone_map.h
+include_HEADERS += lightcone/lightcone_map_types.h lightcone/projected_kernel.h lightcone/lightcone_shell.h
+include_HEADERS += lightcone/healpix_util.h lightcone/pixel_index.h
+include_HEADERS += power_spectrum.h
+
+# source files for EAGLE extra I/O
+EAGLE_EXTRA_IO_SOURCES=
+if HAVEEAGLEEXTRAIO
+EAGLE_EXTRA_IO_SOURCES += extra_io/EAGLE/extra_lightcone_map_types.c
+endif
 
 # source files for QLA (Ploeckinger+20) cooling
 QLA_COOLING_SOURCES =
@@ -122,8 +134,8 @@ AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c
 AM_SOURCES += runner_doiact_stars.c runner_doiact_black_holes.c runner_ghost.c
 AM_SOURCES += runner_recv.c runner_pack.c
 AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c 
-AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c runner_doiact_sinks.c 
-AM_SOURCES += runner_doiact_rt.c runner_doiact_sinks_merger.c
+AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c
+AM_SOURCES += runner_sinks.c
 AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c 
 AM_SOURCES += cell_unskip.c cell_dependency_check.c
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c 
@@ -143,12 +155,16 @@ AM_SOURCES += collectgroup.c hydro_space.c equation_of_state.c io_compression.c
 AM_SOURCES += chemistry.c cosmology.c velociraptor_interface.c 
 AM_SOURCES += output_list.c velociraptor_dummy.c csds_io.c memuse.c mpiuse.c memuse_rnodes.c
 AM_SOURCES += fof.c fof_catalogue_io.c
-AM_SOURCES += hashmap.c pressure_floor.c
+AM_SOURCES += hashmap.c
 AM_SOURCES += mesh_gravity.c mesh_gravity_mpi.c mesh_gravity_patch.c mesh_gravity_sort.c
 AM_SOURCES += runner_neutrino.c
 AM_SOURCES += neutrino/Default/fermi_dirac.c neutrino/Default/neutrino.c neutrino/Default/neutrino_response.c 
-AM_SOURCES += rt_parameters.c
-AM_SOURCES += hdf5_object_to_blob.c ic_info.c
+AM_SOURCES += rt_parameters.c hdf5_object_to_blob.c ic_info.c exchange_structs.c particle_buffer.c
+AM_SOURCES += lightcone/lightcone.c lightcone/lightcone_particle_io.c lightcone/lightcone_replications.c
+AM_SOURCES += lightcone/healpix_util.c lightcone/lightcone_array.c lightcone/lightcone_map.c
+AM_SOURCES += lightcone/lightcone_map_types.c lightcone/projected_kernel.c lightcone/lightcone_shell.c
+AM_SOURCES += power_spectrum.c
+AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
@@ -160,8 +176,7 @@ nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulat
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h 
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h 
 nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_limiter.h units.h intrinsics.h minmax.h 
-nobase_noinst_HEADERS += runner_doiact_rt.h runner_doiact_functions_rt.h runner_doiact_sinks.h runner_doiact_functions_sinks.h
-nobase_noinst_HEADERS += runner_doiact_sinks_merger.h runner_doiact_functions_sinks_merger.h
+nobase_noinst_HEADERS += runner_doiact_sinks.h
 nobase_noinst_HEADERS += kick.h timestep.h drift.h adiabatic_index.h io_properties.h dimension.h part_type.h periodic.h memswap.h 
 nobase_noinst_HEADERS += timestep_limiter.h timestep_limiter_iact.h timestep_sync.h timestep_sync_part.h timestep_limiter_struct.h 
 nobase_noinst_HEADERS += csds.h sign.h csds_io.h hashmap.h gravity.h gravity_io.h gravity_csds.h  gravity_cache.h output_options.h
@@ -248,7 +263,6 @@ nobase_noinst_HEADERS += riemann/riemann_hllc.h riemann/riemann_trrs.h
 nobase_noinst_HEADERS += riemann/riemann_exact.h riemann/riemann_vacuum.h 
 nobase_noinst_HEADERS += riemann/riemann_checks.h 
 nobase_noinst_HEADERS += rt.h  
-nobase_noinst_HEADERS += rt_active.h  
 nobase_noinst_HEADERS += rt_additions.h  
 nobase_noinst_HEADERS += rt_io.h 
 nobase_noinst_HEADERS += rt_parameters.h 
@@ -269,9 +283,7 @@ nobase_noinst_HEADERS += rt/debug/rt_iact.h
 nobase_noinst_HEADERS += rt/debug/rt_io.h 
 nobase_noinst_HEADERS += rt/debug/rt_parameters.h
 nobase_noinst_HEADERS += rt/debug/rt_properties.h 
-nobase_noinst_HEADERS += rt/debug/rt_stellar_emission_rate.h 
 nobase_noinst_HEADERS += rt/debug/rt_struct.h
-nobase_noinst_HEADERS += rt/debug/rt_thermochemistry.h
 nobase_noinst_HEADERS += rt/GEAR/rt.h  
 nobase_noinst_HEADERS += rt/GEAR/rt_additions.h 
 nobase_noinst_HEADERS += rt/GEAR/rt_blackbody.h 
@@ -380,6 +392,7 @@ nobase_noinst_HEADERS += tracers/none/tracers.h tracers/none/tracers_struct.h
 nobase_noinst_HEADERS += tracers/none/tracers_io.h 
 nobase_noinst_HEADERS += tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h 
 nobase_noinst_HEADERS += tracers/EAGLE/tracers_io.h 
+nobase_noinst_HEADERS += extra_io/EAGLE/extra_io.h extra_io/EAGLE/extra.h
 nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/none/feedback_properties.h 
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback.h feedback/EAGLE_kinetic/feedback_struct.h 
@@ -405,8 +418,9 @@ nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor.h pressure_floor/non
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h 
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h 
 nobase_noinst_HEADERS += sink/Default/sink.h sink/Default/sink_io.h sink/Default/sink_part.h sink/Default/sink_properties.h 
-nobase_noinst_HEADERS += sink/Default/sink_iact.h
-nobase_noinst_HEADERS += sink.h sink_io.h sink_properties.h
+nobase_noinst_HEADERS += sink/Default/sink_iact.h sink/Default/sink_struct.h
+nobase_noinst_HEADERS += sink/GEAR/sink.h sink/GEAR/sink_io.h sink/GEAR/sink_part.h sink/GEAR/sink_properties.h 
+nobase_noinst_HEADERS += sink/GEAR/sink_iact.h sink/GEAR/sink_struct.h
 nobase_noinst_HEADERS += neutrino.h neutrino_properties.h neutrino_io.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino.h neutrino/Default/relativity.h neutrino/Default/fermi_dirac.h
 nobase_noinst_HEADERS += neutrino/Default/neutrino_properties.h neutrino/Default/neutrino_io.h

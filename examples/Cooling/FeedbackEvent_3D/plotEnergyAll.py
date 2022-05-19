@@ -1,5 +1,5 @@
 """
-Plots the energy from the energy.txt file for this simulation.
+Plots the energy from the statistics.txt file for this simulation.
 """
 
 import matplotlib.pyplot as plt
@@ -40,16 +40,17 @@ for diffusion in diffusion_parameters:
     units = snapshot.metadata.units
     energy_units = units.mass * units.length ** 2 / (units.time ** 2)
 
-    data = np.loadtxt(f"{directory_name}/energy.txt").T
+    data = np.loadtxt(f"{directory_name}/statistics.txt").T
 
     #  Assign correct units to each
 
-    time = data[0] * units.time
-    mass = data[1] * units.mass
-    total_energy = data[2] * energy_units
-    kinetic_energy = data[3] * energy_units
-    thermal_energy = data[4] * energy_units
-    radiative_cool = data[8] * energy_units
+    time = data[1] * units.time
+    mass = data[5] * units.mass
+    kinetic_energy = data[13] * energy_units
+    thermal_energy = data[14] * energy_units
+    potential_energy = data[15] * energy_units
+    radiative_cool = data[16] * energy_units
+    total_energy = kinetic_energy + thermal_energy + potential_energy
 
     # Now we have to figure out how much energy we actually 'injected'
     background_internal_energy = (

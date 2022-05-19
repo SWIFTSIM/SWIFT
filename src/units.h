@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2012 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -109,11 +109,16 @@ enum unit_conversion_factor {
   UNIT_CONV_MASS_PER_UNIT_TIME,
   UNIT_CONV_VELOCITY_SQUARED,
   UNIT_CONV_INV_TIME,
+  UNIT_CONV_INV_AREA,
   UNIT_CONV_RADIATION_FLUX,
   UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
   UNIT_CONV_ENERGY_FLUX_DENSITY,
   UNIT_CONV_POWER_DENSITY,
+  UNIT_CONV_GASOLINE_DIFF_RATE,
   UNIT_CONV_THERMAL_DIFFUSIVITY,
+  UNIT_CONV_NUMBER_DENSITY_PER_TIME,
+  UNIT_CONV_PHOTONS_PER_TIME,
+  UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
 };
 
 void units_init_cgs(struct unit_system*);

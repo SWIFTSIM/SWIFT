@@ -6,7 +6,7 @@ then
     if command -v python3 &>/dev/null; then
         python3 makeIC.py
     else 
-        python makeIC.py
+        python3 makeIC.py
     fi
 
 fi
@@ -19,5 +19,5 @@ echo "Save plots of the circular orbits"
 if command -v python3 &>/dev/null; then
     python3 plotprog.py
 else 
-    python plotprog.py
+    python3 plotprog.py
 fi
