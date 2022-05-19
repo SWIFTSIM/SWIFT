@@ -611,6 +611,11 @@ void engine_addtasks_recv_hydro(struct engine *e, struct cell *c,
       scheduler_addunlock(s, l->t, t_gradient);
     }
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+      /* Make sure the rho has also already been recieved when starting the
+       * force interaction. (Gradient is not always executed). */
+      scheduler_addunlock(s, t_rho, l->t);
+#endif
       scheduler_addunlock(s, t_gradient, l->t);
       scheduler_addunlock(s, l->t, t_ti);
     }
