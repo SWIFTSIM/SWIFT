@@ -384,14 +384,14 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                      threadpool_auto_chunk_size, e);
     }
     if (e->s->nr_gparts > 0) {
-      if (s->with_zoom_region) {
+      if (e->s->with_zoom_region) {
         threadpool_map(&e->threadpool, bkg_engine_do_drift_all_gpart_mapper,
-                       e->s->zoom_region_properties->local_bkg_cells_top,
-                       e->s->zoom_region_properties->nr_local_bkg_cells,
+                       e->s->zoom_props->local_bkg_cells_top,
+                       e->s->zoom_props->nr_local_bkg_cells,
                        sizeof(int), threadpool_auto_chunk_size, e);
         threadpool_map(&e->threadpool, zoom_engine_do_drift_all_gpart_mapper,
-                       e->s->zoom_region_properties->local_zoom_cells_top,
-                       e->s->zoom_region_properties->nr_local_zoom_cells,
+                       e->s->zoom_props->local_zoom_cells_top,
+                       e->s->zoom_props->nr_local_zoom_cells,
                        sizeof(int), threadpool_auto_chunk_size, e);
         } else {
         threadpool_map(&e->threadpool, engine_do_drift_all_gpart_mapper,
