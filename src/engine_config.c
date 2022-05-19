@@ -157,11 +157,13 @@ static void engine_dumper_init(struct engine *e) {
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
+ * @param reparttype What type of repartition algorithm are we using.
  */
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file) {
+                   int verbose, const char *restart_file,
+                   struct repartition *reparttype) {
 
   struct clocks_time tic, toc;
   if (nodeID == 0) clocks_gettime(&tic);
@@ -189,6 +191,14 @@ void engine_config(int restart, int fof, struct engine *e,
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
+
+  /* Allow repartitioning to be changed between restarts. On restart this is
+   * already allocated and freed on exit, so we need to copy over. */
+  if (restart) {
+    memcpy(e->reparttype, reparttype, sizeof(struct repartition));
+  } else {
+    e->reparttype = reparttype;
+  }
 
   if (restart && fof) {
     error(

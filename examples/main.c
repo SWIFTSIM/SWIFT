@@ -742,6 +742,9 @@ int main(int argc, char *argv[]) {
   /* Read the parameter file */
   struct swift_params *params =
       (struct swift_params *)malloc(sizeof(struct swift_params));
+
+  /* In scope reference for a potential copy when restarting. */
+  struct swift_params *refparams = NULL;
   if (params == NULL) error("Error allocating memory for the parameter file.");
   if (myrank == 0) {
     message("Reading runtime parameters from file '%s'", param_filename);
@@ -974,9 +977,14 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    /* Keep a copy of the params from the restart. */
+    refparams = (struct swift_params *)malloc(sizeof(struct swift_params));
+    memcpy(refparams, e.parameter_file, sizeof(struct swift_params));
+
     /* And initialize the engine with the space and policies. */
     engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_file);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_file,
+                  &reparttype);
 
     /* Check if we are already done when given steps on the command-line. */
     if (e.step >= nsteps && nsteps > 0)
@@ -1476,16 +1484,17 @@ int main(int argc, char *argv[]) {
                 N_total[swift_type_count], N_total[swift_type_sink],
                 N_total[swift_type_stars], N_total[swift_type_black_hole],
                 N_total[swift_type_dark_matter_background],
-                N_total[swift_type_neutrino], engine_policies, talking,
-                &reparttype, &us, &prog_const, &cosmo, &hydro_properties,
-                &entropy_floor, &gravity_properties, &stars_properties,
-                &black_holes_properties, &sink_properties, &neutrino_properties,
-                &neutrino_response, &feedback_properties, &pressure_floor_props,
-                &rt_properties, &mesh, &potential, &cooling_func, &starform,
-                &chemistry, &extra_io_props, &fof_properties, &los_properties,
+                N_total[swift_type_neutrino], engine_policies, talking, &us,
+                &prog_const, &cosmo, &hydro_properties, &entropy_floor,
+                &gravity_properties, &stars_properties, &black_holes_properties,
+                &sink_properties, &neutrino_properties, &neutrino_response,
+                &feedback_properties, &pressure_floor_props, &rt_properties,
+                &mesh, &potential, &cooling_func, &starform, &chemistry,
+                &extra_io_props, &fof_properties, &los_properties,
                 &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_file);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_file,
+                  &reparttype);
 
     /* Compute some stats for the star formation */
     if (with_star_formation) {
@@ -1598,12 +1607,28 @@ int main(int argc, char *argv[]) {
     error("Failed to generate restart filename");
 
   /* dump the parameters as used. */
-  if (!restart && myrank == 0) {
+  if (myrank == 0) {
 
-    /* used parameters */
-    parser_write_params_to_file(params, "used_parameters.yml", /*used=*/1);
-    /* unused parameters */
-    parser_write_params_to_file(params, "unused_parameters.yml", /*used=*/0);
+    const char *usedname = "used_parameters.yml";
+    const char *unusedname = "unused_parameters.yml";
+    if (restart) {
+
+      /* The used parameters can change, so try to track that. */
+      struct swift_params tmp;
+      memcpy(&tmp, params, sizeof(struct swift_params));
+      parser_compare_params(refparams, &tmp);
+
+      /* We write a file, even if nothing has changed. */
+      char pname[64];
+      sprintf(pname, "%s.%d", usedname, e.step);
+      parser_write_params_to_file(&tmp, pname, /*used=*/1);
+
+    } else {
+
+      /* Write the fully populated used and unused files. */
+      parser_write_params_to_file(params, usedname, /*used=*/1);
+      parser_write_params_to_file(params, unusedname, /*used=*/0);
+    }
   }
 
   /* Dump memory use report if collected for the 0 step. */
@@ -1857,6 +1882,7 @@ int main(int argc, char *argv[]) {
   extra_io_clean(e.io_extra_props);
   engine_clean(&e, /*fof=*/0, restart);
   free(params);
+  if (restart) free(refparams);
   free(output_options);
 
 #ifdef WITH_MPI
