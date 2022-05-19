@@ -68,10 +68,13 @@ def get_snapshot_list(snapshot_basename="output"):
     snaplist = []
 
     if plot_all:
-        dirlist = os.listdir()
-        for f in dirlist:
-            if f.startswith(snapshot_basename) and f.endswith("hdf5"):
-                snaplist.append(f)
+        #  dirlist = os.listdir()
+        #  for f in dirlist:
+        #      if f.startswith(snapshot_basename) and f.endswith("hdf5"):
+        #          snaplist.append(f)
+
+        for i in range(470, 513):
+            snaplist.append("output_{0:04d}.hdf5".format(i))
 
         snaplist = sorted(snaplist)
 
@@ -308,3 +311,4 @@ if __name__ == "__main__":
 
     for f in snaplist:
         plot_result(f)
+        gc.collect()

@@ -2925,11 +2925,15 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
+          celltrace(ci, "activating recv");
+          celltrace(cj, "activating recv as expected sender");
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
           /* If we don't have any active hydro tasks, make sure the sort tasks
            * don't run before the recv */
-          if (!cell_is_active_hydro(ci, e))
+          if (!cell_is_active_hydro(ci, e)){
+            celltrace(cj, "blocking sort");
             scheduler_activate(s, ci->rt.rt_block_sort);
+          }
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -2941,12 +2945,15 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
+          celltrace(cj, "activating send");
+          celltrace(ci, "activating send as target");
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
                                   ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
+          celltrace(cj, "activating drift");
 
           if (cj_active) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_transport,
@@ -2958,11 +2965,15 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
+          celltrace(cj, "activating recv as target");
+          celltrace(ci, "activating recv as expected sender");
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
           /* If we don't have any active hydro tasks, make sure the sort tasks
            * don't run before the recv */
-          if (!cell_is_active_hydro(cj, e))
+          if (!cell_is_active_hydro(cj, e)){
             scheduler_activate(s, cj->rt.rt_block_sort);
+            celltrace(cj, "blocking sort");
+          }
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -2974,12 +2985,15 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
+          celltrace(ci, "activating send");
+          celltrace(cj, "activating send as target");
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
                                   cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(ci, s);
+          celltrace(ci, "activating drift");
 
           if (ci_active) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_transport,

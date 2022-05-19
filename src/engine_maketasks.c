@@ -547,6 +547,7 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
 
       /* Drift before you send. Especially intended to cover inactive cells
        * being sent. */
+      celltrace(ci, "adding drift dependencies");
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_gradient);
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_transport);
 
@@ -1714,7 +1715,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_rt_transport_out, task_subtype_none,
                               0, /*implicit= */ 1, c, NULL);
 
-        /* non-implicit ghost 2 */
+        /* thermochemistry */
         c->rt.rt_tchem = scheduler_addtask(s, task_type_rt_tchem,
                                            task_subtype_none, 0, 0, c, NULL);
 

@@ -2477,6 +2477,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to accept elements */
 
+        celltrace(t->ci, "------ receiving task subtype %s recvcount=%d", subtaskID_names[t->subtype], t->ci->rt.recvcount);
+        t->ci->rt.recvcount++;
+        if (t->cj != NULL){
+          celltrace(t->cj, "------ receiving task subtype %s recvcount=%d", subtaskID_names[t->subtype], t->cj->rt.recvcount);
+          t->cj->rt.recvcount++;
+        }
+
         if (t->subtype == task_subtype_tend) {
 
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_step);
@@ -2578,6 +2585,13 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         size_t count = 0;             /* Number of elements to send */
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
+
+        celltrace(t->ci, "====== sending task subtype %s sendcount=%d", subtaskID_names[t->subtype], t->ci->rt.sendcount);
+        t->ci->rt.sendcount++;
+        if (t->cj != NULL){
+          celltrace(t->cj, "====== sending task subtype %s sendcount=%d", subtaskID_names[t->subtype], t->cj->rt.sendcount);
+          t->cj->rt.sendcount++;
+        }
 
         if (t->subtype == task_subtype_tend) {
 
@@ -2718,11 +2732,11 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
 
-    if (t->type == task_type_rt_advance_cell_time &&
-        t2->type == task_type_send && t2->subtype == task_subtype_tend &&
-        (t->ci->cellID == PROBLEMCELL1 || t->ci->cellID == PROBLEMCELL2))
-      message("Cell %lld unlocking rend from rt_advance_cell_time",
-              t->ci->cellID);
+    /* if (t->type == task_type_rt_advance_cell_time && */
+    /*     t2->type == task_type_send && t2->subtype == task_subtype_tend && */
+    /*     (t->ci->cellID == PROBLEMCELL1 || t->ci->cellID == PROBLEMCELL2)) */
+    /*   message("Cell %lld unlocking rend from rt_advance_cell_time", */
+    /*           t->ci->cellID); */
     if (t2->skip) continue;
 
     const int res = atomic_dec(&t2->wait);

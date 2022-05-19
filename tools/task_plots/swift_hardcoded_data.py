@@ -82,6 +82,8 @@ TASKTYPES = [
     "rt_ghost2",
     "rt_transport_out",
     "rt_tchem",
+    "rt_advance_cell_time",
+    "rt_block_send",
     #  "count",
 ]
 
@@ -121,7 +123,6 @@ SUBTYPES = [
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
-    "rt_advance_cell_time",
     #  "count",
 ]
 

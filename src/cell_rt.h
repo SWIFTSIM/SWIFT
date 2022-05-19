@@ -72,6 +72,11 @@ struct cell_rt {
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
 
+
+  /* TODO: temporary */
+  int sendcount;
+  int recvcount;
+
 #endif
 
 #ifdef RT_NONE

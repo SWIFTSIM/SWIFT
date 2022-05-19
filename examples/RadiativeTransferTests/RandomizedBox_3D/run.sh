@@ -38,7 +38,7 @@ fi
 # Run SWIFT with RT
 $cmd \
     --hydro \
-    --threads=9 \
+    --threads=1 \
     --verbose=0 \
     --radiation \
     --self-gravity \
