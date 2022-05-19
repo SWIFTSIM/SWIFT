@@ -55,10 +55,13 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sbuff,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
-                           struct cell_buff *restrict sink_buff) {
+                           struct cell_buff *restrict sink_buff,
+                           struct gpart *restrict gparts,
+                           int gcount) {
 
   const int count = c->hydro.count;
-  const int gcount = c->grav.count;
+  if (gcount == NULL)
+    gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
@@ -84,7 +87,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
   struct part *parts = c->hydro.parts;
-  struct gpart *gparts = c->grav.parts;
+  if (gparts == NULL)
+    gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct xpart *xparts = c->hydro.xparts;
@@ -287,7 +291,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff);
+                              progeny_gbuff, progeny_sink_buff, NULL, NULL);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -717,11 +721,12 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
                        gpart_align,
                        gcount * sizeof(struct gpart)) != 0)
       error("Error while allocating temporart memory for gparts");
-    memcpy(temp_gparts, c->grav.parts, gcount * sizeof(struct gpart)));
+    memcpy(temp_gparts, c->grav.parts, gcount * sizeof(struct gpart));
 
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL,
+                          temp_gparts, gcount);
 
-    /* Replace the cell parts with the buffers */
+    /* Replace the cell parts with the local copies */
     memcpy(c->grav.parts, temp_gparts, gcount);
 
     /* Free up thread local memory */
