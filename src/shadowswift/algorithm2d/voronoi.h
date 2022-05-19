@@ -8,6 +8,7 @@
 #include "../delaunay.h"
 #include "../queues.h"
 #include "./geometry.h"
+#include "part.h"
 #include "triangle.h"
 
 /**
@@ -360,6 +361,7 @@ inline static void voronoi_reset(struct voronoi *restrict v,
  * @param part_is_active Flags indicating whether the particle is active.
  */
 static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
+                                 const struct part *parts,
                                  const int *part_is_active) {
 
   voronoi_assert(d->vertex_end > 0);
