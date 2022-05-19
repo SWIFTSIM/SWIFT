@@ -43,6 +43,26 @@ __attribute__((always_inline, const)) INLINE static int row_major_id_periodic(
 }
 
 /**
+ * @brief Returns 1D index of a 3D NxNxN array using row-major style.
+ *
+ * Wraps around in the corresponding dimension if any of the 3 indices is >= N
+ * or < 0.
+ *
+ * Padding is added along the x axis.
+ *
+ * @param i Index along x.
+ * @param j Index along y.
+ * @param k Index along z.
+ * @param N Size of the array along one axis.
+ */
+__attribute__((always_inline, const)) INLINE static int
+row_major_id_periodic_with_padding(const int i, const int j, const int k,
+                                   const int N, const int pad) {
+
+  return ((((i + N) % N) * N + ((j + N) % N)) * (N + pad) + ((k + N) % N));
+}
+
+/**
  * @brief Returns 1D index of a FFTW-padded 3D NxNxN array using row-major
  * style.
  *

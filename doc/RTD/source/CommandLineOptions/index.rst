@@ -103,6 +103,7 @@ can be found by typing ``./swift -h``:
     --dump-tasks-threshold=<flt>      Fraction of the total step's time spent
                                       in a task to trigger a dump of the task plot
                                       on this step
+    --power                           Run with power spectrum outputs.
 
 See the file examples/parameter_example.yml for an example of parameter file.
 
