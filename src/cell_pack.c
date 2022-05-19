@@ -210,6 +210,11 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_min = pc->stars.ti_end_min;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->sinks.ti_end_min = pc->sinks.ti_end_min;
+  if (c->rt.ti_rt_end_min > pc->rt.ti_rt_end_min)
+    error("Cell %lld reducing ti_rt_end_min from %lld to %lld", c->cellID,
+          c->rt.ti_rt_end_min, pc->rt.ti_rt_end_min);
+  celltrace(c, " ti_rt_end_min was %lld got %lld", c->rt.ti_rt_end_min,
+            pc->rt.ti_rt_end_min);
   c->rt.ti_rt_end_min = pc->rt.ti_rt_end_min;
   c->rt.ti_rt_min_step_size = pc->rt.ti_rt_min_step_size;
 
@@ -345,6 +350,7 @@ int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
   /* Pack this cell's data. */
   pcells[0].hydro.ti_end_min = c->hydro.ti_end_min;
   pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
+  celltrace(c, "packing %lld", c->rt.ti_rt_end_min);
   pcells[0].rt.ti_rt_end_min = c->rt.ti_rt_end_min;
   pcells[0].rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
 
@@ -388,6 +394,13 @@ int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
   /* Unpack this cell's data. */
   c->hydro.ti_end_min = pcells[0].hydro.ti_end_min;
   c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
+  if (c->rt.ti_rt_end_min > pcells[0].rt.ti_rt_end_min)
+    error("Cell %lld reducing ti_rt_end_min from %lld to %lld", c->cellID,
+          c->rt.ti_rt_end_min, pcells[0].rt.ti_rt_end_min);
+
+  celltrace(c, "rt_end_min was %lld got %lld", c->rt.ti_rt_end_min,
+            pcells[0].rt.ti_rt_end_min);
+
   c->rt.ti_rt_end_min = pcells[0].rt.ti_rt_end_min;
   c->rt.ti_rt_min_step_size = pcells[0].rt.ti_rt_min_step_size;
 

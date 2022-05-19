@@ -204,10 +204,11 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
      * e->ti_current_subcycle) { */
     error(
         "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
-        "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d",
+        "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d",
         c->cellID, c->rt.ti_rt_end_min, c->rt.ti_rt_end_min * e->time_base,
         e->ti_current_subcycle, e->ti_current_subcycle * e->time_base,
-        e->cosmology->a, c->nodeID, c->rt.rt_advance_cell_time != NULL);
+        e->cosmology->a, c->nodeID, c->rt.rt_advance_cell_time != NULL,
+        c->hydro.count);
   }
 #endif
 

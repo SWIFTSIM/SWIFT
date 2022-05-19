@@ -2850,6 +2850,8 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                          const int sub_cycle) {
 
+  celltrace(c, "unskipping; active=%d", cell_is_rt_active(c, s->space->e));
+
   /* Do we have work here? */
   if (c->hydro.count == 0) return 0;
 
@@ -3023,6 +3025,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
   /* Unskip all the other task types */
   if (cell_is_rt_active(c, e)) {
+    celltrace(c, "unskipping and active. Have task? %d",
+              c->rt.rt_advance_cell_time != NULL);
     if (c->rt.rt_in != NULL) scheduler_activate(s, c->rt.rt_in);
     if (c->rt.rt_ghost1 != NULL) scheduler_activate(s, c->rt.rt_ghost1);
     if (c->rt.rt_ghost2 != NULL) scheduler_activate(s, c->rt.rt_ghost2);

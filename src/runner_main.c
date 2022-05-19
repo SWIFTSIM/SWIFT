@@ -169,6 +169,12 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
+      /* celltrace(ci, "running %s/%s", taskID_names[t->type],
+       * subtaskID_names[t->subtype]); */
+      /* if (cj != NULL) */
+      /*   celltrace(cj, "running %s/%s", taskID_names[t->type],
+       * subtaskID_names[t->subtype]); */
+
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;

@@ -2717,6 +2717,12 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
+
+    if (t->type == task_type_rt_advance_cell_time &&
+        t2->type == task_type_send && t2->subtype == task_subtype_tend &&
+        (t->ci->cellID == PROBLEMCELL1 || t->ci->cellID == PROBLEMCELL2))
+      message("Cell %lld unlocking rend from rt_advance_cell_time",
+              t->ci->cellID);
     if (t2->skip) continue;
 
     const int res = atomic_dec(&t2->wait);

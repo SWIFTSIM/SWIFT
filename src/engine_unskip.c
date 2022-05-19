@@ -262,6 +262,13 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Do we have work to do? */
+  if (c->hydro.count == 0) return;
+#ifdef WITH_MPI
+  /* We may have foreign cells which aren't doing any RT, e.g. for gravity.
+   * As such, they won't have the appropriate tasks on this node. Don't unskip
+   * those, their times won't be correct. */
+  if ((c->nodeID != e->nodeID) && (c->rt.rt_advance_cell_time == NULL)) return;
+#endif
   if (!cell_is_rt_active(c, e)) return;
 
   /* Recurse */
@@ -546,7 +553,18 @@ void engine_unskip_sub_cycle(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (cell_is_empty(c)) continue;
+    celltrace(c, "engine unskip; active=%d, count=%d", cell_is_rt_active(c, e),
+              c->hydro.count);
+    if (c->hydro.count == 0) continue;
+      /* if (cell_is_empty(c)) continue; */
+
+#ifdef WITH_MPI
+    /* We may have foreign cells which aren't doing any RT, e.g. for gravity.
+     * As such, they won't have the appropriate tasks on this node. Don't unskip
+     * those, their times won't be correct. */
+    if ((c->nodeID != e->nodeID) && (c->rt.rt_advance_cell_time == NULL))
+      continue;
+#endif
 
     if (cell_is_rt_active(c, e)) {
 

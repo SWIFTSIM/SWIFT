@@ -658,6 +658,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   TIMER_TIC;
 
+  celltrace(c, "@entry ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld",
+            c->rt.ti_rt_end_min, e->ti_current_subcycle,
+            c->rt.ti_rt_min_step_size);
+
   /* Anything to do here? */
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
@@ -1159,6 +1163,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
                   c->rt.ti_rt_end_min < max_nr_timesteps))
     error("Cell %lld End of next RT step is current time!", c->cellID);
 #endif
+
+  celltrace(c, "@exit ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld",
+            c->rt.ti_rt_end_min, e->ti_current_subcycle,
+            c->rt.ti_rt_min_step_size);
 
   if (timer) TIMER_TOC(timer_timestep);
 }
