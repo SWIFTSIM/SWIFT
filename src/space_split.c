@@ -704,17 +704,17 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   struct space *s = (struct space *)extra_data;
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
-
-  /* Get cell counts */
-  const int gcount = c->grav.count;
-
-  /* Initialise the thread local particle arrays */
-  struct gpart* temp_gparts = NULL;
   
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
+    /* Get cell counts */
+    const int gcount = c->grav.count;
+
+    /* Initialise the thread local particle arrays */
+    struct gpart* temp_gparts = NULL;
+    
     /* Populate the temporary versions of the particles
        to avoid memory movement overhead in sorts */
     if (swift_memalign("temp_gparts", (void**)&temp_gparts,
