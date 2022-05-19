@@ -84,13 +84,13 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
     const struct part *restrict p, const float hyp, const float par) {
-  
+
   const float v_sig = hydro_get_signal_velocity(p);
+  const float div_v = hydro_get_div_v(p);
 
   return (-hyp * p->mhd_data.divB * v_sig * v_sig -
-          par * v_sig * p->mhd_data.phi / p->h);
-  //-
-  //        0.5f * p->mhd_data.phi * div_v);
+          par * v_sig * p->mhd_data.phi / p->h -
+          0.5f * p->mhd_data.phi * div_v);
 }
 
 /**
@@ -232,8 +232,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
-  //const float a_inv = cosmo->a_inv;
-  //the cosmological factors cancel out
+  // const float a_inv = cosmo->a_inv;
+  // the cosmological factors cancel out
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */
   float const DBDT_Corr = fabs(p->mhd_data.phi / p->h);
@@ -342,12 +342,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *restrict p, const struct cosmology *cosmo) {
-
-  //  p->a_hydro[0] += p->mhd_data.Test[0];
-  //  p->a_hydro[1] += p->mhd_data.Test[1];
-  //  p->a_hydro[2] += p->mhd_data.Test[2];
-}
+    struct part *restrict p, const struct cosmology *cosmo) {}
 
 /**
  * @brief Kick the additional variables
