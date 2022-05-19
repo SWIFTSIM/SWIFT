@@ -354,8 +354,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   // const float mag_faci = MU0_1 * f_ij * wi_dr * r_inv / (rhoi * rhoi);
   // const float mag_facj = MU0_1 * f_ji * wj_dr * r_inv / (rhoj * rhoj);
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) ;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) ;
   float Bi[3], Bj[3], dv[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -376,22 +376,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     mm_j[j][j] -= 0.5 * (Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2]);
   }
   //////////////////////////// Apply to the Force and DIVB TERM SUBTRACTION
+  // comoving integration>
+  // 1/a Lorentz 
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       pi->a_hydro[i] +=
-          mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      pi->a_hydro[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
+          mj / a * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
+      pi->a_hydro[i] -= pi->mhd_data.Q0 * mj / a * Bi[i] *
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
-      // pi->mhd_data.Test[i] +=
-      //    mj * (mm_i[i][j] * mag_faci + mm_j[i][j] * mag_facj) * dx[j];
-      // pi->mhd_data.Test[i] -= pi->mhd_data.Q0 * mj * Bi[i] *
-      //                        (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   /////////////////////////// DIRECT INDUCTION
+  // comoving integration>
+  // 1/a Induction , nothing for phi 
   const float mag_Indi = wi_dr * r_inv / rhoi;
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dBdt[i] +=
-        mj * mag_Indi *
+        mj / a * mag_Indi *
         ((Bi[i] * dv[(i + 1) % 3] - Bi[(i + 1) % 3] * dv[i]) * dx[(i + 1) % 3] +
          (Bi[i] * dv[(i + 2) % 3] - Bi[(i + 2) % 3] * dv[i]) * dx[(i + 2) % 3]);
     pi->mhd_data.dBdt[i] += pi->mhd_data.Q1 * mj * mag_Indi *

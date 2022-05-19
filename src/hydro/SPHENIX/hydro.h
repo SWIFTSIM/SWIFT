@@ -497,6 +497,18 @@ __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
 }
 
 /**
+ * @brief returns the signal velocity
+ *
+ * @brief p  the particle
+ */
+__attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
+    const struct part *restrict p) {
+
+  return p->viscosity.v_sig;
+}
+
+
+/**
  * @brief Does some extra hydro operations once the actual physical time step
  * for the particle is known.
  *

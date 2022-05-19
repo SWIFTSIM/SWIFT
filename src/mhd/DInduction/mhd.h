@@ -84,13 +84,9 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
     const struct part *restrict p, const float hyp, const float par) {
-#ifdef SPHENIX_SPH
-  const float v_sig = p->viscosity.v_sig;
-//    const float div_v = p->viscosity.div_v;
-#elif MINIMAL_SPH
-  const float v_sig = p->force.v_sig;
-//    const float div_v = p->force.div_v;
-#endif
+  
+  const float v_sig = hydro_get_signal_velocity(p);
+
   return (-hyp * p->mhd_data.divB * v_sig * v_sig -
           par * v_sig * p->mhd_data.phi / p->h);
   //-
@@ -156,7 +152,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
   const float a_inv2 = cosmo->a2_inv;
   const float rho_inv = 1.f / p->rho;
-
+  // divB_phi = a * divB_co
   p->mhd_data.divB *= h_inv_dim_plus_one * a_inv2 * rho_inv;
 }
 
@@ -236,6 +232,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
 
+  //const float a_inv = cosmo->a_inv;
+  //the cosmological factors cancel out
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */
   float const DBDT_Corr = fabs(p->mhd_data.phi / p->h);
@@ -261,8 +259,6 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   /* Re normalize the correction in eth momentum from the DivB errors*/
   p->mhd_data.Q0 =
       ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
-  p->mhd_data.Q0 = 1.f;
-  p->mhd_data.Q1 = 1.f;
 }
 
 /**
