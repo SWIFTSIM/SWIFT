@@ -81,7 +81,11 @@ const char *repartition_name[] = {
 static int check_complete(struct space *s, int verbose, int nregions);
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 static double estimate_global_memuse_balance(struct space *s, int *acelllist,
-                                             int *bcelllist, double *cellsizes);
+                                             int *bcelllist, double *hcellsizes,
+                                             double *gcellsizes, int *hdepth,
+                                             int *gdepth);
+static void accumulate_super_depth(struct space *s, int *hdepth,
+                                   int *gdepth);
 #endif
 
 /*
@@ -418,19 +422,32 @@ static int ptrcmp(const void *p1, const void *p2) {
  *
  * @param s the space containing the cells.
  * @param verbose whether to report any clipped cell counts.
- * @param counts the number of bytes in particles per cell. Should be
- *               allocated as size s->nr_cells.
+ * @param hcounts the number of bytes in particles per cell. Should be
+ *               allocated as size s->nr_cells. If gcounts
+ *               is NULL these are for all types, otherwise this will just be
+ *               non-gravity.
+ * @param gcounts the number of bytes in particles per cell. Should be
+ *               allocated as size s->nr_cells. If not NULL then just
+ *               gravity will be counted here.
  */
-static void accumulate_sizes(struct space *s, int verbose, double *counts) {
+static void accumulate_sizes(struct space *s, int verbose, double *hcounts,
+                             double *gcounts) {
 
-  bzero(counts, sizeof(double) * s->nr_cells);
+  bzero(hcounts, sizeof(double) * s->nr_cells);
 
   struct counts_mapper_data mapper_data;
   mapper_data.s = s;
   double gsize = 0.0;
-  double *gcounts = NULL;
   double hsize = 0.0;
   double ssize = 0.0;
+
+  /* Do we want to return separate gravity counts? Zero now we may
+   * have no gparts. */
+  int keepgrav = 0;
+  if (gcounts != NULL) {
+    keepgrav = 1;
+    bzero(gcounts, sizeof(double) * s->nr_cells);
+  }
 
   if (s->nr_gparts > 0) {
     /* Self-gravity gets more efficient with density (see gitlab issue #640)
@@ -438,9 +455,11 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
      * gparts, to suppress this we fix a upper weight limit based on a
      * percentile clip to on the numbers of cells. Should be relatively
      * harmless when not really needed. */
-    if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
-      error("Failed to allocate gcounts buffer.");
-    bzero(gcounts, sizeof(double) * s->nr_cells);
+    if (!keepgrav) {
+      if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+        error("Failed to allocate gcounts buffer.");
+      bzero(gcounts, sizeof(double) * s->nr_cells);
+    }
     gsize = (double)sizeof(struct gpart);
 
     mapper_data.counts = gcounts;
@@ -482,8 +501,8 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
 
   /* Other particle types are assumed to correlate with processing time. */
   if (s->nr_parts > 0) {
-    mapper_data.counts = counts;
-    hsize = (double)(sizeof(struct part) + sizeof(struct xpart));
+    mapper_data.counts = hcounts;
+    hsize = (double)sizeof(struct part);
     mapper_data.size = hsize;
     threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_part, s->parts,
                    s->nr_parts, sizeof(struct part), space_splitsize,
@@ -491,6 +510,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   }
 
   if (s->nr_sparts > 0) {
+    mapper_data.counts = hcounts;
     ssize = (double)sizeof(struct spart);
     mapper_data.size = ssize;
     threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_spart, s->sparts,
@@ -501,29 +521,29 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
    * gparts. */
   if (s->nr_parts > 0 || s->nr_sparts > 0) {
-    if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+    if (MPI_Allreduce(MPI_IN_PLACE, hcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to allreduce particle cell weights.");
   }
 
-  /* And merge with gravity counts. */
-  double sum = 0.0;
-  if (s->nr_gparts > 0) {
-    for (int k = 0; k < s->nr_cells; k++) {
-      counts[k] += gcounts[k];
-      sum += counts[k];
+  /* And merge with gravity counts if we want to. */
+  if (!keepgrav) {
+    double sum = 0.0;
+    if (s->nr_gparts > 0) {
+      for (int k = 0; k < s->nr_cells; k++) {
+        hcounts[k] += gcounts[k];
+        sum += hcounts[k];
+      }
+      free(gcounts);
+    } else {
+      for (int k = 0; k < s->nr_cells; k++) {
+        sum += hcounts[k];
+      }
     }
-    free(gcounts);
-  } else {
-    for (int k = 0; k < s->nr_cells; k++) {
-      sum += counts[k];
+    if (sum > (double)(IDX_MAX - 10000)) {
+      double vscale = (double)(IDX_MAX - 10000) / sum;
+      for (int k = 0; k < s->nr_cells; k++) hcounts[k] *= vscale;
     }
-  }
-
-  /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
-  if (sum > (double)(IDX_MAX - 10000)) {
-    double vscale = (double)(IDX_MAX - 10000) / sum;
-    for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
   }
 }
 
@@ -1701,15 +1721,17 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
   /* If we are also using size based weights in the vertices, then we need to
    * accumulate those and merge with the vertex weights from above. */
-  double *weights_size = NULL;
+  double *gweights_size = NULL;
+  double *hweights_size = NULL;
   int ncon = 1;
   if (repartition->use_memory_weights) {
     message("Using memory weights on the vertex");
     ncon = 2;
-    if ((weights_size = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
+    if ((hweights_size = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
       error("Failed to allocate vertex size arrays.");
-    bzero(weights_size, sizeof(double) * nr_cells);
-    accumulate_sizes(s, 1, weights_size);
+    if ((gweights_size = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
+      error("Failed to allocate vertex size arrays.");
+    accumulate_sizes(s, 1, hweights_size, gweights_size);
 
     /* Now we merge. */
     double *weights_vs = NULL;
@@ -1719,7 +1741,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 
     for (int k = 0, j = 0; k < nr_cells; k++, j += 2) {
       weights_vs[j] = weights_v[k];
-      weights_vs[j + 1] = weights_size[k];
+      double xweights_size = hweights_size[k] * (double) sizeof(struct xpart) / (double) sizeof(struct part);
+      weights_vs[j + 1] = hweights_size[k] + xweights_size + gweights_size[k];
     }
 
     free(weights_v);
@@ -1766,13 +1789,30 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
    * inability to restart. */
   if (repartition->use_memory_weights) {
     if (old_celllist != NULL) {
-      double deltamem = estimate_global_memuse_balance(
-          s, repartition->celllist, old_celllist, weights_size);
+
+      /* Need to accumulate the minimal super-cell depths across all top-level
+       * cells so we can estimate the memory use in foreign cells more
+       * accurately. */
+      int *hdepth = NULL;
+      int *gdepth = NULL;
+      if ((hdepth = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+        error("Failed to allocate super cell depth buffer.");
+      if ((gdepth = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
+        error("Failed to allocate super cell depth buffer.");
+      accumulate_super_depth(s, hdepth, gdepth);
+      double deltamem =
+        estimate_global_memuse_balance(s, 
+                                       old_celllist,
+                                       repartition->celllist,
+                                       hweights_size,
+                                       gweights_size,
+                                       hdepth, gdepth);
       message("deltamem = %f", deltamem);
     } else {
       message("no old_celllist?");
     }
-    free(weights_size);
+    free(hweights_size);
+    free(gweights_size);
   }
 
   /* Check how much the memory balance has changed. We don't want any extreme
@@ -1816,7 +1856,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
     error("Failed to allocate cell weights buffer.");
 
   /* Check each particle and accumulate the sizes per cell. */
-  accumulate_sizes(s, s->e->verbose, weights);
+  accumulate_sizes(s, s->e->verbose, weights, NULL);
 
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
@@ -2010,7 +2050,7 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Failed to allocate weights_v buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
-      accumulate_sizes(s, s->e->verbose, weights_v);
+      accumulate_sizes(s, s->e->verbose, weights_v, NULL);
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
@@ -2023,7 +2063,7 @@ void partition_initial_partition(struct partition *initial_partition,
         error("Failed to allocate weights_e buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
-      accumulate_sizes(s, s->e->verbose, weights_v);
+      accumulate_sizes(s, s->e->verbose, weights_v, NULL);
 
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e);
@@ -2671,6 +2711,112 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
+static void find_hydro_super(struct cell *c, struct cell **super) {
+
+  /* Stop at first cell with hydro tasks. */
+  if (*super == NULL && c->hydro.density != NULL) {
+    *super = c;
+    if (c->depth > 0) {
+      message("deeper %d", c->depth);
+    }
+  }
+  if (*super != NULL) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        find_hydro_super(c->progeny[k], super);
+        if (*super != NULL) break;
+      }
+    }
+  }
+}
+static void find_grav_super(struct cell *c, struct cell **super) {
+
+  /* Stop at first cell with grav tasks. */
+  if (*super == NULL && c->grav.grav != NULL) {
+    *super = c;
+    if (c->depth > 0) {
+      message("deeper %d", c->depth);
+    }
+  }
+  if (*super != NULL) return;
+
+  /* Recurse */
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        find_grav_super(c->progeny[k], super);
+        if (*super != NULL) break;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Accumulate the highest super cell depths for all top-level cells.
+ *
+ * @param s the space containing the cells.
+ * @param ndepth on return the depths for hydro, size s->nr_cells.
+ * @param gdepth on return the depths for gravity, size s->nr_cells.
+ */
+static void accumulate_super_depth(struct space *s, int *hdepth,
+                                   int *gdepth) {
+
+  bzero(hdepth, sizeof(int) * s->nr_cells);
+  bzero(gdepth, sizeof(int) * s->nr_cells);
+
+  struct cell *super = NULL;
+  if (s->nr_parts > 0 || s->nr_sparts > 0) {
+    for (int k = 0; k < s->nr_cells; k++) {
+      struct cell *c = &s->cells_top[k];
+      if (c->nodeID == s->e->nodeID) {
+        super = NULL;
+        find_hydro_super(c, &super);
+        if (super != NULL) hdepth[k] = super->depth;
+      }
+    }
+    if (MPI_Allreduce(MPI_IN_PLACE, hdepth, s->nr_cells, MPI_INT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce cell depths.");
+
+    if (engine_rank == 0) {
+      printf("hydro super depths:\n");
+      for (int k = 0; k < s->nr_cells; k++) {
+        printf("%d ", hdepth[k]);
+      }
+      printf("\n");
+    }
+  }
+
+  if (s->nr_gparts > 0) {
+    int n = 0;
+    for (int k = 0; k < s->nr_cells; k++) {
+      struct cell *c = &s->cells_top[k];
+      if (c->nodeID == s->e->nodeID) {
+        super = NULL;
+        find_grav_super(c, &super);
+        if (super != NULL) gdepth[k] = super->depth;
+        n++;
+      }
+    }
+    message("search %d local cells", n);
+    if (MPI_Allreduce(MPI_IN_PLACE, gdepth, s->nr_cells, MPI_INT, MPI_SUM,
+                      MPI_COMM_WORLD) != MPI_SUCCESS)
+      error("Failed to allreduce cell depths.");
+
+    if (engine_rank == 0) {
+      printf("gravity super depths:\n");
+      for (int k = 0; k < s->nr_cells; k++) {
+        printf("%d ", gdepth[k]);
+      }
+      printf("\n");
+    }
+  }
+}
+
+
 /**
  * @brief Estimate the memory for a node by summing particle sizes over the
  *        list of cells on it. Also add any expected foreign cells so that we
@@ -2682,7 +2828,9 @@ void partition_struct_restore(struct repartition *reparttype, FILE *stream) {
  *
  * @result the sum for this node.
  */
-static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
+static double estimate_node_memuse(int verbose, int nodeID, double *hcellsizes,
+                                   double *gcellsizes, int *hdepth,
+                                   int *gdepth, int nr_cells,
                                    int *celllist, int periodic, int nr_nodes,
                                    const int cdim[3], const double dim[3],
                                    struct cell *cells, double delta_m,
@@ -2693,7 +2841,10 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
   double sum = 0;
 
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
-  int *used = (int *)calloc(nr_cells, sizeof(int));
+  int *hused = (int *)calloc(nr_cells, sizeof(int));
+  int *gused = (int *)calloc(nr_cells, sizeof(int));
+
+  int nsends = 0;
 
   /* Loop over each cell in the space. */
   for (int i = 0; i < cdim[0]; i++) {
@@ -2704,7 +2855,10 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
         const int cid = cell_getid(cdim, i, j, k);
 
         /* If on our node, we add to the sum. */
-        if (celllist[cid] == nodeID) sum += (cellsizes[cid] * engine_redistribute_alloc_margin);
+        if (celllist[cid] == nodeID) {
+          double xcellsizes = hcellsizes[cid] * (double) sizeof(struct xpart) / (double) sizeof(struct part);
+          sum += (hcellsizes[cid] + xcellsizes + gcellsizes[cid]) * engine_redistribute_alloc_margin;
+        }
 
         /* Loop over all its neighbours neighbours in range. Looking for any
          * expected cells on remote nodes, those also add to the size of
@@ -2734,7 +2888,8 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
               /* Early abort (both foreign node) */
               if (celllist[cid] != nodeID && celllist[cjd] != nodeID) continue;
 
-              int found = 0;
+              int hfound = 0;
+              int gfound = 0;
 
               /* In the hydro case, only care about direct neighbours */
               if (with_hydro) {
@@ -2747,7 +2902,7 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
                       abs(j - jjj + cdim[1]) <= 1) &&
                      (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
                       abs(k - kkk + cdim[2]) <= 1)))
-                  found = 1;
+                  hfound = 1;
               }
 
               /* In the gravity case, check distances using the MAC. */
@@ -2765,7 +2920,7 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
                      (abs(k - kkk) <= 1 || abs(k - kkk - cdim[2]) <= 1 ||
                       abs(k - kkk + cdim[2]) <= 1))) {
 
-                  found = 1;
+                  gfound = 1;
                 } else {
 
                   /* We don't have multipoles yet (or their CoMs) so we will
@@ -2788,30 +2943,44 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
                     if ((min_dist_CoM2 < max_mesh_dist2) &&
                         !(4. * r_max * r_max <
                           theta_crit * theta_crit * min_dist_CoM2))
-                      found = 1;
+                      gfound = 1;
 
                   } else {
 
                     if (!(4. * r_max * r_max <
                           theta_crit * theta_crit * min_dist_CoM2)) {
-                      found = 1;
+                      gfound = 1;
                     }
                   }
                 }
               }
 
-              if (found) {
+              if (hfound || gfound) {
                 if (celllist[cid] == nodeID && celllist[cjd] != nodeID) {
                   // Need to stop multiple sums of these values.
-                  if (!used[cjd]) {
-                    sum += (cellsizes[cjd] * engine_foreign_alloc_margin);
-                    used[cjd] = 1;
+                  if (!hused[cjd]) {
+                    //double fact = 1.0 / pow(2.0, hdepth[cjd]);
+                    sum += hcellsizes[cjd] * engine_foreign_alloc_margin;// * fact;
+                    hused[cjd] = 1;
+                    nsends++;
+                  }
+                  if (!gused[cjd]) {
+                    double fact = 1.0 / pow(2.0, gdepth[cjd]);
+                    sum += gcellsizes[cjd] * engine_foreign_alloc_margin * fact;
+                    gused[cjd] = 1;
                   }
                 }
                 if (celllist[cjd] == nodeID && celllist[cid] != nodeID) {
-                  if (!used[cid]) {
-                    sum += (cellsizes[cid] * engine_foreign_alloc_margin);
-                    used[cid] = 1;
+                  if (!hused[cid]) {
+                    //double fact = 1.0 / pow(2.0, hdepth[cid]);
+                    sum += hcellsizes[cid] * engine_foreign_alloc_margin;// * fact;
+                    hused[cid] = 1;
+                    nsends++;
+                  }
+                  if (!gused[cid]) {
+                    double fact = 1.0 / pow(2.0, gdepth[cid]);
+                    sum += gcellsizes[cid] * engine_foreign_alloc_margin * fact;
+                    gused[cid] = 1;
                   }
                 }
               }
@@ -2821,7 +2990,12 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
       }
     }
   }
-  free(used);
+
+  if (engine_rank == 0)
+    message("%d nsends = %d sum = %f", verbose, nsends, sum);
+
+  free(hused);
+  free(gused);
   return sum;
 }
 
@@ -2831,12 +3005,16 @@ static double estimate_node_memuse(int nodeID, double *cellsizes, int nr_cells,
  * @param s the #space
  * @param acelllist a partition cell list.
  * @param bcelllist a partition cell list.
- * @param cellsizes the memory used by particles in each cell.
+ * @param hcellsizes the memory used by hydro particles in each cell.
+ * @param gcellsizes the memory used by gravity particles in each cell.
+ * @param hdepth the depths of the highest super cell for hydro.
+ * @param gdepth the depths of the highest super cell for gravity.
  * @result the largest fraction change in memory per node.
  */
 static double estimate_global_memuse_balance(struct space *s, int *acelllist,
-                                             int *bcelllist,
-                                             double *cellsizes) {
+                                             int *bcelllist, double *hcellsizes,
+                                             double *gcellsizes,
+                                             int *hdepth, int *gdepth) {
 
   /* Shared information about how the need for proxies to exchange cells is
    * decided, must follow the logic of engine_makeproxies(). */
@@ -2891,16 +3069,19 @@ static double estimate_global_memuse_balance(struct space *s, int *acelllist,
   // XXX loop over all nodes... Gathering sums.
   double delta_mem = 0.0;
   for (int nodeID = 0; nodeID < e->nr_nodes; nodeID++) {
-    double atotal = estimate_node_memuse(
-        nodeID, cellsizes, s->nr_cells, acelllist, periodic, e->nr_nodes, cdim,
-        dim, cells, delta_m, delta_p, with_hydro, with_gravity, r_max,
-        theta_crit, max_mesh_dist);
+    double atotal = estimate_node_memuse(1,
+                                         nodeID, hcellsizes, gcellsizes,
+                                         hdepth, gdepth, s->nr_cells, acelllist, periodic,
+                                         e->nr_nodes, cdim, dim, cells, delta_m, delta_p, with_hydro,
+                                         with_gravity, r_max, theta_crit, max_mesh_dist);
 
-    double btotal = estimate_node_memuse(
-        nodeID, cellsizes, s->nr_cells, bcelllist, periodic, e->nr_nodes, cdim,
-        dim, cells, delta_m, delta_p, with_hydro, with_gravity, r_max,
-        theta_crit, max_mesh_dist);
-    if (engine_rank == 0) message("%d: %f -> %f", nodeID, atotal, btotal);
+    double btotal = estimate_node_memuse(0,
+                                         nodeID, hcellsizes, gcellsizes,
+                                         hdepth, gdepth, s->nr_cells, bcelllist, periodic,
+                                         e->nr_nodes, cdim, dim, cells, delta_m, delta_p, with_hydro,
+                                         with_gravity, r_max, theta_crit, max_mesh_dist);
+    if (engine_rank == 0)
+      message("%d %d: %f -> %f", e->step, nodeID, atotal, btotal);
     double diff = fabs(atotal - btotal);
     if (diff > delta_mem) delta_mem = diff;
   }
