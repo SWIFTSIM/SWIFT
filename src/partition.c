@@ -2756,6 +2756,11 @@ static void find_grav_super(struct cell *c, struct cell **super) {
 
 /**
  * @brief Accumulate the highest super cell depths for all top-level cells.
+ * 
+ * XXX doesn't seem to work, but this is the only way we can possibly get this
+ * information (since using the same method as MPI requires task construction
+ * based on the presence of foreign cells on there correct ranks). Meanwhile
+ * we always get depths of 0.
  *
  * @param s the space containing the cells.
  * @param ndepth on return the depths for hydro, size s->nr_cells.
