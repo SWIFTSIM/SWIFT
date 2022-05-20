@@ -55,13 +55,10 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sbuff,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
-                           struct cell_buff *restrict sink_buff,
-                           struct gpart *restrict gparts,
-                           int gcount) {
+                           struct cell_buff *restrict sink_buff) {
 
   const int count = c->hydro.count;
-  if (gparts == NULL)
-    gcount = c->grav.count;
+  const int gcount = c->grav.count;
   const int scount = c->stars.count;
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
@@ -87,8 +84,7 @@ void space_split_recursive(struct space *s, struct cell *c,
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
                 ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
   struct part *parts = c->hydro.parts;
-  if (gparts == NULL)
-    gparts = c->grav.parts;
+  struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct xpart *xparts = c->hydro.xparts;
@@ -291,7 +287,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff, NULL, 0);
+                              progeny_gbuff, progeny_sink_buff);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -709,28 +705,26 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
-    /* Get cell counts */
-    const int gcount = c->grav.count;
-
-    /* Initialise the thread local particle arrays */
-    struct gpart* temp_gparts = NULL;
+    /* Initialise the thread local copy of the cell */
+    struct cell *temp_c = NULL;
     
-    /* Populate the temporary versions of the particles
-       to avoid memory movement overhead in sorts */
-    if (swift_memalign("temp_gparts", (void**)&temp_gparts,
-                       gpart_align,
-                       gcount * sizeof(struct gpart)) != 0)
-      error("Error while allocating temporart memory for gparts");
-    memcpy(temp_gparts, c->grav.parts, gcount * sizeof(struct gpart));
+    /* Allocare the tempoary cell so we can
+       avoid memory movement overhead in sorts */
+    if (swift_memalign("temp_cell", (void**)&temp_c,
+                       cell_align,
+                       sizeof(struct cell)) != 0)
+      error("Error while allocating temporary memory for cell");
 
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL,
-                          temp_gparts, gcount);
+    /* Copy cell contents into temporary local cell */
+    temp_c = c;
 
-    /* Replace the cell parts with the local copies */
-    memcpy(c->grav.parts, temp_gparts, gcount);
+    space_split_recursive(s, temp_c, NULL, NULL, NULL, NULL, NULL);
+
+    /* Replace the cell with the local cell */
+    cells_top[local_cells_with_particles[ind]] = temp_c;
 
     /* Free up thread local memory */
-    swift_free("temp_gparts", temp_gparts);
+    swift_free("temp_cell", temp_c);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
