@@ -282,8 +282,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = MU0_1 * f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = MU0_1 * f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a / a;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a / a;
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -315,8 +315,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   /////////////////////////// VP evolution
-  const float mag_VPIndi = wi_dr * r_inv / rhoi;
-  const float mag_VPIndj = wj_dr * r_inv / rhoj;
+  const float mag_VPIndi = wi_dr * r_inv / rhoi / a;
+  const float mag_VPIndj = wj_dr * r_inv / rhoj / a;
   // ADVECTIVE GAUGE
   // float dv[3];
   // dv[0] = pi->v[0] - pj->v[0];
@@ -341,14 +341,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
   }
   /// DISSSIPATION
-  const float Deta = 0.000f;
   const float mag_Disi =
-      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
+      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij) / a / a;
   const float mag_Disj =
-      (wj_dx + wi_dx) / 2.f * r_inv * rhoj / (rho_ij * rho_ij);
+      (wj_dx + wi_dx) / 2.f * r_inv * rhoj / (rho_ij * rho_ij) / a / a;
   for (int i = 0; i < 3; i++) {
-    pi->mhd_data.dAdt[i] += mj * 2.0 * Deta * mag_Disi * dA[i];
-    pj->mhd_data.dAdt[i] += mi * 2.0 * Deta * mag_Disj * dA[i];
+    pi->mhd_data.dAdt[i] += mj * 2.0 * pi->mhd_data.Deta * mag_Disi * dA[i];
+    pj->mhd_data.dAdt[i] += mi * 2.0 * pj->mhd_data.Deta * mag_Disj * dA[i];
   }
   return;
 }
@@ -407,8 +406,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = MU0_1 * f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = MU0_1 * f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a / a;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a / a;
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -436,7 +435,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   /////////////////////////// VP INDUCTION
-  const float mag_VPIndi = wi_dr * r_inv / rhoi;
+  const float mag_VPIndi = wi_dr * r_inv / rhoi / a;
   // ADVECTIVE GAUGE
   // float dv[3];
   // dv[0] = pi->v[0] - pj->v[0];
@@ -454,11 +453,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   /// DISSSIPATION
-  const float Deta = 0.000f;
   const float mag_Disi =
-      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
+      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij) / a / a;
   for (int i = 0; i < 3; i++)
-    pi->mhd_data.dAdt[i] += mj * 2.0 * Deta * mag_Disi * dA[i];
+    pi->mhd_data.dAdt[i] += mj * 2.0 * pi->mhd_data.Deta * mag_Disi * dA[i];
   return;
 }
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */

@@ -41,7 +41,7 @@ struct mhd_part_data {
   float GauSmooth;
   /* VP evolution */
   float dAdt[3];
-  float Test[3];
+  float Deta;
 };
 
 /**

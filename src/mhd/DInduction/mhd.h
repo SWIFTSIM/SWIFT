@@ -20,10 +20,9 @@
 #define SWIFT_DI_MHD_H
 
 #include "hydro.h"
+#include "mhd_parameters.h"
 
 #include <float.h>
-
-#include "mhd_parameters.h"
 
 /**
  * @brief Compute the MHD signal velocity between two gas particles,
@@ -79,7 +78,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 }
 
 /**
- * @brief Returns the Dender Scalar Phi evolution
+ * @brief Returns the Dedner Scalar Phi evolution
  * time the particle. NOTE: all variables in full step
  *
  * @param p The particle of interest
@@ -152,7 +151,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   //    const float h_inv = 1.0f / h;                       /* 1/h */
   //    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
-  //const float a_inv2 = cosmo->a2_inv;
+  // const float a_inv2 = cosmo->a2_inv;
   const float rho_inv = 1.f / p->rho;
   p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv / cosmo->a;
 }
@@ -411,16 +410,21 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *restrict p, struct xpart *restrict xp, const struct mhd_global_data mhd_data) {
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct mhd_global_data mhd_data, const double Lsize) {
 
   const float mu0 = mhd_data.mu0;
   const float define_Bfield_in_ics = mhd_data.define_Bfield_in_ics;
-  if(define_Bfield_in_ics)
-	{
-       p->mhd_data.BPred[0] = define_Bfield_in_ics;
-       p->mhd_data.BPred[1] = 0.f;
-       p->mhd_data.BPred[2] = 0.f;
-	}
+  const float Nvort = 7;
+  const float Bini = define_Bfield_in_ics;  //(2*M_PI*Nvort)*Lsize;
+  if (define_Bfield_in_ics) {
+    p->mhd_data.BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
+                                   cos(2 * M_PI * p->x[1] / Lsize * Nvort));
+    p->mhd_data.BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
+                                   cos(2 * M_PI * p->x[2] / Lsize * Nvort));
+    p->mhd_data.BPred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
+                                   cos(2 * M_PI * p->x[0] / Lsize * Nvort));
+  }
   p->mhd_data.BPred[0] /= sqrt(mu0);
   p->mhd_data.BPred[1] /= sqrt(mu0);
   p->mhd_data.BPred[2] /= sqrt(mu0);

@@ -189,7 +189,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const float Deta) {
 
   /* Cosmological factors entering the EoMs */
   // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -259,8 +259,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
                         (Bi[j] * mag_faci + Bj[j] * mag_facj) * dx[j];
     }
   /////////////////////////// DIRECT INDUCTION
-  const float mag_Indi = wi_dr * r_inv / rhoi / a ;
-  const float mag_Indj = wj_dr * r_inv / rhoj / a ;
+  const float mag_Indi = wi_dr * r_inv / rhoi / a;
+  const float mag_Indj = wj_dr * r_inv / rhoj / a;
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dBdt[i] +=
         mj * mag_Indi *
@@ -293,7 +293,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const float Deta) {
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;

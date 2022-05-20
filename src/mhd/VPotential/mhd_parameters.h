@@ -18,11 +18,13 @@
  *
  ******************************************************************************/
 
-#ifndef SWIFT_NONE_MHD_PARAMETERS_H
-#define SWIFT_NONE_MHD_PARAMETERS_H
+#ifndef SWIFT_VECTOR_POTENTIAL_MHD_PARAMETERS_H
+#define SWIFT_VECTOR_POTENTIAL_MHD_PARAMETERS_H
 
 /* Configuration file */
 #include "config.h"
+
+#include <math.h>
 
 /* Global headers */
 #if defined(HAVE_HDF5)
@@ -43,15 +45,9 @@
  *        as well as a number of compile-time parameters.
  */
 
+#define mhd_propos_default_mu0 4.f * M_PI
+
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
-
-/* if set to 0 NO dedner cleaning
- * hyperbolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_hyperbolic 0.0f
-
-/*
- * parabolic term of Dender Scalar field evolution */
-#define mhd_propos_dedner_parabolic 0.0f
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 
@@ -64,9 +60,9 @@
 /*! MHD parameters */
 struct mhd_global_data {
   /*! For the fixed, simple case of direct induction. */
-  float hyp_dedner;
-  float par_dedner;
   float mhd_eta;
+  float mu0;
+  float define_Bfield_in_ics;
 };
 
 /* Functions for reading from parameter file */
@@ -95,12 +91,13 @@ static INLINE void mhd_init(struct swift_params* params,
   /* Read the mhd parameters from the file, if they exist,
    * otherwise set them to the defaults defined above. */
 
-  mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
-                                               mhd_propos_dedner_hyperbolic);
-  mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
-                                               mhd_propos_dedner_parabolic);
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
                                             mhd_propos_default_difussion_eta);
+  mhd->mu0 =
+      parser_get_opt_param_float(params, "MHD:mu0", mhd_propos_default_mu0);
+
+  mhd->define_Bfield_in_ics =
+      parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
 }
 
 /**
@@ -122,9 +119,11 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
-  message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
-          mhd->par_dedner);
+  message("MU0: %.3f", mhd->mu0);
   message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
+  if (mhd->define_Bfield_in_ics)
+    message("Starting with a Initial co-moving Bfield: %4.3e Gauss",
+            mhd->define_Bfield_in_ics);
 }
 
 #if defined(HAVE_HDF5)
@@ -142,4 +141,4 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 //}
 #endif
 
-#endif /* SWIFT_NONE_MHD_PARAMETERS_H */
+#endif /* SWIFT_VECTOR_POTENTIAL_MHD_PARAMETERS_H */
