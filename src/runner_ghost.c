@@ -1661,6 +1661,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   const struct cosmology *cosmo = e->cosmology;
   const struct hydro_props *hydro_props = e->hydro_properties;
 #endif
+  const int periodic = e->s->periodic;
 
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
@@ -1696,7 +1697,6 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   for (int num_reruns = 0;
        count > 0 && num_reruns < max_smoothing_iter && h_max < c->width[0];
        num_reruns++) {
-    /* TODO add boundary particles */
 
     /* Reset the redo-count. */
     redo = 0;
@@ -1737,6 +1737,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     /* Re-set the counter for the next loop (potentially). */
     count = redo;
     if (count > 0) {
+
+      /* Add boundary particles? */
+      if (!periodic)
+        runner_add_boundary_particles_grid_construction(r, c, h_max_unconverged);
 
       /* We are already at the construction level, so we can run through this
        * cell's grid construction interactions directly. */

@@ -77,10 +77,11 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 
   /* Correct shift and sid if flipped */
   if (ci != ci_temp) {
-    sid = 26 - sid;
     shift[0] = -shift[0];
     shift[1] = -shift[1];
     shift[2] = -shift[2];
+  } else {
+    sid = 26 - sid;
   }
 
   /* loop over voronoi faces between ci and cj. */

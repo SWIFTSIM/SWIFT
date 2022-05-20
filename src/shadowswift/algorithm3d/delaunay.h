@@ -573,10 +573,10 @@ inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
  * @param d Delaunay tessellation
  * @param x, y, z Position of vertex
  */
-inline static void delaunay_add_new_vertex(struct delaunay* restrict d,
-                                           double x, double y, double z,
-                                           int cell_sid, int part_idx,
-                                           int ngb_idx) {
+inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
+                                           double y, double z, int cell_sid,
+                                           int part_idx, int ngb_idx,
+                                           int is_boundary_particle) {
   delaunay_assert(d->active == 1);
 
   /* Update last tetrahedron to be a tetrahedron connected to the neighbouring
@@ -608,6 +608,9 @@ inline static void delaunay_add_new_vertex(struct delaunay* restrict d,
                                             d->ngb_size * sizeof(int));
     }
     delaunay_assert(d->ngb_index == v - d->ngb_offset);
+    /* Mark as boundary particle? */
+    if (is_boundary_particle) cell_sid |= 1 << 5;
+    /* Store info */
     d->ngb_cell_sids[d->ngb_index] = cell_sid;
     d->ngb_part_idx[d->ngb_index] = part_idx;
     d->ngb_index++;
@@ -2252,8 +2255,8 @@ inline static void delaunay_write_tessellation(
         (d->rescaled_vertices[3 * i] - 1.) * d->side + d->anchor[0],
         (d->rescaled_vertices[3 * i + 1] - 1.) * d->side + d->anchor[1],
         (d->rescaled_vertices[3 * i + 2] - 1.) * d->side + d->anchor[2]};
-    fprintf(file, "V\t%lu\t%g\t%g\t%g\n", *offset + i, vertex[0],
-            vertex[1], vertex[2]);
+    fprintf(file, "V\t%lu\t%g\t%g\t%g\n", *offset + i, vertex[0], vertex[1],
+            vertex[2]);
   }
   for (int i = 4; i < d->tetrahedra_index; ++i) {
     if (!d->tetrahedra[i].active) {

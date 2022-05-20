@@ -5,7 +5,7 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_VORONOI_2D_H
 #define SWIFTSIM_SHADOWSWIFT_VORONOI_2D_H
 
-#include "../delaunay.h"
+#include "./delaunay.h"
 #include "../queues.h"
 #include "./geometry.h"
 #include "part.h"
@@ -31,9 +31,8 @@ struct voronoi_pair {
    * the corresponding cell in this voronoi tesselation. */
   int right_idx;
 
-  /*! idx of the particle on the right of this pair in the delaunay tesselation.
-   */
-  int right_del_idx;
+  /*! Real sid of this pair (boundary faces are stored under sid 27) */
+  int sid;
 
   /*! Surface area of the interface. */
   double surface_area;
@@ -179,6 +178,14 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
     right_part_idx = d->ngb_part_idx[ngb_del_vert_idx - d->ngb_offset];
   }
 
+  /* Boundary particle? */
+  int actual_sid = sid;
+  if (sid & 1 << 5) {
+    actual_sid &= ~(1 << 5);
+    /* We store all boundary particles under fictive sid 27 */
+    sid = 27;
+  }
+
   /* Need to reallocate? */
   if (v->pair_index[sid] == v->pair_size[sid]) {
     v->pair_size[sid] <<= 1;
@@ -199,7 +206,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
   this_pair->surface_area = surface_area;
   this_pair->left_idx = del_vert_idx - d->vertex_start;
   this_pair->right_idx = right_part_idx;
-  this_pair->right_del_idx = ngb_del_vert_idx;
+  this_pair->sid = actual_sid;
 
 #ifdef VORONOI_STORE_FACES
   this_pair->a[0] = ax;

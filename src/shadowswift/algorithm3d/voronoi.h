@@ -31,6 +31,9 @@ struct voronoi_pair {
    * the corresponding cell in this voronoi tesselation. */
   int right_idx;
 
+  /*! Real sid of this pair (boundary faces are stored under sid 27) */
+  int sid;
+
   /*! Surface area of the interface. */
   double surface_area;
 
@@ -616,10 +619,13 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
     right_part_idx = d->ngb_part_idx[right_part_idx_in_d - d->ngb_offset];
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Sanity check */
-//  assert(c == NULL || !c->split);
-#endif
+  /* Boundary particle? */
+  int actual_sid = sid;
+  if (sid & 1 << 5) {
+    actual_sid &= ~(1 << 5);
+    /* We store all boundary particles under fictive sid 27 */
+    sid = 27;
+  }
 
   /* Do we need to extend the pairs array for this sid? */
   if (v->pair_index[sid] == v->pair_size[sid]) {
@@ -642,6 +648,7 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
   /* Initialize pair */
   this_pair->left_idx = left_part_idx_in_d - d->vertex_start;
   this_pair->right_idx = right_part_idx;
+  this_pair->sid = actual_sid;
 
 #ifdef VORONOI_STORE_FACES
 #ifdef SWIFT_DEBUG_CHECKS

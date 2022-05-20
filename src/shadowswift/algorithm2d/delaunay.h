@@ -200,7 +200,7 @@ inline static void delaunay_init_vertex(struct delaunay* restrict d, int v,
  * @return Index of the new vertex within the vertex array.
  */
 inline static int delaunay_new_vertex(struct delaunay* restrict d, double x,
-                                      double y, int part_idx) {
+                                      double y) {
 
   /* check the size of the vertex arrays against the allocated memory size */
   if (d->vertex_index == d->vertex_size) {
@@ -461,12 +461,12 @@ inline static void delaunay_reset(struct delaunay* restrict d,
 
   /* set up the large triangle and the 3 dummies */
   /* mind the orientation: counterclockwise w.r.t. the z-axis. */
-  int v0 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1], -1);
+  int v0 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1]);
   delaunay_log("Creating vertex %i: %g %g", v0, box_anchor[0], box_anchor[1]);
-  int v1 = delaunay_new_vertex(d, box_anchor[0] + box_side, box_anchor[1], -1);
+  int v1 = delaunay_new_vertex(d, box_anchor[0] + box_side, box_anchor[1]);
   delaunay_log("Creating vertex %i: %g %g", v1, box_anchor[0] + box_side,
                box_anchor[1]);
-  int v2 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1] + box_side, -1);
+  int v2 = delaunay_new_vertex(d, box_anchor[0], box_anchor[1] + box_side);
   delaunay_log("Creating vertex %i: %g %g", v2, box_anchor[0],
                box_anchor[1] + box_side);
 
@@ -1328,7 +1328,8 @@ inline static void delaunay_add_local_vertex(struct delaunay* restrict d, int v,
 
 inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
                                            double y, double z, int cell_sid,
-                                           int part_idx, int ngb_idx) {
+                                           int part_idx, int ngb_idx,
+                                           int is_boundary_particle) {
   if (d->active != 1) {
     error("Trying to add a vertex to an inactive Delaunay tessellation!");
   }
@@ -1345,7 +1346,7 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
   }
 
   /* create the new vertex */
-  int v = delaunay_new_vertex(d, x, y, part_idx);
+  int v = delaunay_new_vertex(d, x, y);
   delaunay_log("Created new vertex with index %i", v);
 
   int flag = delaunay_add_vertex(d, v, x, y);
@@ -1362,6 +1363,9 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
           "delaunay", d->ngb_part_idx, d->ngb_size * sizeof(int));
     }
     delaunay_assert(d->ngb_index == v - d->ngb_offset);
+    /* Mark as boundary particle? */
+    if (is_boundary_particle) cell_sid |= 1 << 5;
+    /* Store info */
     d->ngb_cell_sids[d->ngb_index] = cell_sid;
     d->ngb_part_idx[d->ngb_index] = part_idx;
     ++d->ngb_index;
