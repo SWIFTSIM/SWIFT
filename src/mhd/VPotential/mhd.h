@@ -113,10 +113,12 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
   float dt_divB =
       p->mhd_data.divB != 0.f
           ? cosmo->a * hydro_properties->CFL_condition *
-                sqrtf(p->rho / (MU0_1 * p->mhd_data.divB * p->mhd_data.divB))
+                sqrtf(p->rho / ( p->mhd_data.divB * p->mhd_data.divB))
           : FLT_MAX;
   const float Deta = hydro_properties->mhd
-                         .mhd_eta;  // PROPOERTIES TODO/XXX //WAIT no comoving?
+                         .mhd_eta;  
+			 // PROPOERTIES TODO/XXX 
+			 // //WAIT no comoving?
   const float dt_eta = Deta != 0.f
                            ? cosmo->a * hydro_properties->CFL_condition * p->h *
                                  p->h / Deta * 0.5
@@ -165,13 +167,13 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   //    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
   // const float a_inv2 = cosmo->a2_inv;
-  const float a_inv = 1.f / cosmo->a;
+  //const float a_inv = 1.f / cosmo->a;
   const float rho_inv = 1.f / p->rho;
 
-  p->mhd_data.divA *= h_inv_dim_plus_one * a_inv * rho_inv;
+  p->mhd_data.divA *= h_inv_dim_plus_one  * rho_inv;
   for (int i = 0; i < 3; i++)
     p->mhd_data.BPred[i] *=
-        h_inv_dim_plus_one * a_inv * rho_inv;  // CHECK a factors XXX
+        h_inv_dim_plus_one * rho_inv;  // CHECK a factors XXX
 }
 
 /**
@@ -208,7 +210,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
   p->mhd_data.BSmooth[0] = 0.f;
   p->mhd_data.BSmooth[1] = 0.f;
   p->mhd_data.BSmooth[2] = 0.f;
-  p->mhd_data.GauSmooth = 0.f;
+//  p->mhd_data.GauSmooth = 0.f;
   p->mhd_data.Q0 = 0.f;  // XXX make union for clarification
 }
 
@@ -230,11 +232,11 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   // Self Contribution
   for (int i = 0; i < 3; i++)
     p->mhd_data.BSmooth[i] += p->mass * kernel_root * p->mhd_data.BPred[i];
-  p->mhd_data.GauSmooth += p->mass * kernel_root * p->mhd_data.Gau;
+//  p->mhd_data.GauSmooth += p->mass * kernel_root * p->mhd_data.Gau;
   p->mhd_data.Q0 += p->mass * kernel_root;
 
   for (int i = 0; i < 3; i++) p->mhd_data.BSmooth[i] /= p->mhd_data.Q0;
-  p->mhd_data.GauSmooth /= p->mhd_data.Q0;
+//  p->mhd_data.GauSmooth /= p->mhd_data.Q0;
 }
 
 /**
@@ -281,7 +283,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   /* Estimation of the tensile instability due divB */
   p->mhd_data.Q0 = pressure / (b2 / 2.0f);  // Plasma Beta
   p->mhd_data.Q0 =
-      p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
+      p->mhd_data.Q0 < 10.0f ? 1.0f : 1.0f;  // No correction if not magnetized
   /* divB contribution */
   // const float ACC_corr = fabs(
   //    p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I
@@ -330,8 +332,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
   p->mhd_data.BPred[1] = p->mhd_data.BSmooth[1];
   p->mhd_data.BPred[2] = p->mhd_data.BSmooth[2];
 
-  // p->mhd_data.Gau = xp->mhd_data.Gau;
-  p->mhd_data.Gau = p->mhd_data.GauSmooth;
+  p->mhd_data.Gau = xp->mhd_data.Gau;
+  //p->mhd_data.Gau = p->mhd_data.GauSmooth;
 
   p->mhd_data.APred[0] = xp->mhd_data.APot[0];
   p->mhd_data.APred[1] = xp->mhd_data.APot[1];
@@ -364,10 +366,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
   // p->mhd_data.Gau += hydro_get_dGau_dt(p,p->mhd_data.Gau) * dt_therm;
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau) * dt_therm;
-  change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
-                   ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
-                   : change_Gau;
+  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau) * dt_therm ;
+  //change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
+  //                 ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
+  //                 : change_Gau;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -419,10 +421,10 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   // xp->mhd_data.Gau = p->mhd_data.Gau + hydro_get_dGau_dt(p) * dt_therm;
   // Dont allow middle change
   float change_Gau =
-      hydro_get_dGau_dt(p, p->mhd_data.Gau) * dt_therm * cosmo->a;
-  change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
-                   ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
-                   : change_Gau;
+      hydro_get_dGau_dt(p, p->mhd_data.Gau) * dt_therm ;
+  //change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
+  //                 ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
+  //                 : change_Gau;
   xp->mhd_data.Gau += change_Gau;
 }
 
