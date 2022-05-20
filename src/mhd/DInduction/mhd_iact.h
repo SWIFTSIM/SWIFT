@@ -189,7 +189,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const float Deta) {
+    const float H) {
 
   /* Cosmological factors entering the EoMs */
   // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -293,7 +293,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H, const float Deta) {
+    const float H) {
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
