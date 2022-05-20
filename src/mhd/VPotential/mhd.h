@@ -86,12 +86,12 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param Gauge Gauge
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
-    const struct part *restrict p, const float Gauge) {
+    const struct part *restrict p, const float Gauge, const float a) {
 
   const float v_sig = hydro_get_signal_velocity(p);
 
-  return (-p->mhd_data.divA * v_sig * v_sig * 0.01 -
-          2.0f * v_sig * Gauge / p->h);
+  return (-p->mhd_data.divA * v_sig * v_sig * 0.01 * a -
+          2.0f * v_sig * Gauge / p->h / a);
 }
 
 /**
@@ -366,10 +366,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
   // p->mhd_data.Gau += hydro_get_dGau_dt(p,p->mhd_data.Gau) * dt_therm;
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau) * dt_therm ;
-  //change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
-  //                 ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
-  //                 : change_Gau;
+  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau,cosmo->a) * dt_therm ;
+  change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
+                   ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
+                   : change_Gau;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -421,10 +421,10 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   // xp->mhd_data.Gau = p->mhd_data.Gau + hydro_get_dGau_dt(p) * dt_therm;
   // Dont allow middle change
   float change_Gau =
-      hydro_get_dGau_dt(p, p->mhd_data.Gau) * dt_therm ;
-  //change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
-  //                 ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
-  //                 : change_Gau;
+      hydro_get_dGau_dt(p, p->mhd_data.Gau,cosmo->a) * dt_therm ;
+  change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
+                   ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
+                   : change_Gau;
   xp->mhd_data.Gau += change_Gau;
 }
 

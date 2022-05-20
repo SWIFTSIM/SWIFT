@@ -342,9 +342,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   }
   /// DISSSIPATION
   const float mag_Disi =
-      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij) ;// a / a;
+      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij) / a ;// a;
   const float mag_Disj =
-      (wj_dx + wi_dx) / 2.f * r_inv * rhoj / (rho_ij * rho_ij) ;// a / a;
+      (wj_dx + wi_dx) / 2.f * r_inv * rhoj / (rho_ij * rho_ij) / a ;// a;
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] += mj * 2.0 * pi->mhd_data.Deta * mag_Disi * dA[i];
     pj->mhd_data.dAdt[i] += mi * 2.0 * pj->mhd_data.Deta * mag_Disj * dA[i];
@@ -454,7 +454,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   /// DISSSIPATION
   const float mag_Disi =
-      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij) ;// a / a;
+      (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij) / a; // a;
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * 2.0 * pi->mhd_data.Deta * mag_Disi * dA[i];
   return;
