@@ -721,7 +721,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     space_split_recursive(s, temp_c, NULL, NULL, NULL, NULL, NULL);
 
     /* Replace the cell with the local cell */
-    cells_top[local_cells_with_particles[ind]] = temp_c;
+    &cells_top[local_cells_with_particles[ind]] = temp_c;
 
     /* Free up thread local memory */
     swift_free("temp_cell", temp_c);
