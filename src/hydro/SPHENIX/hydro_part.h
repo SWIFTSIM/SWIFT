@@ -160,7 +160,7 @@ struct part {
   } diffusion;
 
   /* Store density/force specific stuff. */
-  union {
+  //union {
 
     /**
      * @brief Structure for the variables only used in the density loop over
@@ -213,7 +213,7 @@ struct part {
       float alpha_visc_max_ngb;
 
     } force;
-  };
+  //};
 
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;

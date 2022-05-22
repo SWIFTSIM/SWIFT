@@ -128,7 +128,7 @@ struct part {
   float rho;
 
   /* Store density/force specific stuff. */
-  union {
+  //union {
 
     /**
      * @brief Structure for the variables only used in the density loop over
@@ -184,7 +184,7 @@ struct part {
       float balsara;
 
     } force;
-  };
+  //};
 
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
