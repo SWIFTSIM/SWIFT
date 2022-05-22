@@ -358,7 +358,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     }
   /////////////////////////// DIRECT INDUCTION
   // comoving integration>
-  // 1/a Induction and 1/a for phi
+  // 1/a Induction and 1 for phi
   const float mag_Indi = wi_dr * r_inv / rhoi / a;
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dBdt[i] +=
