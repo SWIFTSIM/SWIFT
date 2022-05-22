@@ -152,10 +152,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   //    const float h_inv = 1.0f / h;                       /* 1/h */
   //    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
-  const float a_inv2 = cosmo->a2_inv;
+  //const float a_inv2 = cosmo->a2_inv;
   const float rho_inv = 1.f / p->rho;
   // p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv / cosmo->a;
-  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv * a_inv2 / cosmo->;
+  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv ; // * a_inv2 / cosmo->;
 }
 
 /**
