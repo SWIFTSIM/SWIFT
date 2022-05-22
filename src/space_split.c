@@ -716,12 +716,12 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
       error("Error while allocating temporary memory for cell");
 
     /* Copy cell contents into temporary local cell */
-    temp_c = c;
+    memcpy(temp_c, c, sizeof(struct cell));
 
     space_split_recursive(s, temp_c, NULL, NULL, NULL, NULL, NULL);
 
     /* Replace the cell with the local cell */
-    c = temp_c;
+    memcpy(c, temp_c, sizeof(struct cell));
 
     /* Free up thread local memory */
     swift_free("temp_cell", temp_c);
