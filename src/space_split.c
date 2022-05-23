@@ -724,7 +724,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     cells_top[local_cells_with_particles[ind]] = *temp_c;
 
     /* Free up now unused cell */
-    swift_free("temp_cell", c);
+    //swift_free("temp_cell", c);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
