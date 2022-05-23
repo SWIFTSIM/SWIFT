@@ -68,7 +68,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
-  struct xpart *xparts = c->hydro.xparts;
   struct sink *sinks = c->sinks.parts;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
