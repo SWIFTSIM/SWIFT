@@ -903,16 +903,30 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     float P_new = expf(-I2) * p->P + (1.f - expf(-I2)) * p->sum_wij_exp_P;
 
     /* Compute new T */
-    //float T_new = expf(-I2) * p->T + (1.f - expf(-I2)) * p->sum_wij_exp_T;
+    float T_new = expf(-I2) * p->T + (1.f - expf(-I2)) * p->sum_wij_exp_T;
 
+    /* This is if we want rho from u, P_new instead of rho from T_new, P_new as in paper
     // Compute rho from u, P_new
     float rho_new_from_u = update_rho(p, P_new);
-    /* Ensure new density is not lower than minimum SPH density */
+    // Ensure new density is not lower than minimum SPH density
     if (rho_new_from_u > rho_min){
       p->rho = rho_new_from_u;
     } else {
       p->rho = rho_min;
     }
+    */  
+      
+          
+    /* Compute new density */
+    float rho_new =
+        gas_density_from_pressure_and_temperature(P_new, T_new, p->mat_id);
+      
+    if (rho_new > rho_min){
+      p->rho = rho_new;
+    } else {
+      p->rho = rho_min;
+    }
+      
   }
 
   // finish computations
