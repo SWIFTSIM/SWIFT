@@ -27,7 +27,7 @@
 
 /* Local headers. */
 #include "cell.h"
-#include "engine.h"
+#include "star_formation_logger.h"
 #include "threadpool.h"
 
 /**
