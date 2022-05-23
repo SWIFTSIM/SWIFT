@@ -706,7 +706,6 @@ void cell_props_recursive(struct space *s, struct cell *c) {
   const int bcount = c->black_holes.count;
   const int sink_count = c->sinks.count;
   const int with_self_gravity = s->with_self_gravity;
-  const int depth = c->depth;
   int maxdepth = 0;
   float h_max = 0.0f;
   float h_max_active = 0.0f;
