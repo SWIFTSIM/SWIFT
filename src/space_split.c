@@ -64,33 +64,12 @@ void space_split_recursive(struct space *s, struct cell *c,
   const int sink_count = c->sinks.count;
   const int with_self_gravity = s->with_self_gravity;
   const int depth = c->depth;
-  int maxdepth = 0;
-  float h_max = 0.0f;
-  float h_max_active = 0.0f;
-  float stars_h_max = 0.f;
-  float stars_h_max_active = 0.f;
-  float black_holes_h_max = 0.f;
-  float black_holes_h_max_active = 0.f;
-  float sinks_h_max = 0.f;
-  float sinks_h_max_active = 0.f;
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
-                ti_hydro_beg_max = 0;
-  integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
-                ti_gravity_beg_max = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
-                ti_stars_beg_max = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_end_max = 0,
-                ti_sinks_beg_max = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_end_max = 0, ti_black_holes_beg_max = 0;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct xpart *xparts = c->hydro.xparts;
   struct sink *sinks = c->sinks.parts;
-  struct engine *e = s->e;
-  const integertime_t ti_current = e->ti_current;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
@@ -295,386 +274,17 @@ void space_split_recursive(struct space *s, struct cell *c,
         progeny_sbuff += cp->stars.count;
         progeny_bbuff += cp->black_holes.count;
         progeny_sink_buff += cp->sinks.count;
-
-        /* Update the cell-wide properties */
-        h_max = max(h_max, cp->hydro.h_max);
-        h_max_active = max(h_max_active, cp->hydro.h_max_active);
-        stars_h_max = max(stars_h_max, cp->stars.h_max);
-        stars_h_max_active = max(stars_h_max_active, cp->stars.h_max_active);
-        black_holes_h_max = max(black_holes_h_max, cp->black_holes.h_max);
-        black_holes_h_max_active =
-            max(black_holes_h_max_active, cp->black_holes.h_max_active);
-        sinks_h_max = max(sinks_h_max, cp->sinks.r_cut_max);
-        sinks_h_max_active =
-            max(sinks_h_max_active, cp->sinks.r_cut_max_active);
-
-        ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-        ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-        ti_gravity_end_min = min(ti_gravity_end_min, cp->grav.ti_end_min);
-        ti_gravity_beg_max = max(ti_gravity_beg_max, cp->grav.ti_beg_max);
-        ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-        ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
-        ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-        ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
-        ti_black_holes_end_min =
-            min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-        ti_black_holes_beg_max =
-            max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
-
-        star_formation_logger_add(&c->stars.sfh, &cp->stars.sfh);
-
-        /* Increase the depth */
-        maxdepth = max(maxdepth, cp->maxdepth);
       }
     }
-
-    /* Deal with the multipole */
-    if (s->with_self_gravity) {
-
-      /* Reset everything */
-      gravity_reset(c->grav.multipole);
-
-      /* Compute CoM and bulk velocity from all progenies */
-      double CoM[3] = {0., 0., 0.};
-      double vel[3] = {0., 0., 0.};
-      float max_delta_vel[3] = {0.f, 0.f, 0.f};
-      float min_delta_vel[3] = {0.f, 0.f, 0.f};
-      double mass = 0.;
-
-      for (int k = 0; k < 8; ++k) {
-        if (c->progeny[k] != NULL) {
-          const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
-
-          mass += m->m_pole.M_000;
-
-          CoM[0] += m->CoM[0] * m->m_pole.M_000;
-          CoM[1] += m->CoM[1] * m->m_pole.M_000;
-          CoM[2] += m->CoM[2] * m->m_pole.M_000;
-
-          vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
-          vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
-          vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
-
-          max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
-          max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
-          max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
-
-          min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
-          min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
-          min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
-        }
-      }
-
-      /* Final operation on the CoM and bulk velocity */
-      const double inv_mass = 1. / mass;
-      c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
-      c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
-      c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
-      c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
-      c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
-      c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
-
-      /* Min max velocity along each axis */
-      c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
-      c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
-      c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
-      c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
-      c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
-      c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
-
-      /* Now shift progeny multipoles and add them up */
-      struct multipole temp;
-      double r_max = 0.;
-      for (int k = 0; k < 8; ++k) {
-        if (c->progeny[k] != NULL) {
-          const struct cell *cp = c->progeny[k];
-          const struct multipole *m = &cp->grav.multipole->m_pole;
-
-          /* Contribution to multipole */
-          gravity_M2M(&temp, m, c->grav.multipole->CoM,
-                      cp->grav.multipole->CoM);
-          gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
-
-          /* Upper limit of max CoM<->gpart distance */
-          const double dx =
-              c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
-          const double dy =
-              c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
-          const double dz =
-              c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
-          const double r2 = dx * dx + dy * dy + dz * dz;
-          r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
-        }
-      }
-
-      /* Alternative upper limit of max CoM<->gpart distance */
-      const double dx =
-          c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
-              ? c->grav.multipole->CoM[0] - c->loc[0]
-              : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
-      const double dy =
-          c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
-              ? c->grav.multipole->CoM[1] - c->loc[1]
-              : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
-      const double dz =
-          c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
-              ? c->grav.multipole->CoM[2] - c->loc[2]
-              : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
-
-      /* Take minimum of both limits */
-      c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
-
-      /* Store the value at rebuild time */
-      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-
-      /* Compute the multipole power */
-      gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-
-    } /* Deal with gravity */
   }   /* Split or let it be? */
 
-  /* Otherwise, collect the data from the particles this cell. */
+  /* Otherwise, clean up progeny. */
   else {
 
     /* Clear the progeny. */
     bzero(c->progeny, sizeof(struct cell *) * 8);
     c->split = 0;
-    maxdepth = c->depth;
-
-    ti_hydro_end_min = max_nr_timesteps;
-    ti_hydro_end_max = 0;
-    ti_hydro_beg_max = 0;
-
-    ti_gravity_end_min = max_nr_timesteps;
-    ti_gravity_end_max = 0;
-    ti_gravity_beg_max = 0;
-
-    ti_stars_end_min = max_nr_timesteps;
-    ti_stars_end_max = 0;
-    ti_stars_beg_max = 0;
-
-    ti_black_holes_end_min = max_nr_timesteps;
-    ti_black_holes_end_max = 0;
-    ti_black_holes_beg_max = 0;
-
-    /* parts: Get dt_min/dt_max and h_max. */
-    for (int k = 0; k < count; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (parts[k].time_bin == time_bin_not_created)
-        error("Extra particle present in space_split()");
-      if (parts[k].time_bin == time_bin_inhibited)
-        error("Inhibited particle present in space_split()");
-#endif
-
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = parts[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-
-      ti_hydro_end_min = min(ti_hydro_end_min, ti_end);
-      ti_hydro_end_max = max(ti_hydro_end_max, ti_end);
-      ti_hydro_beg_max = max(ti_hydro_beg_max, ti_beg);
-
-      h_max = max(h_max, parts[k].h);
-
-      if (part_is_active(&parts[k], e))
-        h_max_active = max(h_max_active, parts[k].h);
-
-      /* Collect SFR from the particles after rebuilt */
-      star_formation_logger_log_inactive_part(&parts[k], &xparts[k],
-                                              &c->stars.sfh);
-    }
-
-    /* xparts: Reset x_diff */
-    for (int k = 0; k < count; k++) {
-      xparts[k].x_diff[0] = 0.f;
-      xparts[k].x_diff[1] = 0.f;
-      xparts[k].x_diff[2] = 0.f;
-    }
-
-    /* gparts: Get dt_min/dt_max. */
-    for (int k = 0; k < gcount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (gparts[k].time_bin == time_bin_not_created)
-        error("Extra g-particle present in space_split()");
-      if (gparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited g-particle present in space_split()");
-#endif
-
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = gparts[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-
-      ti_gravity_end_min = min(ti_gravity_end_min, ti_end);
-      ti_gravity_end_max = max(ti_gravity_end_max, ti_end);
-      ti_gravity_beg_max = max(ti_gravity_beg_max, ti_beg);
-    }
-
-    /* sparts: Get dt_min/dt_max */
-    for (int k = 0; k < scount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (sparts[k].time_bin == time_bin_not_created)
-        error("Extra s-particle present in space_split()");
-      if (sparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited s-particle present in space_split()");
-#endif
-
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = sparts[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-
-      ti_stars_end_min = min(ti_stars_end_min, ti_end);
-      ti_stars_end_max = max(ti_stars_end_max, ti_end);
-      ti_stars_beg_max = max(ti_stars_beg_max, ti_beg);
-
-      stars_h_max = max(stars_h_max, sparts[k].h);
-
-      if (spart_is_active(&sparts[k], e))
-        stars_h_max_active = max(stars_h_max_active, sparts[k].h);
-
-      /* Reset x_diff */
-      sparts[k].x_diff[0] = 0.f;
-      sparts[k].x_diff[1] = 0.f;
-      sparts[k].x_diff[2] = 0.f;
-    }
-
-    /* sinks: Get dt_min/dt_max */
-    for (int k = 0; k < sink_count; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (sinks[k].time_bin == time_bin_not_created)
-        error("Extra sink-particle present in space_split()");
-      if (sinks[k].time_bin == time_bin_inhibited)
-        error("Inhibited sink-particle present in space_split()");
-#endif
-
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = sinks[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-
-      ti_sinks_end_min = min(ti_sinks_end_min, ti_end);
-      ti_sinks_end_max = max(ti_sinks_end_max, ti_end);
-      ti_sinks_beg_max = max(ti_sinks_beg_max, ti_beg);
-
-      sinks_h_max = max(sinks_h_max, sinks[k].r_cut);
-
-      if (sink_is_active(&sinks[k], e))
-        sinks_h_max_active = max(sinks_h_max_active, sinks[k].r_cut);
-
-      /* Reset x_diff */
-      sinks[k].x_diff[0] = 0.f;
-      sinks[k].x_diff[1] = 0.f;
-      sinks[k].x_diff[2] = 0.f;
-    }
-
-    /* bparts: Get dt_min/dt_max */
-    for (int k = 0; k < bcount; k++) {
-#ifdef SWIFT_DEBUG_CHECKS
-      if (bparts[k].time_bin == time_bin_not_created)
-        error("Extra b-particle present in space_split()");
-      if (bparts[k].time_bin == time_bin_inhibited)
-        error("Inhibited b-particle present in space_split()");
-#endif
-
-      /* When does this particle's time-step start and end? */
-      const timebin_t time_bin = bparts[k].time_bin;
-      const integertime_t ti_end = get_integer_time_end(ti_current, time_bin);
-      const integertime_t ti_beg = get_integer_time_begin(ti_current, time_bin);
-
-      ti_black_holes_end_min = min(ti_black_holes_end_min, ti_end);
-      ti_black_holes_end_max = max(ti_black_holes_end_max, ti_end);
-      ti_black_holes_beg_max = max(ti_black_holes_beg_max, ti_beg);
-
-      black_holes_h_max = max(black_holes_h_max, bparts[k].h);
-
-      if (bpart_is_active(&bparts[k], e))
-        black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
-
-      /* Reset x_diff */
-      bparts[k].x_diff[0] = 0.f;
-      bparts[k].x_diff[1] = 0.f;
-      bparts[k].x_diff[2] = 0.f;
-    }
-
-    /* Construct the multipole and the centre of mass*/
-    if (s->with_self_gravity) {
-      if (gcount > 0) {
-
-        gravity_P2M(c->grav.multipole, c->grav.parts, c->grav.count,
-                    e->gravity_properties);
-
-        /* Compute the multipole power */
-        gravity_multipole_compute_power(&c->grav.multipole->m_pole);
-
-      } else {
-
-        /* No gparts in that leaf cell */
-
-        /* Set the values to something sensible */
-        gravity_multipole_init(&c->grav.multipole->m_pole);
-        if (c->nodeID == engine_rank) {
-          c->grav.multipole->CoM[0] = c->loc[0] + c->width[0] / 2.;
-          c->grav.multipole->CoM[1] = c->loc[1] + c->width[1] / 2.;
-          c->grav.multipole->CoM[2] = c->loc[2] + c->width[2] / 2.;
-          c->grav.multipole->r_max = 0.;
-        }
-      }
-
-      /* Store the value at rebuild time */
-      c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
-      c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
-      c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
-      c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
-    }
   }
-
-  /* Set the values for this cell. */
-  c->hydro.h_max = h_max;
-  c->hydro.h_max_active = h_max_active;
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->grav.ti_end_min = ti_gravity_end_min;
-  c->grav.ti_beg_max = ti_gravity_beg_max;
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->stars.h_max = stars_h_max;
-  c->stars.h_max_active = stars_h_max_active;
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->sinks.r_cut_max = sinks_h_max;
-  c->sinks.r_cut_max_active = sinks_h_max_active;
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-  c->black_holes.h_max = black_holes_h_max;
-  c->black_holes.h_max_active = black_holes_h_max_active;
-  c->maxdepth = maxdepth;
-
-  /* Set ownership according to the start of the parts array. */
-  if (s->nr_parts > 0)
-    c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * s->nr_queues /
-               s->nr_parts;
-  else if (s->nr_sinks > 0)
-    c->owner = ((c->sinks.parts - s->sinks) % s->nr_sinks) * s->nr_queues /
-               s->nr_sinks;
-  else if (s->nr_sparts > 0)
-    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * s->nr_queues /
-               s->nr_sparts;
-  else if (s->nr_bparts > 0)
-    c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) *
-               s->nr_queues / s->nr_bparts;
-  else if (s->nr_gparts > 0)
-    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * s->nr_queues /
-               s->nr_gparts;
-  else
-    c->owner = 0; /* Ok, there is really nothing on this rank... */
-
-  /* Store the global max depth */
-  if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 
   /* Clean up. */
   if (allocate_buffer) {
@@ -706,15 +316,6 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
   }
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /* All cells and particles should have consistent h_max values. */
-  for (int ind = 0; ind < num_cells; ind++) {
-    int depth = 0;
-    const struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
-  }
-#endif
 }
 
 #ifdef WITH_ZOOM_REGION
@@ -757,6 +358,8 @@ void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
+
+  /* Split the cell heirarchy. */
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
     threadpool_map(&s->e->threadpool, bkg_space_split_mapper,
@@ -775,6 +378,30 @@ void space_split(struct space *s, int verbose) {
   }
 #else
   threadpool_map(&s->e->threadpool, space_split_mapper,
+                 s->local_cells_with_particles_top,
+                 s->nr_local_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, s);
+#endif
+  
+  /* Calculate the properties of the cell heirarchy */
+#ifdef WITH_ZOOM_REGION
+  if (s->with_zoom_region) {
+    threadpool_map(&s->e->threadpool, bkg_cell_props_mapper,
+                   s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, s);
+    threadpool_map(&s->e->threadpool, zoom_cell_props_mapper,
+                   s->zoom_props->local_zoom_cells_with_particles_top,
+                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, s);
+  } else {
+    threadpool_map(&s->e->threadpool, cell_props_mapper,
+                   s->local_cells_with_particles_top,
+                   s->nr_local_cells_with_particles, sizeof(int),
+                   threadpool_auto_chunk_size, s);
+  }
+#else
+  threadpool_map(&s->e->threadpool, cell_props_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
