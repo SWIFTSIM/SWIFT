@@ -26,12 +26,8 @@
 #include "space.h"
 
 /* Local headers. */
-#include "active.h"
 #include "cell.h"
-#include "debug.h"
 #include "engine.h"
-#include "multipole.h"
-#include "star_formation_logger.h"
 #include "threadpool.h"
 
 /**

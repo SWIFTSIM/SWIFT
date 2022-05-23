@@ -23,7 +23,12 @@
 #include "../config.h"
 
 /* This object's header. */
+#include "active.h"
 #include "cell.h"
+#include "debug.h"
+#include "engine.h"
+#include "multipole.h"
+#include "star_formation_logger.h"
 
 /* Local headers. */
 #include "memswap.h"
