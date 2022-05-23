@@ -739,7 +739,7 @@ void cell_props_recursive(struct space *s, struct cell *c) {
     for (int k = 0; k < 8; k++) {
 
       /* Skip if this is an empty progeny cell. */
-      if (c->progeny[k] != NULL) continue;
+      if (c->progeny[k] == NULL) continue;
 
       /* Get the progenitor */
       struct cell *cp = c->progeny[k];
