@@ -153,6 +153,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     pj->sum_rij[2] += -dx[2] * wj * mi;
   }
 #endif
+    
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
+  pj->drho_dh -= pi->mass * (hydro_dimension * wj + uj * wj_dx);
+#endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -269,6 +274,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
     pi->sum_rij[2] += dx[2] * wi * mj;
   }
 #endif
+    
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
+#endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
   const float hid_inv = pow_dimension_plus_one(h_inv); /* 1/h^(d+1) */
@@ -347,6 +356,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->sum_wij_exp += wj * expf(-pi->I * pi->I);
   pj->sum_wij_exp_P += pi->P * wj * expf(-pi->I * pi->I);
   pj->sum_wij_exp_T += pi->T * wj * expf(-pi->I * pi->I);
+#endif
+    
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  pi->P_tilde_numerator += wi * pj->P * pj->f_s;
+  pj->P_tilde_numerator += wj * pi->P * pi->f_s;  
+  pi->P_tilde_denominator += wi * pj->f_s;
+  pj->P_tilde_denominator += wj * pi->f_s;
+    
+  pi->S_numerator += wi * logf(pj->h * fabs(pj->drho_dh) / pi->rho + FLT_MIN);
+  pj->S_numerator += wj * logf(pi->h * fabs(pi->drho_dh) / pj->rho + FLT_MIN);   
+  pi->S_denominator += wi;
+  pj->S_denominator += wj;
+    
+  pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
+  pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
+  pj->max_ngb_sph_rho = max(pj->max_ngb_sph_rho, pi->rho);
+  pj->min_ngb_sph_rho = min(pj->min_ngb_sph_rho, pi->rho);
 #endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
@@ -429,6 +455,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->sum_wij_exp += wi * expf(-pj->I * pj->I);
   pi->sum_wij_exp_P += pj->P * wi * expf(-pj->I * pj->I);
   pi->sum_wij_exp_T += pj->T * wi * expf(-pj->I * pj->I);
+#endif
+    
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  pi->P_tilde_numerator += wi * pj->P * pj->f_s;
+  pi->P_tilde_denominator += wi * pj->f_s;
+ 
+  pi->S_numerator += wi * logf(pj->h * fabs(pj->drho_dh) / pi->rho + FLT_MIN);
+  pi->S_denominator += wi;
+    
+  pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
+  pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
 #endif
 
 #ifdef PLANETARY_MATRIX_INVERSION

@@ -494,6 +494,18 @@ if test "$planetary_imbalance" = "yes"; then
    AC_DEFINE([PLANETARY_IMBALANCE],1,[Enable planetary imbalance statistic method])
 fi
 
+# Check if smoothing correction method is on for planetary simulations
+AC_ARG_ENABLE([planetary-smoothing-correction],
+   [AS_HELP_STRING([--enable-planetary-smoothing-correction],
+     [Enable smoothing correction method for planetary simulations @<:@yes/no@:>@]
+   )],
+   [planetary_smoothing_correction="$enableval"],
+   [planetary_smoothing_correction="no"]
+)
+if test "$planetary_smoothing_correction" = "yes"; then
+   AC_DEFINE([PLANETARY_SMOOTHING_CORRECTION],1,[Enable planetary smoothing correction method])
+fi
+
 # Check if matrix inversion method is on for planetary simulations
 AC_ARG_ENABLE([planetary-matrix-inversion],
    [AS_HELP_STRING([--enable-planetary-matrix-inversion],
@@ -2723,6 +2735,7 @@ AC_MSG_RESULT([
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
    Planetary imbalance method  : $planetary_imbalance
+   Planetary sc                : $planetary_smoothing_correction
    Planetary matrix method     : $planetary_matrix_inversion
 
    Continuous Sim. Data Stream : $with_csds

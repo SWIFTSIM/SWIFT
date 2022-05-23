@@ -133,6 +133,11 @@ struct part {
   /* Correction factors for kernel gradients. f = weighted_wcount/(rho*weighted_neighbour_wcount) */
   float f_gdf;
     
+  /* Pressure */
+  float P;
+    
+  /* Temperature */
+  float T;
 
   /* Store density/force specific stuff. */
   union {
@@ -281,13 +286,6 @@ struct part {
 #endif
 
 #ifdef PLANETARY_IMBALANCE
-
-  /* Pressure */
-  float P;
-
-  /* Temperature */
-  float T;
-
   /*! Sum of r_ij (used to compute imbalance statistic)*/
   float sum_rij[3];
 
@@ -305,6 +303,28 @@ struct part {
 
   /* sum w_ij*/
   float sum_wij;
+#endif
+    
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  
+  /* Derivative of density w.r.t. smoothing length */  
+  float drho_dh;
+    
+  float P_tilde_numerator;
+    
+  float P_tilde_denominator;
+    
+  float f_s;
+    
+  float S_numerator;
+    
+  float S_denominator;
+    
+  float I; 
+    
+  float max_ngb_sph_rho;
+    
+  float min_ngb_sph_rho;
 #endif
     
 #ifdef PLANETARY_MATRIX_INVERSION

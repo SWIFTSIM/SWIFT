@@ -512,6 +512,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->I = 0.f;
   p->sum_wij = 0.f;
 #endif
+    
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  p->drho_dh = 0.f;  
+#endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
   int i, j;
@@ -598,6 +602,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   const float alpha = 5.1f;  // eta=2.2
 #endif
   p->I *= alpha;
+#endif
+
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  p->drho_dh -= p->mass * hydro_dimension * kernel_root;
+  p->drho_dh *= h_inv_dim_plus_one;    
 #endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
@@ -736,6 +745,31 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   //}
 
 #endif
+    
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  p->P_tilde_numerator = 0.f;
+  p->P_tilde_denominator = 0.f;
+    
+  float s = p->h * fabs(p->drho_dh) / p->rho;
+  p->f_s = expf(-1000.f * s * s);
+    
+  p->S_numerator = 0.f;  
+  p->S_denominator = 0.f;
+    
+  p->max_ngb_sph_rho = p->rho;
+  p->min_ngb_sph_rho = p->rho;
+    
+  // Compute the pressure
+  const float pressure =
+      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+
+  // Compute the temperature
+  const float temperature =
+      gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+
+  p->P = pressure;
+  p->T = temperature;
+#endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
 
@@ -769,7 +803,7 @@ __attribute__((always_inline)) INLINE static float update_rho(struct part *p, fl
   float rho_sph = p->rho;
   float P_sph = p->P;
   // return if condition already satisfied
-  if (P_new == P_sph || p->I == 0.f) {
+  if (P_new == P_sph) {
     return rho_sph;
   }
   
@@ -888,6 +922,58 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->P = P;
   p->T = T;
 
+#endif
+
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  /* compute minimum SPH quantities */
+  const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float rho_min = p->mass * kernel_root * h_inv_dim;
+    
+  p->P_tilde_numerator += kernel_root * p->P * p->f_s;
+  p->P_tilde_denominator += kernel_root * p->f_s;
+  p->S_numerator += kernel_root * logf(p->h * fabs(p->drho_dh) / p->rho + FLT_MIN);
+  p->S_denominator += kernel_root;
+    
+  float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
+    
+  float rho_tilde = update_rho(p, P_tilde);
+    
+  float S_tilde = (p->rho / rho_tilde) * expf(p->S_numerator / p->S_denominator);
+    
+  p->I = S_tilde; //This is just to make output same as Imbalance for comparison
+    
+  if (p->P_tilde_denominator > 0.f && p->P_tilde_numerator > 0.f && S_tilde > 0.f) {
+      
+    // Compute new P
+    float f_S_tilde = expf(-1000.f * S_tilde * S_tilde);
+    float P_new = f_S_tilde * p->P + (1.f - f_S_tilde) * P_tilde;
+      
+    // Compute rho from u, P_new
+    float rho_new_from_u = update_rho(p, P_new);
+      
+    if (rho_new_from_u > p->max_ngb_sph_rho){
+        rho_new_from_u = p->max_ngb_sph_rho;
+    }
+    if (rho_new_from_u < p->min_ngb_sph_rho){
+        rho_new_from_u = p->min_ngb_sph_rho;
+    }
+      
+    // Ensure new density is not lower than minimum SPH density
+    if (rho_new_from_u > rho_min){
+      p->rho = rho_new_from_u;
+    } else {
+      p->rho = rho_min;
+    }
+  }
+    
+  // finish computations
+  const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float T =
+        gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
+  p->P = P;
+  p->T = T;
 #endif
 }
 
