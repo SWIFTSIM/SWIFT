@@ -29,22 +29,22 @@
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
-  printf(
-      "x=[%.3e,%.3e,%.3e],\n"
-      "v=[%.3e,%.3e,%.3e],\nv_full=[%.3e,%.3e,%.3e],\na=[%.3e,%.3e,%.3e],\n"
-      "u=%.3e, du/dt=%.3e v_sig=%.3e, P=%.3e\n"
-      "h=%.3e, dh/dt=%.3e wcount=%d, m=%.3e, dh_drho=%.3e\n"
-      "alpha=%.3e, time_bin=%d, rho=%.3e, velocity_gradient=\n"
-      "[%.3e,%.3e,%.3e]\n"
-      "[%.3e,%.3e,%.3e]\n"
-      "[%.3e,%.3e,%.3e],\n"
-      "smooth_pressure_gradient=[%.3e,%.3e,%.3e],\n"
-      "weighted_wcount=%.3e\n",
-      p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], xp->v_full[0],
-      xp->v_full[1], xp->v_full[2], p->a_hydro[0], p->a_hydro[1], p->a_hydro[2],
-      p->u, p->u_dt, p->viscosity.v_sig, hydro_get_comoving_pressure(p), p->h,
-      p->force.h_dt, (int)p->density.wcount, p->mass, p->density.rho_dh,
-      p->viscosity.alpha, p->time_bin, p->rho,
+  warning("[PID%lld] part:", p->id);
+  warning("[PID%lld] x=[%.3e,%.3e,%.3e]", p->id, p->x[0], p->x[1], p->x[2]);
+  warning("[PID%lld] v=[%.3e,%.3e,%.3e]", p->id, p->v[0], p->v[1], p->v[2]);
+  warning("[PID%lld] a=[%.3e,%.3e,%.3e]", p->id, p->a_hydro[0], p->a_hydro[1],
+          p->a_hydro[2]);
+  warning("[PID%lld] u=%.3e, du/dt=%.3e v_sig=%.3e, P=%.3e", p->id, p->u,
+          p->u_dt, p->viscosity.v_sig, hydro_get_comoving_pressure(p));
+  warning("[PID%lld] h=%.3e, dh/dt=%.3e wcount=%d, m=%.3e, dh_drho=%.3e", p->id,
+          p->h, p->force.h_dt, (int)p->density.wcount, p->mass,
+          p->density.rho_dh);
+  warning(
+      "[PID%lld] alpha=%.3e, time_bin=%d, rho=%.3e, velocity_gradient=["
+      "[%.3e,%.3e,%.3e],"
+      "[%.3e,%.3e,%.3e],"
+      "[%.3e,%.3e,%.3e]]",
+      p->id, p->viscosity.alpha, p->time_bin, p->rho,
       p->viscosity.velocity_gradient[0][0],
       p->viscosity.velocity_gradient[0][1],
       p->viscosity.velocity_gradient[0][2],
@@ -53,9 +53,17 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->viscosity.velocity_gradient[1][2],
       p->viscosity.velocity_gradient[2][0],
       p->viscosity.velocity_gradient[2][1],
-      p->viscosity.velocity_gradient[2][2], p->smooth_pressure_gradient[0],
-      p->smooth_pressure_gradient[1], p->smooth_pressure_gradient[2],
-      p->weighted_wcount);
+      p->viscosity.velocity_gradient[2][2]);
+  warning("[PID%lld] smooth_pressure_gradient=[%.3e,%.3e,%.3e]", p->id,
+          p->smooth_pressure_gradient[0], p->smooth_pressure_gradient[1],
+          p->smooth_pressure_gradient[2]);
+  warning("[PID%lld] weighted_wcount=%.3e", p->id, p->weighted_wcount);
+
+  if (xp != NULL) {
+    warning("[PID%lld] xpart:", p->id);
+    warning("[PID%lld] v_full=[%.3e,%.3e,%.3e]", p->id, xp->v_full[0],
+            xp->v_full[1], xp->v_full[2]);
+  }
 }
 
 #endif /* SWIFT_GASOLINE_HYDRO_DEBUG_H */
