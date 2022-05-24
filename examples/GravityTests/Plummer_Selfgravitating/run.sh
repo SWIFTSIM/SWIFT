@@ -16,4 +16,4 @@ fi
 
 echo "Plotting results..."
 # If params.yml is left at default values, should produce 10 snapshots
-python3 plotdensity.py snap/snapshot_*.hdf5
+python3 plotdensity.py snapshot_*.hdf5

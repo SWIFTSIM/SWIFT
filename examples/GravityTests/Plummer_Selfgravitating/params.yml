@@ -23,9 +23,9 @@ Gravity:
   
 # Parameters governing the snapshots
 Snapshots:
-  basename:            snap/snapshot  # Common part of the name of output files
-  time_first:          0.      # Time of the first output (in internal units)
-  delta_time:          2e-1    # Time difference between consecutive outputs (in internal units)
+  basename:            snapshot  # Common part of the name of output files
+  time_first:          0.        # Time of the first output (in internal units)
+  delta_time:          2e-1      # Time difference between consecutive outputs (in internal units)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
