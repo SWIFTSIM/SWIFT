@@ -890,6 +890,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
 
+  p->last_uncorrected_rho = p->rho;
+    
   /* Bullet proof */
   if (p->sum_wij_exp > 0.f && p->sum_wij_exp_P > 0.f && p->I > 0.f) {
     /* End computation */
@@ -932,6 +934,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
         gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
   p->P = P;
   p->T = T;
+    
+  p->last_corrected_rho = p->rho;
 
 #endif
 
@@ -943,8 +947,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
   float s = p->h * p->drho_dh / p->rho;
-  p->P_tilde_numerator += kernel_root * p->P * expf(-1000.f * s * s);
-  p->P_tilde_denominator += kernel_root * expf(-1000.f * s * s);
+  p->P_tilde_numerator += p->P * expf(-1000.f * s * s);
+  p->P_tilde_denominator += sqrtf(kernel_root) * expf(-1000.f * s * s);
   p->S_numerator += kernel_root * logf(p->h * fabs(p->drho_dh) / p->rho + FLT_MIN);
   p->S_denominator += kernel_root;
     
@@ -955,6 +959,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   float S_tilde = (p->rho / rho_tilde) * expf(p->S_numerator / p->S_denominator);
     
   p->I = S_tilde; //This is just to make output same as Imbalance for comparison
+    
+  p->last_uncorrected_rho = p->rho;
     
   if (p->P_tilde_denominator > 0.f && p->P_tilde_numerator > 0.f && S_tilde > 0.f) {
       
@@ -986,6 +992,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
         gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
   p->P = P;
   p->T = T;
+    
+    
+  p->last_corrected_rho = p->rho;
 #endif
 }
 

@@ -361,10 +361,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   float sji = pj->h * pj->drho_dh / pi->rho;
   float sij = pi->h * pi->drho_dh / pj->rho;  
-  pi->P_tilde_numerator += wi * pj->P * expf(-1000.f * sji * sji);
-  pj->P_tilde_numerator += wj * pi->P * expf(-1000.f * sij * sij);   
-  pi->P_tilde_denominator += wi * expf(-1000.f * sji * sji);
-  pj->P_tilde_denominator += wj * expf(-1000.f * sij * sij);
+  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sji * sji);
+  pj->P_tilde_numerator += sqrtf(wj) * pi->P * expf(-1000.f * sij * sij);   
+  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sji * sji);
+  pj->P_tilde_denominator += sqrtf(wj) * expf(-1000.f * sij * sij);
     
   pi->S_numerator += wi * logf(pj->h * fabs(pj->drho_dh) / pi->rho + FLT_MIN);
   pj->S_numerator += wj * logf(pi->h * fabs(pi->drho_dh) / pj->rho + FLT_MIN);   
@@ -377,27 +377,37 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->min_ngb_sph_rho = min(pj->min_ngb_sph_rho, pi->rho);
 #endif
 
-#ifdef PLANETARY_MATRIX_INVERSION
+#ifdef PLANETARY_MATRIX_INVERSION 
+  float volume_i = pi->mass * rho_inv_i;
+  float volume_j = pj->mass * rho_inv_j;  
+  #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
+      if(pi->last_corrected_rho){
+        volume_i = pi->mass / pi->last_corrected_rho;
+      }
+      if(pj->last_corrected_rho){
+        volume_j = pj->mass / pj->last_corrected_rho;
+      }
+  #endif  
   int i, j, k;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
 
       /* Inverse of C matrix (eq 6 in Rosswog 2020) */
-      pi->Cinv[i][j] += pj->mass * dx[i] * dx[j] * wi * rho_inv_j;
-      pj->Cinv[i][j] += pi->mass * dx[i] * dx[j] * wj * rho_inv_i;
+      pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
+      pj->Cinv[i][j] += dx[i] * dx[j] * wj * volume_i;
 
       /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
-      pi->dv[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi * rho_inv_j;
-      pj->dv[i][j] += pi->mass * (pi->v[i] - pj->v[i]) * dx[j] * wj * rho_inv_i;
+      pi->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
+      pj->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wj * volume_i;
 
       for (k = 0; k < 3; ++k) {
 
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
-        pi->ddv[i][j][k] += pj->mass * (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
-                            dx[k] * wi * rho_inv_j;
-        pj->ddv[i][j][k] += pi->mass * (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
-                            dx[k] * wj * rho_inv_i;
+        pi->ddv[i][j][k] += (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
+                            dx[k] * wi * volume_j;
+        pj->ddv[i][j][k] += (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
+                            dx[k] * wj * volume_i;
       }
     }
   }
@@ -461,8 +471,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   float sji = pj->h * pj->drho_dh / pi->rho;
-  pi->P_tilde_numerator += wi * pj->P * expf(-1000.f * sji * sji);
-  pi->P_tilde_denominator += wi * expf(-1000.f * sji * sji);
+  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sji * sji);
+  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sji * sji);
  
   pi->S_numerator += wi * logf(pj->h * fabs(pj->drho_dh) / pi->rho + FLT_MIN);
   pi->S_denominator += wi;
@@ -472,24 +482,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
+  float volume_j = pj->mass * rho_inv_j;  
+  #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
+      if(pj->last_corrected_rho){
+        volume_j = pj->mass / pj->last_corrected_rho;
+      }
+  #endif  
   int i, j, k;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
 
       /* Inverse of C matrix (eq 6 in Rosswog 2020) */
-      pi->Cinv[i][j] += pj->mass * dx[i] * dx[j] * wi * rho_inv_j;
+      pi->Cinv[i][j] += dx[i] * dx[j] * wi * volume_j;
 
       /* Gradients from eq 18 in Rosswog 2020 (without C multiplied)*/
-      pi->dv[i][j] += pj->mass * (pi->v[i] - pj->v[i]) * dx[j] * wi * rho_inv_j;
+      pi->dv[i][j] += (pi->v[i] - pj->v[i]) * dx[j] * wi * volume_j;
 
       for (k = 0; k < 3; ++k) {
         /* Gradients from eq 18 in Rosswog 2020 (without C multiplied). Note
          * that we now use dv_aux to get second derivative*/
-        pi->ddv[i][j][k] += pj->mass * (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
-                            dx[k] * wi * rho_inv_j;
+        pi->ddv[i][j][k] += (pi->dv_aux[i][j] - pj->dv_aux[i][j]) *
+                            dx[k] * wi * volume_j;
       }
     }
   }
+
 
 #if defined(HYDRO_DIMENSION_2D)
   /* This is so we can do 3x3 matrix inverse even when 2D */
