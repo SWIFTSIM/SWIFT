@@ -304,8 +304,6 @@ struct part {
   /* sum w_ij*/
   float sum_wij;
     
-  float last_uncorrected_rho;
-    
   float last_corrected_rho;
 #endif
     
@@ -327,8 +325,6 @@ struct part {
   float max_ngb_sph_rho;
     
   float min_ngb_sph_rho;
-    
-  float last_uncorrected_rho;
     
   float last_corrected_rho;
 #endif
