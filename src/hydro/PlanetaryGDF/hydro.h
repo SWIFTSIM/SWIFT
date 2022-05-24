@@ -750,9 +750,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->P_tilde_numerator = 0.f;
   p->P_tilde_denominator = 0.f;
     
-  float s = p->h * fabs(p->drho_dh) / p->rho;
-  p->f_s = expf(-1000.f * s * s);
-    
   p->S_numerator = 0.f;  
   p->S_denominator = 0.f;
     
@@ -794,7 +791,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static float update_rho(struct part *p, float P_new){
     //float rho_sph, float u, float P_sph, enum eos_planetary_material_id mat_id, float P_new) {
 
-  float factor_rho = 10.f;
+  float factor_rho = 100.f;
   int N_iter = 20;
   float tol = 1e-4;
   float rho_low, rho_high, rho_mid;
@@ -945,8 +942,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
-  p->P_tilde_numerator += kernel_root * p->P * p->f_s;
-  p->P_tilde_denominator += kernel_root * p->f_s;
+  float s = p->h * p->drho_dh / p->rho;
+  p->P_tilde_numerator += kernel_root * p->P * expf(-1000.f * s * s);
+  p->P_tilde_denominator += kernel_root * expf(-1000.f * s * s);
   p->S_numerator += kernel_root * logf(p->h * fabs(p->drho_dh) / p->rho + FLT_MIN);
   p->S_denominator += kernel_root;
     

@@ -314,8 +314,6 @@ struct part {
     
   float P_tilde_denominator;
     
-  float f_s;
-    
   float S_numerator;
     
   float S_denominator;

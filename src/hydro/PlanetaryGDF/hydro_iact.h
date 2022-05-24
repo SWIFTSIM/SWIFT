@@ -359,10 +359,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  pi->P_tilde_numerator += wi * pj->P * pj->f_s;
-  pj->P_tilde_numerator += wj * pi->P * pi->f_s;  
-  pi->P_tilde_denominator += wi * pj->f_s;
-  pj->P_tilde_denominator += wj * pi->f_s;
+  float sji = pj->h * pj->drho_dh / pi->rho;
+  float sij = pi->h * pi->drho_dh / pj->rho;  
+  pi->P_tilde_numerator += wi * pj->P * expf(-1000.f * sji * sji);
+  pj->P_tilde_numerator += wj * pi->P * expf(-1000.f * sij * sij);   
+  pi->P_tilde_denominator += wi * expf(-1000.f * sji * sji);
+  pj->P_tilde_denominator += wj * expf(-1000.f * sij * sij);
     
   pi->S_numerator += wi * logf(pj->h * fabs(pj->drho_dh) / pi->rho + FLT_MIN);
   pj->S_numerator += wj * logf(pi->h * fabs(pi->drho_dh) / pj->rho + FLT_MIN);   
@@ -458,8 +460,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  pi->P_tilde_numerator += wi * pj->P * pj->f_s;
-  pi->P_tilde_denominator += wi * pj->f_s;
+  float sji = pj->h * pj->drho_dh / pi->rho;
+  pi->P_tilde_numerator += wi * pj->P * expf(-1000.f * sji * sji);
+  pi->P_tilde_denominator += wi * expf(-1000.f * sji * sji);
  
   pi->S_numerator += wi * logf(pj->h * fabs(pj->drho_dh) / pi->rho + FLT_MIN);
   pi->S_denominator += wi;
