@@ -32,12 +32,21 @@
 
 /* Local includes. */
 #include "active.h"
+#include "black_holes_debug.h"
 #include "cell.h"
+#include "chemistry_debug.h"
+#include "cooling_debug.h"
 #include "engine.h"
+#include "feedback_debug.h"
 #include "hydro.h"
 #include "inline.h"
 #include "part.h"
+#include "particle_splitting.h"
+#include "pressure_floor_debug.h"
+#include "sink_debug.h"
 #include "space.h"
+#include "star_formation_debug.h"
+#include "tracers_debug.h"
 
 /* Import the right hydro definition */
 #if defined(NONE_SPH)
@@ -100,8 +109,18 @@ void printParticle(const struct part *parts, const struct xpart *xparts,
   /* Look for the particle. */
   for (size_t i = 0; i < N; i++)
     if (parts[i].id == id) {
-      printf("## Particle[%zu]:\n id=%lld ", i, parts[i].id);
+      warning("[PID%lld] ## Particle[%zu]:\n id=%lld ", parts[i].id, i,
+              parts[i].id);
       hydro_debug_particle(&parts[i], &xparts[i]);
+      chemistry_debug_particle(&parts[i], &xparts[i]);
+      cooling_debug_particle(&parts[i], &xparts[i]);
+      particle_splitting_debug_particle(&parts[i], &xparts[i]);
+      tracers_debug_particle(&parts[i], &xparts[i]);
+      star_formation_debug_particle(&parts[i], &xparts[i]);
+      feedback_debug_particle(&parts[i], &xparts[i]);
+      black_holes_debug_particle(&parts[i], &xparts[i]);
+      sink_debug_particle(&parts[i], &xparts[i]);
+      pressure_floor_debug_particle(&parts[i], &xparts[i]);
       found = 1;
       break;
     }
@@ -152,9 +171,20 @@ void printgParticle(const struct gpart *gparts, const struct part *parts,
  */
 void printParticle_single(const struct part *p, const struct xpart *xp) {
 
-  printf("## Particle: id=%lld ", p->id);
+  warning("[PID%lld] ## Particle: id=%lld ", p->id, p->id);
   hydro_debug_particle(p, xp);
-  printf("\n");
+  chemistry_debug_particle(p, xp);
+  cooling_debug_particle(p, xp);
+  particle_splitting_debug_particle(p, xp);
+  tracers_debug_particle(p, xp);
+  star_formation_debug_particle(p, xp);
+  feedback_debug_particle(p, xp);
+  black_holes_debug_particle(p, xp);
+  sink_debug_particle(p, xp);
+  pressure_floor_debug_particle(p, xp);
+  if (xp == NULL) {
+    warning("[PID%lld] No xpart data available.", p->id);
+  }
 }
 
 /**
