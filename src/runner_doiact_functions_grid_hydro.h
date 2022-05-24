@@ -169,6 +169,66 @@ void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
   }
 }
 
+void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
+
+  struct engine *e = r->e;
+
+  /* Recurse? */
+  if (c->grid.construction_level == above_construction_level) {
+    for (int i = 0; i < 8; i++) {
+      struct cell *cp = c->progeny[i];
+      if (cp != NULL && cell_is_active_hydro(cp, e)) DOPAIR_BOUNDARY(r, cp);
+    }
+    return;
+  }
+
+  /* Loop over boundary faces to apply hydro interaction */
+  struct voronoi *vortess = c->grid.voronoi;
+  double shift[3] = {0., 0., 0.};
+  for (int idx = 0; idx < vortess->pair_index[27]; idx++) {
+
+    /* Extract pair */
+    struct voronoi_pair *pair = &vortess->pairs[27][idx];
+    int sid = pair->sid;
+    int part_idx = pair->left_idx;
+
+    /* Extract particle */
+    struct part *p = &c->hydro.parts[part_idx];
+
+    /* Reconstruct boundary particle */
+    struct part p_boundary = *p;
+    cell_reflect_coordinates(c, p->x, sid, &p_boundary.x[0]);
+#ifdef SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
+    /* TODO just skip this? */
+    for (int i = 0; i < 3; i++) {
+      if (sortlist_shift_vector[sid][i] != 0) {
+        /* Reflect the velocity along this axis */
+        p_boundary.v[i] = -p_boundary.v[i];
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+        /* We also need to flip the gradients along this axis (but not the
+         * velocity component of this axis)... */
+        p_boundary.gradients.rho[i] *= -1;
+        p_boundary.gradients.v[(i + 1) % 3][i] *= -1;
+        p_boundary.gradients.v[(i + 2) % 3][i] *= -1;
+        p_boundary.gradients.P[i] *= -1;
+
+        /* ... and the limiter info of the velocity */
+        float temp = p_boundary.limiter.v[i][0];
+        p_boundary.limiter.v[i][0] = -p_boundary.limiter.v[i][1];
+        p_boundary.limiter.v[i][1] = -temp;
+#endif
+      }
+    }
+#else
+    error("Unknown boundary condition for non periodic run!");
+#endif
+    /* Now interact the real particle with the reconstructed boundary particle.
+     */
+    IACT(p, &p_boundary, pair->midpoint, pair->surface_area, shift, 0);
+  }
+}
+
 void DOSELF(struct runner *restrict r, struct cell *restrict c) {
 
   TIMER_TIC;

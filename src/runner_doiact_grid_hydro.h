@@ -16,6 +16,9 @@
 #define _DOPAIR(f) PASTE(runner_dopair, f)
 #define DOPAIR _DOPAIR(FUNCTION)
 
+#define _DOPAIR_BOUNDARY(f) PASTE(runner_dopair_boundary, f)
+#define DOPAIR_BOUNDARY _DOPAIR_BOUNDARY(FUNCTION)
+
 #define _DOSELF(f) PASTE(runner_doself, f)
 #define DOSELF _DOSELF(FUNCTION)
 
@@ -30,3 +33,4 @@
 
 void DOSELF(struct runner *restrict r, struct cell *restrict c);
 void DOPAIR_BRANCH(struct runner *restrict r, struct cell *restrict ci, struct cell *restrict cj);
+void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c);

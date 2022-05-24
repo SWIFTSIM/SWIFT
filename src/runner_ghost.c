@@ -65,6 +65,30 @@
 /* Import the moving mesh construction loop functions */
 #include "runner_doiact_grid.h"
 
+/* Moving mesh hydro loops. */
+#ifdef EXTRA_HYDRO_LOOP
+/* Gradient calculation */
+#define FUNCTION slope_estimate
+#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_ESTIMATE
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
+/* Slope limiter */
+#define FUNCTION slope_limiter
+#define FUNCTION_TASK_LOOP TASK_LOOP_SLOPE_LIMITER
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+#endif
+
+/* Flux exchange */
+#define FUNCTION flux_exchange
+#define FUNCTION_TASK_LOOP TASK_LOOP_FLUX_EXCHANGE
+#include "runner_doiact_grid_hydro.h"
+#undef FUNCTION
+#undef FUNCTION_TASK_LOOP
+
 /**
  * @brief Intermediate task after the density to check that the smoothing
  * lengths are correct.
@@ -1692,6 +1716,10 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
       ++count;
     }
 
+  /* Add boundary particles? */
+  if (!periodic)
+    runner_add_boundary_particles_grid_construction(r, c, h_max_active);
+
   /* While there are particles that need to be updated and their search radius
    * remains smaller than the cell width... */
   for (int num_reruns = 0;
@@ -1740,7 +1768,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* Add boundary particles? */
       if (!periodic)
-        runner_add_boundary_particles_grid_construction(r, c, h_max_unconverged);
+        runner_add_boundary_particles_subset_grid_construction(r, c, parts, pid, count);
 
       /* We are already at the construction level, so we can run through this
        * cell's grid construction interactions directly. */
@@ -1894,6 +1922,11 @@ void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c,
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
+  /* Do gradient calculation for boundary particles? */
+  if (!e->s->periodic) {
+    runner_dopair_boundary_slope_estimate(r, c);
+  }
+
   /* Finish gradient calculation for active particles */
   for (int k = 0; k < c->hydro.count; k++) {
     struct part *p = &c->hydro.parts[k];
@@ -1926,14 +1959,18 @@ void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c,
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
-  /* TODO */
+  /* Do gradient calculation for boundary particles? */
+  if (!e->s->periodic) {
+    runner_dopair_boundary_slope_limiter(r, c);
+  }
+
   /* Apply the cell wide slope limiters for active particles */
   for (int k = 0; k < c->hydro.count; k++) {
     struct part *p = &c->hydro.parts[k];
 
     if (!part_is_active(p, e)) continue;
 
-    /* Finalize gradients and initialize slope limiters */
+    /* Apply cell wide slope limiter */
     hydro_slope_limit_cell(p);
   }
 
@@ -1960,6 +1997,11 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   /* Anything to do here? */
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
+
+  /* Do flux calculation for boundary particles? */
+  if (!e->s->periodic) {
+    runner_dopair_boundary_flux_exchange(r, c);
+  }
 
 #ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
   cell_free_grid_rec(c);

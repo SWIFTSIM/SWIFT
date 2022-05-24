@@ -7,7 +7,9 @@
 
 /*! @brief Store the edges of faces (so that the actual Voronoi grid can be
  *  reconstructed). */
-//#define VORONOI_STORE_FACES
+#ifdef SHADOWSWIFT_OUTPUT_GRIDS
+#define VORONOI_STORE_FACES
+#endif
 
 /*! @brief Store cell generators. */
 //#define VORONOI_STORE_GENERATORS

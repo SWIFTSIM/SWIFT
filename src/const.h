@@ -92,7 +92,7 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
 /* Option controlling output of grids */
-//#define SHADOWSWIFT_OUTPUT_GRIDS
+#define SHADOWSWIFT_OUTPUT_GRIDS
 /* Option to enable the hilbert order insertion during the grid construction */
 #define SHADOWSWIFT_HILBERT_ORDERING
 /* This option disables cell movement */
@@ -104,7 +104,10 @@
 //#define SHADOWSWIFT_TOTAL_ENERGY
 /* This option destroys the  grids as soon as they are no longer needed, saving
  * on memory. */
-#define SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
+//#define SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
+/* This option enables reflective boundary conditions for non-periodic
+ * ShadowSWIFT runs */
+#define SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
 
 /* Source terms */
 #define SOURCETERMS_NONE

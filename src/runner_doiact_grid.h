@@ -715,35 +715,6 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
 #endif
 }
 
-static const int sortlist_shift_vector[27][3] = {
-    {-1, -1, -1}, {-1, -1, 0}, {-1, -1, 1}, {-1, 0, -1}, {-1, 0, 0}, {-1, 0, 1},
-    {-1, 1, -1},  {-1, 1, 0},  {-1, 1, 1},  {0, -1, -1}, {0, -1, 0}, {0, -1, 1},
-    {0, 0, -1},   {0, 0, 0},   {0, 0, 1},   {0, 1, -1},  {0, 1, 0},  {0, 1, 1},
-    {1, -1, -1},  {1, -1, 0},  {1, -1, 1},  {1, 0, -1},  {1, 0, 0},  {1, 0, 1},
-    {1, 1, -1},   {1, 1, 0},   {1, 1, 1}};
-
-__attribute__((always_inline)) INLINE static void
-grid_construction_reflect_coordinates(const struct cell *c, const double *x_in,
-                                      int sid, double *x_out) {
-  double x_rel[3];
-  const double cell_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
-  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
-
-  x_rel[0] = x_in[0] - cell_loc[0];
-  x_rel[1] = x_in[1] - cell_loc[1];
-  x_rel[2] = x_in[2] - cell_loc[2];
-
-  for (int i = 0; i < 3; i++) {
-    if (sortlist_shift_vector[sid][i] < 0) {
-      x_out[i] = cell_loc[i] - x_rel[i];
-    } else if (sortlist_shift_vector[sid][i] == 0) {
-      x_out[i] = x_in[i];
-    } else {
-      x_out[i] = cell_loc[i] + 2 * cell_width[i] - x_rel[i];
-    }
-  }
-}
-
 __attribute__((always_inline)) INLINE static void
 grid_construction_get_cell_corner_to_compare(const struct cell *c, int sid,
                                              double *x_out) {
@@ -773,91 +744,134 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
   struct part *parts = c->hydro.parts;
   for (int sid = 0; sid < 27; sid++) {
     /* Do we need to add periodic boundary particles for this cell? */
-    if (!(c->grid.delaunay->sid_is_inside_face_mask & 1 << sid)) {
+    if (c->grid.delaunay->sid_is_inside_face_mask & 1 << sid) continue;
 
-      /* Pick the correct corner of the cell to compare the sorted positions
-       * along the axis corresponding to the sid with. */
-      double cell_corner[3];
-      grid_construction_get_cell_corner_to_compare(c, sid, cell_corner);
-      /* Calculate the position of the cell_corner along the sid axis */
-      int sortlist_id = sortlistID[sid];
-      double cell_corner_d = runner_shift[sortlist_id][0] * cell_corner[0] +
-                             runner_shift[sortlist_id][1] * cell_corner[1] +
-                             runner_shift[sortlist_id][2] * cell_corner[2];
+    /* Pick the correct corner of the cell to compare the sorted positions
+     * along the axis corresponding to the sid with. */
+    double cell_corner[3];
+    grid_construction_get_cell_corner_to_compare(c, sid, cell_corner);
+    /* Calculate the position of the cell_corner along the sid axis */
+    int sortlist_id = sortlistID[sid];
+    double cell_corner_d = runner_shift[sortlist_id][0] * cell_corner[0] +
+                           runner_shift[sortlist_id][1] * cell_corner[1] +
+                           runner_shift[sortlist_id][2] * cell_corner[2];
 
-      /* Get the sort entries of the particles for the sid axis */
-      const struct sort_entry *restrict sort =
-          cell_get_hydro_sorts(c, sortlist_id);
+    /* Get the sort entries of the particles for the sid axis */
+    const struct sort_entry *restrict sort =
+        cell_get_hydro_sorts(c, sortlist_id);
 
-      /* Declare variables */
-      struct part *p;
+    /* Declare variables */
+    struct part *p;
+    double reflected_x[3];
+
+    /* Do we need to flip the sorting direction? */
+    if (runner_flip[sid]) {
+      /* c on the right, reflection on the left */
+
+      /* Loop over the sorted parts in c (on the right) */
+      for (int i = 0; i < count && sort[i].d < cell_corner_d + r_max; i++) {
+
+        /* Get a hold of the particle. */
+        int p_idx = sort[i].i;
+        p = &parts[p_idx];
+
+        /* Skip inactive particles */
+        if (!part_is_active(p, e)) continue;
+
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(p, e)) continue;
+
+        /* Calculate reflected coordinates of particle */
+        cell_reflect_coordinates(c, p->x, sid, reflected_x);
+
+        /* Compute the pairwise distance. */
+        double dx[3] = {p->x[0] - reflected_x[0], p->x[1] - reflected_x[1],
+                        p->x[2] - reflected_x[2]};
+        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Hit or miss? */
+        double radius = p->h;
+        if (r2 < radius * radius) {
+          delaunay_add_new_vertex(c->grid.delaunay, reflected_x[0],
+                                  reflected_x[1], reflected_x[2], sid, p_idx,
+                                  p_idx, 1);
+        }
+      }
+    } else {
+      /* c on the left, reflection on the right */
+      for (int i = count - 1; i >= 0 && sort[i].d > cell_corner_d - r_max;
+           i--) {
+
+        /* Get a hold of the particle. */
+        int p_idx = sort[i].i;
+        p = &parts[p_idx];
+
+        /* Skip inactive particles */
+        if (!part_is_active(p, e)) continue;
+
+        /* Skip inhibited particles. */
+        if (part_is_inhibited(p, e)) continue;
+
+        /* Calculate reflected coordinates of particle */
+        cell_reflect_coordinates(c, p->x, sid, reflected_x);
+
+        /* Compute the pairwise distance. */
+        double dx[3] = {p->x[0] - reflected_x[0], p->x[1] - reflected_x[1],
+                        p->x[2] - reflected_x[2]};
+        const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Hit or miss? */
+        double radius = p->h;
+        if (r2 < radius * radius) {
+          /* We add boundary particles under sid 27 (for now) */
+          delaunay_add_new_vertex(c->grid.delaunay, reflected_x[0],
+                                  reflected_x[1], reflected_x[2], sid, p_idx,
+                                  p_idx, 1);
+        }
+      }
+    }
+  }
+}
+
+__attribute__((always_inline)) INLINE static void
+runner_add_boundary_particles_subset_grid_construction(
+    struct runner *restrict r, struct cell *restrict c,
+    struct part *restrict parts, const int *restrict ind, int count) {
+
+  struct engine *e = r->e;
+
+  /* Anything to do here? */
+  if (e->s->periodic) return;
+  if (c->grid.delaunay->sid_is_inside_face_mask ==
+      0b111111111111111111111111111ul)
+    return;
+
+  /* Loop over unconverged parts*/
+  for (int i = 0; i < count; i++) {
+    /* Retrieve particle */
+    int p_idx = ind[i];
+    struct part *p = &parts[p_idx];
+
+    /* Do we need to add a mirror of this particle as a boundary particle? */
+    for (int sid = 0; sid < 27; sid++) {
+      /* Inside face? */
+      if (c->grid.delaunay->sid_is_inside_face_mask & 1 << sid) continue;
+
+      /* Calculate reflected coordinates of particle */
       double reflected_x[3];
+      cell_reflect_coordinates(c, p->x, sid, reflected_x);
 
-      /* Do we need to flip the sorting direction? */
-      if (runner_flip[sid]) {
-        /* c on the right, reflection on the left */
+      /* Compute the pairwise distance. */
+      double dx[3] = {p->x[0] - reflected_x[0], p->x[1] - reflected_x[1],
+                      p->x[2] - reflected_x[2]};
+      const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-        /* Loop over the sorted parts in c (on the right) */
-        for (int i = 0; i < count && sort[i].d < cell_corner_d + r_max; i++) {
-
-          /* Get a hold of the particle. */
-          int p_idx = sort[i].i;
-          p = &parts[p_idx];
-
-          /* Skip inactive particles */
-          if (!part_is_active(p, e)) continue;
-
-          /* Skip inhibited particles. */
-          if (part_is_inhibited(p, e)) continue;
-
-          /* Calculate reflected coordinates of particle */
-          grid_construction_reflect_coordinates(c, p->x, sid, reflected_x);
-
-          /* Compute the pairwise distance. */
-          double dx[3] = {p->x[0] - reflected_x[0], p->x[1] - reflected_x[1],
-                          p->x[2] - reflected_x[2]};
-          const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-          /* Hit or miss? */
-          double radius = p->h;
-          if (r2 < radius * radius) {
-            delaunay_add_new_vertex(c->grid.delaunay, reflected_x[0],
-                                    reflected_x[1], reflected_x[2], sid, p_idx,
-                                    p_idx, 1);
-          }
-        }
-      } else {
-        /* c on the left, reflection on the right */
-        for (int i = count - 1; i >= 0 && sort[i].d > cell_corner_d - r_max;
-             i--) {
-
-          /* Get a hold of the particle. */
-          int p_idx = sort[i].i;
-          p = &parts[p_idx];
-
-          /* Skip inactive particles */
-          if (!part_is_active(p, e)) continue;
-
-          /* Skip inhibited particles. */
-          if (part_is_inhibited(p, e)) continue;
-
-          /* Calculate reflected coordinates of particle */
-          grid_construction_reflect_coordinates(c, p->x, sid, reflected_x);
-
-          /* Compute the pairwise distance. */
-          double dx[3] = {p->x[0] - reflected_x[0], p->x[1] - reflected_x[1],
-                          p->x[2] - reflected_x[2]};
-          const double r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-          /* Hit or miss? */
-          double radius = p->h;
-          if (r2 < radius * radius) {
-            /* We add boundary particles under sid 27 (for now) */
-            delaunay_add_new_vertex(c->grid.delaunay, reflected_x[0],
-                                    reflected_x[1], reflected_x[2], sid, p_idx,
-                                    p_idx, 1);
-          }
-        }
+      /* Hit or miss? */
+      double radius = p->h;
+      if (r2 < radius * radius) {
+        delaunay_add_new_vertex(c->grid.delaunay, reflected_x[0],
+                                reflected_x[1], reflected_x[2], sid, p_idx,
+                                p_idx, 1);
       }
     }
   }

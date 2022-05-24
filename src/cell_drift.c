@@ -284,6 +284,22 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
             (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
 
+#ifdef SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
+          /* reflect the coordinates and velocity of the particle */
+          for (int i = 0; i < 3; i++) {
+            if (p->x[i] > dim[i]) {
+              p->x[i] = 2 * dim[0] - p->x[i];
+              float delta_v = xp->v_full[i] - p->v[i];
+              xp->v_full[i] = -xp->v_full[i];
+              p->v[i] = xp->v_full[i] + delta_v;
+            } else if (p->x[i] < 0.) {
+              p->x[i] = -p->x[i];
+              float delta_v = xp->v_full[i] - p->v[i];
+              xp->v_full[i] = -xp->v_full[i];
+              p->v[i] = xp->v_full[i] + delta_v;
+            }
+          }
+#else
           lock_lock(&e->s->lock);
 
           /* Re-check that the particle has not been removed
@@ -309,6 +325,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             error("Failed to unlock the space!");
 
           continue;
+#endif
         }
       }
 
@@ -505,6 +522,18 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
             (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
             (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
 
+#ifdef SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
+          /* reflect the coordinates and velocity of the particle */
+          for (int i = 0; i < 3; i++) {
+            if (gp->x[i] > dim[i]) {
+              gp->x[i] = 2 * dim[0] - gp->x[i];
+              gp->v_full[i] = -gp->v_full[i];
+            } else if (gp->x[i] < 0.) {
+              gp->x[i] = -gp->x[i];
+              gp->v_full[i] = -gp->v_full[i];
+            }
+          }
+#else
           lock_lock(&e->s->lock);
 
           /* Re-check that the particle has not been removed
@@ -531,6 +560,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
             error("Failed to unlock the space!");
 
           continue;
+#endif
         }
       }
 

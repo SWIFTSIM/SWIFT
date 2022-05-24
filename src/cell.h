@@ -1505,4 +1505,27 @@ cell_get_voronoi_face_send_count(struct cell *c) {
   return count;
 }
 
+/*! @brief Reflect the given position across the cell face corresponding to
+ * the given sid. */
+__attribute__((always_inline)) INLINE static void cell_reflect_coordinates(
+    const struct cell *c, const double *x_in, int sid, double *x_out) {
+  double x_rel[3];
+  const double cell_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_width[3] = {c->width[0], c->width[1], c->width[2]};
+
+  x_rel[0] = x_in[0] - cell_loc[0];
+  x_rel[1] = x_in[1] - cell_loc[1];
+  x_rel[2] = x_in[2] - cell_loc[2];
+
+  for (int i = 0; i < 3; i++) {
+    if (sortlist_shift_vector[sid][i] < 0) {
+      x_out[i] = cell_loc[i] - x_rel[i];
+    } else if (sortlist_shift_vector[sid][i] == 0) {
+      x_out[i] = x_in[i];
+    } else {
+      x_out[i] = cell_loc[i] + 2 * cell_width[i] - x_rel[i];
+    }
+  }
+}
+
 #endif /* SWIFT_CELL_H */
