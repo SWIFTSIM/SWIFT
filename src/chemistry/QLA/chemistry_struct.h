@@ -52,4 +52,11 @@ struct chemistry_part_data {};
  */
 struct chemistry_bpart_data {};
 
+/**
+ * @brief Chemical abundances traced by the #sink in the QLA model.
+ *
+ * Nothing here.
+ */
+struct chemistry_sink_data {};
+
 #endif /* SWIFT_CHEMISTRY_STRUCT_QLA_H */

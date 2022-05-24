@@ -23,7 +23,7 @@ __attribute__((always_inline)) INLINE static void sink_debug_particle(
     const struct part* p, const struct xpart* xp) {
 
   warning("[PID%lld] sink_part_data:", p->id);
-  warning("[PID%lld] swallow_id = %lld, can_form_sink = %hhu",
+  warning("[PID%lld] swallow_id = %lld, can_form_sink = %d", p->id,
           p->sink_data.swallow_id, p->sink_data.can_form_sink);
 }
 

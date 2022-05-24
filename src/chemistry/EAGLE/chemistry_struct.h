@@ -130,4 +130,11 @@ struct chemistry_bpart_data {
   float smoothed_formation_metallicity;
 };
 
+/**
+ * @brief Chemical abundances traced by the #sink in the EAGLE model.
+ *
+ * Nothing here.
+ */
+struct chemistry_sink_data {};
+
 #endif /* SWIFT_CHEMISTRY_STRUCT_EAGLE_H */

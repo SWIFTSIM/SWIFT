@@ -433,8 +433,6 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
 /**
  * @brief Add the chemistry data of a sink particle to a sink.
  *
- * Nothing to do here.
- *
  * @param si_data The black hole data to add to.
  * @param sj_data The gas data to use.
  * @param gas_mass The mass of the gas particle.
@@ -448,8 +446,6 @@ __attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
 
 /**
  * @brief Add the chemistry data of a gas particle to a sink.
- *
- * Nothing to do here.
  *
  * @param sp_data The sink data to add to.
  * @param p_data The gas data to use.
