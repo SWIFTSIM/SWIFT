@@ -739,6 +739,7 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
 
   /* Anything to do here? */
   if (e->s->periodic) return;
+  if (!cell_is_active_hydro(c, e)) return;
 
   int count = c->hydro.count;
   struct part *parts = c->hydro.parts;
@@ -757,8 +758,9 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
                            runner_shift[sortlist_id][2] * cell_corner[2];
 
     /* Get the sort entries of the particles for the sid axis */
-    const struct sort_entry *restrict sort =
-        cell_get_hydro_sorts(c, sortlist_id);
+    struct sort_entry *restrict sort = NULL;
+    if (c->hydro.sort_allocated & (1 << sortlist_id))
+       sort = cell_get_hydro_sorts(c, sortlist_id);
 
     /* Declare variables */
     struct part *p;
@@ -769,10 +771,21 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
       /* c on the right, reflection on the left */
 
       /* Loop over the sorted parts in c (on the right) */
-      for (int i = 0; i < count && sort[i].d < cell_corner_d + r_max; i++) {
+      for (int i = 0; i < count; i++) {
+
+        int p_idx;
+        /* Can we use the sorts?
+         * TODO: better to make sure that the sorts are activated...
+         * Should be always the case for active cells unless the entire
+         * simulation is one big cell... */
+        if (sort != NULL) {
+          if (sort[i].d > cell_corner_d + r_max) break;
+          p_idx = sort[i].i;
+        } else {
+          p_idx = i;
+        }
 
         /* Get a hold of the particle. */
-        int p_idx = sort[i].i;
         p = &parts[p_idx];
 
         /* Skip inactive particles */
@@ -799,11 +812,18 @@ runner_add_boundary_particles_grid_construction(struct runner *restrict r,
       }
     } else {
       /* c on the left, reflection on the right */
-      for (int i = count - 1; i >= 0 && sort[i].d > cell_corner_d - r_max;
-           i--) {
+      for (int i = count - 1; i >= 0; i--) {
+
+        int p_idx;
+        /* Can we use the sorts? */
+        if (sort != NULL) {
+          if (sort[i].d < cell_corner_d - r_max) break;
+          p_idx = sort[i].i;
+        } else {
+          p_idx = i;
+        }
 
         /* Get a hold of the particle. */
-        int p_idx = sort[i].i;
         p = &parts[p_idx];
 
         /* Skip inactive particles */
