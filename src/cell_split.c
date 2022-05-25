@@ -415,7 +415,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *part_keys =
       (unsigned long *)malloc(count * sizeof(unsigned long));
-    int part_sinds = (int *)malloc(count * sizeof(int));
+    int *part_sinds = (int *)malloc(count * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < count; k++) {
@@ -463,7 +463,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *spart_keys =
       (unsigned long *)malloc(scount * sizeof(unsigned long));
-    int spart_sinds = (int *)malloc(scount * sizeof(int));
+    int *spart_sinds = (int *)malloc(scount * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < scount; k++) {
@@ -510,7 +510,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *bpart_keys =
       (unsigned long *)malloc(bcount * sizeof(unsigned long));
-    int bpart_sinds = (int *)malloc(bcount * sizeof(int));
+    int *bpart_sinds = (int *)malloc(bcount * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < bcount; k++) {
@@ -557,7 +557,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *sink_keys =
       (unsigned long *)malloc(sink_count * sizeof(unsigned long));
-    int sink_sinds = (int *)malloc(sink_count * sizeof(int));
+    int *sink_sinds = (int *)malloc(sink_count * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < sink_count; k++) {
@@ -604,7 +604,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *gpart_keys =
       (unsigned long *)malloc(gcount * sizeof(unsigned long));
-    int gpart_sinds = (int *)malloc(gcount * sizeof(int));
+    int *gpart_sinds = (int *)malloc(gcount * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < gcount; k++) {
