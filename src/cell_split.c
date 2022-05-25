@@ -266,9 +266,11 @@ void cell_split_recursive(struct space *s, struct cell *c) {
   const int with_self_gravity = s->with_self_gravity;
 
   /* Split or let it be? */
+  /* Note this is currently limited to a depth of 21! */
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize))) {
+       (count > space_splitsize || scount > space_splitsize))
+      && (depth + 1 < 21)) {
 
     /* No longer just a leaf. */
     c->split = 1;
