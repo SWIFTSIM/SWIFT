@@ -42,6 +42,9 @@
  */
 void cell_split(struct cell *c) {
 
+  const int count = c->hydro.count, gcount = c->grav.count,
+    scount = c->stars.count, bcount = c->black_holes.count,
+    sink_count = c->sinks.count;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
@@ -82,7 +85,7 @@ void cell_split(struct cell *c) {
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill the buckets using the hilbert keys */
-  for (int k = 0; k < count; k++) {
+  for (int k = 0; k < scount; k++) {
     unsigned long key = sparts[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
@@ -109,7 +112,7 @@ void cell_split(struct cell *c) {
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
    /* Fill the buckets using the hilbert keys */
-  for (int k = 0; k < count; k++) {
+  for (int k = 0; k < bcount; k++) {
     unsigned long key = bparts[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
@@ -135,7 +138,7 @@ void cell_split(struct cell *c) {
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill the buckets using the hilbert keys */
-  for (int k = 0; k < count; k++) {
+  for (int k = 0; k < sink_count; k++) {
     unsigned long key = sinks[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
@@ -161,7 +164,7 @@ void cell_split(struct cell *c) {
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
   /* Fill the buckets using the hilbert keys */
-  for (int k = 0; k < count; k++) {
+  for (int k = 0; k < gcount; k++) {
     unsigned long key = gparts[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
@@ -412,7 +415,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *part_keys =
       (unsigned long *)malloc(count * sizeof(unsigned long));
-    part_sinds = (int *)malloc(count * sizeof(int));
+    int part_sinds = (int *)malloc(count * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < count; k++) {
@@ -431,7 +434,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       parts[k].hilb_key = part_keys[k];
 
       /* Set index */
-      part_sinds[i] = i;
+      part_sinds[k] = k;
     }
 
     /* Now we can sort */
@@ -460,7 +463,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *spart_keys =
       (unsigned long *)malloc(scount * sizeof(unsigned long));
-    spart_sinds = (int *)malloc(scount * sizeof(int));
+    int spart_sinds = (int *)malloc(scount * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < scount; k++) {
@@ -479,7 +482,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       sparts[k].hilb_key = spart_keys[k];
 
       /* Set index */
-      spart_sinds[i] = i;
+      spart_sinds[k] = k;
     }
 
     /* Now we can sort */
@@ -507,7 +510,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *bpart_keys =
       (unsigned long *)malloc(bcount * sizeof(unsigned long));
-    bpart_sinds = (int *)malloc(bcount * sizeof(int));
+    int bpart_sinds = (int *)malloc(bcount * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < bcount; k++) {
@@ -526,7 +529,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       bparts[k].hilb_key = bpart_keys[k];
 
       /* Set index */
-      bpart_sinds[i] = i;
+      bpart_sinds[k] = k;
     }
 
     /* Now we can sort */
@@ -554,7 +557,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *sink_keys =
       (unsigned long *)malloc(sink_count * sizeof(unsigned long));
-    sink_sinds = (int *)malloc(sink_count * sizeof(int));
+    int sink_sinds = (int *)malloc(sink_count * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < sink_count; k++) {
@@ -573,7 +576,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       sinks[k].hilb_key = sink_keys[k];
 
       /* Set index */
-      sink_sinds[i] = i;
+      sink_sinds[k] = k;
     }
 
     /* Now we can sort */
@@ -601,7 +604,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      /* Set up keys and indices to sort the keys */
     unsigned long *gpart_keys =
       (unsigned long *)malloc(gcount * sizeof(unsigned long));
-    gpart_sinds = (int *)malloc(gcount * sizeof(int));
+    int gpart_sinds = (int *)malloc(gcount * sizeof(int));
 
     /* Loop over particles */
     for (int k = 0; k < gcount; k++) {
@@ -620,7 +623,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       gparts[k].hilb_key = gpart_keys[k];
 
       /* Set index */
-      gpart_sinds[i] = i;
+      gpart_sinds[k] = k;
     }
 
     /* Now we can sort */
