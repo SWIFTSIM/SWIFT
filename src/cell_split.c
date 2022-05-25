@@ -265,6 +265,8 @@ void cell_split_recursive(struct space *s, struct cell *c) {
             scount = c->stars.count;
   const int with_self_gravity = s->with_self_gravity;
 
+  message("depth %d", c->depth);
+
   /* Split or let it be? */
   /* Note this is currently limited to a depth of 21! */
   if ((with_self_gravity && gcount > space_splitsize) ||
@@ -655,10 +657,9 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     free(gpart_keys);
   }
 
-  if (verbose)
-    message("Sorting hilbert indices took %.3f %s.",
-            clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
+  message("Sorting hilbert indices took %.3f %s.",
+          clocks_from_ticks(getticks() - tic),
+          clocks_getunit());
 
   message("first key= %lu last key= %lu", gparts[0].hilb_key,
           gparts[gcount].hilb_key);
