@@ -185,6 +185,7 @@ void cell_split(struct cell *c) {
     c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
     c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
+    message("progeny[%d]->grav.count = %d", k, c->progeny[k]->grav.count);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
