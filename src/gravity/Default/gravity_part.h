@@ -67,6 +67,9 @@ struct gpart {
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
+  /* Hilbert key for this particle. */
+  unsigned long hilb_key;
+
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
   /* Flag to indicate this particle should be output at subsequent VR
      invocations because it was the most bound in a group at some point */

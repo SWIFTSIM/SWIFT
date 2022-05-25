@@ -66,6 +66,9 @@ struct part {
   /* Particle ID. */
   long long id;
 
+  /* Hilbert key for this particle. */
+  unsigned long hilb_key;
+
   /* Associated gravitas. */
   struct gpart *gpart;
 

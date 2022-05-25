@@ -40,6 +40,9 @@ struct spart {
   /*! Particle ID. */
   long long id;
 
+  /* Hilbert key for this particle. */
+  unsigned long hilb_key;
+
   /*! Pointer to corresponding gravity part. */
   struct gpart* gpart;
 

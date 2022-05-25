@@ -22,11 +22,50 @@
  *
  * @brief Hilbert space-filling curve.
  *
- * @author Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * @author Bert Vandenbroucke (bert.vandenbroucke@ugent.be) and Yolan Uyttenhove
  */
 
 #ifndef SWIFT_HILBERT_H
 #define SWIFT_HILBERT_H
+
+/**
+ * @brief Comparison function for two unsigned long values.
+ *
+ * @param a First value.
+ * @param b Second value.
+ * @return -1 if a < b, 0 if a == b, +1 if a > b.
+ */
+inline static int compare_unsigned_long(const unsigned long a,
+                                        const unsigned long b) {
+  if (a < b) {
+    return -1;
+  } else {
+    if (a > b) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
+}
+
+/**
+ * @brief Sorting function used to sort vertex_indices on their Hilbert key.
+ *
+ * @param a First index.
+ * @param b Second index.
+ * @param x Hilbert key array to sort.
+ * @return Return value of compare_unsigned_long() for the hilbert key of
+ * vertex_indices a and b.
+ */
+inline static int sort_h_comp(const void *a, const void *b, void *x) {
+  int ai = *(int *)a;
+  int bi = *(int *)b;
+  unsigned long *keys = (unsigned long *)x;
+  unsigned long ah = keys[ai];
+  unsigned long bh = keys[bi];
+  return compare_unsigned_long(ah, bh);
+}
+
 
 static const unsigned int t2d[8][4][2] = {
     {{7, 0}, {0, 1}, {6, 3}, {0, 2}}, {{1, 2}, {7, 3}, {1, 1}, {6, 0}},

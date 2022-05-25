@@ -321,7 +321,6 @@ enum cell_flags {
   cell_flag_unskip_pair_grav_processed = (1UL << 20)
 };
 
-#ifdef WITH_ZOOM_REGION
 /**
  * @brief What kind of top level cell is this cell?
  *
@@ -331,7 +330,6 @@ enum cell_flags {
  * zoom region). 3 = A top level zoom cell.
  */
 enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell };
-#endif
 
 /**
  * @brief Cell within the tree structure.
@@ -496,11 +494,12 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
-                ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
-                struct cell_buff *buff, struct cell_buff *sbuff,
-                struct cell_buff *bbuff, struct cell_buff *gbuff,
-                struct cell_buff *sinkbuff);
+void cell_split_recursive(struct space *s, struct cell *c);
+void cell_sort_and_split(struct space *s, struct cell *c,
+                         const ptrdiff_t parts_offset,
+                         const ptrdiff_t sparts_offset,
+                         const ptrdiff_t bparts_offset,
+                         const ptrdiff_t sinks_offset);
 void cell_props_mapper(void *map_data, int num_cells, void *extra_data);
 #ifdef WITH_ZOOM_REGION
 void bkg_cell_props_mapper(void *map_data, int num_cells, void *extra_data);
