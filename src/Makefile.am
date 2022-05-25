@@ -402,6 +402,7 @@ nobase_noinst_HEADERS += tracers/EAGLE/tracers_io.h tracers/EAGLE/tracers_debug.
 nobase_noinst_HEADERS += extra_io/EAGLE/extra_io.h extra_io/EAGLE/extra.h
 nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/none/feedback_properties.h feedback/none/feedback.h
+nobase_noinst_HEADERS += feedback/none/feedback_debug.h
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback.h feedback/EAGLE_kinetic/feedback_struct.h 
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_properties.h feedback/EAGLE_kinetic/feedback_iact.h 
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_debug.h
