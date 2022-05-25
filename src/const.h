@@ -108,6 +108,12 @@
 /* This option enables reflective boundary conditions for non-periodic
  * ShadowSWIFT runs */
 #define SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
+/* This option tries to recover from unphysical situations */
+#define SHADOWSWIFT_UNPHYSICAL_RESCUE
+/* Show a warning message if an unphysical value was reset */
+#define SHADOWSWIFT_UNPHYSICAL_WARNING
+/* This option halts the execution in the case of unphysical conditions */
+//#define SHADOWSWIFT_UNPHYSICAL_ERROR
 
 /* Source terms */
 #define SOURCETERMS_NONE

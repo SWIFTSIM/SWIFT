@@ -523,6 +523,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
     // MATTHIEU: Apply the entropy floor here.
 
+    /* Check conserved quantities */
+    shadowswift_check_physical_quantities(
+        "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+        p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (p->conserved.mass < 0.) {
       error(

@@ -5,6 +5,7 @@
 #ifndef SWIFTSIM_HYDRO_GRADIENTS_SHADOWSWIFT_H
 #define SWIFTSIM_HYDRO_GRADIENTS_SHADOWSWIFT_H
 
+#include "hydro_unphysical.h"
 #define HYDRO_GRADIENT_IMPLEMENTATION "Gradients following Springel (2010)"
 
 /* Forward declarations */
@@ -55,12 +56,12 @@ __attribute__((always_inline)) INLINE void hydro_gradients_collect(
 
   hydro_gradients_single_quantity(pi->rho, pj->rho, cLR, dx, r, surface_area,
                                   pi->gradients.rho);
-  hydro_gradients_single_quantity(pi->v[0], pj->v[0], cLR, dx, r,
-                                  surface_area, pi->gradients.v[0]);
-  hydro_gradients_single_quantity(pi->v[1], pj->v[1], cLR, dx, r,
-                                  surface_area, pi->gradients.v[1]);
-  hydro_gradients_single_quantity(pi->v[2], pj->v[2], cLR, dx, r,
-                                  surface_area, pi->gradients.v[2]);
+  hydro_gradients_single_quantity(pi->v[0], pj->v[0], cLR, dx, r, surface_area,
+                                  pi->gradients.v[0]);
+  hydro_gradients_single_quantity(pi->v[1], pj->v[1], cLR, dx, r, surface_area,
+                                  pi->gradients.v[1]);
+  hydro_gradients_single_quantity(pi->v[2], pj->v[2], cLR, dx, r, surface_area,
+                                  pi->gradients.v[2]);
   hydro_gradients_single_quantity(pi->P, pj->P, cLR, dx, r, surface_area,
                                   pi->gradients.P);
 }
@@ -195,6 +196,11 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   Wj[2] += dWj[2];
   Wj[3] += dWj[3];
   Wj[4] += dWj[4];
+
+  shadowswift_check_physical_quantities("density", "pressure", Wi[0], Wi[1],
+                                        Wi[2], Wi[3], Wi[4]);
+  shadowswift_check_physical_quantities("density", "pressure", Wj[0], Wj[1],
+                                        Wj[2], Wj[3], Wj[4]);
 }
 
 #endif  // SWIFTSIM_HYDRO_GRADIENTS_SHADOWSWIFT_H
