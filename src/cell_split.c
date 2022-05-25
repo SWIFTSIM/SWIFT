@@ -411,6 +411,8 @@ void cell_sort_and_split(struct space *s, struct cell *c,
                                 c->width[2]};
   const int nbits = 21;
 
+  const ticks tic = getticks();
+
   /* Get hilbert keys for parts and sort them. */
   if (count > 0) {
 
@@ -652,6 +654,14 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     free(gpart_sinds);
     free(gpart_keys);
   }
+
+  if (verbose)
+    message("Sorting hilbert indices took %.3f %s.",
+            clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+  message("first key= %lu last key= %lu", gparts[0].hilb_key,
+          gparts[gcount].hilb_key);
 
   /* With all that done we are finally in a position to split the cells! */
   cell_split_recursive(s, c);
