@@ -42,11 +42,6 @@
  */
 void cell_split(struct cell *c) {
 
-  /* Extract cell data */
-  const int count = c->hydro.count, gcount = c->grav.count,
-            scount = c->stars.count, bcount = c->black_holes.count,
-            sink_count = c->sinks.count;
-  const int with_self_gravity = s->with_self_gravity;
   struct part *parts = c->hydro.parts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
@@ -388,7 +383,7 @@ void cell_split_recursive(struct space *s, struct cell *c) {
  *        space's sink array, i.e. c->sinks.parts - s->sinks.parts.
 
  */
-void cell_sort_and_split((struct space *s, struct cell *c,
+void cell_sort_and_split(struct space *s, struct cell *c,
                          const ptrdiff_t parts_offset,
                          const ptrdiff_t sparts_offset,
                          const ptrdiff_t bparts_offset,
