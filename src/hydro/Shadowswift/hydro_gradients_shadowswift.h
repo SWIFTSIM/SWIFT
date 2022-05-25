@@ -176,10 +176,10 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
   float dWi[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
-  hydro_gradients_extrapolate_in_time(pi, Wi, dt, dWi);
+  //  hydro_gradients_extrapolate_in_time(pi, Wi, dt, dWi); TODO fix this
   hydro_gradients_extrapolate(pi, xij_i, dWi);
   float dWj[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
-  hydro_gradients_extrapolate_in_time(pj, Wj, dt, dWj);
+  //  hydro_gradients_extrapolate_in_time(pj, Wj, dt, dWj);
   hydro_gradients_extrapolate(pj, xij_j, dWj);
 
   /* Apply the slope limiter at this interface */
