@@ -109,6 +109,9 @@ struct part {
   /* Fluid velocity. */
   float v[3];
 
+  /* Particle velocity */
+  float v_full[3];
+
   /* Pressure. */
   float P;
 

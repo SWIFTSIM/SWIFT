@@ -48,6 +48,7 @@
 #include "hydro_setters.h"
 #include "hydro_slope_limiters.h"
 #include "hydro_space.h"
+#include "hydro_unphysical.h"
 #include "hydro_velocities.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
@@ -482,6 +483,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
 
   if (p->flux.dt > 0.0f) {
+    /* I.e. we are in kick2 (end of timestep). */
     float flux[5];
     hydro_part_get_fluxes(p, flux);
 

@@ -23,6 +23,7 @@
 #include "hydro_getters.h"
 #include "hydro_gradients.h"
 #include "hydro_setters.h"
+#include "hydro_part.h"
 
 /**
  * @brief Update the slope estimates of particles pi and pj.
@@ -152,16 +153,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
     vmax += gas_soundspeed_from_pressure(pj->rho, pj->P);
   }
 
-  double dvdr = (pi->v[0] - pj->v[0]) * dx[0] + (pi->v[1] - pj->v[1]) * dx[1] +
-                (pi->v[2] - pj->v[2]) * dx[2];
   /* Velocity on the axis linking the particles */
-  /* This velocity will be the same as dvdr for MFM, so hopefully this gets
-     optimised out. */
   double dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
                    (Wi[3] - Wj[3]) * dx[2];
   /* We only care about this velocity for particles moving towards each others
    */
-  dvdotdx = min3(dvdr, dvdotdx, 0.f);
+  dvdotdx = fmin(dvdotdx, 0.f);
 
   /* Get the signal velocity */
   vmax -= dvdotdx / r;
@@ -173,8 +170,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   /* particle velocities */
   double vi[3], vj[3];
   for (int k = 0; k < 3; k++) {
-    vi[k] = pi->v[k];
-    vj[k] = pj->v[k];
+    vi[k] = pi->v_full[k];
+    vj[k] = pj->v_full[k];
   }
 
   /* Compute interface velocity, see Springel 2010 (33) */

@@ -74,7 +74,7 @@ hydro_velocities_from_momentum(const float* restrict momentum,
 __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     struct part* restrict p, struct xpart* restrict xp) {
 
-/* We first set the particle velocity. */
+/* We first get the particle velocity. */
 float v[3];
 
 #ifdef SHADOWSWIFT_FIX_PARTICLES
@@ -130,6 +130,10 @@ float v[3];
   xp->v_full[0] = v[0];
   xp->v_full[1] = v[1];
   xp->v_full[2] = v[2];
+
+  p->v_full[0] = v[0];
+  p->v_full[1] = v[1];
+  p->v_full[2] = v[2];
 
   if (p->gpart) {
     p->gpart->v_full[0] = v[0];
