@@ -411,8 +411,6 @@ void cell_sort_and_split(struct space *s, struct cell *c,
                                 c->width[2]};
   const int nbits = 21;
 
-  const ticks tic = getticks();
-
   /* Get hilbert keys for parts and sort them. */
   if (count > 0) {
 
