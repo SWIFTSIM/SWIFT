@@ -270,7 +270,7 @@ void cell_split_recursive(struct space *s, struct cell *c) {
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize))
-      && (depth + 1 < 21)) {
+      && (c->depth + 1 < 21)) {
 
     /* No longer just a leaf. */
     c->split = 1;
