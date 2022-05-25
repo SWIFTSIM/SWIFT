@@ -210,7 +210,10 @@ void cell_split(struct cell *c) {
     if (c->progeny[0]->grav.parts[k].x[0] >= pivot[0] ||
         c->progeny[0]->grav.parts[k].x[1] >= pivot[1] ||
         c->progeny[0]->grav.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=0).");
+      error("Sorting failed (progeny=0: grav.parts[%d].x=[%e, %e, %e] > pivot=[%e %e %e]).",
+            k, c->progeny[0]->grav.parts[k].x[0],
+            c->progeny[0]->grav.parts[k].x[1],
+            c->progeny[0]->grav.parts[k].x[2], pivot[0], pivot[1], pivot[2]);
   for (int k = 0; k < c->progeny[1]->grav.count; k++)
     if (c->progeny[1]->grav.parts[k].x[0] >= pivot[0] ||
         c->progeny[1]->grav.parts[k].x[1] < pivot[1] ||
