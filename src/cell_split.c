@@ -646,8 +646,8 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Get the sorted index and swap particles if necessary. */
       int sind = gpart_sinds[k];
+      message("gcount=%d, k=%d, sind=%d", gcount, k, sind);
       if (k != sind) {
-        message("%d", sind);
         memswap_unaligned(&gparts[sind], &gpart,
                           sizeof(struct gpart));
       }
