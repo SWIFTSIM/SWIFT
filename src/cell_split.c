@@ -635,13 +635,16 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       gpart_sinds[k] = k;
     }
 
+    message("Before: First 3 sorting inds: [%d, %d, %d]",
+            gpart_sinds[0],gpart_sinds[1],gpart_sinds[2]);
+    
     /* Now we can sort */
     qsort_r(gpart_sinds, gcount, sizeof(int), sort_h_comp,
             gpart_keys);
 
-    message("Before: First 3 hilbert keys: [%lu, %lu, %lu]",
-            gparts[0].hilb_key, gparts[1].hilb_key, gparts[2].hilb_key);
-
+    message("After: First 3 sorting inds: [%d, %d, %d]",
+            gpart_sinds[0],gpart_sinds[1],gpart_sinds[2]);
+    
     /* Finally, loop over the particles swapping particles to the
        correct place */
     for (int k = 0; k < gcount; k++) {
@@ -665,9 +668,6 @@ void cell_sort_and_split(struct space *s, struct cell *c,
         bparts[-gparts[k].id_or_neg_offset - bparts_offset].gpart = &gparts[k];
       }
     }
-
-    message("After: First 3 hilbert keys: [%lu, %lu, %lu]",
-            gparts[0].hilb_key, gparts[1].hilb_key, gparts[2].hilb_key);
 
     /* Set the memory free */
     free(gpart_sinds);
