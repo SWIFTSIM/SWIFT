@@ -171,7 +171,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     /* Shift bits to the correct depth and mask to get the final 3
      * bits which are the bin at this depth
      * NOTE: The most significant bits represent the lowest depth*/
-    int cell_ind = (key >> ((maxdepth - depth - 3) * 3)) & 7;
+    int cell_ind = (key >> ((maxdepth - depth) * 3)) & 7;
     bucket_count[cell_ind]++;
     message("gcount %d, key %lu, dell_ind %d", gcount, key, cell_ind);
   }
@@ -240,7 +240,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
   const int with_self_gravity = s->with_self_gravity;
 
   /* Have we gone too deep? */
-  if (c->depth > maxdepth - 3)
+  if (c->depth > maxdepth)
     error("Exceeded maximum depth in cell tree! Increase max_top_level_cells");
 
   /* Split or let it be? */
@@ -248,7 +248,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
   if (((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)))
-      && (c->depth <= maxdepth - 3)){
+      && (c->depth <= maxdepth)){
 
     /* No longer just a leaf. */
     c->split = 1;
