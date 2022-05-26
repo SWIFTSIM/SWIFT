@@ -642,21 +642,13 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     /* Finally, loop over the particles swapping particles to the
        correct place */
     for (int k = 0; k < gcount; k++) {
-      struct gpart gpart = gparts[k];
 
       /* Get the sorted index and swap particles if necessary. */
       int sind = gpart_sinds[k];
-      if (k != sind) {
-        memswap_unaligned(&gparts[sind], &gpart,
+      while (k != sind) {
+        memswap_unaligned(&gparts[sind], &gparts[k],
                           sizeof(struct gpart));
-
-        /* Before we move on: is the right particle in position k? */
         sind = gpart_sinds[sind];
-        while (k != sind) {
-          memswap_unaligned(&gparts[sind], &gparts[k],
-                            sizeof(struct gpart));
-          sind = gparts[sind]
-        }
       }
 
       /* Make sure all hydro particles are pointing to the correct gpart. */
@@ -682,7 +674,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     if (gparts[k].hilb_key == 0)
       error("Particle has improper key, it may not have been set!");
     if (gparts[k - 1].hilb_key >= gparts[k].hilb_key)
-      error("Sorting failed: keys are not in order! "
+      error("Sorting failed, keys are not in order! "
             "(hilb_key[k-1]=%lu, hilb_key[k]=%lu)",
             gparts[k - 1].hilb_key, gparts[k].hilb_key);
   }
