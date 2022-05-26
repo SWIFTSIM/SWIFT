@@ -62,7 +62,7 @@ code. This corresponds to the following bibtex citation block:
 .. code-block:: bibtex
 
    @MISC{2018ascl.soft05020S,
-     author = {{Schaller}, M. et al.},
+     author = {{Schaller}, M. and others},
      title = "{SWIFT: SPH With Inter-dependent Fine-grained Tasking}",
      keywords = {Software },
      howpublished = {Astrophysics Source Code Library},
