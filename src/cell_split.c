@@ -646,7 +646,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     for (k = 0; k < gcount; k++) {
 
       /* Get the sorted index and swap particles if necessary. */
-      if (k != gpart_sinds) {
+      if (k != gpart_sinds[k]) {
 
         /* Set up tempary variables */
         temp_gpart = gparts[k];
@@ -671,7 +671,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
         /* Return the temporary particle and set index. */
         gparts[j] = temp_gpart;
-        gpart_sinds[j] = j 
+        gpart_sinds[j] = j;
       }
 
       /* Make sure all hydro particles are pointing to the correct gpart. */
