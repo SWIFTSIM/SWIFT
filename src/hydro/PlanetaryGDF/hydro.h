@@ -944,10 +944,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
-  float s = p->h * p->drho_dh / p->rho;
+  float s = p->h * fabs(p->drho_dh) / p->rho;
   p->P_tilde_numerator += p->P * expf(-1000.f * s * s);
   p->P_tilde_denominator += sqrtf(kernel_root) * expf(-1000.f * s * s);
-  p->S_numerator += kernel_root * logf(p->h * fabs(p->drho_dh) / p->rho + FLT_MIN);
+  p->S_numerator += kernel_root * logf(s + FLT_MIN);
   p->S_denominator += kernel_root;
     
   float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;

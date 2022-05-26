@@ -359,15 +359,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float sji = pj->h * pj->drho_dh / pi->rho;
-  float sij = pi->h * pi->drho_dh / pj->rho;  
-  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sji * sji);
-  pj->P_tilde_numerator += sqrtf(wj) * pi->P * expf(-1000.f * sij * sij);   
-  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sji * sji);
-  pj->P_tilde_denominator += sqrtf(wj) * expf(-1000.f * sij * sij);
+  float sj = pj->h * fabs(pj->drho_dh) / pj->rho;
+  float si = pi->h * fabs(pi->drho_dh) / pi->rho;  
+  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sj * sj);
+  pj->P_tilde_numerator += sqrtf(wj) * pi->P * expf(-1000.f * si * si);   
+  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sj * sj);
+  pj->P_tilde_denominator += sqrtf(wj) * expf(-1000.f * si * si);
     
-  pi->S_numerator += wi * logf(pj->h * fabs(pj->drho_dh) / pi->rho + FLT_MIN);
-  pj->S_numerator += wj * logf(pi->h * fabs(pi->drho_dh) / pj->rho + FLT_MIN);   
+  pi->S_numerator += wi * logf(sj + FLT_MIN);
+  pj->S_numerator += wj * logf(si + FLT_MIN);   
   pi->S_denominator += wi;
   pj->S_denominator += wj;
     
@@ -470,11 +470,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float sji = pj->h * pj->drho_dh / pi->rho;
-  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sji * sji);
-  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sji * sji);
+  float sj = pj->h * fabs(pj->drho_dh) / pj->rho;
+  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sj * sj);
+  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sj * sj);
  
-  pi->S_numerator += wi * logf(pj->h * fabs(pj->drho_dh) / pi->rho + FLT_MIN);
+  pi->S_numerator += wi * logf(sj + FLT_MIN);
   pi->S_denominator += wi;
     
   pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
