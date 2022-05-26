@@ -639,6 +639,9 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     qsort_r(gpart_sinds, gcount, sizeof(int), sort_h_comp,
             gpart_keys);
 
+    message("Before: First 3 hilbert keys: [%lu, %lu, %lu]",
+            gparts[0].hilb_key, gparts[1].hilb_key, gparts[2].hilb_key,);
+
     /* Finally, loop over the particles swapping particles to the
        correct place */
     for (int k = 0; k < gcount; k++) {
@@ -649,8 +652,9 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       if (k != sind) {
         memswap_unaligned(&gparts[sind], &gpart,
                           sizeof(struct gpart));
-        gparts[k] = gpart;
       }
+
+      /* Make sure all hydro particles are pointing to the correct gpart. */
       if (gparts[k].type == swift_type_gas) {
         parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
       } else if (gparts[k].type == swift_type_stars) {
@@ -662,13 +666,12 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       }
     }
 
+    message("After: First 3 hilbert keys: [%lu, %lu, %lu]",
+            gparts[0].hilb_key, gparts[1].hilb_key, gparts[2].hilb_key,);
+
     /* Set the memory free */
-    message("Before free gcount=%d gparts[0].hilb_key=%lu", gcount,
-            gparts[0].hilb_key);
     free(gpart_sinds);
     free(gpart_keys);
-    message("After free gcount=%d gparts[0].hilb_key=%lu", gcount,
-            gparts[0].hilb_key);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
