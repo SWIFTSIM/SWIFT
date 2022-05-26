@@ -35,7 +35,6 @@ params = {
 }
 
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 # Read the simulation data
 sim = h5py.File("stellar_evolution_0000.hdf5", "r")

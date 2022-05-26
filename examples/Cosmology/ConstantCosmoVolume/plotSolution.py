@@ -57,7 +57,6 @@ params = {
     "lines.linewidth": 3.0,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 # Read the simulation data
 sim = h5py.File("box_0000.hdf5", "r")

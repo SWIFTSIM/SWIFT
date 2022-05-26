@@ -54,7 +54,6 @@ params = {
     "lines.linewidth": 3.0,
 }
 pl.rcParams.update(params)
-pl.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 # Read the snapshot index from the command line argument
 snap = int(sys.argv[1])
