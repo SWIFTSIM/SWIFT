@@ -634,16 +634,10 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       /* Set index */
       gpart_sinds[k] = k;
     }
-
-    message("Before: First 3 sorting inds: [%d, %d, %d]",
-            gpart_sinds[0],gpart_sinds[1],gpart_sinds[2]);
     
     /* Now we can sort */
     qsort_r(gpart_sinds, gcount, sizeof(int), sort_h_comp,
             gpart_keys);
-
-    message("After: First 3 sorting inds: [%d, %d, %d]",
-            gpart_sinds[0],gpart_sinds[1],gpart_sinds[2]);
     
     /* Finally, loop over the particles swapping particles to the
        correct place */
@@ -655,6 +649,8 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       if (k != sind) {
         memswap_unaligned(&gparts[sind], &gpart,
                           sizeof(struct gpart));
+        gpart_sinds[k] = k;
+        gpart_sinds[sind] = sind;
       }
 
       /* Make sure all hydro particles are pointing to the correct gpart. */
