@@ -640,7 +640,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
             gpart_keys);
 
     message("Before: First 3 hilbert keys: [%lu, %lu, %lu]",
-            gparts[0].hilb_key, gparts[1].hilb_key, gparts[2].hilb_key,);
+            gparts[0].hilb_key, gparts[1].hilb_key, gparts[2].hilb_key);
 
     /* Finally, loop over the particles swapping particles to the
        correct place */
@@ -667,7 +667,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     }
 
     message("After: First 3 hilbert keys: [%lu, %lu, %lu]",
-            gparts[0].hilb_key, gparts[1].hilb_key, gparts[2].hilb_key,);
+            gparts[0].hilb_key, gparts[1].hilb_key, gparts[2].hilb_key);
 
     /* Set the memory free */
     free(gpart_sinds);
