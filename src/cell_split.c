@@ -386,7 +386,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
     }
 
     /* Split the cell's particle data into the progeny. */
-    cell_split(c);
+    cell_split(c, maxdepth);
 
     for (int k = 0; k < 8; k++) {
 
@@ -494,7 +494,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
      * correct place */
     int j, k, sind;
     struct part temp_part;
-    struct xpart xtemp_part;
+    struct xpart temp_xpart;
     for (k = 0; k < count; k++) {
 
       /* Get the sorted index and swap particles if necessary. */
@@ -527,7 +527,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
         /* Return the temporary particle and set index. */
         parts[j] = temp_part;
         xparts[j] = temp_xpart;
-        gpart_sinds[j] = j;
+        part_sinds[j] = j;
       }
       if (parts[k].gpart)
         parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
