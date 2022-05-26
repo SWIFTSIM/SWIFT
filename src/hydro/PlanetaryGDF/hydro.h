@@ -717,6 +717,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
+  if (p->h > 0.999f * hydro_props->h_max) {
+    p->is_h_max = 1;
+  }else{
+    p->is_h_max = 0;  
+  }
+    
 #ifdef PLANETARY_IMBALANCE
   /* Initialize kernel averages to 0 */
   p->sum_wij_exp_T = 0.f;
@@ -735,7 +741,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->T = temperature;
 
   /* Turn Imbalance to 0 if h == h_max */
-  if (p->h > 0.999f * hydro_props->h_max) {
+  if (p->is_h_max) {
     p->I = 0.f;
   }
 
@@ -766,6 +772,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 
   p->P = pressure;
   p->T = temperature;
+    
 #endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
@@ -956,6 +963,11 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
   float S_tilde = (p->rho / rho_tilde) * expf(p->S_numerator / p->S_denominator);
     
+  /* Turn S_tilde to 0 if h == h_max */
+  if (p->is_h_max) {
+    S_tilde = 0.f;
+  }
+    
   p->I = S_tilde; //This is just to make output same as Imbalance for comparison
     
   if (p->P_tilde_denominator > 0.f && p->P_tilde_numerator > 0.f && S_tilde > 0.f) {
@@ -1082,6 +1094,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 #endif
   p->force.soundspeed = soundspeed;
   p->force.balsara = balsara;
+    
+  // Set this again in case h has been updated (not sure if we need to do this, but doing it just in case?)  
+  if (p->h > 0.999f * hydro_props->h_max) {
+    p->is_h_max = 1;
+  }else{
+    p->is_h_max = 0;  
+  }
 
 #ifdef PLANETARY_MATRIX_INVERSION
 
@@ -1105,11 +1124,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
    * the volume stops working */
-  if (p->h < 0.999f * hydro_props->h_max) {
-
-    /* This flag tells us whether to do the matrix version method or not when
-     * we're in the force loop and don't have access to p->h */
-    p->is_h_max = 1;
+  if (!p->is_h_max) {
 
     float determinant = 0.f;
     /* We normalise the Cinv matrix to the mean of its 9 elements to stop us
@@ -1158,9 +1173,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     }
 
   } else {
-
-    /* If we hit h_max then we don't do anything fancy */
-    p->is_h_max = 0;
 
     for (i = 0; i < 3; i++) {
       for (j = 0; j < 3; j++) p->C[i][j] = 0.f;

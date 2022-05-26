@@ -138,6 +138,9 @@ struct part {
     
   /* Temperature */
   float T;
+    
+  /* flag 1 if h=h_max 0 if not */
+  int is_h_max;
 
   /* Store density/force specific stuff. */
   union {
@@ -352,9 +355,6 @@ struct part {
     
   /*! Number of particles in grad loop*/
   float N_grad;
-    
-  /*! Inverse matrix method flag */
-  int is_h_max;
 #endif
 
 } SWIFT_STRUCT_ALIGN;

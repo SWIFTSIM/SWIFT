@@ -611,7 +611,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
    * the volume stops working */
-  if (pi->is_h_max && pj->is_h_max) {
+  if (!pi->is_h_max && !pj->is_h_max) {
 
     /* For loops */
     int j, k;
@@ -881,7 +881,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
    * the volume stops working */
-  if (pi->is_h_max == 1 && pj->is_h_max == 1) {
+  if (!pi->is_h_max == 1 && !pj->is_h_max == 1) {
 
     /* For loops */
     int j, k;
