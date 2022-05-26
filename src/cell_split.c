@@ -169,8 +169,11 @@ void cell_split(struct cell *c) {
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
-    int cell_ind = (key << (depth * 3)) & 7;
-    bucket_count[cell_ind]++;
+    int cell_ind = key & 7;
+    for (int order = 1; order < depth; order ++) {
+      cell_ind += (key << (depth * 3)) & 7;
+    }
+    bucket_count[cell_ind % 8]++;
   }
 
   /* Set the buffer offsets. */
@@ -210,10 +213,11 @@ void cell_split(struct cell *c) {
     if (c->progeny[0]->grav.parts[k].x[0] >= pivot[0] ||
         c->progeny[0]->grav.parts[k].x[1] >= pivot[1] ||
         c->progeny[0]->grav.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=0: depth=%d,  grav.parts[%d].x=[%e, %e, %e] > pivot=[%e %e %e]).",
-            c->depth, k, c->progeny[0]->grav.parts[k].x[0],
-            c->progeny[0]->grav.parts[k].x[1],
-            c->progeny[0]->grav.parts[k].x[2], pivot[0], pivot[1], pivot[2]);
+      error("Sorting failed (progeny=0: depth=%d, (grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+            c->depth, k,
+            c->progeny[0]->grav.parts[k].x[0] - pivot[0],
+            c->progeny[0]->grav.parts[k].x[1] - pivot[1],
+            c->progeny[0]->grav.parts[k].x[2] - pivot[2]);
   for (int k = 0; k < c->progeny[1]->grav.count; k++)
     if (c->progeny[1]->grav.parts[k].x[0] >= pivot[0] ||
         c->progeny[1]->grav.parts[k].x[1] < pivot[1] ||
