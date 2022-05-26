@@ -647,7 +647,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       /* Get the sorted index and swap particles if necessary. */
       int sind = gpart_sinds[k];
       if (k != sind) {
-        memswap_unaligned(&gparts[gpart_sinds[k]], &gpart,
+        memswap_unaligned(&gparts[sind], &gpart,
                           sizeof(struct gpart));
       }
       gparts[k] = gpart;
@@ -663,8 +663,8 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     }
 
     /* Set the memory free */
-    free(gpart_sinds);
-    free(gpart_keys);
+    /* free(gpart_sinds); */
+    /* free(gpart_keys); */
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
