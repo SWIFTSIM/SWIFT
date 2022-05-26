@@ -169,8 +169,6 @@ void cell_split(struct cell *c) {
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
-    int cell_ind = 0;
-    for 
     int cell_ind = (key << (depth * 3)) & 7;
     bucket_count[cell_ind]++;
   }
