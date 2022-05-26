@@ -39,8 +39,9 @@
  *        Then split cells into octants recursively.
  *
  * @param c The #cell array to be sorted.
+ * @param maxdepth The maxdepth possible, dictated by nbits. 
  */
-void cell_split(struct cell *c) {
+void cell_split(struct cell *c, const int maxdepth) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
     scount = c->stars.count, bcount = c->black_holes.count,
@@ -264,20 +265,25 @@ void cell_split(struct cell *c) {
  *
  * @param s The #space in which the cell lives.
  * @param c The #cell array to be sorted.
+ * @param maxdepth The maxdepth possible, dictated by nbits. 
  */
-void cell_split_recursive(struct space *s, struct cell *c) {
+void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
 
   /* Extract cell data */
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count;
   const int with_self_gravity = s->with_self_gravity;
 
+  /* Have we gone too deep? */
+  if (c->depth > maxdepth)
+    error("Exceeded maximum depth in cell tree! Increase max_top_level_cells");
+
   /* Split or let it be? */
   /* Note this is currently limited to a depth of 21! */
   if (((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
        (count > space_splitsize || scount > space_splitsize)))
-      && (c->depth + 1 < 21)){
+      && (c->depth <= maxdepth)){
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -345,7 +351,7 @@ void cell_split_recursive(struct space *s, struct cell *c) {
 #endif
     }
 
-    /* Split the cell's particle data. */
+    /* Split the cell's particle data into the progeny. */
     cell_split(c);
 
     for (int k = 0; k < 8; k++) {
@@ -364,7 +370,7 @@ void cell_split_recursive(struct space *s, struct cell *c) {
       } else {  /* Split again */
 
         /* Recurse */
-        cell_split_recursive(s, cp);
+        cell_split_recursive(s, cp, maxdepth);
 
       }
     }
@@ -451,12 +457,44 @@ void cell_sort_and_split(struct space *s, struct cell *c,
             part_keys);
 
     /* Finally, loop over the particles swapping particles to the
-       correct place */
-    for (int k = 0; k < count; k++) {
-      struct part part = parts[k];
-      struct xpart xpart = xparts[k];
-      memswap(&parts[part_sinds[k]], &part, sizeof(struct part));
-      memswap(&xparts[part_sinds[k]], &xpart, sizeof(struct xpart));
+     * correct place */
+    int j, k, sind;
+    struct part temp_part;
+    struct xpart xtemp_part;
+    for (k = 0; k < count; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != part_sinds[k]) {
+
+        /* Set up tempary variables */
+        temp_part = parts[k];
+        temp_xpart = xparts[k];
+        j = k;
+
+        /* Loop until particles are in the right place. */
+        while (k != (sind = part_sinds[j])) {
+
+          /* Swap particles in memory */
+          memswap_unaligned(&parts[j], &parts[sind],
+                            sizeof(struct part));
+          memswap_unaligned(&xparts[j], &xparts[sind],
+                            sizeof(struct xpart));
+
+          /* Corrected the now sorted sind */
+          part_sinds[j] = j;
+          
+          /* Move on to the next */
+          j = sind;
+
+          /* Swap sorting indices. */
+          sind = part_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        parts[j] = temp_part;
+        xparts[j] = temp_xpart;
+        gpart_sinds[j] = j;
+      }
       if (parts[k].gpart)
         parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
     }
@@ -499,10 +537,39 @@ void cell_sort_and_split(struct space *s, struct cell *c,
             spart_keys);
 
     /* Finally, loop over the particles swapping particles to the
-       correct place */
-    for (int k = 0; k < scount; k++) {
-      struct spart spart = sparts[k];
-      memswap(&sparts[spart_sinds[k]], &spart, sizeof(struct spart));
+     * correct place */
+    int j, k, sind;
+    struct spart temp_spart;
+    for (k = 0; k < scount; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != spart_sinds[k]) {
+
+        /* Set up tempary variables */
+        temp_spart = sparts[k];
+        j = k;
+
+        /* Loop until particles are in the right place. */
+        while (k != (sind = spart_sinds[j])) {
+
+          /* Swap particles in memory */
+          memswap_unaligned(&sparts[j], &sparts[sind],
+                            sizeof(struct spart));
+
+          /* Corrected the now sorted sind */
+          spart_sinds[j] = j;
+
+          /* Move on to the next */
+          j = sind;
+
+          /* Swap sorting indices. */
+          sind = spart_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        sparts[j] = temp_spart;
+        spart_sinds[j] = j;
+      }
       if (sparts[k].gpart)
           sparts[k].gpart->id_or_neg_offset = -(k + sparts_offset);
 
@@ -545,11 +612,40 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     qsort_r(bpart_sinds, bcount, sizeof(int), sort_h_comp,
             bpart_keys);
 
-    /* Finally, loop over the particles swapping particles to the
-       correct place */
-    for (int k = 0; k < bcount; k++) {
-      struct bpart bpart = bparts[k];
-      memswap(&bparts[bpart_sinds[k]], &bpart, sizeof(struct bpart));
+   /* Finally, loop over the particles swapping particles to the
+     * correct place */
+    int j, k, sind;
+    struct bpart temp_bpart;
+    for (k = 0; k < bcount; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != bpart_sinds[k]) {
+
+        /* Set up tempary variables */
+        temp_bpart = bparts[k];
+        j = k;
+
+        /* Loop until particles are in the right place. */
+        while (k != (sind = bpart_sinds[j])) {
+
+          /* Swap particles in memory */
+          memswap_unaligned(&bparts[j], &bparts[sind],
+                            sizeof(struct bpart));
+
+          /* Corrected the now sorted sind */
+          bpart_sinds[j] = j;
+          
+          /* Move on to the next */
+          j = sind;
+
+          /* Swap sorting indices. */
+          sind = bpart_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        bparts[j] = temp_bpart;
+        bpart_sinds[j] = j;
+      }
       if (bparts[k].gpart)
           bparts[k].gpart->id_or_neg_offset = -(k + bparts_offset);
 
@@ -593,13 +689,41 @@ void cell_sort_and_split(struct space *s, struct cell *c,
             sink_keys);
 
     /* Finally, loop over the particles swapping particles to the
-       correct place */
-    for (int k = 0; k < sink_count; k++) {
-      struct sink sink = sinks[k];
-      memswap(&sinks[sink_sinds[k]], &sink, sizeof(struct part));
+     * correct place */
+    int j, k, sind;
+    struct sink temp_sink;
+    for (k = 0; k < sink_count; k++) {
+
+      /* Get the sorted index and swap particles if necessary. */
+      if (k != sink_sinds[k]) {
+
+        /* Set up tempary variables */
+        temp_sink = sinks[k];
+        j = k;
+
+        /* Loop until particles are in the right place. */
+        while (k != (sind = sink_sinds[j])) {
+
+          /* Swap particles in memory */
+          memswap_unaligned(&sinks[j], &sinks[sind],
+                            sizeof(struct sink));
+
+          /* Corrected the now sorted sind */
+          sink_sinds[j] = j;
+
+          /* Move on to the next */
+          j = sind;
+
+          /* Swap sorting indices. */
+          sind = sink_sinds[sind];
+        }
+
+        /* Return the temporary particle and set index. */
+        sinks[j] = temp_sink;
+        sink_sinds[j] = j;
+      }
       if (sinks[k].gpart)
         sinks[k].gpart->id_or_neg_offset = -(k + sinks_offset);
-
     }
 
     /* Set the memory free */
@@ -640,7 +764,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
             gpart_keys);
     
     /* Finally, loop over the particles swapping particles to the
-       correct place */
+     * correct place */
     int j, k, sind;
     struct gpart temp_gpart;
     for (k = 0; k < gcount; k++) {
@@ -704,7 +828,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 #endif
 
   /* With all that done we are finally in a position to split the cells! */
-  cell_split_recursive(s, c);
+  cell_split_recursive(s, c, nbits);
 
 }
 
