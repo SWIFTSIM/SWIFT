@@ -643,7 +643,14 @@ void cell_sort_and_split(struct space *s, struct cell *c,
        correct place */
     for (int k = 0; k < gcount; k++) {
       struct gpart gpart = gparts[k];
-      memswap_unaligned(&gparts[gpart_sinds[k]], &gpart, sizeof(struct gpart));
+
+      /* Get the sorted index and swap particles if necessary. */
+      int sind = gpart_sinds[k];
+      if (k != sind) {
+        memswap_unaligned(&gparts[gpart_sinds[k]], &gpart,
+                          sizeof(struct gpart));
+      }
+      gparts[k] = gpart;
       if (gparts[k].type == swift_type_gas) {
         parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
       } else if (gparts[k].type == swift_type_stars) {
