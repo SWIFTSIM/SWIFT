@@ -2245,6 +2245,15 @@ __attribute__((always_inline)) INLINE static void eos_init(
     prepare_table_SESAME(&e->SESAME_water);
     convert_units_SESAME(&e->SESAME_water, us);
   }
+  if (parser_get_opt_param_int(params, "EoS:planetary_use_AQUA", 0)) {
+    char AQUA_table_file[PARSER_MAX_LINE_SIZE];
+    set_AQUA(&e->AQUA, eos_planetary_id_AQUA);
+    parser_get_param_string(params, "EoS:planetary_AQUA_table_file",
+                            AQUA_table_file);
+    load_table_SESAME(&e->AQUA, AQUA_table_file);
+    prepare_table_SESAME(&e->AQUA);
+    convert_units_SESAME(&e->AQUA, us);
+  }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_HHe", 0)) {
     char CMS19_HHe_table_file[PARSER_MAX_LINE_SIZE];
     set_CMS19_HHe(&e->CMS19_HHe, eos_planetary_id_CMS19_HHe);
