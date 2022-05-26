@@ -50,7 +50,6 @@ params = {
     "lines.linewidth": 2.0,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 snap = int(sys.argv[1])
 

@@ -53,7 +53,6 @@ params = {
     "lines.linewidth": 3.0,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 # Number of snapshots and elements

@@ -67,7 +67,6 @@ params = {
 }
 
 plt.rcParams.update(params)
-plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 snap = int(sys.argv[1])

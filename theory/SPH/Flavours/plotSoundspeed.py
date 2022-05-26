@@ -36,7 +36,6 @@ if __name__ == "__main__":
         "lines.linewidth": 3.0,
     }
     matplotlib.rcParams.update(params)
-    matplotlib.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
     from matplotlib.colors import LogNorm
 

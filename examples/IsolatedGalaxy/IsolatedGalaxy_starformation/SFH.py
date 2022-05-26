@@ -59,7 +59,6 @@ params = {
     "lines.linewidth": 2.0,
 }
 plt.rcParams.update(params)
-plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 def getSFH(filename, points):

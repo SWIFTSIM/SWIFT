@@ -37,7 +37,6 @@ params = {
     "lines.linewidth": 3.0,
 }
 plt.rcParams.update(params)
-plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 version = []
 branch = []
