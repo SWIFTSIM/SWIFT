@@ -135,6 +135,8 @@ void cell_split(struct cell *c, const int maxdepth) {
     c->progeny[k]->black_holes.parts = &c->black_holes.parts[bucket_offset[k]];
   }
 
+  
+
   /* Now do the same song and dance for the sinks. */
   for (int k = 0; k < 8; k++) bucket_count[k] = 0;
 
@@ -171,8 +173,9 @@ void cell_split(struct cell *c, const int maxdepth) {
     /* Shift bits to the correct depth and mask to get the final 3
      * bits which are the bin at this depth
      * NOTE: The most significant bits represent the lowest depth*/
-    int cell_ind = (key >> ((maxdepth - depth) * 3)) & 7;
+    int cell_ind = (key >> ((maxdepth - depth - 1) * 3)) & 7;
     bucket_count[cell_ind]++;
+    message("bin %d, gcount %d, key %d, cell_ind %d", bucket_count, gcount, key, cell_ind);
   }
 
   /* Set the buffer offsets. */
@@ -708,11 +711,11 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
-      bits[0] = (1ul << (nbits - 1))
+      bits[0] = (1ul << (nbits))
         * (gparts[k].x[0] - cell_loc[0]) / cell_width[0];
-      bits[1] = (1ul << (nbits - 1))
+      bits[1] = (1ul << (nbits))
         * (gparts[k].x[1] - cell_loc[1]) / cell_width[1];
-      bits[2] = (1ul << (nbits - 1))
+      bits[2] = (1ul << (nbits))
         * (gparts[k].x[2] - cell_loc[2]) / cell_width[2];
 
       /* Get hilbert key */
