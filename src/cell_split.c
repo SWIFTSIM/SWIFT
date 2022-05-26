@@ -148,6 +148,10 @@ void cell_split(struct cell *c, const int maxdepth) {
     bucket_count[cell_ind]++;
   }
 
+  message("[%d, %d, %d, %d, %d, %d, %d, %d]", bucket_count[0], bucket_count[1],
+          bucket_count[2], bucket_count[3], bucket_count[4], bucket_count[5],
+          bucket_count[6], bucket_count[7]);
+
   /* Set the buffer offsets. */
   bucket_offset[0] = 0;
   for (int k = 1; k <= 8; k++) {
