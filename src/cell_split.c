@@ -665,7 +665,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
   for (int k = 1; k < gcount; k++) {
     if (gparts[k].hilb_key == 0)
       error("Particle has improper key, it may not have been set!");
-    if (gparts[k - 1] > gparts[k])
+    if (gparts[k - 1].hilb_key > gparts[k].hilb_key)
       error("Sorting failed: keys are not in order!");
   }
 #endif
