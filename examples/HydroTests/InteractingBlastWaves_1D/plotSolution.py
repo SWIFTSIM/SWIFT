@@ -46,7 +46,6 @@ params = {
     "figure.subplot.hspace": 0.12,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 pl.rcParams.update(params)
 pl.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
