@@ -670,7 +670,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
         }
 
         /* Return the temporary particle and set index. */
-        gparts[j] - temp_gpart;
+        gparts[j] = temp_gpart;
         gpart_sinds[j] = j 
       }
 
