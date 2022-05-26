@@ -660,6 +660,16 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     free(gpart_keys);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Lets make sure everything is sorted correctly with sensible keys */
+  for (int k = 1; k < gcount; k++) {
+    if (gparts[k].hilb_key == 0)
+      error("Particle has improper key, it may not have been set!");
+    if (gparts[k - 1] > gparts[k])
+      error("Sorting failed: keys are not in order!");
+  }
+#endif
+
   /* With all that done we are finally in a position to split the cells! */
   cell_split_recursive(s, c);
 
