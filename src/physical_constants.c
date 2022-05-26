@@ -97,6 +97,18 @@ void phys_const_init(const struct unit_system *us, struct swift_params *params,
       const_electron_charge_cgs /
       units_general_cgs_conversion_factor(us, dimension_charge);
 
+  const float dimension_permea[5] = {1, 1, -2, -2, 0}; /* [g cm A^-2 s^-2] */
+  internal_const->const_vacuum_permeability =
+      const_vacuum_permeability_cgs /
+      units_general_cgs_conversion_factor(us, dimension_permea);
+
+  /* Overwrite mu0 if present in the file */
+  if (params != NULL) {
+    internal_const->const_vacuum_permeability =
+        parser_get_opt_param_double(params, "PhysicalConstants:mu_0",
+                                    internal_const->const_vacuum_permeability);
+  }
+
   const float dimension_mass[5] = {1, 0, 0, 0, 0}; /* [g] */
   internal_const->const_electron_mass =
       const_electron_mass_cgs /

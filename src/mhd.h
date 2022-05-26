@@ -30,19 +30,7 @@
 #include "./mhd/None/mhd.h"
 #include "./mhd/None/mhd_iact.h"
 #define MHD_IMPLEMENTATION "No MHD scheme"
-#else
-// This should move to the parameterfile
-#ifdef MHD_MU0_1
-#define MU0 1.0
-#define MU0_1 1.0
-#elif defined(MHD_MU0_4PI)
-#define MU0 4.0f * M_PI
-#define MU0_1 1.0 / (4.0 * M_PI)
-#else
-#error "COMPILED WITH MHD but MU0 not defined"
-#endif
-// Flavor of MHD
-#if defined(DIRECT_INDUCTION_MHD)
+#elif defined(DIRECT_INDUCTION_MHD)
 #include "./mhd/DirectInduction/mhd.h"
 #include "./mhd/DirectInduction/mhd_iact.h"
 #define MHD_IMPLEMENTATION "MHD scheme using direct induction"
@@ -58,7 +46,6 @@
 #define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of MHD variant"
-#endif
 #endif
 
 #endif /* SWIFT_MHD_H */
