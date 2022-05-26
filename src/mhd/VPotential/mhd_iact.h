@@ -282,8 +282,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a / a;
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a / a;
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a * pow(a,3.*(hydro_gamma-1.));
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a * pow(a,3.*(hydro_gamma-1.));
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -333,8 +333,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
       -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
   const float SourceAj =
       -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
-  float SAi = SourceAi + (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  float SAj = SourceAj + (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAj = SourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
@@ -406,8 +406,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a / a;
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a / a;
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a * pow(a,3.*(hydro_gamma-1.));
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a * pow(a,3.*(hydro_gamma-1.));
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -449,7 +449,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
   const float SourceAi =
       -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
-  float SAi = SourceAi + (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   /// DISSSIPATION
