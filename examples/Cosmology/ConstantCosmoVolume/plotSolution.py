@@ -55,10 +55,8 @@ params = {
     "figure.subplot.hspace": 0.13,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 # Read the simulation data
 sim = h5py.File("box_0000.hdf5", "r")

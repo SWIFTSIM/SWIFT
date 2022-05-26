@@ -21,8 +21,8 @@
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
-  printf(
-      "x=[%.16e,%.16e,%.16e], "
+  warning(
+      "[PID%lld] x=[%.16e,%.16e,%.16e], "
       "v=[%.3e,%.3e,%.3e], "
       "a=[%.3e,%.3e,%.3e], "
       "h=%.3e, "
@@ -52,19 +52,20 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "vmax=%.3e},"
       "density={"
       "wcount_dh=%.3e, "
-      "wcount=%.3e}\n",
-      p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a_hydro[0],
-      p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin, p->limiter_data.wakeup,
-      p->fluid_v[0], p->fluid_v[1], p->fluid_v[2], p->rho, p->P,
-      p->gradients.rho[0], p->gradients.rho[1], p->gradients.rho[2],
-      p->gradients.v[0][0], p->gradients.v[0][1], p->gradients.v[0][2],
-      p->gradients.v[1][0], p->gradients.v[1][1], p->gradients.v[1][2],
-      p->gradients.v[2][0], p->gradients.v[2][1], p->gradients.v[2][2],
-      p->gradients.P[0], p->gradients.P[1], p->gradients.P[2],
-      p->limiter.rho[0], p->limiter.rho[1], p->limiter.v[0][0],
-      p->limiter.v[0][1], p->limiter.v[1][0], p->limiter.v[1][1],
-      p->limiter.v[2][0], p->limiter.v[2][1], p->limiter.P[0], p->limiter.P[1],
-      p->limiter.maxr, p->conserved.momentum[0], p->conserved.momentum[1],
+      "wcount=%.3e}",
+      p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
+      p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin,
+      p->limiter_data.wakeup, p->fluid_v[0], p->fluid_v[1], p->fluid_v[2],
+      p->rho, p->P, p->gradients.rho[0], p->gradients.rho[1],
+      p->gradients.rho[2], p->gradients.v[0][0], p->gradients.v[0][1],
+      p->gradients.v[0][2], p->gradients.v[1][0], p->gradients.v[1][1],
+      p->gradients.v[1][2], p->gradients.v[2][0], p->gradients.v[2][1],
+      p->gradients.v[2][2], p->gradients.P[0], p->gradients.P[1],
+      p->gradients.P[2], p->limiter.rho[0], p->limiter.rho[1],
+      p->limiter.v[0][0], p->limiter.v[0][1], p->limiter.v[1][0],
+      p->limiter.v[1][1], p->limiter.v[2][0], p->limiter.v[2][1],
+      p->limiter.P[0], p->limiter.P[1], p->limiter.maxr,
+      p->conserved.momentum[0], p->conserved.momentum[1],
       p->conserved.momentum[2], p->conserved.mass, p->conserved.energy,
       p->geometry.volume, p->geometry.matrix_E[0][0],
       p->geometry.matrix_E[0][1], p->geometry.matrix_E[0][2],

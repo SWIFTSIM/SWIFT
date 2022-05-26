@@ -1117,14 +1117,14 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
     if (with_star_formation_sink &&
         (c->hydro.count > 0 || c->sinks.count > 0)) {
-      c->hydro.star_formation_sink = scheduler_addtask(
+      c->sinks.star_formation_sink = scheduler_addtask(
           s, task_type_star_formation_sink, task_subtype_none, 0, 0, c, NULL);
     }
 
     if (with_sinks) {
-      /* hydro.sink_formation plays the role of a ghost => always created when
+      /* sinks.sink_formation plays the role of a ghost => always created when
        * playing with sinks*/
-      c->hydro.sink_formation = scheduler_addtask(
+      c->sinks.sink_formation = scheduler_addtask(
           s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
     }
   }
@@ -1186,8 +1186,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       if (with_star_formation_sink &&
           (c->hydro.count > 0 || c->sinks.count > 0)) {
         scheduler_addunlock(s, kick2_or_csds,
-                            c->top->hydro.star_formation_sink);
-        scheduler_addunlock(s, c->top->hydro.star_formation_sink, c->timestep);
+                            c->top->sinks.star_formation_sink);
+        scheduler_addunlock(s, c->top->sinks.star_formation_sink, c->timestep);
       }
 
       /* Time-step limiter */
@@ -1450,7 +1450,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.stars_resort = scheduler_addtask(
           s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
 
-      scheduler_addunlock(s, c->top->hydro.star_formation_sink,
+      scheduler_addunlock(s, c->top->sinks.star_formation_sink,
                           c->hydro.stars_resort);
     }
   }
@@ -1538,7 +1538,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         if (with_stars &&
             (c->top->hydro.count > 0 || c->top->sinks.count > 0)) {
           scheduler_addunlock(s, c->hydro.super->sinks.sink_out,
-                              c->top->hydro.star_formation_sink);
+                              c->top->sinks.star_formation_sink);
         }
       }
 
@@ -1633,7 +1633,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         /* Star formation from sinks */
         if (with_star_formation_sink &&
             (c->top->hydro.count > 0 || c->top->sinks.count > 0))
-          scheduler_addunlock(s, c->top->hydro.star_formation_sink,
+          scheduler_addunlock(s, c->top->sinks.star_formation_sink,
                               c->hydro.rt_in);
         if (with_feedback)
           scheduler_addunlock(s, c->stars.stars_out, c->hydro.rt_in);
@@ -2510,12 +2510,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         /* Do the sink_formation */
         scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                            ci->top->hydro.sink_formation);
+                            ci->top->sinks.sink_formation);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            ci->top->hydro.sink_formation);
+                            ci->top->sinks.sink_formation);
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                            ci->top->hydro.sink_formation);
-        scheduler_addunlock(sched, ci->top->hydro.sink_formation,
+                            ci->top->sinks.sink_formation);
+        scheduler_addunlock(sched, ci->top->sinks.sink_formation,
                             t_sink_swallow);
 
         /* Do the sink_swallow */
@@ -2828,12 +2828,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Do the sink_formation */
           scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                              ci->top->hydro.sink_formation);
+                              ci->top->sinks.sink_formation);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              ci->top->hydro.sink_formation);
+                              ci->top->sinks.sink_formation);
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                              ci->top->hydro.sink_formation);
-          scheduler_addunlock(sched, ci->top->hydro.sink_formation,
+                              ci->top->sinks.sink_formation);
+          scheduler_addunlock(sched, ci->top->sinks.sink_formation,
                               t_sink_swallow);
 
           /* Do the sink_swallow */
@@ -2985,12 +2985,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             /* Do the sink_formation */
             scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
-                                cj->top->hydro.sink_formation);
+                                cj->top->sinks.sink_formation);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                cj->top->hydro.sink_formation);
+                                cj->top->sinks.sink_formation);
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
-                                cj->top->hydro.sink_formation);
-            scheduler_addunlock(sched, cj->top->hydro.sink_formation,
+                                cj->top->sinks.sink_formation);
+            scheduler_addunlock(sched, cj->top->sinks.sink_formation,
                                 t_sink_swallow);
 
             /* Do the sink_swallow */
@@ -3287,12 +3287,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         /* Do the sink_formation */
         scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                            ci->top->hydro.sink_formation);
+                            ci->top->sinks.sink_formation);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            ci->top->hydro.sink_formation);
+                            ci->top->sinks.sink_formation);
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                            ci->top->hydro.sink_formation);
-        scheduler_addunlock(sched, ci->top->hydro.sink_formation,
+                            ci->top->sinks.sink_formation);
+        scheduler_addunlock(sched, ci->top->sinks.sink_formation,
                             t_sink_swallow);
 
         /* Do the sink_swallow */
@@ -3616,12 +3616,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Do the sink_formation */
           scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                              ci->top->hydro.sink_formation);
+                              ci->top->sinks.sink_formation);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              ci->top->hydro.sink_formation);
+                              ci->top->sinks.sink_formation);
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                              ci->top->hydro.sink_formation);
-          scheduler_addunlock(sched, ci->top->hydro.sink_formation,
+                              ci->top->sinks.sink_formation);
+          scheduler_addunlock(sched, ci->top->sinks.sink_formation,
                               t_sink_swallow);
 
           /* Do the sink_swallow */
@@ -3772,12 +3772,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             /* Do the sink_formation */
             scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
-                                cj->top->hydro.sink_formation);
+                                cj->top->sinks.sink_formation);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                cj->top->hydro.sink_formation);
+                                cj->top->sinks.sink_formation);
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
-                                cj->top->hydro.sink_formation);
-            scheduler_addunlock(sched, cj->top->hydro.sink_formation,
+                                cj->top->sinks.sink_formation);
+            scheduler_addunlock(sched, cj->top->sinks.sink_formation,
                                 t_sink_swallow);
 
             /* Do the sink_swallow */

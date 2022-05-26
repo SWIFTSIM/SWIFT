@@ -87,6 +87,7 @@
 #include "output_options.h"
 #include "partition.h"
 #include "potential.h"
+#include "power_spectrum.h"
 #include "pressure_floor.h"
 #include "profiler.h"
 #include "proxy.h"
@@ -131,7 +132,8 @@ const char *engine_policy_names[] = {"none",
                                      "csds",
                                      "line of sight",
                                      "sink",
-                                     "rt"};
+                                     "rt",
+                                     "power spectra"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
@@ -2138,7 +2140,7 @@ void engine_step(struct engine *e) {
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
-        "%12lld %12lld %21.3f %6d %21.3f\n",
+        "%12lld %12lld %21.3f %6d %17.3f\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
@@ -2165,7 +2167,7 @@ void engine_step(struct engine *e) {
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-          "%12lld %21.3f %6d %21.3f\n",
+          "%12lld %21.3f %6d %17.3f\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
@@ -2827,6 +2829,7 @@ void engine_numa_policies(int rank, int verbose) {
  * @param neutrinos The #neutrino_props used for this run.
  * @param feedback The #feedback_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
+ * @param pow_data The properties and pointers for power spectrum calculation.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
  * @param starform The #star_formation model of this run.
@@ -2852,7 +2855,8 @@ void engine_init(
     struct neutrino_response *neutrino_response,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
-    struct pm_mesh *mesh, const struct external_potential *potential,
+    struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
+    const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -2923,6 +2927,8 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
       parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
+  e->snapshot_invoke_ps =
+      parser_get_opt_param_int(params, "Snapshots:invoke_ps", 0);
   e->snapshot_use_delta_from_edge =
       parser_get_opt_param_int(params, "Snapshots:use_delta_from_edge", 0);
   if (e->snapshot_use_delta_from_edge) {
@@ -2940,6 +2946,7 @@ void engine_init(
   e->snapshot_output_count = 0;
   e->stf_output_count = 0;
   e->los_output_count = 0;
+  e->ps_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;
@@ -2957,6 +2964,7 @@ void engine_init(
   e->ti_next_stats = 0;
   e->ti_next_stf = 0;
   e->ti_next_fof = 0;
+  e->ti_next_ps = 0;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
@@ -2970,6 +2978,7 @@ void engine_init(
   e->neutrino_properties = neutrinos;
   e->neutrino_response = neutrino_response;
   e->mesh = mesh;
+  e->power_data = pow_data;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->star_formation = starform;
@@ -3061,6 +3070,16 @@ void engine_init(
         params, "LineOfSight:scale_factor_first", 0.1);
     e->delta_time_los =
         parser_get_opt_param_double(params, "LineOfSight:delta_time", -1.);
+  }
+
+  /* Initialise power spectrum output. */
+  if (e->policy & engine_policy_power_spectra) {
+    e->time_first_ps_output =
+        parser_get_opt_param_double(params, "PowerSpectrum:time_first", 0.);
+    e->a_first_ps_output = parser_get_opt_param_double(
+        params, "PowerSpectrum:scale_factor_first", 0.1);
+    e->delta_time_ps =
+        parser_get_opt_param_double(params, "PowerSpectrum:delta_time", -1.);
   }
 
   /* Initialise FoF calls frequency. */
@@ -3352,6 +3371,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_list_clean(&e->output_list_stats);
   output_list_clean(&e->output_list_stf);
   output_list_clean(&e->output_list_los);
+  output_list_clean(&e->output_list_ps);
 
   output_options_clean(e->output_options);
 
@@ -3411,6 +3431,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->internal_units);
     free((void *)e->cosmology);
     free((void *)e->mesh);
+    free((void *)e->power_data);
     free((void *)e->chemistry);
     free((void *)e->entropy_floor);
     free((void *)e->cooling_func);
@@ -3430,6 +3451,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->output_list_stats) free((void *)e->output_list_stats);
     if (e->output_list_stf) free((void *)e->output_list_stf);
     if (e->output_list_los) free((void *)e->output_list_los);
+    if (e->output_list_ps) free((void *)e->output_list_ps);
 #ifdef WITH_CSDS
     if (e->policy & engine_policy_csds) free((void *)e->csds);
 #endif
@@ -3469,6 +3491,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   gravity_props_struct_dump(e->gravity_properties, stream);
   stars_props_struct_dump(e->stars_properties, stream);
   pm_mesh_struct_dump(e->mesh, stream);
+  power_spectrum_struct_dump(e->power_data, stream);
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
@@ -3574,6 +3597,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct pm_mesh *mesh = (struct pm_mesh *)malloc(sizeof(struct pm_mesh));
   pm_mesh_struct_restore(mesh, stream);
   e->mesh = mesh;
+
+  struct power_spectrum_data *pow_data =
+      (struct power_spectrum_data *)malloc(sizeof(struct power_spectrum_data));
+  power_spectrum_struct_restore(pow_data, stream);
+  e->power_data = pow_data;
 
   struct external_potential *external_potential =
       (struct external_potential *)malloc(sizeof(struct external_potential));

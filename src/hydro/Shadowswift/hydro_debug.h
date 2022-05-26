@@ -19,8 +19,8 @@
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
-  printf(
-      "x=[%.16e,%.16e,%.16e], "
+  warning(
+      "[PID%lld] x=[%.16e,%.16e,%.16e], "
       "v=[%.3e,%.3e,%.3e], "
       "a=[%.3e,%.3e,%.3e], "
       "time_bin=%d, "
@@ -48,24 +48,24 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "density={"
       "wcount_dh=%.3e, "
       "wcount=%.3e}",
-      p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->a_hydro[0],
-      p->a_hydro[1], p->a_hydro[2], p->time_bin, p->limiter_data.wakeup, p->h,
-      p->primitives.v[0], p->primitives.v[1], p->primitives.v[2],
-      p->primitives.rho, p->primitives.P, p->primitives.gradients.rho[0],
-      p->primitives.gradients.rho[1], p->primitives.gradients.rho[2],
-      p->primitives.gradients.v[0][0], p->primitives.gradients.v[0][1],
-      p->primitives.gradients.v[0][2], p->primitives.gradients.v[1][0],
-      p->primitives.gradients.v[1][1], p->primitives.gradients.v[1][2],
-      p->primitives.gradients.v[2][0], p->primitives.gradients.v[2][1],
-      p->primitives.gradients.v[2][2], p->primitives.gradients.P[0],
-      p->primitives.gradients.P[1], p->primitives.gradients.P[2],
-      p->primitives.limiter.rho[0], p->primitives.limiter.rho[1],
-      p->primitives.limiter.v[0][0], p->primitives.limiter.v[0][1],
-      p->primitives.limiter.v[1][0], p->primitives.limiter.v[1][1],
-      p->primitives.limiter.v[2][0], p->primitives.limiter.v[2][1],
-      p->primitives.limiter.P[0], p->primitives.limiter.P[1],
-      p->primitives.limiter.maxr, p->conserved.momentum[0],
-      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.mass,
-      p->conserved.energy, p->timestepvars.vmax, p->density.wcount_dh,
-      p->density.wcount);
+      p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2],
+      p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->time_bin,
+      p->limiter_data.wakeup, p->h, p->primitives.v[0], p->primitives.v[1],
+      p->primitives.v[2], p->primitives.rho, p->primitives.P,
+      p->primitives.gradients.rho[0], p->primitives.gradients.rho[1],
+      p->primitives.gradients.rho[2], p->primitives.gradients.v[0][0],
+      p->primitives.gradients.v[0][1], p->primitives.gradients.v[0][2],
+      p->primitives.gradients.v[1][0], p->primitives.gradients.v[1][1],
+      p->primitives.gradients.v[1][2], p->primitives.gradients.v[2][0],
+      p->primitives.gradients.v[2][1], p->primitives.gradients.v[2][2],
+      p->primitives.gradients.P[0], p->primitives.gradients.P[1],
+      p->primitives.gradients.P[2], p->primitives.limiter.rho[0],
+      p->primitives.limiter.rho[1], p->primitives.limiter.v[0][0],
+      p->primitives.limiter.v[0][1], p->primitives.limiter.v[1][0],
+      p->primitives.limiter.v[1][1], p->primitives.limiter.v[2][0],
+      p->primitives.limiter.v[2][1], p->primitives.limiter.P[0],
+      p->primitives.limiter.P[1], p->primitives.limiter.maxr,
+      p->conserved.momentum[0], p->conserved.momentum[1],
+      p->conserved.momentum[2], p->conserved.mass, p->conserved.energy,
+      p->timestepvars.vmax, p->density.wcount_dh, p->density.wcount);
 }

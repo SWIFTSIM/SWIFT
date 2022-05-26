@@ -40,6 +40,20 @@
   })
 
 /**
+ * @brief Limits the value of x to be between a and b
+ */
+__attribute__((always_inline, const)) INLINE static double box_wrap_multiple(
+    double x, const double a, const double b) {
+  while (x < a) {
+    x += (b - a);
+  }
+  while (x >= b) {
+    x -= (b - a);
+  }
+  return x;
+}
+
+/**
  * @brief Find the smallest distance dx along one axis within a box of size
  * box_size
  *
