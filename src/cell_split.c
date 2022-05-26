@@ -708,11 +708,11 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
-      bits[0] = (1ul << (nbits))
+      bits[0] = (1ul << (nbits - 1))
         * (gparts[k].x[0] - cell_loc[0]) / cell_width[0];
-      bits[1] = (1ul << (nbits))
+      bits[1] = (1ul << (nbits - 1))
         * (gparts[k].x[1] - cell_loc[1]) / cell_width[1];
-      bits[2] = (1ul << (nbits))
+      bits[2] = (1ul << (nbits - 1))
         * (gparts[k].x[2] - cell_loc[2]) / cell_width[2];
 
       /* Get hilbert key */
