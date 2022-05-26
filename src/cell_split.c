@@ -646,12 +646,11 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Get the sorted index and swap particles if necessary. */
       int sind = gpart_sinds[k];
-      message("gcount=%d, k=%d, sind=%d", gcount, k, sind);
       if (k != sind) {
         memswap_unaligned(&gparts[sind], &gpart,
                           sizeof(struct gpart));
+        gparts[k] = gpart;
       }
-      gparts[k] = gpart;
       if (gparts[k].type == swift_type_gas) {
         parts[-gparts[k].id_or_neg_offset - parts_offset].gpart = &gparts[k];
       } else if (gparts[k].type == swift_type_stars) {
@@ -664,8 +663,12 @@ void cell_sort_and_split(struct space *s, struct cell *c,
     }
 
     /* Set the memory free */
-    /* free(gpart_sinds); */
-    /* free(gpart_keys); */
+    message("Before free gcount=%d gparts[0].hilb_key=%lu", gcount,
+            gparts[0].hilb_key);
+    free(gpart_sinds);
+    free(gpart_keys);
+    message("After free gcount=%d gparts[0].hilb_key=%lu", gcount,
+            gparts[0].hilb_key);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
