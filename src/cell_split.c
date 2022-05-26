@@ -649,8 +649,8 @@ void cell_sort_and_split(struct space *s, struct cell *c,
       if (k != sind) {
         memswap_unaligned(&gparts[sind], &gpart,
                           sizeof(struct gpart));
-        gpart_sinds[k] = k;
-        gpart_sinds[sind] = sind;
+        gpart_sinds[k] = sind;
+        gpart_sinds[sind] = k;
       }
 
       /* Make sure all hydro particles are pointing to the correct gpart. */
