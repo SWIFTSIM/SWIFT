@@ -130,7 +130,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 /**
  * @brief Prepares a particle for the density calculation.
  *
- * Zeroes all the t arrays in preparation for the sums taking place in
+ * Zeroes all the relevant arrays in preparation for the sums taking place in
  * the various density loop over neighbours. Typically, all fields of the
  * density sub-structure of a particle get zeroed in here.
  *
@@ -285,17 +285,15 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  // const float ACC_corr = fabs(
-  //    p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I
-  //    take
-  // simplify becasue of ACC_mhd also.
+  const float ACC_corr = fabs(
+      p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I
+  //    take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  // const float ACC_mhd = b2 / (p->h);
+  const float ACC_mhd = b2 / (p->h);
   /* Re normalize the correction in eth momentum from the DivB errors*/
-  // p->mhd_data.Q0 =
-  //    ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr :
-  //    p->mhd_data.Q0;
+  p->mhd_data.Q0 =
+      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
 }
 
 /**
@@ -448,7 +446,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  p->mhd_data.Deta = hydro_props->mhd.mhd_eta * cosmo->a * cosmo->a;
+  p->mhd_data.Deta = hydro_props->mhd.mhd_eta;
 }
 
 /**
