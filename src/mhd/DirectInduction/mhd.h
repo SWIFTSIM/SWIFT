@@ -19,6 +19,30 @@
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_H
 #define SWIFT_DIRECT_INDUCTION_MHD_H
 
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
+    const struct part *p, const struct xpart *xp) {
+
+  return 0.f;
+}
+
+__attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
+    const struct part *p, const struct xpart *xp) {
+
+  return 0.f;
+}
+
+__attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
+    const struct part *p, const struct xpart *xp) {
+
+  return 0.f;
+}
+
+__attribute__((always_inline)) INLINE static float mhd_get_divB_error(
+    const struct part *p, const struct xpart *xp) {
+
+  return 0.f;
+}
+
 /**
  * @brief Computes the MHD time-step of a given particle
  *
@@ -31,9 +55,8 @@
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
-    const struct part *restrict p, const struct xpart *restrict xp,
-    const struct hydro_props *restrict hydro_properties,
-    const struct cosmology *restrict cosmo) {
+    const struct part *p, const struct xpart *xp,
+    const struct hydro_props *hydro_properties, const struct cosmology *cosmo) {
 
   return FLT_MAX;
 }
@@ -51,8 +74,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  * @brief beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
-    const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta) {
+    const float dx[3], const struct part *pi, const struct part *pj,
+    const float mu_ij, const float beta) {
 
   error("TO BE IMPLEMENTED!");
   return -1.f;
@@ -68,7 +91,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_init_part(
-    struct part *restrict p) {}
+    struct part *p) {}
 
 /**
  * @brief Finishes the density calculation.
@@ -84,7 +107,7 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_density(
-    struct part *restrict p, const struct cosmology *cosmo) {}
+    struct part *p, const struct cosmology *cosmo) {}
 
 /**
  * @brief Prepare a particle for the gradient calculation.
@@ -97,8 +120,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
  * @param hydro_props Hydrodynamic properties.
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props) {}
 
 /**
  * @brief Resets the variables that are required for a gradient calculation.
@@ -110,7 +133,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
-    struct part *restrict p) {}
+    struct part *p) {}
 
 /**
  * @brief Finishes the gradient calculation.
@@ -134,8 +157,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {}
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {}
 
 /**
  * @brief Prepare a particle for the force calculation.
@@ -155,9 +177,8 @@ __attribute__((always_inline)) INLINE static void mhd_part_has_no_neighbours(
  *                 as the artificial viscosity.
  */
 __attribute__((always_inline)) INLINE static void mhd_prepare_force(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const float dt_alpha) {}
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props, const float dt_alpha) {}
 
 /**
  * @brief Reset acceleration fields of a particle
@@ -168,7 +189,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
  * @param p The particle to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
-    struct part *restrict p) {}
+    struct part *p) {}
 
 /**
  * @brief Sets the values to be predicted in the drifts to their values at a
@@ -179,8 +200,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
  * @param cosmo The cosmological model
  */
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
-    struct part *restrict p, const struct xpart *restrict xp,
-    const struct cosmology *cosmo) {}
+    struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {}
 
 /**
  * @brief Predict additional particle fields forward in time when drifting
@@ -197,8 +217,8 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
  * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void mhd_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, float dt_drift,
-    float dt_therm, const struct cosmology *cosmo,
+    struct part *p, const struct xpart *xp, const float dt_drift,
+    const float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {}
 
@@ -215,7 +235,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  * @param cosmo The current cosmological model.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
-    struct part *restrict p, const struct cosmology *cosmo) {}
+    struct part *p, const struct cosmology *cosmo) {}
 
 /**
  * @brief Kick the additional variables
@@ -234,8 +254,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
  * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void mhd_kick_extra(
-    struct part *restrict p, struct xpart *restrict xp, float dt_therm,
-    float dt_grav, float dt_hydro, float dt_kick_corr,
+    struct part *p, struct xpart *xp, const float dt_therm, const float dt_grav,
+    const float dt_hydro, const float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {}
 
@@ -254,8 +274,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
  * @param hydro_props The constants used in the scheme.
  */
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props) {}
 
 /**
  * @brief Initialises the particles for the first time
@@ -268,7 +288,7 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *restrict p, struct xpart *restrict xp) {
+    struct part *p, struct xpart *xp) {
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);
