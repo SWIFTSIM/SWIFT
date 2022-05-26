@@ -173,7 +173,7 @@ void cell_split(struct cell *c, const int maxdepth) {
      * NOTE: The most significant bits represent the lowest depth*/
     int cell_ind = key & 7;
     for (int order = 1; order < depth; order++) {
-      int cell_ind += (key >> order) & 7; 
+      cell_ind += (key >> order) & 7; 
     }
     bucket_count[cell_ind % 8]++;
   }
