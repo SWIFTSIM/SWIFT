@@ -51,7 +51,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct sink *sinks = c->sinks.parts;
-  const int depth = c->depth;
+  const int depth = c->depth + 1;
 
   /* Set up buckets for the progeny */
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
