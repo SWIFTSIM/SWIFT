@@ -177,7 +177,6 @@ void cell_split(struct cell *c, const int maxdepth) {
      * NOTE: The most significant bits represent the lowest depth*/
     int cell_ind = (key >> ((maxdepth - depth) * 3)) & 7;
     bucket_count[cell_ind]++;
-    message("gcount %d, key %lu, dell_ind %d", gcount, key, cell_ind);
   }
 
   /* Set the buffer offsets. */
