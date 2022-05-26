@@ -100,7 +100,7 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->gas_HI_mass += b->gas_HI_mass;
   a->gas_He_mass += b->gas_He_mass;
   a->E_mag += b->E_mag;
-  a->eDivB += b->eDivB;
+  a->divB_error += b->divB_error;
   a->H_cross += b->H_cross;
   a->H_mag += b->H_mag;
 }
@@ -212,7 +212,6 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
 #endif
 #endif
-    // mhd_stats(p, &stats);
 
     /* Collect centre of mass */
     stats.centre_of_mass[0] += m * x[0];
@@ -242,6 +241,16 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect entropy */
     stats.entropy += m * entropy;
+
+    /* Collect magnetic energy */
+    stats.E_mag += mhd_get_magnetic_energy(p, xp);
+
+    /* Collect helicity */
+    stats.H_mag += mhd_get_magnetic_helicity(p, xp);
+    stats.H_cross += mhd_get_cross_helicity(p, xp);
+
+    /* Collect div B error */
+    stats.divB_error += mhd_get_divB_error(p, xp);
   }
 
   /* Now write back to memory */
@@ -839,13 +848,13 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   fprintf(file,
           "# (36) Total Cross Helicity :: sum(V.B) in the"
           "simulation. \n");
-  fprintf(file, "#      Unit = %e cm * s**-1 * Gauss\n",
-          units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY));
+  fprintf(file, "#      Unit = %e gram * cm * s**-3 * A**-1 \n",
+          units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_CROSS_HELICITY));
   fprintf(file,
           "# (37) Total Magnetic Helicity :: sum(A.B) in the"
           "simulation. \n");
-  fprintf(file, "#      Unit = %e Gauss**2 * h**-1\n",
-          1. / units_cgs_conversion_factor(us, UNIT_CONV_LENGTH));
+  fprintf(file, "#      Unit = %e gram**2 * cm * s**-4 * A**-2\n",
+          1. / units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_HELICITY));
 
   fprintf(file, "#\n");
   fprintf(
@@ -906,7 +915,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       stats->mom[1], stats->mom[2], stats->ang_mom[0], stats->ang_mom[1],
       stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,
       stats->bh_subgrid_mass, stats->gas_H_mass, stats->gas_H2_mass,
-      stats->gas_HI_mass, stats->gas_He_mass, stats->E_mag, stats->eDivB,
+      stats->gas_HI_mass, stats->gas_He_mass, stats->E_mag, stats->divB_error,
       stats->H_cross, stats->H_mag);
 
   fflush(file);
