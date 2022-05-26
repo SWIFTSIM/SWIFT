@@ -191,11 +191,6 @@ void cell_split(struct cell *c, const int maxdepth) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  /* Get the pivot to validate we have sorted everything correctly */
-  const double pivot[3] = {c->loc[0] + c->width[0] / 2,
-                           c->loc[1] + c->width[1] / 2,
-                           c->loc[2] + c->width[2] / 2};
-
   /* Verify that _all_ the parts have been assigned to a cell. */
   for (int k = 1; k < 8; k++)
     if (&c->progeny[k - 1]->grav.parts[c->progeny[k - 1]->grav.count] !=
