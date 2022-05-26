@@ -51,7 +51,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct sink *sinks = c->sinks.parts;
-  const int depth = c->depth + 1;
+  const int depth = c->depth;
 
   /* Set up buckets for the progeny */
   int bucket_count[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -118,7 +118,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
-    int cell_ind = (key >> ((maxdepth - depth) * 3)) & 7;
+    int cell_ind = (key >> ((maxdepth - depth - 1) * 3)) & 7;
     bucket_count[cell_ind]++;
   }
 
@@ -171,11 +171,8 @@ void cell_split(struct cell *c, const int maxdepth) {
     /* Shift bits to the correct depth and mask to get the final 3
      * bits which are the bin at this depth
      * NOTE: The most significant bits represent the lowest depth*/
-    int cell_ind = key & 7;
-    for (int order = 1; order < depth; order++) {
-      cell_ind += (key >> order) & 7; 
-    }
-    bucket_count[cell_ind % 8]++;
+    int cell_ind = (key >> ((maxdepth - depth) * 3)) & 7;
+    bucket_count[cell_ind]++;
   }
 
   /* Set the buffer offsets. */
