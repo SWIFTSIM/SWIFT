@@ -214,7 +214,8 @@ void cell_split(struct cell *c, const int maxdepth) {
     if (c->progeny[0]->grav.parts[k].x[0] >= pivot[0] ||
         c->progeny[0]->grav.parts[k].x[1] >= pivot[1] ||
         c->progeny[0]->grav.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=0: depth=%d, (grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+      error("Sorting failed (progeny=0: depth=%d, "
+            "(grav.parts[%d].x - pivot)=[%e, %e, %e]).",
             c->depth, k,
             c->progeny[0]->grav.parts[k].x[0] - pivot[0],
             c->progeny[0]->grav.parts[k].x[1] - pivot[1],
@@ -223,37 +224,72 @@ void cell_split(struct cell *c, const int maxdepth) {
     if (c->progeny[1]->grav.parts[k].x[0] >= pivot[0] ||
         c->progeny[1]->grav.parts[k].x[1] < pivot[1] ||
         c->progeny[1]->grav.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=1).");
+      error("Sorting failed (progeny=: depth=%d, "
+            "(grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+            c->depth, k,
+            c->progeny[0]->grav.parts[k].x[0] - pivot[0],
+            c->progeny[0]->grav.parts[k].x[1] - pivot[1],
+            c->progeny[0]->grav.parts[k].x[2] - pivot[2]);
   for (int k = 0; k < c->progeny[2]->grav.count; k++)
     if (c->progeny[2]->grav.parts[k].x[0] >= pivot[0] ||
         c->progeny[2]->grav.parts[k].x[1] < pivot[1] ||
         c->progeny[2]->grav.parts[k].x[2] < pivot[2])
-      error("Sorting failed (progeny=2).");
+      error("Sorting failed (progeny=2: depth=%d, "
+            "(grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+            c->depth, k,
+            c->progeny[0]->grav.parts[k].x[0] - pivot[0],
+            c->progeny[0]->grav.parts[k].x[1] - pivot[1],
+            c->progeny[0]->grav.parts[k].x[2] - pivot[2]);
   for (int k = 0; k < c->progeny[3]->grav.count; k++)
     if (c->progeny[3]->grav.parts[k].x[0] >= pivot[0] ||
         c->progeny[3]->grav.parts[k].x[1] >= pivot[1] ||
         c->progeny[3]->grav.parts[k].x[2] < pivot[2])
-      error("Sorting failed (progeny=3).");
+      error("Sorting failed (progeny=3: depth=%d, "
+            "(grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+            c->depth, k,
+            c->progeny[0]->grav.parts[k].x[0] - pivot[0],
+            c->progeny[0]->grav.parts[k].x[1] - pivot[1],
+            c->progeny[0]->grav.parts[k].x[2] - pivot[2]);
   for (int k = 0; k < c->progeny[4]->grav.count; k++)
     if (c->progeny[4]->grav.parts[k].x[0] < pivot[0] ||
         c->progeny[4]->grav.parts[k].x[1] >= pivot[1] ||
         c->progeny[4]->grav.parts[k].x[2] < pivot[2])
-      error("Sorting failed (progeny=4).");
+      error("Sorting failed (progeny=4: depth=%d, "
+            "(grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+            c->depth, k,
+            c->progeny[0]->grav.parts[k].x[0] - pivot[0],
+            c->progeny[0]->grav.parts[k].x[1] - pivot[1],
+            c->progeny[0]->grav.parts[k].x[2] - pivot[2]);
   for (int k = 0; k < c->progeny[5]->grav.count; k++)
     if (c->progeny[5]->grav.parts[k].x[0] < pivot[0] ||
         c->progeny[5]->grav.parts[k].x[1] < pivot[1] ||
         c->progeny[5]->grav.parts[k].x[2] < pivot[2])
-      error("Sorting failed (progeny=5).");
+      error("Sorting failed (progeny=5: depth=%d, "
+            "(grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+            c->depth, k,
+            c->progeny[0]->grav.parts[k].x[0] - pivot[0],
+            c->progeny[0]->grav.parts[k].x[1] - pivot[1],
+            c->progeny[0]->grav.parts[k].x[2] - pivot[2]);
   for (int k = 0; k < c->progeny[6]->grav.count; k++)
     if (c->progeny[6]->grav.parts[k].x[0] < pivot[0] ||
         c->progeny[6]->grav.parts[k].x[1] < pivot[1] ||
         c->progeny[6]->grav.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=6).");
+      error("Sorting failed (progeny=6: depth=%d, "
+            "(grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+            c->depth, k,
+            c->progeny[0]->grav.parts[k].x[0] - pivot[0],
+            c->progeny[0]->grav.parts[k].x[1] - pivot[1],
+            c->progeny[0]->grav.parts[k].x[2] - pivot[2]);
   for (int k = 0; k < c->progeny[7]->grav.count; k++)
     if (c->progeny[7]->grav.parts[k].x[0] < pivot[0] ||
         c->progeny[7]->grav.parts[k].x[1] >= pivot[1] ||
         c->progeny[7]->grav.parts[k].x[2] >= pivot[2])
-      error("Sorting failed (progeny=7).");
+      error("Sorting failed (progeny=7: depth=%d, "
+            "(grav.parts[%d].x - pivot)=[%e, %e, %e]).",
+            c->depth, k,
+            c->progeny[0]->grav.parts[k].x[0] - pivot[0],
+            c->progeny[0]->grav.parts[k].x[1] - pivot[1],
+            c->progeny[0]->grav.parts[k].x[2] - pivot[2]);
 #endif
   
 }
