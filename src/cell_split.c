@@ -171,7 +171,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     /* Shift bits to the correct depth and mask to get the final 3
      * bits which are the bin at this depth
      * NOTE: The most significant bits represent the lowest depth*/
-    int cell_ind = (key >> ((maxdepth - depth) * 3)) & 7;
+    int cell_ind = (key >> ((maxdepth - depth - 1) * 3)) & 7;
     bucket_count[cell_ind]++;
   }
 
