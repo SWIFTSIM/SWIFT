@@ -315,6 +315,8 @@ struct part {
   /* Derivative of density w.r.t. smoothing length */  
   float drho_dh;
     
+  float smoothing_error;
+    
   float P_tilde_numerator;
     
   float P_tilde_denominator;

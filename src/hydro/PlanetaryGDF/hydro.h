@@ -773,6 +773,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->P = pressure;
   p->T = temperature;
     
+  p->smoothing_error = p->h * p->drho_dh / p->rho;
 #endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
@@ -951,7 +952,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
-  float s = p->h * fabs(p->drho_dh) / p->rho;
+  float s = fabs(p->smoothing_error);
   p->P_tilde_numerator += p->P * expf(-1000.f * s * s);
   p->P_tilde_denominator += sqrtf(kernel_root) * expf(-1000.f * s * s);
   p->S_numerator += kernel_root * logf(s + FLT_MIN);

@@ -359,8 +359,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float sj = pj->h * fabs(pj->drho_dh) / pj->rho;
-  float si = pi->h * fabs(pi->drho_dh) / pi->rho;  
+  float sj = fabs(pj->smoothing_error);
+  float si = fabs(pi->smoothing_error);  
   pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sj * sj);
   pj->P_tilde_numerator += sqrtf(wj) * pi->P * expf(-1000.f * si * si);   
   pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sj * sj);
@@ -470,7 +470,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float sj = pj->h * fabs(pj->drho_dh) / pj->rho;
+  float sj = fabs(pj->smoothing_error);
   pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sj * sj);
   pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sj * sj);
  
