@@ -242,8 +242,8 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
   unsigned long cell_coord[2][8][3] = {
     {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0},
      {1, 1, 0}, {1, 1, 1}, {1, 0, 1}, {1, 0, 0}},
-    {{0, 0, 0}, {0, 1, 0}, {0, 1, 1}, {0, 0, 1},
-     {1, 0, 1}, {1, 1, 1}, {1, 1, 0}, {1, 0, 0}}}; 
+    {{0, 0, 0}, {0, 1, 0}, {1, 1, 0}, {1, 0, 0},
+     {1, 0, 1}, {1, 1, 1}, {0, 1, 1}, {0, 0, 1}}}; 
 
   /* Have we gone too deep? */
   if (c->depth > maxdepth)
