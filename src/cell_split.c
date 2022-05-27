@@ -175,11 +175,6 @@ void cell_split(struct cell *c, const int maxdepth) {
     bucket_count[cell_ind]++;
   }
 
-  message("depth=%d, [%d, %d, %d, %d, %d, %d, %d, %d]", depth,
-          bucket_count[0], bucket_count[1],
-          bucket_count[2], bucket_count[3], bucket_count[4], bucket_count[5],
-          bucket_count[6], bucket_count[7]);
-
   /* Set the buffer offsets. */
   bucket_offset[0] = 0;
   for (int k = 1; k <= 8; k++) {
@@ -244,9 +239,11 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
   const int with_self_gravity = s->with_self_gravity;
 
   /* Look up table for 0th order cell position. */
-  unsigned long cell_coord[8][3] = {
-    {0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0},
-    {1, 1, 0}, {1, 1, 1}, {1, 0, 1}, {1, 0, 0}}; 
+  unsigned long cell_coord[2][8][3] = {
+    {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0},
+     {1, 1, 0}, {1, 1, 1}, {1, 0, 1}, {1, 0, 0}},
+    {{0, 0, 0}, {0, 1, 0}, {0, 1, 1}, {0, 0, 1},
+     {1, 0, 1}, {1, 1, 1}, {1, 1, 0}, {1, 0, 0}}}; 
 
   /* Have we gone too deep? */
   if (c->depth > maxdepth)
@@ -290,7 +287,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
       cp->width[2] = c->width[2] / 2;
       cp->dmin = c->dmin / 2;
       for (int ind = 0; ind < 3; ind++) {
-        if (cell_coord[k][ind] > 0)
+        if (cell_coord[c->depth % 2][k][ind] > 0)
           cp->loc[ind] += cp->width[ind];
       }
       cp->depth = c->depth + 1;
