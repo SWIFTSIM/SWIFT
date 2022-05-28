@@ -214,8 +214,11 @@ void cell_split(struct cell *c, const int maxdepth) {
           cell_frac[1] > 1 || cell_frac[1] < 0 ||
           cell_frac[2] > 1 || cell_frac[2] < 0)
         error("Spatial sort failed (progeny=%d: depth=%d, "
-              "((grav.parts[%d].x - cp->loc) / cp->width)=[%f, %f, %f]).",
-              p, c->depth, k, cell_frac[0], cell_frac[1], cell_frac[2]);
+              "((grav.parts[%d].x - cp->loc=[%e %e %e]) /"
+              " cp->width=[%e %e %e])=[%f, %f, %f]).",
+              cp->loc[0], cp->loc[1], cp->loc[2],
+              cp->width[0], cp->width[1], cp->width[2], c->depth, k,
+              cell_frac[0], cell_frac[1], cell_frac[2]);
     }     
   }
 #endif
@@ -286,8 +289,8 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
        * bits which are the index at this depth
        * NOTE: The most significant bits represent the lowest depth*/
       int progeny_ind = (prog_hilb_key >> ((maxdepth - c->depth - 1) * 3)) & 7;
-      message("k %d, depth %d: progeny_ind %d, width[0] %f",
-              k, c->depth, progeny_ind, progeny_width[0]);
+
+      /* Initialise this progeny. */
       struct cell *cp = c->progeny[progeny_ind];
       cp->hydro.count = 0;
       cp->grav.count = 0;
