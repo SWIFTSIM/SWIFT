@@ -107,7 +107,29 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
+
+    /* Initialise the thread local copy of the cell */
+    struct cell *temp_c = NULL;
+    
+    /* Allocare the tempoary cell so we can
+       avoid memory movement overhead in sorts */
+    if (swift_memalign("temp_cell", (void**)&temp_c,
+                       cell_align,
+                       sizeof(struct cell)) != 0)
+      error("Error while allocating temporary memory for cell");
+
+    /* Copy cell contents into temporary local cell */
+    memcpy(temp_c, c, sizeof(struct cell));
+
+    /* Split this cell */
     cell_split_recursive(s, c, nbits - 1, c->loc, c->width);
+    
+    /* Replace the cell with the local cell */
+    cells_top[local_cells_with_particles[ind]] = *temp_c;
+
+    /* Free up now unused cell */
+    free(c);
+
   }
 }
 
