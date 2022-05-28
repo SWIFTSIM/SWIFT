@@ -126,6 +126,10 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
   const int nbits = 21;
+  
+  /* Loop over the non-empty cells */
+  for (int ind = 0; ind < num_cells; ind++) {
+    struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
     /* Split this cell */
     cell_split_recursive(s, c, nbits - 1, c->loc, c->width);
