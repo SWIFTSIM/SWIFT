@@ -494,7 +494,8 @@ struct cell {
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
 /* Function prototypes. */
-void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth);
+void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
+                          const double *top_loc, const double *top_width);
 void cell_sort_and_split(struct space *s, struct cell *c,
                          const ptrdiff_t parts_offset,
                          const ptrdiff_t sparts_offset,
