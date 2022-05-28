@@ -51,32 +51,12 @@ void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data) {
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
-    /* Initialise the thread local copy of the cell */
-    struct cell *temp_c = NULL;
-    
-    /* Allocare the tempoary cell so we can
-       avoid memory movement overhead in sorts */
-    if (swift_memalign("temp_cell", (void**)&temp_c,
-                       cell_align,
-                       sizeof(struct cell)) != 0)
-      error("Error while allocating temporary memory for cell");
-
-    /* Copy cell contents into temporary local cell */
-    memcpy(temp_c, c, sizeof(struct cell));
-
     /* Sort this cell. */
     cell_split_sort(s, c,
                     c->hydro.parts - s->parts,
                     c->stars.parts - s->sparts,
                     c->black_holes.parts - s->bparts,
                     c->sinks.parts - s->sinks, nbits);
-
-    /* Replace the cell with the local cell */
-    cells_top[local_cells_with_particles[ind]] = *temp_c;
-
-    /* Free up now unused cell,
-     NOTE: causes an error so currently this is a memory leak. */
-    //free(c);
     
   }
 }
