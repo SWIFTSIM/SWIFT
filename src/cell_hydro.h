@@ -103,37 +103,29 @@ struct cell_hydro {
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
-#ifdef RT_NONE
-    union {
-#endif
+    /*! Radiative transfer ghost in task */
+    struct task *rt_in;
 
-      /*! Radiative transfer ghost in task */
-      struct task *rt_in;
+    /*! Radiative transfer ghost1 task (finishes up injection) */
+    struct task *rt_ghost1;
 
-      /*! Radiative transfer ghost1 task (finishes up injection) */
-      struct task *rt_ghost1;
+    /*! Task for self/pair gradient step of radiative transfer */
+    struct link *rt_gradient;
 
-      /*! Task for self/pair gradient step of radiative transfer */
-      struct link *rt_gradient;
+    /*! Radiative transfer ghost2 task */
+    struct task *rt_ghost2;
 
-      /*! Radiative transfer ghost2 task */
-      struct task *rt_ghost2;
+    /*! Task for self/pair transport step of radiative transfer */
+    struct link *rt_transport;
 
-      /*! Task for self/pair transport step of radiative transfer */
-      struct link *rt_transport;
+    /*! Radiative transfer transport out task */
+    struct task *rt_transport_out;
 
-      /*! Radiative transfer transport out task */
-      struct task *rt_transport_out;
+    /*! Radiative transfer thermochemistry task */
+    struct task *rt_tchem;
 
-      /*! Radiative transfer thermochemistry task */
-      struct task *rt_tchem;
-
-      /*! Radiative transfer ghost out task */
-      struct task *rt_out;
-
-#ifdef RT_NONE
-    };
-#endif
+    /*! Radiative transfer ghost out task */
+    struct task *rt_out;
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;
