@@ -242,8 +242,8 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
   const int with_self_gravity = s->with_self_gravity;
 
   /* Assign the number of bits along each axis for hilbert key computation
-   * NOTE: this is the same as maxdepth by consturction. */
-  int nbits = maxdepth;
+   * NOTE: this is the same as maxdepth + 1 by construction. */
+  int nbits = maxdepth + 1;
 
   /* Have we gone too deep? */
   if (c->depth > maxdepth)
@@ -825,7 +825,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 #endif
 
   /* With all that done we are finally in a position to split the cells! */
-  cell_split_recursive(s, c, nbits);
+  cell_split_recursive(s, c, nbits - 1);
 
 }
 
