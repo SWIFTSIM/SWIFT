@@ -496,11 +496,11 @@ struct cell {
 /* Function prototypes. */
 void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
                           const double *top_loc, const double *top_width);
-void cell_sort_and_split(struct space *s, struct cell *c,
-                         const ptrdiff_t parts_offset,
-                         const ptrdiff_t sparts_offset,
-                         const ptrdiff_t bparts_offset,
-                         const ptrdiff_t sinks_offset);
+void cell_split_sort(struct space *s, struct cell *c,
+                     const ptrdiff_t parts_offset,
+                     const ptrdiff_t sparts_offset,
+                     const ptrdiff_t bparts_offset,
+                     const ptrdiff_t sinks_offset);
 void cell_props_mapper(void *map_data, int num_cells, void *extra_data);
 #ifdef WITH_ZOOM_REGION
 void bkg_cell_props_mapper(void *map_data, int num_cells, void *extra_data);

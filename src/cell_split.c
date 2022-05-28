@@ -278,11 +278,14 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
       /* Convert progeny position to 21 bit integer coordinates */
       unsigned long bits[3];
       bits[0] = (1ul << (nbits - 1))
-        * (((progeny_loc[0] + (progeny_width[0] / 2)) - top_loc[0]) / top_width[0]);
+        * (((progeny_loc[0] + (progeny_width[0] / 2)) - top_loc[0])
+           / top_width[0]);
       bits[1] = (1ul << (nbits - 1))
-        * (((progeny_loc[1] + (progeny_width[1] / 2)) - top_loc[1]) / top_width[1]);
+        * (((progeny_loc[1] + (progeny_width[1] / 2)) - top_loc[1])
+           / top_width[1]);
       bits[2] = (1ul << (nbits - 1))
-        * (((progeny_loc[2] + (progeny_width[2] / 2)) - top_loc[2]) / top_width[2]);
+        * (((progeny_loc[2] + (progeny_width[2] / 2)) - top_loc[2])
+           / top_width[2]);
 
       /* Get the progeny's hilbert key */
       unsigned long prog_hilb_key = hilbert_get_key_3d(bits, nbits);
@@ -415,13 +418,14 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
  * s->black_holes.parts.
  * @param sinks_offset Offset of the cell sink array relative to the
  *        space's sink array, i.e. c->sinks.parts - s->sinks.parts.
-
+ * @param nbits The number of bits used along each axis.
  */
-void cell_sort_and_split(struct space *s, struct cell *c,
-                         const ptrdiff_t parts_offset,
-                         const ptrdiff_t sparts_offset,
-                         const ptrdiff_t bparts_offset,
-                         const ptrdiff_t sinks_offset) {
+void cell_split_sort(struct space *s, struct cell *c,
+                     const ptrdiff_t parts_offset,
+                     const ptrdiff_t sparts_offset,
+                     const ptrdiff_t bparts_offset,
+                     const ptrdiff_t sinks_offset,
+                     const int nbits) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
@@ -438,7 +442,6 @@ void cell_sort_and_split(struct space *s, struct cell *c,
   const double cell_width[3] = {c->width[0],
                                 c->width[1],
                                 c->width[2]};
-  const int nbits = 21;
 
   /* Get hilbert keys for parts and sort them. */
   if (count > 0) {
@@ -842,9 +845,6 @@ void cell_sort_and_split(struct space *s, struct cell *c,
             gparts[k - 1].hilb_key, gparts[k].hilb_key);
   }
 #endif
-
-  /* With all that done we are finally in a position to split the cells! */
-  cell_split_recursive(s, c, nbits - 1, cell_loc, cell_width);
 
 }
 
