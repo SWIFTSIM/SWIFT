@@ -347,6 +347,23 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
       cell_assign_cell_index(cp, c);
 #endif
     }
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure we have visited all progeny. */
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k]->parent != c)
+        error("Failed to visit progeny %d "
+              "(visted = [%d %d %d %d %d %d %d %d])", k,
+              c->progeny[0]->parent == c,
+              c->progeny[1]->parent == c,
+              c->progeny[2]->parent == c,
+              c->progeny[3]->parent == c,
+              c->progeny[4]->parent == c,
+              c->progeny[5]->parent == c,
+              c->progeny[6]->parent == c,
+              c->progeny[7]->parent == c);
+    }
+#endif
 
     /* Split the cell's particle data into the progeny. */
     cell_split(c, maxdepth);
