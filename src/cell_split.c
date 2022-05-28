@@ -254,10 +254,9 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
 
   /* Split or let it be? */
   /* Note this is currently limited to a depth of 21! */
-  if (((with_self_gravity && gcount > space_splitsize) ||
+  if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize)))
-      && (c->depth <= maxdepth)){
+       (count > space_splitsize || scount > space_splitsize)){
 
     /* No longer just a leaf. */
     c->split = 1;
@@ -454,11 +453,11 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
-      bits[0] = (1ul << (nbits))
+      bits[0] = (1ul << (nbits - 1))
         * ((parts[k].x[0] - cell_loc[0]) / cell_width[0]);
-      bits[1] = (1ul << (nbits))
+      bits[1] = (1ul << (nbits - 1))
         * ((parts[k].x[1] - cell_loc[1]) / cell_width[1]);
-      bits[2] = (1ul << (nbits))
+      bits[2] = (1ul << (nbits - 1))
         * ((parts[k].x[2] - cell_loc[2]) / cell_width[2]);
 
       /* Get hilbert key */
@@ -534,11 +533,11 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
-      bits[0] = (1ul << (nbits))
+      bits[0] = (1ul << (nbits - 1))
         * ((sparts[k].x[0] - cell_loc[0]) / cell_width[0]);
-      bits[1] = (1ul << (nbits))
+      bits[1] = (1ul << (nbits - 1))
         * ((sparts[k].x[1] - cell_loc[1]) / cell_width[1]);
-      bits[2] = (1ul << (nbits))
+      bits[2] = (1ul << (nbits - 1))
         * ((sparts[k].x[2] - cell_loc[2]) / cell_width[2]);
 
       /* Get hilbert key */
@@ -610,11 +609,11 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
-      bits[0] = (1ul << (nbits))
+      bits[0] = (1ul << (nbits - 1))
         * ((bparts[k].x[0] - cell_loc[0]) / cell_width[0]);
-      bits[1] = (1ul << (nbits))
+      bits[1] = (1ul << (nbits - 1))
         * ((bparts[k].x[1] - cell_loc[1]) / cell_width[1]);
-      bits[2] = (1ul << (nbits))
+      bits[2] = (1ul << (nbits - 1))
         * ((bparts[k].x[2] - cell_loc[2]) / cell_width[2]);
 
       /* Get hilbert key */
@@ -686,11 +685,11 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
-      bits[0] = (1ul << (nbits))
+      bits[0] = (1ul << (nbits - 1))
         * ((sinks[k].x[0] - cell_loc[0]) / cell_width[0]);
-      bits[1] = (1ul << (nbits))
+      bits[1] = (1ul << (nbits - 1))
         * ((sinks[k].x[1] - cell_loc[1]) / cell_width[1]);
-      bits[2] = (1ul << (nbits))
+      bits[2] = (1ul << (nbits - 1))
         * ((sinks[k].x[2] - cell_loc[2]) / cell_width[2]);
 
       /* Get hilbert key */
