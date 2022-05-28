@@ -256,7 +256,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
   /* Note this is currently limited to a depth of 21! */
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize)){
+       (count > space_splitsize || scount > space_splitsize))){
 
     /* No longer just a leaf. */
     c->split = 1;
