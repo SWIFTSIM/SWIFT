@@ -286,7 +286,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
        * bits which are the index at this depth
        * NOTE: The most significant bits represent the lowest depth*/
       int progeny_ind = (prog_hilb_key >> ((maxdepth - c->depth - 1) * 3)) & 7;
-      message("k %d, depth %d: progeny_ind %d, width[0] %d",
+      message("k %d, depth %d: progeny_ind %d, width[0] %f",
               k, c->depth, progeny_ind, progeny_width[0]);
       struct cell *cp = c->progeny[progeny_ind];
       cp->hydro.count = 0;
