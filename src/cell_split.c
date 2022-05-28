@@ -275,11 +275,11 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
 
       /* Convert progeny position to 21 bit integer coordinates */
       unsigned long bits[3];
-      bits[0] = (1ul << (nbits))
+      bits[0] = (1ul << (nbits - 1))
         * (((progeny_loc[0] + (progeny_width[0] / 2)) - c->loc[0]) / c->width[0]);
-      bits[1] = (1ul << (nbits))
+      bits[1] = (1ul << (nbits - 1))
         * (((progeny_loc[1] + (progeny_width[1] / 2)) - c->loc[1]) / c->width[1]);
-      bits[2] = (1ul << (nbits))
+      bits[2] = (1ul << (nbits - 1))
         * (((progeny_loc[2] + (progeny_width[2] / 2)) - c->loc[2]) / c->width[2]);
 
       /* Get the progeny's hilbert key */
@@ -741,11 +741,11 @@ void cell_sort_and_split(struct space *s, struct cell *c,
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
-      bits[0] = (1ul << (nbits))
+      bits[0] = (1ul << (nbits - 1))
         * ((gparts[k].x[0] - cell_loc[0]) / cell_width[0]);
-      bits[1] = (1ul << (nbits))
+      bits[1] = (1ul << (nbits - 1))
         * ((gparts[k].x[1] - cell_loc[1]) / cell_width[1]);
-      bits[2] = (1ul << (nbits))
+      bits[2] = (1ul << (nbits - 1))
         * ((gparts[k].x[2] - cell_loc[2]) / cell_width[2]);
 
       /* Get hilbert key */
