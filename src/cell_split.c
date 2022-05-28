@@ -229,7 +229,7 @@ void cell_split(struct cell *c, const int maxdepth) {
  *
  * @param s The #space in which the cell lives.
  * @param c The #cell array to be sorted.
- * @param maxdepth The maxdepth possible, dictated by nbits. 
+ * @param maxdepth The maxdepth possible, dictated by nbits.
  */
 void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
 
@@ -237,6 +237,10 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count;
   const int with_self_gravity = s->with_self_gravity;
+
+  /* Assign the number of bits along each axis for hilbert key computation
+   * NOTE: this is the same as maxdepth by consturction. */
+  int nbits = maxdepth;
 
   /* Have we gone too deep? */
   if (c->depth > maxdepth)
