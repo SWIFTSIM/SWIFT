@@ -127,8 +127,9 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     /* Replace the cell with the local cell */
     cells_top[local_cells_with_particles[ind]] = *temp_c;
 
-    /* Free up now unused cell */
-    free(c);
+    /* Free up now unused cell,
+     NOTE: causes an error so currently this is a memory leak. */
+    //free(c);
 
   }
 }
