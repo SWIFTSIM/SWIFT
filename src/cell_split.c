@@ -216,8 +216,8 @@ void cell_split(struct cell *c, const int maxdepth) {
         error("Spatial sort failed (progeny=%d: depth=%d, "
               "((grav.parts[%d].x - cp->loc=[%e %e %e]) /"
               " cp->width=[%e %e %e])=[%f, %f, %f]).",
-              cp->loc[0], cp->loc[1], cp->loc[2],
-              cp->width[0], cp->width[1], cp->width[2], c->depth, k,
+              p, c->depth, k, cp->loc[0], cp->loc[1], cp->loc[2],
+              cp->width[0], cp->width[1], cp->width[2],
               cell_frac[0], cell_frac[1], cell_frac[2]);
     }     
   }
