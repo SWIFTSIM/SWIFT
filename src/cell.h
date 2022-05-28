@@ -500,7 +500,7 @@ void cell_split_sort(struct space *s, struct cell *c,
                      const ptrdiff_t parts_offset,
                      const ptrdiff_t sparts_offset,
                      const ptrdiff_t bparts_offset,
-                     const ptrdiff_t sinks_offset);
+                     const ptrdiff_t sinks_offset, const int nbits);
 void cell_props_mapper(void *map_data, int num_cells, void *extra_data);
 #ifdef WITH_ZOOM_REGION
 void bkg_cell_props_mapper(void *map_data, int num_cells, void *extra_data);
