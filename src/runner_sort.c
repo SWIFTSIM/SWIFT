@@ -221,9 +221,11 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */
-  if (flags && !cell_are_part_drifted(c, r->e))
-    error("Sorting un-drifted cell c->nodeID=%d ID %lld HA %d RTA %d | ti_old_part=%lld ti_current=%lld", 
-        c->nodeID, c->cellID, cell_is_active_hydro(c, r->e), cell_is_rt_active(c, r->e),   c->hydro.ti_old_part , r->e->ti_current);
+  /* if (flags && !cell_are_part_drifted(c, r->e)) */
+  /*   error("Sorting un-drifted cell c->nodeID=%d ID %lld HA %d RTA %d | ti_old_part=%lld ti_current=%lld" */
+  /*       "\n\t\tsplit=%d depth=%d",  */
+  /*       c->nodeID, c->cellID, cell_is_active_hydro(c, r->e), cell_is_rt_active(c, r->e),   c->hydro.ti_old_part , r->e->ti_current,  */
+  /*       c->split, c->depth); */
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure the sort flags are consistent (downward). */

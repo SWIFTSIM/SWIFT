@@ -1092,9 +1092,9 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
   struct engine *e = r->e;
   const int count = c->hydro.count;
 
-  /* celltrace(c, "@entry ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld", */
-  /*           c->rt.ti_rt_end_min, e->ti_current_subcycle, */
-  /*           c->rt.ti_rt_min_step_size); */
+  celltrace(c, "@entry ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld",
+            c->rt.ti_rt_end_min, e->ti_current_subcycle,
+            c->rt.ti_rt_min_step_size);
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1152,9 +1152,9 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
    * We only update the cell's own time after it's been active. */
   c->rt.ti_rt_end_min += c->rt.ti_rt_min_step_size;
 
-  /* celltrace(c, "@exit ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld", */
-  /*           c->rt.ti_rt_end_min, e->ti_current_subcycle, */
-  /*           c->rt.ti_rt_min_step_size); */
+  celltrace(c, "@exit ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld",
+            c->rt.ti_rt_end_min, e->ti_current_subcycle,
+            c->rt.ti_rt_min_step_size);
 
   if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);
 }

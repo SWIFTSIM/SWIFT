@@ -1220,6 +1220,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_rt) {
 
+/* TODO: document this */
+if (cj_active_hydro) {
+  scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+}
+if (ci_active_hydro) {
+  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+}
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
             /* If we don't have any active hydro tasks, make sure the sort tasks
              * don't run before the recv */
@@ -1253,6 +1260,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_rt) {
+
+/* TODO: docs */
+if (cj_active_hydro)
+  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+if (ci_active_hydro)
+  scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
 
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
 

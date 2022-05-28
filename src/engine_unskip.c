@@ -553,18 +553,19 @@ void engine_unskip_sub_cycle(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    celltrace(c, "engine unskip; active=%d, count=%d", cell_is_rt_active(c, e),
-              c->hydro.count);
     if (c->hydro.count == 0) continue;
-      /* if (cell_is_empty(c)) continue; */
+    /* if (cell_is_empty(c)) continue; */
 
 #ifdef WITH_MPI
     /* We may have foreign cells which aren't doing any RT, e.g. for gravity.
      * As such, they won't have the appropriate tasks on this node. Don't unskip
-     * those, their times won't be correct. */
+     * those, their times won't be correct. You'll get a crash while calling
+     * cell_is_rt_active with debugging checks on. */
     if ((c->nodeID != e->nodeID) && (c->rt.rt_advance_cell_time == NULL))
       continue;
 #endif
+    celltrace(c, "engine unskip; active=%d, count=%d", cell_is_rt_active(c, e),
+              c->hydro.count);
 
     if (cell_is_rt_active(c, e)) {
 

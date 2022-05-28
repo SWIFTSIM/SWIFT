@@ -2344,6 +2344,61 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
     for (int k = 0; k < t->nr_unlock_tasks; k++) {
       struct task *u = t->unlock_tasks[k];
       atomic_inc(&u->wait);
+
+/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_transport_out){ */
+/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_ghost2){ */
+if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_ghost_in){
+/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_stars_ghost){ */
+
+    long long ci = t->ci->cellID;
+    int li = t->ci->nodeID == engine_rank;
+    long long cj = -1;
+    int lj = -1;
+    if (t->cj != NULL) {
+      cj = t->cj->cellID;
+      lj = t->cj->nodeID == engine_rank;
+
+      if (cj == 1) 
+        message("Cell %lld depth=%d loc= %.6f %.6f %.6f", 
+        t->cj->cellID, t->cj->depth, 
+        t->cj->loc[0], t->cj->loc[1], t->cj->loc[2]
+        );
+      fflush(stdout);
+    }
+    if (ci == 1) 
+      message("Cell %lld depth=%d loc= %.6f %.6f %.6f", 
+      t->ci->cellID, t->ci->depth, 
+      t->ci->loc[0], t->ci->loc[1], t->ci->loc[2]
+    );
+    fflush(stdout);
+
+    message(
+        "lock %s/%s cell %lld wait=%d from task %s/%s ID %lld %lld local=%d %d",
+        taskID_names[t->unlock_tasks[k]->type], subtaskID_names[t->unlock_tasks[k]->subtype],
+        t->unlock_tasks[k]->ci->cellID, t->unlock_tasks[k]->wait,
+        taskID_names[t->type], subtaskID_names[t->subtype],
+        ci, cj, li, lj);
+    fflush(stdout);
+}
+
+if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 &&
+    t->unlock_tasks[k]->type == task_type_sort){
+
+    long long ci = t->ci->cellID;
+    int li = t->ci->nodeID == engine_rank;
+    long long cj = -1;
+    int lj = -1;
+    if (t->cj != NULL) cj = t->cj->cellID;
+    if (t->cj != NULL) lj = t->cj->nodeID == engine_rank;
+
+    message(
+        "lock SORT cell %lld wait=%d from task %s/%s ID %lld %lld local=%d %d",
+        t->unlock_tasks[k]->ci->cellID, t->unlock_tasks[k]->wait,
+        taskID_names[t->type], subtaskID_names[t->subtype],
+        ci, cj, li, lj);
+    fflush(stdout);
+}
+
     }
   }
 }
@@ -2406,6 +2461,21 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
   /* Ignore skipped tasks */
   if (t->skip) return;
+
+  /* struct cell *ci = t->ci; */
+  /* struct cell *cj = t->cj; */
+  /* if (cj != NULL){ */
+  /*   [> message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); <] */
+  /*   celltrace(ci, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
+  /*   celltrace(cj, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
+  /* } */
+  /* else */
+  /*   [> message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); <] */
+  /*   celltrace(ci, "running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); */
+
+  /* if (t->type == task_type_sort) */
+  /*   celltrace(t->ci, "enqueueing sort"); */
+
 
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
@@ -2478,11 +2548,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         void *buff = NULL;            /* Buffer to accept elements */
 
         celltrace(t->ci, "------ receiving task subtype %s recvcount=%d", subtaskID_names[t->subtype], t->ci->rt.recvcount);
+        /* message("------ receiving task subtype %s recvcount=%d for %lld",  */
+        /*     subtaskID_names[t->subtype], t->ci->rt.recvcount, t->ci->cellID); */
         t->ci->rt.recvcount++;
-        if (t->cj != NULL){
-          celltrace(t->cj, "------ receiving task subtype %s recvcount=%d", subtaskID_names[t->subtype], t->cj->rt.recvcount);
-          t->cj->rt.recvcount++;
-        }
+        fflush(stdout);
 
         if (t->subtype == task_subtype_tend) {
 
@@ -2587,11 +2656,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         void *buff = NULL;            /* Buffer to send */
 
         celltrace(t->ci, "====== sending task subtype %s sendcount=%d", subtaskID_names[t->subtype], t->ci->rt.sendcount);
+        /* message("====== sending task subtype %s sendcount=%d from %lld",  */
+        /*     subtaskID_names[t->subtype], t->ci->rt.sendcount, t->ci->cellID); */
         t->ci->rt.sendcount++;
-        if (t->cj != NULL){
-          celltrace(t->cj, "====== sending task subtype %s sendcount=%d", subtaskID_names[t->subtype], t->cj->rt.sendcount);
-          t->cj->rt.sendcount++;
-        }
+        fflush(stdout);
 
         if (t->subtype == task_subtype_tend) {
 
@@ -2732,12 +2800,41 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
     struct task *t2 = t->unlock_tasks[k];
 
+    /* if (t2->type == task_type_rt_ghost2) */
+    /*   celltrace(t->ci, "unlocking rt_ghost2 from task %s/%s wait=%d skip=%d", */
+    /*       taskID_names[t->type], subtaskID_names[t->subtype], t2->wait, t2->skip); */
+
+    /* if (t2->type == task_type_rt_block_sort) */
+    /*   celltrace(t->ci, "running block sort"); */
+    /* if (t2->type == task_type_sort) */
+      /* celltrace(t->ci, "unlocking sort from task %s/%s wait=%d skip=%d",  */
+      /*     taskID_names[t->type], subtaskID_names[t->subtype], t2->wait, t2->skip); */
+
     /* if (t->type == task_type_rt_advance_cell_time && */
     /*     t2->type == task_type_send && t2->subtype == task_subtype_tend && */
     /*     (t->ci->cellID == PROBLEMCELL1 || t->ci->cellID == PROBLEMCELL2)) */
     /*   message("Cell %lld unlocking rend from rt_advance_cell_time", */
     /*           t->ci->cellID); */
     if (t2->skip) continue;
+
+/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_transport_out){ */
+/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_ghost2){ */
+if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_ghost_in){
+/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_stars_ghost){ */
+    long long ci = t->ci->cellID;
+    int li = t->ci->nodeID == engine_rank;
+    long long cj = -1;
+    int lj = -1;
+    if (t->cj != NULL) cj = t->cj->cellID;
+    if (t->cj != NULL) lj = t->cj->nodeID == engine_rank;
+    message(
+        "unlock %s/%s cell %lld wait=%d from task %s/%s ID %lld %lld local=%d %d",
+        taskID_names[t->unlock_tasks[k]->type], subtaskID_names[t->unlock_tasks[k]->subtype],
+        t->unlock_tasks[k]->ci->cellID, t->unlock_tasks[k]->wait,
+        taskID_names[t->type], subtaskID_names[t->subtype],
+        ci, cj, li, lj);
+    fflush(stdout);
+}
 
     const int res = atomic_dec(&t2->wait);
     if (res < 1) {
@@ -2832,6 +2929,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         TIMER_TIC
         res = queue_gettask(&s->queues[qid], prev, 0);
         TIMER_TOC(timer_qget);
+        /* if (res != NULL) celltrace(res->ci, "got task %s/%s from queue", taskID_names[res->type], subtaskID_names[res->subtype]); */
+        /* if ((res != NULL) && (res->cj != NULL)) celltrace(res->cj, "got task %s/%s from queue", taskID_names[res->type], subtaskID_names[res->subtype]); */
         if (res != NULL) break;
       }
 
@@ -2846,6 +2945,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
           res = queue_gettask(&s->queues[qids[ind]], prev, 0);
+          /* if (res != NULL) celltrace(res->ci, "got task %s/%s from queue", taskID_names[res->type], subtaskID_names[res->subtype]); */
+          /* if ((res != NULL) && (res->cj != NULL)) celltrace(res->cj, "got task %s/%s from queue", taskID_names[res->type], subtaskID_names[res->subtype]); */
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
             break;
@@ -2865,6 +2966,8 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
     {
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
+      /* if (res != NULL) celltrace(res->ci, "got task %s/%s from queue", taskID_names[res->type], subtaskID_names[res->subtype]); */
+      /* if ((res != NULL) && (res->cj != NULL)) celltrace(res->cj, "got task %s/%s from queue", taskID_names[res->type], subtaskID_names[res->subtype]); */
       if (res == NULL && s->waiting > 0) {
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
       }

@@ -229,6 +229,54 @@ rt_debugging_checks_start_of_step(struct engine *e, int verbose) {
   /*                  s->sparts, s->nr_sparts, sizeof(struct spart), */
   /*                  threadpool_auto_chunk_size, [>extra_data=<]e); */
 
+
+
+  /* threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top, */
+  /*                s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, */
+  /*                s); */
+
+  
+  /* char fname[200]; */
+  /* sprintf(fname, "cellcheck_%d.txt", engine_rank); */
+  /* FILE *f; */
+  /* f = fopen(fname, "w"); */
+  /*  */
+  /* [> TODO: expand this for all cells <] */
+  /* [> Use actual test only instead of full call to is_active <] */
+  /* for (int i = 0; i < s->nr_cells; i++){ */
+  /*   struct cell *c = &s->cells_top[i]; */
+  /*  */
+  /*   if (c->cellID == 1) */
+  /*     message("Cell %lld depth=%d loc= %.6f %.6f %.6f",  */
+  /*     c->cellID, c->depth,  */
+  /*     c->loc[0], c->loc[1], c->loc[2] */
+  /*     ); */
+  /*   fflush(stdout); */
+  /*  */
+  /*   [> Same check as in active.h <] */
+  /*   if (c->rt.rt_advance_cell_time != NULL && c->rt.ti_rt_end_min < e->ti_current_subcycle) { */
+  /*       error( */
+  /*           "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) " */
+  /*           "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d", */
+  /*           c->cellID, c->rt.ti_rt_end_min, c->rt.ti_rt_end_min * e->time_base, */
+  /*           e->ti_current_subcycle, e->ti_current_subcycle * e->time_base, */
+  /*           e->cosmology->a, c->nodeID, c->rt.rt_advance_cell_time != NULL, */
+  /*           c->hydro.count); */
+  /*   } */
+  /*  */
+  /*   int rta = -1; */
+  /*   if (c->rt.rt_advance_cell_time != NULL) rta = cell_is_rt_active(c, e); */
+  /*   fprintf(f, "%6lld %2d %2d %2d\n", */
+  /*       c->cellID, c->nodeID, cell_is_active_hydro(c, e), rta) ; */
+  /*   [> printf("%6lld %2d %2d %2d\n", <] */
+  /*   [>     c->cellID, c->nodeID, cell_is_active_hydro(c, e), cell_is_rt_active(c, e) <] */
+  /*   [>     ) ; <] */
+  /* } */
+  /*  */
+  /* fclose(f); */
+
+
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

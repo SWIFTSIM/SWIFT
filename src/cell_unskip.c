@@ -1549,6 +1549,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #endif
   int rebuild = 0;
 
+  /* celltrace(c, "called in unskip hydro. Active=%d", cell_is_active_hydro(c, e)); */
+
   /* Un-skip the density tasks involved with this cell. */
   for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
     struct task *t = l->t;
@@ -1586,7 +1588,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* Activate the drift tasks. */
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        /* if (ci_nodeID == nodeID) celltrace(ci, "activated drift"); */
         if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+        /* if (cj_nodeID == nodeID) celltrace(cj, "activated drift"); */
 
         /* Activate the limiter tasks. */
         if (ci_nodeID == nodeID && with_timestep_limiter)
@@ -1596,16 +1600,21 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);
+        /* celltrace(ci, "activated sort"); */
         cell_activate_hydro_sorts(cj, t->flags, s);
+        /* celltrace(cj, "activated sort"); */
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_self) {
+        /* celltrace(ci, "activated subcell tasks 1.0"); */
         cell_activate_subcell_hydro_tasks(ci, NULL, s, with_timestep_limiter);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_sub_pair) {
+        /* celltrace(ci, "activated subcell tasks 2.0"); */
+        /* celltrace(cj, "activated subcell tasks 2.1"); */
         cell_activate_subcell_hydro_tasks(ci, cj, s, with_timestep_limiter);
       }
     }
@@ -1619,8 +1628,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
+        /* celltrace(ci, "=================== call check 1.0 IDs %lld %lld active %d %d local %d %d", ci->cellID, cj->cellID, ci_active, cj_active, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
+        /* celltrace(cj, "=================== call check 1.1 IDs %lld %lld active %d %d local %d %d", ci->cellID, cj->cellID, ci_active, cj_active, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
+          /* celltrace(ci, "activated recv xv"); */
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
           if (ci_active) {
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
@@ -1641,6 +1653,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
+          /* celltrace(cj, "activated send xv"); */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
@@ -1680,8 +1693,11 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         }
 
       } else if (cj_nodeID != nodeID) {
+        /* celltrace(ci, "=================== call check 2.0 IDs %lld %lld active %d %d local %d %d", ci->cellID, cj->cellID, ci_active, cj_active, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
+        /* celltrace(cj, "=================== call check 2.1 IDs %lld %lld active %d %d local %d %d", ci->cellID, cj->cellID, ci_active, cj_active, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
+          /* celltrace(cj, "activated recv xv"); */
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
           if (cj_active) {
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
@@ -1702,6 +1718,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
+          /* celltrace(ci, "activated send xv"); */
           scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
 
           /* Drift the cell which will be sent; note that not all sent
@@ -2850,7 +2867,7 @@ int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s) {
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                          const int sub_cycle) {
 
-  celltrace(c, "unskipping; active=%d", cell_is_rt_active(c, s->space->e));
+  celltrace(c, "unskipping; active=%d hydro=%d sub_cycle=%d", cell_is_rt_active(c, s->space->e), cell_is_active_hydro(c, s->space->e), sub_cycle);
 
   /* Do we have work here? */
   if (c->hydro.count == 0) return 0;
@@ -2920,20 +2937,38 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
 #ifdef WITH_MPI
 
+      const int ci_active_hydro = cell_is_active_hydro(ci, e);
+      const int cj_active_hydro = cell_is_active_hydro(cj, e);
+
+      /* TODO: re-think this */
+      /* const int ci_active_stars = cell_need_activating_stars(ci, e, with_star_formation=0, with_star_formation_sink=0); */
+
+      /* const int cj_active_stars = cell_need_activating_stars(cj, e, with_star_formation=0, with_star_formation_sink=0); */
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
 
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
+
+/* TODO: document this */
+if (cj_active_hydro) {
+  scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+}
+if (ci_active_hydro) {
+  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+}
           celltrace(ci, "activating recv");
-          celltrace(cj, "activating recv as expected sender");
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
           /* If we don't have any active hydro tasks, make sure the sort tasks
            * don't run before the recv */
-          if (!cell_is_active_hydro(ci, e)){
-            celltrace(cj, "blocking sort");
+          if (!ci_active_hydro) { /* && (cj->stars.count > 0 && !cj_active_stars)){ */
+            celltrace(ci, "blocking sort");
             scheduler_activate(s, ci->rt.rt_block_sort);
-          }
+          } else {
+  /* TODO: document this */
+  /* Step 2 cells 72 & 201 */
+  /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv); */
+}
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -2946,9 +2981,13 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         if (ci_active) {
 
           celltrace(cj, "activating send");
-          celltrace(ci, "activating send as target");
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
                                   ci_nodeID);
+
+/* if (cj_active_hydro) { */
+/*   [> TODO: document this <] */
+/*   scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID); */
+/* } */
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -2963,17 +3002,25 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
       } else if (cj_nodeID != nodeID) {
 
+/* TODO: docs */
+if (cj_active_hydro)
+  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+if (ci_active_hydro)
+  scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
-          celltrace(cj, "activating recv as target");
-          celltrace(ci, "activating recv as expected sender");
+          celltrace(cj, "activating recv");
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
           /* If we don't have any active hydro tasks, make sure the sort tasks
            * don't run before the recv */
-          if (!cell_is_active_hydro(cj, e)){
+          if (!cj_active_hydro) { /* && ci->stars.count > 0 && !ci_active_stars){ */
             scheduler_activate(s, cj->rt.rt_block_sort);
             celltrace(cj, "blocking sort");
-          }
+          } else {
+  /* TODO: docs */
+  /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv); */
+}
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -2986,9 +3033,12 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         if (cj_active) {
 
           celltrace(ci, "activating send");
-          celltrace(cj, "activating send as target");
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
                                   cj_nodeID);
+
+/* if (ci_active_hydro) */
+/*   scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, */
+/*                         cj_nodeID); */
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
@@ -3039,8 +3089,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
   /* Unskip all the other task types */
   if (cell_is_rt_active(c, e)) {
-    celltrace(c, "unskipping and active. Have task? %d",
-              c->rt.rt_advance_cell_time != NULL);
+    celltrace(c, "unskipping and active.");
     if (c->rt.rt_in != NULL) scheduler_activate(s, c->rt.rt_in);
     if (c->rt.rt_ghost1 != NULL) scheduler_activate(s, c->rt.rt_ghost1);
     if (c->rt.rt_ghost2 != NULL) scheduler_activate(s, c->rt.rt_ghost2);
