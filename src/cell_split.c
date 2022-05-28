@@ -238,13 +238,6 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
             scount = c->stars.count;
   const int with_self_gravity = s->with_self_gravity;
 
-  /* Look up table for 0th order cell position. */
-  unsigned long cell_coord[2][8][3] = {
-    {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0},
-     {1, 1, 0}, {1, 1, 1}, {1, 0, 1}, {1, 0, 0}},
-    {{0, 0, 0}, {0, 1, 0}, {1, 1, 0}, {1, 0, 0},
-     {1, 0, 1}, {1, 1, 1}, {0, 1, 1}, {0, 0, 1}}}; 
-
   /* Have we gone too deep? */
   if (c->depth > maxdepth)
     error("Exceeded maximum depth in cell tree! Increase max_top_level_cells");
@@ -262,7 +255,35 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
     /* Create the cell's progeny. */
     space_getcells(s, 8, c->progeny);
     for (int k = 0; k < 8; k++) {
-      struct cell *cp = c->progeny[k];
+
+      /* Lets work out whese this progeny should go based on the hilbert key */
+      /* Where is this progeny? */
+      double progeny_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
+      double progeny_width[3] = {c->width[0] / 2,
+                                 c->width[1] / 2,
+                                 c->width[2] / 2};
+      if (k & 4) progeny_loc[0] += progeny_width[0];
+      if (k & 2) progeny_loc[1] += progeny_width[1];
+      if (k & 1) progeny_loc[2] += progeny_width[2];
+
+      /* Convert progeny position to 21 bit integer coordinates */
+      unsigned long bits[3];
+      bits[0] = (1ul << (nbits))
+        * ((progeny_loc[0] + (progeny_width[0] / 2)) - c->loc[0]) / c->width[0];
+      bits[1] = (1ul << (nbits))
+        * ((progeny_loc[1] + (progeny_width[1] / 2)) - c->loc[1]) / c->width[1];
+      bits[2] = (1ul << (nbits))
+        * ((progeny_loc[2] + (progeny_width[2] / 2)) - c->loc[2]) / c->width[2];
+
+      /* Get the progeny's hilbert key */
+      unsigned long prog_hilb_key = hilbert_get_key_3d(bits, nbits);
+
+      /* Shift bits to the correct depth and mask to get the final 3
+       * bits which are the index at this depth
+       * NOTE: The most significant bits represent the lowest depth*/
+      int progeny_ind = (prog_hilb_key >> ((maxdepth - c->depth - 1) * 3)) & 7;
+    
+      struct cell *cp = c->progeny[progeny_ind];
       cp->hydro.count = 0;
       cp->grav.count = 0;
       cp->stars.count = 0;
@@ -279,17 +300,13 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth) {
       cp->stars.ti_old_part = c->stars.ti_old_part;
       cp->sinks.ti_old_part = c->sinks.ti_old_part;
       cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
-      cp->loc[0] = c->loc[0];
-      cp->loc[1] = c->loc[1];
-      cp->loc[2] = c->loc[2];
-      cp->width[0] = c->width[0] / 2;
-      cp->width[1] = c->width[1] / 2;
-      cp->width[2] = c->width[2] / 2;
+      cp->loc[0] = progeny_loc[0];
+      cp->loc[1] = progeny_loc[1];
+      cp->loc[2] = progeny_loc[2];
+      cp->width[0] = progeny_width[0];
+      cp->width[1] = progeny_width[1];
+      cp->width[2] = progeny_width[2];
       cp->dmin = c->dmin / 2;
-      for (int ind = 0; ind < 3; ind++) {
-        if (cell_coord[c->depth % 2][k][ind] > 0)
-          cp->loc[ind] += cp->width[ind];
-      }
       cp->depth = c->depth + 1;
       cp->split = 0;
       cp->hydro.h_max = 0.f;
@@ -447,9 +464,9 @@ void cell_sort_and_split(struct space *s, struct cell *c,
         while (k != (sind = part_sinds[j])) {
 
           /* Swap particles in memory */
-          memswap_unaligned(&parts[j], &parts[sind],
+          memswap(&parts[j], &parts[sind],
                             sizeof(struct part));
-          memswap_unaligned(&xparts[j], &xparts[sind],
+          memswap(&xparts[j], &xparts[sind],
                             sizeof(struct xpart));
 
           /* Corrected the now sorted sind */
@@ -525,7 +542,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
         while (k != (sind = spart_sinds[j])) {
 
           /* Swap particles in memory */
-          memswap_unaligned(&sparts[j], &sparts[sind],
+          memswap(&sparts[j], &sparts[sind],
                             sizeof(struct spart));
 
           /* Corrected the now sorted sind */
@@ -601,7 +618,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
         while (k != (sind = bpart_sinds[j])) {
 
           /* Swap particles in memory */
-          memswap_unaligned(&bparts[j], &bparts[sind],
+          memswap(&bparts[j], &bparts[sind],
                             sizeof(struct bpart));
 
           /* Corrected the now sorted sind */
@@ -677,7 +694,7 @@ void cell_sort_and_split(struct space *s, struct cell *c,
         while (k != (sind = sink_sinds[j])) {
 
           /* Swap particles in memory */
-          memswap_unaligned(&sinks[j], &sinks[sind],
+          memswap(&sinks[j], &sinks[sind],
                             sizeof(struct sink));
 
           /* Corrected the now sorted sind */
