@@ -228,4 +228,14 @@ extern int engine_rank;
     fflush(stdout);                                                   \
   })
 
+#define PROBLEMPART -1
+#define parttrace(p, s, ...)                                          \
+  ({                                                                  \
+    if (p->id == PROBLEMPART)                                         \
+      printf("%s %s: PART %lld " s "\n", clocks_get_timesincestart(), \
+             __FUNCTION__, p->id, ##__VA_ARGS__);                     \
+    fflush(stdout);                                                   \
+  })
+
+
 #endif /* SWIFT_ERROR_H */

@@ -2184,8 +2184,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Initialise additional RT data now that time bins are set
    * In particular, the drift counters need to be set to the proper state */
-  if (e->policy & engine_policy_rt)
+  if (e->policy & engine_policy_rt) {
     space_convert_rt_quantities_after_zeroth_step(e->s, e->verbose);
+  }
 #endif
 
   clocks_gettime(&time2);
@@ -2639,6 +2640,7 @@ int engine_step(struct engine *e) {
     e->ti_earliest_undrifted = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* TODO: check this comment before merging into master */
   /* TODO: reset e->max_active_timebin only when subcycling RT since
    * it modifies this quantity. If left untreated, this check may fail. */
   /* e->max_active_bin = get_max_active_bin(e->ti_end_min); */
