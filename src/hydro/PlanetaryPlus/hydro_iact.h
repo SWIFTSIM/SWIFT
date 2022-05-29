@@ -724,6 +724,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
 #else
+    
+  /* Balsara term */
+  const float balsara_i = pi->force.balsara;
+  const float balsara_j = pj->force.balsara; 
+    
+#ifdef PLANETARY_GDF
   /* Standard GDF kernel gradients, Wadsley+2017 Eqn. 7, in Rosswog2020
    * framework */
   /* Include the dx and r_inv here instead of later */
@@ -732,53 +738,131 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
   }
 
-  /* Balsara term */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
-
   /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
   float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
               (rhoi + rhoj);
   float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
               (rhoi + rhoj);
+#else
+  /* Variable smoothing length term */
+  const float f_ij = 1.f - pi->force.f / mj;
+  const float f_ji = 1.f - pj->force.f / mi;
+    
+  for (i = 0; i < 3; i++) {
+    Gi[i] = wi_dr * dx[i] * r_inv * f_ij;
+    Gj[i] = wj_dr * dx[i] * r_inv * f_ji;
+  }
+    
+  /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
+  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoi /
+              (rhoi + rhoj);
+  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoj * rhoj /
+              (rhoi + rhoj);   
 #endif
+    
+#endif
+    
+    float kernel_gradient_i[3], kernel_gradient_j[3];
+    float P_i_term, P_j_term;
+    float Q_i_term, Q_j_term;
 
-  /* In GDF we use average of Gi and Gj. Not actually kernel gradient if we use
-   * matrix inversion method! */
-  float kernel_gradient[3];
-  kernel_gradient[0] = 0.5f * (Gi[0] + Gj[0]);
-  kernel_gradient[1] = 0.5f * (Gi[1] + Gj[1]);
-  kernel_gradient[2] = 0.5f * (Gi[2] + Gj[2]);
+    
+#ifdef PLANETARY_GDF
+  /* In GDF we use average of Gi and Gj. */
+  kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
+  kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
+  kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
+    
+  kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
+  kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
+  kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
 
-  /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
-   * equiv*/
-  const float dvdGij = (pi->v[0] - pj->v[0]) * kernel_gradient[0] +
-                       (pi->v[1] - pj->v[1]) * kernel_gradient[1] +
-                       (pi->v[2] - pj->v[2]) * kernel_gradient[2];
+  P_i_term = pressurei / (pi->rho * pj->rho); 
+  P_j_term = pressurej / (pi->rho * pj->rho);
 
-  /* Acceleration term, including the viscosity */
-  const float acc = (pressurei + Q_i + pressurej + Q_j) / (pi->rho * pj->rho);
-
+  Q_i_term = Q_i / (pi->rho * pj->rho); 
+  Q_j_term = Q_j / (pi->rho * pj->rho);
+    
+   
+#else 
+    
+  kernel_gradient_i[0] = Gi[0];
+  kernel_gradient_i[1] = Gi[1];
+  kernel_gradient_i[2] = Gi[2];
+    
+  kernel_gradient_j[0] = Gj[0];
+  kernel_gradient_j[1] = Gj[1];
+  kernel_gradient_j[2] = Gj[2];
+    
+      
+  P_i_term = pressurei / (pi->rho * pi->rho);
+  P_j_term = pressurej / (pj->rho * pj->rho);
+    
+  Q_i_term = Q_i / (pi->rho * pi->rho);
+  Q_j_term = Q_j / (pj->rho * pj->rho);
+    
+    
+#endif    
+    
+float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
+#ifdef PLANETARY_MATRIX_INVERSION
+  Q_kernel_gradient_i[0] = kernel_gradient_i[0];
+  Q_kernel_gradient_i[1] = kernel_gradient_i[1];
+  Q_kernel_gradient_i[2] = kernel_gradient_i[2];
+    
+  Q_kernel_gradient_j[0] = kernel_gradient_j[0];
+  Q_kernel_gradient_j[1] = kernel_gradient_j[1];
+  Q_kernel_gradient_j[2] = kernel_gradient_j[2];
+#else
+  Q_kernel_gradient_i[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
+  Q_kernel_gradient_i[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
+  Q_kernel_gradient_i[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
+    
+  Q_kernel_gradient_j[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
+  Q_kernel_gradient_j[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
+  Q_kernel_gradient_j[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
+#endif
+    
+    
+    
   /* Use the force Luke! */
-  pi->a_hydro[0] -= mj * acc * kernel_gradient[0];
-  pi->a_hydro[1] -= mj * acc * kernel_gradient[1];
-  pi->a_hydro[2] -= mj * acc * kernel_gradient[2];
+  pi->a_hydro[0] -= mj * (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
+  pi->a_hydro[1] -= mj * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
+  pi->a_hydro[2] -= mj * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
 
-  pj->a_hydro[0] += mi * acc * kernel_gradient[0];
-  pj->a_hydro[1] += mi * acc * kernel_gradient[1];
-  pj->a_hydro[2] += mi * acc * kernel_gradient[2];
+  pj->a_hydro[0] += mi * (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
+  pj->a_hydro[1] += mi * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
+  pj->a_hydro[2] += mi * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
 
+
+      /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
+   * equiv*/
+  const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
+                       (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
+                       (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
+  const float dvdG_j = (pi->v[0] - pj->v[0]) * kernel_gradient_j[0] +
+                       (pi->v[1] - pj->v[1]) * kernel_gradient_j[1] +
+                       (pi->v[2] - pj->v[2]) * kernel_gradient_j[2];
+  const float Q_dvdG_i = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_i[0] +
+                       (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
+                       (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
+  const float Q_dvdG_j = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_j[0] +
+                       (pi->v[1] - pj->v[1]) * Q_kernel_gradient_j[1] +
+                       (pi->v[2] - pj->v[2]) * Q_kernel_gradient_j[2];
+    
   /* Get the time derivative for u, including the viscosity */
-  const float du_dt_i = (pressurei + Q_i) * dvdGij / (rhoi * rhoj);
-  const float du_dt_j = (pressurej + Q_j) * dvdGij / (rhoi * rhoj);
+
+  const float du_dt_i = P_i_term * dvdG_i + P_i_term * Q_dvdG_i;
+  const float du_dt_j = P_j_term * dvdG_j + P_j_term * Q_dvdG_j;
+
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
   pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdGij / rhoj;
-  pj->force.h_dt -= mi * dvdGij / rhoi;
+  pi->force.h_dt -= mj * dvdG_i / rhoj;
+  pj->force.h_dt -= mi * dvdG_j / rhoi;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);
@@ -994,52 +1078,126 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Q_j = rhoj * (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
 #else
-  /* THIS IS ALL FROM WADSLEY 2017 */
-
+    
+  /* Balsara term */
+  const float balsara_i = pi->force.balsara;
+  const float balsara_j = pj->force.balsara; 
+    
+#ifdef PLANETARY_GDF
+  /* Standard GDF kernel gradients, Wadsley+2017 Eqn. 7, in Rosswog2020
+   * framework */
+  /* Include the dx and r_inv here instead of later */
   for (i = 0; i < 3; i++) {
     Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
     Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
   }
 
-  /* Balsara term */
-  const float balsara_i = pi->force.balsara;
-  const float balsara_j = pj->force.balsara;
-
+  /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
   float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
               (rhoi + rhoj);
   float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoj /
               (rhoi + rhoj);
+#else
+  for (i = 0; i < 3; i++) {
+    Gi[i] = wi_dr * dx[i] * r_inv;
+    Gj[i] = wj_dr * dx[i] * r_inv;
+  }
+    
+  /* Artificial viscosity terms, as pressure in Rosswog2020 framework, S2.2.1 */
+  float Q_i = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoi * rhoi /
+              (rhoi + rhoj);
+  float Q_j = -0.25f * v_sig * mu_ij * (balsara_i + balsara_j) * rhoj * rhoj /
+              (rhoi + rhoj);   
 #endif
+    
+#endif
+    
+    float kernel_gradient_i[3], kernel_gradient_j[3];
+    float P_i_term, P_j_term;
+    float Q_i_term, Q_j_term;
 
-  /* In GDF we use average of Gi and Gj. Not actually kernel gradient if we use
-   * matrix inversion method! */
-  float kernel_gradient[3];
-  kernel_gradient[0] = 0.5f * (Gi[0] + Gj[0]);
-  kernel_gradient[1] = 0.5f * (Gi[1] + Gj[1]);
-  kernel_gradient[2] = 0.5f * (Gi[2] + Gj[2]);
+    
+#ifdef PLANETARY_GDF
+  /* In GDF we use average of Gi and Gj. */
+  kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
+  kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
+  kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
+    
+  kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
+  kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
+  kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
 
-  /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
+  P_i_term = pressurei / (pi->rho * pj->rho); 
+  P_j_term = pressurej / (pi->rho * pj->rho);
+
+  Q_i_term = Q_i / (pi->rho * pj->rho); 
+  Q_j_term = Q_j / (pi->rho * pj->rho);
+    
+   
+#else 
+    
+  kernel_gradient_i[0] = Gi[0];
+  kernel_gradient_i[1] = Gi[1];
+  kernel_gradient_i[2] = Gi[2];
+    
+  kernel_gradient_j[0] = Gj[0];
+  kernel_gradient_j[1] = Gj[1];
+  kernel_gradient_j[2] = Gj[2];
+    
+      
+  P_i_term = pressurei / (pi->rho * pi->rho);
+  P_j_term = pressurej / (pj->rho * pj->rho);
+    
+  Q_i_term = Q_i / (pi->rho * pi->rho);
+  Q_j_term = Q_j / (pj->rho * pj->rho);
+    
+    
+#endif    
+    
+float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
+#ifdef PLANETARY_MATRIX_INVERSION
+  Q_kernel_gradient_i[0] = kernel_gradient_i[0];
+  Q_kernel_gradient_i[1] = kernel_gradient_i[1];
+  Q_kernel_gradient_i[2] = kernel_gradient_i[2];
+    
+  Q_kernel_gradient_j[0] = kernel_gradient_j[0];
+  Q_kernel_gradient_j[1] = kernel_gradient_j[1];
+  Q_kernel_gradient_j[2] = kernel_gradient_j[2];
+#else
+  Q_kernel_gradient_i[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
+  Q_kernel_gradient_i[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
+  Q_kernel_gradient_i[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
+    
+  Q_kernel_gradient_j[0] = 0.5f * (kernel_gradient_i[0] + kernel_gradient_j[0]);
+  Q_kernel_gradient_j[1] = 0.5f * (kernel_gradient_i[1] + kernel_gradient_j[1]);
+  Q_kernel_gradient_j[2] = 0.5f * (kernel_gradient_i[2] + kernel_gradient_j[2]);
+#endif
+    
+    
+    
+  /* Use the force Luke! */
+  pi->a_hydro[0] -= mj * (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
+  pi->a_hydro[1] -= mj * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
+  pi->a_hydro[2] -= mj * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
+
+      /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
    * equiv*/
-  const float dvdGij = (pi->v[0] - pj->v[0]) * kernel_gradient[0] +
-                       (pi->v[1] - pj->v[1]) * kernel_gradient[1] +
-                       (pi->v[2] - pj->v[2]) * kernel_gradient[2];
+  const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
+                       (pi->v[1] - pj->v[1]) * kernel_gradient_i[1] +
+                       (pi->v[2] - pj->v[2]) * kernel_gradient_i[2];
+  const float Q_dvdG_i = (pi->v[0] - pj->v[0]) * Q_kernel_gradient_i[0] +
+                       (pi->v[1] - pj->v[1]) * Q_kernel_gradient_i[1] +
+                       (pi->v[2] - pj->v[2]) * Q_kernel_gradient_i[2];
+    
+  /* Get the time derivative for u, including the viscosity */
 
-  /* acceleration term */
-  const float acc = (pressurei + Q_i + pressurej + Q_j) / (pi->rho * pj->rho);
-
-  /* Use the force Luke ! */
-  pi->a_hydro[0] -= mj * acc * kernel_gradient[0];
-  pi->a_hydro[1] -= mj * acc * kernel_gradient[1];
-  pi->a_hydro[2] -= mj * acc * kernel_gradient[2];
-
-  /* Get the time derivative for u. */
-  const float du_dt_i = (pressurei + Q_i) * dvdGij / (rhoi * rhoj);
+  const float du_dt_i = P_i_term * dvdG_i + P_i_term * Q_dvdG_i;
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdGij / rhoj;  // mj * dvdGi / rhoj;
+  pi->force.h_dt -= mj * dvdG_i / rhoj;
 
   /* Update the signal velocity. */
   pi->force.v_sig = max(pi->force.v_sig, v_sig);

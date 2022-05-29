@@ -482,6 +482,18 @@ if test "$planetary_fixed_entropy" = "yes"; then
    AC_DEFINE([PLANETARY_FIXED_ENTROPY],1,[Enable planetary fixed entropy])
 fi
 
+# Check if GDF is on for planetary simulations
+AC_ARG_ENABLE([planetary-gdf],
+   [AS_HELP_STRING([--enable-planetary-gdf],
+     [Enable GDF for planetary simulations @<:@yes/no@:>@]
+   )],
+   [planetary_gdf="$enableval"],
+   [planetary_gdf="no"]
+)
+if test "$planetary_gdf" = "yes"; then
+   AC_DEFINE([PLANETARY_GDF],1,[Enable GDF])
+fi
+
 # Check if imbalance statistic method is on for planetary simulations
 AC_ARG_ENABLE([planetary-imbalance],
    [AS_HELP_STRING([--enable-planetary-imbalance],
@@ -2734,9 +2746,10 @@ AC_MSG_RESULT([
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
-   Planetary imbalance method  : $planetary_imbalance
-   Planetary sc                : $planetary_smoothing_correction
-   Planetary matrix method     : $planetary_matrix_inversion
+   P+ GDF                      : $planetary_gdf
+   P+ imbalance method         : $planetary_imbalance
+   P+ smoothing correction     : $planetary_smoothing_correction
+   P+ matrix method            : $planetary_matrix_inversion
 
    Continuous Sim. Data Stream : $with_csds
 
