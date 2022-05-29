@@ -1127,6 +1127,8 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       /* Skip inactive particles */
       if (!PART_IS_ACTIVE(pi, e)) continue;
 
+      if (part_is_inhibited(pi,e)) error("Working on an inhibited part");
+
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
