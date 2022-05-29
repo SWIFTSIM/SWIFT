@@ -52,8 +52,8 @@
 #include "./hydro/Shadowswift/hydro_parameters.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_parameters.h"
-#elif defined(PLANETARY_GDF_SPH)
-#include "./hydro/PlanetaryGDF/hydro_parameters.h"
+#elif defined(PLANETARY_PLUS_SPH)
+#include "./hydro/PlanetaryPlus/hydro_parameters.h"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_parameters.h"
 #elif defined(GASOLINE_SPH)

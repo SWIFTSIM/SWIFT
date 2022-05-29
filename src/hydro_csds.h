@@ -47,7 +47,7 @@
 #error TODO
 #elif defined(PLANETARY_SPH)
 #error TODO
-#elif defined(PLANETARY_GDF_SPH)
+#elif defined(PLANETARY_PLUS_SPH)
 #error TODO
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_csds.h"
