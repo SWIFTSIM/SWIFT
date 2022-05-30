@@ -44,10 +44,8 @@ params = {
     "figure.subplot.hspace": 0.0,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 # params = {
@@ -69,7 +67,6 @@ rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 # 'figure.subplot.hspace'  : 0.  ,
 # 'lines.markersize' : 6,
 # 'lines.linewidth' : 1.5,
-# 'text.latex.unicode': True
 # }
 # rcParams.update(params)
 # rc('font',**{'family':'sans-serif','sans-serif':['Times']})
@@ -459,7 +456,7 @@ legend(
 
 # Same but now in log space
 subplot(212, yscale="log")
-plot(xx, Gaussian(xx, h), "k-", linewidth=0.7, label="${\\rm Gaussian}$", lw=1.5)
+plot(xx, Gaussian(xx, h), "k-", linewidth=0.7, label="${\\rm Gaussian}$")
 plot(xx, W_cubic_spline(xx), "b-", label="${\\rm Cubic~spline}$", lw=1.5)
 plot(xx, W_quartic_spline(xx), "c-", label="${\\rm Quartic~spline}$", lw=1.5)
 plot(xx, W_quintic_spline(xx), "g-", label="${\\rm Quintic~spline}$", lw=1.5)
@@ -751,7 +748,7 @@ figure()
 subplot(211)
 
 plot([0, 2.5 * h], [0.0, 0.0], "k--", linewidth=0.7)
-plot(xx, d_Gaussian(xx, h), "k-", linewidth=0.7, label="${\\rm Gaussian}$", lw=1.5)
+plot(xx, d_Gaussian(xx, h), "k-", linewidth=0.7, label="${\\rm Gaussian}$")
 plot(xx, dWdx_cubic_spline(xx), "b-", label="${\\rm Cubic~spline}$", lw=1.5)
 plot(xx, dWdx_quartic_spline(xx), "c-", label="${\\rm Quartic~spline}$", lw=1.5)
 plot(xx, dWdx_quintic_spline(xx), "g-", label="${\\rm Quintic~spline}$", lw=1.5)

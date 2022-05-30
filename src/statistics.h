@@ -113,16 +113,16 @@ struct statistics {
   /*! Total gas mass that is in Helium (all species) */
   double gas_He_mass;
 
-  /*! Total Magnetic Energy*/
+  /*! Total Magnetic Energy */
   double E_mag;
 
-  /*! Total divB error*/
-  double eDivB;
+  /*! Total divB error */
+  double divB_error;
 
-  /*! Total Cross Helicity*/
+  /*! Total Cross Helicity */
   double H_cross;
 
-  /*! Total Magnetic helicity*/
+  /*! Total Magnetic helicity */
   double H_mag;
 
   /*! Lock for threaded access */

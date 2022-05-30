@@ -72,6 +72,7 @@
 #include "periodic.h"
 #include "physical_constants.h"
 #include "potential.h"
+#include "power_spectrum.h"
 #include "pressure_floor.h"
 #include "pressure_floor_iact.h"
 #include "profiler.h"
