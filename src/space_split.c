@@ -51,20 +51,6 @@ void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data) {
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
-    /* Initialise the thread local copy of the cell */
-    struct cell *temp_c = NULL;
-    
-    /* Allocare the tempoary cell so we can
-       avoid memory movement overhead in sorts */
-    if (swift_memalign("temp_cell", (void**)&temp_c,
-                       cell_align,
-                       sizeof(struct cell)) != 0)
-      error("Error while allocating temporary memory for cell");
-
-    /* Copy cell contents into temporary local cell */
-    memcpy(temp_c, c, sizeof(struct cell));
-
-
     /* Sort this cell. */
     cell_split_sort(s, temp_c,
                     c->hydro.parts - s->parts,
@@ -72,13 +58,6 @@ void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data) {
                     c->black_holes.parts - s->bparts,
                     c->sinks.parts - s->sinks, nbits);
 
-    /* Replace the cell with the local cell */
-    cells_top[local_cells_with_particles[ind]] = *temp_c;
-
-    /* Free up now unused cell */
-    //swift_free("temp_cell", c);
-
-    
   }
 }
 
@@ -135,18 +114,18 @@ void space_split(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, zoom_space_split_sort_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
-                   sizeof(int), threadpool_auto_chunk_size, s);
+                   sizeof(int), threadpool_uniform_chunk_size, s);
   } else {
     threadpool_map(&s->e->threadpool, space_split_sort_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
-                   threadpool_auto_chunk_size, s);
+                   threadpool_uniform_chunk_size, s);
   }
 #else
   threadpool_map(&s->e->threadpool, space_split_sort_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+                 threadpool_uniform_chunk_size, s);
 #endif
   
   /* Calculate the properties of the cell heirarchy */
