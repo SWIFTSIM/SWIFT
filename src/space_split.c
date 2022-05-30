@@ -52,7 +52,7 @@ void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
     /* Sort this cell. */
-    cell_split_sort(s, temp_c,
+    cell_split_sort(s, c,
                     c->hydro.parts - s->parts,
                     c->stars.parts - s->sparts,
                     c->black_holes.parts - s->bparts,
