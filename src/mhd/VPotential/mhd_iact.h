@@ -60,13 +60,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
 
-  double dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
-  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
-  pi->mhd_data.divB -= faci * dBdr;
-  pj->mhd_data.divB -= facj * dBdr;
-
   double dA[3];
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
@@ -115,12 +108,6 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
 
-  double dB[3];
-  for (int i = 0; i < 3; ++i)
-    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
-  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
-  pi->mhd_data.divB -= faci * dBdr;
-
   double dA[3];
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
@@ -165,10 +152,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   kernel_deval(ui, &wi, &wi_dx);
   kernel_deval(uj, &wj, &wj_dx);
 
+  const float hi_inv = 1.0f / hi;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float wi_dr = hid_inv * wi_dx;
+  const float hj_inv = 1.0f / hj;
+  const float hjd_inv = pow_dimension_plus_one(hj_inv); /* 1/h^(d+1) */
+  const float wj_dr = hjd_inv * wj_dx;
+
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  const float faci = pj->mass * wi_dr * r_inv / pi->rho;
+  const float facj = pi->mass * wj_dr * r_inv / pj->rho;
+
+  double dB[3];
+  for (int i = 0; i < 3; ++i)
+    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
+  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
+  pi->mhd_data.divB -= faci * dBdr;
+  pj->mhd_data.divB -= facj * dBdr;
+
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
     pj->mhd_data.BSmooth[i] += pi->mass * wj * pi->mhd_data.BPred[i];
   }
+  // pi->mhd_data.GauSmooth += pj->mass * wi * pj->mhd_data.Gau;
+  // pj->mhd_data.GauSmooth += pi->mass * wj * pi->mhd_data.Gau;
   pi->mhd_data.Q0 += pj->mass * wi;
   pj->mhd_data.Q0 += pi->mass * wj;
 
@@ -205,8 +212,22 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
 
   kernel_deval(ui, &wi, &wi_dx);
 
+  const float hi_inv = 1.0f / hi;
+  const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
+  const float wi_dr = hid_inv * wi_dx;
+
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  const float faci = pj->mass * wi_dr * r_inv / pi->rho;
+
+  double dB[3];
+  for (int i = 0; i < 3; ++i)
+    dB[i] = pi->mhd_data.BPred[i] - pj->mhd_data.BPred[i];
+  const double dBdr = dB[0] * dx[0] + dB[1] * dx[1] + dB[2] * dx[2];
+  pi->mhd_data.divB -= faci * dBdr;
+
   for (int i = 0; i < 3; i++)
     pi->mhd_data.BSmooth[i] += pj->mass * wi * pj->mhd_data.BPred[i];
+  // pi->mhd_data.GauSmooth += pj->mass * wi * pj->mhd_data.Gau;
   pi->mhd_data.Q0 += pj->mass * wi;
 
   return;
@@ -261,8 +282,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = MU0_1 * f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = MU0_1 * f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a * pow(a,3.*(hydro_gamma-1.));
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a * pow(a,3.*(hydro_gamma-1.));
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -312,22 +333,21 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
       -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
   const float SourceAj =
       -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
-  float SAi = SourceAi + (pi->mhd_data.Gau - pj->mhd_data.Gau);
-  float SAj = SourceAj + (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAj = SourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
   for (int i = 0; i < 3; i++) {
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
     pj->mhd_data.dAdt[i] += mi * mag_VPIndj * SAj * dx[i];
   }
   /// DISSSIPATION
-  const float Deta = 0.001f;
   const float mag_Disi =
       (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   const float mag_Disj =
       (wj_dx + wi_dx) / 2.f * r_inv * rhoj / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++) {
-    pi->mhd_data.dAdt[i] += mj * 2.0 * Deta * mag_Disi * dA[i];
-    pj->mhd_data.dAdt[i] += mi * 2.0 * Deta * mag_Disj * dA[i];
+    pi->mhd_data.dAdt[i] += mj * 2.0 * pi->mhd_data.Deta * mag_Disi * dA[i];
+    pj->mhd_data.dAdt[i] += mi * 2.0 * pj->mhd_data.Deta * mag_Disj * dA[i];
   }
   return;
 }
@@ -386,8 +406,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = MU0_1 * f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = MU0_1 * f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a * pow(a,3.*(hydro_gamma-1.));
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a * pow(a,3.*(hydro_gamma-1.));
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -429,15 +449,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
   const float SourceAi =
       -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
-  float SAi = SourceAi + (pi->mhd_data.Gau - pj->mhd_data.Gau);
+  float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
   /// DISSSIPATION
-  const float Deta = 0.001f;
   const float mag_Disi =
       (wi_dx + wj_dx) / 2.f * r_inv * rhoi / (rho_ij * rho_ij);
   for (int i = 0; i < 3; i++)
-    pi->mhd_data.dAdt[i] += mj * 2.0 * Deta * mag_Disi * dA[i];
+    pi->mhd_data.dAdt[i] += mj * 2.0 * pi->mhd_data.Deta * mag_Disi * dA[i];
   return;
 }
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_H */

@@ -20,7 +20,21 @@
 #define SWIFT_NONE_MHD_IO_H
 
 #include "statistics.h"
-
+/**
+ * @brief Basic statistics
+ *
+ * @param parts The particle array.
+ * @param statistic structure.
+ */
+INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
+  /* example:
+   * s->E_mag+=10.f*parts->mhd_data.Bfld**2;
+   * s->eDivB+=.....;
+   *
+   *
+   * */
+  return;
+}
 /**
  * @brief Specifies which particle fields to read from a dataset
  *

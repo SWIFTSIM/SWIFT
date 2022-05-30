@@ -160,60 +160,60 @@ struct part {
   } diffusion;
 
   /* Store density/force specific stuff. */
-  union {
+  // union {
 
-    /**
-     * @brief Structure for the variables only used in the density loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the density
-     * loop over neighbours and the ghost task.
-     */
-    struct {
+  /**
+   * @brief Structure for the variables only used in the density loop over
+   * neighbours.
+   *
+   * Quantities in this sub-structure should only be accessed in the density
+   * loop over neighbours and the ghost task.
+   */
+  struct {
 
-      /*! Neighbour number count. */
-      float wcount;
+    /*! Neighbour number count. */
+    float wcount;
 
-      /*! Derivative of the neighbour number with respect to h. */
-      float wcount_dh;
+    /*! Derivative of the neighbour number with respect to h. */
+    float wcount_dh;
 
-      /*! Derivative of density with respect to h */
-      float rho_dh;
+    /*! Derivative of density with respect to h */
+    float rho_dh;
 
-      /*! Particle velocity curl. */
-      float rot_v[3];
+    /*! Particle velocity curl. */
+    float rot_v[3];
 
-    } density;
+  } density;
 
-    /**
-     * @brief Structure for the variables only used in the force loop over
-     * neighbours.
-     *
-     * Quantities in this sub-structure should only be accessed in the force
-     * loop over neighbours and the ghost, drift and kick tasks.
-     */
-    struct {
+  /**
+   * @brief Structure for the variables only used in the force loop over
+   * neighbours.
+   *
+   * Quantities in this sub-structure should only be accessed in the force
+   * loop over neighbours and the ghost, drift and kick tasks.
+   */
+  struct {
 
-      /*! "Grad h" term -- only partial in P-U */
-      float f;
+    /*! "Grad h" term -- only partial in P-U */
+    float f;
 
-      /*! Particle pressure. */
-      float pressure;
+    /*! Particle pressure. */
+    float pressure;
 
-      /*! Particle soundspeed. */
-      float soundspeed;
+    /*! Particle soundspeed. */
+    float soundspeed;
 
-      /*! Time derivative of smoothing length  */
-      float h_dt;
+    /*! Time derivative of smoothing length  */
+    float h_dt;
 
-      /*! Balsara switch */
-      float balsara;
+    /*! Balsara switch */
+    float balsara;
 
-      /*! Maximal alpha (viscosity) over neighbours */
-      float alpha_visc_max_ngb;
+    /*! Maximal alpha (viscosity) over neighbours */
+    float alpha_visc_max_ngb;
 
-    } force;
-  };
+  } force;
+  //};
 
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;

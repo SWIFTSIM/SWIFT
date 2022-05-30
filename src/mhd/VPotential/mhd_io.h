@@ -19,6 +19,33 @@
 #ifndef SWIFT_VECTOR_POTENTIAL_MHD_IO_H
 #define SWIFT_VECTOR_POTENTIAL_MHD_IO_H
 
+#include "io_properties.h"
+#include "statistics.h"
+
+/**
+ * @brief Basic statistics
+ *
+ * @param parts The particle array.
+ * @param statistic structure.
+ */
+INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
+
+  float b2 = parts->mhd_data.BPred[0] * parts->mhd_data.BPred[0] +
+             parts->mhd_data.BPred[1] * parts->mhd_data.BPred[1] +
+             parts->mhd_data.BPred[2] * parts->mhd_data.BPred[2];
+  s->E_mag += 0.5 * b2;
+  // DivB error, with a small threshold for small Bfields
+  s->eDivB += fabs(parts->mhd_data.divB * parts->h / sqrt(b2 + 1.e-5));
+  s->H_cross += parts->v[0] * parts->mhd_data.BPred[0] +
+                parts->v[1] * parts->mhd_data.BPred[1] +
+                parts->v[2] * parts->mhd_data.BPred[2];
+  s->H_mag += parts->mhd_data.APred[0] * parts->mhd_data.BPred[0] +
+              parts->mhd_data.APred[1] * parts->mhd_data.BPred[1] +
+              parts->mhd_data.APred[2] * parts->mhd_data.BPred[2];
+
+  return;
+}
+
 /**
  * @brief Specifies which particle fields to read from a dataset
  *
@@ -37,6 +64,24 @@ INLINE static int mhd_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, mhd_data.APred);
   return 2;
 }
+/*TODO
+ *
+ * */
+INLINE static void convert_B(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+  ret[0] = p->mhd_data.BPred[0] * sqrt(e->hydro_properties->mhd.mu0);
+  ret[1] = p->mhd_data.BPred[1] * sqrt(e->hydro_properties->mhd.mu0);
+  ret[2] = p->mhd_data.BPred[2] * sqrt(e->hydro_properties->mhd.mu0);
+}
+/*TODO
+ *
+ * */
+INLINE static void convert_A(const struct engine* e, const struct part* p,
+                             const struct xpart* xp, float* ret) {
+  ret[0] = p->mhd_data.APred[0] * sqrt(e->hydro_properties->mhd.mu0);
+  ret[1] = p->mhd_data.APred[1] * sqrt(e->hydro_properties->mhd.mu0);
+  ret[2] = p->mhd_data.APred[2] * sqrt(e->hydro_properties->mhd.mu0);
+}
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -51,18 +96,29 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
 
-  list[0] = io_make_output_field("Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f,
-                                 parts, mhd_data.BPred,
-                                 "Co-moving Magnetic field of the particles");
+  // list[0] = io_make_output_field("Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS,
+  // -2.f,
+  //                                parts, mhd_data.BPred,
+  //                                "Co-moving Magnetic field of the
+  //                                particles");
+  list[0] = io_make_output_field_convert_part(
+      "Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f, parts, xparts, convert_B,
+      "Co-moving Magnetic field of the particles");
 
   list[1] =
       io_make_output_field("divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts,
                            mhd_data.divB, "co-moving DivB of the particles");
+  list[2] = io_make_output_field_convert_part(
+      "Apot", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f, parts, xparts, convert_A,
+      "Co-moving Magnetic field Vector Potential");
 
-  //  list[2] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
-  //                                 parts, mhd_data.Gau, "Gauge scalar field");
+  list[3] = io_make_output_field("Gau", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
+                                 parts, mhd_data.Gau, "Gauge scalar field");
 
-  return 2;
+  list[4] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
+                                 parts, mhd_data.divA, "divA");
+
+  return 5;
 }
 
 /**

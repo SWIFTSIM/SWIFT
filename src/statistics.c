@@ -212,6 +212,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
 #endif
 #endif
+    mhd_stats(p, &stats);
 
     /* Collect centre of mass */
     stats.centre_of_mass[0] += m * x[0];

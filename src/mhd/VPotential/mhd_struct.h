@@ -38,9 +38,10 @@ struct mhd_part_data {
   float APred[3];
   /* predicted step Gauge, divA */
   float Gau, divA;
+  float GauSmooth;
   /* VP evolution */
   float dAdt[3];
-  float Test[3];
+  float Deta;
 };
 
 /**
