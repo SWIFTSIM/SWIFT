@@ -846,6 +846,9 @@ void cell_split_sort(struct space *s, struct cell *c,
   }
 #endif
 
+  /* Finally, we can split this cell */
+  cell_split_recursive(s, c, nbits - 1, c->loc, c->width);
+
 }
 
 /**
