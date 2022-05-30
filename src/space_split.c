@@ -114,18 +114,18 @@ void space_split(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, zoom_space_split_sort_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
-                   sizeof(int), threadpool_uniform_chunk_size, s);
+                   sizeof(int), threadpool_auto_chunk_size, s);
   } else {
     threadpool_map(&s->e->threadpool, space_split_sort_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
-                   threadpool_uniform_chunk_size, s);
+                   threadpool_auto_chunk_size, s);
   }
 #else
   threadpool_map(&s->e->threadpool, space_split_sort_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_uniform_chunk_size, s);
+                 threadpool_auto_chunk_size, s);
 #endif
   
   /* Calculate the properties of the cell heirarchy */
