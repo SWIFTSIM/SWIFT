@@ -2347,7 +2347,7 @@ void scheduler_rewait_mapper(void *map_data, int num_elements,
 
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_transport_out){ */
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_ghost2){ */
-if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_ghost_in){
+if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL2 && t->unlock_tasks[k]->type == task_type_ghost_in){
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_stars_ghost){ */
 
     long long ci = t->ci->cellID;
@@ -2381,7 +2381,7 @@ if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type =
     fflush(stdout);
 }
 
-if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 &&
+if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL2 &&
     t->unlock_tasks[k]->type == task_type_sort){
 
     long long ci = t->ci->cellID;
@@ -2547,7 +2547,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to accept elements */
 
-        celltrace(t->ci, "------ receiving task subtype %s recvcount=%d", subtaskID_names[t->subtype], t->ci->rt.recvcount);
+        /* celltrace(t->ci, "------ receiving task subtype %s recvcount=%d", subtaskID_names[t->subtype], t->ci->rt.recvcount); */
         /* message("------ receiving task subtype %s recvcount=%d for %lld",  */
         /*     subtaskID_names[t->subtype], t->ci->rt.recvcount, t->ci->cellID); */
         t->ci->rt.recvcount++;
@@ -2655,7 +2655,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
 
-        celltrace(t->ci, "====== sending task subtype %s sendcount=%d", subtaskID_names[t->subtype], t->ci->rt.sendcount);
+        /* celltrace(t->ci, "====== sending task subtype %s sendcount=%d", subtaskID_names[t->subtype], t->ci->rt.sendcount); */
         /* message("====== sending task subtype %s sendcount=%d from %lld",  */
         /*     subtaskID_names[t->subtype], t->ci->rt.sendcount, t->ci->cellID); */
         t->ci->rt.sendcount++;
@@ -2819,7 +2819,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
 
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_transport_out){ */
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_ghost2){ */
-if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_ghost_in){
+if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL2 && t->unlock_tasks[k]->type == task_type_ghost_in){
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_stars_ghost){ */
     long long ci = t->ci->cellID;
     int li = t->ci->nodeID == engine_rank;

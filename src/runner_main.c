@@ -169,17 +169,17 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      if (cj != NULL){
-        celltrace(cj, "running %s/%s cells %lld %lld local %d %d",
-            taskID_names[t->type], subtaskID_names[t->subtype],
-            ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank);
-        celltrace(ci, "running %s/%s cells %lld %lld local %d %d",
-            taskID_names[t->type], subtaskID_names[t->subtype],
-            ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank);
-      }
-      else {
-        celltrace(ci, "running %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
-      }
+      /* if (cj != NULL){ */
+      /*   celltrace(cj, "running %s/%s cells %lld %lld local %d %d", */
+      /*       taskID_names[t->type], subtaskID_names[t->subtype], */
+      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
+      /*   celltrace(ci, "running %s/%s cells %lld %lld local %d %d", */
+      /*       taskID_names[t->type], subtaskID_names[t->subtype], */
+      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
+      /* } */
+      /* else { */
+      /*   celltrace(ci, "running %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]); */
+      /* } */
 
       /* if (cj != NULL) */
       /*   message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
@@ -403,9 +403,19 @@ void *runner_main(void *data) {
 
         case task_type_sort:
           /* Cleanup only if any of the indices went stale. */
+          celltrace(t->ci, "~~~~~~~~~~~~~~~~ FOR HYDRO SORT HAS FLAGS=%lld", t->flags);
           runner_do_hydro_sort(
               r, ci, t->flags,
               ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+          /* Reset the sort flags as our work here is done. */
+          t->flags = 0;
+          break;
+        case task_type_rt_sort:
+          celltrace(t->ci, "~~~~~~~~~~~~~~~~ FOR RT SORT HAS FLAGS=%lld, dx_max_sort_old=%f >? %f", t->flags, ci->hydro.dx_max_sort_old, space_maxreldx * ci->dmin);
+          /* Cleanup only if any of the indices went stale. */
+          runner_do_hydro_sort(
+              r, ci, t->flags,
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 2);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;

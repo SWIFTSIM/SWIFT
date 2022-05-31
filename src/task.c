@@ -123,7 +123,7 @@ const char *taskID_names[task_type_count] = {
     "rt_transport_out",
     "rt_tchem",
     "rt_advance_cell_time",
-    "rt_block_sort",
+    "rt_sorts",
 };
 
 /* Sub-task type names. */

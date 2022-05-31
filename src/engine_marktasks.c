@@ -803,8 +803,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
             /* Check the sorts and activate them if needed. */
-            cell_activate_hydro_sorts(ci, t->flags, s);
-            cell_activate_hydro_sorts(cj, t->flags, s);
+            cell_activate_rt_sorts(ci, t->flags, s);
+            cell_activate_rt_sorts(cj, t->flags, s);
           }
 
           /* Store current values of dx_max and h_max. */
@@ -1221,16 +1221,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_rt) {
 
 /* TODO: document this */
-if (cj_active_hydro) {
+if (cj_active_hydro)
   scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
-}
-if (ci_active_hydro) {
+if (ci_active_hydro)
   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
-}
+
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
-            /* If we don't have any active hydro tasks, make sure the sort tasks
-             * don't run before the recv */
-            if (!ci_active_hydro) scheduler_activate(s, ci->rt.rt_block_sort);
 
             if (ci_active_rt) {
               /* We only need updates later on if the other cell is active as
@@ -1268,10 +1264,6 @@ if (ci_active_hydro)
   scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
 
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
-
-            /* If we don't have any active hydro tasks, make sure the sort tasks
-             * don't run before the recv */
-            if (!cj_active_hydro) scheduler_activate(s, cj->rt.rt_block_sort);
 
             if (cj_active_rt) {
               /* We only need updates later on if the other cell is active as

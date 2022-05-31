@@ -196,19 +196,21 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
     const struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* TODO: this needs to be fixed for MPI */
-  /* in particular with the case where gravity creates pair tasks for cells
-   * which have no RT tasks */
-  if (c->rt.ti_rt_end_min < e->ti_current_subcycle) {
-    /* if ((c->rt.rt_advance_cell_time != NULL) && c->rt.ti_rt_end_min <
-     * e->ti_current_subcycle) { */
-    error(
-        "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
-        "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d",
-        c->cellID, c->rt.ti_rt_end_min, c->rt.ti_rt_end_min * e->time_base,
-        e->ti_current_subcycle, e->ti_current_subcycle * e->time_base,
-        e->cosmology->a, c->nodeID, c->rt.rt_advance_cell_time != NULL,
-        c->hydro.count);
+
+  /* Each cell doing RT needs to have the rt_advance_cell_time task.
+   * If it doesn't, it's not doing RT. This can happen for e.g.
+   * foreign cells which have been sent to a foreign node for other
+   * interactions, e.g. gravity. Make sure that if the cell doesn't
+   * have an rt_advance_cell_time task, no other tasks are around. */
+  if ((c->rt.rt_advance_cell_time != NULL) && c->rt.ti_rt_end_min <
+  e->ti_current_subcycle) {
+  error(
+      "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
+      "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d",
+      c->cellID, c->rt.ti_rt_end_min, c->rt.ti_rt_end_min * e->time_base,
+      e->ti_current_subcycle, e->ti_current_subcycle * e->time_base,
+      e->cosmology->a, c->nodeID, c->rt.rt_advance_cell_time != NULL,
+      c->hydro.count);
   }
 #endif
 

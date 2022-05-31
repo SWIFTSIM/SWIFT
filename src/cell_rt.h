@@ -62,7 +62,7 @@ struct cell_rt {
     struct task *rt_advance_cell_time;
 
     /*! Block the sorting task if cell is RT active but hydro inactive */
-    struct task *rt_block_sort;
+    struct task *rt_sorts;
 
     /*! Radiative transfer ghost out task */
     struct task *rt_out;
