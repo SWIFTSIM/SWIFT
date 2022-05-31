@@ -220,7 +220,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   if (cleanup) {
     c->hydro.sorted = 0;
   } else {
-    /* flags &= ~c->hydro.sorted; */
+    flags &= ~c->hydro.sorted;
   }
 
   celltrace(c, "check3 flags=%d, cellflag=%d, call=%d, split=%d", flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort), clock, c->split);

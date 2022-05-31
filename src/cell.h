@@ -340,7 +340,8 @@ enum cell_flags {
   cell_flag_do_hydro_sync = (1UL << 17),
   cell_flag_do_hydro_sub_sync = (1UL << 18),
   cell_flag_unskip_self_grav_processed = (1UL << 19),
-  cell_flag_unskip_pair_grav_processed = (1UL << 20)
+  cell_flag_unskip_pair_grav_processed = (1UL << 20),
+  cell_flag_no_rt_sort = (1UL << 21)
 };
 
 /**

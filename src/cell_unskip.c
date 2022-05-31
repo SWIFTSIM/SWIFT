@@ -594,6 +594,8 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->hydro.sorts");
 #endif
     scheduler_activate(s, c->hydro.sorts);
+    cell_set_flag(c, cell_flag_no_rt_sort);
+    celltrace(c, "Setting NO SORT flag");
     if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
     for (struct cell *parent = c->parent;
@@ -606,6 +608,8 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parents->hydro.sorts");
 #endif
         scheduler_activate(s, parent->hydro.sorts);
+        cell_set_flag(parent, cell_flag_no_rt_sort);
+        celltrace(c, "Setting NO SORT flag");
         if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;
       }
@@ -653,6 +657,8 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
     if (c->nodeID == engine_rank) {
       /* TODO for later: check whether we can live without drifts */
       cell_activate_drift_part(c, s);
+      cell_set_flag(c, cell_flag_no_rt_sort);
+      celltrace(c, "Setting NO SORT flag");
       scheduler_activate(s, c->hydro.sorts);
     } else {
       scheduler_activate(s, c->rt.rt_sorts);
@@ -671,6 +677,8 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
 #endif
         if (parent->nodeID == engine_rank) {
           cell_activate_drift_part(parent, s);
+          cell_set_flag(c, cell_flag_no_rt_sort);
+          celltrace(c, "Setting NO SORT flag");
           scheduler_activate(s, parent->hydro.sorts);
         } else {
           scheduler_activate(s, parent->rt.rt_sorts);
@@ -689,10 +697,14 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
  */
 void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s) {
   /* Do we need to re-sort? */
+  celltrace(c, "check0 %f %f", c->hydro.dx_max_sort, space_maxreldx * c->dmin);
   if (c->hydro.dx_max_sort > space_maxreldx * c->dmin) {
+    celltrace(c, "check1");
     /* Climb up the tree to active the sorts in that direction */
     for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+      celltrace(c, "check2");
       if (finger->hydro.requires_sorts) {
+        celltrace(c, "check3");
         atomic_or(&finger->hydro.do_sort, finger->hydro.requires_sorts);
         cell_activate_rt_sorts_up(finger, s);
       }
@@ -701,8 +713,10 @@ void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s) {
     }
   }
 
+  celltrace(c, "check4");
   /* Has this cell been sorted at all for the given sid? */
   if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+    celltrace(c, "check5");
     atomic_or(&c->hydro.do_sort, (1 << sid));
     cell_activate_rt_sorts_up(c, s);
   }
@@ -2998,6 +3012,12 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         else if (t->type == task_type_sub_pair) {
           cell_activate_subcell_rt_tasks(ci, cj, s, sub_cycle);
         }
+      }
+      else { /* We're in a sub-cycle. There are no sorts here! */
+        cell_set_flag(ci, cell_flag_no_rt_sort);
+    celltrace(ci, "Setting NO SORT flag");
+        if (cj != NULL) cell_set_flag(cj, cell_flag_no_rt_sort);
+    if (cj != NULL) celltrace(cj, "Setting NO SORT flag");
       }
     }
 
