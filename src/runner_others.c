@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -236,7 +236,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
       }
   } else {
 
-    /* Loop over the gas particles in this cell. */
+    /* Loop over the sink particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */

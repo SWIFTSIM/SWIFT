@@ -1,6 +1,6 @@
 ################################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+# Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -48,10 +48,8 @@ params = {
     "figure.subplot.hspace": 0.12,
     "lines.markersize": 6,
     "lines.linewidth": 2.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 snap = int(sys.argv[1])
 

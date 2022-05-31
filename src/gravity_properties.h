@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -120,6 +120,10 @@ struct gravity_props {
 
   /*! Whether mesh is distributed between MPI ranks when we use MPI  */
   int distributed_mesh;
+
+  /*! Whether or not to use local patches rather than
+   * direct atomic writes to the mesh when running without MPI */
+  int mesh_uses_local_patches;
 
   /*! Mesh smoothing scale in units of top-level cell size */
   float a_smooth;

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016   Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2016   Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -38,6 +38,20 @@
     const __typeof__(b) _b = (b);                                      \
     _x < _a ? (_x + (_b - _a)) : ((_x >= _b) ? (_x - (_b - _a)) : _x); \
   })
+
+/**
+ * @brief Limits the value of x to be between a and b
+ */
+__attribute__((always_inline, const)) INLINE static double box_wrap_multiple(
+    double x, const double a, const double b) {
+  while (x < a) {
+    x += (b - a);
+  }
+  while (x >= b) {
+    x -= (b - a);
+  }
+  return x;
+}
 
 /**
  * @brief Find the smallest distance dx along one axis within a box of size

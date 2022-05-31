@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -41,9 +41,9 @@ struct task;
 #define TASK_LOOP_LIMITER 3
 #define TASK_LOOP_FEEDBACK 4
 #define TASK_LOOP_SWALLOW 5
-#define TASK_LOOP_SINK_FORMATION 6
-#define TASK_LOOP_SINK_MERGER 7
-#define TASK_LOOP_SINK_ACCRETION 8
+#define TASK_LOOP_SINK_SWALLOW 6
+#define TASK_LOOP_SINK_DO_SINK_SWALLOW 7
+#define TASK_LOOP_SINK_DO_GAS_SWALLOW 8
 #define TASK_LOOP_STARS_PREP1 9
 #define TASK_LOOP_STARS_PREP2 10
 #define TASK_LOOP_RT_GRADIENT 11

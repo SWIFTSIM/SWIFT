@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -363,10 +363,10 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
                               gr_float species_densities[12]) {
   /* HM */
   species_densities[6] = xp->cooling_data.HM_frac * rho;
-  data->HM_density = &species_densities[6]
+  data->HM_density = &species_densities[6];
 
-                     /* H2I */
-                     species_densities[7] = xp->cooling_data.H2I_frac * rho;
+  /* H2I */
+  species_densities[7] = xp->cooling_data.H2I_frac * rho;
   data->H2I_density = &species_densities[7];
 
   /* H2II */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -61,5 +61,10 @@ struct chemistry_spart_data {
  * @brief Chemical abundances traced by the #bpart in the GEAR model.
  */
 struct chemistry_bpart_data {};
+
+/**
+ * @brief Chemical abundances traced by the #sink in the GEAR model.
+ */
+struct chemistry_sink_data {};
 
 #endif /* SWIFT_CHEMISTRY_STRUCT_GEAR_H */

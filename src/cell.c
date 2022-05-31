@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -587,9 +587,9 @@ void cell_clean_links(struct cell *c, void *data) {
   c->stars.prepare1 = NULL;
   c->stars.prepare2 = NULL;
   c->stars.feedback = NULL;
-  c->sinks.compute_formation = NULL;
-  c->sinks.merger = NULL;
-  c->sinks.accretion = NULL;
+  c->sinks.swallow = NULL;
+  c->sinks.do_sink_swallow = NULL;
+  c->sinks.do_gas_swallow = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
   c->black_holes.do_gas_swallow = NULL;

@@ -35,6 +35,7 @@ Snapshots:
   delta_time:          1.0816  # Only every second VELOCIraptor invoke gets a full snapshot dump.
   scale_factor_first:  0.1     # z = 9
   compression:         4
+  invoke_ps:           1
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -58,3 +59,11 @@ StructureFinding:
   basename:             ./stf
   scale_factor_first:   0.1       # z = 9
   delta_time:           1.04
+
+# Power spectrum calculation options
+PowerSpectrum:
+  grid_side_length: 256
+  num_folds: 4
+  fold_factor: 2
+  window_order: 2
+  requested_spectra: ["matter-matter"]
