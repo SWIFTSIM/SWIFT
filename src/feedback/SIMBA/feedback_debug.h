@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,25 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_FEEDBACK_DEBUG_H
-#define SWIFT_FEEDBACK_DEBUG_H
+#ifndef SWIFT_FEEDBACK_SIMBA_DEBUG_H
+#define SWIFT_FEEDBACK_SIMBA_DEBUG_H
 
-/* Config parameters. */
-#include "../config.h"
+__attribute__((always_inline)) INLINE static void feedback_debug_particle(
+    const struct part* p, const struct xpart* xp) {}
 
-/* Import the debug routines of the right feedback definition */
-#if defined(FEEDBACK_NONE)
-#include "./feedback/none/feedback_debug.h"
-#elif defined(FEEDBACK_EAGLE_THERMAL)
-#include "./feedback/EAGLE_thermal/feedback_debug.h"
-#elif defined(FEEDBACK_EAGLE_KINETIC)
-#include "./feedback/EAGLE_kinetic/feedback_debug.h"
-#elif defined(FEEDBACK_GEAR)
-#include "./feedback/GEAR/feedback_debug.h"
-#elif defined(FEEDBACK_SIMBA)
-#include "./feedback/SIMBA/feedback_debug.h"
-#else
-#error "Invalid choice of feedback model"
-#endif
 
-#endif /* SWIFT_FEEDBACK_DEBUG_H */
+#endif /* SWIFT_FEEDBACK_SIMBA_DEBUG_H */
