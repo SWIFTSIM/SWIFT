@@ -3026,8 +3026,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
 #ifdef WITH_MPI
 
-      const int ci_active_hydro = cell_is_active_hydro(ci, e);
-      const int cj_active_hydro = cell_is_active_hydro(cj, e);
+      /* const int ci_active_hydro = cell_is_active_hydro(ci, e); */
+      /* const int cj_active_hydro = cell_is_active_hydro(cj, e); */
 
       /* TODO: re-think this */
       /* const int ci_active_stars = cell_need_activating_stars(ci, e, with_star_formation=0, with_star_formation_sink=0); */
@@ -3039,24 +3039,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
 
-/* TODO: document this */
-if (cj_active_hydro) {
-  scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
-}
-if (ci_active_hydro) {
-  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
-}
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
-          /* If we don't have any active hydro tasks, make sure the sort tasks
-           * don't run before the recv. However, we don't know whether there will
-           * be any active hydro tasks involving this cell before we */
-          /* if (!ci_active_hydro) { [> && (cj->stars.count > 0 && !cj_active_stars)){ <] */
-          /*   scheduler_activate(s, ci->rt.rt_block_sort); */
-          /* } else { */
-  /* TODO: document this */
-  /* Step 2 cells 72 & 201 */
-  /* scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv); */
-/* } */
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -3071,11 +3054,6 @@ if (ci_active_hydro) {
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
                                   ci_nodeID);
 
-/* if (cj_active_hydro) { */
-/*   [> TODO: document this <] */
-/*   scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID); */
-/* } */
-
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           cell_activate_drift_part(cj, s);
@@ -3088,25 +3066,10 @@ if (ci_active_hydro) {
 
       } else if (cj_nodeID != nodeID) { 
 
-/* TODO: docs */
-if (cj_active_hydro)
-  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-if (ci_active_hydro)
-  scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
-
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           celltrace(cj, "activating recv");
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
-          /* If we don't have any active hydro tasks, make sure the sort tasks
-           * don't run before the recv */
-          /* if (!cj_active_hydro) { [> && ci->stars.count > 0 && !ci_active_stars){ <] */
-          /*   scheduler_activate(s, cj->rt.rt_block_sort); */
-          /*   celltrace(cj, "blocking sort"); */
-          /* } else { */
-  /* TODO: docs */
-  /* scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv); */
-/* } */
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -3121,10 +3084,6 @@ if (ci_active_hydro)
           celltrace(ci, "activating send");
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
                                   cj_nodeID);
-
-/* if (ci_active_hydro) */
-/*   scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, */
-/*                         cj_nodeID); */
 
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */

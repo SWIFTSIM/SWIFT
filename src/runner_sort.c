@@ -207,7 +207,8 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
   TIMER_TIC;
 
-  celltrace(c, "at entry flags=%d, cellflag=%d, call=%d, do_sort=%d", flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort), clock, c->hydro.do_sort);
+  celltrace(c, "at entry flags=%d, cellflag=%d, call=%d, do_sort=%d", 
+      flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort), clock, c->hydro.do_sort);
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
@@ -223,9 +224,13 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     flags &= ~c->hydro.sorted;
   }
 
-  celltrace(c, "check3 flags=%d, cellflag=%d, call=%d, split=%d", flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort), clock, c->split);
+  celltrace(c, "check3 flags=%d, cellflag=%d, call=%d, split=%d", 
+        flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort), clock, c->split);
 
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) && clock == 2) celltrace(c, "early exit 1 cell %lld flags=%d, cellflag=%d", c->cellID, flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort));
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) && clock == 2) 
+      celltrace(c, "early exit 1 cell %lld flags=%d, cellflag=%d", 
+      c->cellID, flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort));
+
   if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */
@@ -239,7 +244,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   /* Make sure the sort flags are consistent (downward). */
   runner_check_sorts_hydro(c, c->hydro.sorted);
 
-  /* Make sure the sort flags are consistent (upard). */
+  /* Make sure the sort flags are consistent (upward). */
   for (struct cell *finger = c->parent; finger != NULL;
        finger = finger->parent) {
     if (finger->hydro.sorted & ~c->hydro.sorted)

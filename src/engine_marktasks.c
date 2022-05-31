@@ -1221,10 +1221,10 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_active_rt) {
 
 /* TODO: document this */
-if (cj_active_hydro)
-  scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
-if (ci_active_hydro)
-  scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+/* if (cj_active_hydro) */
+/*   scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID); */
+/* if (ci_active_hydro) */
+/*   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv); */
 
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
 
@@ -1258,10 +1258,10 @@ if (ci_active_hydro)
           if (ci_active_rt) {
 
 /* TODO: docs */
-if (cj_active_hydro)
-  scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
-if (ci_active_hydro)
-  scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+/* if (cj_active_hydro) */
+/*   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv); */
+/* if (ci_active_hydro) */
+/*   scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID); */
 
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
 
