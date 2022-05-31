@@ -332,6 +332,10 @@ struct part {
   float min_ngb_sph_rho;
     
   float last_corrected_rho;
+    
+  float sum_f_within_H;
+    
+  float sum_s_f_within_H;
 #endif
     
 #ifdef PLANETARY_MATRIX_INVERSION

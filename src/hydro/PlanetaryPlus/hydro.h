@@ -774,6 +774,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->T = temperature;
     
   p->smoothing_error = p->h * p->drho_dh / p->rho;
+    
+  p->sum_f_within_H = 0.f;
+  p->sum_s_f_within_H = 0.f;
 #endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
@@ -953,16 +956,20 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
   float s = fabs(p->smoothing_error);
-  p->P_tilde_numerator += p->P * expf(-1000.f * s * s);
+  p->P_tilde_numerator += sqrtf(kernel_root) * p->P * expf(-1000.f * s * s);
   p->P_tilde_denominator += sqrtf(kernel_root) * expf(-1000.f * s * s);
   p->S_numerator += kernel_root * logf(s + FLT_MIN);
   p->S_denominator += kernel_root;
+    
+  p->sum_f_within_H += sqrtf(kernel_root) * expf(-1000.f * s * s);
+  p->sum_s_f_within_H += sqrtf(kernel_root) * s * expf(-1000.f * s * s);
+  float mean_s_of_good_particles = p->sum_s_f_within_H / p->sum_f_within_H;
     
   float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
     
   float rho_tilde = update_rho(p, P_tilde);
     
-  float S_tilde = (p->rho / rho_tilde) * expf(p->S_numerator / p->S_denominator);
+  float S_tilde = max(0.f, (p->rho / rho_tilde) * (expf(p->S_numerator / p->S_denominator) - fabs(mean_s_of_good_particles)));
     
   /* Turn S_tilde to 0 if h == h_max */
   if (p->is_h_max) {
