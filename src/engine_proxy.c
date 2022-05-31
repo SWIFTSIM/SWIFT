@@ -63,7 +63,6 @@ void engine_makeproxies(struct engine *e) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_gravity = (e->policy & engine_policy_self_gravity);
   const double theta_crit = e->gravity_properties->theta_crit;
-  const double theta_crit_inv = 1. / e->gravity_properties->theta_crit;
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
@@ -88,7 +87,7 @@ void engine_makeproxies(struct engine *e) {
 
   /* Gravity needs to take the opening angle into account */
   if (with_gravity) {
-    const double distance = 2. * r_max * theta_crit_inv;
+    const double distance = 2. * r_max / theta_crit;
     delta_cells = (int)(distance / cells[0].dmin) + 1;
   }
 
