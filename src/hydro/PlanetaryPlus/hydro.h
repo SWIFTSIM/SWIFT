@@ -964,7 +964,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->S_denominator += kernel_root;
     
   p->sum_f_within_H += sqrtf(kernel_root) * expf(-1000.f * s * s);
-  p->sum_s_f_within_H += sqrtf(kernel_root) * s * expf(-1000.f * s * s);
+  p->sum_s_f_within_H += sqrtf(kernel_root) * fabs(s) * expf(-1000.f * s * s);
   float mean_s_of_good_particles = p->sum_s_f_within_H / p->sum_f_within_H;
     
   float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
