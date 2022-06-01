@@ -15,3 +15,12 @@ check that everything's right.
 
 Compile swift with:
     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro-dimension=3 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --enable-debugging-checks --with-grackle=$GRACKLE_ROOT
+
+
+
+Some specific notes for debugging:
+
+-   when running on 2 MPI ranks (at least in the first few steps) cells 27 and
+    151 have proxies on the other rank. However, those are made for the gravity
+    tasks, not for the RT tasks. So their foreign counterparts will have no RT
+    tasks at all.

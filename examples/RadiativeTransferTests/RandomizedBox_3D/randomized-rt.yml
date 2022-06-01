@@ -11,7 +11,7 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
-  max_nr_rt_subcycles: 1
+  max_nr_rt_subcycles: 4
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   0.1   # The end time of the simulation (in internal units).
   dt_min:     1.e-6 # The minimal time-step size of the simulation (in internal units).
@@ -45,7 +45,7 @@ Stars:
   birth_time:           -1   # Give the star in the ICs a decent birth time
 
 Scheduler:
-  dependency_graph_frequency:       1  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
+  dependency_graph_frequency:       0  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
 
 Restarts:
   delta_hours:        72        # (Optional) decimal hours between dumps of restart files.

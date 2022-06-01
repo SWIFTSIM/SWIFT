@@ -21,10 +21,10 @@ if [ $# -gt 0 ]; then
         cmd='gdb --args ../../../swift'
         ;;
     -m | m | mpi)
-        cmd='mpirun -n 2 ../../../swift_mpi' 
+        cmd='mpirun -n 3 ../../../swift_mpi' 
         ;;
     -mg | -gm | gm | mg | gmpi | gdbmpi )
-        cmd='mpirun -n 2 xterm -e gdb -ex run --args ../../../swift_mpi'
+        cmd='mpirun -n 3 xterm -e gdb -ex run --args ../../../swift_mpi'
         ;;
     -ml | ml | lm | mpilog | logmpi)
         cmd='mpirun -n 2 --output-filename individual_rank_output --merge-stderr-to-stdout ../../../swift_mpi'
@@ -38,7 +38,7 @@ fi
 # Run SWIFT with RT
 $cmd \
     --hydro \
-    --threads=1 \
+    --threads=3 \
     --verbose=0 \
     --radiation \
     --self-gravity \
