@@ -336,6 +336,8 @@ struct part {
   float sum_f_within_H;
     
   float sum_s_f_within_H;
+    
+  float N_good_ngb;
 #endif
     
 #ifdef PLANETARY_MATRIX_INVERSION

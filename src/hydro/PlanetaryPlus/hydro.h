@@ -777,6 +777,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     
   p->sum_f_within_H = 0.f;
   p->sum_s_f_within_H = 0.f;
+    
+  p->N_good_ngb = 0.f;
 #endif
 
 #ifdef PLANETARY_MATRIX_INVERSION
@@ -976,6 +978,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     S_tilde = 0.f;
   }
     
+  p->N_good_ngb += expf(-1000.f * s * s);
+  if (p->N_good_ngb < 1.f) {
+    S_tilde = 0.f;
+  }
   p->I = S_tilde; //This is just to make output same as Imbalance for comparison
     
   if (p->P_tilde_denominator > 0.f && p->P_tilde_numerator > 0.f && S_tilde > 0.f) {
