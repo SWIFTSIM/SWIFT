@@ -207,30 +207,17 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
   TIMER_TIC;
 
-  celltrace(c, "at entry flags=%d, cellflag=%d, call=%d, do_sort=%d", 
-      flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort), clock, c->hydro.do_sort);
-
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.super == NULL) error("Task called above the super level!!!");
 #endif
 
   /* We need to do the local sorts plus whatever was requested further up. */
-  celltrace(c, "flags=%d, flags | c->hydro.do_sort=%d, cleanup=%d, flags & ~c->hydro.sorted =%d", 
-      flags, flags | c->hydro.do_sort, cleanup, (flags | c->hydro.do_sort) & ~c->hydro.sorted);
   flags |= c->hydro.do_sort;
   if (cleanup) {
     c->hydro.sorted = 0;
   } else {
     flags &= ~c->hydro.sorted;
   }
-
-  celltrace(c, "check3 flags=%d, cellflag=%d, call=%d, split=%d", 
-        flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort), clock, c->split);
-
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) && clock == 2) 
-      celltrace(c, "early exit 1 cell %lld flags=%d, cellflag=%d", 
-      c->cellID, flags, cell_get_flag(c, cell_flag_do_hydro_sub_sort));
-
   if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */

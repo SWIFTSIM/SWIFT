@@ -169,17 +169,17 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      /* if (cj != NULL){ */
-      /*   celltrace(cj, "running %s/%s cells %lld %lld local %d %d", */
-      /*       taskID_names[t->type], subtaskID_names[t->subtype], */
-      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
-      /*   celltrace(ci, "running %s/%s cells %lld %lld local %d %d", */
-      /*       taskID_names[t->type], subtaskID_names[t->subtype], */
-      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
-      /* } */
-      /* else { */
-      /*   celltrace(ci, "running %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]); */
-      /* } */
+      if (cj != NULL){
+        celltrace(cj, "running %s/%s cells %lld %lld local %d %d",
+            taskID_names[t->type], subtaskID_names[t->subtype],
+            ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank);
+        celltrace(ci, "running %s/%s cells %lld %lld local %d %d",
+            taskID_names[t->type], subtaskID_names[t->subtype],
+            ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank);
+      }
+      else {
+        celltrace(ci, "running %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
+      }
 
       /* if (cj != NULL) */
       /*   message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
@@ -520,15 +520,11 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_gradient) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_rt_gradient) {
-            int clear_sorts = !cell_get_flag(ci, cell_flag_no_rt_sort);
-            celltrace(ci, "============================ clear_sorts=%d, %u", clear_sorts, cell_get_flag(ci, cell_flag_no_rt_sort));
-            cell_clear_flag(ci, cell_flag_no_rt_sort);
-            /* if (clear_sorts) { */
-            /*   celltrace(ci, "============================ clearing NO SORT flag"); */
-            /* } */
             /* In the case of a foreign cell where no xv comms are 
              * done, but RT is active, we need to force a sort after 
              * the gradient recv. */
+            int clear_sorts = !cell_get_flag(ci, cell_flag_no_rt_sort);
+            cell_clear_flag(ci, cell_flag_no_rt_sort);
             runner_do_recv_part(r, ci, clear_sorts, 1);
           } else if (t->subtype == task_subtype_rt_transport) {
             runner_do_recv_part(r, ci, 0, 1);
