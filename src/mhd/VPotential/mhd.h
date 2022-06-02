@@ -115,7 +115,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 
 /**
  * @brief Returns the Gauge Scalar Phi evolution
- * time the particle. Gaugeall variables in full step
+ * time the particle. Gauge all variables in full step
  *
  * @param p The particle of interest
  * @param Gauge Gauge
@@ -126,8 +126,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
 
   const float v_sig = hydro_get_signal_velocity(p);
 
-  return (-p->mhd_data.divA * v_sig * v_sig * 0.01 / a / a-
-          2.0f * v_sig * Gauge / p->h);
+  //return (-p->mhd_data.divA * v_sig * v_sig * 0.01 / a / a -
+  //        2.0f * v_sig * Gauge / p->h);
+  return (-p->mhd_data.divA * v_sig * v_sig * 0.01 * a * a -
+          2.0f * v_sig * Gauge / p->h * a);
 }
 
 /**
