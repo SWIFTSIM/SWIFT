@@ -23,56 +23,64 @@ from optparse import OptionParser
 from astropy import units
 from astropy import constants
 
+
 def parse_options():
 
     usage = "usage: %prog [options] file"
     parser = OptionParser(usage=usage)
-        
-    
-    parser.add_option("--lJ",
-                      action="store", 
-                      dest="lJ",
-                      type="float",
-                      default = 0.250,
-                      help="Jeans wavelength in box size unit")     
 
-    parser.add_option("--rho",
-                      action="store", 
-                      dest="rho",
-                      type="float",
-                      default = 0.1,
-                      help="Mean gas density in atom/cm3")  
+    parser.add_option(
+        "--lJ",
+        action="store",
+        dest="lJ",
+        type="float",
+        default=0.250,
+        help="Jeans wavelength in box size unit",
+    )
 
-    parser.add_option("--mass",
-                      action="store", 
-                      dest="mass",
-                      type="float",
-                      default = 50,
-                      help="Gas particle mass in solar mass") 
+    parser.add_option(
+        "--rho",
+        action="store",
+        dest="rho",
+        type="float",
+        default=0.1,
+        help="Mean gas density in atom/cm3",
+    )
 
-    parser.add_option("--level",
-                      action="store", 
-                      dest="level",
-                      type="int",
-                      default = 5,
-                      help="Resolution level: N = (2**l)**3")  
+    parser.add_option(
+        "--mass",
+        action="store",
+        dest="mass",
+        type="float",
+        default=50,
+        help="Gas particle mass in solar mass",
+    )
 
+    parser.add_option(
+        "--level",
+        action="store",
+        dest="level",
+        type="int",
+        default=5,
+        help="Resolution level: N = (2**l)**3",
+    )
 
-    parser.add_option("-o",
-                      action="store", 
-                      dest="outputfilename",
-                      type="string",
-                      default = "box.dat",
-                      help="output filename") 
+    parser.add_option(
+        "-o",
+        action="store",
+        dest="outputfilename",
+        type="string",
+        default="box.dat",
+        help="output filename",
+    )
 
-                                            
     (options, args) = parser.parse_args()
 
     files = args
 
-    return files, options    
-    
-    
+    return files, options
+
+
 ########################################
 # main
 ########################################
@@ -80,70 +88,68 @@ def parse_options():
 files, opt = parse_options()
 
 # define standard units
-UnitMass_in_cgs    = 1.989e43    # 10^10 M_sun in grams
-UnitLength_in_cgs  = 3.085678e21 # kpc in centimeters
-UnitVelocity_in_cgs= 1e5         # km/s in centimeters per second
-UnitCurrent_in_cgs = 1           # Amperes
-UnitTemp_in_cgs    = 1           # Kelvin
-UnitTime_in_cgs    = UnitLength_in_cgs/UnitVelocity_in_cgs
+UnitMass_in_cgs = 1.989e43  # 10^10 M_sun in grams
+UnitLength_in_cgs = 3.085678e21  # kpc in centimeters
+UnitVelocity_in_cgs = 1e5  # km/s in centimeters per second
+UnitCurrent_in_cgs = 1  # Amperes
+UnitTemp_in_cgs = 1  # Kelvin
+UnitTime_in_cgs = UnitLength_in_cgs / UnitVelocity_in_cgs
 
-UnitMass           = UnitMass_in_cgs   *units.g
-UnitLength         = UnitLength_in_cgs *units.cm
-UnitTime           = UnitTime_in_cgs   *units.s
-UnitVelocity       = UnitVelocity_in_cgs   *units.cm/units.s
-
+UnitMass = UnitMass_in_cgs * units.g
+UnitLength = UnitLength_in_cgs * units.cm
+UnitTime = UnitTime_in_cgs * units.s
+UnitVelocity = UnitVelocity_in_cgs * units.cm / units.s
 
 
 # Number of particles
-N = (2**opt.level)**3     # number of particles
+N = (2 ** opt.level) ** 3  # number of particles
 
 # Mean density
 rho = opt.rho  # atom/cc
-rho = rho*constants.m_p/units.cm**3  
+rho = rho * constants.m_p / units.cm ** 3
 
 # Gas particle mass
-m = opt.mass # in solar mass
-m = m*units.Msun
+m = opt.mass  # in solar mass
+m = m * units.Msun
 
 # Gas mass in the box
-M = N*m
+M = N * m
 
-# Size of the box 
-L = (M/rho)**(1/3.)
+# Size of the box
+L = (M / rho) ** (1 / 3.0)
 
 # Jeans wavelength in box size unit
-lJ = opt.lJ    
-lJ = lJ*L
+lJ = opt.lJ
+lJ = lJ * L
 
 # Gravitational constant
 G = constants.G
 
 # Jeans wave number
-kJ = 2*np.pi/lJ
-# Velocity dispersion 
-sigma = np.sqrt(4*np.pi*G*rho)/ kJ
-
+kJ = 2 * np.pi / lJ
+# Velocity dispersion
+sigma = np.sqrt(4 * np.pi * G * rho) / kJ
 
 
 print("Number of particles                   : {}".format(N))
-print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m/units.s)))
+print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m / units.s)))
 
 # Convert to code units
-m     = m.to(UnitMass).value
-L     = L.to(UnitLength).value
-rho   = rho.to(UnitMass/UnitLength**3).value
+m = m.to(UnitMass).value
+L = L.to(UnitLength).value
+rho = rho.to(UnitMass / UnitLength ** 3).value
 sigma = sigma.to(UnitVelocity).value
 
 # Generate the particles
-pos = np.random.random([N, 3])* np.array([L, L, L])
-vel  = np.zeros(N)
-mass = np.ones(N)*m 
-u    = np.ones(N)*sigma**2
-ids  = np.arange(N)  
-h    = np.ones(N)* 3*L/N**(1/3.)
-rho  = np.ones(N)*rho
+pos = np.random.random([N, 3]) * np.array([L, L, L])
+vel = np.zeros(N)
+mass = np.ones(N) * m
+u = np.ones(N) * sigma ** 2
+ids = np.arange(N)
+h = np.ones(N) * 3 * L / N ** (1 / 3.0)
+rho = np.ones(N) * rho
 
-print("Inter-particle distance (code unit)   : {}".format(L/N**(1/3.)))
+print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 
 
 # File
@@ -165,10 +171,10 @@ grp.attrs["Dimension"] = 3
 
 # Units
 grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"]      = UnitLength_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"]        = UnitMass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"]        = UnitTime_in_cgs
-grp.attrs["Unit current in cgs (U_I)"]     = UnitCurrent_in_cgs
+grp.attrs["Unit length in cgs (U_L)"] = UnitLength_in_cgs
+grp.attrs["Unit mass in cgs (U_M)"] = UnitMass_in_cgs
+grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
+grp.attrs["Unit current in cgs (U_I)"] = UnitCurrent_in_cgs
 grp.attrs["Unit temperature in cgs (U_T)"] = UnitTemp_in_cgs
 
 
@@ -183,4 +189,3 @@ grp.create_dataset("ParticleIDs", data=ids, dtype="L")
 grp.create_dataset("Densities", data=rho, dtype="f")
 
 fileOutput.close()
-
