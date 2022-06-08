@@ -263,12 +263,6 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
 
   /* Do we have work to do? */
   if (c->hydro.count == 0) return;
-#ifdef WITH_MPI
-  /* We may have foreign cells which aren't doing any RT, e.g. for gravity.
-   * As such, they won't have the appropriate tasks on this node. Don't unskip
-   * those, their times won't be correct. */
-  if ((c->nodeID != e->nodeID) && (c->rt.rt_advance_cell_time == NULL)) return;
-#endif
   if (!cell_is_rt_active(c, e)) return;
 
   /* Recurse */
@@ -276,6 +270,7 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
+        celltrace(cp, "caught in engine unskip. parent active=%d, cell active=%d", cell_is_rt_active(c, e), cell_is_rt_active(cp, e));
         engine_do_unskip_rt(cp, e, sub_cycle);
       }
     }
@@ -432,6 +427,11 @@ void engine_unskip(struct engine *e) {
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
       num_active_cells += 1;
+
+      celltrace(c, "cell will be checked");
+    }
+    else{
+      celltrace(c, "cell wont be checked");
     }
 
     /* Activate the top-level timestep exchange */
@@ -535,6 +535,7 @@ void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
     /* Handle on the cell */
     struct cell *const c = &cells_top[local_cells[ind]];
 
+    celltrace(c, "calling unskip on cell");
     engine_do_unskip_rt(c, e, /*sub_cycle=*/1);
   }
 }
@@ -554,18 +555,6 @@ void engine_unskip_sub_cycle(struct engine *e) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
     if (c->hydro.count == 0) continue;
-    /* if (cell_is_empty(c)) continue; */
-
-#ifdef WITH_MPI
-    /* We may have foreign cells which aren't doing any RT, e.g. for gravity.
-     * As such, they won't have the appropriate tasks on this node. Don't unskip
-     * those, their times won't be correct. You'll get a crash while calling
-     * cell_is_rt_active with debugging checks on. */
-    if ((c->nodeID != e->nodeID) && (c->rt.rt_advance_cell_time == NULL))
-      continue;
-#endif
-    celltrace(c, "engine unskip; active=%d, count=%d", cell_is_rt_active(c, e),
-              c->hydro.count);
 
     if (cell_is_rt_active(c, e)) {
 

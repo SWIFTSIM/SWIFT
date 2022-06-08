@@ -169,22 +169,25 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      if (cj != NULL){
-        celltrace(cj, "running %s/%s cells %lld %lld local %d %d",
-            taskID_names[t->type], subtaskID_names[t->subtype],
-            ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank);
-        celltrace(ci, "running %s/%s cells %lld %lld local %d %d",
-            taskID_names[t->type], subtaskID_names[t->subtype],
-            ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank);
-      }
-      else {
-        celltrace(ci, "running %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
-      }
+      /* if (cj != NULL){ */
+      /*   celltrace(cj, "running %s/%s cells %lld %lld local %d %d", */
+      /*       taskID_names[t->type], subtaskID_names[t->subtype], */
+      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
+      /*   celltrace(ci, "running %s/%s cells %lld %lld local %d %d", */
+      /*       taskID_names[t->type], subtaskID_names[t->subtype], */
+      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
+      /* } */
+      /* else { */
+      /*   celltrace(ci, "running %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]); */
+      /* } */
 
-      /* if (cj != NULL) */
-      /*   message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
-      /* else */
-      /*   message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); */
+      /* if (((t->type == task_type_send) || (t->type == task_type_recv)) && (t->subtype == task_subtype_rt_gradient)) { */
+      /*   if (cj != NULL) */
+      /*     message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
+      /*   else */
+      /*     message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); */
+      /*   fflush(stdout); */
+      /* } */
 
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
@@ -403,7 +406,6 @@ void *runner_main(void *data) {
 
         case task_type_sort:
           /* Cleanup only if any of the indices went stale. */
-          celltrace(t->ci, "~~~~~~~~~~~~~~~~ FOR HYDRO SORT HAS FLAGS=%lld", t->flags);
           runner_do_hydro_sort(
               r, ci, t->flags,
               ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
@@ -411,11 +413,13 @@ void *runner_main(void *data) {
           t->flags = 0;
           break;
         case task_type_rt_sort:
-          celltrace(t->ci, "~~~~~~~~~~~~~~~~ FOR RT SORT HAS FLAGS=%lld, dx_max_sort_old=%f >? %f", t->flags, ci->hydro.dx_max_sort_old, space_maxreldx * ci->dmin);
-          /* Cleanup only if any of the indices went stale. */
+          /* Cleanup only if any of the indices went stale. 
+           * NOTE: we check whether we reset the sort flags when the
+           * recv tasks are running. Cells without an RT recv task
+           * don't have rt_sort tasks. */
           runner_do_hydro_sort(
               r, ci, t->flags,
-              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 2);
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
@@ -491,7 +495,6 @@ void *runner_main(void *data) {
           break;
 #ifdef WITH_MPI
         case task_type_send:
-          celltrace(t->ci, "============ caught SEND subtype %s sendcount=%d", subtaskID_names[t->subtype], t->ci->rt.sendcount);
           if (t->subtype == task_subtype_tend) {
             free(t->buff);
           } else if (t->subtype == task_subtype_sf_counts) {
@@ -505,7 +508,6 @@ void *runner_main(void *data) {
           }
           break;
         case task_type_recv:
-          celltrace(t->ci, "=========== caught RECV subtype %s recvcount=%d", subtaskID_names[t->subtype], t->ci->rt.recvcount);
           if (t->subtype == task_subtype_tend) {
             cell_unpack_end_step(ci, (struct pcell_step *)t->buff);
             free(t->buff);

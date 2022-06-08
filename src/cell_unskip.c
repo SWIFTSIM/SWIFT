@@ -1521,6 +1521,8 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
   /* Only do this during real time steps, not during subcycling. */
   if (sub_cycle) return;
   const struct engine *e = s->space->e;
+  /* celltrace(ci, "ACTIVATING SUBCELL. ACTIVE? %d", cell_is_rt_active(ci, e)); */
+  /* if (cj != NULL) celltrace(cj, "ACTIVATING SUBCELL. ACTIVE? %d", cell_is_rt_active(cj, e)); */
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
@@ -2931,6 +2933,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
   const int nodeID = e->nodeID;
   int rebuild = 0; /* TODO: implement rebuild conditions? */
 
+  celltrace(c, "UNKSIPPING. ACTIVE? %d", cell_is_rt_active(c, e));
+
   /* Note: we only get this far if engine_policy_rt is flagged. */
   if (!(e->policy & engine_policy_rt)) error("Unskipping RT tasks without RT");
 
@@ -3005,6 +3009,9 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
       /* TODO: re-think this */
       /* const int ci_active_stars = cell_need_activating_stars(ci, e, with_star_formation=0, with_star_formation_sink=0); */
 
+      celltrace(ci, "caught with %lld type %s", cj->cellID, taskID_names[t->type]);
+      celltrace(cj, "caught with %lld type %s", ci->cellID, taskID_names[t->type]);
+
       /* const int cj_active_stars = cell_need_activating_stars(cj, e, with_star_formation=0, with_star_formation_sink=0); */
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
@@ -3012,6 +3019,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
 
+          celltrace(ci, "activating recv1 for %lld. cia=%d cja=%d type %s", cj->cellID, ci_active, cj_active, taskID_names[t->type]);
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
 
           /* We only need updates later on if the other cell is active as well
@@ -3024,6 +3032,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* Is the foreign cell active and will need stuff from us? */
         if (ci_active) {
 
+          celltrace(cj, "activating send1 for %lld. cia=%d cja=%d type %s", ci->cellID, ci_active, cj_active, taskID_names[t->type]);
           scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
                                   ci_nodeID);
 
@@ -3039,6 +3048,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
       } else if (cj_nodeID != nodeID) { 
 
+        celltrace(cj, "activating recv2 for %lld. cia=%d cja=%d type %s", ci->cellID, ci_active, cj_active, taskID_names[t->type]);
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
@@ -3053,6 +3063,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* Is the foreign cell active and will need stuff from us? */
         if (cj_active) {
 
+          celltrace(ci, "activating send2 for %lld. cia=%d cja=%d type %s", cj->cellID, ci_active, cj_active, taskID_names[t->type]);
           scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
                                   cj_nodeID);
 
@@ -3104,10 +3115,11 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Each cell doing RT needs to have the rt_advance_cell_time task.
+   * Even the foreign ones.
    * If it doesn't, it's not doing RT. This can happen for e.g.
    * foreign cells which have been sent to a foreign node for other
    * interactions, e.g. gravity. Make sure that if the cell doesn't
-   * have an rt_advance_cell_time task, no other tasks are around. */
+   * have an rt_advance_cell_time task, no other RT tasks are around. */
   if (c->rt.rt_advance_cell_time == NULL) {
     if (c->rt.rt_in != NULL) error("found rt_in on cell without rt_advance_cell_time");
     if (c->rt.rt_ghost1 != NULL) error("found rt_ghost1 on cell without rt_advance_cell_time");

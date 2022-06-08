@@ -128,6 +128,9 @@ struct scheduler {
 
   /* Frequency of the task levels dumping. */
   int frequency_task_levels;
+
+  int sendcount[task_subtype_count];
+  int recvcount[task_subtype_count];
 };
 
 /* Inlined functions (for speed). */

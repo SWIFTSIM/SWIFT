@@ -2424,6 +2424,12 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
  */
 void scheduler_start(struct scheduler *s) {
 
+
+  for (int i = 0; i < task_subtype_count; i++){
+    s->sendcount[i] = 0;
+    s->recvcount[i] = 0;
+  }
+
   /* Re-wait the tasks. */
   if (s->active_count > 1000) {
     threadpool_map(s->threadpool, scheduler_rewait_mapper, s->tid_active,
@@ -2462,16 +2468,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Ignore skipped tasks */
   if (t->skip) return;
 
-  /* struct cell *ci = t->ci; */
-  /* struct cell *cj = t->cj; */
-  /* if (cj != NULL){ */
-  /*   [> message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); <] */
-  /*   celltrace(ci, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
-  /*   celltrace(cj, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
-  /* } */
-  /* else */
-  /*   [> message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); <] */
-  /*   celltrace(ci, "running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); */
+  struct cell *ci = t->ci;
+  struct cell *cj = t->cj;
+  if (cj != NULL){
+    /* [> message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); <] */
+    celltrace(ci, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID);
+    celltrace(cj, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID);
+  }
+  else
+    /* [> message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); <] */
+    celltrace(ci, "running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID);
 
   /* if (t->type == task_type_sort) */
   /*   celltrace(t->ci, "enqueueing sort"); */
@@ -2551,7 +2557,25 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         /* message("------ receiving task subtype %s recvcount=%d for %lld",  */
         /*     subtaskID_names[t->subtype], t->ci->rt.recvcount, t->ci->cellID); */
         t->ci->rt.recvcount++;
-        fflush(stdout);
+
+        s->recvcount[t->subtype]++;
+        /* if ((t->subtype==task_subtype_rt_gradient || t->subtype==task_subtype_tend || t->subtype==task_subtype_xv || t->subtype==task_subtype_xv)){ */
+        /*   message("recvcount grad=%d xv=%d rho=%d gpart=%d spart=%d rt_grad=%d rt_trans=%d tend=%d",  */
+        /*             s->recvcount[task_subtype_gradient], */
+        /*             s->recvcount[task_subtype_xv], */
+        /*             s->recvcount[task_subtype_rho], */
+        /*             s->recvcount[task_subtype_gpart], */
+        /*             s->recvcount[task_subtype_spart_density], */
+        /*             s->recvcount[task_subtype_rt_gradient], */
+        /*             s->recvcount[task_subtype_rt_transport], */
+        /*             s->recvcount[task_subtype_tend] */
+        /*       ); */
+        /*   fflush(stdout); */
+        /* } */
+        /* if ((t->subtype==task_subtype_rt_gradient)){ */
+        /*   message("enqueueing recv=%d cell=%lld", s->recvcount[task_subtype_rt_gradient], t->ci->cellID); */
+        /*   fflush(stdout); */
+        /* } */
 
         if (t->subtype == task_subtype_tend) {
 
@@ -2659,7 +2683,25 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         /* message("====== sending task subtype %s sendcount=%d from %lld",  */
         /*     subtaskID_names[t->subtype], t->ci->rt.sendcount, t->ci->cellID); */
         t->ci->rt.sendcount++;
-        fflush(stdout);
+
+        s->sendcount[t->subtype]++;
+        /* if ((t->subtype==task_subtype_rt_gradient || t->subtype==task_subtype_tend || t->subtype==task_subtype_xv || t->subtype==task_subtype_xv)){ */
+        /*   message("sendcount grad=%d xv=%d rho=%d gpart=%d spart=%d rt_grad=%d rt_trans=%d tend=%d",  */
+        /*             s->sendcount[task_subtype_gradient], */
+        /*             s->sendcount[task_subtype_xv], */
+        /*             s->sendcount[task_subtype_rho], */
+        /*             s->sendcount[task_subtype_gpart], */
+        /*             s->sendcount[task_subtype_spart_density], */
+        /*             s->sendcount[task_subtype_rt_gradient], */
+        /*             s->sendcount[task_subtype_rt_transport], */
+        /*             s->sendcount[task_subtype_tend] */
+        /*       ); */
+        /*   fflush(stdout); */
+        /* } */
+        /* if ((t->subtype==task_subtype_rt_gradient)){ */
+        /*   message("enqueueing send=%d cells=%lld %lld", s->sendcount[task_subtype_rt_gradient], t->ci->cellID, t->cj->cellID); */
+        /*   fflush(stdout); */
+        /* } */
 
         if (t->subtype == task_subtype_tend) {
 
@@ -2816,6 +2858,11 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     /*   message("Cell %lld unlocking rend from rt_advance_cell_time", */
     /*           t->ci->cellID); */
     if (t2->skip) continue;
+
+    if (t2->type == task_type_pair && t2->subtype == task_subtype_density)
+      celltrace(t->ci, "unlocking density from task %s/%s wait=%d skip=%d ci=%lld cj=%lld",
+          taskID_names[t->type], subtaskID_names[t->subtype], t2->wait, t2->skip, t2->ci->cellID, t2->cj->cellID);
+
 
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_transport_out){ */
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_ghost2){ */

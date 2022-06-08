@@ -202,8 +202,12 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
    * foreign cells which have been sent to a foreign node for other
    * interactions, e.g. gravity. Make sure that if the cell doesn't
    * have an rt_advance_cell_time task, no other tasks are around. */
-  if ((c->rt.rt_advance_cell_time != NULL) && c->rt.ti_rt_end_min <
-  e->ti_current_subcycle) {
+  /* However, foreign cells may have tasks on levels below the
+   * rt_advance_cell_time, so the check may be valid for those cells
+   * deeper down the tree. Allow for that exception in this check. */
+  int mindepth = c->hydro.super != NULL ? c->hydro.super->depth : 0;
+  int do_foreign_check = c->nodeID != engine_rank && c->depth > mindepth;
+  if ((c->rt.rt_advance_cell_time != NULL || do_foreign_check) && c->rt.ti_rt_end_min < e->ti_current_subcycle) {
   error(
       "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
       "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d",

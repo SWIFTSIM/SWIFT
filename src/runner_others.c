@@ -1092,9 +1092,12 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
   struct engine *e = r->e;
   const int count = c->hydro.count;
 
-  celltrace(c, "@entry ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld",
+  if (c->cellID == 295367) message("cell %lld parent=%lld", c->cellID, c->parent->cellID);
+  if (c->cellID == 458814) message("cell %lld parent=%lld", c->cellID, c->parent->cellID);
+  celltrace(c, "@entry ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld timer=%d",
             c->rt.ti_rt_end_min, e->ti_current_subcycle,
-            c->rt.ti_rt_min_step_size);
+            c->rt.ti_rt_min_step_size, timer);
+
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1105,7 +1108,7 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        runner_do_rt_advance_cell_time(r, c->progeny[k], 0);
+        runner_do_rt_advance_cell_time(r, c->progeny[k], timer+1);
   }
 #ifdef SWIFT_RT_DEBUG_CHECKS
   else {
