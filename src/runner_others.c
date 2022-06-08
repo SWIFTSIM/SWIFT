@@ -1092,12 +1092,9 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
   struct engine *e = r->e;
   const int count = c->hydro.count;
 
-  if (c->cellID == 295367) message("cell %lld parent=%lld", c->cellID, c->parent->cellID);
-  if (c->cellID == 458814) message("cell %lld parent=%lld", c->cellID, c->parent->cellID);
   celltrace(c, "@entry ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld timer=%d",
             c->rt.ti_rt_end_min, e->ti_current_subcycle,
             c->rt.ti_rt_min_step_size, timer);
-
 
   /* Anything to do here? */
   if (count == 0) return;

@@ -2533,14 +2533,14 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
         ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
       error(
           "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
-          "ci->sorted=%d sid=%d",
-          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
+          "ci->sorted=%d sid=%d cellID=%lld",
+          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid, ci->cellID);
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
       error(
           "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
-          "cj->sorted=%d sid=%d",
-          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
+          "cj->sorted=%d sid=%d cellID=%lld",
+          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid, cj->cellID);
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);

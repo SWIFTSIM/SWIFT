@@ -2468,16 +2468,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Ignore skipped tasks */
   if (t->skip) return;
 
-  struct cell *ci = t->ci;
-  struct cell *cj = t->cj;
-  if (cj != NULL){
-    /* [> message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); <] */
-    celltrace(ci, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID);
-    celltrace(cj, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID);
-  }
-  else
-    /* [> message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); <] */
-    celltrace(ci, "running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID);
+  /* struct cell *ci = t->ci; */
+  /* struct cell *cj = t->cj; */
+  /* if (cj != NULL){ */
+  /*   [> [> message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); <] <] */
+  /*   celltrace(ci, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
+  /*   celltrace(cj, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
+  /* } */
+  /* else */
+  /*   [> [> message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); <] <] */
+  /*   celltrace(ci, "running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); */
 
   /* if (t->type == task_type_sort) */
   /*   celltrace(t->ci, "enqueueing sort"); */
@@ -2859,9 +2859,9 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
     /*           t->ci->cellID); */
     if (t2->skip) continue;
 
-    if (t2->type == task_type_pair && t2->subtype == task_subtype_density)
-      celltrace(t->ci, "unlocking density from task %s/%s wait=%d skip=%d ci=%lld cj=%lld",
-          taskID_names[t->type], subtaskID_names[t->subtype], t2->wait, t2->skip, t2->ci->cellID, t2->cj->cellID);
+    /* if (t2->type == task_type_pair && t2->subtype == task_subtype_density) */
+    /*   celltrace(t->ci, "unlocking density from task %s/%s wait=%d skip=%d ci=%lld cj=%lld", */
+    /*       taskID_names[t->type], subtaskID_names[t->subtype], t2->wait, t2->skip, t2->ci->cellID, t2->cj->cellID); */
 
 
 /* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_transport_out){ */

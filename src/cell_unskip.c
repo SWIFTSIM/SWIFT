@@ -595,6 +595,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
 #endif
     scheduler_activate(s, c->hydro.sorts);
     cell_set_flag(c, cell_flag_no_rt_sort);
+celltrace(c, "set no rt sort flag v1");
     if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
     for (struct cell *parent = c->parent;
@@ -608,6 +609,7 @@ void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
 #endif
         scheduler_activate(s, parent->hydro.sorts);
         cell_set_flag(parent, cell_flag_no_rt_sort);
+celltrace(c, "set no rt sort flag v2");
         if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;
       }
@@ -654,6 +656,7 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
       /* TODO for later: check whether we can live without drifts */
       cell_activate_drift_part(c, s);
       cell_set_flag(c, cell_flag_no_rt_sort);
+celltrace(c, "set no rt sort flag v3");
       scheduler_activate(s, c->hydro.sorts);
     } else {
       scheduler_activate(s, c->rt.rt_sorts);
@@ -671,8 +674,10 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parents->rt.rt_sorts");
 #endif
         if (parent->nodeID == engine_rank) {
+          /* TODO for later: check whether we can live without drifts */
           cell_activate_drift_part(parent, s);
           cell_set_flag(c, cell_flag_no_rt_sort);
+celltrace(c, "set no rt sort flag v4");
           scheduler_activate(s, parent->hydro.sorts);
         } else {
           scheduler_activate(s, parent->rt.rt_sorts);
@@ -709,6 +714,17 @@ void cell_activate_rt_sorts(struct cell *c, int sid, struct scheduler *s) {
   }
 }
 
+
+/**
+ * @brief Mark cells up a hierarchy to not run RT sorts.
+ * */
+void cell_set_no_rt_sort_flag_up(struct cell *c) {
+
+  for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
+    celltrace(c, "set no rt sort flag v5");
+    cell_set_flag(finger, cell_flag_no_rt_sort);
+  }
+}
 
 /**
  * @brief Activate the sorts up a cell hierarchy.
@@ -2992,10 +3008,6 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
           cell_activate_subcell_rt_tasks(ci, cj, s, sub_cycle);
         }
       }
-      else { /* We're in a sub-cycle. There are no sorts here! */
-        cell_set_flag(ci, cell_flag_no_rt_sort);
-        if (cj != NULL) cell_set_flag(cj, cell_flag_no_rt_sort);
-      }
     }
 
     /* Only interested in pair interactions as of here. */
@@ -3021,6 +3033,14 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
           celltrace(ci, "activating recv1 for %lld. cia=%d cja=%d type %s", cj->cellID, ci_active, cj_active, taskID_names[t->type]);
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
+          if (sub_cycle) {
+            /* If we're in a sub-cycle, then there are no sorts. Make sure the 
+             * cells are also marked correctly, otherwise the 'sorted' flags 
+             * will be wrongly set after a recv rt_gradient. The recv tasks might
+             * also run on a higher level than the current cell, so walk all the
+             * way up. */
+            cell_set_no_rt_sort_flag_up(ci);
+          }
 
           /* We only need updates later on if the other cell is active as well
            */
@@ -3052,6 +3072,14 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         /* If the local cell is active, receive data from the foreign cell. */
         if (ci_active) {
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
+          if (sub_cycle) {
+            /* If we're in a sub-cycle, then there are no sorts. Make sure the 
+             * cells are also marked correctly, otherwise the 'sorted' flags 
+             * will be wrongly set after a recv rt_gradient. The recv tasks might
+             * also run on a higher level than the current cell, so walk all the
+             * way up. */
+            cell_set_no_rt_sort_flag_up(cj);
+          }
 
           /* We only need updates later on if the other cell is active as well
            */

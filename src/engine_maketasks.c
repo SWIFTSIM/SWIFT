@@ -1073,6 +1073,17 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
      * tasks doesn't run before them */
     scheduler_addunlock(s, t_rt_gradient, t_rt_advance_cell_time);
     scheduler_addunlock(s, t_rt_transport, t_rt_advance_cell_time);
+    /* Make sure the gradient recv don't run before the xv is finished.
+     * This can occur when a cell itself is inactive for both hydro and
+     * RT, but needs to be sent over for some other cell's pair task. */
+    struct task* t_xv = NULL;
+    for (struct link *l = c->mpi.recv; l != NULL; l=l->next){
+      if (l->t->subtype == task_subtype_xv) {
+        t_xv = l->t;
+        break;
+      }
+    }
+    if (t_xv != NULL) scheduler_addunlock(s, t_xv, t_rt_gradient);
 
     /* In normal steps, tend mustn't run before rt_advance_cell_time or the
      * cell's ti_rt_end_min will be updated wrongly. In sub-cycles, we don't
@@ -1087,6 +1098,7 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_rt_transport);
 
     /* Make sure the normal hydro sorts run before the RT sorts run. */
+    /* TODO: do I still need this, when it's done above already? */
     if (c->hydro.sorts != NULL) scheduler_addunlock(s, c->hydro.sorts, t_rt_sorts);
 
     for (struct link *l = c->rt.rt_gradient; l != NULL; l = l->next) {
@@ -1094,6 +1106,7 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
       scheduler_addunlock(s, t_rt_gradient, l->t);
       /* Don't run gradient tasks without sorting */
       scheduler_addunlock(s, t_rt_sorts, l->t);
+      celltrace(c, "added rt_sorts dependencies");
       /* Don't update local particles before gradient tasks are finished */
       scheduler_addunlock(s, l->t, t_rt_transport);
     }
@@ -1114,8 +1127,12 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_rt(e, c->progeny[k], t_rt_gradient, t_rt_transport,
-                                t_rt_advance_cell_time, t_rt_sorts, tend);
+        engine_addtasks_recv_rt(e, c->progeny[k], 
+            t_rt_gradient, 
+            t_rt_transport,
+            t_rt_advance_cell_time, 
+            t_rt_sorts,
+            tend);
 #else
   error("SWIFT was not compiled with MPI support.");
 #endif
@@ -4213,13 +4230,14 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
 
     /* Add the recv tasks for the cells in the proxy that have a hydro
      * connection. */
-    if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro))
+    if ((e->policy & engine_policy_hydro) && (type & proxy_cell_type_hydro)){
       engine_addtasks_recv_hydro(e, ci, /*t_xv=*/NULL, /*t_rho=*/NULL,
                                  /*t_gradient=*/NULL,
                                  /*t_prep1=*/NULL,
                                  /*t_limiter=*/NULL, /*t_unpack_limiter=*/NULL,
                                  tend, with_feedback, with_black_holes,
                                  with_limiter, with_sync);
+    }
 
     /* Add the recv tasks for the cells in the proxy that have a stars
      * connection. */
