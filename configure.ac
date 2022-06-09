@@ -1877,6 +1877,7 @@ case "$with_hydro" in
    ;;
    shadowswift)
        AC_DEFINE([SHADOWSWIFT], [1], [Moving mesh hydrodynamics])
+       AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
        need_riemann_solver=yes
    ;;
    planetary)
