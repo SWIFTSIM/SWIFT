@@ -714,7 +714,8 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
             const double angle = dp < 1.0 ? acos(dp) : 0.0;
 
             /* Evaluate the kernel at this radius */
-            total_weight += projected_kernel_eval(kernel_table, angle / smoothing_radius);
+            total_weight +=
+                projected_kernel_eval(kernel_table, angle / smoothing_radius);
           }
         }
 
@@ -742,7 +743,8 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
 
               /* Evaluate the kernel at this radius */
               const double weight =
-                  projected_kernel_eval(kernel_table, angle / smoothing_radius) /
+                  projected_kernel_eval(kernel_table,
+                                        angle / smoothing_radius) /
                   total_weight;
 
               /* Find local index of the pixel to update */
