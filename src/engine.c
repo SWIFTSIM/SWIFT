@@ -1785,12 +1785,21 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Print info before it's gone */
-  message(
-      "step %6d cycle   0 (during regular tasks) min_active_bin=%2d "
-      "max_active_bin=%2d rt_updates=%18lld",
-      e->step, e->min_active_bin_subcycle, e->max_active_bin_subcycle,
-      e->rt_updates);
+#ifdef WITH_MPI
+  long long rt_updates_tot = 0ll;
+  int test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (test != MPI_SUCCESS) error("MPI reduce failed");
+#else
+  long long rt_updates_tot = e->rt_updates;
 #endif
+  if (e->nodeID == 0){
+    message(
+        "step %6d cycle   0 (during regular tasks) min_active_bin=%2d "
+        "max_active_bin=%2d rt_updates=%18lld",
+        e->step, e->min_active_bin_subcycle, e->max_active_bin_subcycle,
+        rt_updates_tot);
+  }
+#endif /* SWIFT_RT_DEBUGGING_CHECKS */
 
   const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_current;
   if (rt_step_size == 0) {
@@ -1828,12 +1837,22 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
     engine_unskip_sub_cycle(e);
     engine_launch(e, "cycles");
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
-    message(
-        "step %6d cycle %3d time=%13.6e     min_active_bin=%d "
-        "max_active_bin=%d rt_updates=%18lld",
-        e->step, sub_cycle, e->time, e->min_active_bin_subcycle,
-        e->max_active_bin_subcycle, e->rt_updates);
+#ifdef WITH_MPI
+    rt_updates_tot = 0ll;
+    test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    if (test != MPI_SUCCESS) error("MPI reduce failed");
+#else
+    rt_updates_tot = e->rt_updates;
+#endif
+    if (e->nodeID == 0){
+      message(
+          "step %6d cycle %3d time=%13.6e     min_active_bin=%d "
+          "max_active_bin=%d rt_updates=%18lld",
+          e->step, sub_cycle, e->time, e->min_active_bin_subcycle,
+          e->max_active_bin_subcycle, rt_updates_tot);
+    }
 #endif
   }
 
