@@ -361,6 +361,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 #endif
           scheduler_activate(s, t);
+          if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
 
@@ -842,7 +843,12 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_activate_drift_part(ci, s);
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-          /* TODO the limiter tasks? */
+          /* And the limiter */
+          if (with_timestep_limiter) {
+            cell_activate_limiter(ci, s);
+            if (cj_nodeID == nodeID)
+              cell_activate_limiter(cj, s);
+          }
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);

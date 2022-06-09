@@ -4698,11 +4698,14 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const int with_timestep_limiter =
+      (e->policy & engine_policy_timestep_limiter);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_slope_estimate = NULL;
   struct task *t_slope_limiter = NULL;
 #endif
   struct task *t_flux = NULL;
+  struct task *t_limiter = NULL;
   /* TODO add limiter dependencies */
 
   for (int ind = 0; ind < num_elements; ind++) {
@@ -4757,6 +4760,12 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_flux = scheduler_addtask(sched, task_type_self, task_subtype_flux,
                                    flags, 0, ci, NULL);
 
+        /* the task for the time-step limiter */
+        if (with_timestep_limiter) {
+          t_limiter = scheduler_addtask(sched, task_type_self,
+                                        task_subtype_limiter, flags, 0, ci, NULL);
+        }
+
         /* Create hydro loop dependencies*/
 #ifdef EXTRA_HYDRO_LOOP
         engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
@@ -4764,6 +4773,12 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #else
         engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
 #endif
+        if (with_timestep_limiter) {
+          scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+        }
 
         /* Link tasks to cell */
 #ifdef EXTRA_HYDRO_LOOP
@@ -4771,6 +4786,9 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.slope_limiter, t_slope_limiter);
 #endif
         engine_addlink(e, &ci->hydro.flux, t_flux);
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+        }
 
       } else if (t_type == task_type_pair) {
 
@@ -4829,16 +4847,45 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
           t_flux = scheduler_addtask(sched, task_type_pair, task_subtype_flux,
                                      sid, 0, ci, cj);
 
+          /* and the task for the time-step limiter */
+          if (with_timestep_limiter) {
+            t_limiter = scheduler_addtask(sched, task_type_pair,
+                                          task_subtype_limiter, flags, 0, ci, cj);
+          }
+
           /* Create hydro loop dependencies. */
 #ifdef EXTRA_HYDRO_LOOP
-          if (ci_local)
+          if (ci_local) {
             engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
                                                     t_slope_limiter, t_flux);
+            if (with_timestep_limiter) {
+              scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+              scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+              scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+              scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+            }
+          }
           /* We also need a dependency on the construction task of cj, since the
            * interaction might be flipped */
-          if (cj->hydro.super != ci->hydro.super && cj_local)
-            engine_make_grid_hydroloop_dependencies(sched, cj, t_slope_estimate,
-                                                    t_slope_limiter, t_flux);
+          if (cj_local) {
+            if (cj->hydro.super != ci->hydro.super) {
+              engine_make_grid_hydroloop_dependencies(
+                  sched, cj, t_slope_estimate, t_slope_limiter, t_flux);
+              if (with_timestep_limiter) {
+                scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                    t_limiter);
+              }
+            }
+
+            if (ci->super != cj->super) {
+              if (with_timestep_limiter) {
+                scheduler_addunlock(sched, cj->super->timestep, t_limiter);
+                scheduler_addunlock(sched, t_limiter, cj->super->kick1);
+                scheduler_addunlock(sched, t_limiter,
+                                    cj->super->timestep_limiter);
+              }
+            }
+          }
 #else
           if (ci_local)
             engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
@@ -4857,6 +4904,10 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
           engine_addlink(e, &ci->hydro.flux, t_flux);
           engine_addlink(e, &cj->hydro.flux, t_flux);
+          if (with_timestep_limiter) {
+            engine_addlink(e, &ci->hydro.limiter, t_limiter);
+            engine_addlink(e, &cj->hydro.limiter, t_limiter);
+          }
         } /* Should we add a flux pair interaction? */
       } else {
         error("Unknown task type for subtype task_subtype_grid_construction");
