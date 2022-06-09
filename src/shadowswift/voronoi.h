@@ -11,9 +11,6 @@
 #define VORONOI_STORE_FACES
 #endif
 
-/*! @brief Store cell generators. */
-//#define VORONOI_STORE_GENERATORS
-
 /*! @brief Activate runtime assertions. */
 //#define VORONOI_DO_ASSERTIONS
 
@@ -48,24 +45,22 @@
  * the location of its centroid (for compatibility reasons, these must always be
  * 3D vectors (also for the 2D voronoi algorithm).
  */
-struct voronoi_cell {
-  /*! Cell volume. */
-  double volume;
-
-  /*! Cell centroid. */
-  double centroid[3];
-
-#ifdef VORONOI_STORE_GENERATORS
-  /*! Position of the cell generator. */
-  double x[3];
-#endif
-
-  /*! Number of faces of this cell. */
-  int nface;
-
-  /*! cell_pair_connections offset */
-  int pair_connections_offset;
-};
+//struct voronoi_cell {
+//  /*! Cell volume. */
+//  double volume;
+//
+//  /*! Cell centroid. */
+//  double centroid[3];
+//
+//  /*! Number of faces of this cell. */
+//  int nface;
+//
+//  /*! cell_pair_connections offset */
+//  int pair_connections_offset;
+//
+//  /*! Minimal distance from generator to a face */
+//  double min_face_dist;
+//};
 
 #ifdef HYDRO_DIMENSION_2D
 #include "algorithm2d/voronoi.h"

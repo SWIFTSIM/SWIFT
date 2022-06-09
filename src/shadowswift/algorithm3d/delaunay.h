@@ -166,6 +166,7 @@ inline static double delaunay_get_radius(struct delaunay* restrict d, int t);
 inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
                                             int v1, int v2, int v3);
 inline static int delaunay_vertex_is_valid(struct delaunay* restrict d, int v);
+inline static void delaunay_get_vertex_at(const struct delaunay *d, int idx, double *out);
 
 /**
  * @brief Initialize the Delaunay tessellation.
@@ -2291,6 +2292,13 @@ inline static int delaunay_test_orientation(struct delaunay* restrict d, int v0,
 inline static int delaunay_vertex_is_valid(struct delaunay* restrict d, int v) {
   return (v >= d->vertex_start && v < d->vertex_end) ||
          (v >= d->ngb_offset && v < d->ngb_index + d->ngb_offset);
+}
+
+/*! @brief Store the *actual* coordinates of the vertex at idx in out. */
+inline static void delaunay_get_vertex_at(const struct delaunay *d, int idx, double *out) {
+  out[0] = d->side * (d->rescaled_vertices[3 * idx] - 1.) + d->anchor[0];
+  out[1] = d->side * (d->rescaled_vertices[3 * idx + 1] - 1.) + d->anchor[1];
+  out[2] = d->side * (d->rescaled_vertices[3 * idx + 2] - 1.) + d->anchor[2];
 }
 
 /**

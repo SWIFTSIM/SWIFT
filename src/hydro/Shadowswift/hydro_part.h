@@ -193,12 +193,20 @@ struct part {
 
   struct {
 
-    /*! Volume of the corresponding voronoi cell */
-    float volume;
+    /*! Voronoi cell volume. */
+    double volume;
 
-    /*! Centroid of the corresponding voronoi cell relative to the particles
-     * position. */
-    float centroid[3];
+    /*! Voronoi cell centroid. */
+    double centroid[3];
+
+    /*! Number of faces of this voronoi cell. */
+    int nface;
+
+    /*! cell_pair_connections offset in voronoi tesselation */
+    int pair_connections_offset;
+
+    /*! Minimal distance from generator to a face */
+    double min_face_dist;
 
     /*! Flags indicating to which neighbouring cells this particle has already
      * been added. */

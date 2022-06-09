@@ -1372,12 +1372,11 @@ inline static void delaunay_add_new_vertex(struct delaunay* d, double x,
   }
 }
 
-/*! @brief stores the coordinates of the vertex at given idx in out */
+/*! @brief stores the actual coordinates of the vertex at given by idx in out */
 inline static void delaunay_get_vertex_at(const struct delaunay* d, int idx,
                                           double* out /*ret*/) {
   out[0] = d->vertices[2 * idx];
   out[1] = d->vertices[2 * idx + 1];
-  out[2] = 0.;
 }
 
 inline static void delaunay_write_tessellation(

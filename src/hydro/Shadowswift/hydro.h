@@ -89,9 +89,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       sqrtf(hydro_gamma * W[4] / W[0]);
   vmax = max(vmax, p->timestepvars.vmax);
 
-  const float psize = cosmo->a * cosmo->a *
-                      powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                           hydro_dimension_inv);
+  float psize = cosmo->a * cosmo->a *
+                powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                     hydro_dimension_inv);
+  if (p->geometry.min_face_dist < 0.5 * psize)
+    psize = (float)p->geometry.min_face_dist;
+
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
     dt = psize / vmax;
@@ -526,7 +529,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Check conserved quantities */
     shadowswift_check_physical_quantities(
         "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-        p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
+        p->conserved.momentum[1], p->conserved.momentum[2],
+        p->conserved.energy);
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (p->conserved.mass < 0.) {
