@@ -491,11 +491,13 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
  * @param t_rt_gradient The send_rt_gradient #task, if it has already been
  * created.
  * @param t_rt_transport The send_rt_transport #task, if it has already been
+ * @param t_end The t_end #task, if it has already been
  * created.
  */
 void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
                              struct task *t_rt_gradient,
-                             struct task *t_rt_transport) {
+                             struct task *t_rt_transport, 
+                             struct task *t_end) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -526,6 +528,8 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
           s, task_type_send, task_subtype_rt_gradient, ci->mpi.tag, 0, ci, cj);
       t_rt_transport = scheduler_addtask(
           s, task_type_send, task_subtype_rt_transport, ci->mpi.tag, 0, ci, cj);
+      /* Don't send the transport stuff before the gradient stuff */
+      scheduler_addunlock(s, t_rt_gradient, t_rt_transport);
 
       /* The send_gradient task depends on the cell's ghost1 task. */
       scheduler_addunlock(s, ci->hydro.super->rt.rt_ghost1, t_rt_gradient);
@@ -546,6 +550,15 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
        * being sent. */
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_gradient);
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_transport);
+
+    }
+
+    /* If we're running with RT subcycling, we need to ensure that nothing
+     * is sent before the advance cell time task has finished. This may
+     * overwrite the correct cell times, particularly so when we're sending
+     * over data for non-RT tasks, e.g. for gravity pair tasks. */
+    if (ci->rt.rt_advance_cell_time != NULL){
+      scheduler_addunlock(s, ci->rt.rt_advance_cell_time, t_end);
     }
 
     /* Add them to the local cell. */
@@ -558,7 +571,7 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_rt(e, ci->progeny[k], cj, t_rt_gradient,
-                                t_rt_transport);
+                                t_rt_transport, t_end);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4138,26 +4151,16 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *ci = cell_type_pairs[k].ci;
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
+    struct task *tend = NULL;
 
 #ifdef WITH_MPI
 
     if (!cell_is_empty(ci)) {
       /* Add the timestep exchange task */
-      struct task *tend = scheduler_addtask(&e->sched, task_type_send, task_subtype_tend, ci->mpi.tag, 0, ci, cj);
+      tend = scheduler_addtask(&e->sched, task_type_send, task_subtype_tend, ci->mpi.tag, 0, ci, cj);
       scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
       engine_addlink(e, &ci->mpi.send, tend);
 
-      /* If we're running with RT subcycling, we need to ensure that nothing
-       * is sent before the advance cell time task has finished. This may
-       * overwrite the correct cell times, particularly so when we're sending
-       * over data for non-RT tasks, e.g. for gravity pair tasks. */
-      if (ci->rt.rt_advance_cell_time != NULL)
-        scheduler_addunlock(&e->sched, ci->rt.rt_advance_cell_time, tend);
-#ifdef SWIFT_RT_DEBUG_CHECKS
-      if ((e->policy & engine_policy_rt) &&
-          ci->rt.rt_advance_cell_time == NULL && ci->hydro.count != 0)
-        error("Local cell with parts has NULL rt_advance_cell_time task");
-#endif
     }
 #endif
 
@@ -4193,7 +4196,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
       engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
 
     if ((e->policy & engine_policy_rt) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_rt(e, ci, cj, /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL);
+      engine_addtasks_send_rt(e, ci, cj, /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL, tend);
   }
 }
 
