@@ -1380,6 +1380,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
                                     ci_nodeID);
           }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                    ci_nodeID);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                    ci_nodeID);
+          }
         } else if (cj_nodeID != nodeID) {
           /* If the local cell is active, receive data from remote node */
           if (ci_active_hydro) {
@@ -1388,6 +1401,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the foreign cell is active, send data to remote */
           if (cj_active_hydro) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                    cj_nodeID);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
                                     cj_nodeID);
           }
         }

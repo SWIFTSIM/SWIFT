@@ -576,7 +576,9 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
  */
 void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
                                struct cell *cj, struct task *t_xv,
-                               struct task *t_gradient, int with_hydro) {
+                               struct task *t_gradient, struct task *t_limiter,
+                               struct task *t_pack_limiter,
+                               const int with_hydro, const int with_limiter) {
 
 #ifdef WITH_MPI
 
@@ -670,7 +672,7 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
     /* If so, add t_xv and gradient task */
     if (l != NULL) {
 
-      /* Create the gradient task? */
+      /* Create the gradient/limiter task? */
       if (t_gradient == NULL) {
 
         /* Make sure this cell is tagged. */
@@ -685,10 +687,25 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
 
         /* The gradient task should unlock the super-cell's flux ghost task. */
         scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.flux_ghost);
+
+        /* The limiter pair tasks follow the same structure as the hydro pair
+         * interactions */
+        if (with_limiter) {
+          t_limiter = scheduler_addtask(s, task_type_send, task_subtype_limiter,
+                                        ci->mpi.tag, 0, ci, cj);
+          t_pack_limiter = scheduler_addtask(
+              s, task_type_pack, task_subtype_limiter, 0, 0, ci, cj);
+
+          scheduler_addunlock(s, t_pack_limiter, t_limiter);
+        }
       }
 
       /* Add it to the local cell. */
       engine_addlink(e, &ci->mpi.send, t_gradient);
+      if (with_limiter) {
+        engine_addlink(e, &ci->mpi.send, t_limiter);
+        engine_addlink(e, &ci->mpi.pack, t_pack_limiter);
+      }
 
       if (!added_t_xv) {
         if (t_xv == NULL) {
@@ -716,7 +733,8 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_grid(e, ci->progeny[k], cj, t_xv, t_gradient,
-                                  with_hydro);
+                                  t_limiter, t_pack_limiter, with_hydro,
+                                  with_limiter);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1250,7 +1268,9 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
  */
 void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
                                struct task *t_xv, struct task *t_gradient,
-                               struct task *tend, int with_hydro) {
+                               struct task *t_limiter,
+                               struct task *t_unpack_limiter, struct task *tend,
+                               const int with_hydro, const int with_limiter) {
 
 #ifdef WITH_MPI
 
@@ -1346,6 +1366,15 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
         t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                        c->mpi.tag, 0, c, NULL);
+
+        if (with_limiter) {
+          t_limiter = scheduler_addtask(s, task_type_recv, task_subtype_limiter,
+                                        c->mpi.tag, 0, c, NULL);
+          t_unpack_limiter = scheduler_addtask(
+              s, task_type_unpack, task_subtype_limiter, 0, 0, c, NULL);
+
+          scheduler_addunlock(s, t_limiter, t_unpack_limiter);
+        }
       }
 
       /* Dependencies */
@@ -1362,6 +1391,10 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
       /* add it to cell */
       engine_addlink(e, &c->mpi.recv, t_gradient);
+      if (with_limiter) {
+        engine_addlink(e, &c->mpi.recv, t_limiter);
+        engine_addlink(e, &c->mpi.unpack, t_unpack_limiter);
+      }
 
       /* Still need to add t_xv? */
       if (!added_t_xv) {
@@ -1402,8 +1435,9 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
   if (c->grid.split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_gradient, tend,
-                                  with_hydro);
+        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_gradient, t_limiter,
+                                  t_unpack_limiter, tend, with_hydro,
+                                  with_limiter);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -4762,8 +4796,8 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         /* the task for the time-step limiter */
         if (with_timestep_limiter) {
-          t_limiter = scheduler_addtask(sched, task_type_self,
-                                        task_subtype_limiter, flags, 0, ci, NULL);
+          t_limiter = scheduler_addtask(
+              sched, task_type_self, task_subtype_limiter, flags, 0, ci, NULL);
         }
 
         /* Create hydro loop dependencies*/
@@ -4849,8 +4883,8 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           /* and the task for the time-step limiter */
           if (with_timestep_limiter) {
-            t_limiter = scheduler_addtask(sched, task_type_pair,
-                                          task_subtype_limiter, flags, 0, ci, cj);
+            t_limiter = scheduler_addtask(
+                sched, task_type_pair, task_subtype_limiter, flags, 0, ci, cj);
           }
 
           /* Create hydro loop dependencies. */
@@ -4859,10 +4893,12 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
             engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
                                                     t_slope_limiter, t_flux);
             if (with_timestep_limiter) {
-              scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+              scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                  t_limiter);
               scheduler_addunlock(sched, ci->super->timestep, t_limiter);
               scheduler_addunlock(sched, t_limiter, ci->super->kick1);
-              scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+              scheduler_addunlock(sched, t_limiter,
+                                  ci->super->timestep_limiter);
             }
           }
           /* We also need a dependency on the construction task of cj, since the
@@ -4895,7 +4931,7 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
             engine_make_grid_hydroloop_dependencies(sched, cj, t_flux);
 #endif
 
-            /* link tasks to cells */
+          /* link tasks to cells */
 #ifdef EXTRA_HYDRO_LOOP
           engine_addlink(e, &ci->hydro.slope_estimate, t_slope_estimate);
           engine_addlink(e, &cj->hydro.slope_estimate, t_slope_estimate);
@@ -4990,8 +5026,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
     if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_grid(e, ci, cj, NULL, NULL,
-                                e->policy & engine_policy_grid_hydro);
+      engine_addtasks_send_grid(e, ci, cj, NULL, NULL, NULL, NULL,
+                                e->policy & engine_policy_grid_hydro,
+                                with_limiter);
   }
 }
 
@@ -5067,8 +5104,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
     if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_grid(e, ci, /*t_xv*/ NULL, /*t_gradient*/ NULL, tend,
-                                e->policy & engine_policy_grid_hydro);
+      engine_addtasks_recv_grid(
+          e, ci, /*t_xv*/ NULL, /*t_gradient*/ NULL, NULL, NULL, tend,
+          e->policy & engine_policy_grid_hydro, with_limiter);
   }
 }
 
