@@ -340,10 +340,13 @@ struct part {
   float N_good_ngb;
 #endif
     
-#ifdef PLANETARY_MATRIX_INVERSION
+#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   /*! Particle C matrix. */
   float C[3][3], Cinv[3][3];
-    
+
+#endif
+
+#ifdef PLANETARY_QUAD_VISC
   /*! Particle D matrix. */
   float Dinv[3][3];
     
@@ -364,6 +367,7 @@ struct part {
   /*! Number of particles in grad loop*/
   float N_grad;
 #endif
+
 
 } SWIFT_STRUCT_ALIGN;
 

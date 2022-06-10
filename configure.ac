@@ -529,6 +529,17 @@ AC_ARG_ENABLE([planetary-matrix-inversion],
 if test "$planetary_matrix_inversion" = "yes"; then
    AC_DEFINE([PLANETARY_MATRIX_INVERSION],1,[Enable planetary matrix inversion method])
 fi
+# Check if quad visc is on for planetary simulations
+AC_ARG_ENABLE([planetary-quad-visc],
+   [AS_HELP_STRING([--enable-planetary-quad-visc],
+     [Enable quad visc for planetary simulations @<:@yes/no@:>@]
+   )],
+   [planetary_quad_visc="$enableval"],
+   [planetary_quad_visc="no"]
+)
+if test "$planetary_quad_visc" = "yes"; then
+   AC_DEFINE([PLANETARY_QUAD_VISC],1,[Enable planetary quad visc])
+fi
 
 # Check whether we have any of the ARM v8.1 tick timers
 AX_ASM_ARM_PMCCNTR
@@ -2750,6 +2761,7 @@ AC_MSG_RESULT([
    P+ imbalance method         : $planetary_imbalance
    P+ smoothing correction     : $planetary_smoothing_correction
    P+ matrix method            : $planetary_matrix_inversion
+   P+ quad visc                : $planetary_quad_visc
 
    Continuous Sim. Data Stream : $with_csds
 

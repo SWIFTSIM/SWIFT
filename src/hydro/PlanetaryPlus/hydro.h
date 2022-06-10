@@ -517,7 +517,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->drho_dh = 0.f;  
 #endif
 
-#ifdef PLANETARY_MATRIX_INVERSION
+#ifdef PLANETARY_QUAD_VISC
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -609,7 +609,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->drho_dh *= h_inv_dim_plus_one;    
 #endif
 
-#ifdef PLANETARY_MATRIX_INVERSION
+#ifdef PLANETARY_QUAD_VISC
   int i, j, k;
 
   /* In this section we carry out matrix inversion to find D and calculate
@@ -781,13 +781,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->N_good_ngb = 0.f;
 #endif
 
-#ifdef PLANETARY_MATRIX_INVERSION
-
-  int i, j, k;
+#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
+ int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
-
       p->Cinv[i][j] = 0.f;
+    }
+  }
+#endif
+
+#ifdef PLANETARY_QUAD_VISC
+  int k;
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
       p->dv[i][j] = 0.f;
 
       for (k = 0; k < 3; ++k) {
@@ -797,7 +803,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   }
 
   p->N_grad = 0.f;
-
 #endif
 }
 
@@ -1116,25 +1121,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     p->is_h_max = 0;  
   }
 
-#ifdef PLANETARY_MATRIX_INVERSION
-
-  int i, j, k, l;
+#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
+ int i, j;
 
   /* In this section we:
       1) take the inverse of the Cinv matrix;
-      2) calculate C_dv (eq 18 in Rosswog 2020);
-      3) calculate C_ddv (eq 18 in Rosswog 2020 but using the dv_aux instead of
-     v to get second derivative).
   */
 
-  for (i = 0; i < 3; ++i) {
-    for (j = 0; j < 3; ++j) {
-      p->C_dv[i][j] = 0.f;
-      for (k = 0; k < 3; ++k) {
-        p->C_ddv[i][j][k] = 0.f;
-      }
-    }
-  }
 
   /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
    * the volume stops working */
@@ -1174,7 +1167,42 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
           // printf("C error");
           // exit(0);
         }
+      }
+    }
 
+  } else {
+
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) p->C[i][j] = 0.f;
+    }
+  }
+#endif
+
+
+#ifdef PLANETARY_QUAD_VISC
+
+  int k, l;
+
+  /* In this section we:
+      1) calculate C_dv (eq 18 in Rosswog 2020);
+      2) calculate C_ddv (eq 18 in Rosswog 2020 but using the dv_aux instead of
+     v to get second derivative).
+  */
+
+  for (i = 0; i < 3; ++i) {
+    for (j = 0; j < 3; ++j) {
+      p->C_dv[i][j] = 0.f;
+      for (k = 0; k < 3; ++k) {
+        p->C_ddv[i][j][k] = 0.f;
+      }
+    }
+  }
+
+  /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
+   * the volume stops working */
+  if (!p->is_h_max) {
+    for (i = 0; i < 3; i++) {
+      for (j = 0; j < 3; j++) {
         for (k = 0; k < 3; ++k) {
           /* calculate C_dv (eq 18 in Rosswog 2020) */
           p->C_dv[i][k] += p->C[i][j] * p->dv[k][j];
@@ -1186,11 +1214,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       }
     }
 
-  } else {
-
-    for (i = 0; i < 3; i++) {
-      for (j = 0; j < 3; j++) p->C[i][j] = 0.f;
-    }
   }
 #endif
 }
