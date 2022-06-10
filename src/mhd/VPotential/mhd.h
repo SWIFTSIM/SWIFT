@@ -110,12 +110,12 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  * @param Gauge Gauge
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
-    const struct part *restrict p, const float Gauge, const float a, 
+    const struct part *restrict p, const float Gauge, const float a,
     const struct cosmology *c) {
 
   const float v_sig = hydro_get_signal_velocity(p);
 
-  return (-p->mhd_data.divA * v_sig * v_sig * 0.01 / a / a-
+  return (-p->mhd_data.divA * v_sig * v_sig * 0.01 / a / a -
           2.0f * v_sig * Gauge / p->h);
 }
 
@@ -189,8 +189,8 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   //    const float h_inv = 1.0f / h;                       /* 1/h */
   //    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
-  //const float a_inv2 = 1.f ; //cosmo->a2_inv;
-  //const float a_inv = 1.f ; // cosmo->a;
+  // const float a_inv2 = 1.f ; //cosmo->a2_inv;
+  // const float a_inv = 1.f ; // cosmo->a;
   const float rho_inv = 1.f / p->rho;
 
   p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
@@ -306,8 +306,8 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(
-      p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I
+  const float ACC_corr =
+      fabs(p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I
   //    take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
@@ -383,7 +383,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
   // p->mhd_data.Gau += hydro_get_dGau_dt(p,p->mhd_data.Gau) * dt_therm;
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo->a,cosmo) * dt_therm;
+  float change_Gau =
+      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo->a, cosmo) * dt_therm;
   change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
                    ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
                    : change_Gau;
@@ -404,10 +405,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
-  
-//  p->mhd_data.dAdt[0] += cosmo->H * p->mhd_data.APred[0];
-//  p->mhd_data.dAdt[1] += cosmo->H * p->mhd_data.APred[1];
-//  p->mhd_data.dAdt[2] += cosmo->H * p->mhd_data.APred[2];
+
+  //  p->mhd_data.dAdt[0] += cosmo->H * p->mhd_data.APred[0];
+  //  p->mhd_data.dAdt[1] += cosmo->H * p->mhd_data.APred[1];
+  //  p->mhd_data.dAdt[2] += cosmo->H * p->mhd_data.APred[2];
 
   return;
 }
@@ -441,7 +442,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   // this is fine ? XXX
   // xp->mhd_data.Gau = p->mhd_data.Gau + hydro_get_dGau_dt(p) * dt_therm;
   // Dont allow middle change
-  float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo->a,cosmo) * dt_therm;
+  float change_Gau =
+      hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo->a, cosmo) * dt_therm;
   change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
                    ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
                    : change_Gau;

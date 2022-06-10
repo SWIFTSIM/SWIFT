@@ -112,11 +112,11 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
     const float a, const struct cosmology *c) {
 
   const float v_sig = hydro_get_signal_velocity(p);
-//  const float div_v = hydro_get_div_v(p);
+  //  const float div_v = hydro_get_div_v(p);
 
-  return (-hyp * p->mhd_data.divB * v_sig * v_sig / a / a-
-          par * v_sig * p->mhd_data.phi / p-> h / a / a);
-//	  - 0.5f * p->mhd_data.phi * div_v / a); 
+  return (-hyp * p->mhd_data.divB * v_sig * v_sig / a / a -
+          par * v_sig * p->mhd_data.phi / p->h / a / a);
+  //	  - 0.5f * p->mhd_data.phi * div_v / a);
 }
 
 /**
@@ -175,10 +175,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   //    const float h_inv = 1.0f / h;                       /* 1/h */
   //    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
-  //const float a_inv2 = cosmo->a2_inv;
+  // const float a_inv2 = cosmo->a2_inv;
   const float rho_inv = 1.f / p->rho;
   // p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv / cosmo->a;
-  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv ; // * a_inv2 / cosmo->;
+  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv;  // * a_inv2 / cosmo->;
 }
 
 /**
@@ -343,7 +343,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.BPred[2] += p->mhd_data.dBdt[2] * dt_therm;
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
-  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo->a,cosmo) * dt_therm;
+  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo->a, cosmo) * dt_therm;
 }
 
 /**
@@ -361,10 +361,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo) {
 
-     //p->mhd_data.dBdt[0] *= cosmo->a * cosmo->a;
-     //p->mhd_data.dBdt[1] *= cosmo->a * cosmo->a;
-     //p->mhd_data.dBdt[2] *= cosmo->a * cosmo->a;
-    }
+  // p->mhd_data.dBdt[0] *= cosmo->a * cosmo->a;
+  // p->mhd_data.dBdt[1] *= cosmo->a * cosmo->a;
+  // p->mhd_data.dBdt[2] *= cosmo->a * cosmo->a;
+}
 
 /**
  * @brief Kick the additional variables
@@ -395,7 +395,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
-  xp->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo->a, cosmo) * dt_therm;
+  xp->mhd_data.phi +=
+      hydro_get_dphi_dt(p, hyp, par, cosmo->a, cosmo) * dt_therm;
 }
 
 /**
