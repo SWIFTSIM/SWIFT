@@ -397,6 +397,7 @@ inline static void delaunay_destroy(struct delaunay* restrict d) {
   swift_free("delaunay", d->tetrahedra);
   int_lifo_queue_destroy(&d->tetrahedra_containing_vertex);
   int_lifo_queue_destroy(&d->free_tetrahedron_indices);
+  swift_free("delaunay", d->flagged_tetrahedra);
   geometry3d_destroy(&d->geometry);
   swift_free("delaunay", d->ghost_cell_sids);
   gsl_rng_free(d->rng);
