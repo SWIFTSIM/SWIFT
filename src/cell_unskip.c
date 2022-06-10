@@ -3149,8 +3149,12 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     if (c->rt.rt_transport_out != NULL)
       scheduler_activate(s, c->rt.rt_transport_out);
     if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
+    /* This is for foreign cells */
     if (c->rt.rt_advance_cell_time != NULL)
       scheduler_activate(s, c->rt.rt_advance_cell_time);
+    /* This is for local cells */
+    if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL)
+      scheduler_activate(s, c->super->rt.rt_advance_cell_time);
     if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
   }
 

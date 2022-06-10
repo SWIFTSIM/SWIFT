@@ -1754,10 +1754,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
          * will return bogus results. Note that c->super is not necessarily 
          * c->hydro.super in general. */
         /* Create the task only once ! */
-        if (c->super->rt.rt_advance_cell_time == NULL)
+        if (c->super->rt.rt_advance_cell_time == NULL){
           c->super->rt.rt_advance_cell_time =
             scheduler_addtask(s, task_type_rt_advance_cell_time,
-                              task_subtype_none, 0, 0, c, NULL);
+                              task_subtype_none, 0, 0, c->super, NULL);
+          celltrace(c, "created RT_advance_cell_time");
+          celltrace(c->super, "created super RT_advance_cell_time");
+        }
+
         scheduler_addunlock(s, c->rt.rt_transport_out, c->rt.rt_tchem);
         scheduler_addunlock(s, c->rt.rt_tchem, c->super->rt.rt_advance_cell_time);
         scheduler_addunlock(s, c->super->rt.rt_advance_cell_time, c->rt.rt_out);
