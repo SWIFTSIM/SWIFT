@@ -557,10 +557,14 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
      * is sent before the advance cell time task has finished. This may
      * overwrite the correct cell times, particularly so when we're sending
      * over data for non-RT tasks, e.g. for gravity pair tasks. */
-    if (ci->rt.rt_advance_cell_time != NULL){
-      scheduler_addunlock(s, ci->rt.rt_advance_cell_time, t_end);
-    }
-
+    /* if (ci->rt.rt_advance_cell_time != NULL){ */
+    /*   scheduler_addunlock(s, ci->rt.rt_advance_cell_time, t_end); */
+    /*   celltrace(ci, "added advance_cell_time->tend dependendcy"); */
+    /*   if (ci->cellID == 398)  */
+    /*     message("cell 398 local=%d added advance_cell_time->tend dependency",  */
+    /*             ci->nodeID == engine_rank); */
+    /* } */
+    /*  */
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_rt_gradient);
     engine_addlink(e, &ci->mpi.send, t_rt_transport);
@@ -4161,6 +4165,20 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
       scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
       engine_addlink(e, &ci->mpi.send, tend);
 
+      if ((e->policy & engine_policy_rt) && (type & proxy_cell_type_hydro)){
+      
+        /* If we're running with RT subcycling, we need to ensure that nothing
+         * is sent before the advance cell time task has finished. This may
+         * overwrite the correct cell times, particularly so when we're sending
+         * over data for non-RT tasks, e.g. for gravity pair tasks. */
+        if (ci->super->rt.rt_advance_cell_time != NULL){
+          scheduler_addunlock(&e->sched, ci->super->rt.rt_advance_cell_time, tend);
+          celltrace(ci, "added advance_cell_time->tend dependendcy");
+          if (ci->cellID == 398) 
+            message("cell 398 local=%d added advance_cell_time->tend dependency", 
+                    ci->nodeID == engine_rank);
+        }
+      }
     }
 #endif
 
