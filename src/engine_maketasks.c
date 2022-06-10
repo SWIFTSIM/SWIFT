@@ -1724,17 +1724,18 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_rt_out, task_subtype_none, 0,
                               /* implicit= */ 1, c, NULL);
         scheduler_addunlock(s, c->rt.rt_out, c->super->timestep);
+        celltrace(c, "added rt_out -> super.timestep dep");
 
         /* TODO: doc */
         scheduler_addunlock(s, c->rt.rt_out, c->super->timestep_collect);
 
         /* non-implicit ghost 1 */
-        c->hydro.super->rt.rt_ghost1 = scheduler_addtask(s, task_type_rt_ghost1,
+        c->rt.rt_ghost1 = scheduler_addtask(s, task_type_rt_ghost1,
                                             task_subtype_none, 0, 0, c, NULL);
-        scheduler_addunlock(s, c->rt.rt_in, c->hydro.super->rt.rt_ghost1);
+        scheduler_addunlock(s, c->rt.rt_in, c->rt.rt_ghost1);
 
         /* non-implicit ghost 2 */
-        c->hydro.super->rt.rt_ghost2 = scheduler_addtask(s, task_type_rt_ghost2,
+        c->rt.rt_ghost2 = scheduler_addtask(s, task_type_rt_ghost2,
                                             task_subtype_none, 0, 0, c, NULL);
 
         /* implicit transport out */
@@ -1747,12 +1748,20 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                                            task_subtype_none, 0, 0, c, NULL);
 
         /* Advance cell time for subcycling */
-        c->rt.rt_advance_cell_time =
+        /* We need to make sure that rt_advance_cell_time is at the same level
+         * as the timestep task, not below. Otherwise, the updated cell times
+         * won't propagate up the hierarchy enough, and the cell_is_rt_active
+         * will return bogus results. Note that c->super is not necessarily 
+         * c->hydro.super in general. */
+        /* Create the task only once ! */
+        if (c->super->rt.rt_advance_cell_time == NULL)
+          c->super->rt.rt_advance_cell_time =
             scheduler_addtask(s, task_type_rt_advance_cell_time,
                               task_subtype_none, 0, 0, c, NULL);
         scheduler_addunlock(s, c->rt.rt_transport_out, c->rt.rt_tchem);
-        scheduler_addunlock(s, c->rt.rt_tchem, c->rt.rt_advance_cell_time);
-        scheduler_addunlock(s, c->rt.rt_advance_cell_time, c->rt.rt_out);
+        scheduler_addunlock(s, c->rt.rt_tchem, c->super->rt.rt_advance_cell_time);
+        scheduler_addunlock(s, c->super->rt.rt_advance_cell_time, c->rt.rt_out);
+        celltrace(c, "added advance cell time -> rt_out dep");
       }
 
       /* Subgrid tasks: black hole feedback */

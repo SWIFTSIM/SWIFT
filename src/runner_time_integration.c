@@ -693,6 +693,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   /* No children? */
   if (!c->split) {
+    celltrace(c, "entered timestep comp");
 
     /* Loop over the particles in this cell. */
     for (int k = 0; k < count; k++) {
@@ -717,8 +718,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
               ti_current_subcycle, p->rt_time_data.time_bin);
           if (ti_rt_end != ti_current_subcycle)
             error("Computing RT time-step of rogue particle");
-#ifdef SWIFT_RT_DEBUG_CHECKS
-#endif
         }
 #endif
 
@@ -747,14 +746,19 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         ti_hydro_end_min = min(ti_current + ti_new_step, ti_hydro_end_min);
         ti_hydro_end_max = max(ti_current + ti_new_step, ti_hydro_end_max);
 
+        /* What is the next starting point for this cell ? */
+        ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
+
+        /* Same for RT */
         ti_rt_end_min =
             min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min);
         ti_rt_beg_max =
             max(ti_current_subcycle + ti_rt_new_step, ti_rt_beg_max);
         ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_new_step);
 
-        /* What is the next starting point for this cell ? */
-        ti_hydro_beg_max = max(ti_current, ti_hydro_beg_max);
+        celltrace(c, 
+            "ti_current=%lld ti_rt_end_min=%lld ti_rt_beg_max=%lld min_step_size=%lld ti_rt_new_step=%lld", 
+            e->ti_current_subcycle, ti_rt_end_min, ti_rt_beg_max, ti_rt_min_step_size, ti_rt_new_step);
 
         if (p->gpart != NULL) {
 
@@ -801,6 +805,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
             ti_rt_end_min = min(ti_rt_end, ti_rt_end_min);
             ti_rt_beg_max = max(ti_rt_beg, ti_rt_beg_max);
+            celltrace(c, "INACTIVE ti_current=%lld ti_rt_end_min=%lld ti_rt_beg_max=%lld ti_rt_min_step_size=%lld", 
+            e->ti_current_subcycle, ti_rt_end_min, ti_rt_beg_max, ti_rt_min_step_size);
             /* We mustn't update ti_rt_min_step_size here, since the RT time
              * step sizes don't change for particles when they are inactive.
              * Leaving them here effectively prohibits them from ever increasing
@@ -1075,6 +1081,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   } else {
 
+    celltrace(c, "recursing");
+
     /* Loop over the progeny. */
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
@@ -1092,6 +1100,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
+
+        celltrace(c, "progeny %lld count=%d updating beg_max %lld->%lld", cp->cellID, cp->hydro.count, ti_rt_beg_max, cp->rt.ti_rt_beg_max);
+        celltrace(c, "progeny %lld count=%d updating end_min %lld->%lld", cp->cellID, cp->hydro.count, ti_rt_end_min, cp->rt.ti_rt_end_min);
+        celltrace(c, "progeny %lld count=%d updating min_step_size %lld->%lld", cp->cellID, cp->hydro.count, ti_rt_min_step_size, cp->rt.ti_rt_min_step_size);
+        celltrace(c, "");
 
         ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
         ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
@@ -1124,12 +1137,15 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
+  celltrace(c, "updating beg_max %lld->%lld", c->rt.ti_rt_beg_max, ti_rt_beg_max);
+  celltrace(c, "updating end_min %lld->%lld", c->rt.ti_rt_end_min, ti_rt_end_min);
   c->rt.ti_rt_end_min = ti_rt_end_min;
   c->rt.ti_rt_beg_max = ti_rt_beg_max;
   if (cell_is_starting_hydro(c, e)) {
     /* We only change the RT time steps when the cell is also hydro active.
      * Without this check here, ti_rt_min_step_size = max_nr_steps... */
     c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
+    celltrace(c, "updating min_step_size %lld->%lld", c->rt.ti_rt_min_step_size, ti_rt_min_step_size);
   }
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;

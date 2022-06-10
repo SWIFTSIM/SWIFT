@@ -3141,24 +3141,6 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     }
   }
 
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* Each cell doing RT needs to have the rt_advance_cell_time task.
-   * Even the foreign ones.
-   * If it doesn't, it's not doing RT. This can happen for e.g.
-   * foreign cells which have been sent to a foreign node for other
-   * interactions, e.g. gravity. Make sure that if the cell doesn't
-   * have an rt_advance_cell_time task, no other RT tasks are around. */
-  if (c->rt.rt_advance_cell_time == NULL) {
-    if (c->rt.rt_in != NULL) error("found rt_in on cell without rt_advance_cell_time");
-    if (c->rt.rt_ghost1 != NULL) error("found rt_ghost1 on cell without rt_advance_cell_time");
-    if (c->rt.rt_ghost2 != NULL) error("found rt_ghost2 on cell without rt_advance_cell_time");
-    if (c->rt.rt_transport_out != NULL) error("found rt_transport_out on cell without rt_advance_cell_time");
-    if (c->rt.rt_tchem != NULL)  error("found rt_tchem on cell without rt_advance_cell_time");
-    if (c->rt.rt_advance_cell_time != NULL) error("found rt_advance_cell_time on cell without rt_advance_cell_time");
-    if (c->rt.rt_out != NULL) error("found rt_out on cell without rt_advance_cell_time");
-  }
-#endif
-
   /* Unskip all the other task types */
   if (cell_is_rt_active(c, e)) {
     if (c->rt.rt_in != NULL) scheduler_activate(s, c->rt.rt_in);

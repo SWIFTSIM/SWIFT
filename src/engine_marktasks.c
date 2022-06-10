@@ -85,6 +85,13 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
 
+    /* if (t->ci != NULL) */
+    /*   celltrace(t->ci, "UNKSIPPING ci. ACTIVE? %d", cell_is_rt_active(t->ci, e)); */
+    /* if (t->cj != NULL) */
+      /* celltrace(t->cj, "UNKSIPPING cj. ACTIVE? %d", cell_is_rt_active(t->cj, e)); */
+    if (t->type == task_type_rt_advance_cell_time)
+      celltrace(t->ci, "UNMARKING ci. ACTIVE? %d", cell_is_rt_active(t->ci, e));
+
     /* Single-cell task? */
     if (t_type == task_type_self || t_type == task_type_sub_self) {
 

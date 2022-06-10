@@ -205,9 +205,11 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
   /* However, foreign cells may have tasks on levels below the
    * rt_advance_cell_time, so the check may be valid for those cells
    * deeper down the tree. Allow for that exception in this check. */
-  int mindepth = c->hydro.super != NULL ? c->hydro.super->depth : 0;
-  int do_foreign_check = c->nodeID != engine_rank && c->depth > mindepth;
-  if ((c->rt.rt_advance_cell_time != NULL || do_foreign_check) && c->rt.ti_rt_end_min < e->ti_current_subcycle) {
+  // int mindepth = c->super != NULL ? c->super->depth : 0;
+  // int do_foreign_check = c->nodeID != engine_rank && c->depth > mindepth;
+  // if ((c->rt.rt_advance_cell_time != NULL || do_foreign_check) && c->rt.ti_rt_end_min < e->ti_current_subcycle) {
+  // if ((c->super->rt.rt_advance_cell_time != NULL || do_foreign_check) && c->rt.ti_rt_end_min < e->ti_current_subcycle) {
+  if ((c->hydro.count > 0) && (c->rt.ti_rt_end_min < e->ti_current_subcycle)){
   error(
       "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) "
       "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d",

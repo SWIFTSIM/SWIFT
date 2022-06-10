@@ -1078,6 +1078,40 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
   if (timer) TIMER_TOC(timer_end_rt_tchem);
 }
 
+
+int print_rt_times(struct cell *c, struct engine *e, int exit){
+
+  int print = 0;
+  if (c->split){
+    for (int k = 0; k < 8; k++){
+      struct cell *cp = c->progeny[k];
+      if (cp != NULL){
+        print = max(print_rt_times(cp, e, exit), print);
+      }
+    }
+  }
+
+  if (c->cellID == PROBLEMCELL3 || print == 1){
+    print = 1;
+    char *text;
+    if (exit) {
+      text = "exit";
+    } else {
+      text = "entry";
+    }
+    
+    message(
+      "cell %lld local=%d @%sti_rt_end=%lld ti_current_subcycle=%lld dt=%lld",
+      c->cellID, c->nodeID == engine_rank, text,
+      c->rt.ti_rt_end_min, e->ti_current_subcycle,
+      c->rt.ti_rt_min_step_size);
+    return 1;
+  }
+
+  return print;
+}
+
+
 /**
  * @brief Update the cell's t_rt_end_min so that the sub-cycling can proceed
  * with correct cell times.
@@ -1095,6 +1129,8 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
   celltrace(c, "@entry ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld timer=%d",
             c->rt.ti_rt_end_min, e->ti_current_subcycle,
             c->rt.ti_rt_min_step_size, timer);
+
+  if (timer == 1) print_rt_times(c, e, 0);
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1155,6 +1191,8 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
   celltrace(c, "@exit ti_rt_end=%lld ti_current_subcycle=%lld dt=%lld",
             c->rt.ti_rt_end_min, e->ti_current_subcycle,
             c->rt.ti_rt_min_step_size);
+
+  if (timer == 1) print_rt_times(c, e, 1);
 
   if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);
 }
