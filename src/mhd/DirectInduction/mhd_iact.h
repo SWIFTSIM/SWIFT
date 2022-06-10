@@ -19,38 +19,128 @@
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_IACT_H
 #define SWIFT_DIRECT_INDUCTION_MHD_IACT_H
 
+/**
+ * @brief MHD-Density interaction between two particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param mu_0 The vaccuum permeability constant in internal units.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    const float a, const float H) {}
 
+/**
+ * @brief MHD-Density interaction between two particles. (non-symmetric)
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param mu_0 The vaccuum permeability constant in internal units.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const float hi, const float hj,
                                struct part *restrict pi,
-                               const struct part *restrict pj, const float a,
+                               const struct part *restrict pj,
+                               const double mu_0, const float a,
                                const float H) {}
 
+/**
+ * @brief Calculate the MHD-gradient interaction between particle i and particle
+ * j
+ *
+ * This method wraps around hydro_gradients_collect, which can be an empty
+ * method, in which case no gradients are used.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param mu_0 The vaccuum permeability constant in internal units.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    const float a, const float H) {}
 
+/**
+ * @brief Calculate the MHDgradient interaction between particle i and particle
+ * j (non-symmetric)
+ *
+ * This method wraps around hydro_gradients_collect, which can be an empty
+ * method, in which case no gradients are used.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param mu_0 The vaccuum permeability constant in internal units.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const float hi, const float hj,
                                 struct part *restrict pi,
-                                const struct part *restrict pj, const float a,
+                                const struct part *restrict pj,
+                                const double mu_0, const float a,
                                 const float H) {}
 
+/**
+ * @brief MHD-Force interaction between two particles.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param mu_0 The vaccuum permeability constant in internal units.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    const float a, const float H) {}
 
+/**
+ * @brief MHD-Force interaction between two particles. non-symmetric version.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param mu_0 The vaccuum permeability constant in internal units.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {}
+    struct part *restrict pi, const struct part *restrict pj, const double mu_0,
+    const float a, const float H) {}
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */

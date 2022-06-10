@@ -24,17 +24,18 @@
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle.
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    const float a, const float H) {
 
   float wi, wj, wi_dx, wj_dx;
 
@@ -75,10 +76,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle.
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
@@ -86,7 +88,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const float hi, const float hj,
                                struct part *restrict pi,
-                               const struct part *restrict pj, const float a,
+                               const struct part *restrict pj,
+                               const double mu_0, const float a,
                                const float H) {
   //  float wi, wj, wi_dx, wj_dx;
   float wi, wi_dx;
@@ -136,14 +139,14 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
-
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    const float a, const float H) {
 
   return;
 }
@@ -162,6 +165,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
  * @param hj Comoving smoothing-length of particle j.
  * @param pi Particle i.
  * @param pj Particle j.
+ * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
@@ -169,7 +173,8 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 const float hi, const float hj,
                                 struct part *restrict pi,
-                                const struct part *restrict pj, const float a,
+                                const struct part *restrict pj,
+                                const double mu_0, const float a,
                                 const float H) {
   return;
 }
@@ -179,17 +184,18 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle.
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    const float a, const float H) {
 
   /* Cosmological factors entering the EoMs */
   // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -280,22 +286,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
 
   return;
 }
+
 /**
  * @brief MHD-Force interaction between two particles. non-symmetric version.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle.
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const float a,
-    const float H) {
+    struct part *restrict pi, const struct part *restrict pj, const double mu_0,
+    const float a, const float H) {
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -375,4 +383,5 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
 
   return;
 }
+
 #endif /* SWIFT_DI_MHD_H */
