@@ -27,7 +27,10 @@
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+             p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+             p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
+  return 0.5f*b2;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
@@ -39,13 +42,18 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
 __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  return p->v[0] * p->mhd_data.BPred[0] +
+                p->v[1] * p->mhd_data.BPred[1] +
+                p->v[2] * p->mhd_data.BPred[2];
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+             p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+             p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
+  return  fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-5));
 }
 
 /**
@@ -114,8 +122,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
   const float v_sig = hydro_get_signal_velocity(p);
 //  const float div_v = hydro_get_div_v(p);
 
-  return (-hyp * p->mhd_data.divB * v_sig * v_sig / a / a-
-          par * v_sig * p->mhd_data.phi / p-> h / a / a);
+  return (-hyp * p->mhd_data.divB * v_sig * v_sig -
+          par * v_sig * p->mhd_data.phi / p-> h);
+  //return (-hyp * p->mhd_data.divB * v_sig * v_sig / a / a-
+    //      par * v_sig * p->mhd_data.phi / p-> h / a / a);
 //	  - 0.5f * p->mhd_data.phi * div_v / a); 
 }
 

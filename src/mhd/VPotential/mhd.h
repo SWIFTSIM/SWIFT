@@ -57,7 +57,6 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
              p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
              p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
   return  fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-5));
-
 }
 
 /**

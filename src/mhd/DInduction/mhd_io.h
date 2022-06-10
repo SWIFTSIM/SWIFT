@@ -28,7 +28,7 @@
  * @param parts The particle array.
  * @param statistic structure.
  */
-INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
+/*INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
 
   float b2 = parts->mhd_data.BPred[0] * parts->mhd_data.BPred[0] +
              parts->mhd_data.BPred[1] * parts->mhd_data.BPred[1] +
@@ -41,7 +41,7 @@ INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
                 parts->v[1] * parts->mhd_data.BPred[1] +
                 parts->v[2] * parts->mhd_data.BPred[2];
   return;
-}
+}*/
 
 /**
  * @brief Specifies which particle fields to read from a dataset
