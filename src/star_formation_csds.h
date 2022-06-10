@@ -37,6 +37,8 @@
 #error TODO
 #elif defined(STAR_FORMATION_GEAR)
 #include "./star_formation/GEAR/star_formation_csds.h"
+#elif defined(STAR_FORMATION_SIMBA)
+#error TODO
 #else
 #error "Invalid choice of star formation law"
 #endif

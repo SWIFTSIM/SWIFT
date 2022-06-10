@@ -119,11 +119,23 @@ if HAVEGRACKLECOOLING
 GRACKLE_COOLING_SOURCES += cooling/grackle/cooling.c
 endif
 
+# source files for GRACKLE cooling
+SIMBA_COOLING_SOURCES =
+if HAVESIMBACOOLING
+SIMBA_COOLING_SOURCES += cooling/SIMBA/cooling.c
+endif
+
 # source files for GEAR feedback
 GEAR_FEEDBACK_SOURCES =
 if HAVEGEARFEEDBACK
 GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedback.c \
 	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
+endif
+
+# source files for SIMBA feedback
+SIMBA_FEEDBACK_SOURCES =
+if HAVESIMBAFEEDBACK
+SIMBA_FEEDBACK_SOURCES += feedback/SIMBA/feedback.c 
 endif
 
 # Common source files
@@ -168,6 +180,7 @@ AM_SOURCES += $(EAGLE_EXTRA_IO_SOURCES)
 AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES) 
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
+AM_SOURCES += $(SIMBA_FEEDBACK_SOURCES) $(SIMBA_COOLING_SOURCES)
 AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
 
 # Include files for distribution, not installation.
@@ -352,6 +365,8 @@ nobase_noinst_HEADERS += cooling/const_lambda/cooling.h cooling/const_lambda/coo
 nobase_noinst_HEADERS += cooling/const_lambda/cooling_io.h cooling/const_lambda/cooling_properties.h cooling/const_lambda/cooling_debug.h
 nobase_noinst_HEADERS += cooling/grackle/cooling.h cooling/grackle/cooling_struct.h 
 nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h cooling/grackle/cooling_debug.h
+nobase_noinst_HEADERS += cooling/SIMBA/cooling.h cooling/SIMBA/cooling_struct.h 
+nobase_noinst_HEADERS += cooling/SIMBA/cooling_io.h cooling/SIMBA/cooling_properties.h cooling/SIMBA/cooling_debug.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h 
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h 
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_properties.h cooling/EAGLE/cooling_debug.h
@@ -417,6 +432,12 @@ nobase_noinst_HEADERS += feedback/GEAR/feedback_properties.h feedback/GEAR/feedb
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h 
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h 
 nobase_noinst_HEADERS += feedback/GEAR/feedback_debug.h
+nobase_noinst_HEADERS += feedback/SIMBA/feedback.h feedback/SIMBA/feedback_struct.h 
+nobase_noinst_HEADERS += feedback/SIMBA/feedback_properties.h feedback/SIMBA/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/SIMBA/feedback_debug.h
+nobase_noinst_HEADERS += feedback/SIMBA/feedback.h feedback/SIMBA/feedback_struct.h 
+nobase_noinst_HEADERS += feedback/SIMBA/feedback_properties.h feedback/SIMBA/feedback_iact.h 
+nobase_noinst_HEADERS += feedback/SIMBA/feedback_debug.h
 nobase_noinst_HEADERS += black_holes/Default/black_holes.h black_holes/Default/black_holes_io.h 
 nobase_noinst_HEADERS += black_holes/Default/black_holes_part.h black_holes/Default/black_holes_iact.h 
 nobase_noinst_HEADERS += black_holes/Default/black_holes_properties.h 

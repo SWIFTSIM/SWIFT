@@ -33,6 +33,8 @@
 #include "./cooling/Compton/cooling_debug.h"
 #elif defined(COOLING_GRACKLE)
 #include "./cooling/grackle/cooling_debug.h"
+#elif defined(COOLING_SIMBA)
+#include "./cooling/SIMBA/cooling_debug.h"
 #elif defined(COOLING_QLA)
 #include "./cooling/QLA/cooling_debug.h"
 #elif defined(COOLING_QLA_EAGLE)

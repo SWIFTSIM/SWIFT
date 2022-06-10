@@ -20,73 +20,27 @@
 #define SWIFT_FEEDBACK_SIMBA_H
 
 #include "cosmology.h"
+#include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "rays.h"
 #include "units.h"
 
-/**
- * @brief Calculates speed particles will be kicked based on
- * host galaxy properties
- *
- * @param sp The sparticle doing the feedback
- * @param feedback_props The properties of the feedback model
- */
-inline void compute_kick_speed(struct spart* sp,
-                               const struct feedback_props* feedback_props,
-                               const struct cosmology* cosmo) {
+#include <strings.h>
 
-  /* Calculate circular velocity based on Baryonic Tully-Fisher relation*/
-  const float v_circ = pow(sp->feedback_data.host_galaxy_mass /
-                               feedback_props->simba_host_galaxy_mass_norm,
-                           feedback_props->simba_v_circ_exp);
-
-  /* checkout what this random number does and how to generate it */
-  const float random_num = 1.;
-
-  /* Calculate wind speed */
-  // ALEXEI: checkout what the numbers in this equation mean. Maybe possible
-  // future simplifications
-  sp->feedback_data.to_distribute.v_kick =
-      feedback_props->galsf_firevel *
-      pow(v_circ * cosmo->a / feedback_props->scale_factor_norm,
-          feedback_props->galsf_firevel_slope) *
-      pow(feedback_props->scale_factor_norm,
-          0.12 - feedback_props->galsf_firevel_slope) *
-      (1. - feedback_props->vwvf_scatter -
-       2. * feedback_props->vwvf_scatter * random_num) *
-      v_circ;
-
-  // ALEXEI: temporarily set to arbitrary number for testing.
-  sp->feedback_data.to_distribute.v_kick = 500.;
-}
-
-/**
- * @brief Calculates speed particles will be kicked based on
- * host galaxy properties
- *
- * @param sp The sparticle doing the feedback
- * @param feedback_props The properties of the feedback model
- */
-inline void compute_mass_loading(struct spart* sp,
-                                 const struct feedback_props* feedback_props){};
-
-/**
- * @brief Calculates speed particles will be kicked based on
- * host galaxy properties
- *
- * @param sp The sparticle doing the feedback
- * @param feedback_props The properties of the feedback model
- */
-inline void compute_heating(struct spart* sp,
-                            const struct feedback_props* feedback_props){};
+void compute_stellar_evolution(const struct feedback_props* feedback_props,
+                               const struct phys_const* phys_const,
+                               const struct cosmology* cosmo, struct spart* sp,
+                               const struct unit_system* us, const double age,
+                               const double dt, const integertime_t ti_begin);
 
 /**
  * @brief Update the properties of a particle fue to feedback effects after
  * the cooling was applied.
  *
- * Nothing to do here in the EAGLE model.
+ * Nothing to do here in the SIMBA model.
  *
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
@@ -99,6 +53,8 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *
+ * Nothing to do here in the SIMBA model.
+ *
  * @param p The particle.
  * @param xp The extended data of the particle.
  */
@@ -109,17 +65,13 @@ __attribute__((always_inline)) INLINE static void feedback_reset_part(
  * @brief Should this particle be doing any feedback-related operation?
  *
  * @param sp The #spart.
- * @param time The current simulation time (Non-cosmological runs).
- * @param cosmo The cosmological model (cosmological runs).
- * @param with_cosmology Are we doing a cosmological run?
+ * @param e The #engine.
  */
-/*__attribute__((always_inline)) INLINE static int feedback_is_active(
-    const struct spart* sp, const float time, const struct cosmology* cosmo,
-    const int with_cosmology) {*/
 __attribute__((always_inline)) INLINE static int feedback_is_active(
     const struct spart* sp, const struct engine* e) {
 
-  return (sp->birth_time != -1.);
+  return e->step <= 0 ||
+         ((sp->birth_time != -1.) && (sp->count_since_last_enrichment == 0));
 }
 
 /**
@@ -129,8 +81,19 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
  */
 __attribute__((always_inline)) INLINE static void feedback_init_spart(
     struct spart* sp) {
-  // Temporarily set the particle's galaxy host mass artificially.
-  sp->feedback_data.host_galaxy_mass = 1.;
+
+  sp->feedback_data.to_collect.enrichment_weight_inv = 0.f;
+  sp->feedback_data.to_collect.ngb_N = 0;
+  sp->feedback_data.to_collect.ngb_mass = 0.f;
+  sp->feedback_data.to_collect.ngb_rho = 0.f;
+  sp->feedback_data.to_collect.ngb_Z = 0.f;
+
+  /* Reset all ray structs carried by this star particle */
+  ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
+
+#ifdef SWIFT_STARS_DENSITY_CHECKS
+  sp->has_done_feedback = 0;
+#endif
 }
 
 /**
@@ -153,7 +116,7 @@ INLINE static double feedback_get_enrichment_timestep(
     return cosmology_get_delta_time_from_scale_factors(
         cosmo, (double)sp->last_enrichment_time, cosmo->a);
   } else {
-    return time - (double)sp->last_enrichment_time;
+    return time - sp->last_enrichment_time;
   }
 }
 
@@ -162,7 +125,36 @@ INLINE static double feedback_get_enrichment_timestep(
  * needs to be distributed.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
-    struct spart* sp, const struct feedback_props* feedback_props) {}
+    struct spart* sp, const struct feedback_props* feedback_props) {
+
+  /* Zero the distribution weights */
+  sp->feedback_data.to_distribute.enrichment_weight = 0.f;
+
+  /* Zero the amount of mass that is distributed */
+  sp->feedback_data.to_distribute.mass = 0.f;
+
+  /* Zero the metal enrichment quantities */
+  for (int i = 0; i < chemistry_element_count; i++) {
+    sp->feedback_data.to_distribute.metal_mass[i] = 0.f;
+  }
+  sp->feedback_data.to_distribute.total_metal_mass = 0.f;
+  sp->feedback_data.to_distribute.mass_from_AGB = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_AGB = 0.f;
+  sp->feedback_data.to_distribute.mass_from_SNII = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_SNII = 0.f;
+  sp->feedback_data.to_distribute.mass_from_SNIa = 0.f;
+  sp->feedback_data.to_distribute.metal_mass_from_SNIa = 0.f;
+  sp->feedback_data.to_distribute.Fe_mass_from_SNIa = 0.f;
+
+  /* Zero the energy to inject */
+  sp->feedback_data.to_distribute.energy = 0.f;
+
+  /* Zero the SNII feedback energy */
+  sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
+
+  /* Zero the SNII feedback properties */
+  sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj = 0;
+}
 
 /**
  * @brief Initialises the s-particles feedback props for the first time
@@ -175,8 +167,8 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
  */
 __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
     struct spart* sp, const struct feedback_props* feedback_props) {
-  sp->feedback_data.to_distribute.simba_delay_time =
-      feedback_props->simba_delay_time;
+
+  feedback_init_spart(sp);
 }
 
 /**
@@ -194,7 +186,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_spart(
 /**
  * @brief Prepare a #spart for the feedback task.
  *
- * In EAGLE, this function evolves the stellar properties of a #spart.
+ * In SIMBA, this function evolves the stellar properties of a #spart.
  *
  * @param sp The particle to act upon
  * @param feedback_props The #feedback_props structure.
@@ -219,14 +211,22 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
 #endif
 
-  /* Calculate the velocity to kick neighbouring particles with */
-  compute_kick_speed(sp, feedback_props, cosmo);
+  /* Start by finishing the loops over neighbours */
+  const float h = sp->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
-  /* Compute wind mass loading */
-  compute_mass_loading(sp, feedback_props);
+  sp->feedback_data.to_collect.ngb_rho *= h_inv_dim;
+  const float rho_inv = 1.f / sp->feedback_data.to_collect.ngb_rho;
+  sp->feedback_data.to_collect.ngb_Z *= h_inv_dim * rho_inv;
 
-  /* Compute residual heating */
-  compute_heating(sp, feedback_props);
+  /* Compute amount of enrichment and feedback that needs to be done in this
+   * step */
+  compute_stellar_evolution(feedback_props, phys_const, cosmo, sp, us,
+                            star_age_beg_step, dt, ti_begin);
+
+  /* Decrease star mass by amount of mass distributed to gas neighbours */
+  sp->mass -= sp->feedback_data.to_distribute.mass;
 
   /* Mark this is the last time we did enrichment */
   if (with_cosmology)
@@ -259,29 +259,63 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     struct spart* sp, const struct feedback_props* feedback_props,
     const int with_cosmology, const struct cosmology* cosmo, const double time,
     const struct unit_system* us, const struct phys_const* phys_const,
-    const integertime_t ti_current, const double time_base) {}
+    const integertime_t ti_current, const double time_base) {
 
-static INLINE void feedback_clean(struct feedback_props* fp) {}
+  /* Special case for new-born stars */
+  if (with_cosmology) {
+    if (sp->birth_scale_factor == (float)cosmo->a) {
 
-/**
- * @brief Write a feedback struct to the given FILE as a stream of bytes.
- *
- * @param feedback the struct
- * @param stream the file stream
- */
-static INLINE void feedback_struct_dump(const struct feedback_props* feedback,
-                                        FILE* stream) {}
+      /* Set the counter to "let's do enrichment" */
+      sp->count_since_last_enrichment = 0;
 
-/**
- * @brief Restore a hydro_props struct from the given FILE as a stream of
- * bytes.
- *
- * @param feedback the struct
- * @param stream the file stream
- * @param cosmo #cosmology structure
- */
-static INLINE void feedback_struct_restore(struct feedback_props* feedback,
-                                           FILE* stream) {}
+      /* Ok, we are done. */
+      return;
+    }
+  } else {
+    if (sp->birth_time == (float)time) {
+
+      /* Set the counter to "let's do enrichment" */
+      sp->count_since_last_enrichment = 0;
+
+      /* Ok, we are done. */
+      return;
+    }
+  }
+
+  /* Calculate age of the star at current time */
+  double age_of_star;
+  if (with_cosmology) {
+    age_of_star = cosmology_get_delta_time_from_scale_factors(
+        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+  } else {
+    age_of_star = time - (double)sp->birth_time;
+  }
+
+  /* Is the star still young? */
+  if (age_of_star < feedback_props->stellar_evolution_age_cut) {
+
+    /* Set the counter to "let's do enrichment" */
+    sp->count_since_last_enrichment = 0;
+
+  } else {
+
+    /* Increment counter */
+    sp->count_since_last_enrichment++;
+
+    if ((sp->count_since_last_enrichment %
+         feedback_props->stellar_evolution_sampling_rate) == 0) {
+
+      /* Reset counter */
+      sp->count_since_last_enrichment = 0;
+    }
+  }
+}
+
+void feedback_clean(struct feedback_props* fp);
+
+void feedback_struct_dump(const struct feedback_props* feedback, FILE* stream);
+
+void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 
 #ifdef HAVE_HDF5
 /**
@@ -293,7 +327,7 @@ static INLINE void feedback_struct_restore(struct feedback_props* feedback,
 INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {
 
-  io_write_attribute_s(h_grp, "Feedback Model", "SIMBA (kinetic decoupled)");
+  io_write_attribute_s(h_grp, "Feedback Model", "SIMBA (kinetic)");
 }
 #endif  // HAVE_HDF5
 

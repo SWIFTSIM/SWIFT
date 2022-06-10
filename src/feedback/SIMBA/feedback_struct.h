@@ -20,14 +20,15 @@
 #define SWIFT_FEEDBACK_STRUCT_SIMBA_H
 
 #include "chemistry_struct.h"
+#include "rays_struct.h"
+
+/*! The total number of rays used in stellar feedback */
+#define eagle_SNII_feedback_num_of_rays FEEDBACK_NR_RAYS_SNII
 
 /**
  * @brief Feedback fields carried by each hydro particles
  */
-struct feedback_part_data {
-  /*! remaining time left for decoupling */
-  float simba_delay_time;
-};
+struct feedback_part_data {};
 
 /**
  * @brief Extra feedback fields carried by each hydro particles
@@ -46,28 +47,82 @@ struct feedback_spart_data {
      */
     struct {
 
+      /*! Inverse of normalisation factor used for the enrichment */
+      float enrichment_weight_inv;
+
+      /*! Total mass (unweighted) of neighbouring gas particles */
+      float ngb_mass;
+
+      /*! Integer number of neighbouring gas particles */
+      int num_ngbs;
+
+      /*! SPH-weighted density of the neighbouring gas particles (internal
+       * comoving units) */
+      float ngb_rho;
+
+      /*! SPH-weighted metallicity of the neighbouring gas particles
+       * (dimensionless) */
+      float ngb_Z;
+
+      /*! Total (unweighted) number gas neighbours in the stellar kernel */
+      int ngb_N;
+
     } to_collect;
 
     /**
      * @brief Values to be distributed to the gas neighbours.
+     *
+     * WARNING: The first two elements must be the enrichment_weight and mass!!
      */
     struct {
 
-      /* Velocity to update particles with */
-      float v_kick;
+      /*! Normalisation factor used for the enrichment */
+      float enrichment_weight;
 
-      /* Remaining energy to distribute as heat */
-      float delta_u;  // ALEXEI: surely this should be an energy and not an
-                      // internal energy because don't know particle's mass
-                      // we're distributing to.
+      /*! Mass released */
+      float mass;
 
-      /* Delay time */
-      double simba_delay_time;  // ALEXEI: think of a better place to put this
+      /*! Total metal mass released */
+      float total_metal_mass;
+
+      /*! Total mass released by each element */
+      float metal_mass[chemistry_element_count];
+
+      /*! Total mass released due to SNIa */
+      float mass_from_SNIa;
+
+      /*! Total metal mass released due to SNIa */
+      float metal_mass_from_SNIa;
+
+      /*! Total iron mass released due to SNIa */
+      float Fe_mass_from_SNIa;
+
+      /*! Total mass released due to SNII */
+      float mass_from_SNII;
+
+      /*! Total metal mass released due to SNII */
+      float metal_mass_from_SNII;
+
+      /*! Total mass released due to AGB */
+      float mass_from_AGB;
+
+      /*! Total metal mass released due to AGB */
+      float metal_mass_from_AGB;
+
+      /*! Energy change due to thermal and kinetic energy of ejecta */
+      float energy;
+
+      /*! Number of SNII energy injections in thermal form */
+      int SNII_num_of_thermal_energy_inj;
+
+      /*! Change in energy from SNII feedback energy injection */
+      float SNII_delta_u;
 
     } to_distribute;
-
-    float host_galaxy_mass;
   };
+
+  /* Instantiate ray structs for SNII isotropic feedback  */
+  struct ray_data SNII_rays[eagle_SNII_feedback_num_of_rays];
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_SIMBA_H */

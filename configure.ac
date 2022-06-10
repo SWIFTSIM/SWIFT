@@ -1718,17 +1718,17 @@ case "$with_subgrid" in
 	enable_fof=yes
    ;;
    SIMBA)
-	with_subgrid_cooling=grackle_0
+	with_subgrid_cooling=SIMBA
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE
 	with_subgrid_stars=EAGLE
-	with_subgrid_star_formation=EAGLE
+	with_subgrid_star_formation=SIMBA
 	with_subgrid_feedback=SIMBA
 	with_subgrid_black_holes=none
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
-	enable_fof=no
+	enable_fof=yes
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -2155,6 +2155,11 @@ case "$with_cooling" in
       with_cooling_name="Grackle $primordial_chemistry"
       with_cooling="grackle"
    ;;
+   SIMBA)
+      AC_DEFINE([COOLING_SIMBA], [1], [Cooling via the grackle library with extensions])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Primordial chemistry (as of now)])
+      with_cooling_name="SIMBA (Grackle with extensions)"
+   ;;
    QLA)
       AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
       with_cooling_name="QLA (Ploeckinger+20 tables) with constant primordial Z"
@@ -2519,7 +2524,7 @@ esac
 #  Star formation
 AC_ARG_WITH([star-formation], 
     [AS_HELP_STRING([--with-star-formation=<sfm>],
-       [star formation @<:@none, QLA, EAGLE, GEAR, default: none@:>@] 
+       [star formation @<:@none, QLA, EAGLE, GEAR, SIMBA, default: none@:>@] 
     )],
     [with_star_formation="$withval"],
     [with_star_formation="none"]
@@ -2537,13 +2542,16 @@ case "$with_star_formation" in
       AC_DEFINE([STAR_FORMATION_NONE], [1], [No star formation])
    ;;
    QLA)
-      AC_DEFINE([STAR_FORMATION_QLA], [1], [Quick Lyman-alpha star formation model)])
+      AC_DEFINE([STAR_FORMATION_QLA], [1], [Quick Lyman-alpha star formation model])
    ;;
    EAGLE)
       AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
    ;;
    GEAR)
       AC_DEFINE([STAR_FORMATION_GEAR], [1], [GEAR star formation model (Revaz and Jablonka (2018))])
+   ;;
+   SIMBA)
+      AC_DEFINE([STAR_FORMATION_SIMBA], [1], [SIMBA star formation model])
    ;;
    *)
       AC_MSG_ERROR([Unknown star formation model])
@@ -2694,8 +2702,14 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
+# check if using grackle cooling
+AM_CONDITIONAL([HAVESIMBACOOLING], [test "$with_cooling" = "SIMBA"])
+
 # check if using gear feedback
 AM_CONDITIONAL([HAVEGEARFEEDBACK], [test "$with_feedback" = "GEAR"])
+
+# check if using SIMBA feedback
+AM_CONDITIONAL([HAVESIMBAFEEDBACK], [test "$with_feedback" = "SIMBA"])
 
 # check if using SPHENIX
 AM_CONDITIONAL([HAVE_SPHENIX], [test "$with_hydro" = "sphenix"])
@@ -2720,6 +2734,9 @@ AM_CONDITIONAL([HAVE_STAR_FORMATION_DEFAULT], [test "$with_star_formation" = "no
 
 # check if using GEAR star formation
 AM_CONDITIONAL([HAVE_STAR_FORMATION_GEAR], [test "$with_star_formation" = "GEAR"])
+
+# check if using SIMBA star formation
+AM_CONDITIONAL([HAVE_STAR_FORMATION_SIMBA], [test "$with_star_formation" = "SIMBA"])
 
 # check if using multi softening gravity
 AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-multi-softening"])
