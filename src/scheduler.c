@@ -1953,6 +1953,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
     switch (t->type) {
       case task_type_sort:
+      case task_type_rt_sort:
         cost = wscale * intrinsics_popcount(t->flags) * count_i *
                (sizeof(int) * 8 - (count_i ? intrinsics_clz(count_i) : 0));
         break;
@@ -2265,6 +2266,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * count_i;
         break;
       case task_type_rt_advance_cell_time:
+      case task_type_rt_collect_times:
         cost = wscale;
         break;
       case task_type_csds:

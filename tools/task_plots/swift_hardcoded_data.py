@@ -84,6 +84,7 @@ TASKTYPES = [
     "rt_tchem",
     "rt_advance_cell_time",
     "rt_sort",
+    "rt_collect_times",
     #  "count",
 ]
 

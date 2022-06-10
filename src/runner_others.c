@@ -1196,3 +1196,41 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 
   if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);
 }
+
+
+/**
+ * @brief Recursively collect the end-of-timestep information from the top-level
+ * to the super level.
+ * TODO: documentation
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_collect_rt_times(struct runner *r, struct cell *c,
+                                const int timer) {
+
+  /* Early stop if we are at the super level.
+   * The time-step task would have set things at this level already */
+  if (c->super == c) return;
+
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL) {
+
+      /* Recurse */
+      runner_do_timestep_collect(r, cp, 0);
+
+      /* And update */
+      ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+}

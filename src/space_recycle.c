@@ -210,6 +210,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->rt.rt_advance_cell_time = NULL;
     c->rt.rt_sorts = NULL;
     c->rt.rt_out = NULL;
+    c->rt.rt_collect_times = NULL;
     c->rt.ti_rt_end_min = -1;
     c->rt.ti_rt_min_step_size = -1;
 

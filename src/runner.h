@@ -155,6 +155,7 @@ void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
 void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer);
 void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
                                     int timer);
+void runner_do_collect_rt_times(struct runner *r, struct cell *c, const int timer);
 void *runner_main(void *data);
 
 ticks runner_get_active_time(const struct runner *restrict r);

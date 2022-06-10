@@ -1129,8 +1129,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
      * transport: 1 self + 13 pairs                  | + 14
      * implicits: in + out, transport_out            | +  3
      * others: ghost1, ghost2, tchem, cell advance   | +  4
+     * sort, collect_times                           | +  2
      * 2 extra space                                 | +  2 */
-    n1 += 37;
+    n1 += 39;
 #ifdef WITH_MPI
     n1 += 4; /* TODO: check this */
 #endif

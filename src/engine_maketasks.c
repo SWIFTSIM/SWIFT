@@ -551,6 +551,19 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_gradient);
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_transport);
 
+      /* Make sure the gradient sends don't run before the xv is finished.
+       * This can occur when a cell itself is inactive for both hydro and
+       * RT, but needs to be sent over for some other cell's pair task. */
+      /* This probably can and should be done in a better way in the future. */
+      struct task* t_xv = NULL;
+      for (struct link *l2 = ci->mpi.send; l2 != NULL; l2=l2->next){
+        if (l2->t->subtype == task_subtype_xv) {
+          t_xv = l2->t;
+          break;
+        }
+      }
+      if (t_xv != NULL) scheduler_addunlock(s, t_xv, t_rt_gradient);
+
     }
 
     /* If we're running with RT subcycling, we need to ensure that nothing
@@ -1064,15 +1077,15 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
         s, task_type_recv, task_subtype_rt_transport, c->mpi.tag, 0, c, NULL);
     /* Also create the rt_advance_cell_time tasks for the foreign cells
      * for the sub-cycling. */
+if (c->super == NULL) error("trying to add rt_advance_cell_time above super level...");
     t_rt_advance_cell_time = scheduler_addtask(
-        s, task_type_rt_advance_cell_time, task_subtype_none, 0, 0, c, NULL);
+        s, task_type_rt_advance_cell_time, task_subtype_none, 0, 0, c->super, NULL);
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (c->rt.rt_advance_cell_time != NULL)
-      error("replacing rt_advance_cell_time for cell %lld", c->cellID);
-#endif
+    c->super->rt.rt_advance_cell_time = t_rt_advance_cell_time;
 
-    c->rt.rt_advance_cell_time = t_rt_advance_cell_time;
+if (c->top == NULL) error("Got c->top == NULL? c->cellID=%lld depth=%d", c->cellID, c->depth);
+    /* Don't run collect times before you run advance cell time */
+    scheduler_addunlock(s, t_rt_advance_cell_time, c->top->rt.rt_collect_times);
 
     /* Make sure we sort after receiving RT data. The hydro sorts may or may
      * not be active. Blocking them with dependencies deadlocks with MPI. So
@@ -1093,6 +1106,7 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
     /* Make sure the gradient recv don't run before the xv is finished.
      * This can occur when a cell itself is inactive for both hydro and
      * RT, but needs to be sent over for some other cell's pair task. */
+    /* This probably can and should be done in a better way in the future. */
     struct task* t_xv = NULL;
     for (struct link *l = c->mpi.recv; l != NULL; l=l->next){
       if (l->t->subtype == task_subtype_xv) {
@@ -1177,6 +1191,7 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
+  const int with_rt = (e->policy & engine_policy_rt);
 #ifdef WITH_CSDS
   const int with_csds = e->policy & engine_policy_csds;
 #endif
@@ -1206,6 +1221,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
        * playing with sinks*/
       c->sinks.sink_formation = scheduler_addtask(
           s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
+    }
+
+    if (with_rt) {
+      c->rt.rt_collect_times = scheduler_addtask(
+          s, task_type_rt_collect_times, task_subtype_none, 0, 0, c, NULL);
     }
   }
 
@@ -1760,6 +1780,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                               task_subtype_none, 0, 0, c->super, NULL);
           celltrace(c, "created RT_advance_cell_time");
           celltrace(c->super, "created super RT_advance_cell_time");
+          /* Don't run the rt_collect_times before the rt_advance_cell_time */
+          scheduler_addunlock(s, c->super->rt.rt_advance_cell_time, c->top->rt.rt_collect_times);
         }
 
         scheduler_addunlock(s, c->rt.rt_transport_out, c->rt.rt_tchem);
@@ -4187,9 +4209,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
         if (ci->super->rt.rt_advance_cell_time != NULL){
           scheduler_addunlock(&e->sched, ci->super->rt.rt_advance_cell_time, tend);
           celltrace(ci, "added advance_cell_time->tend dependendcy");
-          if (ci->cellID == 398) 
-            message("cell 398 local=%d added advance_cell_time->tend dependency", 
-                    ci->nodeID == engine_rank);
         }
       }
     }

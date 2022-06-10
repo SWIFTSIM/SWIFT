@@ -116,7 +116,8 @@ enum task_types {
   task_type_rt_transport_out, /* Implicit */
   task_type_rt_tchem,
   task_type_rt_advance_cell_time,
-  task_type_rt_sort, /* Implicit */
+  task_type_rt_sort,
+  task_type_rt_collect_times,
   task_type_count
 } __attribute__((packed));
 

@@ -61,8 +61,11 @@ struct cell_rt {
     /*! Radiative transfer cell time advancement task */
     struct task *rt_advance_cell_time;
 
-    /*! Block the sorting task if cell is RT active but hydro inactive */
+    /*! Sort a cell after a recv rt gradients */
     struct task *rt_sorts;
+
+    /*! Collect the cell times from the super to the top level */
+    struct task *rt_collect_times;
 
     /*! Radiative transfer ghost out task */
     struct task *rt_out;

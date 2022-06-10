@@ -3156,6 +3156,10 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL)
       scheduler_activate(s, c->super->rt.rt_advance_cell_time);
     if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
+    /* The rt_collect_times tasks replace the timestep_collect tasks
+     * during subcycles, so we only activate it during those. */
+    if (c->rt.rt_collect_times != NULL && sub_cycle) 
+      scheduler_activate(s, c->rt.rt_collect_times);
   }
 
   return rebuild;

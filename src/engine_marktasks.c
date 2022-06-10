@@ -1472,6 +1472,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
              t->type == task_type_rt_advance_cell_time ||
              t->type == task_type_rt_out) {
       if (cell_is_rt_active(t->ci, e)) scheduler_activate(s, t);
+      /* Note that rt_collect_times never needs to be active on main steps,
+       * which is always what follows engine_marktasks().*/
     }
 
     /* Subgrid tasks: sink formation */

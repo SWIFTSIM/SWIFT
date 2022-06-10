@@ -493,6 +493,9 @@ void *runner_main(void *data) {
         case task_type_collect:
           runner_do_timestep_collect(r, ci, 1);
           break;
+        case task_type_rt_collect_times:
+          runner_do_collect_rt_times(r, ci, 1);
+          break;
 #ifdef WITH_MPI
         case task_type_send:
           if (t->subtype == task_subtype_tend) {
