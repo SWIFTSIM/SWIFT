@@ -86,10 +86,11 @@ enum engine_policy {
   engine_policy_line_of_sight = (1 << 24),
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
-  engine_policy_grid = (1 << 27),
-  engine_policy_grid_hydro = (1 << 28),
+  engine_policy_power_spectra = (1 << 27),
+  engine_policy_grid = (1 << 28),
+  engine_policy_grid_hydro = (1 << 29),
 };
-#define engine_maxpolicy 29
+#define engine_maxpolicy 30
 extern const char *engine_policy_names[engine_maxpolicy + 1];
 
 /**
@@ -106,7 +107,8 @@ enum engine_step_properties {
   engine_step_prop_stf = (1 << 6),
   engine_step_prop_fof = (1 << 7),
   engine_step_prop_mesh = (1 << 8),
-  engine_step_prop_done = (1 << 9),
+  engine_step_prop_power_spectra = (1 << 9),
+  engine_step_prop_done = (1 << 10),
 };
 
 /* Some constants */
@@ -335,6 +337,7 @@ struct engine {
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
+  int snapshot_invoke_ps;
   struct unit_system *snapshot_units;
   int snapshot_use_delta_from_edge;
   double snapshot_delta_from_edge;
@@ -370,6 +373,18 @@ struct engine {
   /* FOF information */
   int run_fof;
   int dump_catalogue_when_seeding;
+
+  /* power spectrum information */
+  double a_first_ps_output;
+  double time_first_ps_output;
+  double delta_time_ps;
+  int ps_output_count;
+
+  /* Output_List for the power spectrum */
+  struct output_list *output_list_ps;
+
+  /* Integer time of the next ps output */
+  integertime_t ti_next_ps;
 
   /* Statistics information */
   double a_first_statistics;
@@ -488,6 +503,9 @@ struct engine {
 
   /* The mesh used for long-range gravity forces */
   struct pm_mesh *mesh;
+
+  /* Properties and pointers for the power spectrum */
+  struct power_spectrum_data *power_data;
 
   /* Properties of external gravitational potential */
   const struct external_potential *external_potential;
@@ -615,6 +633,7 @@ void engine_compute_next_stf_time(struct engine *e);
 void engine_compute_next_fof_time(struct engine *e);
 void engine_compute_next_statistics_time(struct engine *e);
 void engine_compute_next_los_time(struct engine *e);
+void engine_compute_next_ps_time(struct engine *e);
 void engine_recompute_displacement_constraint(struct engine *e);
 void engine_unskip(struct engine *e);
 void engine_drift_all(struct engine *e, const int drift_mpoles);
@@ -633,7 +652,7 @@ void engine_init(
     struct output_options *output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
     long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
@@ -643,7 +662,8 @@ void engine_init(
     struct neutrino_response *neutrino_response,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
-    struct pm_mesh *mesh, const struct external_potential *potential,
+    struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
+    const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -654,7 +674,8 @@ void engine_init(
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file);
+                   int verbose, const char *restart_file,
+                   struct repartition *reparttype);
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);
 void engine_init_particles(struct engine *e, int flag_entropy_ICs,

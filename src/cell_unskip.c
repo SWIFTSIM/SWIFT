@@ -128,10 +128,10 @@ void cell_activate_star_formation_sink_tasks(struct cell *c,
 #endif
 
   /* Have we already unskipped that task? */
-  if (c->hydro.star_formation_sink->skip == 0) return;
+  if (c->sinks.star_formation_sink->skip == 0) return;
 
   /* Activate the star formation task */
-  scheduler_activate(s, c->hydro.star_formation_sink);
+  scheduler_activate(s, c->sinks.star_formation_sink);
 
   /* Activate the star resort tasks at whatever level they are */
   if (with_feedback) {
@@ -154,10 +154,10 @@ void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   /* Have we already unskipped that task? */
-  if (c->hydro.sink_formation->skip == 0) return;
+  if (c->sinks.sink_formation->skip == 0) return;
 
   /* Activate the star formation task */
-  scheduler_activate(s, c->hydro.sink_formation);
+  scheduler_activate(s, c->sinks.sink_formation);
 }
 
 /**
@@ -1679,7 +1679,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
       cell_activate_super_spart_drifts(c->top, s);
     }
-    if (c->top->hydro.star_formation_sink != NULL) {
+    if (c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
     }
   }

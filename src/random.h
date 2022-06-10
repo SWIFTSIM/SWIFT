@@ -42,7 +42,6 @@
  * generator.
  * In case new numbers need to be added other possible
  * numbers could be:
- * 126247697
  * 193877777
  * 303595777
  */
@@ -71,6 +70,7 @@ enum random_number_type {
   random_number_mosaic_powerlaw = 406586897LL,
   random_number_mosaic_schechter = 562448657LL,
   random_number_mosaic_poisson = 384160001LL,
+  random_number_powerspectrum_split = 126247697LL,
 };
 
 #ifndef __APPLE__
