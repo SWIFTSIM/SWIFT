@@ -40,6 +40,9 @@ struct cell_grav {
   /*! Pointer to the #spart data at rebuild time. */
   struct gpart *parts_rebuild;
 
+  /* Hilbert keys for this cells gparts. */
+  unsigned long *hilb_keys;
+
   /*! This cell's multipole. */
   struct gravity_tensors *multipole;
 

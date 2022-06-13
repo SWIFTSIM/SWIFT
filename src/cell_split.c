@@ -161,7 +161,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
   /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < gcount; k++) {
-    unsigned long key = c->grav.parts[k].hilb_key;
+    unsigned long key = c->grav.hilb_keys[k];
 
     /* Shift bits to the correct depth and mask to get the final 3
      * bits which are the bin at this depth
@@ -770,7 +770,7 @@ void cell_split_sort(struct space *s, struct cell *c,
 
       /* Get hilbert key */
       gpart_keys[k] = hilbert_get_key_3d(bits, nbits);
-      gparts[k].hilb_key = gpart_keys[k];
+      /* gparts[k].hilb_key = gpart_keys[k]; */
 
       /* Set index */
       gpart_sinds[k] = k;
@@ -783,6 +783,7 @@ void cell_split_sort(struct space *s, struct cell *c,
     /* Finally, loop over the particles swapping particles to the
      * correct place */
     int j, k, sind;
+    unsigned long temp_key;
     struct gpart temp_gpart;
     for (k = 0; k < gcount; k++) {
 
@@ -791,6 +792,7 @@ void cell_split_sort(struct space *s, struct cell *c,
 
         /* Set up tempary variables */
         temp_gpart = gparts[k];
+        temp_key = gpart_keys[k];
         j = k;
 
         /* Loop until particles are in the right place. */
@@ -799,8 +801,10 @@ void cell_split_sort(struct space *s, struct cell *c,
           /* Swap particles in memory */
           memswap_unaligned(&gparts[j], &gparts[sind],
                             sizeof(struct gpart));
+          memswap_unaligned(&gpart_keys[j], &gpart_keys[sind],
+                            sizeof(unsigned long));
 
-          /* Corrected the now sorted sind */
+          /* Correct the now sorted sind */
           gpart_sinds[j] = j;
 
           /* Move on to the next */
@@ -812,6 +816,7 @@ void cell_split_sort(struct space *s, struct cell *c,
 
         /* Return the temporary particle and set index. */
         gparts[j] = temp_gpart;
+        gpart_keys[j] = temp_key;
         gpart_sinds[j] = j;
       }
 
@@ -827,9 +832,11 @@ void cell_split_sort(struct space *s, struct cell *c,
       }
     }
 
+    /* Store sorted hilbert keys in the cell. */
+    c->grav.hilb_keys = &gpart_keys[0];
+
     /* Set the memory free */
     free(gpart_sinds);
-    free(gpart_keys);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
