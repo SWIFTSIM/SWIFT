@@ -778,7 +778,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->sum_f_within_H = 0.f;
   p->sum_s_f_within_H = 0.f;
     
-  p->N_good_ngb = 0.f;
+
 #endif
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
@@ -968,25 +968,22 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->S_numerator += kernel_root * logf(s + FLT_MIN);
   p->S_denominator += kernel_root;
     
-  p->sum_f_within_H += sqrtf(kernel_root) * expf(-1000.f * s * s);
-  p->sum_s_f_within_H += sqrtf(kernel_root) * fabs(s) * expf(-1000.f * s * s);
+  p->sum_f_within_H += expf(-1000.f * s * s);
+  p->sum_s_f_within_H += fabs(s) * expf(-1000.f * s * s);
   float mean_s_of_good_particles = p->sum_s_f_within_H / p->sum_f_within_H;
     
   float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
     
   float rho_tilde = update_rho(p, P_tilde);
     
-  float S_tilde = max(0.f, (p->rho / rho_tilde) * (expf(p->S_numerator / p->S_denominator) - fabs(mean_s_of_good_particles)));
+  float S_tilde = max(0.f, (p->rho / rho_tilde) * (expf(p->S_numerator / p->S_denominator) - mean_s_of_good_particles));
     
   /* Turn S_tilde to 0 if h == h_max */
   if (p->is_h_max) {
     S_tilde = 0.f;
   }
     
-  p->N_good_ngb += expf(-1000.f * s * s);
-  if (p->N_good_ngb < 1.f) {
-    S_tilde = 0.f;
-  }
+
   p->I = S_tilde; //This is just to make output same as Imbalance for comparison
     
   if (p->P_tilde_denominator > 0.f && p->P_tilde_numerator > 0.f && S_tilde > 0.f) {

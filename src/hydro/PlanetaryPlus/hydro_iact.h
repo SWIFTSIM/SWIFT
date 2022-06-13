@@ -376,14 +376,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->max_ngb_sph_rho = max(pj->max_ngb_sph_rho, pi->rho);
   pj->min_ngb_sph_rho = min(pj->min_ngb_sph_rho, pi->rho);
     
-  pi->sum_f_within_H += sqrtf(wi) * expf(-1000.f * sj * sj);
-  pj->sum_f_within_H += sqrtf(wj) * expf(-1000.f * si * si);
+  pi->sum_f_within_H += expf(-1000.f * sj * sj);
+  pj->sum_f_within_H += expf(-1000.f * si * si);
     
-  pi->sum_s_f_within_H += sqrtf(wi) * fabs(sj) * expf(-1000.f * sj * sj);
-  pj->sum_s_f_within_H += sqrtf(wj) * fabs(si) * expf(-1000.f * si * si);
-    
-  pi->N_good_ngb += expf(-1000.f * sj * sj);
-  pj->N_good_ngb += expf(-1000.f * si * si);
+  pi->sum_s_f_within_H += fabs(sj) * expf(-1000.f * sj * sj);
+  pj->sum_s_f_within_H += fabs(si) * expf(-1000.f * si * si);
 #endif
 
 
@@ -502,10 +499,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
   pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
     
-  pi->sum_f_within_H += sqrtf(wi) * expf(-1000.f * sj * sj);
-  pi->sum_s_f_within_H += sqrtf(wi) * fabs(sj) * expf(-1000.f * sj * sj);
-    
-  pi->N_good_ngb += expf(-1000.f * sj * sj);
+  pi->sum_f_within_H += expf(-1000.f * sj * sj);
+  pi->sum_s_f_within_H += fabs(sj) * expf(-1000.f * sj * sj);
 #endif
 
 
