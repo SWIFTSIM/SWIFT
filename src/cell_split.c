@@ -47,7 +47,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     scount = c->stars.count, bcount = c->black_holes.count,
     sink_count = c->sinks.count;
   struct part *parts = c->hydro.parts;
-  struct part *xparts = c->hydro.xparts;
+  struct xpart *xparts = c->hydro.xparts;
   struct gpart *gparts = c->grav.parts;
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
