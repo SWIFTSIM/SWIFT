@@ -48,7 +48,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     sink_count = c->sinks.count;
   struct part *parts = c->hydro.parts;
   struct xpart *xparts = c->hydro.xparts;
-  struct gpart *gparts = c->grav.parts;
+  /* struct gpart *gparts = c->grav.parts; */
   struct spart *sparts = c->stars.parts;
   struct bpart *bparts = c->black_holes.parts;
   struct sink *sinks = c->sinks.parts;
@@ -167,7 +167,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
   /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < gcount; k++) {
-    unsigned long key = gparts[k].hilb_key;
+    unsigned long key = c->grav.parts[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
      * bits which are the bin at this depth
@@ -186,7 +186,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->grav.count = bucket_count[k];
     c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
-    c->progeny[k]->grav.parts = &gparts[bucket_offset[k]];
+    c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
     c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
   }
 
