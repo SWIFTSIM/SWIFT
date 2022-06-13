@@ -1077,14 +1077,18 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
         s, task_type_recv, task_subtype_rt_transport, c->mpi.tag, 0, c, NULL);
     /* Also create the rt_advance_cell_time tasks for the foreign cells
      * for the sub-cycling. */
-if (c->super == NULL) error("trying to add rt_advance_cell_time above super level...");
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    if (c->super == NULL) error("trying to add rt_advance_cell_time above super level...");
+#endif
     t_rt_advance_cell_time = scheduler_addtask(
         s, task_type_rt_advance_cell_time, task_subtype_none, 0, 0, c->super, NULL);
 
     c->super->rt.rt_advance_cell_time = t_rt_advance_cell_time;
 
+/* TODO: temporary */
 if (c->top == NULL) error("Got c->top == NULL? c->cellID=%lld depth=%d", c->cellID, c->depth);
-    /* Create the RT collect times task, if it hasn't already. */
+
+    /* Create the RT collect times task at the top level, if it hasn't already. */
     if (c->top->rt.rt_collect_times == NULL)
       c->top->rt.rt_collect_times = scheduler_addtask(
           s, task_type_rt_collect_times, task_subtype_none, 0, 0, c->top, NULL);
@@ -1098,11 +1102,17 @@ if (c->top == NULL) error("Got c->top == NULL? c->cellID=%lld depth=%d", c->cell
     t_rt_sorts = scheduler_addtask(s, task_type_rt_sort, task_subtype_none, 0, 0, c, NULL);
     c->rt.rt_sorts = t_rt_sorts;
     if (c->hydro.sorts != NULL) t_rt_sorts->flags = c->hydro.sorts->flags;
+    /* Avoid the situation where we receive while the sort hasn't finished yet. */
+    /* TODO: clean this up */
+    if (c->hydro.sorts != NULL) scheduler_addunlock(s, c->hydro.sorts, t_rt_gradient);
+    if (c->hydro.sorts != NULL) scheduler_addunlock(s, c->hydro.sorts, t_rt_transport);
 
     /* Make sure the second receive doesn't get enqueued before the first one 
      * is done */
-    scheduler_addunlock(s, t_rt_gradient, c->rt.rt_sorts);
+    scheduler_addunlock(s, t_rt_gradient, t_rt_sorts);
     scheduler_addunlock(s, t_rt_gradient, t_rt_transport);
+    /* Avoid the situation where we receive while the sort hasn't finished yet. */
+    scheduler_addunlock(s, t_rt_sorts, t_rt_transport);
     /* If one or both recv tasks are active, make sure the rt_advance_cell_time
      * tasks doesn't run before them */
     scheduler_addunlock(s, t_rt_gradient, t_rt_advance_cell_time);
