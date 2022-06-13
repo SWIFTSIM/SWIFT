@@ -442,13 +442,7 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     /* Set the task level. */
     const struct cell *ci = ta->ci;
     const struct cell *cj = ta->cj;
-if (ta->type == task_type_none){
-  if (ta->cj != NULL){
-    message("CAUGHT TASK TYPE NONE ci=%lld cj=%lld nr_unlocks=%d", ci->cellID, cj->cellID, ta->nr_unlock_tasks);
-  } else {
-    message("CAUGHT TASK TYPE NONE ci=%lld nr_unlocks=%d", ci->cellID, ta->nr_unlock_tasks);
-  }
-}
+
     const int is_ci_top = ci == NULL || (ci != NULL && ci == ci->top);
     const int is_cj_top = cj == NULL || (cj != NULL && cj == cj->top);
     const int is_hydro_super =

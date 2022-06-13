@@ -1216,13 +1216,19 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
 
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
 
+  /* TODO: add debugging checks here.
+   * - the rt_advance_cell_time task needs to have finished first.
+   * - this task must never run in the same step/cycle as a timestep
+   *   task.
+   */
+
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {
     struct cell *cp = c->progeny[k];
     if (cp != NULL) {
 
       /* Recurse */
-      runner_do_timestep_collect(r, cp, 0);
+      runner_do_collect_rt_times(r, cp, 0);
 
       /* And update */
       ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
@@ -1233,4 +1239,6 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
   /* Store the collected values in the cell. */
   c->rt.ti_rt_end_min = ti_rt_end_min;
   c->rt.ti_rt_beg_max = ti_rt_beg_max;
+
+  /* TODO: timer */
 }

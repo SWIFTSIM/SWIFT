@@ -1047,7 +1047,7 @@ void engine_addtasks_recv_gravity(struct engine *e, struct cell *c,
  * @param t_rt_advance_cell_time The rt_advance_cell_time #task, if it has
  * already been created
  * @param t_rt_sorts The rt_sort #task, if it has already been created.
- * * @param tend The top-level time-step communication #task.
+ * @param tend The top-level time-step communication #task.
  */
 void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
                              struct task *t_rt_gradient,
@@ -1084,6 +1084,10 @@ if (c->super == NULL) error("trying to add rt_advance_cell_time above super leve
     c->super->rt.rt_advance_cell_time = t_rt_advance_cell_time;
 
 if (c->top == NULL) error("Got c->top == NULL? c->cellID=%lld depth=%d", c->cellID, c->depth);
+    /* Create the RT collect times task, if it hasn't already. */
+    if (c->top->rt.rt_collect_times == NULL)
+      c->top->rt.rt_collect_times = scheduler_addtask(
+          s, task_type_rt_collect_times, task_subtype_none, 0, 0, c->top, NULL);
     /* Don't run collect times before you run advance cell time */
     scheduler_addunlock(s, t_rt_advance_cell_time, c->top->rt.rt_collect_times);
 
