@@ -46,11 +46,12 @@ void cell_split(struct cell *c, const int maxdepth) {
   const int count = c->hydro.count, gcount = c->grav.count,
     scount = c->stars.count, bcount = c->black_holes.count,
     sink_count = c->sinks.count;
-  struct part *parts = c->hydro.parts;
-  struct gpart *gparts = c->grav.parts;
-  struct spart *sparts = c->stars.parts;
-  struct bpart *bparts = c->black_holes.parts;
-  struct sink *sinks = c->sinks.parts;
+  const struct part *parts = c->hydro.parts;
+  const struct part *parts = c->hydro.xparts;
+  const struct gpart *gparts = c->grav.parts;
+  const struct spart *sparts = c->stars.parts;
+  const struct bpart *bparts = c->black_holes.parts;
+  const struct sink *sinks = c->sinks.parts;
   const int depth = c->depth;
 
   /* Set up buckets for the progeny */
@@ -78,8 +79,8 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->hydro.count = bucket_count[k];
     c->progeny[k]->hydro.count_total = c->progeny[k]->hydro.count;
-    c->progeny[k]->hydro.parts = &c->hydro.parts[bucket_offset[k]];
-    c->progeny[k]->hydro.xparts = &c->hydro.xparts[bucket_offset[k]];
+    c->progeny[k]->hydro.parts = &parts[bucket_offset[k]];
+    c->progeny[k]->hydro.xparts = &xparts[bucket_offset[k]];
   }
 
   /* Now do the same song and dance for the sparts. */
@@ -105,7 +106,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->stars.count = bucket_count[k];
     c->progeny[k]->stars.count_total = c->progeny[k]->stars.count;
-    c->progeny[k]->stars.parts = &c->stars.parts[bucket_offset[k]];
+    c->progeny[k]->stars.parts = &sparts[bucket_offset[k]];
     c->progeny[k]->stars.parts_rebuild = c->progeny[k]->stars.parts;
   }
 
@@ -132,7 +133,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->black_holes.count = bucket_count[k];
     c->progeny[k]->black_holes.count_total = c->progeny[k]->black_holes.count;
-    c->progeny[k]->black_holes.parts = &c->black_holes.parts[bucket_offset[k]];
+    c->progeny[k]->black_holes.parts = &bparts[bucket_offset[k]];
   }
   
   /* Now do the same song and dance for the sinks. */
@@ -158,7 +159,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->sinks.count = bucket_count[k];
     c->progeny[k]->sinks.count_total = c->progeny[k]->sinks.count;
-    c->progeny[k]->sinks.parts = &c->sinks.parts[bucket_offset[k]];
+    c->progeny[k]->sinks.parts = &sinks[bucket_offset[k]];
   }
 
   /* Finally, do the same song and dance for the gparts. */
@@ -185,7 +186,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->grav.count = bucket_count[k];
     c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
-    c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
+    c->progeny[k]->grav.parts = &gparts[bucket_offset[k]];
     c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
   }
 
