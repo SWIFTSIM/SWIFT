@@ -99,7 +99,7 @@
 //#define SHADOWSWIFT_FIX_PARTICLES
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
-//#define SHADOWSWIFT_STEER_MOTION
+#define SHADOWSWIFT_STEER_MOTION
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWSWIFT_TOTAL_ENERGY
 /* This option destroys the  grids as soon as they are no longer needed, saving

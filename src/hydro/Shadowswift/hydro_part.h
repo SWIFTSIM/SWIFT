@@ -203,8 +203,8 @@ struct part {
     /*! Voronoi cell volume. */
     double volume;
 
-    /*! Voronoi cell centroid. */
-    double centroid[3];
+    /*! Voronoi cell centroid, relative to this particles position. */
+    float centroid[3];
 
     /*! Number of faces of this voronoi cell. */
     int nface;
