@@ -46,12 +46,6 @@ void cell_split(struct cell *c, const int maxdepth) {
   const int count = c->hydro.count, gcount = c->grav.count,
     scount = c->stars.count, bcount = c->black_holes.count,
     sink_count = c->sinks.count;
-  struct part *parts = c->hydro.parts;
-  struct xpart *xparts = c->hydro.xparts;
-  /* struct gpart *gparts = c->grav.parts; */
-  struct spart *sparts = c->stars.parts;
-  struct bpart *bparts = c->black_holes.parts;
-  struct sink *sinks = c->sinks.parts;
   const int depth = c->depth;
 
   /* Set up buckets for the progeny */
@@ -61,7 +55,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   /* Lets split the parts */
   /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < count; k++) {
-    unsigned long key = parts[k].hilb_key;
+    unsigned long key = c->hydro.parts[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
@@ -79,8 +73,8 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->hydro.count = bucket_count[k];
     c->progeny[k]->hydro.count_total = c->progeny[k]->hydro.count;
-    c->progeny[k]->hydro.parts = &parts[bucket_offset[k]];
-    c->progeny[k]->hydro.xparts = &xparts[bucket_offset[k]];
+    c->progeny[k]->hydro.parts = &c->hydro.parts[bucket_offset[k]];
+    c->progeny[k]->hydro.xparts = &c->hydro.xparts[bucket_offset[k]];
   }
 
   /* Now do the same song and dance for the sparts. */
@@ -88,7 +82,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
   /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < scount; k++) {
-    unsigned long key = sparts[k].hilb_key;
+    unsigned long key = c->stars.parts[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
@@ -106,7 +100,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->stars.count = bucket_count[k];
     c->progeny[k]->stars.count_total = c->progeny[k]->stars.count;
-    c->progeny[k]->stars.parts = &sparts[bucket_offset[k]];
+    c->progeny[k]->stars.parts = &c->stars.parts[bucket_offset[k]];
     c->progeny[k]->stars.parts_rebuild = c->progeny[k]->stars.parts;
   }
 
@@ -115,7 +109,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
    /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < bcount; k++) {
-    unsigned long key = bparts[k].hilb_key;
+    unsigned long key = c->black_holes.parts[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
@@ -133,7 +127,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->black_holes.count = bucket_count[k];
     c->progeny[k]->black_holes.count_total = c->progeny[k]->black_holes.count;
-    c->progeny[k]->black_holes.parts = &bparts[bucket_offset[k]];
+    c->progeny[k]->black_holes.parts = &c->black_holes.parts[bucket_offset[k]];
   }
   
   /* Now do the same song and dance for the sinks. */
@@ -141,7 +135,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
   /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < sink_count; k++) {
-    unsigned long key = sinks[k].hilb_key;
+    unsigned long key = c->sinks.parts[k].hilb_key;
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
@@ -159,7 +153,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   for (int k = 0; k < 8; k++) {
     c->progeny[k]->sinks.count = bucket_count[k];
     c->progeny[k]->sinks.count_total = c->progeny[k]->sinks.count;
-    c->progeny[k]->sinks.parts = &sinks[bucket_offset[k]];
+    c->progeny[k]->sinks.parts = &c->sinks.parts[bucket_offset[k]];
   }
 
   /* Finally, do the same song and dance for the gparts. */
@@ -266,7 +260,10 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
     space_getcells(s, 8, c->progeny);
     for (int k = 0; k < 8; k++) {
 
-      /* Lets work out whese this progeny should go based on the hilbert key */
+      /* Lets work out whese this progeny should go based on the hilbert key
+       * NOTE: This is hacky, it avoids hilbert key rotations by ordering the
+       * progeny by their hilbert key */
+      
       /* Where is this progeny? */
       double progeny_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
       double progeny_width[3] = {c->width[0] / 2,
