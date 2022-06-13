@@ -389,10 +389,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   float volume_j = pj->mass * rho_inv_j;  
   #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
       if(pi->last_corrected_rho){
-        volume_i = pi->mass / (expf(-1000.f * si * si) * pi->rho + (1.f - expf(-1000.f * si * si)) * pi->last_corrected_rho);
+        volume_i = pi->mass / (expf(-1000.f * pi->last_S_tilde * pi->last_S_tilde) * pi->rho + (1.f - expf(-1000.f * pi->last_S_tilde * pi->last_S_tilde)) * pi->last_corrected_rho);
       }
       if(pj->last_corrected_rho){
-        volume_j = pj->mass / (expf(-1000.f * sj * sj) * pj->rho + (1.f - expf(-1000.f * sj * sj)) * pj->last_corrected_rho);
+        volume_j = pj->mass / (expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde) * pj->rho + (1.f - expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde)) * pj->last_corrected_rho);
       }
   #endif  
 
@@ -508,7 +508,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   float volume_j = pj->mass * rho_inv_j;  
   #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
       if(pj->last_corrected_rho){
-        volume_j = pj->mass / (expf(-1000.f * sj * sj) * pj->rho + (1.f - expf(-1000.f * sj * sj)) * pj->last_corrected_rho);
+        volume_j = pj->mass / (expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde) * pj->rho + (1.f - expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde)) * pj->last_corrected_rho);
       }
   #endif  
 

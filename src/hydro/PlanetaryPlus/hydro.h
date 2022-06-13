@@ -1019,6 +1019,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
     
   p->last_corrected_rho = p->rho;
+  p->last_S_tilde = S_tilde;
 #endif
 }
 
