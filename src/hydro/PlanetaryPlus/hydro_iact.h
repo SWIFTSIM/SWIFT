@@ -361,10 +361,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   float sj = fabs(pj->smoothing_error);
   float si = fabs(pi->smoothing_error);  
-  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sj * sj);
-  pj->P_tilde_numerator += sqrtf(wj) * pi->P * expf(-1000.f * si * si);   
-  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sj * sj);
-  pj->P_tilde_denominator += sqrtf(wj) * expf(-1000.f * si * si);
+  pi->P_tilde_numerator += sqrtf(wi) * pj->P * (expf(-1000.f * sj * sj) + 0.1111111f);
+  pj->P_tilde_numerator += sqrtf(wj) * pi->P * (expf(-1000.f * si * si) + 0.1111111f);   
+  pi->P_tilde_denominator += sqrtf(wi) * (expf(-1000.f * sj * sj) + 0.1111111f);
+  pj->P_tilde_denominator += sqrtf(wj) * (expf(-1000.f * si * si) + 0.1111111f);
     
   pi->S_numerator += wi * logf(sj + FLT_MIN);
   pj->S_numerator += wj * logf(si + FLT_MIN);   
@@ -376,11 +376,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->max_ngb_sph_rho = max(pj->max_ngb_sph_rho, pi->rho);
   pj->min_ngb_sph_rho = min(pj->min_ngb_sph_rho, pi->rho);
     
-  pi->sum_f_within_H += expf(-1000.f * sj * sj);
-  pj->sum_f_within_H += expf(-1000.f * si * si);
+  pi->sum_f_within_H += (expf(-1000.f * sj * sj) + 0.1111111f);
+  pj->sum_f_within_H += (expf(-1000.f * si * si) + 0.1111111f);
     
-  pi->sum_s_f_within_H += fabs(sj) * expf(-1000.f * sj * sj);
-  pj->sum_s_f_within_H += fabs(si) * expf(-1000.f * si * si);
+  pi->sum_s_f_within_H += fabs(sj) * (expf(-1000.f * sj * sj) + 0.1111111f);
+  pj->sum_s_f_within_H += fabs(si) * (expf(-1000.f * si * si) + 0.1111111f);
 #endif
 
 
@@ -490,8 +490,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   float sj = fabs(pj->smoothing_error);
-  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sj * sj);
-  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sj * sj);
+  pi->P_tilde_numerator += sqrtf(wi) * pj->P * (expf(-1000.f * sj * sj) + 0.1111111f);
+  pi->P_tilde_denominator += sqrtf(wi) * (expf(-1000.f * sj * sj) + 0.1111111f);
  
   pi->S_numerator += wi * logf(sj + FLT_MIN);
   pi->S_denominator += wi;
@@ -499,8 +499,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
   pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
     
-  pi->sum_f_within_H += expf(-1000.f * sj * sj);
-  pi->sum_s_f_within_H += fabs(sj) * expf(-1000.f * sj * sj);
+  pi->sum_f_within_H += (expf(-1000.f * sj * sj) + 0.1111111f);
+  pi->sum_s_f_within_H += fabs(sj) * (expf(-1000.f * sj * sj) + 0.1111111f);
 #endif
 
 

@@ -963,13 +963,13 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
   float s = fabs(p->smoothing_error);
-  p->P_tilde_numerator += sqrtf(kernel_root) * p->P * expf(-1000.f * s * s);
-  p->P_tilde_denominator += sqrtf(kernel_root) * expf(-1000.f * s * s);
+  p->P_tilde_numerator += sqrtf(kernel_root) * p->P * (expf(-1000.f * s * s) + 0.1111111f);
+  p->P_tilde_denominator += sqrtf(kernel_root) * (expf(-1000.f * s * s) + 0.1111111f);
   p->S_numerator += kernel_root * logf(s + FLT_MIN);
   p->S_denominator += kernel_root;
     
-  p->sum_f_within_H += expf(-1000.f * s * s);
-  p->sum_s_f_within_H += fabs(s) * expf(-1000.f * s * s);
+  p->sum_f_within_H += (expf(-1000.f * s * s) + 0.1111111f);
+  p->sum_s_f_within_H += fabs(s) * (expf(-1000.f * s * s) + 0.1111111f);
   float mean_s_of_good_particles = p->sum_s_f_within_H / p->sum_f_within_H;
     
   float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
