@@ -182,6 +182,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     c->progeny[k]->grav.count_total = c->progeny[k]->grav.count;
     c->progeny[k]->grav.parts = &c->grav.parts[bucket_offset[k]];
     c->progeny[k]->grav.parts_rebuild = c->progeny[k]->grav.parts;
+    c->progeny[k]->grav.hilb_keys = &c->grav.hilb_keys[bucket_offset[k]];
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
