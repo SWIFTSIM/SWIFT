@@ -81,6 +81,18 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
 }
 
 /**
+ * @brief Should this particle be doing any DM looping?
+ *
+ * @param sp The #spart.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static int stars_dm_loop_is_active(
+    const struct spart* sp, const struct engine* e) {
+  /* Active stars always do the DM loop for the SIMBA model */
+  return 1;
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
  *
  * @param sp The particle to act upon
