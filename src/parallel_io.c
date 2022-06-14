@@ -392,7 +392,8 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
  */
 void prepare_array_parallel(
     struct engine* e, hid_t grp, const char* fileName, FILE* xmfFile,
-    char* partTypeGroupName, struct io_props props, long long N_total,
+    const char* partTypeGroupName, const struct io_props props,
+    const long long N_total,
     const enum lossy_compression_schemes lossy_compression,
     const struct unit_system* snapshot_units) {
 
@@ -519,9 +520,9 @@ void prepare_array_parallel(
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
-void write_array_parallel_chunk(struct engine* e, hid_t h_data,
-                                const struct io_props props, size_t N,
-                                long long offset,
+void write_array_parallel_chunk(const struct engine* e, hid_t h_data,
+                                const struct io_props props, const size_t N,
+                                const long long offset,
                                 const struct unit_system* internal_units,
                                 const struct unit_system* snapshot_units) {
 
@@ -646,9 +647,10 @@ void write_array_parallel_chunk(struct engine* e, hid_t h_data,
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
  */
-void write_array_parallel(struct engine* e, hid_t grp, char* fileName,
-                          char* partTypeGroupName, struct io_props props,
-                          size_t N, long long N_total, int mpi_rank,
+void write_array_parallel(const struct engine* e, hid_t grp,
+                          const char* fileName, char* partTypeGroupName,
+                          struct io_props props, size_t N,
+                          const long long N_total, const int mpi_rank,
                           long long offset,
                           const struct unit_system* internal_units,
                           const struct unit_system* snapshot_units) {
@@ -761,12 +763,14 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
                       struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
                       size_t* Ngparts_background, size_t* Nnuparts,
                       size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
-                      int* flag_entropy, int with_hydro, int with_gravity,
-                      int with_sink, int with_stars, int with_black_holes,
-                      int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
-                      double h, double a, int mpi_rank, int mpi_size,
-                      MPI_Comm comm, MPI_Info info, int n_threads, int dry_run,
-                      int remap_ids, struct ic_info* ics_metadata) {
+                      int* flag_entropy, const int with_hydro,
+                      const int with_gravity, const int with_sink,
+                      const int with_stars, const int with_black_holes,
+                      const int with_cosmology, const int cleanup_h,
+                      const int cleanup_sqrt_a, const double h, const double a,
+                      const int mpi_rank, const int mpi_size, MPI_Comm comm,
+                      MPI_Info info, const int n_threads, const int dry_run,
+                      const int remap_ids, struct ic_info* ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -1138,6 +1142,7 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
  * @param e The #engine.
  * @param fileName The file name to write to.
  * @param N_total The total number of particles of each type to write.
+ * @param to_write Whether or not specific particle types must be written.
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
  * @param snapshot_units The #unit_system used in the snapshots.
@@ -1145,9 +1150,11 @@ void read_ic_parallel(char* fileName, const struct unit_system* internal_units,
  * @param subsample_fraction The subsampling fraction of each particle type.
  */
 void prepare_file(struct engine* e, const char* fileName,
-                  const char* xmfFileName, long long N_total[swift_type_count],
+                  const char* xmfFileName,
+                  const long long N_total[swift_type_count],
+                  const int to_write[swift_type_count],
                   const int numFields[swift_type_count],
-                  char current_selection_name[FIELD_BUFFER_SIZE],
+                  const char current_selection_name[FIELD_BUFFER_SIZE],
                   const struct unit_system* internal_units,
                   const struct unit_system* snapshot_units,
                   const int subsample_any,
@@ -1265,6 +1272,7 @@ void prepare_file(struct engine* e, const char* fileName,
   io_write_attribute_i(h_grp, "ThisFile", 0);
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
+  io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1286,9 +1294,10 @@ void prepare_file(struct engine* e, const char* fileName,
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-    /* Don't do anything if there are (a) no particles of this kind, or (b)
-     * if we have disabled every field of this particle type. */
-    if (N_total[ptype] == 0 || numFields[ptype] == 0) continue;
+    /* Don't do anything if there are
+     * (a) no particles of this kind in this run, or
+     * (b) if we have disabled every field of this particle type. */
+    if (!to_write[ptype] || numFields[ptype] == 0) continue;
 
     /* Add the global information for that particle type to
      * the XMF meta-file */
@@ -1424,8 +1433,8 @@ void prepare_file(struct engine* e, const char* fileName,
 void write_output_parallel(struct engine* e,
                            const struct unit_system* internal_units,
                            const struct unit_system* snapshot_units,
-                           int mpi_rank, int mpi_size, MPI_Comm comm,
-                           MPI_Info info) {
+                           const int mpi_rank, const int mpi_size,
+                           MPI_Comm comm, MPI_Info info) {
 
   const struct part* parts = e->s->parts;
   const struct xpart* xparts = e->s->xparts;
@@ -1440,7 +1449,12 @@ void write_output_parallel(struct engine* e,
   const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
   const int with_DM_background = e->s->with_DM_background;
+  const int with_DM = e->s->with_DM;
   const int with_neutrinos = e->s->with_neutrinos;
+  const int with_hydro = (e->policy & engine_policy_hydro) ? 1 : 0;
+  const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
+  const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
+  const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -1592,9 +1606,18 @@ void write_output_parallel(struct engine* e,
   /* Now everybody konws its offset and the total number of
    * particles of each type */
 
+  /* List what fields to write.
+   * Note that we want to want to write a 0-size dataset for some species
+   * in case future snapshots will contain them (e.g. star formation) */
+  const int to_write[swift_type_count] = {
+      with_hydro, with_DM,         with_DM_background, with_sink,
+      with_stars, with_black_hole, with_neutrinos
+
+  };
+
   /* Rank 0 prepares the file */
   if (mpi_rank == 0)
-    prepare_file(e, fileName, xmfFileName, N_total, numFields,
+    prepare_file(e, fileName, xmfFileName, N_total, to_write, numFields,
                  current_selection_name, internal_units, snapshot_units,
                  subsample_any, subsample_fraction);
 
@@ -1627,8 +1650,8 @@ void write_output_parallel(struct engine* e,
   io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->cells_top,
                         e->s->nr_cells, e->s->width, mpi_rank,
                         /*distributed=*/0, subsample, subsample_fraction,
-                        e->snapshot_output_count, N_total, offset, numFields,
-                        internal_units, snapshot_units);
+                        e->snapshot_output_count, N_total, offset, to_write,
+                        numFields, internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {
@@ -1698,7 +1721,12 @@ void write_output_parallel(struct engine* e,
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-    /* Don't do anything if no particle of this kind */
+    /* Don't do anything if there are
+     * (a) no particles of this kind in this snapshot
+     * (b) if we have disabled every field of this particle type.
+     *
+     * Note: we have already created the array so we can escape if there are
+     * no particles but the corresponding to_write[] was set. */
     if (N_total[ptype] == 0 || numFields[ptype] == 0) continue;
 
     /* Open the particle group in the file */
