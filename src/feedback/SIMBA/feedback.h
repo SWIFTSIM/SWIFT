@@ -37,7 +37,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const double dt, const integertime_t ti_begin);
 
 /**
- * @brief Update the properties of a particle fue to feedback effects after
+ * @brief Update the properties of a particle due to feedback effects after
  * the cooling was applied.
  *
  * Nothing to do here in the SIMBA model.
@@ -47,7 +47,13 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
-    struct part* p, struct xpart* xp, const struct engine* e) {}
+    struct part* p, struct xpart* xp, const struct engine* e) {
+
+  if ( p->feedback_data.decoupling_delay_time > e->time_step ) 
+    p->feedback_data.decoupling_delay_time -= e->time_step;
+  else
+    p->feedback_data.decoupling_delay_time = 0.;
+}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
@@ -327,7 +333,7 @@ void feedback_struct_restore(struct feedback_props* feedback, FILE* stream);
 INLINE static void feedback_write_flavour(struct feedback_props* feedback,
                                           hid_t h_grp) {
 
-  io_write_attribute_s(h_grp, "Feedback Model", "SIMBA (kinetic)");
+  io_write_attribute_s(h_grp, "Feedback Model", "SIMBA (decoupled kinetic)");
 }
 #endif  // HAVE_HDF5
 

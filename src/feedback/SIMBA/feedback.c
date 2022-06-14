@@ -112,7 +112,7 @@ double compute_kick_speed(struct spart* sp, const struct unit_system* us) {
   const float v_circ = pow(sp->feedback_data.host_galaxy_mass /
                                feedback_props->simba_host_galaxy_mass_norm,
                            feedback_props->simba_v_circ_exp);*/
-  double v_kick = 200.;  // in km/s
+  double v_kick = 200.;  // in physical km/s
   v_kick *= 1.e5 / units_cgs_conversion_factor(us, UNIT_CONV_SPEED); // to internal units
 
   return v_kick;

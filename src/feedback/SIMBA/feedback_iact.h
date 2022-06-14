@@ -417,7 +417,7 @@ runner_iact_nonsym_feedback_apply(
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
       /* Kick particle with SNII energy */
-      const double v_kick = sqrtf(kinetic_frac * delta_u);
+      const double v_kick = sqrtf(2. * kinetic_frac * delta_u);
      
       /* compute direction of kick: a x v */ 
       double dir[3], norm=0.;
@@ -436,6 +436,9 @@ runner_iact_nonsym_feedback_apply(
 
       /* Mark this particle has having been heated/kicked by supernova feedback */
       tracers_after_feedback(xpj);
+
+      /* Set delay time */
+      pj->feedback_data.decoupling_delay_time = 0.02 * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
       /* message( */
       /*     "We did some heating! id %llu star id %llu probability %.5e " */
