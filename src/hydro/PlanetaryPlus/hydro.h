@@ -777,11 +777,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     
   p->sum_f_within_H = 0.f;
   p->sum_s_f_within_H = 0.f;
-    
-  p->sum_w_V = 0.f;
-  p->sum_r_w_V[0] = 0.f;
-  p->sum_r_w_V[1] = 0.f;
-  p->sum_r_w_V[2] = 0.f;
 #endif
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
@@ -981,22 +976,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   float S_tilde = max(0.f, (p->rho / rho_tilde) * (expf(p->S_numerator / p->S_denominator) - mean_s_of_good_particles));
     
-    
-  p->sum_w_V += kernel_root * p->mass / p->rho;
-
-  //  p->sum_w_V *= h_inv_dim;
-  //  p->sum_r_w_V[0] *= h_inv_dim;
-  //  p->sum_r_w_V[1] *= h_inv_dim;
-  //  p->sum_r_w_V[2] *= h_inv_dim;
-    
-    
-//  float centre_of_volume = sqrtf(p->sum_r_w_V[0] * p->sum_r_w_V[0] + p->sum_r_w_V[1] * p->sum_r_w_V[1] + p->sum_r_w_V[2] * p->sum_r_w_V[2]) / (p->h * p->sum_w_V);
-    
-  //  float vaccuum_correction = 1.f - centre_of_volume*centre_of_volume*centre_of_volume;//max(0.f, centre_of_volume - 0.1f);
-    
-
- //   p->smoothing_error = vaccuum_correction;//max(0.f, centre_of_volume - 0.25f); 
-    
   /* Turn S_tilde to 0 if h == h_max */
   if (p->is_h_max) {
     S_tilde = 0.f;
@@ -1012,7 +991,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
       
     // Compute rho from u, P_new
     float rho_new_from_u = update_rho(p, P_new);
-    //  rho_new_from_u = f_S_tilde * rho_new_from_u + (1.f - f_S_tilde) * vaccuum_correction * rho_new_from_u;
       
     if (rho_new_from_u > p->max_ngb_sph_rho){
         rho_new_from_u = p->max_ngb_sph_rho;

@@ -381,17 +381,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     
   pi->sum_s_f_within_H += sqrtf(wi) * fabs(sj) * expf(-1000.f * sj * sj);
   pj->sum_s_f_within_H += sqrtf(wj) * fabs(si) * expf(-1000.f * si * si);
-    
-  pi->sum_w_V += wi * pj->mass / pj->rho;
-  pj->sum_w_V += wj * pi->mass / pi->rho;
-    
-  pi->sum_r_w_V[0] += -dx[0] * wi * pj->mass / pj->rho;
-  pi->sum_r_w_V[1] += -dx[1] * wi * pj->mass / pj->rho;
-  pi->sum_r_w_V[2] += -dx[2] * wi * pj->mass / pj->rho;
-    
-  pj->sum_r_w_V[0] += dx[0] * wj * pi->mass / pi->rho;
-  pj->sum_r_w_V[1] += dx[1] * wj * pi->mass / pi->rho;
-  pj->sum_r_w_V[2] += dx[2] * wj * pi->mass / pi->rho;
 #endif
 
 
@@ -514,12 +503,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     
   pi->sum_f_within_H += sqrtf(wi) * expf(-1000.f * sj * sj);
   pi->sum_s_f_within_H += sqrtf(wi) * fabs(sj) * expf(-1000.f * sj * sj);
-    
-  pi->sum_w_V += wi * pj->mass / pj->rho;
-    
-  pi->sum_r_w_V[0] += -dx[0] * wi * pj->mass / pj->rho;
-  pi->sum_r_w_V[1] += -dx[1] * wi * pj->mass / pj->rho;
-  pi->sum_r_w_V[2] += -dx[2] * wi * pj->mass / pj->rho;
 #endif
 
 
