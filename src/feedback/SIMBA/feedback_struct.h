@@ -67,6 +67,18 @@ struct feedback_spart_data {
       /*! Total (unweighted) number gas neighbours in the stellar kernel */
       int ngb_N;
 
+      /*! Mean neighbourhood DM velocity in each direction */
+      float dm_vel_mean[3];
+
+      /*! Number of dark matter neighbours in the (gas) neighbourhood */
+      int dm_num_ngbs;
+
+      /*! DM velocity dispersion in each direction */
+      float dm_vel_disp[3];
+
+      /*! The 1D vel. disp. of DM within the (gas) neighbourhood */
+      float dm_vel_disp_1d;
+      
     } to_collect;
 
     /**
