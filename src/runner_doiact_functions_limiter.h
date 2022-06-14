@@ -25,6 +25,308 @@
    runner_iact_FUNCTION. */
 
 #include "runner_doiact_limiter.h"
+#include "swift.h"
+
+#ifdef MOVING_MESH
+
+/**
+ * @brief Compute the interactions between a cell pair (non-symmetric).
+ *
+ * There are 2 modes this function can operate in. In the first mode (0), flux
+ * exchange is carried out for all faces of active voronoi cells of ci. In
+ * the second mode (1), flux exchange is carried out for all faces of active
+ * voronoi cells of ci iff the neighbouring particle is inactive.
+ *
+ * @param r The current runner
+ * @param ci The first cell of the pair. We use this cells voronoi tesseltation
+ * @param cj The second cell of the pair.
+ * @param mode Flag indicating in which mode we operate (0 or 1).
+ */
+void DOPAIR1(struct runner *restrict r, struct cell *ci, struct cell *cj,
+             int mode) {
+  const struct engine *restrict e = r->e;
+  const struct cosmology *restrict cosmo = e->cosmology;
+
+  TIMER_TIC;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (mode != 0 && mode != 1) error("Unknown mode in pair limiter: %d", mode);
+#endif
+
+  /* Retrieve SID and shift */
+  struct cell *ci_old = ci;
+  struct cell *cj_old = cj;
+  double shift[3];
+  int sid = space_getsid(e->s, &ci_old, &cj_old, shift);
+  int flipped = ci != ci_old;
+
+  /* Recurse? If the cells have been flipped in the branch function, ci might
+   * be above its construction level. */
+  if (ci->grid.construction_level == above_construction_level) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cell_is_starting_hydro(cj, e) && mode == 0)
+      error(
+          "Limiter interaction for cell above construction level, indicating "
+          "the "
+          "pair has been flipped, but cj is active!");
+#endif
+    /* Retrieve SID and shift */
+
+    struct cell_split_pair *csp = &cell_split_pairs[sid];
+    for (int k = 0; k < csp->count; k++) {
+      struct cell *ci_sub = ci_old->progeny[csp->pairs[k].pid];
+      struct cell *cj_sub = cj_old->progeny[csp->pairs[k].pjd];
+      if (ci_sub == NULL || cj_sub == NULL) continue;
+
+      if (flipped) {
+        if (cell_is_starting_hydro(cj_sub, e)) DOPAIR1(r, cj_sub, ci_sub, mode);
+      } else {
+        if (cell_is_starting_hydro(ci_sub, e)) DOPAIR1(r, ci_sub, cj_sub, mode);
+      }
+    }
+    return;
+  }
+
+  /* Correct shift and sid if flipped */
+  if (flipped) {
+    shift[0] = -shift[0];
+    shift[1] = -shift[1];
+    shift[2] = -shift[2];
+  } else {
+    sid = 26 - sid;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  assert(cell_is_starting_hydro(ci, e));
+  assert(ci->grid.voronoi != NULL);
+#endif
+
+  /* Some extra useful information */
+  const int ci_local = ci->nodeID == e->nodeID;
+  const int cj_local = cj->nodeID == e->nodeID;
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
+  /* loop over voronoi faces between ci and cj. */
+  struct voronoi *vortess = ci->grid.voronoi;
+  for (int i = 0; i < vortess->pair_index[sid]; ++i) {
+    struct voronoi_pair *pair = &vortess->pairs[sid][i];
+
+    /* Retrieve the particles */
+    struct part *pi = &ci->hydro.parts[pair->left_idx];
+    struct part *pj = &cj->hydro.parts[pair->right_idx];
+    const int pi_starting = part_is_starting(pi, e);
+    const int pj_starting = part_is_starting(pj, e);
+    const float hi = pi->h;
+    const float hj = pj->h;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (!pi_starting)
+      error("Encountered face of Voronoi cell of inactive particle!");
+#endif
+
+    /* Anything to do here? If the mode is 0, we always proceed, else we only
+     * treat faces between an active particle of ci and an inactive particle of
+     * cj. The other faces should already have been treated in another function
+     * call with ci and cj (or their parents) reversed. */
+    if (mode == 0 || !pj_starting) {
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Check that particles have been drifted to the current time */
+      if (pi->ti_drift != e->ti_current)
+        error("Particle pi not drifted to current time");
+      if (pj->ti_drift != e->ti_current)
+        error("Particle pj not drifted to current time");
+#endif
+
+      /* Compute the pairwise distance. */
+      float dx[3] = {(float)(pi->x[0] - pj->x[0]), (float)(pi->x[1] - pj->x[1]),
+                     (float)(pi->x[2] - pj->x[2])};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+      /* Only do the gradient calculations for local active particles */
+      if (ci_local && pi_starting && cj_local && pj_starting) {
+        /* Nothing need to happen when both particles are already active */
+      } else if (ci_local && pi_starting) {
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+      } else if (cj_local && pj_starting) {
+        /* The pair needs to be flipped around */
+        dx[0] = -dx[0];
+        dx[1] = -dx[1];
+        dx[2] = -dx[2];
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+      }
+    }
+  } /* loop over voronoi faces between ci and cj */
+
+  TIMER_TOC(TIMER_DOPAIR);
+}
+
+/**
+ * @brief Determine which version of DOPAIR1 needs to be called depending on the
+ * orientation of the cells or whether DOPAIR1 needs to be called at all.
+ *
+ * @param r #runner
+ * @param ci #cell ci
+ * @param cj #cell cj
+ *
+ */
+void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
+
+  const struct engine *restrict e = r->e;
+
+  int ci_is_starting = cell_is_starting_hydro(ci, e);
+  int cj_is_starting = cell_is_starting_hydro(cj, e);
+
+  if (!ci_is_starting) {
+    if (!cj_is_starting)
+      error("Pair limiter activated between two inactive cells!");
+
+    /* Exchange flux from cj to ci only (in mode 0, but does not actually
+     * matter in this case). */
+    DOPAIR1(r, cj, ci, 0);
+
+  } else { /* ci_is_starting */
+
+    /* First do the interaction between ci an cj in mode 0. */
+    DOPAIR1(r, ci, cj, 0);
+
+    /* If cj is also starting, we might have missed some faces between an active
+     * particle of cj and an inactive particle of ci (not present in voronoi
+     * tesselation of ci). */
+    if (cj_is_starting) {
+      /* Also do the interaction between cj and ci, but this time in mode 1, to
+       * treat the remaining faces between an active particle of cj and inactive
+       * particle of ci (those are not present in the voronoi tesselation of
+       * ci). */
+      DOPAIR1(r, cj, ci, 1);
+    }
+  }
+}
+
+/**
+ * @brief Compute the cell self-interaction (non-symmetric).
+ *
+ * @param r The #runner.
+ * @param c The #cell.
+ */
+void DOSELF1(struct runner *r, struct cell *restrict c) {
+  const struct engine *e = r->e;
+  const struct cosmology *cosmo = e->cosmology;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  assert(c->grid.voronoi != NULL);
+  if (c->nodeID != e->nodeID)
+    error("Activated self limiter task for non-local cell!");
+#endif
+
+  TIMER_TIC;
+
+  /* Cosmological terms */
+  const float a = cosmo->a;
+  const float H = cosmo->H;
+
+  /* Retrieve voronoi grid and particles */
+  struct voronoi *vortess = c->grid.voronoi;
+  struct part *restrict parts = c->hydro.parts;
+
+  /* Loop over local pairs (sid 13) */
+  for (int i = 0; i < vortess->pair_index[13]; ++i) {
+    struct voronoi_pair *pair = &vortess->pairs[13][i];
+
+    /* Retrieve particles */
+    struct part *pi = &parts[pair->left_idx];
+    struct part *pj = &parts[pair->right_idx];
+    const int pi_starting = part_is_starting(pi, e);
+    const int pj_starting = part_is_starting(pj, e);
+    const float hi = pi->h;
+    const float hj = pj->h;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Check that particles have been drifted to the current time */
+    if (pi->ti_drift != e->ti_current)
+      error("Particle pi not drifted to current time");
+    if (pj->ti_drift != e->ti_current)
+      error("Particle pj not drifted to current time");
+#endif
+
+    /* Compute the pairwise distance. */
+    float dx[3] = {(float)(pi->x[0] - pj->x[0]), (float)(pi->x[1] - pj->x[1]),
+                   (float)(pi->x[2] - pj->x[2])};
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+    /* Only do the gradient calculations for local active particles */
+    if (pi_starting && pj_starting) {
+      /* Nothing need to happen when both particles are already active */
+    } else if (pi_starting) {
+      IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+    } else if (pj_starting) {
+      /* The pair needs to be flipped around */
+      dx[0] = -dx[0];
+      dx[1] = -dx[1];
+      dx[2] = -dx[2];
+      IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+    }
+  }
+
+  TIMER_TOC(TIMER_DOSELF);
+}
+
+/**
+ * @brief Determine which version of DOSELF1 needs to be called depending on the
+ * optimisation level.
+ *
+ * @param r #runner
+ * @param c #cell c
+ *
+ */
+void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
+
+  const struct engine *restrict e = r->e;
+
+  /* Anything to do here? */
+  if (c->hydro.count == 0) return;
+
+  /* Anything to do here? */
+  if (!cell_is_starting_hydro(c, e)) return;
+
+  /* Did we mess up the recursion? */
+  if (c->hydro.h_max_old * kernel_gamma > c->dmin)
+    error("Cell smaller than smoothing length");
+
+  /* Check that cells are drifted. */
+  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
+
+  DOSELF1(r, c);
+}
+
+/**
+ * @brief Compute grouped sub-cell interactions for pairs
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param gettimer Do we have a timer ?
+ *
+ * @todo Hard-code the sid on the recursive calls to avoid the
+ * redundant computations to find the sid on-the-fly.
+ */
+void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
+                 int gettimer) {
+  error("Sub-cell interactions are unsupported in moving mesh schemes.");
+}
+
+/**
+ * @brief Compute grouped sub-cell interactions for self tasks
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param gettimer Do we have a timer ?
+ */
+void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
+  error("Sub-cell interactions are unsupported in moving mesh schemes.");
+}
+
+#else
 
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric case).
@@ -826,3 +1128,5 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
 
   if (gettimer) TIMER_TOC(TIMER_DOSUB_SELF);
 }
+
+#endif

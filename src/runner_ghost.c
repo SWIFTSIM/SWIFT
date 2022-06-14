@@ -1844,11 +1844,9 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     part_is_active_mask[i] = part_is_active(&parts[i], e);
   voronoi_build(c->grid.voronoi, c->grid.delaunay, c->hydro.parts,
                 part_is_active_mask, c->hydro.count);
-#ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
   /* The delaunay tesselation is no longer needed */
   delaunay_destroy(c->grid.delaunay);
   c->grid.delaunay = NULL;
-#endif
 
   if (e->policy & engine_policy_grid_hydro) {
     /* Set the geometry properties of the particles and prepare the particles
@@ -1994,10 +1992,6 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   if (!e->s->periodic) {
     runner_dopair_boundary_flux_exchange(r, c);
   }
-
-#ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
-  cell_free_grid_rec(c);
-#endif
 
   if (timer) TIMER_TOC(timer_do_flux_ghost);
 }

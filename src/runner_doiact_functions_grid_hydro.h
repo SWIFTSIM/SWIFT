@@ -9,6 +9,7 @@
    runner_iact_FUNCTION. */
 
 #include "runner_doiact_grid_hydro.h"
+#include "swift.h"
 
 /*! @brief Method to do the flux exchange over the faces between a pair of
  * cells.
@@ -138,7 +139,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 
 void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
                    struct cell *cj) {
-  struct engine *e = r->e;
+  const struct engine *e = r->e;
 
   int ci_active = cell_is_active_hydro(ci, e);
   int cj_active = cell_is_active_hydro(cj, e);
@@ -171,7 +172,7 @@ void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
 
 void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
-  struct engine *e = r->e;
+  const struct engine *e = r->e;
 
   /* Recurse? */
   if (c->grid.construction_level == above_construction_level) {

@@ -258,14 +258,11 @@ runner_dopair_branch_grid_construction(struct runner *restrict r,
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells.");
 
-#ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
-  /* Make sure there is no voronoi allocated. (can only happen after first
-   * time-step) */
+  /* Make sure there is no voronoi allocated. */
   if (ci->grid.voronoi != NULL) {
     voronoi_destroy(ci->grid.voronoi);
     ci->grid.voronoi = NULL;
   }
-#endif
 
   /* Delaunay already allocated? */
   if (ci->grid.delaunay == NULL) {
@@ -449,14 +446,11 @@ runner_doself_branch_grid_construction(struct runner *restrict r,
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
 
-#ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
-  /* Make sure there is no voronoi allocated. (can only happen after first
-   * time-step) */
+  /* Make sure there is no voronoi allocated. */
   if (c->grid.voronoi != NULL) {
     voronoi_destroy(c->grid.voronoi);
     c->grid.voronoi = NULL;
   }
-#endif
 
   /* Delaunay already allocated? */
   if (c->grid.delaunay == NULL) {

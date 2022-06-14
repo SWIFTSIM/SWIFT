@@ -102,9 +102,6 @@
 #define SHADOWSWIFT_STEER_MOTION
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWSWIFT_TOTAL_ENERGY
-/* This option destroys the  grids as soon as they are no longer needed, saving
- * on memory. */
-//#define SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
 /* This option enables reflective boundary conditions for non-periodic
  * ShadowSWIFT runs */
 #define SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
