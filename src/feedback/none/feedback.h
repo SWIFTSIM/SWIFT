@@ -88,6 +88,18 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
 }
 
 /**
+ * @brief Should this particle be doing any DM looping?
+ *
+ * @param sp The #spart.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static int stars_dm_loop_is_active(
+    const struct spart* sp, const struct engine* e) {
+  /* No */
+  return 0;
+}
+
+/**
  * @brief Returns the length of time since the particle last did
  * enrichment/feedback.
  *

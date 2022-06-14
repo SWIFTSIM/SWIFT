@@ -75,9 +75,6 @@ struct feedback_spart_data {
 
       /*! DM velocity dispersion in each direction */
       float dm_vel_disp[3];
-
-      /*! The 1D vel. disp. of DM within the (gas) neighbourhood */
-      float dm_vel_disp_1d;
       
     } to_collect;
 
