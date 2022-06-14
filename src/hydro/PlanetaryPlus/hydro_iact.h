@@ -359,15 +359,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float sj = fabs(pj->smoothing_error);
-  float si = fabs(pi->smoothing_error);  
-  pi->P_tilde_numerator += sqrtf(wi) * pj->P * (expf(-1000.f * sj * sj) + 0.1111111f);
-  pj->P_tilde_numerator += sqrtf(wj) * pi->P * (expf(-1000.f * si * si) + 0.1111111f);   
-  pi->P_tilde_denominator += sqrtf(wi) * (expf(-1000.f * sj * sj) + 0.1111111f);
-  pj->P_tilde_denominator += sqrtf(wj) * (expf(-1000.f * si * si) + 0.1111111f);
+  float sj = pj->smoothing_error;
+  float si = pi->smoothing_error;  
+  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sj * sj);
+  pj->P_tilde_numerator += sqrtf(wj) * pi->P * expf(-1000.f * si * si);   
+  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sj * sj);
+  pj->P_tilde_denominator += sqrtf(wj) * expf(-1000.f * si * si);
     
-  pi->S_numerator += wi * logf(sj + FLT_MIN);
-  pj->S_numerator += wj * logf(si + FLT_MIN);   
+  pi->S_numerator += wi * logf(fabs(sj) + FLT_MIN);
+  pj->S_numerator += wj * logf(fabs(si) + FLT_MIN);   
   pi->S_denominator += wi;
   pj->S_denominator += wj;
     
@@ -376,17 +376,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->max_ngb_sph_rho = max(pj->max_ngb_sph_rho, pi->rho);
   pj->min_ngb_sph_rho = min(pj->min_ngb_sph_rho, pi->rho);
     
-  pi->sum_f_within_H += (expf(-1000.f * sj * sj) + 0.1111111f);
-  pj->sum_f_within_H += (expf(-1000.f * si * si) + 0.1111111f);
+  pi->sum_f_within_H += sqrtf(wi) * expf(-1000.f * sj * sj);
+  pj->sum_f_within_H += sqrtf(wj) * expf(-1000.f * si * si);
     
-  pi->sum_s_f_within_H += fabs(sj) * (expf(-1000.f * sj * sj) + 0.1111111f);
-  pj->sum_s_f_within_H += fabs(si) * (expf(-1000.f * si * si) + 0.1111111f);
+  pi->sum_s_f_within_H += sqrtf(wi) * fabs(sj) * expf(-1000.f * sj * sj);
+  pj->sum_s_f_within_H += sqrtf(wj) * fabs(si) * expf(-1000.f * si * si);
+    
+  pi->sum_w_V += wi * pj->mass / pj->rho;
+  pj->sum_w_V += wj * pi->mass / pi->rho;
+    
+  pi->sum_r_w_V[0] += -dx[0] * wi * pj->mass / pj->rho;
+  pi->sum_r_w_V[1] += -dx[1] * wi * pj->mass / pj->rho;
+  pi->sum_r_w_V[2] += -dx[2] * wi * pj->mass / pj->rho;
+    
+  pj->sum_r_w_V[0] += dx[0] * wj * pi->mass / pi->rho;
+  pj->sum_r_w_V[1] += dx[1] * wj * pi->mass / pi->rho;
+  pj->sum_r_w_V[2] += dx[2] * wj * pi->mass / pi->rho;
 #endif
 
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   float volume_i = pi->mass * rho_inv_i;
   float volume_j = pj->mass * rho_inv_j;  
+  #ifdef PLANETARY_MATRIX_INVERSION
   #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
       if(pi->last_corrected_rho){
         volume_i = pi->mass / (expf(-1000.f * pi->last_S_tilde * pi->last_S_tilde) * pi->rho + (1.f - expf(-1000.f * pi->last_S_tilde * pi->last_S_tilde)) * pi->last_corrected_rho);
@@ -394,6 +406,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
       if(pj->last_corrected_rho){
         volume_j = pj->mass / (expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde) * pj->rho + (1.f - expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde)) * pj->last_corrected_rho);
       }
+  #endif  
   #endif  
 
   int i, j;
@@ -489,27 +502,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float sj = fabs(pj->smoothing_error);
-  pi->P_tilde_numerator += sqrtf(wi) * pj->P * (expf(-1000.f * sj * sj) + 0.1111111f);
-  pi->P_tilde_denominator += sqrtf(wi) * (expf(-1000.f * sj * sj) + 0.1111111f);
+  float sj = pj->smoothing_error;
+  pi->P_tilde_numerator += sqrtf(wi) * pj->P * expf(-1000.f * sj * sj);
+  pi->P_tilde_denominator += sqrtf(wi) * expf(-1000.f * sj * sj);
  
-  pi->S_numerator += wi * logf(sj + FLT_MIN);
+  pi->S_numerator += wi * logf(fabs(sj) + FLT_MIN);
   pi->S_denominator += wi;
     
   pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
   pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
     
-  pi->sum_f_within_H += (expf(-1000.f * sj * sj) + 0.1111111f);
-  pi->sum_s_f_within_H += fabs(sj) * (expf(-1000.f * sj * sj) + 0.1111111f);
+  pi->sum_f_within_H += sqrtf(wi) * expf(-1000.f * sj * sj);
+  pi->sum_s_f_within_H += sqrtf(wi) * fabs(sj) * expf(-1000.f * sj * sj);
+    
+  pi->sum_w_V += wi * pj->mass / pj->rho;
+    
+  pi->sum_r_w_V[0] += -dx[0] * wi * pj->mass / pj->rho;
+  pi->sum_r_w_V[1] += -dx[1] * wi * pj->mass / pj->rho;
+  pi->sum_r_w_V[2] += -dx[2] * wi * pj->mass / pj->rho;
 #endif
 
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   float volume_j = pj->mass * rho_inv_j;  
+  #ifdef PLANETARY_MATRIX_INVERSION  
   #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
       if(pj->last_corrected_rho){
         volume_j = pj->mass / (expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde) * pj->rho + (1.f - expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde)) * pj->last_corrected_rho);
       }
+  #endif  
   #endif  
 
   int i, j;
