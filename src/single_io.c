@@ -235,9 +235,9 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
  * @todo A better version using HDF5 hyper-slabs to write the file directly from
  * the part array will be written once the structures have been stabilized.
  */
-void write_array_single(const struct engine* e, hid_t grp, char* fileName,
-                        FILE* xmfFile, char* partTypeGroupName,
-                        const struct io_props props, size_t N,
+void write_array_single(const struct engine* e, hid_t grp, const char* fileName,
+                        FILE* xmfFile, const char* partTypeGroupName,
+                        const struct io_props props, const size_t N,
                         const enum lossy_compression_schemes lossy_compression,
                         const struct unit_system* internal_units,
                         const struct unit_system* snapshot_units) {
@@ -296,11 +296,13 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
   /* Dataset properties */
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
-  /* Set chunk size */
-  h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
-  if (h_err < 0)
-    error("Error while setting chunk size (%llu, %llu) for field '%s'.",
-          chunk_shape[0], chunk_shape[1], props.name);
+  /* Set chunk size if have some particles */
+  if (N > 0) {
+    h_err = H5Pset_chunk(h_prop, rank, chunk_shape);
+    if (h_err < 0)
+      error("Error while setting chunk size (%llu, %llu) for field '%s'.",
+            chunk_shape[0], chunk_shape[1], props.name);
+  }
 
   /* Are we imposing some form of lossy compression filter? */
   char comp_buffer[32] = "None";
@@ -308,8 +310,8 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
     set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression, props.name,
                                comp_buffer);
 
-  /* Impose GZIP data compression */
-  if (e->snapshot_compression > 0) {
+  /* Impose GZIP and shuffle data compression */
+  if (e->snapshot_compression > 0 && N > 0) {
     h_err = H5Pset_shuffle(h_prop);
     if (h_err < 0)
       error("Error while setting shuffling options for field '%s'.",
@@ -322,9 +324,11 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
   }
 
   /* Impose check-sum to verify data corruption */
-  h_err = H5Pset_fletcher32(h_prop);
-  if (h_err < 0)
-    error("Error while setting checksum options for field '%s'.", props.name);
+  if (N > 0) {
+    h_err = H5Pset_fletcher32(h_prop);
+    if (h_err < 0)
+      error("Error while setting checksum options for field '%s'.", props.name);
+  }
 
   /* Create dataset */
   const hid_t h_data = H5Dcreate(grp, props.name, h_type, h_space, H5P_DEFAULT,
@@ -428,18 +432,17 @@ void write_array_single(const struct engine* e, hid_t grp, char* fileName,
  * @warning Can not read snapshot distributed over more than 1 file !!!
  * @todo Read snapshots distributed in more than one file.
  */
-void read_ic_single(const char* fileName,
-                    const struct unit_system* internal_units, double dim[3],
-                    struct part** parts, struct gpart** gparts,
-                    struct sink** sinks, struct spart** sparts,
-                    struct bpart** bparts, size_t* Ngas, size_t* Ngparts,
-                    size_t* Ngparts_background, size_t* Nnuparts,
-                    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes,
-                    int* flag_entropy, int with_hydro, int with_gravity,
-                    int with_sink, int with_stars, int with_black_holes,
-                    int with_cosmology, int cleanup_h, int cleanup_sqrt_a,
-                    double h, double a, int n_threads, int dry_run,
-                    int remap_ids, struct ic_info* ics_metadata) {
+void read_ic_single(
+    const char* fileName, const struct unit_system* internal_units,
+    double dim[3], struct part** parts, struct gpart** gparts,
+    struct sink** sinks, struct spart** sparts, struct bpart** bparts,
+    size_t* Ngas, size_t* Ngparts, size_t* Ngparts_background, size_t* Nnuparts,
+    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+    const int with_hydro, const int with_gravity, const int with_sink,
+    const int with_stars, const int with_black_holes, const int with_cosmology,
+    const int cleanup_h, const int cleanup_sqrt_a, const double h,
+    const double a, const int n_threads, const int dry_run, const int remap_ids,
+    struct ic_info* ics_metadata) {
 
   hid_t h_file = 0, h_grp = 0;
   /* GADGET has only cubic boxes (in cosmological mode) */
@@ -821,7 +824,12 @@ void write_output_single(struct engine* e,
   const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
   const int with_DM_background = e->s->with_DM_background;
+  const int with_DM = e->s->with_DM;
   const int with_neutrinos = e->s->with_neutrinos;
+  const int with_hydro = (e->policy & engine_policy_hydro) ? 1 : 0;
+  const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
+  const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
+  const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -956,11 +964,20 @@ void write_output_single(struct engine* e,
   }
 
   /* Format things in a Gadget-friendly array */
-  long long N_total[swift_type_count] = {
+  const long long N_total[swift_type_count] = {
       (long long)Ngas_written,   (long long)Ndm_written,
       (long long)Ndm_background, (long long)Nsinks_written,
       (long long)Nstars_written, (long long)Nblackholes_written,
       (long long)Ndm_neutrino};
+
+  /* List what fields to write.
+   * Note that we want to want to write a 0-size dataset for some species
+   * in case future snapshots will contain them (e.g. star formation) */
+  const int to_write[swift_type_count] = {
+      with_hydro, with_DM,         with_DM_background, with_sink,
+      with_stars, with_black_hole, with_neutrinos
+
+  };
 
   /* Open file */
   /* message("Opening file '%s'.", fileName); */
@@ -1053,6 +1070,7 @@ void write_output_single(struct engine* e,
   io_write_attribute_i(h_grp, "ThisFile", 0);
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
+  io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1081,15 +1099,16 @@ void write_output_single(struct engine* e,
                         e->s->nr_cells, e->s->width, e->nodeID,
                         /*distributed=*/0, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
-                        numFields, internal_units, snapshot_units);
+                        to_write, numFields, internal_units, snapshot_units);
   H5Gclose(h_grp);
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-    /* Don't do anything if there are (a) no particles of this kind, or (b)
-     * if we have disabled every field of this particle type. */
-    if (numParticles[ptype] == 0 || numFields[ptype] == 0) continue;
+    /* Don't do anything if there are
+     * (a) no particles of this kind in this run, or
+     * (b) if we have disabled every field of this particle type. */
+    if (!to_write[ptype] || numFields[ptype] == 0) continue;
 
     /* Add the global information for that particle type to the XMF meta-file */
     xmf_write_groupheader(xmfFile, fileName, /*distributed=*/0,

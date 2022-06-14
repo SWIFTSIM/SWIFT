@@ -73,7 +73,7 @@ time-line. This is the smallest time-step size that the code can use. This field
 is zero in non-cosmological runs. Similarly, the field ``TimeBase_dt`` contains
 the smallest time-step size (in internal units) that the code can take. This
 would be the increase in time a particle in the time-bin one would have. Note
-that in cosmological runs this quantity evolves with redhsift as the (logarithm
+that in cosmological runs this quantity evolves with redshift as the (logarithm
 of the) scale-factor is used on the integer time-line.
 
 The field ``SelectOutput`` will contain the name of the
@@ -86,6 +86,13 @@ written to the snapshot. Note, however, that when sub-sampling the fields
 ``NumPart_Total``, ``NumPart_HighWord``, and ``NumPart_ThisFile`` contain the number
 of particles actually written (i.e. after sub-sampling), not the total number of
 particles in the run.
+
+The field ``CanHaveTypes`` contains information about whether a given particle
+type is to be expected in snapshots of the run. For instance, a simulation with
+star formation switched on, the code may not have formed a star yet but might in
+future snapshots. This allows reading tools to distinguish fields they will
+never expect to find in a given simulation from fields that may be present in
+other outputs.
 
 Meta-data about the code and run
 --------------------------------

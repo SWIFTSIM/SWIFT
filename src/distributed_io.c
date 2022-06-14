@@ -458,6 +458,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
                         const char* xmfFileName,
                         const long long N_total[swift_type_count],
                         const long long* N_counts, const int num_ranks,
+                        const int to_write[swift_type_count],
                         const int numFields[swift_type_count],
                         char current_selection_name[FIELD_BUFFER_SIZE],
                         const struct unit_system* internal_units,
@@ -582,6 +583,7 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   io_write_attribute_i(h_grp, "ThisFile", 0);
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 1);
+  io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -603,9 +605,10 @@ void write_virtual_file(struct engine* e, const char* fileName_base,
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-    /* Don't do anything if there are (a) no particles of this kind, or (b)
-     * if we have disabled every field of this particle type. */
-    if (N_total[ptype] == 0 || numFields[ptype] == 0) continue;
+    /* Don't do anything if there are
+     * (a) no particles of this kind in this run, or
+     * (b) if we have disabled every field of this particle type. */
+    if (!to_write[ptype] || numFields[ptype] == 0) continue;
 
     /* Add the global information for that particle type to
      * the XMF meta-file */
@@ -761,8 +764,13 @@ void write_output_distributed(struct engine* e,
   const int with_temperature = e->policy & engine_policy_temperature;
   const int with_fof = e->policy & engine_policy_fof;
   const int with_DM_background = e->s->with_DM_background;
+  const int with_DM = e->s->with_DM;
   const int with_neutrinos = e->s->with_neutrinos;
   const int with_rt = e->policy & engine_policy_rt;
+  const int with_hydro = (e->policy & engine_policy_hydro) ? 1 : 0;
+  const int with_stars = (e->policy & engine_policy_stars) ? 1 : 0;
+  const int with_black_hole = (e->policy & engine_policy_black_holes) ? 1 : 0;
+  const int with_sink = (e->policy & engine_policy_sinks) ? 1 : 0;
 #ifdef HAVE_VELOCIRAPTOR
   const int with_stf = (e->policy & engine_policy_structure_finding) &&
                        (e->s->gpart_group_data != NULL);
@@ -941,6 +949,15 @@ void write_output_distributed(struct engine* e,
   MPI_Gather(N, swift_type_count, MPI_LONG_LONG_INT, N_counts, swift_type_count,
              MPI_LONG_LONG_INT, 0, comm);
 
+  /* List what fields to write.
+   * Note that we want to want to write a 0-size dataset for some species
+   * in case future snapshots will contain them (e.g. star formation) */
+  const int to_write[swift_type_count] = {
+      with_hydro, with_DM,         with_DM_background, with_sink,
+      with_stars, with_black_hole, with_neutrinos
+
+  };
+
   /* Use a single Lustre stripe with a rank-based OST offset? */
   if (e->snapshot_lustre_OST_count != 0) {
     char string[1200];
@@ -1048,6 +1065,7 @@ void write_output_distributed(struct engine* e,
   io_write_attribute_i(h_grp, "ThisFile", mpi_rank);
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
+  io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1079,15 +1097,16 @@ void write_output_distributed(struct engine* e,
                         e->s->nr_cells, e->s->width, mpi_rank,
                         /*distributed=*/1, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
-                        numFields, internal_units, snapshot_units);
+                        to_write, numFields, internal_units, snapshot_units);
   H5Gclose(h_grp);
 
   /* Loop over all particle types */
   for (int ptype = 0; ptype < swift_type_count; ptype++) {
 
-    /* Don't do anything if there are (a) no particles of this kind, or (b)
-     * if we have disabled every field of this particle type. */
-    if (N[ptype] == 0 || numFields[ptype] == 0) continue;
+    /* Don't do anything if there are
+     * (a) no particles of this kind in this run, or
+     * (b) if we have disabled every field of this particle type. */
+    if (!to_write[ptype] || numFields[ptype] == 0) continue;
 
     /* Open the particle group in the file */
     char partTypeGroupName[PARTICLE_GROUP_BUFFER_SIZE];
@@ -1431,7 +1450,7 @@ void write_output_distributed(struct engine* e,
   /* Write the virtual meta-file */
   if (mpi_rank == 0)
     write_virtual_file(e, fileName_base, xmfFileName, N_total, N_counts,
-                       mpi_size, numFields, current_selection_name,
+                       mpi_size, to_write, numFields, current_selection_name,
                        internal_units, snapshot_units, subsample_any,
                        subsample_fraction);
 
@@ -1470,7 +1489,7 @@ void write_output_distributed(struct engine* e,
                         e->s->nr_cells, e->s->width, mpi_rank,
                         /*distributed=*/0, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
-                        numFields, internal_units, snapshot_units);
+                        to_write, numFields, internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {
