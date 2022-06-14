@@ -625,7 +625,7 @@ void cell_split_sort(struct space *s, struct cell *c,
     int *bpart_sinds = (int *)malloc(bcount * sizeof(int));
 
     /* Loop over particles */
-    for (int k = 0; k < bcount; k++) {
+    for (k = 0; k < bcount; k++) {
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
@@ -784,7 +784,7 @@ void cell_split_sort(struct space *s, struct cell *c,
     int *gpart_sinds = (int *)malloc(gcount * sizeof(int));
 
     /* Loop over particles */
-    for (int k = 0; k < gcount; k++) {
+    for (k = 0; k < gcount; k++) {
 
       /* Convert position to 21 bit integer coordinates */
       unsigned long bits[3];
