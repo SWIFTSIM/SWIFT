@@ -42,6 +42,9 @@ struct cell_sinks {
     /*! Pointer to the #sink data. */
     struct sink *parts;
 
+    /* Hilbert keys for this cells gparts. */
+    unsigned long *hilb_keys;
+
     /*! Linked list of the tasks computing this cell's sink formation checks. */
     struct link *compute_formation;
 

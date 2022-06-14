@@ -42,6 +42,9 @@ struct cell_black_holes {
     /*! Pointer to the #bpart data. */
     struct bpart *parts;
 
+    /* Hilbert keys for this cells gparts. */
+    unsigned long *hilb_keys;
+
     /*! The drift task for bparts */
     struct task *drift;
 

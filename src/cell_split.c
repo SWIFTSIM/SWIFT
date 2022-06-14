@@ -55,7 +55,7 @@ void cell_split(struct cell *c, const int maxdepth) {
   /* Lets split the parts */
   /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < count; k++) {
-    unsigned long key = c->hydro.parts[k].hilb_key;
+    unsigned long key = c->hydro.hilb_keys[k];
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
@@ -75,6 +75,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     c->progeny[k]->hydro.count_total = c->progeny[k]->hydro.count;
     c->progeny[k]->hydro.parts = &c->hydro.parts[bucket_offset[k]];
     c->progeny[k]->hydro.xparts = &c->hydro.xparts[bucket_offset[k]];
+    c->progeny[k]->hydro.hilb_keys = &c->hydro.hilb_keys[bucket_offset[k]];
   }
 
   /* Now do the same song and dance for the sparts. */
@@ -82,7 +83,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
   /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < scount; k++) {
-    unsigned long key = c->stars.parts[k].hilb_key;
+    unsigned long key = c->stars.hilb_keys[k];
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
@@ -102,6 +103,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     c->progeny[k]->stars.count_total = c->progeny[k]->stars.count;
     c->progeny[k]->stars.parts = &c->stars.parts[bucket_offset[k]];
     c->progeny[k]->stars.parts_rebuild = c->progeny[k]->stars.parts;
+    c->progeny[k]->stars.hilb_keys = &c->stars.hilb_keys[bucket_offset[k]];
   }
 
   /* Now do the same song and dance for the bparts. */
@@ -109,7 +111,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
    /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < bcount; k++) {
-    unsigned long key = c->black_holes.parts[k].hilb_key;
+    unsigned long key = c->black_holes.hilb_keys[k];
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
@@ -128,6 +130,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     c->progeny[k]->black_holes.count = bucket_count[k];
     c->progeny[k]->black_holes.count_total = c->progeny[k]->black_holes.count;
     c->progeny[k]->black_holes.parts = &c->black_holes.parts[bucket_offset[k]];
+    c->progeny[k]->black_holes.hilb_keys = &c->black_holes.hilb_keys[bucket_offset[k]];
   }
   
   /* Now do the same song and dance for the sinks. */
@@ -135,7 +138,7 @@ void cell_split(struct cell *c, const int maxdepth) {
 
   /* Fill the buckets using the hilbert keys */
   for (int k = 0; k < sink_count; k++) {
-    unsigned long key = c->sinks.parts[k].hilb_key;
+    unsigned long key = c->sinks.hilb_keys[k];
 
     /* Shift bits to the correct depth and mask to get the final 3
        bits which are the bin at this depth */
@@ -154,6 +157,7 @@ void cell_split(struct cell *c, const int maxdepth) {
     c->progeny[k]->sinks.count = bucket_count[k];
     c->progeny[k]->sinks.count_total = c->progeny[k]->sinks.count;
     c->progeny[k]->sinks.parts = &c->sinks.parts[bucket_offset[k]];
+    c->progeny[k]->sinks.hilb_keys = &c->sinks.hilb_keys[bucket_offset[k]];
   }
 
   /* Finally, do the same song and dance for the gparts. */
@@ -257,6 +261,11 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
     /* No longer just a leaf. */
     c->split = 1;
 
+    /* Define the width of a progeny cell */
+    double progeny_width[3] = {c->width[0] / 2,
+                               c->width[1] / 2,
+                               c->width[2] / 2};
+
     /* Create the cell's progeny. */
     space_getcells(s, 8, c->progeny);
     for (int k = 0; k < 8; k++) {
@@ -267,9 +276,6 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
       
       /* Where is this progeny? */
       double progeny_loc[3] = {c->loc[0], c->loc[1], c->loc[2]};
-      double progeny_width[3] = {c->width[0] / 2,
-                                 c->width[1] / 2,
-                                 c->width[2] / 2};
       if (k & 4) progeny_loc[0] += progeny_width[0];
       if (k & 2) progeny_loc[1] += progeny_width[1];
       if (k & 1) progeny_loc[2] += progeny_width[2];
@@ -442,6 +448,10 @@ void cell_split_sort(struct space *s, struct cell *c,
                                 c->width[1],
                                 c->width[2]};
 
+  /* Declare some variables we will need. */
+  int j, k, sind;
+  unsigned long temp_key;
+
   /* Get hilbert keys for parts and sort them. */
   if (count > 0) {
 
@@ -464,7 +474,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
       /* Get hilbert key */
       part_keys[k] = hilbert_get_key_3d(bits, nbits);
-      parts[k].hilb_key = part_keys[k];
 
       /* Set index */
       part_sinds[k] = k;
@@ -476,7 +485,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
     /* Finally, loop over the particles swapping particles to the
      * correct place */
-    int j, k, sind;
     struct part temp_part;
     struct xpart temp_xpart;
     for (k = 0; k < count; k++) {
@@ -487,6 +495,7 @@ void cell_split_sort(struct space *s, struct cell *c,
         /* Set up tempary variables */
         temp_part = parts[k];
         temp_xpart = xparts[k];
+        temp_key = part_keys[k];
         j = k;
 
         /* Loop until particles are in the right place. */
@@ -497,6 +506,8 @@ void cell_split_sort(struct space *s, struct cell *c,
                             sizeof(struct part));
           memswap(&xparts[j], &xparts[sind],
                             sizeof(struct xpart));
+          memswap_unaligned(&part_keys[j], &part_keys[sind],
+                            sizeof(unsigned long));
 
           /* Corrected the now sorted sind */
           part_sinds[j] = j;
@@ -511,15 +522,18 @@ void cell_split_sort(struct space *s, struct cell *c,
         /* Return the temporary particle and set index. */
         parts[j] = temp_part;
         xparts[j] = temp_xpart;
+        part_keys[j] = temp_key;
         part_sinds[j] = j;
       }
       if (parts[k].gpart)
         parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
     }
+
+    /* Store sorted hilbert keys in the cell. */
+    c->hydro.hilb_keys = &part_keys[0];
     
     /* Set the memory free */
     free(part_sinds);
-    free(part_keys);
   }
 
   /* Get hilbert keys for sparts and sort them. */
@@ -544,7 +558,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
       /* Get hilbert key */
       spart_keys[k] = hilbert_get_key_3d(bits, nbits);
-      sparts[k].hilb_key = spart_keys[k];
 
       /* Set index */
       spart_sinds[k] = k;
@@ -556,7 +569,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
     /* Finally, loop over the particles swapping particles to the
      * correct place */
-    int j, k, sind;
     struct spart temp_spart;
     for (k = 0; k < scount; k++) {
 
@@ -565,6 +577,7 @@ void cell_split_sort(struct space *s, struct cell *c,
 
         /* Set up tempary variables */
         temp_spart = sparts[k];
+        temp_key = spart_keys[k];
         j = k;
 
         /* Loop until particles are in the right place. */
@@ -573,6 +586,8 @@ void cell_split_sort(struct space *s, struct cell *c,
           /* Swap particles in memory */
           memswap(&sparts[j], &sparts[sind],
                             sizeof(struct spart));
+          memswap_unaligned(&spart_keys[j], &spart_keys[sind],
+                            sizeof(unsigned long));
 
           /* Corrected the now sorted sind */
           spart_sinds[j] = j;
@@ -586,6 +601,7 @@ void cell_split_sort(struct space *s, struct cell *c,
 
         /* Return the temporary particle and set index. */
         sparts[j] = temp_spart;
+        spart_keys[j] = temp_key;
         spart_sinds[j] = j;
       }
       if (sparts[k].gpart)
@@ -593,9 +609,11 @@ void cell_split_sort(struct space *s, struct cell *c,
 
     }
 
+    /* Store sorted hilbert keys in the cell. */
+    c->stars.hilb_keys = &spart_keys[0];
+
     /* Set the memory free */
     free(spart_sinds);
-    free(spart_keys);
   }
 
   /* Get hilbert keys for bparts and sort them. */
@@ -620,7 +638,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
       /* Get hilbert key */
       bpart_keys[k] = hilbert_get_key_3d(bits, nbits);
-      bparts[k].hilb_key = bpart_keys[k];
 
       /* Set index */
       bpart_sinds[k] = k;
@@ -632,7 +649,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
    /* Finally, loop over the particles swapping particles to the
      * correct place */
-    int j, k, sind;
     struct bpart temp_bpart;
     for (k = 0; k < bcount; k++) {
 
@@ -641,6 +657,7 @@ void cell_split_sort(struct space *s, struct cell *c,
 
         /* Set up tempary variables */
         temp_bpart = bparts[k];
+        temp_key = bpart_keys[k];
         j = k;
 
         /* Loop until particles are in the right place. */
@@ -649,6 +666,8 @@ void cell_split_sort(struct space *s, struct cell *c,
           /* Swap particles in memory */
           memswap(&bparts[j], &bparts[sind],
                             sizeof(struct bpart));
+          memswap_unaligned(&bpart_keys[j], &bpart_keys[sind],
+                            sizeof(unsigned long));
 
           /* Corrected the now sorted sind */
           bpart_sinds[j] = j;
@@ -662,6 +681,7 @@ void cell_split_sort(struct space *s, struct cell *c,
 
         /* Return the temporary particle and set index. */
         bparts[j] = temp_bpart;
+        bpart_keys[j] = temp_key;
         bpart_sinds[j] = j;
       }
       if (bparts[k].gpart)
@@ -669,9 +689,11 @@ void cell_split_sort(struct space *s, struct cell *c,
 
     }
 
+    /* Store sorted hilbert keys in the cell. */
+    c->black_holes.hilb_keys = &bpart_keys[0];
+
     /* Set the memory free */
     free(bpart_sinds);
-    free(bpart_keys);
   }
 
   /* Get hilbert keys for sinks and sort them. */
@@ -696,7 +718,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
       /* Get hilbert key */
       sink_keys[k] = hilbert_get_key_3d(bits, nbits);
-      sinks[k].hilb_key = sink_keys[k];
 
       /* Set index */
       sink_sinds[k] = k;
@@ -708,7 +729,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
     /* Finally, loop over the particles swapping particles to the
      * correct place */
-    int j, k, sind;
     struct sink temp_sink;
     for (k = 0; k < sink_count; k++) {
 
@@ -717,6 +737,7 @@ void cell_split_sort(struct space *s, struct cell *c,
 
         /* Set up tempary variables */
         temp_sink = sinks[k];
+        temp_key = sink_keys[k];
         j = k;
 
         /* Loop until particles are in the right place. */
@@ -725,6 +746,8 @@ void cell_split_sort(struct space *s, struct cell *c,
           /* Swap particles in memory */
           memswap(&sinks[j], &sinks[sind],
                             sizeof(struct sink));
+          memswap_unaligned(&sink_keys[j], &sink_keys[sind],
+                            sizeof(unsigned long));
 
           /* Corrected the now sorted sind */
           sink_sinds[j] = j;
@@ -738,15 +761,18 @@ void cell_split_sort(struct space *s, struct cell *c,
 
         /* Return the temporary particle and set index. */
         sinks[j] = temp_sink;
+        sink_keys[j] = temp_key;
         sink_sinds[j] = j;
       }
       if (sinks[k].gpart)
         sinks[k].gpart->id_or_neg_offset = -(k + sinks_offset);
     }
 
+    /* Store sorted hilbert keys in the cell. */
+    c->sinks.hilb_keys = &sink_keys[0];
+
     /* Set the memory free */
     free(sink_sinds);
-    free(sink_keys);
   }
 
   /* Get hilbert keys for gparts and sort them. */
@@ -771,7 +797,6 @@ void cell_split_sort(struct space *s, struct cell *c,
 
       /* Get hilbert key */
       gpart_keys[k] = hilbert_get_key_3d(bits, nbits);
-      /* gparts[k].hilb_key = gpart_keys[k]; */
 
       /* Set index */
       gpart_sinds[k] = k;
@@ -783,8 +808,6 @@ void cell_split_sort(struct space *s, struct cell *c,
     
     /* Finally, loop over the particles swapping particles to the
      * correct place */
-    int j, k, sind;
-    unsigned long temp_key;
     struct gpart temp_gpart;
     for (k = 0; k < gcount; k++) {
 

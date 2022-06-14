@@ -46,6 +46,9 @@ struct cell_stars {
     /*! Pointer to the #spart data at rebuild time. */
     struct spart *parts_rebuild;
 
+    /* Hilbert keys for this cells gparts. */
+    unsigned long *hilb_keys;
+
     /*! The star ghost task itself */
     struct task *density_ghost;
 

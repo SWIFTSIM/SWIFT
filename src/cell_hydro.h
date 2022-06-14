@@ -44,6 +44,9 @@ struct cell_hydro {
 
     /*! Pointer to the #xpart data. */
     struct xpart *xparts;
+    
+    /* Hilbert keys for this cells gparts. */
+    unsigned long *hilb_keys;
 
     /*! Pointer for the sorted indices. */
     struct sort_entry *sort;
