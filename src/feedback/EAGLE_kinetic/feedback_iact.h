@@ -26,6 +26,34 @@
 #include "tracers.h"
 
 /**
+ * @brief Compute the mean DM velocity around a star. (non-symmetric).
+ *
+ * @param si First sparticle.
+ * @param gj Second particle (not updated).
+ * @param fb_props Properties of the feedback scheme.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_dm_vel_mean(struct spart *si, 
+                                        const struct gpart *gj,
+                                        const struct feedback_props *fb_props) {
+
+}
+
+/**
+ * @brief Compute the DM velocity dispersion around a star. (non-symmetric).
+ *
+ * @param si First sparticle.
+ * @param gj Second particle.
+ * @param fb_props Properties of the feedback scheme.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_feedback_dm_vel_disp(struct spart *si, 
+                                        const struct gpart *gj,
+                                        const struct feedback_props *fb_props) {
+ 
+}
+
+/**
  * @brief Density interaction between two particles (non-symmetric).
  *
  * @param r2 Comoving square distance between the two particles.

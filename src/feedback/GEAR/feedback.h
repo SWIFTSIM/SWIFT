@@ -42,6 +42,18 @@ void feedback_will_do_feedback(
 
 int feedback_is_active(const struct spart* sp, const struct engine* e);
 
+/**
+ * @brief Should this particle be doing any DM looping?
+ *
+ * @param sp The #spart.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static int stars_dm_loop_is_active(
+    const struct spart* sp, const struct engine* e) {
+  /* No */
+  return 0;
+}
+
 double feedback_get_enrichment_timestep(const struct spart* sp,
                                         const int with_cosmology,
                                         const struct cosmology* cosmo,
