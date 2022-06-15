@@ -414,6 +414,20 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
       (sp->v[0] * sp->v[0] + sp->v[1] * sp->v[1] + sp->v[2] * sp->v[2]) *
       cosmo->a2_inv;
 
+  /* Compute DM vel. disp. */
+  if (sp->feedback_data.to_collect.dm_ngb_N > 0) {
+    float dm_vel_disp_1d = 0.0;
+    float dm_vel_disp2[3] = {0.0, 0.0, 0.0};
+    for (int i = 0; i < 3; i++) {
+      dm_vel_disp2[i] = sp->feedback_data.to_collect.dm_vel_disp2[i];
+      /* The final 1D vel. disp. will be the average of these three components */
+      dm_vel_disp2[i] /= sp->feedback_data.to_collect.dm_ngb_N;
+      dm_vel_disp_1d += dm_vel_disp2[i];
+    }
+    dm_vel_disp_1d /= 3.0;
+    sp->feedback_data.to_distribute.dm_vel_disp_1d = sqrt(dm_vel_disp_1d);
+  }
+
   TIMER_TOC(timer_do_star_evol);
 }
 
