@@ -106,14 +106,9 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-double compute_kick_speed(struct spart* sp, const struct unit_system* us) {
+double compute_kick_speed(struct spart* sp, const struct feedback_props* props, const struct unit_system* us) {
 
-  /* Calculate circular velocity based on Baryonic Tully-Fisher relation
-  const float v_circ = pow(sp->feedback_data.host_galaxy_mass /
-                               feedback_props->simba_host_galaxy_mass_norm,
-                           feedback_props->simba_v_circ_exp);*/
-  double v_kick = 200.;  // in physical km/s
-  v_kick *= 1.e5 / units_cgs_conversion_factor(us, UNIT_CONV_SPEED); // to internal units
+  double v_kick = props->SNII_vkick_factor * sp->feedback_data.to_distribute.dm_vel_disp_1d;
 
   return v_kick;
 }
@@ -188,7 +183,7 @@ INLINE static void compute_SNII_feedback(
     }
 
     /* Properties of the model (all in internal units) */
-    const double v_kick = compute_kick_speed(sp, us);
+    const double v_kick = compute_kick_speed(sp, feedback_props, us);
     //const double delta_T =
     //    eagle_feedback_temperature_change(sp, feedback_props);
     const double u_kinetic = 0.5 * v_kick * v_kick;
@@ -711,6 +706,15 @@ void feedback_props_init(struct feedback_props* fp,
     error(
         "Time at which the enrichment downsampling starts is lower than the "
         "SNII wind delay!");
+
+  /* Properties of Simba kinetic winds -------------------------------------- */
+
+  fp->SNII_fthermal =
+      parser_get_param_double(params, "SIMBAFeedback:SNII_energy_fraction_thermal");
+  fp->SNII_fkinetic =
+      parser_get_param_double(params, "SIMBAFeedback:SNII_energy_fraction_kinetic");
+  fp->SNII_vkick_factor =
+      parser_get_param_double(params, "SIMBAFeedback:SNII_vkick_factor");
 
   /* Gather common conversion factors --------------------------------------- */
 

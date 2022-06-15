@@ -313,6 +313,18 @@ struct feedback_props {
 
   /*! Number of time-steps in-between two enrichment events */
   int stellar_evolution_sampling_rate;
+
+  /* ------------ Kinetic feedback properties --------------- */
+
+  /*! Fraction of SNII energy used to heat gas particle */
+  float SNII_fthermal;
+
+  /*! Fraction of SNII energy used to kick gas particle */
+  float SNII_fkinetic;
+
+  /*! v_kick = (this factor) * sigma_DM_1D */
+  float SNII_vkick_factor;
+
 };
 
 void feedback_props_init(struct feedback_props *fp,

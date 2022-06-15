@@ -451,8 +451,8 @@ runner_iact_nonsym_feedback_apply(
       /* Compute new energy of this particle */
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
       const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
-      const float thermal_frac = 0.0;   // fraction of energy going into heat
-      const float kinetic_frac = 0.05;   // fraction of energy going into kick
+      const float thermal_frac = fb_props->SNII_fthermal;
+      const float kinetic_frac = fb_props->SNII_fkinetic;
       const double u_new =
         u_init + thermal_frac * delta_u * (float)N_of_SNII_energy_inj_received_by_gas;
 
