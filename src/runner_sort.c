@@ -205,6 +205,7 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   struct xpart *xparts = c->hydro.xparts;
   float buff[8];
 
+  c->called_sort++;
   celltrace(c, "c0 sorting, cleanup=%d clock=%d flags=%d do_sort=%d", cleanup, clock, flags, c->hydro.do_sort);
 
   TIMER_TIC;
@@ -222,8 +223,8 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     flags &= ~c->hydro.sorted;
     celltrace(c, "c1.2 set flags to %d", flags);
   }
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) celltrace(c, "c2 early exit flags=%d do_hydro_sub_sort=%d", flags, cell_flag_do_hydro_sub_sort);
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort)) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) && !cell_get_flag(c, cell_flag_do_rt_sub_sort)) celltrace(c, "c2 early exit flags=%d do_hydro_sub_sort=%d", flags, cell_flag_do_hydro_sub_sort);
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) && !cell_get_flag(c, cell_flag_do_rt_sub_sort)) return;
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_part_drifted(c, r->e))
@@ -424,11 +425,10 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   /* Clear the cell's sort flags. */
   c->hydro.do_sort = 0;
   cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
+  cell_clear_flag(c, cell_flag_do_rt_sub_sort);
   c->hydro.requires_sorts = 0;
-  /* Mark that this cell (and in particular its progeny)
-   * doesn't need to sort for RT */
-  /* cell_set_flag(c, cell_flag_no_rt_sort); */
 
+  c->finished_sort++;
   celltrace(c, "@exit sorted=%d", c->hydro.sorted);
 
   if (clock) TIMER_TOC(timer_dosort);

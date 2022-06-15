@@ -573,6 +573,7 @@ void engine_unskip_sub_cycle(struct engine *e) {
     }
   }
 
+  /* TODO: unskip_data data should be unnecessary here, remove it */
   struct unskip_data data;
   bzero(&data, sizeof(struct unskip_data));
   data.e = e;
