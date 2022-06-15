@@ -25,7 +25,6 @@
    runner_iact_FUNCTION. */
 
 #include "runner_doiact_limiter.h"
-#include "swift.h"
 
 #ifdef MOVING_MESH
 

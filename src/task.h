@@ -115,6 +115,7 @@ enum task_types {
   task_type_rt_ghost2,
   task_type_rt_transport_out, /* Implicit */
   task_type_rt_tchem,
+  task_type_bvh,
   task_type_grid_ghost,
   task_type_slope_estimate_ghost,
   task_type_slope_limiter_ghost,

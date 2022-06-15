@@ -2952,6 +2952,11 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         "level!");
 #endif
 
+#ifdef SHADOWSWIFT_BVH
+  /* Unskip the bvh task */
+  scheduler_activate(s, c->grid.build_bvh);
+#endif
+
   for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
 
     struct task *t = l->t;

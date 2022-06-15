@@ -8,6 +8,7 @@
 #include "const.h"
 #include "shadowswift/delaunay.h"
 #include "shadowswift/voronoi.h"
+#include "shadowswift/bvh.h"
 
 enum construction_level {
   above_construction_level,
@@ -39,12 +40,22 @@ struct cell_grid {
   /*! Pointer to the delaunay struct of this cell (if any) */
   struct delaunay *delaunay;
 
+#ifdef SHADOWSWIFT_BVH
+  /*! Pointer to the bvh strcut of this cell (if any) */
+  struct BVH *bvh;
+#endif
+
   /*! Indices sorting the particles of this cell according to their hilbert
    * ordering */
   int *hilbert_r_sort;
 
   /*! Linked list of this cells construction tasks. */
   struct link *construction;
+
+#ifdef SHADOWSWIFT_BVH
+  /*! Pointer to this cells BVH construction task. */
+  struct task *build_bvh;
+#endif
 
   /*! Pointer to this cells construction ghost task. */
   struct task *ghost;

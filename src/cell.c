@@ -1060,14 +1060,7 @@ void cell_free_grid_rec(struct cell *c) {
       if (c->progeny[k] != NULL) cell_free_grid_rec(c->progeny[k]);
 
   } else if (c->grid.construction_level == on_construction_level) {
-    if (c->grid.voronoi != NULL) {
-      voronoi_destroy(c->grid.voronoi);
-      c->grid.voronoi = NULL;
-    }
-    if (c->grid.delaunay != NULL) {
-      delaunay_destroy(c->grid.delaunay);
-      c->grid.delaunay = NULL;
-    }
+    cell_free_grid(c);
   } else if (c->grid.construction_level == below_construction_level) {
     error("Somehow ended up below grid construction level!");
   }

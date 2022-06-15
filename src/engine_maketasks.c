@@ -2457,6 +2457,13 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_grid_construction) {
         engine_addlink(e, &ci->grid.construction, t);
+#ifdef SHADOWSWIFT_BVH
+        /* Now that the grid construction is on the right level we can also add
+         * the bvh task (TODO Move this to grid hierarchical tasks?) */
+        atomic_inc(&ci->nr_tasks);
+        ci->grid.build_bvh = scheduler_addtask(
+            sched, task_type_bvh, task_subtype_none, 0, 0, ci, NULL);
+#endif
       } else if (t_subtype == task_subtype_flux) {
         error("Flux exchange tasks should not yet have been constructed!");
       }
@@ -4740,7 +4747,6 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
   struct task *t_flux = NULL;
   struct task *t_limiter = NULL;
-  /* TODO add limiter dependencies */
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -4756,6 +4762,14 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Escape early */
     if (t_type == task_type_none) continue;
 
+#ifdef SHADOWSWIFT_BVH
+    /* BVH construction interaction? */
+    if (t_type == task_type_bvh) {
+      /* Set unlocks */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+    }
+#endif
+
     /* Grid construction interaction? */
     if (t_subtype == task_subtype_grid_construction) {
 
@@ -4766,6 +4780,10 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
         /* Grid construction task unlocks the construction ghost*/
         scheduler_addunlock(sched, t, ci->grid.super->grid.ghost);
+#ifdef SHADOWSWIFT_BVH
+        /* Grid construction of ci needs ci's BVH */
+        scheduler_addunlock(sched, ci->grid.build_bvh, t);
+#endif
       }
 
       /* Self task? */
