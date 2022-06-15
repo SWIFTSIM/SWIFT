@@ -5,6 +5,8 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_BVH_H
 #define SWIFTSIM_SHADOWSWIFT_BVH_H
 
+#include <stdlib.h>
+
 typedef struct BBox {
   double anchor[3];
   double opposite[3];

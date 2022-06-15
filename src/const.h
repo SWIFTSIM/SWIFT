@@ -96,7 +96,7 @@
 /* Option to enable the hilbert order insertion during the grid construction */
 #define SHADOWSWIFT_HILBERT_ORDERING
 /* Option to enable the bvh acceleration structure for neighbour searching */
-//#define SHADOWSWIFT_BVH
+#define SHADOWSWIFT_BVH
 /* This option disables cell movement */
 //#define SHADOWSWIFT_FIX_PARTICLES
 /* This option enables cell steering, i.e. trying to keep the cells regular by
