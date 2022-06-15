@@ -161,21 +161,21 @@ void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  /* Allocate the first level of progeny to avoid down time waiting on locks
-   * (unused ones will be freed later) */
-  for (int ind = 0; ind < s->nr_local_cells_with_particles; ind++) {
-    struct cell *c = &s->cells_top[s->local_cells_with_particles_top[ind]];
+  /* /\* Allocate the first level of progeny to avoid down time waiting on locks */
+  /*  * (unused ones will be freed later) *\/ */
+  /* for (int ind = 0; ind < s->nr_local_cells_with_particles; ind++) { */
+  /*   struct cell *c = &s->cells_top[s->local_cells_with_particles_top[ind]]; */
 
-    /* Only preallocate progeny for cells that will require splitting. */
-    if ((s->with_self_gravity && c->grav.count > space_splitsize) ||
-        (!s->with_self_gravity &&
-         (c->hydro.count > space_splitsize ||
-          c->stars.count > space_splitsize))){
+  /*   /\* Only preallocate progeny for cells that will require splitting. *\/ */
+  /*   if ((s->with_self_gravity && c->grav.count > space_splitsize) || */
+  /*       (!s->with_self_gravity && */
+  /*        (c->hydro.count > space_splitsize || */
+  /*         c->stars.count > space_splitsize))){ */
       
-      space_getcells(s, 8, c->progeny);
+  /*     space_getcells(s, 8, c->progeny); */
       
-    }
-  }
+  /*   } */
+  /* } */
 
   /* Sort particles ready for the cell splitting. */
 #ifdef WITH_ZOOM_REGION

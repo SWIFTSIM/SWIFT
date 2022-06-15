@@ -268,7 +268,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
 
     /* Create the cell's progeny. */
     /* NOTE: Depth 0 progeny are already allocated. */
-    if (c->depth > 0) space_getcells(s, 8, c->progeny);
+    space_getcells(s, 8, c->progeny);
     for (int k = 0; k < 8; k++) {
 
       /* Lets work out whese this progeny should go based on the hilbert key
