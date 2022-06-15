@@ -346,6 +346,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
   pj->weighted_neighbour_wcount += pi->mass * r2 * wj_dx * rho_inv_i * r_inv;
+    
+  float volume_i = pi->mass * rho_inv_i;
+  float volume_j = pj->mass * rho_inv_j;  
+  #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
+      if(pi->last_corrected_rho){
+        volume_i = pi->mass / (expf(-1000.f * pi->last_S_tilde * pi->last_S_tilde) * pi->rho + (1.f - expf(-1000.f * pi->last_S_tilde * pi->last_S_tilde)) * pi->last_corrected_rho);
+      }
+      if(pj->last_corrected_rho){
+        volume_j = pj->mass / (expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde) * pj->rho + (1.f - expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde)) * pj->last_corrected_rho);
+      }
+  #endif      
 
 #ifdef PLANETARY_IMBALANCE
   /* Compute kernel averages */
@@ -381,23 +392,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     
   pi->sum_s_f_within_H += sqrtf(wi) * fabs(sj) * expf(-1000.f * sj * sj);
   pj->sum_s_f_within_H += sqrtf(wj) * fabs(si) * expf(-1000.f * si * si);
+    
+  pi->sum_r_w_V[0] += -dx[0] * wi * volume_j;
+  pi->sum_r_w_V[1] += -dx[1] * wi * volume_j;
+  pi->sum_r_w_V[2] += -dx[2] * wi * volume_j;
+    
+  pj->sum_r_w_V[0] += dx[0] * wj * volume_i;
+  pj->sum_r_w_V[1] += dx[1] * wj * volume_i;
+  pj->sum_r_w_V[2] += dx[2] * wj * volume_i;   
 #endif
 
 
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-  float volume_i = pi->mass * rho_inv_i;
-  float volume_j = pj->mass * rho_inv_j;  
-  #ifdef PLANETARY_MATRIX_INVERSION
-  #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
-      if(pi->last_corrected_rho){
-        volume_i = pi->mass / (expf(-1000.f * pi->last_S_tilde * pi->last_S_tilde) * pi->rho + (1.f - expf(-1000.f * pi->last_S_tilde * pi->last_S_tilde)) * pi->last_corrected_rho);
-      }
-      if(pj->last_corrected_rho){
-        volume_j = pj->mass / (expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde) * pj->rho + (1.f - expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde)) * pj->last_corrected_rho);
-      }
-  #endif  
-  #endif  
-
+#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC 
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -482,6 +488,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float rho_inv_j = 1.f / pj->rho;
   pi->weighted_wcount += pj->mass * r2 * wi_dx * r_inv;
   pi->weighted_neighbour_wcount += pj->mass * r2 * wi_dx * rho_inv_j * r_inv;
+    
+  float volume_j = pj->mass * rho_inv_j;  
+  #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
+      if(pj->last_corrected_rho){
+        volume_j = pj->mass / (expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde) * pj->rho + (1.f - expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde)) * pj->last_corrected_rho);
+      }
+  #endif    
 
 #ifdef PLANETARY_IMBALANCE
   /* Compute kernel averages */
@@ -503,19 +516,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     
   pi->sum_f_within_H += sqrtf(wi) * expf(-1000.f * sj * sj);
   pi->sum_s_f_within_H += sqrtf(wi) * fabs(sj) * expf(-1000.f * sj * sj);
+    
+  pi->sum_r_w_V[0] += -dx[0] * wi * volume_j;
+  pi->sum_r_w_V[1] += -dx[1] * wi * volume_j;
+  pi->sum_r_w_V[2] += -dx[2] * wi * volume_j;   
 #endif
 
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-  float volume_j = pj->mass * rho_inv_j;  
-  #ifdef PLANETARY_MATRIX_INVERSION  
-  #if defined PLANETARY_IMBALANCE || defined PLANETARY_SMOOTHING_CORRECTION
-      if(pj->last_corrected_rho){
-        volume_j = pj->mass / (expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde) * pj->rho + (1.f - expf(-1000.f * pj->last_S_tilde * pj->last_S_tilde)) * pj->last_corrected_rho);
-      }
-  #endif  
-  #endif  
-
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -633,7 +641,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
 #ifdef PLANETARY_MATRIX_INVERSION
-  if (!pi->is_h_max && !pj->is_h_max) {
+  if (!pi->is_h_max && !pj->is_h_max && !pi->is_vac_boundary && !pj->is_vac_boundary) {
     for (i = 0; i < 3; ++i) {
        /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
       Gi[i] =
@@ -858,7 +866,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 #endif    
     
 float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-#ifdef PLANETARY_MATRIX_INVERSION
+#ifdef PLANETARY_QUAD_VISC
   Q_kernel_gradient_i[0] = kernel_gradient_i[0];
   Q_kernel_gradient_i[1] = kernel_gradient_i[1];
   Q_kernel_gradient_i[2] = kernel_gradient_i[2];
@@ -1005,7 +1013,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
 #ifdef PLANETARY_MATRIX_INVERSION
-  if (!pi->is_h_max && !pj->is_h_max) {
+  if (!pi->is_h_max && !pj->is_h_max && !pi->is_vac_boundary && !pj->is_vac_boundary) {
     for (i = 0; i < 3; ++i) {
        /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
       Gi[i] =
@@ -1230,7 +1238,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 #endif    
     
 float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
-#ifdef PLANETARY_MATRIX_INVERSION
+#ifdef PLANETARY_QUAD_VISC
   Q_kernel_gradient_i[0] = kernel_gradient_i[0];
   Q_kernel_gradient_i[1] = kernel_gradient_i[1];
   Q_kernel_gradient_i[2] = kernel_gradient_i[2];

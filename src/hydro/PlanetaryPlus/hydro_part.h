@@ -338,6 +338,11 @@ struct part {
   float sum_s_f_within_H;
     
   float last_S_tilde;
+  
+  float sum_r_w_V[3];
+    
+  float is_vac_boundary;  
+  
 #endif
     
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC

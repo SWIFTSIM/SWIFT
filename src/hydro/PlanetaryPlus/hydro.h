@@ -777,6 +777,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     
   p->sum_f_within_H = 0.f;
   p->sum_s_f_within_H = 0.f;
+  
+  p->sum_r_w_V[0] = 0.f;
+  p->sum_r_w_V[1] = 0.f;
+  p->sum_r_w_V[2] = 0.f; 
 #endif
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
@@ -960,6 +964,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
+   
+      
+ 
   float s = p->smoothing_error;
   p->P_tilde_numerator += sqrtf(kernel_root) * p->P * expf(-1000.f * s * s);
   p->P_tilde_denominator += sqrtf(kernel_root) * expf(-1000.f * s * s);
@@ -968,20 +975,43 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
   p->sum_f_within_H += sqrtf(kernel_root) * expf(-1000.f * s * s);
   p->sum_s_f_within_H += sqrtf(kernel_root) * fabs(s) * expf(-1000.f * s * s);
-  float mean_s_of_good_particles = p->sum_s_f_within_H / p->sum_f_within_H;
     
-  float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
     
-  float rho_tilde = update_rho(p, P_tilde);
-
-  float S_tilde = max(0.f, (p->rho / rho_tilde) * (expf(p->S_numerator / p->S_denominator) - mean_s_of_good_particles));
-    
-  /* Turn S_tilde to 0 if h == h_max */
-  if (p->is_h_max) {
+   float S_tilde;  
+   float P_tilde; 
+  /* Turn S_tilde to 0 if dividing by 0 or if  h == h_max */
+  if (p->is_h_max || p->P_tilde_denominator == 0.f || p->S_denominator == 0.f || p->sum_s_f_within_H == 0.f) {
     S_tilde = 0.f;
+    P_tilde = p->P;//this shouldn't matter  
+  }else{
+      float mean_s_of_good_particles = p->sum_s_f_within_H / p->sum_f_within_H;
+    
+      P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
+    
+      float rho_tilde = update_rho(p, P_tilde);
+
+      S_tilde = max(0.f, (p->rho / rho_tilde) * (expf(p->S_numerator / p->S_denominator) - mean_s_of_good_particles));
   }
 
+
   p->I = S_tilde; //This is just to make output same as Imbalance for comparison
+    
+
+  p->sum_r_w_V[0] *= h_inv_dim; //delete these if everything works
+  p->sum_r_w_V[1] *= h_inv_dim;
+  p->sum_r_w_V[2] *= h_inv_dim;
+ 
+    
+  float centre_of_volume = sqrtf(p->sum_r_w_V[0] * p->sum_r_w_V[0] + p->sum_r_w_V[1] * p->sum_r_w_V[1] + p->sum_r_w_V[2] * p->sum_r_w_V[2]) / (p->h);
+  if (centre_of_volume > 0.1f){
+      p->is_vac_boundary = 1.f;
+  }else{
+      p->is_vac_boundary = 0.f;
+  }
+      
+    
+
+  p->smoothing_error = centre_of_volume;
     
   if (p->P_tilde_denominator > 0.f && p->P_tilde_numerator > 0.f && S_tilde > 0.f) {
       
@@ -1012,8 +1042,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float T =
         gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
   p->P = P;
-  p->T = T;
-    
+  p->T = T;  
     
   p->last_corrected_rho = p->rho;
   p->last_S_tilde = S_tilde;
