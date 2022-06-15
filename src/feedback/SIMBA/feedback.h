@@ -105,6 +105,11 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   sp->feedback_data.to_collect.ngb_mass = 0.f;
   sp->feedback_data.to_collect.ngb_rho = 0.f;
   sp->feedback_data.to_collect.ngb_Z = 0.f;
+  sp->feedback_data.to_collect.dm_ngb_N = 0;
+  for (int i = 0; i < 3; i++) {
+    sp->feedback_data.to_collect.dm_vel_mean[i] = 0.f;
+    sp->feedback_data.to_collect.dm_vel_disp2[i] = 0.f;
+  }
 
   /* Reset all ray structs carried by this star particle */
   ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
@@ -172,6 +177,9 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
 
   /* Zero the SNII feedback properties */
   sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj = 0;
+
+  /* Zero the DM vel. disp. */
+  sp->feedback_data.to_distribute.dm_vel_disp_1d = 0.f;
 }
 
 /**

@@ -74,10 +74,10 @@ struct feedback_spart_data {
       float dm_vel_mean[3];
 
       /*! Number of dark matter neighbours in the (gas) neighbourhood */
-      int dm_num_ngbs;
+      int dm_ngb_N;
 
       /*! DM velocity dispersion in each direction */
-      float dm_vel_disp[3];
+      float dm_vel_disp2[3];
       
     } to_collect;
 
@@ -129,6 +129,9 @@ struct feedback_spart_data {
 
       /*! Change in energy from SNII feedback energy injection */
       float SNII_delta_u;
+
+      /*! DM 1D vel. disp. from Vogelsberger et al (2013) equation 14. */
+      float dm_vel_disp_1d;
 
     } to_distribute;
   };

@@ -42,7 +42,7 @@ runner_iact_nonsym_feedback_dm_vel_mean(struct spart *si,
     si->feedback_data.to_collect.dm_vel_mean[vjd] += gj->v_full[vjd];
   }
 
-  si->feedback_data.to_collect.dm_num_ngbs++;
+  si->feedback_data.to_collect.dm_ngb_N++;
 }
 
 /**
@@ -61,9 +61,9 @@ runner_iact_nonsym_feedback_dm_vel_disp(struct spart *si,
   /* TODO: dm_vel_disp[3] is unnecessary to have in the structure, but leaving for now. */
   for (int vjd = 0; vjd < 3; vjd++) {
     /* The real mean is divided by the total neighbours */
-    si->feedback_data.to_collect.dm_vel_mean[vjd] /= si->feedback_data.to_collect.dm_num_ngbs;
+    si->feedback_data.to_collect.dm_vel_mean[vjd] /= si->feedback_data.to_collect.dm_ngb_N;
     float vj_diff = si->feedback_data.to_collect.dm_vel_mean[vjd] - gj->v_full[vjd];
-    si->feedback_data.to_collect.dm_vel_disp[vjd] += vj_diff * vj_diff;
+    si->feedback_data.to_collect.dm_vel_disp2[vjd] += vj_diff * vj_diff;
   }
 }
 
@@ -457,18 +457,7 @@ runner_iact_nonsym_feedback_apply(
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
-      float dm_vel_disp_1d = 0.0;
-      float dm_vel_disp[3] = {0.0, 0.0, 0.0};
-      for (int i = 0; i < 3; i++) {
-        dm_vel_disp[i] = si->feedback_data.to_collect.dm_vel_disp[i];
-        /* The final 1D vel. disp. will be the average of these three components */
-        dm_vel_disp[i] /= si->feedback_data.to_collect.dm_num_ngbs;
-        dm_vel_disp_1d += dm_vel_disp[i];
-      }
-
-      /* The average of all of the vel. disp. components */
-      dm_vel_disp_1d /= 3.0;
-      dm_vel_disp_1d = sqrt(dm_vel_disp_1d);
+      /* si->feedback_data.to_distribute.dm_vel_disp_1d is the 1D velocity dispersion */
 
       /* Kick particle with SNII energy */
       const double v_kick = sqrtf(2. * kinetic_frac * delta_u);
