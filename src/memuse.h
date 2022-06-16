@@ -168,10 +168,10 @@ __attribute__((always_inline)) inline void *swift_realloc(const char *label,
  */
 __attribute__((always_inline)) inline void swift_free(const char *label,
                                                       void *ptr) {
-  free(ptr);
 #ifdef SWIFT_MEMUSE_REPORTS
   memuse_log_allocation(label, ptr, 0, 0);
 #endif
+  free(ptr);
   return;
 }
 
