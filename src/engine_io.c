@@ -127,17 +127,21 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 
 #ifdef SHADOWSWIFT
 void cell_write_grid(const struct cell *c, FILE *dfile,
-                         FILE *vfile, size_t *offset) {
-#ifdef SHADOWSWIFT_OUTPUT_GRIDS
+                         FILE *vfile, size_t *offset, int nodeID) {
   /* Recurse? */
   if (c->grid.construction_level == above_construction_level) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        cell_write_grid(c->progeny[k], dfile, vfile, offset);
+        cell_write_grid(c->progeny[k], dfile, vfile, offset, nodeID);
       }
     }
     return;
   }
+
+#ifdef WITH_MPI
+  /* Anything to do here? */
+  if (c->nodeID != nodeID) return;
+#endif
 
   /* Have delaunay? */
   if (c->grid.delaunay != NULL) {
@@ -148,7 +152,6 @@ void cell_write_grid(const struct cell *c, FILE *dfile,
   if (c->grid.voronoi != NULL) {
     voronoi_write_grid(c->grid.voronoi, vfile);
   }
-#endif
 }
 #endif /* SHADOWSWIFT */
 
@@ -228,7 +231,20 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 #endif
 
-#ifdef SHADOWSWIFT
+#if defined(SHADOWSWIFT) && defined(SHADOWSWIFT_OUTPUT_GRIDS)
+#ifdef WITH_MPI
+  char fname[50];
+  sprintf(fname, "voronoi_N%02d_%04d.txt", e->nodeID, e->snapshot_output_count - 1);
+  FILE *vfile = fopen(fname, "w");
+  sprintf(fname, "delaunay_%02d_%04d.txt", e->nodeID, e->snapshot_output_count - 1);
+  FILE *file = fopen(fname, "w");
+  size_t offset = 0;
+  struct space *s = e->s;
+  for (int i = 0; i < s->nr_cells; ++i) {
+    cell_write_grid(&s->cells_top[i], file, vfile, &offset, e->nodeID);
+  }
+  fclose(vfile);
+#else
   char fname[50];
   sprintf(fname, "voronoi%04d.txt", e->snapshot_output_count - 1);
   FILE *vfile = fopen(fname, "w");
@@ -237,9 +253,10 @@ void engine_dump_snapshot(struct engine *e) {
   size_t offset = 0;
   struct space *s = e->s;
   for (int i = 0; i < s->nr_cells; ++i) {
-    cell_write_grid(&s->cells_top[i], file, vfile, &offset);
+    cell_write_grid(&s->cells_top[i], file, vfile, &offset, e->nodeID);
   }
   fclose(vfile);
+#endif
 #endif
 
   /* Flag that we dumped a snapshot */
