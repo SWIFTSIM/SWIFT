@@ -1108,8 +1108,8 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
       if (t->type == task_type_self) {
         /* Find first non-empty child. */
         int first_child = 0;
-        while (ci->progeny[first_child] == NULL &&
-               ci->progeny[first_child]->hydro.count)
+        while (ci->progeny[first_child] == NULL ||
+               ci->progeny[first_child]->hydro.count == 0)
           first_child++;
 
         /* Assign first child to task */
