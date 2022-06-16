@@ -66,7 +66,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
 
-  pc->grid.split = c->grid.split;
+  pc->grid.self_complete = c->grid.self_complete;
 
   /* Copy the Multipole related information */
   if (with_gravity) {
@@ -259,7 +259,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
 
-  c->grid.split = pc->grid.split;
+  c->grid.self_complete = pc->grid.self_complete;
 
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;

@@ -729,7 +729,7 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
   }
 
   /* Recurse? */
-  if (ci->grid.split)
+  if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_grid(e, ci->progeny[k], cj, t_xv, t_gradient,
@@ -1432,7 +1432,7 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
   }
 
   /* Recurse? */
-  if (c->grid.split)
+  if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_gradient, t_limiter,

@@ -212,8 +212,8 @@ struct pcell {
 
   /*! Grid variables */
   struct {
-    /*! split flag */
-    int split;
+    /*! self complete flag */
+    int self_complete;
   } grid;
 
   /*! Maximal depth in that part of the tree */
