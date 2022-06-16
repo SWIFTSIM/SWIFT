@@ -1240,20 +1240,173 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   }
 }
 
+/**
+ * @brief Sets the grid.complete flag on this cell and its sub-cells.
+ *
+ * This cell satisfies the completeness criterion, i.e. the voronoi grid of this
+ * cell can only depend on particles from directly neighbouring cells on the
+ * same level. This is guaranteed if when we would split that cell in
+ * thirds along each dimension (i.e. in 27 smaller cells), every small cube
+ * would contain at least one particle.
+ *
+ * The same must bne true for all directly neighbouring cells on the same level,
+ * but this is checked later.
+ * */
+void cell_grid_set_self_completeness(struct cell *c) {
+  if (c == NULL) return;
+
+  if (c->split) {
+    int all_complete = 1;
+
+    /* recurse */
+    for (int i = 0; i < 8; i++) {
+      if (c->progeny[i] != NULL) {
+        cell_grid_set_self_completeness(c->progeny[i]);
+        /* As long as all progeny is complete, this cell can safely be split for
+         * the grid construction (when not considering neighbouring cells) */
+        all_complete &= c->progeny[i]->grid.self_complete;
+      }
+    }
+
+    /* If all sub-cells are complete, this cell is also complete. */
+    if (all_complete) {
+      c->grid.self_complete = 1;
+      /* We set complete to the same value as self complete for now */
+      c->grid.complete = c->grid.self_complete;
+      /* We are done here */
+      return;
+    }
+  }
+
+  /* If this cell is not split, we need to check if this cell is complete by
+   * looping over all the particles. */
+
+  /* criterion = 0b111_111_111_111_111_111_111_111_111*/
+#ifdef HYDRO_DIMENSION_1D
+  const int criterion = (1 << 3) - 1;
+#elif defined(HYDRO_DIMENSION_2D)
+  const int criterion = (1 << 9) - 1;
+#elif defined(HYDRO_DIMENSION_3D)
+  const int criterion = (1 << 27) - 1;
+#else
+#error "Unknown hydro dimension"
+#endif
+  int flags = 0;
+  for (int i = 0; flags != criterion && i < c->hydro.count; i++) {
+    struct part *p = &c->hydro.parts[i];
+    int x_bin = (int)(3. * (p->x[0] - c->loc[0]) / c->width[0]);
+    int y_bin = (int)(3. * (p->x[1] - c->loc[1]) / c->width[1]);
+    int z_bin = (int)(3. * (p->x[2] - c->loc[2]) / c->width[2]);
+    flags |= 1 << (x_bin + 3 * y_bin + 9 * z_bin);
+  }
+
+  c->grid.self_complete = (flags == criterion);
+
+  /* We set complete to the same value as self complete for now */
+  c->grid.complete = c->grid.self_complete;
+}
+
+void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
+                                            void *extra_data) {
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* A top level cell can be empty in 2D simulations, just skip it */
+    if (c->hydro.count == 0) {
+      continue;
+#ifdef SWIFT_DEBUG_CHECKS
+      assert(hydro_dimension == 2);
+#endif
+    }
+
+    /* Set the splittable attribute for the moving mesh */
+    cell_grid_set_self_completeness(c);
+  }
+}
+
+void cell_grid_set_pair_completeness(struct cell *restrict ci,
+                                     struct cell *restrict cj, int sid,
+                                     int ci_local, int cj_local) {
+  /* Self or pair? */
+  if (cj == NULL) {
+    /* Self: Here we just need to recurse to hit all the pairs of sub-cells */
+    if (ci->split) {
+      /* recurse */
+      for (int k = 0; k < 8; k++) {
+        if (ci->progeny[k] != NULL) {
+          /* Recurse for self */
+          cell_grid_set_pair_completeness(ci->progeny[k], NULL, 0, 1, 0);
+
+          /* Recurse for pairs of sub-cells */
+          for (int l = k + 1; l < 8; l++) {
+            if (ci->progeny[l] != NULL) {
+              /* Get sid for pair */
+              int sid_sub = sub_sid_flag[k][l];
+              cell_grid_set_pair_completeness(ci->progeny[k], ci->progeny[l],
+                                              sid_sub, 1, 1);
+            }
+          }
+        }
+      }
+    }
+  } else {
+    /* pair: Here we need to recurse further AND check whether one of the
+     * neighbouring cells invalidates the completeness of the other. */
+    struct cell_split_pair pairs = cell_split_pairs[sid];
+    if (ci->split && cj->split) {
+      /* recurse */
+      for (int i = 0; i < pairs.count; i++) {
+        int k = pairs.pairs[i].pid;
+        int l = pairs.pairs[i].pjd;
+        int sid_sub = pairs.pairs[i].sid;
+        if (ci->progeny[k] != NULL && cj->progeny[l] != NULL)
+          cell_grid_set_pair_completeness(ci->progeny[k], cj->progeny[l],
+                                          sid_sub, ci_local, cj_local);
+      }
+    } else if (!ci->split && cj->split) {
+      /* Set the completeness for the sub-cells of cj for this sid to 0 (they
+       * have no neighbouring cell on the same level for this SID) */
+      for (int i = 0; i < pairs.count; i++) {
+        int l = pairs.pairs[i].pjd;
+        if (cj->progeny[l] != NULL) cj->progeny[l]->grid.complete = 0;
+      }
+    } else if (!cj->split && ci->split) {
+      /* Set the completeness for the sub-cells of ci for this sid to 0 (they
+       * have no neighbouring cell on the same level for this SID) */
+      for (int i = 0; i < pairs.count; i++) {
+        int k = pairs.pairs[i].pid;
+        if (ci->progeny[k] != NULL) ci->progeny[k]->grid.complete = 0;
+      }
+    }
+
+    /* Update these cells' completeness flags */
+#ifdef SWIFT_DEBUG_CHECKS
+    assert(ci_local || cj_local);
+#endif
+    if (ci_local) ci->grid.complete &= cj->grid.self_complete;
+    if (cj_local) cj->grid.complete &= ci->grid.self_complete;
+  }
+}
+
 void cell_set_grid_construction_level(
     struct cell *c, enum construction_level construction_level) {
 
-  const int nr_parts = c->hydro.count;
   enum construction_level next_construction_level = construction_level;
-  if (construction_level == 0 &&
-      (c->grid.unsplittable_flag || nr_parts < space_grid_split_threshold)) {
-    /* This is the first time we encounter a cell with the unsplittable flag
-     * set, meaning that it or one of its direct neighbours is unsplittable, or
-     * which has too few particles to split further. This is the construction
-     * level for this cell.
-     */
-    construction_level = on_construction_level;
-    next_construction_level = below_construction_level;
+  if (construction_level == above_construction_level) {
+    /* Check if we can split this cell (i.e. all sub-cells are complete) */
+    int splittable = c->hydro.count > space_grid_split_threshold;
+    for (int k = 0; splittable && k < 8; k++) {
+      if (c->progeny[k] != NULL) splittable &= c->progeny[k]->grid.complete;
+    }
+
+    if (!splittable) {
+      /* This is the first time we encounter an unsplittable cell, meaning that
+       * it has too few particles to be split further or one of its progenitors
+       * is not complete.
+       */
+      construction_level = on_construction_level;
+      next_construction_level = below_construction_level;
+    }
   }
 
   /* Set the construction level */
@@ -1266,54 +1419,6 @@ void cell_set_grid_construction_level(
         cell_set_grid_construction_level(c->progeny[k],
                                          next_construction_level);
     }
-}
-
-void cell_set_neighbour_flags(struct cell *restrict ci,
-                              struct cell *restrict cj, int sid, int ci_local,
-                              int cj_local) {
-  /* Self or pair? */
-  if (cj == NULL) { /* Self */
-    if (ci->grid.split) {
-      /* recurse */
-      for (int k = 0; k < 8; k++) {
-        if (ci->progeny[k] != NULL) {
-          /* Recurse for self */
-          cell_set_neighbour_flags(ci->progeny[k], NULL, 0, 1, 0);
-
-          /* Recurse for pairs of sub-cells */
-          for (int l = k + 1; l < 8; l++) {
-            if (ci->progeny[l] != NULL) {
-              /* Get sid for pair */
-              int sid_sub = sub_sid_flag[k][l];
-              cell_set_neighbour_flags(ci->progeny[k], ci->progeny[l], sid_sub,
-                                       1, 1);
-            }
-          }
-        }
-      }
-    } else {
-      ci->grid.unsplittable_flag |= 1;
-    }
-  } else { /* pair */
-    if (ci->grid.split && cj->grid.split) {
-      /* recurse */
-      struct cell_split_pair pairs = cell_split_pairs[sid];
-      for (int i = 0; i < pairs.count; i++) {
-        int k = pairs.pairs[i].pid;
-        int l = pairs.pairs[i].pjd;
-        int sid_sub = pairs.pairs[i].sid;
-        if (ci->progeny[k] != NULL && cj->progeny[l] != NULL)
-          cell_set_neighbour_flags(ci->progeny[k], cj->progeny[l], sid_sub,
-                                   ci_local, cj_local);
-      }
-    } else {
-#ifdef SWIFT_DEBUG_CHECKS
-      assert(ci_local || cj_local);
-#endif
-      if (ci_local) ci->grid.unsplittable_flag |= 1;
-      if (cj_local) cj->grid.unsplittable_flag |= 1;
-    }
-  }
 }
 
 void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
@@ -1344,10 +1449,12 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
     /* Anything to do here? */
     if (ci->hydro.count == 0) continue;
 
-    /* Set neighbour flags for sub cells */
-    if (ci->nodeID == nodeID) cell_set_neighbour_flags(ci, NULL, 0, 1, 0);
+    /* Set update completeness for all the pairs of sub cells of this cell */
+    const int ci_local = ci->nodeID == nodeID;
+    if (ci_local) cell_grid_set_pair_completeness(ci, NULL, 0, 1, 0);
 
-    /* Now loop over all the neighbours of this cell */
+    /* Now loop over all the neighbours of this cell to also update the
+     * completeness for pairs with this cell and all pairs of sub-cells */
     for (int ii = -1; ii < 2; ii++) {
       int iii = i + ii;
       if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
@@ -1366,121 +1473,31 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
           struct cell *cj = &cells[cjd];
 
           /* Treat pairs only once. */
-          const int ci_local = ci->nodeID == nodeID;
           const int cj_local = cj->nodeID == nodeID;
           if (cid >= cjd || cj->hydro.count == 0 || (!ci_local && !cj_local))
             continue;
 
-          /* Set neighbour flags for this cell and its neighbouring cell */
+          /* Update the completeness flag for this pair of cells and all pair of
+           * sub-cells */
           int sid = (kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1));
           const int flip = runner_flip[sid];
           sid = sortlistID[sid];
           if (flip) {
-            cell_set_neighbour_flags(cj, ci, sid, ci_local, cj_local);
+            cell_grid_set_pair_completeness(cj, ci, sid, ci_local, cj_local);
           } else {
-            cell_set_neighbour_flags(ci, cj, sid, ci_local, cj_local);
+            cell_grid_set_pair_completeness(ci, cj, sid, ci_local, cj_local);
           }
         }
       }
     } /* Now loop over all the neighbours of this cell */
-  }   /* Loop through the elements, which are just byte offsets from NULL. */
 
-  /* Now loop again through the cells to set the construction level */
-  for (int ind = 0; ind < num_elements; ind++) {
-
-    /* Get the cell index. */
-    const int cid = (size_t)(map_data) + ind;
-
-    /* Get the cell */
-    struct cell *c = &cells[cid];
-
-    /* Anything to do here? */
-    if (c->hydro.count == 0) continue;
-
-    /* Set construction level-pointer for the moving mesh */
-    if (c->nodeID == nodeID)
-      cell_set_grid_construction_level(c, above_construction_level);
-  }
-}
-
-/**
- * @brief Sets the grid.split flag.
- *
- * This cell satisfies the completeness criterion, i.e. the voronoi grid of this
- * cell can only depend on particles from directly neighbouring cells on the
- * same level. This is guaranteed if when we would split that cell in
- * thirds along each dimension (i.e. in 27 smaller cells), every small cube
- * would contain at least one particle.
- * The grid.split flag indicates that all the sub-cells of this cells
- * satisfy the completeness criterion, meaning that the grid construction task
- * could safely be split.
- *
- * @return Whether this cell satisfies the above completeness criterion.
- * */
-int cell_set_splittable_grid(struct cell *c) {
-  if (c == NULL) return 1;
-
-  if (c->split) {
-    int all_complete = 1;
-    /* recurse */
-    for (int i = 0; all_complete && i < 8; i++) {
-      all_complete &= cell_set_splittable_grid(c->progeny[i]);
+    /* This cell's completeness flags are now set all the way down the cell
+     * hierarchy. We can now set the construction level. */
+    if (ci_local) {
+      cell_set_grid_construction_level(ci, above_construction_level);
     }
 
-    /* If the criterion is valid for all sub-cells, it is valid for this cell
-     * itself and the cell can be safely split at least one level down. */
-    if (all_complete) {
-      c->grid.split = 1;
-      return 1;
-    }
-  }
-
-  /* Not split or not all progeny complete */
-  c->grid.split = 0;
-
-  /* Check if this cell is at least complete by looping over all the particles*/
-  int flags = 0;
-  /* criterion = 0b111_111_111_111_111_111_111_111_111*/
-#ifdef HYDRO_DIMENSION_1D
-  const int criterion = (1 << 3) - 1;
-#elif defined(HYDRO_DIMENSION_2D)
-  const int criterion = (1 << 9) - 1;
-#elif defined(HYDRO_DIMENSION_3D)
-  const int criterion = (1 << 27) - 1;
-#else
-#error "Unknown hydro dimension"
-#endif
-  for (int i = 0; flags != criterion && i < c->hydro.count; i++) {
-    struct part *p = &c->hydro.parts[i];
-    int x_bin = (int)(3. * (p->x[0] - c->loc[0]) / c->width[0]);
-    int y_bin = (int)(3. * (p->x[1] - c->loc[1]) / c->width[1]);
-    int z_bin = (int)(3. * (p->x[2] - c->loc[2]) / c->width[2]);
-    flags |= 1 << (x_bin + 3 * y_bin + 9 * z_bin);
-  }
-
-  if (flags == criterion) {
-    return 1;
-  }
-
-  return 0;
-}
-
-void cell_set_split_grid_mapper(void *map_data, int num_elements,
-                                void *extra_data) {
-  for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &((struct cell *)map_data)[ind];
-
-    /* A top level cell can be empty in 2D simulations, just skip it */
-    if (c->hydro.count == 0) {
-      continue;
-#ifdef SWIFT_DEBUG_CHECKS
-      assert(hydro_dimension == 2);
-#endif
-    }
-
-    /* Set the splittable attribute for the moving mesh */
-    cell_set_splittable_grid(c);
-  }
+  } /* Loop through the elements, which are just byte offsets from NULL. */
 }
 
 /**

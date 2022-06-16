@@ -1265,7 +1265,8 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 
   /* Set the split flag for the moving mesh */
   if (e->policy & engine_policy_grid) {
-    cell_set_split_grid_mapper(e->s->cells_top, e->s->nr_cells, NULL);
+    cell_grid_set_self_completeness_mapper(e->s->cells_top, e->s->nr_cells,
+                                           NULL);
   }
 
   /* Report the number of cells and memory */

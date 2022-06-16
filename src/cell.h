@@ -613,7 +613,7 @@ void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
                                              void *extra_data);
-void cell_set_split_grid_mapper(void *map_data, int num_elements,
+void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
                                 void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);

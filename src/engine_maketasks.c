@@ -1740,7 +1740,7 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
     if (c->nodeID == e->nodeID) {
       if (c->grid.super != NULL)
         error("Somehow ended up below grid super level!");
-      if (!c->grid.split) {
+      if (!c->split) {
         error("Cell is above grid super level, but is not split!");
       }
     }
@@ -1785,7 +1785,7 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->nodeID == e->nodeID) {
       if (c->hydro.super != NULL) error("Somehow ended up below super level!");
-      if (!c->grid.split) {
+      if (!c->split) {
         error("Cell is above grid super level, but is not split!");
       }
     }

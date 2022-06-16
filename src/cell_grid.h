@@ -26,13 +26,13 @@ struct cell_grid {
    * this level. */
   struct cell *super;
 
-  /*! Flag that indicates whether this cell is unsplittable or has a directly
-   * neighbouring cell on the same level that is unsplittable. */
-  int unsplittable_flag;
+  /*! Whether this cell is complete (at least one particle in all 27 sub-cells
+   * if this cell is divided in thirds along each axis). */
+  int self_complete;
 
-  /*! Whether this cell can safely be split for grid construction (cell can be
-   * split if all of it's progeny is complete). */
-  int split;
+  /*! Whether this cell is itself complete and has directly neighbouring cell
+   * on the same level in all directions which are also complete. */
+  int complete;
 
   /*! Pointer to the voronoi struct of this cell (if any) */
   struct voronoi *voronoi;
@@ -41,7 +41,7 @@ struct cell_grid {
   struct delaunay *delaunay;
 
 #ifdef SHADOWSWIFT_BVH
-  /*! Pointer to the bvh strcut of this cell (if any) */
+  /*! Pointer to the bvh struct of this cell (if any) */
   struct BVH *bvh;
 #endif
 
