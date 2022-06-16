@@ -142,7 +142,7 @@ INLINE static void compute_SNII_feedback(
     const int ngb_gas_N, const float ngb_gas_mass, const double ngb_nH_cgs,
     const double ngb_Z, const struct feedback_props* feedback_props,
     const double min_dying_mass_Msun, const double max_dying_mass_Msun,
-    const integertime_t ti_begin) {
+    const integertime_t ti_begin, const struct cosmology* cosmo) {
 
   /* Are we sampling the delay function or using a fixed delay? */
   const int SNII_sampled_delay = feedback_props->SNII_sampled_delay;
@@ -374,7 +374,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   if (feedback_props->with_SNII_feedback) {
     compute_SNII_feedback(sp, us, age, dt, ngb_Number, ngb_gas_mass,
                           ngb_gas_phys_nH_cgs, ngb_gas_Z, feedback_props,
-                          min_dying_mass_Msun, max_dying_mass_Msun, ti_begin);
+                          min_dying_mass_Msun, max_dying_mass_Msun, 
+                          ti_begin, cosmo);
   }
 
   /* Integration interval is zero - this can happen if minimum and maximum
