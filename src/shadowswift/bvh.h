@@ -169,6 +169,12 @@ inline static void bvh_populate(struct BVH *bvh, const struct part *parts, int *
   }
 
   bvh_populate_rec(bvh, parts, coords, pid, count);
+
+  /* be clean */
+  free(coords[0]);
+  free(coords[1]);
+  free(coords[2]);
+  free(coords);
 }
 
 inline static int bvh_is_leaf(const struct BVH *bvh) {
