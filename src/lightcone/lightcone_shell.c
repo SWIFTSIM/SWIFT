@@ -480,14 +480,15 @@ static void count_elements_to_send_mapper(void *map_data, int num_elements,
       size_t index = i * (3 + nr_maps);
       const double theta = int_to_angle(update_data[index + 0].i);
       const double phi = int_to_angle(update_data[index + 1].i);
-      const double radius = update_data[index + 2].f;
+      /* Retrieve angular smoothing length for this particle */
+      const double smoothing_radius = update_data[index + 2].f;
+      /* Compute angular radius at which the projected kernel reaches zero */
+      const double search_radius = smoothing_radius * kernel_gamma;
 
       /* Determine which MPI ranks this contribution needs to go to */
       pixel_index_t first_pixel, last_pixel;
 
-      /* Compute search radius: the angle at which the kernel function reaches
-       * zero */
-      const double search_radius = radius * kernel_gamma;
+      /* Check whether this particle updates multiple pixels */
       if (search_radius < max_pixrad) {
 
         /* If the radius is small, we'll just assign the contribution to one
@@ -644,10 +645,13 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
     size_t index = i * (3 + part_type->nr_maps);
     const double theta = int_to_angle(update_data[index + 0].i);
     const double phi = int_to_angle(update_data[index + 1].i);
-    const double radius = update_data[index + 2].f;
+    /* Retrieve angular smoothing length for this particle */
+    const double smoothing_radius = update_data[index + 2].f;
+    /* Compute angular radius at which the projected kernel reaches zero */
+    const double search_radius = smoothing_radius * kernel_gamma;
     const union lightcone_map_buffer_entry *value = &update_data[index + 3];
 
-    if (radius < max_pixrad) {
+    if (search_radius < max_pixrad) {
 
       /*
         Small particles are added to the maps directly regardless of
@@ -688,7 +692,6 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
         pixel_index_t pix_min, pix_max;
         int nr_ranges;
         struct pixel_range *range;
-        const double search_radius = radius * kernel_gamma;
         healpix_query_disc_range(shell->nside, part_vec, search_radius,
                                  &pix_min, &pix_max, &nr_ranges, &range);
 
@@ -711,7 +714,8 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
             const double angle = dp < 1.0 ? acos(dp) : 0.0;
 
             /* Evaluate the kernel at this radius */
-            total_weight += projected_kernel_eval(kernel_table, angle / radius);
+            total_weight +=
+                projected_kernel_eval(kernel_table, angle / smoothing_radius);
           }
         }
 
@@ -739,7 +743,8 @@ void healpix_smoothing_mapper(void *map_data, int num_elements,
 
               /* Evaluate the kernel at this radius */
               const double weight =
-                  projected_kernel_eval(kernel_table, angle / radius) /
+                  projected_kernel_eval(kernel_table,
+                                        angle / smoothing_radius) /
                   total_weight;
 
               /* Find local index of the pixel to update */
