@@ -76,7 +76,7 @@ try:
 except:
     plot_viscosity = False
 
-# Bin te data
+# Bin the data
 r_bin_edge = np.arange(0.0, 0.5, 0.01)
 r_bin = 0.5 * (r_bin_edge[1:] + r_bin_edge[:-1])
 rho_bin, _, _ = stats.binned_statistic(r, rho, statistic="mean", bins=r_bin_edge)
