@@ -463,7 +463,7 @@ runner_iact_nonsym_feedback_apply(
       /* si->feedback_data.to_distribute.dm_vel_disp_1d is the 1D velocity dispersion */
 
       /* Kick particle with SNII energy */
-      const double v_kick = sqrtf(2. * kinetic_frac * delta_u);
+      const double v_kick = sqrtf(2.0 * kinetic_frac * delta_u / cosmo->a2_inv);
      
       /* compute direction of kick: a x v */ 
       double dir[3], norm=0.;

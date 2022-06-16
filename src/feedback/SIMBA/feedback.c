@@ -108,9 +108,8 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
  */
 double compute_kick_speed(struct spart* sp, const struct feedback_props* props, const struct unit_system* us) {
 
-  double v_kick = props->SNII_vkick_factor * sp->feedback_data.to_distribute.dm_vel_disp_1d;
-
-  return v_kick;
+  return props->SNII_vkick_factor * sp->feedback_data.to_distribute.dm_vel_disp_1d;
+;
 }
 
 /**
@@ -179,14 +178,15 @@ INLINE static void compute_SNII_feedback(
         dm_vel_disp_1d += dm_vel_disp2[i];
       }
       dm_vel_disp_1d /= 3.0;
-      sp->feedback_data.to_distribute.dm_vel_disp_1d = sqrt(dm_vel_disp_1d);
+      sp->feedback_data.to_distribute.dm_vel_disp_1d = sqrtf(dm_vel_disp_1d);
     }
 
     /* Properties of the model (all in internal units) */
     const double v_kick = compute_kick_speed(sp, feedback_props, us);
     //const double delta_T =
     //    eagle_feedback_temperature_change(sp, feedback_props);
-    const double u_kinetic = 0.5 * v_kick * v_kick;
+    /* physical u_kinetic */
+    const double u_kinetic = 0.5 * v_kick * v_kick * cosmo->a2_inv;
     const double E_SNe = feedback_props->E_SNII;
     const double f_E =
         eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
