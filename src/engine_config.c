@@ -194,11 +194,13 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Allow repartitioning to be changed between restarts. On restart this is
    * already allocated and freed on exit, so we need to copy over. */
+#ifdef WITH_MPI
   if (restart) {
     memcpy(e->reparttype, reparttype, sizeof(struct repartition));
   } else {
     e->reparttype = reparttype;
   }
+#endif
 
   if (restart && fof) {
     error(
