@@ -70,8 +70,13 @@ struct cell_rt {
     /*! Radiative transfer ghost out task */
     struct task *rt_out;
 
+    /*! Bit mask of sorts that need to be computed for this cell. 
+     * Needed to be able to skip sorting undrifted cells. */
+    uint16_t do_sort;
+
 #ifdef SWIFT_DEBUG_CHECKS
 
+    /* TODO: chekc whether I actually use this */
     /*! Last (integer) time the cell's sort arrays were updated. */
     integertime_t ti_sort;
 
@@ -94,6 +99,7 @@ struct cell_rt {
 
   /*! Minimum (integer) time step size in this cell for RT tasks. */
   integertime_t ti_rt_min_step_size;
+
 };
 
 #endif /* SWIFT_CELL_RT_H */

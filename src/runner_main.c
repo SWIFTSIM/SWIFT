@@ -419,7 +419,7 @@ void *runner_main(void *data) {
            * don't have rt_sort tasks. */
           runner_do_hydro_sort(
               r, ci, t->flags,
-              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 2);
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
@@ -528,9 +528,9 @@ void *runner_main(void *data) {
             /* In the case of a foreign cell where no xv comms are 
              * done, but RT is active, we need to force a sort after 
              * the gradient recv. */
-            int clear_sorts = !cell_get_flag(ci, cell_flag_no_rt_sort);
+            int clear_sorts = !cell_get_flag(ci, cell_flag_skip_rt_sort);
 celltrace(ci, "recv clear sorts = %d", clear_sorts);
-            cell_clear_flag(ci, cell_flag_no_rt_sort);
+            cell_clear_flag(ci, cell_flag_skip_rt_sort);
             runner_do_recv_part(r, ci, clear_sorts, 1);
           } else if (t->subtype == task_subtype_rt_transport) {
             runner_do_recv_part(r, ci, 0, 1);

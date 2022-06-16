@@ -600,7 +600,7 @@ celltrace(c, "L1 called activate sort up");
 
 celltrace(c, "L2 activated hydro sort loc=1");
 
-    cell_set_flag(c, cell_flag_no_rt_sort);
+    cell_set_flag(c, cell_flag_skip_rt_sort);
     if (c->nodeID == engine_rank) cell_activate_drift_part(c, s);
   } else {
 
@@ -635,7 +635,7 @@ celltrace(parent, "L5.2 activating hydro sort loc=2");
 #endif
         scheduler_activate(s, parent->hydro.sorts);
 
-        cell_set_flag(parent, cell_flag_no_rt_sort);
+        cell_set_flag(parent, cell_flag_skip_rt_sort);
         if (parent->nodeID == engine_rank) cell_activate_drift_part(parent, s);
         break;
       } else {
@@ -686,6 +686,8 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
 
 celltrace(c, "L1 called activate sort up");
 
+  cell_set_flag(c, cell_flag_do_rt_sort);
+
   if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->nodeID == engine_rank && c->hydro.sorts == NULL)
@@ -695,8 +697,9 @@ celltrace(c, "L1 called activate sort up");
 #endif
     if (c->nodeID == engine_rank) {
       /* TODO for later: check whether we can live without drifts */
-      cell_activate_drift_part(c, s);
-      cell_set_flag(c, cell_flag_no_rt_sort);
+      /* DRIFTCHECK */
+      /* cell_activate_drift_part(c, s); */
+      cell_set_flag(c, cell_flag_skip_rt_sort);
 celltrace(c, "activated hydro sort loc=4");
       scheduler_activate(s, c->hydro.sorts);
     } else {
@@ -731,6 +734,7 @@ celltrace(c, "L3 running up the tree; parent==NULL=%d, "
        * activate the hydro sorts tasks, but the do_hydro_sub_sort flag
        * is used as an early exit while climbing up the tree */
       cell_set_flag(parent, cell_flag_do_rt_sub_sort);
+      cell_set_flag(parent, cell_flag_do_rt_sort);
 
 celltrace(c, "L4.1 set parent cellID=%lld do hydro sub sort flag loc=1", parent->cellID);
 celltrace(parent, "L4.2 set do hydro sub sort flag loc=2");
@@ -752,8 +756,10 @@ celltrace(parent, "L5.2 activating hydro sort loc=2");
 
         if (parent->nodeID == engine_rank) {
           /* TODO for later: check whether we can live without drifts */
-          cell_activate_drift_part(parent, s);
-          cell_set_flag(c, cell_flag_no_rt_sort);
+          /* DRIFTCHECK */
+          /* cell_activate_drift_part(parent, s); */
+          /* Mark the progeny to skip the RT sort as well */
+          cell_set_flag(c, cell_flag_skip_rt_sort);
           scheduler_activate(s, parent->hydro.sorts);
 
 celltrace(parent, "activated hydro sort loc=5");
@@ -802,7 +808,7 @@ void cell_set_no_rt_sort_flag_up(struct cell *c) {
 
   for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
     celltrace(c, "set no rt sort flag v5");
-    cell_set_flag(finger, cell_flag_no_rt_sort);
+    cell_set_flag(finger, cell_flag_skip_rt_sort);
   }
 }
 
@@ -1659,7 +1665,8 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
       }
     } else {
       /* We have reached the bottom of the tree: activate drift */
-      cell_activate_drift_part(ci, s);
+      /* DRIFTCHECK */
+      /* cell_activate_drift_part(ci, s); */
     }
   }
 
@@ -1697,8 +1704,9 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
       cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
       /* Activate the drifts if the cells are local. */
-      if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s);
-      if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s);
+        /* DRIFTCHECK */
+      /* if (ci->nodeID == engine_rank) cell_activate_drift_part(ci, s); */
+      /* if (cj->nodeID == engine_rank) cell_activate_drift_part(cj, s); */
 
       /* Do we need to sort the cells? */
       cell_activate_rt_sorts(ci, sid, s);
@@ -3078,7 +3086,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
          * doesn't matter either way. */
 
         if (t->type == task_type_self) {
-          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+        /* DRIFTCHECK */
+        /*   if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s); */
         }
 
         else if (t->type == task_type_pair) {
@@ -3089,8 +3098,9 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
           /* Activate the drift tasks. */
           /* TODO: check ich we can live without this */
-          if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-          if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+          /* DRIFTCHECK */
+          /* if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s); */
+          /* if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s); */
 
           /* Check the sorts and activate them if needed. */
           cell_activate_rt_sorts(ci, t->flags, s);
@@ -3145,7 +3155,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           /* TODO: check whether we can live without this */
-          cell_activate_drift_part(cj, s);
+          /* DRIFTCHECK */
+          /* cell_activate_drift_part(cj, s); */
 
           if (cj_active) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_transport,
@@ -3184,7 +3195,8 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
           /* Drift the cell which will be sent; note that not all sent
              particles will be drifted, only those that are needed. */
           /* TODO: check whether we can live without this */
-          cell_activate_drift_part(ci, s);
+          /* DRIFTCHECK */
+          /* cell_activate_drift_part(ci, s); */
 
           if (ci_active) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_transport,

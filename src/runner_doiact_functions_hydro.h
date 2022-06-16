@@ -34,7 +34,11 @@
 /* TODO: do we still need this? */
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted_rt
 #else
-/* default hydro behaviour */
+/* default hydro behaviour. */
+/* when running with RT subcycling, we can have RT active
+ * particles in a normal swift step that aren't drifted to
+ * the current time, so we don't do those checks there. */
+#define DO_DRIFT_DEBUG_CHECKS 1
 #define PART_IS_ACTIVE part_is_active
 #define CELL_IS_ACTIVE cell_is_active_hydro
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted
@@ -120,7 +124,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -253,7 +257,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -392,7 +396,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       const int doi = pi_active && (r2 < hig2);
       const int doj = pj_active && (r2 < hjg2);
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -528,7 +532,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       const int doi = pi_active && ((r2 < hig2) || (r2 < hjg2));
       const int doj = pj_active && ((r2 < hig2) || (r2 < hjg2));
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -663,7 +667,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
         r2 += dx[k] * dx[k];
       }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -771,7 +775,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                        (float)(piz - pjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -836,7 +840,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                        (float)(piz - pjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -1002,7 +1006,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -1184,11 +1188,13 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss? */
@@ -1281,11 +1287,13 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss? */
@@ -1597,12 +1605,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
 
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss?
@@ -1675,12 +1685,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
 
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
@@ -1804,11 +1816,13 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss?
@@ -1883,11 +1897,13 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss?
@@ -2095,7 +2111,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -2161,7 +2177,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         const int doi = (r2 < hig2);
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -2341,7 +2357,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -2395,7 +2411,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -2779,3 +2795,6 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 #undef PART_IS_ACTIVE
 #undef CELL_IS_ACTIVE
 #undef CELL_ARE_PART_DRIFTED
+#ifdef DO_DRIFT_DEBUG_CHECKS
+#undef DO_DRIFT_DEBUG_CHECKS
+#endif

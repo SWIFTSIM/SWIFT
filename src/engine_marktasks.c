@@ -358,7 +358,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                t_subtype == task_subtype_rt_gradient) {
         if (ci_active_rt) {
           scheduler_activate(s, t);
-          cell_activate_drift_part(ci, s);
+          /* DRIFTCHECK */
+          /* cell_activate_drift_part(ci, s); */
         }
       }
 
@@ -806,8 +807,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
             /* Activate the hydro drift tasks. */
-            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
-            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+            /* if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s); */
+            /* if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s); */
 
             /* Check the sorts and activate them if needed. */
             cell_activate_rt_sorts(ci, t->flags, s);
@@ -1251,7 +1252,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* Drift the cell which will be sent; note that not all sent
                particles will be drifted, only those that are needed. */
-            cell_activate_drift_part(cj, s);
+            /* DRIFTCHECK */
+            /* cell_activate_drift_part(cj, s); */
 
             if (cj_active_rt) {
               scheduler_activate_send(s, cj->mpi.send,
@@ -1288,7 +1290,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             /* Drift the cell which will be sent; note that not all sent
                particles will be drifted, only those that are needed. */
-            cell_activate_drift_part(ci, s);
+            /* DRIFTCHECK */
+            /* cell_activate_drift_part(ci, s); */
 
             if (ci_active_rt) {
               /* We only need updates later on if the other cell is active as

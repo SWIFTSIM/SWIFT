@@ -172,7 +172,7 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
 
     /* Reset all values here in case particles won't be active next step */
     p->rt_data.debug_iact_stars_inject = 0;
-    p->rt_data.debug_drifted = 0;
+    /* p->rt_data.debug_drifted = 0; */
   }
 
   atomic_add(&e->rt_props->debug_radiation_absorbed_this_step,
@@ -406,11 +406,11 @@ __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
     struct part *restrict p, int loc, const char *function_name) {
 
   /* Have we been drifted? */
-  if (p->rt_data.debug_drifted != 1 && loc != 1)
-    /* The only place where we don't need to be kicked first is the */
-    /* ghost1 (finalise injection) step, so skip the test there. */
-    error("called %s on particle %lld with wrong drift count=%d", function_name,
-          p->id, p->rt_data.debug_drifted);
+  /* if (p->rt_data.debug_drifted != 1 && loc != 1) */
+  /*   [> The only place where we don't need to be drifted first is the <] */
+  /*   [> ghost1 (finalise injection) step, so skip the test there. <] */
+  /*   error("called %s on particle %lld with wrong drift count=%d", function_name, */
+  /*         p->id, p->rt_data.debug_drifted); */
 
   if (loc > 0) {
     /* Are kicks done? */
