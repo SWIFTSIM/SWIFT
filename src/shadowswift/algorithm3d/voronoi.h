@@ -485,13 +485,13 @@ inline static void voronoi_build(struct voronoi *v, struct delaunay *d,
     centroid[1] /= volume;
     centroid[2] /= volume;
 
-    p->geometry.volume = volume;
+    p->geometry.volume = (float)volume;
     p->geometry.centroid[0] = (float)(centroid[0] - p->x[0]);
     p->geometry.centroid[1] = (float)(centroid[1] - p->x[1]);
     p->geometry.centroid[2] = (float)(centroid[2] - p->x[2]);
     p->geometry.nface = nface;
     p->geometry.pair_connections_offset = pair_connections_offset;
-    p->geometry.min_face_dist = 0.5 * sqrt(min_ngb_dist2);
+    p->geometry.min_face_dist = (float)(0.5 * sqrt(min_ngb_dist2));
 
     /* reset flags for all neighbours of this cell */
     neighbour_flags[gen_idx_in_d] = 0;

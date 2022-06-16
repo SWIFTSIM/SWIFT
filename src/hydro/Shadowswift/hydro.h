@@ -93,7 +93,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
                 powf(p->geometry.volume / hydro_dimension_unit_sphere,
                      hydro_dimension_inv);
   if (p->geometry.min_face_dist < 0.5 * psize)
-    psize = (float)p->geometry.min_face_dist;
+    psize = p->geometry.min_face_dist;
 
   float dt = FLT_MAX;
   if (vmax > 0.0f) {

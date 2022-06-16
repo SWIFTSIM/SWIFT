@@ -530,13 +530,13 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     cell_centroid[1] /= cell_volume;
 
     /* Store the voronoi cell in the particle. */
-    p->geometry.volume = cell_volume;
+    p->geometry.volume = (float)cell_volume;
     p->geometry.centroid[0] = (float)(cell_centroid[0] - p->x[0]);
     p->geometry.centroid[1] = (float)(cell_centroid[1] - p->x[1]);
     p->geometry.centroid[2] = 0.f;
     p->geometry.nface = nface;
     p->geometry.pair_connections_offset = pair_connections_offset;
-    p->geometry.min_face_dist = 0.5 * sqrt(min_ngb_dist2);
+    p->geometry.min_face_dist = (float)(0.5 * sqrt(min_ngb_dist2));
   } /* loop over all cell generators */
 
   voronoi_check_grid(v);

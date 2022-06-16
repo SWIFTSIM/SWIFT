@@ -201,7 +201,7 @@ struct part {
   struct {
 
     /*! Voronoi cell volume. */
-    double volume;
+    float volume;
 
     /*! Voronoi cell centroid, relative to this particles position. */
     float centroid[3];
@@ -213,7 +213,7 @@ struct part {
     int pair_connections_offset;
 
     /*! Minimal distance from generator to a face */
-    double min_face_dist;
+    float min_face_dist;
 
     /*! Flags indicating to which neighbouring cells this particle has already
      * been added. */
