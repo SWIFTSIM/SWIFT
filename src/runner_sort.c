@@ -207,7 +207,6 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   float buff[8];
 
   c->called_sort++;
-  celltrace(c, "c0 sorting, cleanup=%d clock=%d flags=%d do_sort=%d", cleanup, clock, flags, c->hydro.do_sort);
 
   TIMER_TIC;
 
@@ -219,12 +218,9 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   flags |= c->hydro.do_sort;
   if (cleanup) {
     c->hydro.sorted = 0;
-    celltrace(c, "c1.1 reset hydro.sorted");
   } else {
     flags &= ~c->hydro.sorted;
-    celltrace(c, "c1.2 set flags to %d", flags);
   }
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) && !cell_get_flag(c, cell_flag_do_rt_sub_sort)) celltrace(c, "c2 early exit flags=%d do_hydro_sub_sort=%d", flags, cell_flag_do_hydro_sub_sort);
   if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) && !cell_get_flag(c, cell_flag_do_rt_sub_sort)) return;
 
   /* An RT subcycle call during a main step may request a sort
@@ -442,7 +438,6 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   c->hydro.requires_sorts = 0;
 
   c->finished_sort++;
-  celltrace(c, "@exit sorted=%d", c->hydro.sorted);
 
   if (clock) TIMER_TOC(timer_dosort);
 }

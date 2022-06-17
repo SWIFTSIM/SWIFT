@@ -504,8 +504,6 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
   struct scheduler *s = &e->sched;
   const int nodeID = cj->nodeID;
 
-  celltrace(ci, "Creating send tasks");
-
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(ci, cell_flag_has_tasks)) return;
 
@@ -566,18 +564,6 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
 
     }
 
-    /* If we're running with RT subcycling, we need to ensure that nothing
-     * is sent before the advance cell time task has finished. This may
-     * overwrite the correct cell times, particularly so when we're sending
-     * over data for non-RT tasks, e.g. for gravity pair tasks. */
-    /* if (ci->rt.rt_advance_cell_time != NULL){ */
-    /*   scheduler_addunlock(s, ci->rt.rt_advance_cell_time, t_end); */
-    /*   celltrace(ci, "added advance_cell_time->tend dependendcy"); */
-    /*   if (ci->cellID == 398)  */
-    /*     message("cell 398 local=%d added advance_cell_time->tend dependency",  */
-    /*             ci->nodeID == engine_rank); */
-    /* } */
-    /*  */
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_rt_gradient);
     engine_addlink(e, &ci->mpi.send, t_rt_transport);
@@ -1085,9 +1071,6 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
 
     c->super->rt.rt_advance_cell_time = t_rt_advance_cell_time;
 
-/* TODO: temporary */
-if (c->top == NULL) error("Got c->top == NULL? c->cellID=%lld depth=%d", c->cellID, c->depth);
-
     /* Create the RT collect times task at the top level, if it hasn't already. */
     if (c->top->rt.rt_collect_times == NULL)
       c->top->rt.rt_collect_times = scheduler_addtask(
@@ -1105,7 +1088,7 @@ if (c->top == NULL) error("Got c->top == NULL? c->cellID=%lld depth=%d", c->cell
     /* Avoid the situation where we receive while the sort hasn't finished yet. */
     /* TODO: clean this up */
     if (c->hydro.sorts != NULL) scheduler_addunlock(s, c->hydro.sorts, t_rt_gradient);
-    if (c->hydro.sorts != NULL) scheduler_addunlock(s, c->hydro.sorts, t_rt_transport);
+    /* if (c->hydro.sorts != NULL) scheduler_addunlock(s, c->hydro.sorts, t_rt_transport); */
 
     /* Make sure the second receive doesn't get enqueued before the first one 
      * is done */
@@ -1151,7 +1134,6 @@ if (c->top == NULL) error("Got c->top == NULL? c->cellID=%lld depth=%d", c->cell
       scheduler_addunlock(s, t_rt_gradient, l->t);
       /* Don't run gradient tasks without sorting */
       scheduler_addunlock(s, t_rt_sorts, l->t);
-      celltrace(c, "added rt_sorts dependencies");
       /* Don't update local particles before gradient tasks are finished */
       scheduler_addunlock(s, l->t, t_rt_transport);
     }
@@ -1758,7 +1740,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_rt_out, task_subtype_none, 0,
                               /* implicit= */ 1, c, NULL);
         scheduler_addunlock(s, c->rt.rt_out, c->super->timestep);
-        celltrace(c, "added rt_out -> super.timestep dep");
 
         /* TODO: doc */
         scheduler_addunlock(s, c->rt.rt_out, c->super->timestep_collect);
@@ -1792,8 +1773,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
           c->super->rt.rt_advance_cell_time =
             scheduler_addtask(s, task_type_rt_advance_cell_time,
                               task_subtype_none, 0, 0, c->super, NULL);
-          celltrace(c, "created RT_advance_cell_time");
-          celltrace(c->super, "created super RT_advance_cell_time");
           /* Don't run the rt_collect_times before the rt_advance_cell_time */
           scheduler_addunlock(s, c->super->rt.rt_advance_cell_time, c->top->rt.rt_collect_times);
         }
@@ -1801,7 +1780,6 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         scheduler_addunlock(s, c->rt.rt_transport_out, c->rt.rt_tchem);
         scheduler_addunlock(s, c->rt.rt_tchem, c->super->rt.rt_advance_cell_time);
         scheduler_addunlock(s, c->super->rt.rt_advance_cell_time, c->rt.rt_out);
-        celltrace(c, "added advance cell time -> rt_out dep");
       }
 
       /* Subgrid tasks: black hole feedback */
@@ -4222,7 +4200,6 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
          * over data for non-RT tasks, e.g. for gravity pair tasks. */
         if (ci->super->rt.rt_advance_cell_time != NULL){
           scheduler_addunlock(&e->sched, ci->super->rt.rt_advance_cell_time, tend);
-          celltrace(ci, "added advance_cell_time->tend dependendcy");
         }
       }
     }

@@ -258,21 +258,12 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
     error("Unksipping RT stuff without the policy being on");
 #endif
 
-  celltrace(c, 
-    "engine unskip before early exit has tasks=%d count=%d ti_rt_end_min=%lld current_subcycle=%lld active=%d", 
-    cell_get_flag(c, cell_flag_has_tasks), c->hydro.count, 
-    c->rt.ti_rt_end_min,  e->ti_current_subcycle, 
-    c->rt.ti_rt_end_min == e->ti_current_subcycle
-  );
-
   /* Early abort (are we below the level where tasks are)? */
   if (!cell_get_flag(c, cell_flag_has_tasks)) return;
 
   /* Do we have work to do? */
   if (c->hydro.count == 0) return;
   if (!cell_is_rt_active(c, e)) return;
-
-  celltrace(c, "caught in engine unskip after early exits.");
 
   /* Recurse */
   if (c->split) {
@@ -544,7 +535,6 @@ void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
     /* Handle on the cell */
     struct cell *const c = &cells_top[local_cells[ind]];
 
-    celltrace(c, "calling engine unskip on cell");
     engine_do_unskip_rt(c, e, /*sub_cycle=*/1);
   }
 }
