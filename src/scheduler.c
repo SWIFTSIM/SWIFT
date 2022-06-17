@@ -2475,21 +2475,6 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   /* Ignore skipped tasks */
   if (t->skip) return;
 
-  /* struct cell *ci = t->ci; */
-  /* struct cell *cj = t->cj; */
-  /* if (cj != NULL){ */
-  /*   [> [> message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); <] <] */
-  /*   celltrace(ci, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
-  /*   celltrace(cj, "running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
-  /* } */
-  /* else */
-  /*   [> [> message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); <] <] */
-  /*   celltrace(ci, "running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); */
-
-  /* if (t->type == task_type_sort) */
-  /*   celltrace(t->ci, "enqueueing sort"); */
-
-
   /* If this is an implicit task, just pretend it's done. */
   if (t->implicit) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2697,17 +2682,19 @@ if (t->subtype == task_subtype_rt_gradient && s->space->e->step > 1){
     if (!kicked) error("Cell sending rt gradient without executing kick2");
   }
 
+  int ci_active = cell_is_rt_active(t->ci, s->space->e);
+
   if (t->ci->rt.rt_in == NULL){
     error("Send task with NULL rt_in cell %lld", t->ci->cellID);
   } else {
-    if (!(t->ci->tasks_executed[task_type_rt_in] == 1))
+    if (!(t->ci->tasks_executed[task_type_rt_in] == 1) && ci_active)
       error("Send task running without rt_in having run cell %lld", t->ci->cellID);
   }
 
   if (t->ci->rt.rt_ghost1 == NULL){
     error("Send task with NULL rt_ghost1 cell %lld", t->ci->cellID);
   } else {
-    if (!(t->ci->tasks_executed[task_type_rt_ghost1] == 1))
+    if (!(t->ci->tasks_executed[task_type_rt_ghost1] == 1) && ci_active)
       error("Send task running without rt_ghost1 having run cell %lld", t->ci->cellID);
   }
 
@@ -2879,49 +2866,6 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   /* Loop through the dependencies and add them to a queue if
      they are ready. */
   for (int k = 0; k < t->nr_unlock_tasks; k++) {
-    struct task *t2 = t->unlock_tasks[k];
-
-    /* if (t2->type == task_type_rt_ghost2) */
-    /*   celltrace(t->ci, "unlocking rt_ghost2 from task %s/%s wait=%d skip=%d", */
-    /*       taskID_names[t->type], subtaskID_names[t->subtype], t2->wait, t2->skip); */
-
-    /* if (t2->type == task_type_rt_block_sort) */
-    /*   celltrace(t->ci, "running block sort"); */
-    /* if (t2->type == task_type_sort) */
-      /* celltrace(t->ci, "unlocking sort from task %s/%s wait=%d skip=%d",  */
-      /*     taskID_names[t->type], subtaskID_names[t->subtype], t2->wait, t2->skip); */
-
-    /* if (t->type == task_type_rt_advance_cell_time && */
-    /*     t2->type == task_type_send && t2->subtype == task_subtype_tend && */
-    /*     (t->ci->cellID == PROBLEMCELL1 || t->ci->cellID == PROBLEMCELL2)) */
-    /*   message("Cell %lld unlocking rend from rt_advance_cell_time", */
-    /*           t->ci->cellID); */
-    if (t2->skip) continue;
-
-    /* if (t2->type == task_type_pair && t2->subtype == task_subtype_density) */
-    /*   celltrace(t->ci, "unlocking density from task %s/%s wait=%d skip=%d ci=%lld cj=%lld", */
-    /*       taskID_names[t->type], subtaskID_names[t->subtype], t2->wait, t2->skip, t2->ci->cellID, t2->cj->cellID); */
-
-
-/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_transport_out){ */
-/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_rt_ghost2){ */
-if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL2 && t->unlock_tasks[k]->type == task_type_ghost_in){
-/* if (t->unlock_tasks[k]->ci->cellID == PROBLEMCELL1 && t->unlock_tasks[k]->type == task_type_stars_ghost){ */
-    long long ci = t->ci->cellID;
-    int li = t->ci->nodeID == engine_rank;
-    long long cj = -1;
-    int lj = -1;
-    if (t->cj != NULL) cj = t->cj->cellID;
-    if (t->cj != NULL) lj = t->cj->nodeID == engine_rank;
-    message(
-        "unlock %s/%s cell %lld wait=%d from task %s/%s ID %lld %lld local=%d %d",
-        taskID_names[t->unlock_tasks[k]->type], subtaskID_names[t->unlock_tasks[k]->subtype],
-        t->unlock_tasks[k]->ci->cellID, t->unlock_tasks[k]->wait,
-        taskID_names[t->type], subtaskID_names[t->subtype],
-        ci, cj, li, lj);
-    fflush(stdout);
-}
-
     const int res = atomic_dec(&t2->wait);
     if (res < 1) {
       error("Negative wait!");
