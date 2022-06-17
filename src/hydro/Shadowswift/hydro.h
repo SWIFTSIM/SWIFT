@@ -283,7 +283,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const float dt_alpha) {
+    const float dt_alpha, const float dt_therm) {
   hydro_part_reset_fluxes(p);
 }
 
@@ -626,7 +626,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp);
 
-    /* Signal we just did a kik1 */
+    /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;
 
   } else if (p->timestepvars.last_kick == KICK2) {
@@ -645,16 +645,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp);
 
-    /* Signal we just did a kik1 */
+    /* Signal we just did a kick1 */
     p->timestepvars.last_kick = KICK1;
 
   } else {
     error("Impossible scenario!");
   }
-
-  /* TODO: check for negative dt_therm (implying that we are rolling back a kick
-   * due to the timestep limiter or the timestep sync). This means that we must
-   * rescale the time integrated fluxes this particle has received. */
 
   /* undo the flux exchange and kick the particles towards their centroid */
   /* TODO Lloyd */
