@@ -355,19 +355,20 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* skip the drift if we are using Lloyd's algorithm */
   /* TODO */
 
-  float W[5];
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  /* Extrapolate primitive quantities in time */
+  float W[5], dW[5];
   hydro_part_get_primitive_variables(p, W);
+  hydro_gradients_extrapolate_in_time(p, W, 0.5f * dt_therm, /*return*/dW);
 
+  /* Update primitive quantities with extrapolations */
+  p->dW_time[0] += dW[0];
+  p->dW_time[1] += dW[1];
+  p->dW_time[2] += dW[2];
+  p->dW_time[3] += dW[3];
+  p->dW_time[4] += dW[4];
   // MATTHIEU: Apply the entropy floor here.
-
-  /* add the gravitational contribution to the fluid velocity drift */
-  /* The fluid velocity is now drifted directly by drift_part() */
-  //  hydro_gravity_extra_velocity_drift(&W[1], p->v, xp->v_full);
-
-  /* TODO Predict primitive variables forward? Would be with outdated gradients,
-   * so maybe better in flux? */
-
-  hydro_part_set_primitive_variables(p, W);
+#endif
 
   /* Reset the delaunay flags after a particle has been drifted */
   p->geometry.delaunay_flags = 0;
@@ -586,6 +587,15 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Update primitive quantities. Note that this also updates the fluid
      * velocity p->v. */
     hydro_convert_conserved_to_primitive(p, xp);
+
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+    /* Reset time extrapolations of primitive quantities */
+    p->dW_time[0] = 0.0f;
+    p->dW_time[1] = 0.0f;
+    p->dW_time[2] = 0.0f;
+    p->dW_time[3] = 0.0f;
+    p->dW_time[4] = 0.0f;
+#endif
 
     /* Signal we just did kick2 */
     p->timestepvars.last_kick = KICK2;

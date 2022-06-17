@@ -100,26 +100,26 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_finalize(
 __attribute__((always_inline)) INLINE static void
 hydro_gradients_extrapolate_in_time(const struct part* p, const float* W,
                                     float dt, float* dW) {
-  const float div_v =
-      p->gradients.v[0][0] + p->gradients.v[1][1] + p->gradients.v[2][2];
 
-  dW[0] = -0.5f * dt *
-          (W[0] * div_v + W[1] * p->gradients.rho[0] +
-           W[2] * p->gradients.rho[1] + W[3] * p->gradients.rho[2]);
+  float drho[3], dvx[3], dvy[3], dvz[3], dP[3];
+  hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP);
+  const float div_v = dvx[0] + dvy[1] + dvz[2];
+
+  dW[0] =
+      -dt * (W[0] * div_v + W[1] * drho[0] + W[2] * drho[1] + W[3] * drho[2]);
 
   if (W[0] != 0.0f) {
     const float rho_inv = 1.f / W[0];
-    dW[1] = -0.5f * dt * (W[1] * div_v + rho_inv * p->gradients.P[0]);
-    dW[2] = -0.5f * dt * (W[2] * div_v + rho_inv * p->gradients.P[1]);
-    dW[3] = -0.5f * dt * (W[3] * div_v + rho_inv * p->gradients.P[2]);
+    dW[1] = -dt * (W[1] * div_v + rho_inv * dP[0]);
+    dW[2] = -dt * (W[2] * div_v + rho_inv * dP[1]);
+    dW[3] = -dt * (W[3] * div_v + rho_inv * dP[2]);
   } else {
     dW[1] = 0.0f;
     dW[2] = 0.0f;
     dW[3] = 0.0f;
   }
-  dW[4] = -0.5f * dt *
-          (hydro_gamma * W[4] * div_v + W[1] * p->gradients.P[0] +
-           W[2] * p->gradients.P[1] + W[3] * p->gradients.P[2]);
+  dW[4] = -dt * (hydro_gamma * W[4] * div_v + W[1] * dP[0] + W[2] * dP[1] +
+                 W[3] * dP[2]);
 
   /* Sanity check */
   if (W[0] + dW[0] < 0) {
@@ -155,11 +155,11 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_extrapolate(
   float drho[3], dvx[3], dvy[3], dvz[3], dP[3];
   hydro_part_get_gradients(p, drho, dvx, dvy, dvz, dP);
 
-  dW[0] += hydro_gradients_extrapolate_single_quantity(drho, dx);
-  dW[1] += hydro_gradients_extrapolate_single_quantity(dvx, dx);
-  dW[2] += hydro_gradients_extrapolate_single_quantity(dvy, dx);
-  dW[3] += hydro_gradients_extrapolate_single_quantity(dvz, dx);
-  dW[4] += hydro_gradients_extrapolate_single_quantity(dP, dx);
+  dW[0] = hydro_gradients_extrapolate_single_quantity(drho, dx);
+  dW[1] = hydro_gradients_extrapolate_single_quantity(dvx, dx);
+  dW[2] = hydro_gradients_extrapolate_single_quantity(dvy, dx);
+  dW[3] = hydro_gradients_extrapolate_single_quantity(dvz, dx);
+  dW[4] = hydro_gradients_extrapolate_single_quantity(dP, dx);
 }
 
 /**
@@ -175,16 +175,30 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_predict(
    * position) eqn. (8) */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
-  float dWi[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
-  //  hydro_gradients_extrapolate_in_time(pi, Wi, dt, dWi); TODO fix this
+  float dWi[5], dWj[5];
   hydro_gradients_extrapolate(pi, xij_i, dWi);
-  float dWj[5] = {0.f, 0.f, 0.f, 0.f, 0.f};
-  //  hydro_gradients_extrapolate_in_time(pj, Wj, dt, dWj);
   hydro_gradients_extrapolate(pj, xij_j, dWj);
+
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  /* Add the extrapolations in time, so they also get include in the slope
+   * limiting. */
+  dWi[0] += pi->dW_time[0];
+  dWi[1] += pi->dW_time[1];
+  dWi[2] += pi->dW_time[2];
+  dWi[3] += pi->dW_time[3];
+  dWi[4] += pi->dW_time[4];
+
+  dWj[0] += pj->dW_time[0];
+  dWj[1] += pj->dW_time[1];
+  dWj[2] += pj->dW_time[2];
+  dWj[3] += pj->dW_time[3];
+  dWj[4] += pj->dW_time[4];
+#endif
 
   /* Apply the slope limiter at this interface */
   hydro_slope_limit_face(Wi, Wj, dWi, dWj, xij_i, xij_j, r);
 
+  /* Apply the slope limited extrapolations */
   Wi[0] += dWi[0];
   Wi[1] += dWi[1];
   Wi[2] += dWi[2];

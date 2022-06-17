@@ -164,6 +164,11 @@ struct part {
 
   } limiter;
 
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  /* Time extrapolations of primitive variables (cumulative over timestep) */
+  float dW_time[5];
+#endif
+
   /* The conserved hydrodynamical variables. */
   struct {
 
