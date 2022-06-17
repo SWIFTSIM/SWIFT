@@ -147,6 +147,8 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
       /* If particle needs to be kicked */
       if (part_is_starting(p, e)) {
 
+        p->rt_data.called_in_kick1++;
+
 #ifdef SWIFT_DEBUG_CHECKS
         if (p->limiter_data.wakeup != time_bin_not_awake)
           error("Woken-up particle that has not been processed in kick1");
@@ -418,6 +420,8 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 
       /* If particle needs to be kicked */
       if (part_is_active(p, e)) {
+
+        p->rt_data.called_in_kick2++;
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (p->limiter_data.wakeup != time_bin_not_awake)

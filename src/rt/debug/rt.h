@@ -77,6 +77,10 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
 __attribute__((always_inline)) INLINE static void rt_reset_part(
     struct part* restrict p, const struct cosmology* cosmo) {
 
+  if (p->rt_data.called_in_kick1) error("part %lld called reset after kick1", p->id);
+  if (p->rt_data.called_in_kick2) error("part %lld called reset after kick2", p->id);
+  p->rt_data.called_reset++;
+
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
@@ -117,6 +121,11 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   p->rt_data.debug_hydro_active = 1;
   p->rt_data.debug_rt_active_on_main_step = 1;
   p->rt_data.debug_rt_zeroth_cycle_on_main_step = 1;
+
+  /* TODO: temporary */
+  p->rt_data.called_in_kick1 = 0;
+  p->rt_data.called_in_kick2 = 0;
+  p->rt_data.called_reset = 0;
 }
 
 /**

@@ -22,6 +22,10 @@
 /* Config parameters. */
 #include <config.h>
 
+/* TODO: remove later */
+#include "active.h"
+#include "rt.h"
+
 /* Some standard headers. */
 #include <limits.h>
 #include <math.h>
@@ -2681,6 +2685,38 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         size_t count = 0;             /* Number of elements to send */
         MPI_Datatype type = MPI_BYTE; /* Type of the elements */
         void *buff = NULL;            /* Buffer to send */
+
+
+if (t->subtype == task_subtype_rt_gradient && s->space->e->step > 1){
+  if (cell_is_active_hydro(t->ci, s->space->e)) {
+
+    int kicked = t->ci->tasks_executed[task_type_kick2] == 1;
+    for (struct cell* parent = t->ci->parent; parent != NULL; parent=parent->parent){
+      kicked |= parent->tasks_executed[task_type_kick2] == 1;
+    }
+    if (!kicked) error("Cell sending rt gradient without executing kick2");
+  }
+
+  if (t->ci->rt.rt_in == NULL){
+    error("Send task with NULL rt_in cell %lld", t->ci->cellID);
+  } else {
+    if (!(t->ci->tasks_executed[task_type_rt_in] == 1))
+      error("Send task running without rt_in having run cell %lld", t->ci->cellID);
+  }
+
+  if (t->ci->rt.rt_ghost1 == NULL){
+    error("Send task with NULL rt_ghost1 cell %lld", t->ci->cellID);
+  } else {
+    if (!(t->ci->tasks_executed[task_type_rt_ghost1] == 1))
+      error("Send task running without rt_ghost1 having run cell %lld", t->ci->cellID);
+  }
+
+  for (int i = 0; i < t->ci->hydro.count; i++){
+    struct part* p = &t->ci->hydro.parts[i];
+    if (part_is_rt_active(p, s->space->e))
+      rt_debug_sequence_check(p, 1, "send scheduler");
+  }
+}
 
         /* celltrace(t->ci, "====== sending task subtype %s sendcount=%d", subtaskID_names[t->subtype], t->ci->rt.sendcount); */
         /* message("====== sending task subtype %s sendcount=%d from %lld",  */

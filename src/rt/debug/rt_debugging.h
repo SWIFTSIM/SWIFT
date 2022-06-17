@@ -173,6 +173,10 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
     /* Reset all values here in case particles won't be active next step */
     p->rt_data.debug_iact_stars_inject = 0;
     /* p->rt_data.debug_drifted = 0; */
+
+    p->rt_data.called_in_kick1 = 0;
+    p->rt_data.called_in_kick2 = 0;
+    p->rt_data.called_reset = 0;
   }
 
   atomic_add(&e->rt_props->debug_radiation_absorbed_this_step,
