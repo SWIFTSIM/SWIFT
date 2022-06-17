@@ -55,7 +55,8 @@ void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict sbuff,
                            struct cell_buff *restrict bbuff,
                            struct cell_buff *restrict gbuff,
-                           struct cell_buff *restrict sink_buff) {
+                           struct cell_buff *restrict sink_buff,
+                           const int thread_id) {
 
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
@@ -197,7 +198,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    space_getcells(s, 8, c->progeny);
+    space_getcells(s, 8, c->progeny, thread_id);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       cp->hydro.count = 0;
@@ -284,7 +285,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 
         /* Recurse */
         space_split_recursive(s, cp, progeny_buff, progeny_sbuff, progeny_bbuff,
-                              progeny_gbuff, progeny_sink_buff);
+                              progeny_gbuff, progeny_sink_buff, thread_id);
 
         /* Update the pointers in the buffers */
         progeny_buff += cp->hydro.count;
@@ -691,7 +692,8 @@ void space_split_recursive(struct space *s, struct cell *c,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
+void space_split_mapper(void *map_data, int num_cells, void *extra_data,
+                        int tid) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
@@ -701,7 +703,7 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
+    space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tid);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -727,10 +729,10 @@ void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  threadpool_map(&s->e->threadpool, space_split_mapper,
-                 s->local_cells_with_particles_top,
-                 s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
+  threadpool_map_with_tid(&s->e->threadpool, space_split_mapper,
+                          s->local_cells_with_particles_top,
+                          s->nr_local_cells_with_particles, sizeof(int),
+                          threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

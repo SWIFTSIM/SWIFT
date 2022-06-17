@@ -434,6 +434,9 @@ struct cell {
   /*! ID of the previous owner, e.g. runner. */
   int owner;
 
+  /*! ID of the previous owner, e.g. runner. */
+  int pool_owner;
+
   /*! ID of the node this cell lives on. */
   int nodeID;
 
