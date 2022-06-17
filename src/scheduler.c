@@ -1517,17 +1517,17 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
     switch (t->type) {
       case task_type_sort:
         cost = wscale * intrinsics_popcount(t->flags) * count_i *
-               (sizeof(int) * 8 - intrinsics_clz(t->ci->hydro.count));
+               (sizeof(int) * 8 - (count_i ? intrinsics_clz(count_i) : 0));
         break;
 
       case task_type_stars_sort:
         cost = wscale * intrinsics_popcount(t->flags) * scount_i *
-               (sizeof(int) * 8 - intrinsics_clz(t->ci->stars.count));
+               (sizeof(int) * 8 - (scount_i ? intrinsics_clz(scount_i) : 0));
         break;
 
       case task_type_stars_resort:
         cost = wscale * intrinsics_popcount(t->flags) * scount_i *
-               (sizeof(int) * 8 - intrinsics_clz(t->ci->stars.count));
+               (sizeof(int) * 8 - (scount_i ? intrinsics_clz(scount_i) : 0));
         break;
 
       case task_type_self:
