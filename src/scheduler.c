@@ -1120,10 +1120,9 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
           /* Do we have other non-empty progenitors? */
           if (ci->progeny[k] != NULL && ci->progeny[k]->hydro.count) {
             /* Add a new self task and recursively split it */
-            scheduler_splittask_grid(
-                scheduler_addtask(s, task_type_self, t->subtype, 0, 0,
-                                  ci->progeny[k], NULL),
-                s);
+            struct task *t_sub = scheduler_addtask(
+                s, task_type_self, t->subtype, 0, 0, ci->progeny[k], NULL);
+            scheduler_splittask_grid(t_sub, s);
           }
         }
 
@@ -1136,16 +1135,14 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
               if (ci->progeny[k] != NULL && ci->progeny[k]->hydro.count) {
                 /* Add a pair task for both directions and recursively split
                  * them */
-                scheduler_splittask_grid(
-                    scheduler_addtask(s, task_type_pair, t->subtype,
-                                      sub_sid_flag[j][k], 0, ci->progeny[j],
-                                      ci->progeny[k]),
-                    s);
-                scheduler_splittask_grid(
-                    scheduler_addtask(s, task_type_pair, t->subtype,
-                                      sub_sid_flag[j][k], 0, ci->progeny[k],
-                                      ci->progeny[j]),
-                    s);
+                struct task *t_sub = scheduler_addtask(
+                    s, task_type_pair, t->subtype, sub_sid_flag[j][k], 0,
+                    ci->progeny[j], ci->progeny[k]);
+                scheduler_splittask_grid(t_sub, s);
+                t_sub = scheduler_addtask(s, task_type_pair, t->subtype,
+                                          sub_sid_flag[j][k], 0, ci->progeny[k],
+                                          ci->progeny[j]);
+                scheduler_splittask_grid(t_sub, s);
               }
             }
           }

@@ -1394,7 +1394,7 @@ void cell_set_grid_construction_level(
   enum construction_level next_construction_level = construction_level;
   if (construction_level == above_construction_level) {
     /* Check if we can split this cell (i.e. all sub-cells are complete) */
-    int splittable = c->hydro.count > space_grid_split_threshold;
+    int splittable = c->split && c->hydro.count > space_grid_split_threshold;
     for (int k = 0; splittable && k < 8; k++) {
       if (c->progeny[k] != NULL) splittable &= c->progeny[k]->grid.complete;
     }
