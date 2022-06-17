@@ -102,6 +102,8 @@
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
 #define SHADOWSWIFT_STEER_MOTION
+/* Option to enable time extrapolation */
+#define SHADOWSWIFT_EXTRAPOLATE_TIME
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWSWIFT_TOTAL_ENERGY
 /* This option enables reflective boundary conditions for non-periodic
