@@ -51,8 +51,11 @@ struct mapper_log_entry {
   /* Size of the chunk processed. */
   int chunk_size;
 
-  /* Pointer to the mapper function. */
-  threadpool_map_function map_function;
+  union {
+    /* Pointer to the mapper function. */
+    threadpool_map_function map_function;
+    threadpool_map_function_tid map_function_tid;
+  };
 
   /*! Start and end time of this task */
   ticks tic, toc;
