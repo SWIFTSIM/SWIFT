@@ -225,17 +225,94 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
 
   /* An RT subcycle call during a main step may request a sort
    * on a cell that hasn't been drifted. If that's the case,
-   * exit early. */
-  /* TODO: do the elegant thing later. Now just re-sort. */
-  /* if (flags && !cell_are_part_drifted(c, r->e) && cell_get_flag(c, cell_flag_do_rt_sort)){ */
-  /*   return; */
-  /* } */
+   * exit early and pretend the cell is freshly sorted. */
+  if (flags && !cell_are_part_drifted(c, r->e) && cell_get_flag(c, cell_flag_do_rt_sort)){
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure the sort flags are consistent (downward). */
+    runner_check_sorts_hydro(c, c->hydro.sorted);
+
+    /* Make sure the sort flags are consistent (upward). */
+    for (struct cell *finger = c->parent; finger != NULL;
+         finger = finger->parent) {
+      if (finger->hydro.sorted & ~c->hydro.sorted)
+        error("Inconsistent sort flags (upward).");
+    }
+
+    /* Update the sort timer which represents the last time the sorts
+       were re-set. */
+    if (c->hydro.sorted == 0) c->hydro.ti_sort = r->e->ti_current;
+#endif
+
+    /* Pretend progeny is freshly sorted as well. */
+    if (c->split) {
+      for (int k = 0; k < 8; k++) {
+        if (c->progeny[k] != NULL) {
+
+          if (c->progeny[k]->hydro.count > 0)
+            /* Only propagate cleanup if the progeny is stale. */
+            runner_do_hydro_sort(r, c->progeny[k], flags, /*cleanup=*/0, 0);
+        }
+      }
+
+      /* Loop over the 13 different sort arrays. */
+      for (int j = 0; j < 13; j++) {
+        /* Has this sort array been flagged? */
+        if (!(flags & (1 << j))) continue;
+        atomic_or(&c->hydro.sorted, 1 << j);
+      }
+    } /* progeny? */
+    else {
+      /* Add the sentinel and sort. */
+      for (int j = 0; j < 13; j++){
+        if (flags & (1 << j))
+          atomic_or(&c->hydro.sorted, 1 << j);
+      }
+    }
+ 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Verify the sorting. */
+    for (int j = 0; j < 13; j++) {
+      if (!(flags & (1 << j))) continue;
+      struct sort_entry *finger = cell_get_hydro_sorts(c, j);
+      for (int k = 1; k < count; k++) {
+        if (finger[k].d < finger[k - 1].d)
+          error("Sorting failed, ascending array. ID=%lld", c->cellID);
+        if (finger[k].i >= count) error("Sorting failed, indices borked.");
+      }
+    }
+
+    /* Make sure the sort flags are consistent (downward). */
+    runner_check_sorts_hydro(c, flags);
+
+    /* Make sure the sort flags are consistent (upward). */
+    for (struct cell *finger = c->parent; finger != NULL;
+         finger = finger->parent) {
+      if (finger->hydro.sorted & ~c->hydro.sorted)
+        error("Inconsistent sort flags.");
+    }
+#endif
+
+    /* Clear the cell's sort flags. */
+    c->hydro.do_sort = 0;
+    cell_clear_flag(c, cell_flag_do_hydro_sub_sort);
+    cell_clear_flag(c, cell_flag_do_rt_sub_sort);
+    cell_clear_flag(c, cell_flag_do_rt_sort);
+    c->hydro.requires_sorts = 0;
+
+    c->finished_sort++;
+    celltrace(c, "@exit sorted=%d", c->hydro.sorted);
+
+    if (clock) TIMER_TOC(timer_dosort);
+    return;
+  }
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_part_drifted(c, r->e)){
     /* If the sort was requested by RT, cell may be undrifted.
      * So skip this check now. Pretend you've been sorted properly later. */
-    if (!cell_get_flag(c, cell_flag_do_rt_sort))
+    /* TODO: cleanup */
+    /* if (!cell_get_flag(c, cell_flag_do_rt_sort)) */
       error("Sorting un-drifted cell c->nodeID=%d ID %lld HA %d RTA %d | ti_old_part=%lld ti_current=%lld"
           "\n\t\tsplit=%d depth=%d",
           c->nodeID, c->cellID, cell_is_active_hydro(c, r->e), cell_is_rt_active(c, r->e),   c->hydro.ti_old_part , r->e->ti_current,
