@@ -396,7 +396,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
       } else {  /* Split again */
 
         /* Recurse */
-        cell_split_recursive(s, cp, maxdepth, top_loc, top_width);
+        cell_split_recursive(s, cp, maxdepth, top_loc, top_width, thread_id);
 
       }
     }
