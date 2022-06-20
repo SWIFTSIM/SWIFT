@@ -147,11 +147,11 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     struct swift_params* parameter_file, struct cooling_function_data* cooling,
     const struct phys_const* phys_const) {
 
-  parser_get_param_string(parameter_file, "GrackleCooling:cloudy_table",
+  parser_get_param_string(parameter_file, "SIMBACooling:cloudy_table",
                           cooling->cloudy_table);
 
   cooling->primordial_chemistry = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:primordial_chemistry",
+      parameter_file, "SIMBACooling:primordial_chemistry",
       COOLING_GRACKLE_MODE);
 
   if (cooling->primordial_chemistry < 0)
@@ -162,39 +162,39 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
           cooling->primordial_chemistry, COOLING_GRACKLE_MODE);
 
   cooling->with_uv_background =
-      parser_get_param_int(parameter_file, "GrackleCooling:with_UV_background");
+      parser_get_param_int(parameter_file, "SIMBACooling:with_UV_background");
 
   cooling->redshift =
-      parser_get_param_double(parameter_file, "GrackleCooling:redshift");
+      parser_get_param_double(parameter_file, "SIMBACooling:redshift");
 
   cooling->with_metal_cooling =
-      parser_get_param_int(parameter_file, "GrackleCooling:with_metal_cooling");
+      parser_get_param_int(parameter_file, "SIMBACooling:with_metal_cooling");
 
   cooling->provide_volumetric_heating_rates = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:provide_volumetric_heating_rates", 0);
+      parameter_file, "SIMBACooling:provide_volumetric_heating_rates", 0);
 
   cooling->provide_specific_heating_rates = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:provide_specific_heating_rates", 0);
+      parameter_file, "SIMBACooling:provide_specific_heating_rates", 0);
 
   /* Self shielding */
   cooling->self_shielding_method = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:self_shielding_method", 0);
+      parameter_file, "SIMBACooling:self_shielding_method", 0);
 
   if (cooling->self_shielding_method == -1) {
     cooling->self_shielding_threshold = parser_get_param_float(
-        parameter_file, "GrackleCooling:self_shielding_threshold_atom_per_cm3");
+        parameter_file, "SIMBACooling:self_shielding_threshold_atom_per_cm3");
   }
 
   /* Initial step convergence */
   cooling->max_step = parser_get_opt_param_int(
-      parameter_file, "GrackleCooling:max_steps", 10000);
+      parameter_file, "SIMBACooling:max_steps", 10000);
 
   cooling->convergence_limit = parser_get_opt_param_double(
-      parameter_file, "GrackleCooling:convergence_limit", 1e-2);
+      parameter_file, "SIMBACooling:convergence_limit", 1e-2);
 
   /* Thermal time */
   cooling->thermal_time = parser_get_param_double(
-      parameter_file, "GrackleCooling:thermal_time_myr");
+      parameter_file, "SIMBACooling:thermal_time_myr");
   cooling->thermal_time *= phys_const->const_year * 1e6;
 }
 

@@ -51,15 +51,6 @@
 void cooling_update(const struct cosmology* cosmo,
                     struct cooling_function_data* cooling, struct space* s);
 void cooling_print_fractions(const struct xpart* restrict xp);
-int cooling_converged(const struct xpart* restrict xp,
-                      const struct xpart* restrict old, const float limit);
-void cooling_compute_equilibrium(
-    const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us,
-    const struct hydro_props* hydro_properties,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp);
 void cooling_first_init_part(const struct phys_const* restrict phys_const,
                              const struct unit_system* restrict us,
                              const struct hydro_props* hydro_properties,
@@ -116,23 +107,20 @@ void cooling_copy_from_grackle2(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
 void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
                                 struct xpart* xp, gr_float rho);
-void cooling_copy_to_grackle(grackle_field_data* data, const struct part* p,
-                             struct xpart* xp, gr_float rho,
-                             gr_float species_densities[12]);
+void cooling_copy_to_grackle(grackle_field_data* data, 
+		             const struct cosmology* restrict cosmo,
+			     const struct part* p,
+                             struct xpart* xp, gr_float species_densities[12]);
 void cooling_copy_from_grackle(grackle_field_data* data, const struct part* p,
                                struct xpart* xp, gr_float rho);
-void cooling_apply_self_shielding(
-    const struct cooling_function_data* restrict cooling,
-    chemistry_data* restrict chemistry, const struct part* restrict p,
-    const struct cosmology* cosmo);
-gr_float cooling_new_energy(
+gr_float cooling_grackle_driver(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us,
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_properties,
     const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp, double dt,
-    double dt_therm);
+    const struct part* restrict p, struct xpart* restrict xp, 
+    double dt, int mode);
 
 gr_float cooling_time(const struct phys_const* restrict phys_const,
                       const struct unit_system* restrict us,
@@ -140,6 +128,14 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
                       const struct cosmology* restrict cosmo,
                       const struct cooling_function_data* restrict cooling,
                       const struct part* restrict p, struct xpart* restrict xp);
+
+float cooling_get_temperature(
+    const struct phys_const* restrict phys_const,
+    const struct hydro_props* hydro_properties,
+    const struct unit_system* restrict us,
+    const struct cosmology* restrict cosmo,
+    const struct cooling_function_data* restrict cooling,
+    const struct part* restrict p, const struct xpart* restrict xp);
 
 void cooling_cool_part(const struct phys_const* restrict phys_const,
                        const struct unit_system* restrict us,
@@ -150,14 +146,6 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
                        struct part* restrict p, struct xpart* restrict xp,
                        const double dt, const double dt_therm,
                        const double time);
-
-float cooling_get_temperature(
-    const struct phys_const* restrict phys_const,
-    const struct hydro_props* hydro_properties,
-    const struct unit_system* restrict us,
-    const struct cosmology* restrict cosmo,
-    const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, const struct xpart* restrict xp);
 
 double cooling_get_ycompton(const struct phys_const* phys_const,
                             const struct hydro_props* hydro_props,
