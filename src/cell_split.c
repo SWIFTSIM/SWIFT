@@ -431,7 +431,7 @@ void cell_split_sort(struct space *s, struct cell *c,
                      const ptrdiff_t sparts_offset,
                      const ptrdiff_t bparts_offset,
                      const ptrdiff_t sinks_offset,
-                     const int nbits) {
+                     const int nbits, int thread_id) {
 
   const int count = c->hydro.count, gcount = c->grav.count,
             scount = c->stars.count, bcount = c->black_holes.count,
@@ -448,6 +448,9 @@ void cell_split_sort(struct space *s, struct cell *c,
   const double cell_width[3] = {c->width[0],
                                 c->width[1],
                                 c->width[2]};
+
+  /* Define maxdepth. */
+  int maxdepth = nbits - 1;
 
   /* Declare some variables we will need. */
   int j, k, sind;
@@ -875,6 +878,9 @@ void cell_split_sort(struct space *s, struct cell *c,
             gparts[k - 1].hilb_key, gparts[k].hilb_key);
   }
 #endif
+
+  /* Finally we can split this cell. */
+  cell_split_recursive(s, c, maxdepth, cell_loc, cell_width, thread_id);
 
 }
 

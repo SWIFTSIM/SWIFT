@@ -39,7 +39,8 @@
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void space_sort_mapper(void *map_data, int num_cells, void *extra_data) {
+void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data,
+                             int tid) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
@@ -56,65 +57,7 @@ void space_sort_mapper(void *map_data, int num_cells, void *extra_data) {
                     c->hydro.parts - s->parts,
                     c->stars.parts - s->sparts,
                     c->black_holes.parts - s->bparts,
-                    c->sinks.parts - s->sinks, nbits);
-
-  }
-}
-
-#ifdef WITH_ZOOM_REGION
-
-/**
- * @brief A wrapper for #threadpool mapper function to split background cells if
- * they contain too many particles.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void bkg_space_sort_mapper(void *map_data, int num_cells,
-                                 void *extra_data) {
-  space_sort_mapper(map_data, num_cells, extra_data);
-}
-
-/**
- * @brief A wrapper for #threadpool mapper function to split zoom cells if they
- * contain too many particles.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void zoom_space_sort_mapper(void *map_data, int num_cells,
-                                  void *extra_data) {
-  space_sort_mapper(map_data, num_cells, extra_data);
-}
-
-#endif
-
-
-/**
- * @brief #threadpool mapper function to split cells if they contain
- *        too many particles.
- *
- * @param map_data Pointer towards the top-cells.
- * @param num_cells The number of cells to treat.
- * @param extra_data Pointers to the #space.
- */
-void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data,
-                             int tid) {
-
-  /* Unpack the inputs. */
-  struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
-  int *local_cells_with_particles = (int *)map_data;
-  const int nbits = 21;
-
-  /* Loop over the non-empty cells */
-  for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells_with_particles[ind]];
-
-    /* Finally, we can split this cell */
-    cell_split_recursive(s, c, nbits - 1, c->loc, c->width, tid);
+                    c->sinks.parts - s->sinks, nbits, tid);
 
   }
 }
@@ -178,31 +121,7 @@ void space_split(struct space *s, int verbose) {
   /*   } */
   /* } */
 
-  /* Sort particles ready for the cell splitting. */
-#ifdef WITH_ZOOM_REGION
-  if (s->with_zoom_region) {
-    threadpool_map(&s->e->threadpool, bkg_space_sort_mapper,
-                   s->zoom_props->local_bkg_cells_with_particles_top,
-                   s->zoom_props->nr_local_bkg_cells_with_particles,
-                   sizeof(int), threadpool_auto_chunk_size, s);
-    threadpool_map(&s->e->threadpool, zoom_space_sort_mapper,
-                   s->zoom_props->local_zoom_cells_with_particles_top,
-                   s->zoom_props->nr_local_zoom_cells_with_particles,
-                   sizeof(int), threadpool_auto_chunk_size, s);
-  } else {
-    threadpool_map(&s->e->threadpool, space_sort_mapper,
-                   s->local_cells_with_particles_top,
-                   s->nr_local_cells_with_particles, sizeof(int),
-                   threadpool_auto_chunk_size, s);
-  }
-#else
-  threadpool_map(&s->e->threadpool, space_sort_mapper,
-                 s->local_cells_with_particles_top,
-                 s->nr_local_cells_with_particles, sizeof(int),
-                 threadpool_auto_chunk_size, s);
-#endif
-
-    /* Sort particles ready for the cell splitting. */
+  /* Sort particles and split cells. */
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
     threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_sort_mapper,
