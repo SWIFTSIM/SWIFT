@@ -205,6 +205,10 @@ void engine_config(int restart, int fof, struct engine *e,
   if (nr_queues != nr_task_threads)
     message("Number of task queues set to %d", nr_queues);
   e->s->nr_queues = nr_queues;
+  e->s->cells_sub =
+      (struct cell **)calloc(nr_pool_threads, sizeof(struct cell *));
+  e->s->multipoles_sub = (struct gravity_tensors **)calloc(
+
 
   /* Get the frequency of the dependency graph dumping */
   e->sched.frequency_dependency = parser_get_opt_param_int(
