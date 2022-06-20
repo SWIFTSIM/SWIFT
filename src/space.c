@@ -474,56 +474,61 @@ void space_map_cells_pre(struct space *s, int full,
  * @param cells Array of @c nr_cells #cell pointers in which to store the
  *        new cells.
  */
-void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
-
-  /* Lock the space. */
-  lock_lock(&s->lock);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells,
+                    const int thread_id) {
 
   /* For each requested cell... */
   for (int j = 0; j < nr_cells; j++) {
 
     /* Is the cell buffer empty? */
-    if (s->cells_sub == NULL) {
-      if (swift_memalign("cells_sub", (void **)&s->cells_sub, cell_align,
+    if (s->cells_sub[thread_id] == NULL) {
+
+      warning("realloc %d", thread_id);
+
+      if (swift_memalign("cells_sub", (void **)&s->cells_sub[thread_id],
+                         cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
       /* Clear the newly-allocated cells. */
-      bzero(s->cells_sub, sizeof(struct cell) * space_cellallocchunk);
+      bzero(s->cells_sub[thread_id],
+            sizeof(struct cell) * space_cellallocchunk);
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
-        s->cells_sub[k].next = &s->cells_sub[k + 1];
-      s->cells_sub[space_cellallocchunk - 1].next = NULL;
+        s->cells_sub[thread_id][k].next = &s->cells_sub[thread_id][k + 1];
+      /* Signal the end of the list */
+      s->cells_sub[thread_id][space_cellallocchunk - 1].next = NULL;
     }
 
     /* Is the multipole buffer empty? */
-    if (s->with_self_gravity && s->multipoles_sub == NULL) {
+    if (s->with_self_gravity && s->multipoles_sub[thread_id] == NULL) {
       if (swift_memalign(
-              "multipoles_sub", (void **)&s->multipoles_sub, multipole_align,
+              "multipoles_sub", (void **)&s->multipoles_sub[thread_id],
+              multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
-        s->multipoles_sub[k].next = &s->multipoles_sub[k + 1];
-      s->multipoles_sub[space_cellallocchunk - 1].next = NULL;
+        s->multipoles_sub[thread_id][k].next =
+            &s->multipoles_sub[thread_id][k + 1];
+      /* Signal the end of the list */
+      s->multipoles_sub[thread_id][space_cellallocchunk - 1].next = NULL;
     }
 
     /* Pick off the next cell. */
-    cells[j] = s->cells_sub;
-    s->cells_sub = cells[j]->next;
-    s->tot_cells += 1;
+    cells[j] = s->cells_sub[thread_id];
+    s->cells_sub[thread_id] = cells[j]->next;
 
     /* Hook the multipole */
     if (s->with_self_gravity) {
-      cells[j]->grav.multipole = s->multipoles_sub;
-      s->multipoles_sub = cells[j]->grav.multipole->next;
+      cells[j]->grav.multipole = s->multipoles_sub[thread_id];
+      s->multipoles_sub[thread_id] = cells[j]->grav.multipole->next;
     }
   }
 
-  /* Unlock the space. */
-  lock_unlock_blind(&s->lock);
+  atomic_add(&s->tot_cells, nr_cells);
 
   /* Init some things in the cell we just got. */
   for (int j = 0; j < nr_cells; j++) {
@@ -534,6 +539,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
     bzero(cells[j], sizeof(struct cell));
     cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
+    cells[j]->pool_owner = thread_id;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
@@ -553,10 +559,13 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells) {
  * @param s The #space.
  */
 void space_free_buff_sort_indices(struct space *s) {
-  for (struct cell *finger = s->cells_sub; finger != NULL;
-       finger = finger->next) {
-    cell_free_hydro_sorts(finger);
-    cell_free_stars_sorts(finger);
+
+  for (int tid = 0; tid < s->e->nr_pool_threads; ++tid) {
+    for (struct cell *finger = s->cells_sub[tid]; finger != NULL;
+         finger = finger->next) {
+      cell_free_hydro_sorts(finger);
+      cell_free_stars_sorts(finger);
+    }
   }
 }
 
@@ -2488,6 +2497,8 @@ void space_clean(struct space *s) {
   swift_free("gparts_foreign", s->gparts_foreign);
   swift_free("bparts_foreign", s->bparts_foreign);
 #endif
+  free(s->cells_sub);
+  free(s->multipoles_sub);
 
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");

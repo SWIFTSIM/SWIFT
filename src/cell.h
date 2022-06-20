@@ -445,6 +445,9 @@ struct cell {
   /*! ID of the previous owner, e.g. runner. */
   int owner;
 
+  /*! ID of the previous owner, e.g. runner. */
+  int pool_owner;
+
   /*! ID of the node this cell lives on. */
   int nodeID;
 
@@ -495,7 +498,8 @@ struct cell {
 
 /* Function prototypes. */
 void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
-                          const double *top_loc, const double *top_width);
+                          const double *top_loc, const double *top_width,
+                          int thread_id);
 void cell_split_sort(struct space *s, struct cell *c,
                      const ptrdiff_t parts_offset,
                      const ptrdiff_t sparts_offset,

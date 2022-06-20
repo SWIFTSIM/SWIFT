@@ -237,7 +237,8 @@ void cell_split(struct cell *c, const int maxdepth) {
  * @param top_width The width of the top level cell in this tree.
  */
 void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
-                          const double *top_loc, const double *top_width) {
+                          const double *top_loc, const double *top_width,
+                          int thread_id) {
 
   /* Extract cell data */
   const int count = c->hydro.count, gcount = c->grav.count,
@@ -268,7 +269,7 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
 
     /* Create the cell's progeny. */
     /* NOTE: Depth 0 progeny are already allocated. */
-    space_getcells(s, 8, c->progeny);
+    space_getcells(s, 8, c->progeny, thread_id);
     for (int k = 0; k < 8; k++) {
 
       /* Lets work out whese this progeny should go based on the hilbert key

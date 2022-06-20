@@ -100,7 +100,8 @@ void zoom_space_sort_mapper(void *map_data, int num_cells,
  * @param num_cells The number of cells to treat.
  * @param extra_data Pointers to the #space.
  */
-void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data) {
+void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data,
+                             int tid) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
@@ -113,7 +114,7 @@ void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
 
     /* Finally, we can split this cell */
-    cell_split_recursive(s, c, nbits - 1, c->loc, c->width);
+    cell_split_recursive(s, c, nbits - 1, c->loc, c->width, tid);
 
   }
 }
@@ -129,8 +130,8 @@ void space_split_sort_mapper(void *map_data, int num_cells, void *extra_data) {
  * @param extra_data Pointers to the #space.
  */
 void bkg_space_split_sort_mapper(void *map_data, int num_cells,
-                                 void *extra_data) {
-  space_split_sort_mapper(map_data, num_cells, extra_data);
+                                 void *extra_data, int tid) {
+  space_split_sort_mapper(map_data, num_cells, extra_data, tid);
 }
 
 /**
@@ -142,8 +143,8 @@ void bkg_space_split_sort_mapper(void *map_data, int num_cells,
  * @param extra_data Pointers to the #space.
  */
 void zoom_space_split_sort_mapper(void *map_data, int num_cells,
-                                  void *extra_data) {
-  space_split_sort_mapper(map_data, num_cells, extra_data);
+                                  void *extra_data, int tid) {
+  space_split_sort_mapper(map_data, num_cells, extra_data, tid);
 }
 
 #endif
@@ -204,22 +205,22 @@ void space_split(struct space *s, int verbose) {
     /* Sort particles ready for the cell splitting. */
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
-    threadpool_map(&s->e->threadpool, bkg_space_split_sort_mapper,
+    threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_sort_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, s);
-    threadpool_map(&s->e->threadpool, zoom_space_split_sort_mapper,
+    threadpool_map_with_tid(&s->e->threadpool, zoom_space_split_sort_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, s);
   } else {
-    threadpool_map(&s->e->threadpool, space_split_sort_mapper,
+    threadpool_map_with_tid(&s->e->threadpool, space_split_sort_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
                    threadpool_auto_chunk_size, s);
   }
 #else
-  threadpool_map(&s->e->threadpool, space_split_sort_mapper,
+  threadpool_map_with_tid(&s->e->threadpool, space_split_sort_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
@@ -228,22 +229,22 @@ void space_split(struct space *s, int verbose) {
   /* Calculate the properties of the cell heirarchy */
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
-    threadpool_map(&s->e->threadpool, bkg_cell_props_mapper,
+    threadpool_map_with_tid(&s->e->threadpool, bkg_cell_props_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, s);
-    threadpool_map(&s->e->threadpool, zoom_cell_props_mapper,
+    threadpool_map_with_tid(&s->e->threadpool, zoom_cell_props_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, s);
   } else {
-    threadpool_map(&s->e->threadpool, cell_props_mapper,
+    threadpool_map_with_tid(&s->e->threadpool, cell_props_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
                    threadpool_auto_chunk_size, s);
   }
 #else
-  threadpool_map(&s->e->threadpool, cell_props_mapper,
+  threadpool_map_with_tid(&s->e->threadpool, cell_props_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);

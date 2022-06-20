@@ -132,7 +132,7 @@ void threadpool_dump_log(struct threadpool *tp, const char *filename,
 /**
  * @brief Runner main loop, get a chunk and call the mapper function.
  */
-static void threadpool_chomp(struct threadpool *tp, int tid) {
+static void threadpool_chomp(struct threadpool *tp, const int tid) {
 
   /* Loop until we can't get a chunk. */
   while (1) {
@@ -159,10 +159,16 @@ static void threadpool_chomp(struct threadpool *tp, int tid) {
 
 /* Call the mapper function. */
 #ifdef SWIFT_DEBUG_THREADPOOL
-    ticks tic = getticks();
+    const ticks tic = getticks();
 #endif
-    tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
-                     chunk_size, tp->map_extra_data);
+    if (tp->pass_tid) {
+      tp->map_function_tid(
+          (char *)tp->map_data + (tp->map_data_stride * task_ind), chunk_size,
+          tp->map_extra_data, tid);
+    } else {
+      tp->map_function((char *)tp->map_data + (tp->map_data_stride * task_ind),
+                       chunk_size, tp->map_extra_data);
+    }
 #ifdef SWIFT_DEBUG_THREADPOOL
     threadpool_log(tp, tid, chunk_size, tic, getticks());
 #endif
@@ -319,6 +325,7 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
   tp->map_data_stride = stride;
   tp->map_data_size = N;
   tp->map_data_count = 0;
+  tp->pass_tid = 0;
   if (chunk == threadpool_auto_chunk_size) {
     tp->map_data_chunk =
         max((N / (tp->num_threads * threadpool_default_chunk_ratio)), 1U);
@@ -328,6 +335,106 @@ void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
     tp->map_data_chunk = chunk;
   }
   tp->map_function = map_function;
+  tp->map_data = map_data;
+  tp->map_extra_data = extra_data;
+  tp->num_threads_running = 0;
+
+  /* Wait for all the threads to be up and running. */
+  swift_barrier_wait(&tp->run_barrier);
+
+  /* Do some work while I'm at it. */
+  threadpool_chomp(tp, tp->num_threads - 1);
+
+  /* Wait for all threads to be done. */
+  swift_barrier_wait(&tp->wait_barrier);
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+  /* Log the total call time to thread id -1. */
+  threadpool_log(tp, -1, N, tic_total, getticks());
+#endif
+}
+
+/**
+ * @brief Map a function to an array of data in parallel using a #threadpool.
+ *
+ * The function @c map_function is called on each element of @c map_data
+ * in parallel.
+ *
+ * @param tp The #threadpool on which to run.
+ * @param map_function The function that will be applied to the map data.
+ * @param map_data The data on which the mapping function will be called.
+ * @param N Number of elements in @c map_data.
+ * @param stride Size, in bytes, of each element of @c map_data.
+ * @param chunk Number of map data elements to pass to the function at a time,
+ *        or #threadpool_auto_chunk_size to choose the number dynamically
+ *        depending on the number of threads and tasks (recommended), or
+ *        #threadpool_uniform_chunk_size to spread the tasks evenly over the
+ *        threads in one go.
+ * @param extra_data Addtitional pointer that will be passed to the mapping
+ *        function, may contain additional data.
+ */
+void threadpool_map_with_tid(struct threadpool *tp,
+                             threadpool_map_function_tid map_function,
+                             void *map_data, size_t N, int stride, int chunk,
+                             void *extra_data) {
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+  ticks tic_total = getticks();
+#endif
+
+  /* If we just have a single thread, call the map function directly. */
+  if (tp->num_threads == 1) {
+
+    if (N <= INT_MAX) {
+      map_function(map_data, N, extra_data, 0);
+
+#ifdef SWIFT_DEBUG_THREADPOOL
+      tp->map_function_tid = map_function;
+      threadpool_log(tp, 0, N, tic_total, getticks());
+#endif
+    } else {
+
+      /* N > INT_MAX, we need to do this in chunks as map_function only takes
+       * an int. */
+      size_t chunk_size = INT_MAX;
+      size_t data_size = N;
+      size_t data_count = 0;
+      while (1) {
+
+/* Call the mapper function. */
+#ifdef SWIFT_DEBUG_THREADPOOL
+        ticks tic = getticks();
+#endif
+        map_function((char *)map_data + (stride * data_count), chunk_size,
+                     extra_data, 0);
+#ifdef SWIFT_DEBUG_THREADPOOL
+        threadpool_log(tp, 0, chunk_size, tic, getticks());
+#endif
+        /* Get the next chunk and check its size. */
+        data_count += chunk_size;
+        if (data_count >= data_size) break;
+        if (data_count + chunk_size > data_size)
+          chunk_size = data_size - data_count;
+      }
+    }
+
+    return;
+  }
+
+  /* Set the map data and signal the threads. */
+  tp->map_data_stride = stride;
+  tp->map_data_size = N;
+  tp->map_data_count = 0;
+  tp->pass_tid = 1;
+  if (chunk == threadpool_auto_chunk_size) {
+    tp->map_data_chunk =
+        max((N / (tp->num_threads * threadpool_default_chunk_ratio)), 1U);
+  } else if (chunk == threadpool_uniform_chunk_size) {
+    tp->map_data_chunk = threadpool_uniform_chunk_size;
+  } else {
+    tp->map_data_chunk = chunk;
+  }
+  tp->map_function_tid = map_function;
   tp->map_data = map_data;
   tp->map_extra_data = extra_data;
   tp->num_threads_running = 0;
