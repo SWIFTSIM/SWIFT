@@ -39,6 +39,8 @@
 /* Function type for mappings. */
 typedef void (*threadpool_map_function)(void *map_data, int num_elements,
                                         void *extra_data);
+typedef void (*threadpool_map_function_tid)(void *map_data, int num_elements,
+                                            void *extra_data, int tid);
 
 /* Data for threadpool logging. */
 struct mapper_log_entry {
@@ -49,8 +51,11 @@ struct mapper_log_entry {
   /* Size of the chunk processed. */
   int chunk_size;
 
-  /* Pointer to the mapper function. */
-  threadpool_map_function map_function;
+  union {
+    /* Pointer to the mapper function. */
+    threadpool_map_function map_function;
+    threadpool_map_function_tid map_function_tid;
+  };
 
   /*! Start and end time of this task */
   ticks tic, toc;
@@ -82,6 +87,10 @@ struct threadpool {
   volatile size_t map_data_count, map_data_size, map_data_stride;
   volatile ptrdiff_t map_data_chunk;
   volatile threadpool_map_function map_function;
+  volatile threadpool_map_function_tid map_function_tid;
+
+  /* Shall the tid be passed down? */
+  int pass_tid;
 
   /* Number of threads in this pool. */
   int num_threads;
@@ -99,6 +108,10 @@ void threadpool_init(struct threadpool *tp, int num_threads);
 void threadpool_map(struct threadpool *tp, threadpool_map_function map_function,
                     void *map_data, size_t N, int stride, int chunk,
                     void *extra_data);
+void threadpool_map_with_tid(struct threadpool *tp,
+                             threadpool_map_function_tid map_function,
+                             void *map_data, size_t N, int stride, int chunk,
+                             void *extra_data);
 void threadpool_clean(struct threadpool *tp);
 #ifdef SWIFT_DEBUG_THREADPOOL
 void threadpool_reset_log(struct threadpool *tp);

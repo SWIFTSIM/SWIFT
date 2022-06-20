@@ -157,13 +157,13 @@ struct space {
   struct cell *cells_top;
 
   /*! Buffer of unused cells for the sub-cells. */
-  struct cell *cells_sub;
+  struct cell **cells_sub;
 
   /*! The multipoles associated with the top-level (level 0) cells */
   struct gravity_tensors *multipoles_top;
 
   /*! Buffer of unused multipoles for the sub-cells. */
-  struct gravity_tensors *multipoles_sub;
+  struct gravity_tensors **multipoles_sub;
 
   /*! The indices of the *local* top-level cells */
   int *local_cells_top;
@@ -448,7 +448,8 @@ void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t bparts_offset);
 void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
                       ptrdiff_t sinks_offset);
-void space_getcells(struct space *s, int nr_cells, struct cell **cells);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells,
+                    const int thread_id);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties,
@@ -481,8 +482,6 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
-void bkg_space_split_mapper(void *map_data, int num_cells, void *extra_data);
-void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
