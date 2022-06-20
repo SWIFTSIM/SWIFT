@@ -454,7 +454,7 @@ runner_iact_nonsym_feedback_apply(
       const float thermal_frac = fb_props->SNII_fthermal;
       const float kinetic_frac = fb_props->SNII_fkinetic;
       const double u_new =
-        u_init + thermal_frac * delta_u * (float)N_of_SNII_energy_inj_received_by_gas;
+        u_init + thermal_frac * delta_u * (float)N_of_SNII_energy_inj_received_by_gas * cosmo->a2_inv;  // add in cosmology factor here to convert to comoving (system) units for u
 
       /* Inject energy into the particle */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
@@ -463,7 +463,7 @@ runner_iact_nonsym_feedback_apply(
       /* si->feedback_data.to_distribute.dm_vel_disp_1d is the 1D velocity dispersion */
 
       /* Kick particle with SNII energy */
-      const double v_kick = sqrtf(2.0 * kinetic_frac * delta_u / cosmo->a2_inv);
+      const double v_kick = sqrtf(2.0 * kinetic_frac * delta_u);
      
       /* compute direction of kick: a x v */ 
       double dir[3], norm=0.;
