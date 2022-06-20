@@ -241,7 +241,7 @@ runner_iact_nonsym_feedback_apply(
 #endif
 
   /* Ignore decoupled particles */
-  if (pj->feedback_data.decoupling_delay_time > 0) return;
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* Get r. */
   const float r = sqrtf(r2);
@@ -463,6 +463,7 @@ runner_iact_nonsym_feedback_apply(
       /* si->feedback_data.to_distribute.dm_vel_disp_1d is the 1D velocity dispersion */
 
       /* Kick particle with SNII energy */
+
       const double v_kick = sqrtf(2.0 * kinetic_frac * delta_u);
      
       /* compute direction of kick: a x v */ 
@@ -470,7 +471,7 @@ runner_iact_nonsym_feedback_apply(
       dir[0] = pj->gpart->a_grav[1] * pj->v[2] - pj->gpart->a_grav[2] * pj->v[1];
       dir[1] = pj->gpart->a_grav[2] * pj->v[0] - pj->gpart->a_grav[0] * pj->v[2];
       dir[2] = pj->gpart->a_grav[0] * pj->v[1] - pj->gpart->a_grav[1] * pj->v[0];
-      for(int i = 0; i < 3; i++) norm+=dir[i]*dir[i];
+      for (int i = 0; i < 3; i++) norm += dir[i] * dir[i];
       norm = sqrtf(norm);
 
       /* kick the particle */
@@ -484,7 +485,12 @@ runner_iact_nonsym_feedback_apply(
       tracers_after_feedback(xpj);
 
       /* Set delay time */
-      pj->feedback_data.decoupling_delay_time = 0.02 * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+      pj->feedback_data.decoupling_delay_time = 0.02f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+
+      /* Update the signal velocity of the particle based on the velocity
+       * kick
+       */
+      hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick);
 
       /* message( */
       /*     "We did some heating! id %llu star id %llu probability %.5e " */

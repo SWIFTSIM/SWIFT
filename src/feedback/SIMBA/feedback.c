@@ -176,8 +176,8 @@ INLINE static void compute_SNII_feedback(
 
     /* Compute kick speed based on local DM velocity dispersion */
     if (sp->feedback_data.to_collect.dm_ngb_N > 0) {
-      float dm_vel_disp_1d = 0.0;
-      float dm_vel_disp2[3] = {0.0, 0.0, 0.0};
+      float dm_vel_disp_1d = 0.f;
+      float dm_vel_disp2[3] = {0.f, 0.f, 0.f};
       for (int i = 0; i < 3; i++) {
         dm_vel_disp2[i] = sp->feedback_data.to_collect.dm_vel_disp2[i];
         /* The final 1D vel. disp. will be the average of these three components */

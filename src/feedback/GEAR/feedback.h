@@ -30,7 +30,8 @@
 #include <strings.h>
 
 void feedback_update_part(struct part* p, struct xpart* xp,
-                          const struct engine* e);
+                          const struct engine* e,
+                          const int with_cosmology);
 
 void feedback_reset_part(struct part* p, struct xpart* xp);
 
