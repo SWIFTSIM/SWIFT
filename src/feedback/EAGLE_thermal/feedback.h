@@ -45,9 +45,11 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
-    struct part* p, struct xpart* xp, const struct engine* e) {}
+    struct part* p, struct xpart* xp, const struct engine* e,
+    const int with_cosmology) {}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the

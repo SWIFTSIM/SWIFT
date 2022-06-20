@@ -252,7 +252,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Apply the effects of feedback on this particle
        * (Note: Only used in schemes that have a delayed feedback mechanism
        * otherwise just an empty function) */
-      feedback_update_part(p, xp, e);
+      feedback_update_part(p, xp, e, with_cosmology);
 
       /* Drift... */
       drift_part(p, xp, dt_drift, dt_kick_hydro, dt_kick_grav, dt_therm,

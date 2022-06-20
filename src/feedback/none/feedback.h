@@ -35,10 +35,12 @@
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param cosmo The #cosmology.
+ * @param with_cosmology Is this a cosmological simulation?
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
     struct part* restrict p, struct xpart* restrict xp,
-    const struct engine* restrict e) {}
+    const struct engine* restrict e,
+    const int with_cosmology) {}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the

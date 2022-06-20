@@ -38,9 +38,11 @@
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
  */
 void feedback_update_part(struct part* p, struct xpart* xp,
-                          const struct engine* e) {
+                          const struct engine* e,
+                          const int with_cosmology) {
 
   /* Did the particle receive a supernovae */
   if (xp->feedback_data.delta_mass == 0) return;

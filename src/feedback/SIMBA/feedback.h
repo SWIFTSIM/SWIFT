@@ -45,14 +45,34 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
-    struct part* p, struct xpart* xp, const struct engine* e) {
+    struct part* p, struct xpart* xp, const struct engine* e, 
+    const int with_cosmology) {
 
-  if ( p->feedback_data.decoupling_delay_time > e->time_step ) 
-    p->feedback_data.decoupling_delay_time -= e->time_step;
-  else
-    p->feedback_data.decoupling_delay_time = 0.;
+  /* No reason to do this is the decoupling time is zero */
+  if (p->feedback_data.decoupling_delay_time > 0.f) {
+    const integertime_t ti_step = get_integer_timestep(p->time_bin);
+    const integertime_t ti_begin =
+        get_integer_time_begin(e->ti_current - 1, p->time_bin);
+
+    /* Get particle time-step */
+    double dt_part;
+    if (with_cosmology) {
+      dt_part = cosmology_get_delta_time(e->cosmology, ti_begin,
+                                          ti_begin + ti_step);
+    } else {
+      dt_part = get_timestep(p->time_bin, e->time_base);
+    }
+
+    p->feedback_data.decoupling_delay_time -= dt_part;
+    if (p->feedback_data.decoupling_delay_time < 0.f) {
+      p->feedback_data.decoupling_delay_time = 0.f;
+    }
+  } else {
+    p->feedback_data.decoupling_delay_time = 0.f;
+  }
 }
 
 /**
