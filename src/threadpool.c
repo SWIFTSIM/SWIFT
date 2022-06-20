@@ -65,7 +65,10 @@ static void threadpool_log(struct threadpool *tp, int tid, size_t chunk_size,
   entry->chunk_size = chunk_size;
   entry->tic = tic;
   entry->toc = toc;
-  entry->map_function = tp->map_function;
+  if (tp->pass_tid)
+    entry->map_function_tid = tp->map_function_tid;
+  else
+    entry->map_function = tp->map_function;
   log->count++;
 }
 
