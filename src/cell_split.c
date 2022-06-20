@@ -268,7 +268,6 @@ void cell_split_recursive(struct space *s, struct cell *c, const int maxdepth,
                                c->width[2] / 2};
 
     /* Create the cell's progeny. */
-    /* NOTE: Depth 0 progeny are already allocated. */
     space_getcells(s, 8, c->progeny, thread_id);
     for (int k = 0; k < 8; k++) {
 
