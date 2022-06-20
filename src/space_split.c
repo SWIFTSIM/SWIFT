@@ -229,22 +229,22 @@ void space_split(struct space *s, int verbose) {
   /* Calculate the properties of the cell heirarchy */
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
-    threadpool_map_with_tid(&s->e->threadpool, bkg_cell_props_mapper,
+    threadpool_map(&s->e->threadpool, bkg_cell_props_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, s);
-    threadpool_map_with_tid(&s->e->threadpool, zoom_cell_props_mapper,
+    threadpool_map(&s->e->threadpool, zoom_cell_props_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, s);
   } else {
-    threadpool_map_with_tid(&s->e->threadpool, cell_props_mapper,
+    threadpool_map(&s->e->threadpool, cell_props_mapper,
                    s->local_cells_with_particles_top,
                    s->nr_local_cells_with_particles, sizeof(int),
                    threadpool_auto_chunk_size, s);
   }
 #else
-  threadpool_map_with_tid(&s->e->threadpool, cell_props_mapper,
+  threadpool_map(&s->e->threadpool, cell_props_mapper,
                  s->local_cells_with_particles_top,
                  s->nr_local_cells_with_particles, sizeof(int),
                  threadpool_auto_chunk_size, s);
