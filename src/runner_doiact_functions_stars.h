@@ -66,10 +66,14 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
   const int scount = c->stars.count;
   const int count = c->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   const int gcount = c->grav.count;
+#endif
   struct spart *restrict sparts = c->stars.parts;
   struct part *restrict parts = c->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
   struct gpart *restrict gparts = c->grav.parts;
+#endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
   struct xpart *restrict xparts = c->hydro.xparts;
 #endif
@@ -99,6 +103,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
                           (float)(si->x[1] - c->loc[1]),
                           (float)(si->x[2] - c->loc[2])};
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     /* Only do DM vel. disp. loop if necessary for the model. */
     int si_active_dm_loop = stars_dm_loop_is_active(si, e);
     if (si_active_dm_loop) {
@@ -112,9 +117,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
           float dx[3] = {six[0] - gjx[0], six[1] - gjx[1], six[2] - gjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-            runner_iact_nonsym_feedback_dm_vel_mean(si, gj, e->feedback_props);
-#endif
+            runner_iact_nonsym_feedback_dm_vel_sum(si, gj);
           }
         }
       }
@@ -129,13 +132,12 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
           float dx[3] = {six[0] - gjx[0], six[1] - gjx[1], six[2] - gjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-            runner_iact_nonsym_feedback_dm_vel_disp(si, gj, e->feedback_props);
-#endif
+            runner_iact_nonsym_feedback_dm_vel_disp(si, gj);
           }
         }
       }
     }
+#endif
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count; pjd++) {
@@ -388,10 +390,14 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     const double hi_max = ci->stars.h_max * kernel_gamma - rshift;
     const int count_i = ci->stars.count;
     const int count_j = cj->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     const int gcount_j = cj->grav.count;
+#endif
     struct spart *restrict sparts_i = ci->stars.parts;
     struct part *restrict parts_j = cj->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     struct gpart *restrict gparts_j = cj->grav.parts;
+#endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
     struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
@@ -432,6 +438,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       const float piy = spi->x[1] - (cj->loc[1] + shift[1]);
       const float piz = spi->x[2] - (cj->loc[2] + shift[2]);
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       /* Only do DM vel. disp. loop if necessary for the model. */
       int si_active_dm_loop = stars_dm_loop_is_active(spi, e);
       if (si_active_dm_loop) {
@@ -446,9 +453,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pix - gjx, piy - gjy, piz - gjz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-  #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-              runner_iact_nonsym_feedback_dm_vel_mean(spi, gj, e->feedback_props);
-  #endif
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
             }
           }
         }
@@ -463,13 +468,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pix - gjx, piy - gjy, piz - gjz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-  #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, e->feedback_props);
-  #endif
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
             }
           }
         }
       }
+#endif
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
@@ -582,10 +586,14 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     const double hj_max = cj->stars.h_max * kernel_gamma;
     const int count_i = ci->hydro.count;
     const int count_j = cj->stars.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     const int gcount_i = ci->grav.count;
+#endif
     struct spart *restrict sparts_j = cj->stars.parts;
     struct part *restrict parts_i = ci->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     struct gpart *restrict gparts_i = ci->grav.parts;
+#endif
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
     struct xpart *restrict xparts_i = ci->hydro.xparts;
 #endif
@@ -626,6 +634,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       const float pjy = spj->x[1] - cj->loc[1];
       const float pjz = spj->x[2] - cj->loc[2];
 
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       /* Only do DM vel. disp. loop if necessary for the model. */
       int sj_active_dm_loop = stars_dm_loop_is_active(spj, e);
       if (sj_active_dm_loop) {
@@ -640,9 +649,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pjx - gix, pjy - giy, pjz - giz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hjg2) {
-  #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-              runner_iact_nonsym_feedback_dm_vel_mean(spj, gi, e->feedback_props);
-  #endif
+              runner_iact_nonsym_feedback_dm_vel_sum(spj, gi);
             }
           }
         }
@@ -657,13 +664,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pjx - gix, pjy - giy, pjz - giz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hjg2) {
-  #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
-              runner_iact_nonsym_feedback_dm_vel_disp(spj, gi, e->feedback_props);
-  #endif
+              runner_iact_nonsym_feedback_dm_vel_disp(spj, gi);
             }
           }
         }
       }
+#endif
 
       /* Loop over the parts in ci. */
       for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
