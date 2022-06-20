@@ -5,6 +5,8 @@
 #ifndef SWIFTSIM_SHADOWSWIFT_BVH_H
 #define SWIFTSIM_SHADOWSWIFT_BVH_H
 
+#include "hydro.h"
+
 #include <stdlib.h>
 
 typedef struct BBox {
@@ -29,7 +31,8 @@ inline static BBox bbox_wrap(const BBox *bbox1, const BBox *bbox2) {
   return result;
 }
 
-inline static BBox bbox_from_parts(const struct part *parts, const int *pid, int count) {
+inline static BBox bbox_from_parts(const struct part *parts, const int *pid,
+                                   int count) {
   double min_x = DBL_MAX;
   double max_x = -DBL_MAX;
   double min_y = DBL_MAX;
@@ -83,14 +86,14 @@ inline static void bvh_destroy(struct BVH *bvh) {
 }
 
 inline static int cmp(const void *a, const void *b, void *arg) {
-  int ai = *(int*)a;
-  int bi = *(int*)b;
+  int ai = *(int *)a;
+  int bi = *(int *)b;
   double *coords = (double *)arg;
   double ad = coords[ai];
   double bd = coords[bi];
 
   if (ad < bd) {
-    return  - 1;
+    return -1;
   } else if (ad > bd) {
     return 1;
   } else {
@@ -98,7 +101,9 @@ inline static int cmp(const void *a, const void *b, void *arg) {
   }
 }
 
-inline static void bvh_populate_rec(struct BVH *bvh, const struct part *parts, double **coords, int *restrict pid, int count) {
+inline static void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
+                                    double **coords, int *restrict pid,
+                                    int count) {
   if (count <= 4) {
     /* Set unused fields of this bvh */
     bvh->left = NULL;
@@ -148,7 +153,8 @@ inline static void bvh_populate_rec(struct BVH *bvh, const struct part *parts, d
   bvh->left = malloc(sizeof(struct BVH));
   bvh_populate_rec(bvh->left, parts, coords, pid, median_idx);
   bvh->right = malloc(sizeof(struct BVH));
-  bvh_populate_rec(bvh->right, parts, coords, &pid[median_idx], count - median_idx);
+  bvh_populate_rec(bvh->right, parts, coords, &pid[median_idx],
+                   count - median_idx);
 
   /* Set the other fields of this bvh */
   bvh->bbox = bbox_wrap(&bvh->left->bbox, &bvh->right->bbox);
@@ -156,7 +162,8 @@ inline static void bvh_populate_rec(struct BVH *bvh, const struct part *parts, d
   bvh->count = 0;
 }
 
-inline static void bvh_populate(struct BVH *bvh, const struct part *parts, int *restrict pid, int count, int n_parts) {
+inline static void bvh_populate(struct BVH *bvh, const struct part *parts,
+                                int *restrict pid, int count, int n_parts) {
   double **coords = malloc(3 * sizeof(double *));
   coords[0] = malloc(n_parts * sizeof(double));
   coords[1] = malloc(n_parts * sizeof(double));
@@ -191,7 +198,8 @@ inline static int bvh_is_leaf(const struct BVH *bvh) {
   return bvh->left == NULL;
 }
 
-inline static int bvh_hit(const struct BVH *bvh, const struct part *parts, double x, double y, double z) {
+inline static int bvh_hit(const struct BVH *bvh, const struct part *parts,
+                          double x, double y, double z) {
   /* Anything to do here? */
   if (!bbox_contains(&bvh->bbox, x, y, z)) return -1;
 

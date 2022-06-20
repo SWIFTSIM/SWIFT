@@ -22,8 +22,8 @@
  *
  * @param c Cell containing the vertices
  */
-static inline void get_hilbert_keys(const struct cell *restrict c,
-                                    unsigned long *restrict keys) {
+__attribute__((always_inline)) INLINE static void get_hilbert_keys(
+    const struct cell *restrict c, unsigned long *restrict keys) {
   /* TODO only calculate (and later sort) the keys for the active particles! */
   for (int i = 0; i < c->hydro.count; i++) {
     float dx_max = c->hydro.dx_max_part;
@@ -52,7 +52,8 @@ static inline void get_hilbert_keys(const struct cell *restrict c,
 }
 #endif
 
-static inline void runner_build_bvh(struct runner *r, struct cell *c, int timer) {
+__attribute__((always_inline)) INLINE static void runner_build_bvh(
+    struct runner *r, struct cell *c, int timer) {
 #ifdef SHADOWSWIFT_BVH
   TIMER_TIC;
 
@@ -198,7 +199,7 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
         delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                                 pi_idx, 0);
         /* Update delaunay flags to signal that the particle was added for
-           * this sid */
+         * this sid */
         pj->geometry.delaunay_flags |= 1 << sid;
       }
     }
@@ -234,7 +235,7 @@ __attribute((always_inline)) INLINE static void runner_dopair_grid_construction(
         delaunay_add_new_vertex(ci->grid.delaunay, pjx, pjy, pjz, sid, pj_idx,
                                 pi_idx, 0);
         /* Update delaunay flags to signal that the particle was added for
-           * this sid */
+         * this sid */
         pj->geometry.delaunay_flags |= 1 << sid;
       }
     }
@@ -543,7 +544,6 @@ runner_doself_grid_construction(const struct engine *restrict e,
       count_inactive++;
     }
   }
-
 
   if (count_inactive == 0) {
     /* Be clean */
@@ -1105,6 +1105,8 @@ runner_doself_subset_grid_construction(struct runner *restrict r,
                                        const int *restrict ind,
                                        const double *restrict r_prev,
                                        int count) {}
+__attribute__((always_inline)) INLINE static void runner_build_bvh(
+    struct runner *r, struct cell *c, int timer) {}
 
 #endif
 
