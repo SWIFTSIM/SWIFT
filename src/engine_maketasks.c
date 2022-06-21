@@ -1322,9 +1322,10 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
   if (with_hydro) {
 
-    /* Are we at the construction level, meaning that we have to recieve faces?
-     */
-    if (c->grid.construction_level == on_construction_level) {
+    /* Are we at the construction level and is this cell linked to any
+     * construction tasks, meaning that we have to recieve faces?*/
+    if (c->grid.construction_level == on_construction_level &&
+        c->grid.construction != NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure this cell has a valid tag. */

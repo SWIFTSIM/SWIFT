@@ -210,6 +210,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.rt_transport_out = NULL;
     c->hydro.rt_tchem = NULL;
     c->hydro.rt_out = NULL;
+    c->grid.bvh = NULL;
     c->grid.voronoi = NULL;
     c->grid.delaunay = NULL;
     c->grid.hilbert_r_sort = NULL;
@@ -221,6 +222,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grid.construction_level = uninitialized;
     c->grid.super = NULL;
     c->grid.ti_old = 0;
+    c->grid.build_bvh = NULL;
     c->grid.construction = NULL;
     c->grid.ghost = NULL;
     c->hydro.slope_estimate = NULL;
