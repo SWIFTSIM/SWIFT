@@ -258,7 +258,7 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Hook this cell into the buffer. */
   c->next = s->cells_sub[owner];
   s->cells_sub[owner] = c;
-  s->tot_cells -= 1;
+  atomic_dec(&s->tot_cells);
 
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
@@ -315,7 +315,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Hook the cells into the buffer. */
   cell_list_end->next = s->cells_sub[owner];
   s->cells_sub[owner] = cell_list_begin;
-  s->tot_cells -= count;
+  atomic_sub(&s->tot_cells, count);
 
   /* Hook the multipoles into the buffer. */
   if (s->with_self_gravity) {
