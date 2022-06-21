@@ -1167,17 +1167,36 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
   }
   if (e->policy & engine_policy_grid) {
-    /* Grid construction: 1 self + 26 (asymmetric) pairs + 1 ghost */
-    n1 += 28;
+    /* Grid construction: 1 self + 26 (asymmetric) pairs + 1 ghost + 1 sort */
+    n1 += 29;
+    n2 += 3;
+#ifdef SHADOWSWIFT_BVH
+    /* Bvh construction */
+    n1 += 1;
+#endif
+#ifdef WITH_MPI
+    n1 += 3;
+#endif
   }
   if (e->policy & engine_policy_grid_hydro) {
-    /* 1 self (flux), 1 sort, 26/2 flux pairs, 1 drift, 1 ghosts, 2 kicks, 1
-     * time-step */
-    n1 += 20;
+    /* slope estimate: 1 self + 13 pairs (on average)       |   14
+     * others: 1 ghosts, 2 kicks, 1 drift, 1 timestep       | +  7
+     * Total:                                               =   21 */
+    n1 += 21;
     n2 += 2;
 #ifdef EXTRA_HYDRO_LOOP
-    /* 2 self (slope estimate + limiter), 26 pairs, 2 ghost. */
+    /* slope limiter: 1 self + 13 pairs                     | + 14
+     * flux: 1 self + 13 pairs                              | + 14
+     * others: 2 ghost.                                     | +  2
+     * Total:                                               =   30  */
     n1 += 30;
+    n2 += 3;
+#endif
+#ifdef WITH_MPI
+    n1 += 1;
+#ifdef EXTRA_HYDRO_LOOP
+    n1 += 1;
+#endif
 #endif
   }
 
