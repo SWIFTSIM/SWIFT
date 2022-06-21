@@ -1654,7 +1654,8 @@ void write_output_parallel(struct engine* e,
         e->s->cells_top, e->s->nr_cells, e->s->zoom_props->nr_zoom_cells,
         e->s->zoom_props->nr_bkg_cells, e->s->width, e->s->zoom_props->width,
         mpi_rank, /*distributed=*/0, subsample, subsample_fraction,
-        e->snapshot_output_count, N_total, offset, numFields, internal_units,
+        e->snapshot_output_count, N_total, offset, to_write,
+        numFields, internal_units,
         snapshot_units, /*with_zoom=*/1);
   } else {
     io_write_cell_offsets(
@@ -1663,7 +1664,7 @@ void write_output_parallel(struct engine* e,
         e->s->width,
         /*zoom_width=*/NULL, mpi_rank, /*distributed=*/0, subsample,
         subsample_fraction, e->snapshot_output_count, N_total, offset,
-        numFields, internal_units, snapshot_units, /*with_zoom=*/0);
+        to_write, numFields, internal_units, snapshot_units, /*with_zoom=*/0);
   }
 #else
   io_write_cell_offsets(h_grp_cells, e->s->cdim, /*zoom_cdim=*/NULL, e->s->dim,
@@ -1671,7 +1672,7 @@ void write_output_parallel(struct engine* e,
                         /*nr_bkgcells=*/e->s->nr_cells, e->s->width,
                         /*zoom_width=*/NULL, mpi_rank, /*distributed=*/0,
                         subsample, subsample_fraction, e->snapshot_output_count,
-                        N_total, offset, numFields, internal_units,
+                        N_total, offset, to_write, numFields, internal_units,
                         snapshot_units, /*with_zoom=*/0);
 #endif
 
