@@ -652,25 +652,6 @@ void space_split_recursive(struct space *s, struct cell *c,
   c->black_holes.h_max_active = black_holes_h_max_active;
   c->maxdepth = maxdepth;
 
-  /* Set ownership according to the start of the parts array. */
-  if (s->nr_parts > 0)
-    c->owner = ((c->hydro.parts - s->parts) % s->nr_parts) * s->nr_queues /
-               s->nr_parts;
-  else if (s->nr_sinks > 0)
-    c->owner = ((c->sinks.parts - s->sinks) % s->nr_sinks) * s->nr_queues /
-               s->nr_sinks;
-  else if (s->nr_sparts > 0)
-    c->owner = ((c->stars.parts - s->sparts) % s->nr_sparts) * s->nr_queues /
-               s->nr_sparts;
-  else if (s->nr_bparts > 0)
-    c->owner = ((c->black_holes.parts - s->bparts) % s->nr_bparts) *
-               s->nr_queues / s->nr_bparts;
-  else if (s->nr_gparts > 0)
-    c->owner = ((c->grav.parts - s->gparts) % s->nr_gparts) * s->nr_queues /
-               s->nr_gparts;
-  else
-    c->owner = 0; /* Ok, there is really nothing on this rank... */
-
   /* Store the global max depth */
   if (c->depth == 0) atomic_max(&s->maxdepth, maxdepth);
 
