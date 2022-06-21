@@ -137,7 +137,7 @@
  * @param data A pointer to this thread's data.
  */
 #pragma GCC push_options
-#pragma GCC optimize ("O0")
+#pragma GCC optimize("O0")
 void *runner_main(void *data) {
 
   struct runner *r = (struct runner *)data;
@@ -177,23 +177,28 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
-      if (cj != NULL){
+      if (cj != NULL) {
         celltrace(cj, "running %s/%s cells %lld %lld local %d %d",
-            taskID_names[t->type], subtaskID_names[t->subtype],
-            ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank);
+                  taskID_names[t->type], subtaskID_names[t->subtype],
+                  ci->cellID, cj->cellID, ci->nodeID == engine_rank,
+                  cj->nodeID == engine_rank);
         celltrace(ci, "running %s/%s cells %lld %lld local %d %d",
-            taskID_names[t->type], subtaskID_names[t->subtype],
-            ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank);
-      }
-      else {
-        celltrace(ci, "running %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]);
+                  taskID_names[t->type], subtaskID_names[t->subtype],
+                  ci->cellID, cj->cellID, ci->nodeID == engine_rank,
+                  cj->nodeID == engine_rank);
+      } else {
+        celltrace(ci, "running %s/%s", taskID_names[t->type],
+                  subtaskID_names[t->subtype]);
       }
 
-      /* if (((t->type == task_type_send) || (t->type == task_type_recv)) && (t->subtype == task_subtype_rt_gradient)) { */
+      /* if (((t->type == task_type_send) || (t->type == task_type_recv)) &&
+       * (t->subtype == task_subtype_rt_gradient)) { */
       /*   if (cj != NULL) */
-      /*     message("running %s/%s cells %lld %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
+      /*     message("running %s/%s cells %lld %lld", taskID_names[t->type],
+       * subtaskID_names[t->subtype], ci->cellID, cj->cellID); */
       /*   else */
-      /*     message("running %s/%s cell %lld", taskID_names[t->type], subtaskID_names[t->subtype], ci->cellID); */
+      /*     message("running %s/%s cell %lld", taskID_names[t->type],
+       * subtaskID_names[t->subtype], ci->cellID); */
       /*   fflush(stdout); */
       /* } */
 
@@ -421,7 +426,7 @@ void *runner_main(void *data) {
           t->flags = 0;
           break;
         case task_type_rt_sort:
-          /* Cleanup only if any of the indices went stale. 
+          /* Cleanup only if any of the indices went stale.
            * NOTE: we check whether we reset the sort flags when the
            * recv tasks are running. Cells without an RT recv task
            * don't have rt_sort tasks. */
@@ -517,40 +522,47 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
 
-} else if (t->subtype == task_subtype_rt_gradient){
+          } else if (t->subtype == task_subtype_rt_gradient) {
 
-  int ha = 0; int rta = 0;
-  int rt_bin_sum = 0, bin_sum=0, kick_sum=0;
-  for (int k = 0; k < t->ci->hydro.count; k++){
-    struct part *pi = &t->ci->hydro.parts[k];
-    if (part_is_active(pi, e)) ha++;
-    if (part_is_rt_active(pi, e)) rta++;
-    rt_bin_sum += pi->rt_time_data.time_bin;
-    bin_sum += pi->time_bin;
-    kick_sum += pi->rt_data.debug_kicked;
-  }
-  message("running send cell= %lld ha=%d rta=%d bin_sum=%d rt_bin_sum=%d kicked_sum=%d count=%d", 
-          t->ci->cellID, ha, rta, bin_sum, rt_bin_sum, kick_sum, t->ci->hydro.count);
-  fflush(stdout);
+            int ha = 0;
+            int rta = 0;
+            int rt_bin_sum = 0, bin_sum = 0, kick_sum = 0;
+            for (int k = 0; k < t->ci->hydro.count; k++) {
+              struct part *pi = &t->ci->hydro.parts[k];
+              if (part_is_active(pi, e)) ha++;
+              if (part_is_rt_active(pi, e)) rta++;
+              rt_bin_sum += pi->rt_time_data.time_bin;
+              bin_sum += pi->time_bin;
+              kick_sum += pi->rt_data.debug_kicked;
+            }
+            message(
+                "running send cell= %lld ha=%d rta=%d bin_sum=%d rt_bin_sum=%d "
+                "kicked_sum=%d count=%d",
+                t->ci->cellID, ha, rta, bin_sum, rt_bin_sum, kick_sum,
+                t->ci->hydro.count);
+            fflush(stdout);
 
-  if (e->step > 1){
-    for (int k = 0; k < t->ci->hydro.count; k++){
-      struct part* p = &t->ci->hydro.parts[k];
-      char msg[200];
-      long long super = -1;
-      if (ci->super != NULL) super = ci->super->cellID;
-      long long hydro_super = -1;
-      if (ci->hydro.super != NULL) hydro_super = ci->hydro.super->cellID;
-      long long top = -1;
-      if (ci->top != NULL) top = ci->top->cellID;
-      sprintf(msg, "send rt in main cell=%lld super=%lld hydro super=%lld top=%lld c->nodeID=%d engine_rank=%d HA=%d RTA=%d", 
-          ci->cellID, super, hydro_super, top, ci->nodeID, engine_rank, cell_is_active_hydro(ci, e), cell_is_rt_active(ci, e));
-      if (part_is_rt_active(p, e))
-        rt_debug_sequence_check(p, 1, msg);
-    }
-  }
-
-          } 
+            if (e->step > 1) {
+              for (int k = 0; k < t->ci->hydro.count; k++) {
+                struct part *p = &t->ci->hydro.parts[k];
+                char msg[200];
+                long long super = -1;
+                if (ci->super != NULL) super = ci->super->cellID;
+                long long hydro_super = -1;
+                if (ci->hydro.super != NULL)
+                  hydro_super = ci->hydro.super->cellID;
+                long long top = -1;
+                if (ci->top != NULL) top = ci->top->cellID;
+                sprintf(msg,
+                        "send rt in main cell=%lld super=%lld hydro super=%lld "
+                        "top=%lld c->nodeID=%d engine_rank=%d HA=%d RTA=%d",
+                        ci->cellID, super, hydro_super, top, ci->nodeID,
+                        engine_rank, cell_is_active_hydro(ci, e),
+                        cell_is_rt_active(ci, e));
+                if (part_is_rt_active(p, e)) rt_debug_sequence_check(p, 1, msg);
+              }
+            }
+          }
           break;
         case task_type_recv:
           if (t->subtype == task_subtype_tend) {
@@ -567,51 +579,61 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_gradient) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_rt_gradient) {
-            /* In the case of a foreign cell where no xv comms are 
-             * done, but RT is active, we need to force a sort after 
+            /* In the case of a foreign cell where no xv comms are
+             * done, but RT is active, we need to force a sort after
              * the gradient recv. */
             int clear_sorts = !cell_get_flag(ci, cell_flag_skip_rt_sort);
-celltrace(ci, "recv clear sorts = %d", clear_sorts);
+            celltrace(ci, "recv clear sorts = %d", clear_sorts);
             cell_clear_flag(ci, cell_flag_skip_rt_sort);
 
-  int ha = 0; int rta = 0;
-  int rt_bin_sum = 0, bin_sum=0, kick_sum=0;
-  for (int k = 0; k < t->ci->hydro.count; k++){
-    struct part *pi = &t->ci->hydro.parts[k];
-    if (part_is_active(pi, e)) ha++;
-    if (part_is_rt_active(pi, e)) rta++;
-    rt_bin_sum += pi->rt_time_data.time_bin;
-    bin_sum += pi->time_bin;
-    kick_sum += pi->rt_data.debug_kicked;
-  }
-  message("running recv cell= %lld ha=%d rta=%d bin_sum=%d rt_bin_sum=%d kicked_sum=%d count=%d", 
-          t->ci->cellID, ha, rta, bin_sum, rt_bin_sum, kick_sum, t->ci->hydro.count);
-  fflush(stdout);
+            int ha = 0;
+            int rta = 0;
+            int rt_bin_sum = 0, bin_sum = 0, kick_sum = 0;
+            for (int k = 0; k < t->ci->hydro.count; k++) {
+              struct part *pi = &t->ci->hydro.parts[k];
+              if (part_is_active(pi, e)) ha++;
+              if (part_is_rt_active(pi, e)) rta++;
+              rt_bin_sum += pi->rt_time_data.time_bin;
+              bin_sum += pi->time_bin;
+              kick_sum += pi->rt_data.debug_kicked;
+            }
+            message(
+                "running recv cell= %lld ha=%d rta=%d bin_sum=%d rt_bin_sum=%d "
+                "kicked_sum=%d count=%d",
+                t->ci->cellID, ha, rta, bin_sum, rt_bin_sum, kick_sum,
+                t->ci->hydro.count);
+            fflush(stdout);
 
-  if (e->step > 1){
-    for (int k = 0; k < t->ci->hydro.count; k++){
-      struct part* p = &t->ci->hydro.parts[k];
-      char msg[200];
-      long long super = -1;
-      if (ci->super != NULL) super = ci->super->cellID;
-      long long hydro_super = -1;
-      if (ci->hydro.super != NULL) hydro_super = ci->hydro.super->cellID;
-      long long top = -1;
-      if (ci->top != NULL) top = ci->top->cellID;
-      sprintf(msg, "recv rt in main cell=%lld super=%lld hydro super=%lld top=%lld c->nodeID=%d engine_rank=%d HA=%d RTA=%d", 
-          ci->cellID, super, hydro_super, top, ci->nodeID, engine_rank, cell_is_active_hydro(ci, e), cell_is_rt_active(ci, e));
-      if (part_is_rt_active(p, e))
-        rt_debug_sequence_check(p, 1, msg);
-    }
-  }
+            if (e->step > 1) {
+              for (int k = 0; k < t->ci->hydro.count; k++) {
+                struct part *p = &t->ci->hydro.parts[k];
+                char msg[200];
+                long long super = -1;
+                if (ci->super != NULL) super = ci->super->cellID;
+                long long hydro_super = -1;
+                if (ci->hydro.super != NULL)
+                  hydro_super = ci->hydro.super->cellID;
+                long long top = -1;
+                if (ci->top != NULL) top = ci->top->cellID;
+                sprintf(msg,
+                        "recv rt in main cell=%lld super=%lld hydro super=%lld "
+                        "top=%lld c->nodeID=%d engine_rank=%d HA=%d RTA=%d",
+                        ci->cellID, super, hydro_super, top, ci->nodeID,
+                        engine_rank, cell_is_active_hydro(ci, e),
+                        cell_is_rt_active(ci, e));
+                if (part_is_rt_active(p, e)) rt_debug_sequence_check(p, 1, msg);
+              }
+            }
 
-  /* if (cell_is_active_hydro(t->ci, e)) { */
-  /*   int kicked = t->ci->tasks_executed[task_type_kick2] == 1; */
-  /*   for (struct cell* parent = t->ci->parent; parent != NULL; parent=parent->parent){ */
-  /*     kicked |= parent->tasks_executed[task_type_kick2] == 1; */
-  /*   } */
-  /*   if (!kicked) error("Cell recv rt gradient without executing kick2"); */
-  /* } */
+            /* if (cell_is_active_hydro(t->ci, e)) { */
+            /*   int kicked = t->ci->tasks_executed[task_type_kick2] == 1; */
+            /*   for (struct cell* parent = t->ci->parent; parent != NULL;
+             * parent=parent->parent){ */
+            /*     kicked |= parent->tasks_executed[task_type_kick2] == 1; */
+            /*   } */
+            /*   if (!kicked) error("Cell recv rt gradient without executing
+             * kick2"); */
+            /* } */
 
             runner_do_recv_part(r, ci, clear_sorts, 1);
           } else if (t->subtype == task_subtype_rt_transport) {
@@ -723,13 +745,16 @@ celltrace(ci, "recv clear sorts = %d", clear_sorts);
 
       /*   celltrace(cj, "finished %s/%s cells %lld %lld local %d %d", */
       /*       taskID_names[t->type], subtaskID_names[t->subtype], */
-      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
+      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID ==
+       * engine_rank); */
       /*   celltrace(ci, "finished %s/%s cells %lld %lld local %d %d", */
       /*       taskID_names[t->type], subtaskID_names[t->subtype], */
-      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID == engine_rank); */
+      /*       ci->cellID, cj->cellID, ci->nodeID == engine_rank, cj->nodeID ==
+       * engine_rank); */
       /* } */
       /* else { */
-      /*   celltrace(ci, "finished %s/%s", taskID_names[t->type], subtaskID_names[t->subtype]); */
+      /*   celltrace(ci, "finished %s/%s", taskID_names[t->type],
+       * subtaskID_names[t->subtype]); */
       /* } */
 
       /* We're done with this task, see if we get a next one. */

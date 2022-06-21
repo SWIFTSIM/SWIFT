@@ -77,8 +77,10 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
 __attribute__((always_inline)) INLINE static void rt_reset_part(
     struct part* restrict p, const struct cosmology* cosmo) {
 
-  if (p->rt_data.called_in_kick1) error("part %lld called reset after kick1", p->id);
-  if (p->rt_data.called_in_kick2) error("part %lld called reset after kick2", p->id);
+  if (p->rt_data.called_in_kick1)
+    error("part %lld called reset after kick1", p->id);
+  if (p->rt_data.called_in_kick2)
+    error("part %lld called reset after kick2", p->id);
   p->rt_data.called_reset++;
 
   /* reset this here as well as in the rt_debugging_checks_end_of_step()

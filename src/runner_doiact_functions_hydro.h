@@ -1131,7 +1131,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       /* Skip inactive particles */
       if (!PART_IS_ACTIVE(pi, e)) continue;
 
-      if (part_is_inhibited(pi,e)) error("Working on an inhibited part");
+      if (part_is_inhibited(pi, e)) error("Working on an inhibited part");
 
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -2550,13 +2550,15 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
       error(
           "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
           "ci->sorted=%d sid=%d cellID=%lld",
-          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid, ci->cellID);
+          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid,
+          ci->cellID);
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
       error(
           "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
           "cj->sorted=%d sid=%d cellID=%lld",
-          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid, cj->cellID);
+          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid,
+          cj->cellID);
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);

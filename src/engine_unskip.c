@@ -270,7 +270,9 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
         struct cell *cp = c->progeny[k];
-        celltrace(cp, "caught in engine unskip. parent active=%d, cell active=%d", cell_is_rt_active(c, e), cell_is_rt_active(cp, e));
+        celltrace(cp,
+                  "caught in engine unskip. parent active=%d, cell active=%d",
+                  cell_is_rt_active(c, e), cell_is_rt_active(cp, e));
         engine_do_unskip_rt(cp, e, sub_cycle);
       }
     }
@@ -429,8 +431,7 @@ void engine_unskip(struct engine *e) {
       num_active_cells += 1;
 
       celltrace(c, "cell will be checked");
-    }
-    else{
+    } else {
       celltrace(c, "cell wont be checked");
     }
 

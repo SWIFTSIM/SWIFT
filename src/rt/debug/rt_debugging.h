@@ -184,14 +184,14 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
   atomic_add(&e->rt_props->debug_radiation_absorbed_tot, absorption_sum_tot);
 }
 
-static void reset_cell_debugging_flags(struct cell *c){
+static void reset_cell_debugging_flags(struct cell *c) {
   c->activated_recv = 0;
   c->activated_sort = 0;
   c->checked_sort = 0;
   c->called_sort = 0;
   c->finished_sort = 0;
-  if (c->split){
-    for (int k = 0; k < 8; k++){
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) reset_cell_debugging_flags(c->progeny[k]);
     }
   }
@@ -202,7 +202,8 @@ static void reset_cell_debugging_flags(struct cell *c){
  */
 /* static void rt_debugging_end_of_step_cell_mapper(void *restrict map_data, */
 /*                                                   int count, */
-/*                                                   void *restrict extra_data) { */
+/*                                                   void *restrict extra_data)
+ * { */
 /*   const int *const local_cells = (int *)map_data; */
 /*   struct engine *e = (struct engine *)extra_data; */
 /*  */
@@ -265,13 +266,12 @@ rt_debugging_checks_start_of_step(struct engine *e, int verbose) {
   /*                  s->sparts, s->nr_sparts, sizeof(struct spart), */
   /*                  threadpool_auto_chunk_size, [>extra_data=<]e); */
 
-
-
-  /* threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper, s->cells_top, */
-  /*                s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, */
+  /* threadpool_map(&s->e->threadpool, space_rebuild_recycle_mapper,
+   * s->cells_top, */
+  /*                s->nr_cells, sizeof(struct cell),
+   * threadpool_auto_chunk_size, */
   /*                s); */
 
-  
   /* char fname[200]; */
   /* sprintf(fname, "cellcheck_%d.txt", engine_rank); */
   /* FILE *f; */
@@ -290,13 +290,18 @@ rt_debugging_checks_start_of_step(struct engine *e, int verbose) {
   /*   fflush(stdout); */
   /*  */
   /*   [> Same check as in active.h <] */
-  /*   if (c->rt.rt_advance_cell_time != NULL && c->rt.ti_rt_end_min < e->ti_current_subcycle) { */
+  /*   if (c->rt.rt_advance_cell_time != NULL && c->rt.ti_rt_end_min <
+   * e->ti_current_subcycle) { */
   /*       error( */
-  /*           "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld (t=%e) " */
-  /*           "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d count=%d", */
-  /*           c->cellID, c->rt.ti_rt_end_min, c->rt.ti_rt_end_min * e->time_base, */
+  /*           "cell %lld in an impossible time-zone! c->ti_rt_end_min=%lld
+   * (t=%e) " */
+  /*           "and e->ti_current=%lld (t=%e, a=%e) c->nodeID=%d ACT=%d
+   * count=%d", */
+  /*           c->cellID, c->rt.ti_rt_end_min, c->rt.ti_rt_end_min *
+   * e->time_base, */
   /*           e->ti_current_subcycle, e->ti_current_subcycle * e->time_base, */
-  /*           e->cosmology->a, c->nodeID, c->rt.rt_advance_cell_time != NULL, */
+  /*           e->cosmology->a, c->nodeID, c->rt.rt_advance_cell_time != NULL,
+   */
   /*           c->hydro.count); */
   /*   } */
   /*  */
@@ -305,13 +310,12 @@ rt_debugging_checks_start_of_step(struct engine *e, int verbose) {
   /*   fprintf(f, "%6lld %2d %2d %2d\n", */
   /*       c->cellID, c->nodeID, cell_is_active_hydro(c, e), rta) ; */
   /*   [> printf("%6lld %2d %2d %2d\n", <] */
-  /*   [>     c->cellID, c->nodeID, cell_is_active_hydro(c, e), cell_is_rt_active(c, e) <] */
+  /*   [>     c->cellID, c->nodeID, cell_is_active_hydro(c, e),
+   * cell_is_rt_active(c, e) <] */
   /*   [>     ) ; <] */
   /* } */
   /*  */
   /* fclose(f); */
-
-
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -357,11 +361,10 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
   /* Move the active local cells to the top of the list. */
   int num_active_cells = s->nr_local_cells_with_tasks;
 
-  for (int ind = 0; ind < num_active_cells; ind++){
+  for (int ind = 0; ind < num_active_cells; ind++) {
     struct cell *c = &e->s->cells_top[ind];
     reset_cell_debugging_flags(c);
   }
-
 
 #ifdef WITH_MPI
   /* Since we aren't sending data back, none of these checks will
@@ -413,7 +416,8 @@ __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
   /* if (p->rt_data.debug_drifted != 1 && loc != 1) */
   /*   [> The only place where we don't need to be drifted first is the <] */
   /*   [> ghost1 (finalise injection) step, so skip the test there. <] */
-  /*   error("called %s on particle %lld with wrong drift count=%d", function_name, */
+  /*   error("called %s on particle %lld with wrong drift count=%d",
+   * function_name, */
   /*         p->id, p->rt_data.debug_drifted); */
 
   if (loc > 0) {

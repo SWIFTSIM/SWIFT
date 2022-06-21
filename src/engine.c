@@ -1692,8 +1692,11 @@ void engine_skip_drift(struct engine *e) {
 void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
 
-message("================================================================= started launch %s step %d", call, e->step);
-fflush(stdout);
+  message(
+      "================================================================= "
+      "started launch %s step %d",
+      call, e->step);
+  fflush(stdout);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
@@ -1738,9 +1741,11 @@ fflush(stdout);
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 
-message("================================================================= finished launch %s step %d", call, e->step);
-fflush(stdout);
-
+  message(
+      "================================================================= "
+      "finished launch %s step %d",
+      call, e->step);
+  fflush(stdout);
 }
 
 /**
@@ -1792,15 +1797,16 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   if (e->max_nr_rt_subcycles <= 1) return;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  /* Print info before it's gone */
+    /* Print info before it's gone */
 #ifdef WITH_MPI
   long long rt_updates_tot = 0ll;
-  int test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  int test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG,
+                        MPI_SUM, 0, MPI_COMM_WORLD);
   if (test != MPI_SUCCESS) error("MPI reduce failed");
 #else
   long long rt_updates_tot = e->rt_updates;
 #endif
-  if (e->nodeID == 0){
+  if (e->nodeID == 0) {
     message(
         "step %6d cycle   0 (during regular tasks) min_active_bin=%2d "
         "max_active_bin=%2d rt_updates=%18lld",
@@ -1849,12 +1855,13 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
 #ifdef WITH_MPI
     rt_updates_tot = 0ll;
-    test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG,
+                      MPI_SUM, 0, MPI_COMM_WORLD);
     if (test != MPI_SUCCESS) error("MPI reduce failed");
 #else
     rt_updates_tot = e->rt_updates;
 #endif
-    if (e->nodeID == 0){
+    if (e->nodeID == 0) {
       message(
           "step %6d cycle %3d time=%13.6e     min_active_bin=%d "
           "max_active_bin=%d rt_updates=%18lld",

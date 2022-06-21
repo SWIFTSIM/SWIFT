@@ -86,7 +86,6 @@ struct rt_part_data {
   /* Don't reset this in any task. */
   int debug_rt_zeroth_cycle_on_main_step;
 
-
   /* TODO: temporary */
   int called_in_kick1;
   int called_in_kick2;

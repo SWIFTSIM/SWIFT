@@ -221,12 +221,15 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   } else {
     flags &= ~c->hydro.sorted;
   }
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) && !cell_get_flag(c, cell_flag_do_rt_sub_sort)) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_hydro_sub_sort) &&
+      !cell_get_flag(c, cell_flag_do_rt_sub_sort))
+    return;
 
   /* An RT subcycle call during a main step may request a sort
    * on a cell that hasn't been drifted. If that's the case,
    * exit early and pretend the cell is freshly sorted. */
-  if (flags && !cell_are_part_drifted(c, r->e) && cell_get_flag(c, cell_flag_do_rt_sort)){
+  if (flags && !cell_are_part_drifted(c, r->e) &&
+      cell_get_flag(c, cell_flag_do_rt_sort)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Make sure the sort flags are consistent (downward). */
@@ -264,12 +267,11 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     } /* progeny? */
     else {
       /* Add the sentinel and sort. */
-      for (int j = 0; j < 13; j++){
-        if (flags & (1 << j))
-          atomic_or(&c->hydro.sorted, 1 << j);
+      for (int j = 0; j < 13; j++) {
+        if (flags & (1 << j)) atomic_or(&c->hydro.sorted, 1 << j);
       }
     }
- 
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Verify the sorting. */
     for (int j = 0; j < 13; j++) {
@@ -308,15 +310,18 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   }
 
   /* Check that the particles have been moved to the current time */
-  if (flags && !cell_are_part_drifted(c, r->e)){
+  if (flags && !cell_are_part_drifted(c, r->e)) {
     /* If the sort was requested by RT, cell may be undrifted.
      * So skip this check now. Pretend you've been sorted properly later. */
     /* TODO: cleanup */
     /* if (!cell_get_flag(c, cell_flag_do_rt_sort)) */
-      error("Sorting un-drifted cell c->nodeID=%d ID %lld HA %d RTA %d | ti_old_part=%lld ti_current=%lld"
-          "\n\t\tsplit=%d depth=%d",
-          c->nodeID, c->cellID, cell_is_active_hydro(c, r->e), cell_is_rt_active(c, r->e),   c->hydro.ti_old_part , r->e->ti_current,
-          c->split, c->depth);
+    error(
+        "Sorting un-drifted cell c->nodeID=%d ID %lld HA %d RTA %d | "
+        "ti_old_part=%lld ti_current=%lld"
+        "\n\t\tsplit=%d depth=%d",
+        c->nodeID, c->cellID, cell_is_active_hydro(c, r->e),
+        cell_is_rt_active(c, r->e), c->hydro.ti_old_part, r->e->ti_current,
+        c->split, c->depth);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -353,7 +358,8 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
           runner_do_hydro_sort(
               r, c->progeny[k], flags,
               cleanup && (c->progeny[k]->hydro.dx_max_sort_old >
-                          space_maxreldx * c->progeny[k]->dmin), 0);
+                          space_maxreldx * c->progeny[k]->dmin),
+              0);
           dx_max_sort = max(dx_max_sort, c->progeny[k]->hydro.dx_max_sort);
           dx_max_sort_old =
               max(dx_max_sort_old, c->progeny[k]->hydro.dx_max_sort_old);

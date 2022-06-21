@@ -1595,10 +1595,11 @@ int main(int argc, char *argv[]) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
     if (e.policy & engine_policy_rt) {
       /* if we're running the debug RT scheme, do some checks after every step.
-       * Do this after the output so we can safely reset debugging checks now. */
+       * Do this after the output so we can safely reset debugging checks now.
+       */
       /* If we're dumping a snapshot before the first step, it'll mess with the
        * debug_drift counters due to the drift_all operation. */
-        rt_debugging_checks_end_of_step(&e, e.verbose);
+      rt_debugging_checks_end_of_step(&e, e.verbose);
     }
 #endif
   }
