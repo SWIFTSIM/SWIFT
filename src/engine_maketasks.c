@@ -554,7 +554,7 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
       /* This probably can and should be done in a better way in the future. */
       struct task *t_xv = NULL;
       for (struct link *l2 = ci->mpi.send; l2 != NULL; l2 = l2->next) {
-        if (l2->t->subtype == task_subtype_xv) {
+        if ((l2->t->subtype == task_subtype_xv) && (l->t->ci->nodeID == nodeID || (l->t->cj != NULL && l->t->cj->nodeID == nodeID))){
           t_xv = l2->t;
           break;
         }
@@ -1107,16 +1107,31 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
     scheduler_addunlock(s, t_rt_transport, t_rt_advance_cell_time);
     /* Make sure the gradient recv don't run before the xv is finished.
      * This can occur when a cell itself is inactive for both hydro and
-     * RT, but needs to be sent over for some other cell's pair task. */
+     * RT, but needs to be sent over for some other cell's pair task.
+     * For active cells, you must make sure that t_rho and t_gradient have
+     * been received first. As there is no guarantee which message will
+     * arrive first, you might overwrite data otherwise. */
     /* This probably can and should be done in a better way in the future. */
-    struct task *t_xv = NULL;
+    struct task *t_xv = NULL, *t_rho = NULL;
+#ifdef EXTRA_HYDRO_LOOP
+    struct task *t_grad = NULL;
+#endif
     for (struct link *l = c->mpi.recv; l != NULL; l = l->next) {
-      if (l->t->subtype == task_subtype_xv) {
-        t_xv = l->t;
-        break;
-      }
+      if (l->t->subtype == task_subtype_xv) t_xv = l->t;
+      if (l->t->subtype == task_subtype_rho) t_rho = l->t;
+#ifdef EXTRA_HYDRO_LOOP
+      if (l->t->subtype == task_subtype_gradient) t_grad = l->t;
+      if ((t_xv != NULL) && (t_rho != NULL) && (t_grad) != NULL) break;
+#else
+      if ((t_xv != NULL) && (t_rho != NULL)) break;
+#endif
     }
+
     if (t_xv != NULL) scheduler_addunlock(s, t_xv, t_rt_gradient);
+    if (t_rho != NULL) scheduler_addunlock(s, t_rho, t_rt_gradient);
+#ifdef EXTRA_HYDRO_LOOP
+    if (t_grad != NULL) scheduler_addunlock(s, t_grad, t_rt_gradient);
+#endif
 
     /* In normal steps, tend mustn't run before rt_advance_cell_time or the
      * cell's ti_rt_end_min will be updated wrongly. In sub-cycles, we don't
