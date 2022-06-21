@@ -554,7 +554,9 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
       /* This probably can and should be done in a better way in the future. */
       struct task *t_xv = NULL;
       for (struct link *l2 = ci->mpi.send; l2 != NULL; l2 = l2->next) {
-        if ((l2->t->subtype == task_subtype_xv) && (l->t->ci->nodeID == nodeID || (l->t->cj != NULL && l->t->cj->nodeID == nodeID))){
+        if ((l2->t->subtype == task_subtype_xv) &&
+            (l->t->ci->nodeID == nodeID ||
+             (l->t->cj != NULL && l->t->cj->nodeID == nodeID))) {
           t_xv = l2->t;
           break;
         }
@@ -1085,21 +1087,17 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
     t_rt_sorts = scheduler_addtask(s, task_type_rt_sort, task_subtype_none, 0,
                                    0, c, NULL);
     c->rt.rt_sorts = t_rt_sorts;
+    /* TODO MLADEN: is this of any use? ----v*/
     if (c->hydro.sorts != NULL) t_rt_sorts->flags = c->hydro.sorts->flags;
-    /* Avoid the situation where we receive while the sort hasn't finished yet.
-     */
-    /* TODO: clean this up */
+    /* Avoid situation where we receive while the sort hasn't finished yet. */
     if (c->hydro.sorts != NULL)
       scheduler_addunlock(s, c->hydro.sorts, t_rt_gradient);
-    /* if (c->hydro.sorts != NULL) scheduler_addunlock(s, c->hydro.sorts,
-     * t_rt_transport); */
 
     /* Make sure the second receive doesn't get enqueued before the first one
      * is done */
     scheduler_addunlock(s, t_rt_gradient, t_rt_sorts);
     scheduler_addunlock(s, t_rt_gradient, t_rt_transport);
-    /* Avoid the situation where we receive while the sort hasn't finished yet.
-     */
+    /* Avoid situation where we receive while the sort hasn't finished yet. */
     scheduler_addunlock(s, t_rt_sorts, t_rt_transport);
     /* If one or both recv tasks are active, make sure the rt_advance_cell_time
      * tasks doesn't run before them */
@@ -1146,7 +1144,7 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
     engine_addlink(e, &c->mpi.recv, t_rt_transport);
 
     /* Make sure the normal hydro sorts run before the RT sorts run. */
-    /* TODO: do I still need this, when it's done above already? */
+    /* TODO MLADEN: do I still need this, when it's done above already? */
     if (c->hydro.sorts != NULL)
       scheduler_addunlock(s, c->hydro.sorts, t_rt_sorts);
 
@@ -1164,7 +1162,7 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
        * receive necessary data */
       scheduler_addunlock(s, t_rt_transport, l->t);
       /* add dependency for the timestep communication tasks */
-      /* TODO: is this still necessary with rt_advance_cell_time? */
+      /* TODO MLADEN: is this still necessary with rt_advance_cell_time? */
       scheduler_addunlock(s, l->t, tend);
       /* advance cell time mustn't run before transport is done */
       scheduler_addunlock(s, l->t, t_rt_advance_cell_time);
@@ -1758,7 +1756,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                               /* implicit= */ 1, c, NULL);
         scheduler_addunlock(s, c->rt.rt_out, c->super->timestep);
 
-        /* TODO: doc */
+        /* In cases where nothing but RT is active, don't allow the timestep
+         * collect to run before we've finished */
         scheduler_addunlock(s, c->rt.rt_out, c->super->timestep_collect);
 
         /* non-implicit ghost 1 */

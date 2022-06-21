@@ -203,6 +203,9 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
    * cells which have been sent to a foreign node for other interactions,
    * e.g. gravity. However, foreign cells may have tasks on levels below
    * the rt_advance_cell_time, so allow for that exception in this check. */
+
+  /* TODO MLADEN: things have changed. rt_advance_cell_time is now always at the
+   * super level. Check for that only. */
   int has_rt_advance_cell_time = 0;
   for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
     if (finger->rt.rt_advance_cell_time != NULL) {

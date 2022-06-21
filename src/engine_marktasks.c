@@ -349,11 +349,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       /* Activate RT tasks */
       else if (t_type == task_type_self &&
                t_subtype == task_subtype_rt_gradient) {
-        if (ci_active_rt) {
-          scheduler_activate(s, t);
-          /* DRIFTCHECK */
-          /* cell_activate_drift_part(ci, s); */
-        }
+        if (ci_active_rt) scheduler_activate(s, t);
       }
 
       else if (t_type == task_type_sub_self &&
@@ -799,10 +795,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
             cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
 
-            /* Activate the hydro drift tasks. */
-            /* if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s); */
-            /* if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s); */
-
             /* Check the sorts and activate them if needed. */
             cell_activate_rt_sorts(ci, t->flags, s);
             cell_activate_rt_sorts(cj, t->flags, s);
@@ -1221,18 +1213,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the local cell is active, receive data from the foreign cell. */
           if (cj_active_rt) {
 
-            /* TODO: document this */
-            /* if (cj_active_hydro) */
-            /*   scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
-             * ci_nodeID); */
-            /* if (ci_active_hydro) */
-            /*   scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv); */
-
             scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
 
             if (ci_active_rt) {
-              /* We only need updates later on if the other cell is active as
-               * well */
+              /* We only need updates later on if the other cell is active too
+               */
               scheduler_activate_recv(s, ci->mpi.recv,
                                       task_subtype_rt_transport);
             }
@@ -1243,11 +1228,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 
             scheduler_activate_send(s, cj->mpi.send, task_subtype_rt_gradient,
                                     ci_nodeID);
-
-            /* Drift the cell which will be sent; note that not all sent
-               particles will be drifted, only those that are needed. */
-            /* DRIFTCHECK */
-            /* cell_activate_drift_part(cj, s); */
 
             if (cj_active_rt) {
               scheduler_activate_send(s, cj->mpi.send,
@@ -1260,18 +1240,11 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the local cell is active, receive data from the foreign cell. */
           if (ci_active_rt) {
 
-            /* TODO: docs */
-            /* if (cj_active_hydro) */
-            /*   scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv); */
-            /* if (ci_active_hydro) */
-            /*   scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
-             * cj_nodeID); */
-
             scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rt_gradient);
 
             if (cj_active_rt) {
-              /* We only need updates later on if the other cell is active as
-               * well */
+              /* We only need updates later on if the other cell is active too
+               */
               scheduler_activate_recv(s, cj->mpi.recv,
                                       task_subtype_rt_transport);
             }
@@ -1283,14 +1256,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_send(s, ci->mpi.send, task_subtype_rt_gradient,
                                     cj_nodeID);
 
-            /* Drift the cell which will be sent; note that not all sent
-               particles will be drifted, only those that are needed. */
-            /* DRIFTCHECK */
-            /* cell_activate_drift_part(ci, s); */
-
             if (ci_active_rt) {
-              /* We only need updates later on if the other cell is active as
-               * well */
+              /* We only need updates later on if the other cell is active too
+               */
               scheduler_activate_send(s, ci->mpi.send,
                                       task_subtype_rt_transport, cj_nodeID);
             }
@@ -1456,7 +1424,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Radiative transfer implicit tasks */
-    /* TODO MLADEN: check whether this is still necessary */
     else if (t->type == task_type_rt_in) {
       if (cell_is_rt_active(t->ci, e) ||
           cell_need_activating_stars(t->ci, e, with_star_formation,

@@ -1542,13 +1542,13 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
   ci->hydro.h_max_old = ci->hydro.h_max;
 
-  const int ci_active = cell_is_rt_active(ci, e);
-  const int cj_active = ((cj != NULL) && cell_is_rt_active(cj, e));
-
   if (cj != NULL) {
     cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
     cj->hydro.h_max_old = cj->hydro.h_max;
   }
+
+  const int ci_active = cell_is_rt_active(ci, e);
+  const int cj_active = ((cj != NULL) && cell_is_rt_active(cj, e));
 
   /* Self interaction? */
   if (cj == NULL) {
@@ -2958,6 +2958,7 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     const int ci_active = cell_is_rt_active(ci, e);
     const int cj_active = (cj != NULL) && cell_is_rt_active(cj, e);
 
+    /* Only activate tasks that involve a local active cell. */
     if ((ci_active && ci_nodeID == nodeID) ||
         (cj_active && cj_nodeID == nodeID)) {
       scheduler_activate(s, t);
@@ -2994,17 +2995,16 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
       /* Activate the send/recv tasks. */
       if (ci_nodeID != nodeID) {
-
         /* If the local cell is active, receive data from the foreign cell. */
         if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
           if (sub_cycle) {
-            /* If we're in a sub-cycle, then there are should be no sorts. But
-             * since hydro sorts won't be active then, the RT sorts would run.
-             * Make sure the cells are also marked to skip the RT sorts,
-             * otherwise the 'sorted' flags will be wrongly set after a
-             * recv rt_gradient. The recv tasks might also run on a higher level
-             * than the current cell, so walk all the way up. */
+            /* If we're in a sub-cycle, then there should be no sorts. But since 
+             * hydro sorts won't be active then, the RT sorts would run. Make 
+             * sure the cells are also marked to skip the RT sorts, otherwise 
+             * the 'sorted' flags will be wrongly set after a recv rt_gradient. 
+             * The recv tasks might also run on a higher level than the current 
+             * cell, so walk all the way up. */
             cell_set_skip_rt_sort_flag_up(ci);
           }
 
@@ -3099,6 +3099,9 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
       scheduler_activate(s, c->rt.rt_transport_out);
     if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
     /* This is for foreign cells */
+    /* TODO MLADEN: the rt_advance_cell_time task should now always
+     * be at the super level. Remove this later and check that everyting
+     * still runs as it should.. Also perhaps add debugging checks here.*/
     if (c->rt.rt_advance_cell_time != NULL)
       scheduler_activate(s, c->rt.rt_advance_cell_time);
     /* This is for local cells */

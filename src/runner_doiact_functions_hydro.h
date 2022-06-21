@@ -31,17 +31,16 @@
 /* RT specific function calls */
 #define PART_IS_ACTIVE part_is_rt_active
 #define CELL_IS_ACTIVE cell_is_rt_active
-/* TODO: do we still need this? */
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted_rt
 #else
 /* default hydro behaviour. */
+#define PART_IS_ACTIVE part_is_active
+#define CELL_IS_ACTIVE cell_is_active_hydro
+#define CELL_ARE_PART_DRIFTED cell_are_part_drifted
 /* when running with RT subcycling, we can have RT active
  * particles in a normal swift step that aren't drifted to
  * the current time, so we don't do those checks there. */
 #define DO_DRIFT_DEBUG_CHECKS 1
-#define PART_IS_ACTIVE part_is_active
-#define CELL_IS_ACTIVE cell_is_active_hydro
-#define CELL_ARE_PART_DRIFTED cell_are_part_drifted
 #endif
 
 /**
@@ -1130,8 +1129,6 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
       /* Skip inactive particles */
       if (!PART_IS_ACTIVE(pi, e)) continue;
-
-      if (part_is_inhibited(pi, e)) error("Working on an inhibited part");
 
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -2549,16 +2546,14 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
         ci->hydro.dx_max_sort_old > ci->dmin * space_maxreldx)
       error(
           "Interacting unsorted cell. ci->hydro.dx_max_sort_old=%e ci->dmin=%e "
-          "ci->sorted=%d sid=%d cellID=%lld",
-          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid,
-          ci->cellID);
+          "ci->sorted=%d sid=%d",
+          ci->hydro.dx_max_sort_old, ci->dmin, ci->hydro.sorted, sid);
     if (!(cj->hydro.sorted & (1 << sid)) ||
         cj->hydro.dx_max_sort_old > cj->dmin * space_maxreldx)
       error(
           "Interacting unsorted cell. cj->hydro.dx_max_sort_old=%e cj->dmin=%e "
-          "cj->sorted=%d sid=%d cellID=%lld",
-          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid,
-          cj->cellID);
+          "cj->sorted=%d sid=%d",
+          cj->hydro.dx_max_sort_old, cj->dmin, cj->hydro.sorted, sid);
 
     /* Compute the interactions. */
     DOPAIR1_BRANCH(r, ci, cj);

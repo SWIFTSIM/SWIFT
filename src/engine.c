@@ -2186,6 +2186,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Initialise additional RT data now that time bins are set
    * In particular, the drift counters need to be set to the proper state */
+  /* TODO MLADEN: is this still necessary? */
   if (e->policy & engine_policy_rt) {
     space_convert_rt_quantities_after_zeroth_step(e->s, e->verbose);
   }
@@ -2306,7 +2307,6 @@ int engine_step(struct engine *e) {
   e->step_props = engine_step_prop_none;
 
   /* RT sub-cycling related time updates */
-  /* TODO: does it fail if we set ti_current_subcycle == ti_rt_end_min?? */
   e->max_active_bin_subcycle = get_max_active_bin(e->ti_end_min);
   e->min_active_bin_subcycle =
       get_min_active_bin(e->ti_end_min, e->ti_current_subcycle);
@@ -2476,6 +2476,7 @@ int engine_step(struct engine *e) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* if we're running the debug RT scheme, set some flags and do some
    * checks before each step. */
+  /* TODO MLADEN: is this still necessary? */
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_start_of_step(e, e->verbose);
 #endif
@@ -2641,10 +2642,6 @@ int engine_step(struct engine *e) {
     e->ti_earliest_undrifted = e->ti_current;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* TODO: check this comment before merging into master */
-  /* TODO: reset e->max_active_timebin only when subcycling RT since
-   * it modifies this quantity. If left untreated, this check may fail. */
-  /* e->max_active_bin = get_max_active_bin(e->ti_end_min); */
   /* Verify that all cells have correct time-step information */
   space_check_timesteps(e->s);
 
@@ -2694,6 +2691,7 @@ int engine_step(struct engine *e) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* if we're running the debug RT scheme, do some checks after every step.
    * Do this after the output so we can safely reset debugging checks now. */
+  /* TODO MLADEN: is this still necessary? */
   if (e->policy & engine_policy_rt) {
     rt_debugging_checks_end_of_step(e, e->verbose);
   }

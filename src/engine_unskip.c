@@ -517,6 +517,7 @@ void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
   /* Unpack the meta data */
   struct unskip_data *data = (struct unskip_data *)extra_data;
   struct engine *e = data->e;
+  /* struct engine *e = (struct engine*)extra_data; */
   struct cell *const cells_top = e->s->cells_top;
 
   /* The current chunk of active cells */
@@ -556,7 +557,7 @@ void engine_unskip_sub_cycle(struct engine *e) {
     }
   }
 
-  /* TODO: unskip_data data should be unnecessary here, remove it */
+  /* TODO MLADEN: is unskip_data still necessary? */
   struct unskip_data data;
   bzero(&data, sizeof(struct unskip_data));
   data.e = e;

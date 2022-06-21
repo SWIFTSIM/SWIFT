@@ -147,8 +147,6 @@ void runner_do_kick1(struct runner *r, struct cell *c, const int timer) {
       /* If particle needs to be kicked */
       if (part_is_starting(p, e)) {
 
-        p->rt_data.called_in_kick1++;
-
 #ifdef SWIFT_DEBUG_CHECKS
         if (p->limiter_data.wakeup != time_bin_not_awake)
           error("Woken-up particle that has not been processed in kick1");
@@ -421,8 +419,6 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
       /* If particle needs to be kicked */
       if (part_is_active(p, e)) {
 
-        p->rt_data.called_in_kick2++;
-
 #ifdef SWIFT_DEBUG_CHECKS
         if (p->limiter_data.wakeup != time_bin_not_awake)
           error("Woken-up particle that has not been processed in kick1");
@@ -693,6 +689,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
   /* No children? */
   if (!c->split) {
+
     /* Loop over the particles in this cell. */
     for (int k = 0; k < count; k++) {
 
@@ -723,7 +720,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
 
         /* Get RT time-step size (note <= hydro step size) */
-        /* TODO: enforce <= hydro step size */
+        /* TODO MLADEN: enforce <= hydro step size */
         const integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
 
         /* Update particle */
@@ -1564,4 +1561,122 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
   if (timer) TIMER_TOC(timer_do_sync);
+}
+
+/**
+ * @brief Update the cell's t_rt_end_min so that the sub-cycling can proceed
+ * with correct cell times.
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
+                                    int timer) {
+
+  struct engine *e = r->e;
+  const int count = c->hydro.count;
+
+  /* Anything to do here? */
+  if (count == 0) return;
+  if (!cell_is_rt_active(c, e)) return;
+
+  TIMER_TIC;
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        runner_do_rt_advance_cell_time(r, c->progeny[k], 0);
+  }
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  else {
+    /* Do some debugging stuff on active particles before
+     * setting the cell time. */
+
+    struct part *restrict parts = c->hydro.parts;
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+
+      if (c->nodeID == e->nodeID) {
+        /* Skip inhibited parts */
+        if (part_is_inhibited(p, e)) continue;
+
+        /* Skip inactive parts */
+        /* Note: parts on foreign cells will fail this check on the first
+         * step because they haven't been updated since the timestep task
+         * ran on their local node. */
+        if (!part_is_rt_active(p, e)) continue;
+
+        /* Run checks. */
+        rt_debug_sequence_check(p, 5, __func__);
+        /* Mark that the subcycling has happened */
+        rt_debugging_count_subcycle(p);
+        /* TODO MLADEN: Not the best way of counting updates, but we do it
+         * in debugging mode only, so leave it as is for now. */
+        atomic_inc(&e->rt_updates);
+      } else {
+        /* TODO MLADEN: fix this check */
+        /* The last thing we know of foreign cells is that
+         * they should've finished the gradients. */
+        /* rt_debug_sequence_check(p, 3, __func__); */
+      }
+    }
+  }
+#endif
+
+  /* Note: c->rt.ti_rt_min_step_size may be greater than
+   * c->super->rt.ti_rt_min_step_size. This is expected behaviour.
+   * We only update the cell's own time after it's been active. */
+  c->rt.ti_rt_end_min += c->rt.ti_rt_min_step_size;
+
+  if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);
+}
+
+/**
+ * @brief Recursively collect the end-of-timestep information from the top-level
+ * to the super level.
+ * TODO MLADEN: documentation
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_collect_rt_times(struct runner *r, struct cell *c,
+                                const int timer) {
+
+  /* Early stop if we are at the super level.
+   * The time-step task would have set things at this level already */
+  if (c->super == c) return;
+
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+
+  /* TODO MLADEN: add debugging checks here.
+   * - the rt_advance_cell_time task needs to have finished first.
+   * - this task must never run in the same step/cycle as a timestep
+   *   task.
+   */
+
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL) {
+
+      /* Recurse */
+      runner_do_collect_rt_times(r, cp, 0);
+
+      /* And update */
+      ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+
+  /* TODO: timer */
 }
