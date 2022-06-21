@@ -52,6 +52,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "proxy.h"
+#include "space_getsid.h"
 #include "timers.h"
 
 /**
@@ -853,6 +854,18 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_hydro_sorts(cj, t->flags, s);
+
+#if WITH_MPI
+          /* Do we need to send the voronoi faces to cj's node for this sid? */
+          if (cj_nodeID != nodeID) {
+            struct cell *ci_temp = ci;
+            struct cell *cj_temp = cj;
+            double shift[3];
+            int sid = space_getsid(s->space, &ci_temp, &cj_temp, shift);
+            if (ci == ci_temp) sid = 26 - sid;
+            ci->grid.send_flags |= 1 << sid;
+          }
+#endif
         }
       }
       /* Activate slope estimate or limiter task only for pairs with at least
@@ -1347,6 +1360,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Send the particles of cj to the foreign node */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
           /* Receive the voronoi faces from the foreign node */
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_face_info);
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
         } else if (ci_active_hydro && cj_nodeID != nodeID) {
           /* ci is local.
@@ -1358,6 +1372,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
 
           /* Send ci's voronoi grid to the foreign node. */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_face_info,
+                                  cj_nodeID);
           scheduler_activate_send(s, ci->mpi.send, task_subtype_faces,
                                   cj_nodeID);
         }

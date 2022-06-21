@@ -537,6 +537,8 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_limiter) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_face_info) {
+            free(t->buff);
           } else if (t->subtype == task_subtype_faces) {
             free(t->buff);
           }
@@ -586,8 +588,11 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_multipole) {
             cell_unpack_multipoles(ci, (struct gravity_tensors *)t->buff);
             free(t->buff);
+          } else if (t->subtype == task_subtype_face_info) {
+            /* Nothing to do here, counts are received directly at the correct
+             * spot. */
           } else if (t->subtype == task_subtype_faces) {
-            cell_unpack_voronoi_faces(ci, (struct pcell_faces *)t->buff);
+            cell_unpack_voronoi_faces(ci, (struct voronoi_pair *)t->buff);
             free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);

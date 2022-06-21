@@ -170,6 +170,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "rt_gradient",
     "rt_transport",
     "grid_construction",
+    "face_info",
     "faces",
 };
 

@@ -2954,10 +2954,15 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
 #ifdef SHADOWSWIFT_BVH
   /* Unskip the bvh task for local cells */
-  if (c->nodeID == nodeID)
-    scheduler_activate(s, c->grid.build_bvh);
+  if (c->nodeID == nodeID) scheduler_activate(s, c->grid.build_bvh);
 #endif
 
+#if WITH_MPI
+  /* Reset the send flags, they will be set below */
+  if (c->nodeID == nodeID) c->grid.send_flags = 0;
+#endif
+
+  /* Loop over construction tasks linked to this cell */
   for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
 
     struct task *t = l->t;
@@ -2998,6 +3003,18 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
         cell_activate_hydro_sorts(ci, t->flags, s);
         cell_activate_hydro_sorts(cj, t->flags, s);
+
+#if WITH_MPI
+        /* Do we need to send the voronoi faces to cj's node for this sid? */
+        if (cj_nodeID != nodeID) {
+          struct cell *ci_temp = ci;
+          struct cell *cj_temp = cj;
+          double shift[3];
+          int sid = space_getsid(s->space, &ci_temp, &cj_temp, shift);
+          if (ci == ci_temp) sid = 26 - sid;
+          ci->grid.send_flags |= 1 << sid;
+        }
+#endif
       }
 
       /* Activate the drift tasks for local cells only. Note that the particles
@@ -3026,6 +3043,7 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
         /* Receive the voronoi faces from the foreign node once they are
          * constructed */
+        scheduler_activate_recv(s, ci->mpi.recv, task_subtype_face_info);
         scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
 
       } else if (cj_nodeID != nodeID) { /* ci local */
@@ -3034,6 +3052,8 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
 
         /* Send ci's voronoi grid to the foreign node. */
+        scheduler_activate_send(s, ci->mpi.send, task_subtype_face_info,
+                                cj_nodeID);
         scheduler_activate_send(s, ci->mpi.send, task_subtype_faces, cj_nodeID);
       }
 #endif

@@ -522,9 +522,9 @@ int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 void cell_pack_voronoi_faces(struct cell *restrict c,
-                             struct pcell_faces *restrict pcell, size_t count);
+                             struct voronoi_pair *restrict faces, size_t count);
 void cell_unpack_voronoi_faces(struct cell *restrict c,
-                               struct pcell_faces *restrict pcell);
+                               struct voronoi_pair *restrict faces);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);
@@ -1497,18 +1497,21 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
 }
 
 /*! @brief return the total number of voronoi faces for all directions,
- * excluding the local faces, which will be sent over mpi. */
+ * excluding the local faces, which will be sent over MPI. */
 __attribute__((always_inline)) INLINE static size_t
 cell_get_voronoi_face_send_count(struct cell *c) {
-
+#if WITH_MPI
   if (c->grid.voronoi == NULL) return 0;
 
   size_t count = 0;
   for (int sid = 0; sid < 27; sid++) {
-    if (sid == 13) continue;
+    if (!(c->grid.send_flags & 1 << sid)) continue;
     count += c->grid.voronoi->pair_index[sid];
   }
   return count;
+#else
+  return 0;
+#endif
 }
 
 /*! @brief Reflect the given position across the cell face corresponding to
