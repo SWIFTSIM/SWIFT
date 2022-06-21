@@ -2150,6 +2150,16 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
   if (t->implicit) {
 #ifdef SWIFT_DEBUG_CHECKS
     t->ti_run = s->space->e->ti_current;
+
+    /* Mark that we have run this task on these cells */
+    if (t->ci != NULL) {
+      t->ci->tasks_executed[t->type]++;
+      t->ci->subtasks_executed[t->subtype]++;
+    }
+    if (t->cj != NULL) {
+      t->cj->tasks_executed[t->type]++;
+      t->cj->subtasks_executed[t->subtype]++;
+    }
 #endif
     t->skip = 1;
     for (int j = 0; j < t->nr_unlock_tasks; j++) {
