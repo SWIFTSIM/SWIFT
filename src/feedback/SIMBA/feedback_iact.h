@@ -31,18 +31,16 @@
  *
  * @param si First sparticle.
  * @param gj Second particle (not updated).
- * @param fb_props Properties of the feedback scheme.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_dm_vel_mean(struct spart *si, 
-                                        const struct gpart *gj,
-                                        const struct feedback_props *fb_props) {
+runner_iact_nonsym_feedback_dm_vel_sum(struct spart *si, 
+                                        const struct gpart *gj) {
   /* Get the DM mean velocity properties and save them. */
-  for (int vjd = 0; vjd < 3; vjd++) {
-    si->feedback_data.to_collect.dm_vel_mean[vjd] += gj->v_full[vjd];
+  for (int k = 0; k < 3; k++) {
+    si->feedback_data.dm_vel_sum[k] += gj->v_full[k];
   }
 
-  si->feedback_data.to_collect.dm_ngb_N++;
+  si->feedback_data.dm_ngb_N++;
 }
 
 /**
@@ -50,20 +48,19 @@ runner_iact_nonsym_feedback_dm_vel_mean(struct spart *si,
  *
  * @param si First sparticle.
  * @param gj Second particle.
- * @param fb_props Properties of the feedback scheme.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_dm_vel_disp(struct spart *si, 
-                                        const struct gpart *gj,
-                                        const struct feedback_props *fb_props) {
+                                        const struct gpart *gj) {
   /* Get the DM velocity dispersion. */
-
+  float v_mean_k = 0.f;
+  float vj_diff = 0.f;
   /* TODO: dm_vel_disp[3] is unnecessary to have in the structure, but leaving for now. */
-  for (int vjd = 0; vjd < 3; vjd++) {
+  for (int k = 0; k < 3; k++) {
     /* The real mean is divided by the total neighbours */
-    si->feedback_data.to_collect.dm_vel_mean[vjd] /= si->feedback_data.to_collect.dm_ngb_N;
-    float vj_diff = si->feedback_data.to_collect.dm_vel_mean[vjd] - gj->v_full[vjd];
-    si->feedback_data.to_collect.dm_vel_disp2[vjd] += vj_diff * vj_diff;
+    v_mean_k = si->feedback_data.dm_vel_sum[k] / (float)si->feedback_data.dm_ngb_N;
+    vj_diff = gj->v_full[k] - v_mean_k;
+    si->feedback_data.dm_vel_disp2[k] += vj_diff * vj_diff;
   }
 }
 
