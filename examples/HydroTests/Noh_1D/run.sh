@@ -4,11 +4,11 @@
 if [ ! -e noh.hdf5 ]
 then
     echo "Generating initial conditions for the Noh problem..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
 ../../swift --hydro --threads=1 noh.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plotSolution.py 12
+python3 plotSolution.py 12

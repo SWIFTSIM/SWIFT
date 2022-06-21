@@ -51,10 +51,8 @@ params = {
     "figure.subplot.hspace": 0.12,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
-rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 snap = int(sys.argv[1])
@@ -84,7 +82,7 @@ rho = sim["/PartType0/Densities"][:]
 r = np.sqrt((x - 1) ** 2 + (y - 1) ** 2 + (z - 1) ** 2)
 v = -np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
 
-# Bin te data
+# Bin the data
 r_bin_edge = np.arange(0.0, 1.0, 0.02)
 r_bin = 0.5 * (r_bin_edge[1:] + r_bin_edge[:-1])
 rho_bin, _, _ = stats.binned_statistic(r, rho, statistic="mean", bins=r_bin_edge)

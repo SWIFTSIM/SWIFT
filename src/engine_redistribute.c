@@ -274,6 +274,7 @@ struct redist_mapper_data {
           parts[k].x[j] += s->dim[j];                                      \
         else if (parts[k].x[j] >= s->dim[j])                               \
           parts[k].x[j] -= s->dim[j];                                      \
+        if (parts[k].x[j] == s->dim[j]) parts[k].x[j] = 0.0;               \
       }                                                                    \
       const int cid =                                                      \
           cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);  \

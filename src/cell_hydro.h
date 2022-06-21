@@ -100,38 +100,40 @@ struct cell_hydro {
     /*! Task for star formation */
     struct task *star_formation;
 
-    /*! Task for star formation from sink particles */
-    struct task *star_formation_sink;
-
-    /*! Task for sink formation */
-    struct task *sink_formation;
-
     /*! Task for sorting the stars again after a SF event */
     struct task *stars_resort;
 
-    /*! Radiative transfer ghost in task */
-    struct task *rt_in;
+#ifdef RT_NONE
+    union {
+#endif
 
-    /*! Radiative transfer ghost1 task (finishes up injection) */
-    struct task *rt_ghost1;
+      /*! Radiative transfer ghost in task */
+      struct task *rt_in;
 
-    /*! Task for self/pair gradient step of radiative transfer */
-    struct link *rt_gradient;
+      /*! Radiative transfer ghost1 task (finishes up injection) */
+      struct task *rt_ghost1;
 
-    /*! Radiative transfer ghost2 task */
-    struct task *rt_ghost2;
+      /*! Task for self/pair gradient step of radiative transfer */
+      struct link *rt_gradient;
 
-    /*! Task for self/pair transport step of radiative transfer */
-    struct link *rt_transport;
+      /*! Radiative transfer ghost2 task */
+      struct task *rt_ghost2;
 
-    /*! Radiative transfer transport out task */
-    struct task *rt_transport_out;
+      /*! Task for self/pair transport step of radiative transfer */
+      struct link *rt_transport;
 
-    /*! Radiative transfer thermochemistry task */
-    struct task *rt_tchem;
+      /*! Radiative transfer transport out task */
+      struct task *rt_transport_out;
 
-    /*! Radiative transfer ghost out task */
-    struct task *rt_out;
+      /*! Radiative transfer thermochemistry task */
+      struct task *rt_tchem;
+
+      /*! Radiative transfer ghost out task */
+      struct task *rt_out;
+
+#ifdef RT_NONE
+    };
+#endif
 
     /*! Last (integer) time the cell's part were drifted forward in time. */
     integertime_t ti_old_part;

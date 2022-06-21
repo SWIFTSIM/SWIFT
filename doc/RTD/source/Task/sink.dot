@@ -1,0 +1,93 @@
+digraph task_dep {
+	 # Header
+	 compound=true;
+	 ratio=0.66;
+	 node[nodesep=0.15, fontsize=18, penwidth=3.];
+	 edge[fontsize=12, penwidth=0.5];
+	 ranksep=0.8;
+
+	 # Special tasks
+	 self_sink_do_sink_swallow[color=forestgreen];
+	 self_sink_swallow[color=forestgreen];
+	 self_sink_do_gas_swallow[color=forestgreen];
+	 pair_sink_do_sink_swallow[color=forestgreen];
+	 pair_sink_swallow[color=forestgreen];
+	 pair_sink_do_gas_swallow[color=forestgreen];
+	 sub_self_sink_do_sink_swallow[color=forestgreen];
+	 sub_self_sink_swallow[color=forestgreen];
+	 sub_self_sink_do_gas_swallow[color=forestgreen];
+	 sub_pair_sink_do_sink_swallow[color=forestgreen];
+	 sub_pair_sink_swallow[color=forestgreen];
+	 sub_pair_sink_do_gas_swallow[color=forestgreen];
+	 drift_sink[color=lightseagreen];
+	 star_formation_sink[color=lightseagreen];
+	 sink_in[style=filled,fillcolor=grey90,color=lightseagreen];
+	 sink_ghost1[style=filled,fillcolor=grey90,color=lightseagreen];
+	 sink_ghost2[style=filled,fillcolor=grey90,color=lightseagreen];
+	 sink_out[style=filled,fillcolor=grey90,color=lightseagreen];
+	 sink_formation[color=lightseagreen];
+
+	 # Clusters
+	 subgraph clusterSinkAccretion {
+		 label="";
+		 bgcolor="grey99";
+		 pair_sink_do_gas_swallow;
+		 self_sink_do_gas_swallow;
+		 sub_pair_sink_do_gas_swallow;
+		 sub_self_sink_do_gas_swallow;
+	 };
+
+	 subgraph clusterSinkFormation {
+		 label="";
+		 bgcolor="grey99";
+		 pair_sink_swallow;
+		 self_sink_swallow;
+		 sub_pair_sink_swallow;
+		 sub_self_sink_swallow;
+	 };
+
+	 subgraph clusterSinkMerger {
+		 label="";
+		 bgcolor="grey99";
+		 pair_sink_do_sink_swallow;
+		 self_sink_do_sink_swallow;
+		 sub_pair_sink_do_sink_swallow;
+		 sub_self_sink_do_sink_swallow;
+	 };
+
+
+	 # Dependencies
+	 self_sink_do_sink_swallow->sink_out[fontcolor=forestgreen]
+	 self_sink_swallow->sink_ghost1[fontcolor=forestgreen]
+	 self_sink_do_gas_swallow->sink_ghost2[fontcolor=forestgreen]
+	 pair_sink_do_sink_swallow->sink_out[fontcolor=forestgreen]
+	 pair_sink_swallow->sink_ghost1[fontcolor=forestgreen]
+	 pair_sink_do_gas_swallow->sink_ghost2[fontcolor=forestgreen]
+	 sub_self_sink_do_sink_swallow->sink_out[fontcolor=forestgreen]
+	 sub_self_sink_swallow->sink_ghost1[fontcolor=forestgreen]
+	 sub_self_sink_do_gas_swallow->sink_ghost2[fontcolor=forestgreen]
+	 sub_pair_sink_do_sink_swallow->sink_out[fontcolor=forestgreen]
+	 sub_pair_sink_swallow->sink_ghost1[fontcolor=forestgreen]
+	 sub_pair_sink_do_gas_swallow->sink_ghost2[fontcolor=forestgreen]
+	 drift_part->sink_formation[fontcolor=blue3]
+	 drift_sink->kick2[fontcolor=lightseagreen]
+	 drift_sink->sink_formation[fontcolor=lightseagreen]
+	 kick2->sink_in[fontcolor=black]
+	 kick2->star_formation_sink[fontcolor=black]
+	 star_formation_sink->timestep[fontcolor=lightseagreen]
+	 sink_in->sink_formation[fontcolor=lightseagreen]
+	 sink_ghost1->self_sink_do_gas_swallow[fontcolor=lightseagreen]
+	 sink_ghost1->sub_self_sink_do_gas_swallow[fontcolor=lightseagreen]
+	 sink_ghost1->sub_pair_sink_do_gas_swallow[fontcolor=lightseagreen]
+	 sink_ghost1->pair_sink_do_gas_swallow[fontcolor=lightseagreen]
+	 sink_ghost2->self_sink_do_sink_swallow[fontcolor=lightseagreen]
+	 sink_ghost2->sub_self_sink_do_sink_swallow[fontcolor=lightseagreen]
+	 sink_ghost2->sub_pair_sink_do_sink_swallow[fontcolor=lightseagreen]
+	 sink_ghost2->pair_sink_do_sink_swallow[fontcolor=lightseagreen]
+	 sink_out->timestep[fontcolor=lightseagreen]
+	 sink_out->star_formation_sink[fontcolor=lightseagreen]
+	 sink_formation->self_sink_swallow[fontcolor=lightseagreen]
+	 sink_formation->sub_self_sink_swallow[fontcolor=lightseagreen]
+	 sink_formation->sub_pair_sink_swallow[fontcolor=lightseagreen]
+	 sink_formation->pair_sink_swallow[fontcolor=lightseagreen]
+}

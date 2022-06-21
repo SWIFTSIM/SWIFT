@@ -249,6 +249,32 @@ __attribute__((always_inline)) INLINE static void chemistry_add_bpart_to_bpart(
     const struct chemistry_bpart_data* swallowed_data) {}
 
 /**
+ * @brief Add the chemistry data of a sink particle to a sink.
+ *
+ * Nothing to do here.
+ *
+ * @param si_data The black hole data to add to.
+ * @param sj_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
+    struct chemistry_sink_data* si_data,
+    const struct chemistry_sink_data* sj_data) {}
+
+/**
+ * @brief Add the chemistry data of a gas particle to a sink.
+ *
+ * Nothing to do here.
+ *
+ * @param sp_data The sink data to add to.
+ * @param p_data The gas data to use.
+ * @param gas_mass The mass of the gas particle.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
+    struct chemistry_sink_data* sp_data,
+    const struct chemistry_part_data* p_data, const double gas_mass) {}
+
+/**
  * @brief Split the metal content of a particle into n pieces
  *
  * Nothing to do here.

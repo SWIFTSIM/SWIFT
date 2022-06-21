@@ -91,6 +91,15 @@ struct phys_const {
   /*! Mass of the Earth */
   double const_earth_mass;
 
+  /*! Radius of the Sun */
+  double const_solar_radius;
+
+  /*! Radius of the Earth */
+  double const_earth_radius;
+
+  /*! Luminosity of the Sun */
+  double const_solar_luminosity;
+
   /*! Temperature of the CMB at present day */
   double const_T_CMB_0;
 

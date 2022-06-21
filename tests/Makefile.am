@@ -27,7 +27,7 @@ endif
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex testRandom testRandomSpacing testErfc \
+        testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
         testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
@@ -35,21 +35,21 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 	testCbrt testCosmology testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	testLog testDistance
+	testLog testDistance testTimeline
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths testRandom testExp \
                  testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-                 testAdiabaticIndex testRiemannExact testRiemannTRRS \
+                 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson \
                  testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
                  testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog
+		 testNeutrinoFermiDirac testLog testTimeline
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -62,6 +62,8 @@ testMaths_SOURCES = testMaths.c
 testAtomic_SOURCES = testAtomic.c
 
 testRandom_SOURCES = testRandom.c
+
+testRandomPoisson_SOURCES = testRandomPoisson.c
 
 testRandomSpacing_SOURCES = testRandomSpacing.c
 
@@ -161,6 +163,8 @@ testFeedback_SOURCES = testFeedback.c
 testHashmap_SOURCES = testHashmap.c
 
 testLog_SOURCES = testLog.c
+
+testTimeline_SOURCES = testTimeline.c
 
 testHydroMPIrules = testHydroMPIrules.c
 
