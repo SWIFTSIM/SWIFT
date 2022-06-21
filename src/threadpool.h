@@ -40,7 +40,7 @@
 typedef void (*threadpool_map_function)(void *map_data, int num_elements,
                                         void *extra_data);
 typedef void (*threadpool_map_function_tid)(void *map_data, int num_elements,
-                                            void *extra_data, int tid);
+                                            void *extra_data, const int tid);
 
 /* Data for threadpool logging. */
 struct mapper_log_entry {
