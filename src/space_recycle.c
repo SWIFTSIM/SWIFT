@@ -127,9 +127,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
     c->hydro.prep1_ghost = NULL;
-    c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
-    c->hydro.star_formation_sink = NULL;
+    c->sinks.sink_formation = NULL;
+    c->sinks.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.density_ghost = NULL;
     c->stars.prep1_ghost = NULL;
@@ -138,9 +138,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.feedback = NULL;
     c->stars.prepare1 = NULL;
     c->stars.prepare2 = NULL;
-    c->sinks.compute_formation = NULL;
-    c->sinks.merger = NULL;
-    c->sinks.accretion = NULL;
+    c->sinks.swallow = NULL;
+    c->sinks.do_sink_swallow = NULL;
+    c->sinks.do_gas_swallow = NULL;
     c->black_holes.density_ghost = NULL;
     c->black_holes.swallow_ghost_0 = NULL;
     c->black_holes.swallow_ghost_1 = NULL;
@@ -169,7 +169,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.black_holes_in = NULL;
     c->black_holes.black_holes_out = NULL;
     c->sinks.sink_in = NULL;
-    c->sinks.ghost = NULL;
+    c->sinks.sink_ghost1 = NULL;
+    c->sinks.sink_ghost2 = NULL;
     c->sinks.sink_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
@@ -223,6 +224,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 #endif
   }
 }
+
 /**
  * @brief Return a used cell to the buffer of unused sub-cells.
  *
@@ -244,17 +246,18 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Lock the space. */
   lock_lock(&s->lock);
 
-  const int pool = c->pool_owner;
+  /* Thread which allocated this cell */
+  const int owner = c->owner;
 
   /* Hook the multipole back in the buffer */
   if (s->with_self_gravity) {
-    c->grav.multipole->next = s->multipoles_sub[pool];
-    s->multipoles_sub[pool] = c->grav.multipole;
+    c->grav.multipole->next = s->multipoles_sub[owner];
+    s->multipoles_sub[owner] = c->grav.multipole;
   }
 
   /* Hook this cell into the buffer. */
-  c->next = s->cells_sub[pool];
-  s->cells_sub[pool] = c;
+  c->next = s->cells_sub[owner];
+  s->cells_sub[owner] = c;
   s->tot_cells -= 1;
 
   /* Unlock the space. */
@@ -306,17 +309,18 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Lock the space. */
   lock_lock(&s->lock);
 
-  const int pool = cell_list_begin->pool_owner;
+  /* Thread which allocated this cell */
+  const int owner = cell_list_begin->owner;
 
   /* Hook the cells into the buffer. */
-  cell_list_end->next = s->cells_sub[pool];
-  s->cells_sub[pool] = cell_list_begin;
+  cell_list_end->next = s->cells_sub[owner];
+  s->cells_sub[owner] = cell_list_begin;
   s->tot_cells -= count;
 
   /* Hook the multipoles into the buffer. */
   if (s->with_self_gravity) {
-    multipole_list_end->next = s->multipoles_sub[pool];
-    s->multipoles_sub[pool] = multipole_list_begin;
+    multipole_list_end->next = s->multipoles_sub[owner];
+    s->multipoles_sub[owner] = multipole_list_begin;
   }
 
   /* Unlock the space. */

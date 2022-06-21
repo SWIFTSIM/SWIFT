@@ -537,7 +537,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     bzero(cells[j], sizeof(struct cell));
     cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
-    cells[j]->pool_owner = thread_id;
+    cells[j]->owner = thread_id;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
