@@ -1358,7 +1358,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
-    space_init(&s, params, &cosmo, dim, &hydro_properties,
+    space_init(&s, params, &cosmo, dim, &hydro_properties, &gravity_properties,
                parts, gparts, sinks, sparts, bparts, Ngas, Ngpart, Nsink,
                Nspart, Nbpart, Nnupart, periodic, replicate, remap_ids,
                generate_gas_in_ics, with_hydro, with_self_gravity,
