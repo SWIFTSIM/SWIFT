@@ -2157,7 +2157,7 @@ case "$with_cooling" in
    ;;
    SIMBA)
       AC_DEFINE([COOLING_SIMBA], [1], [Cooling via the grackle library with extensions])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [0], [Primordial chemistry (as of now)])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Primordial chemistry (as of now)])
       with_cooling_name="SIMBA (Grackle with extensions)"
    ;;
    QLA)
