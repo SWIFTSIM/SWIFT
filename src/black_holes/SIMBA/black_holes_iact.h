@@ -832,10 +832,14 @@ runner_iact_nonsym_bh_gas_feedback(
           ), /* option 1 */
           mass_sel * bh_props->jet_velocity /* option 2 */
         );
+
+        message("BH_WIND: jet id=%d v_kick(phys)=%g", pj->id, v_kick);
       }
     }
 
     v_kick *= cosmo->a; /* convert to internal units */
+
+    message("BH_WIND: wind id=%d v_kick(phys)=%g", pj->id, v_kick / cosmo->a);
 
     /* TODO: Don't we have the angular momentum already? */
     /* Compute relative peculiar velocity between the two particles */
