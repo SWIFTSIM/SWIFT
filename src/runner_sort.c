@@ -206,8 +206,6 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   struct xpart *xparts = c->hydro.xparts;
   float buff[8];
 
-  c->called_sort++;
-
   TIMER_TIC;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -301,9 +299,6 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
     cell_clear_flag(c, cell_flag_do_rt_sub_sort);
     cell_clear_flag(c, cell_flag_do_rt_sort);
     c->hydro.requires_sorts = 0;
-
-    c->finished_sort++;
-    celltrace(c, "@exit sorted=%d", c->hydro.sorted);
 
     if (clock) TIMER_TOC(timer_dosort);
     return;
@@ -519,8 +514,6 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
   cell_clear_flag(c, cell_flag_do_rt_sub_sort);
   cell_clear_flag(c, cell_flag_do_rt_sort);
   c->hydro.requires_sorts = 0;
-
-  c->finished_sort++;
 
   if (clock) TIMER_TOC(timer_dosort);
 }

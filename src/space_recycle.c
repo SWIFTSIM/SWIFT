@@ -214,15 +214,6 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->rt.ti_rt_end_min = -1;
     c->rt.ti_rt_min_step_size = -1;
 
-    c->rt.sendcount = 0;
-    c->rt.recvcount = 0;
-
-    c->activated_sort = 0;
-    c->activated_recv = 0;
-    c->checked_sort = 0;
-    c->called_sort = 0;
-    c->finished_sort = 0;
-
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;

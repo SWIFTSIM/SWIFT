@@ -147,7 +147,7 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
 /**
  * @brief Check that the #part in a #cell have been drifted to the current time.
  * This is just a prototype function to keep the iact functions clean. As we
- * don't care about the drifts during the RT subcycling, this always just
+ * don't care about the drifts during the RT sub-cycling, this always just
  * returns true.
  *
  * @param c The #cell.
@@ -157,7 +157,9 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
 __attribute__((always_inline)) INLINE static int cell_are_part_drifted_rt(
     const struct cell *c, const struct engine *e) {
 
-  /* TODO */
+  /* Note: we can't just use "cell_are_part_drifted" in the hydro_iact
+   * functions, because an RT sub-cycle may be called during a main
+   * step for a cell that is hydro inactive and thus may be not drifted. */
   return 1;
 }
 
@@ -196,16 +198,11 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
     struct cell *c, const struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-
   /* Each cell doing RT needs to have the rt_advance_cell_time task.
-   * If it doesn't, it's not doing RT. This can happen for e.g.
-   * foreign cells which have been sent to a foreign node for other
-   * interactions, e.g. gravity. Make sure that if the cell doesn't
-   * have an rt_advance_cell_time task, no other tasks are around. */
-  /* However, foreign cells may have tasks on levels below the
-   * rt_advance_cell_time, so the check may be valid for those cells
-   * deeper down the tree. Allow for that exception in this check. */
-  /* TODO: fix documentation */
+   * If it doesn't, it's not doing RT. This can happen for foreign
+   * cells which have been sent to a foreign node for other interactions,
+   * e.g. gravity. However, foreign cells may have tasks on levels below
+   * the rt_advance_cell_time, so allow for that exception in this check. */
   int has_rt_advance_cell_time = 0;
   for (struct cell *finger = c; finger != NULL; finger = finger->parent) {
     if (finger->rt.rt_advance_cell_time != NULL) {
@@ -393,8 +390,6 @@ __attribute__((always_inline)) INLINE static int part_is_active_no_debug(
 __attribute__((always_inline)) INLINE static int part_is_rt_active(
     const struct part *p, const struct engine *e) {
 
-  /* TODO Mladen: Using e->max_active_bin leads to no errors here.
-   * Figure out why this passes your debugging checks. */
   const timebin_t max_active_bin = e->max_active_bin_subcycle;
   const timebin_t part_bin = p->rt_time_data.time_bin;
 

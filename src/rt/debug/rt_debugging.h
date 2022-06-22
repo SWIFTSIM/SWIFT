@@ -184,39 +184,6 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
   atomic_add(&e->rt_props->debug_radiation_absorbed_tot, absorption_sum_tot);
 }
 
-static void reset_cell_debugging_flags(struct cell *c) {
-  c->activated_recv = 0;
-  c->activated_sort = 0;
-  c->checked_sort = 0;
-  c->called_sort = 0;
-  c->finished_sort = 0;
-  if (c->split) {
-    for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) reset_cell_debugging_flags(c->progeny[k]);
-    }
-  }
-}
-
-/**
- * @brief Debugging checks loop over all hydro particles after each time step
- */
-/* static void rt_debugging_end_of_step_cell_mapper(void *restrict map_data, */
-/*                                                   int count, */
-/*                                                   void *restrict extra_data)
- * { */
-/*   const int *const local_cells = (int *)map_data; */
-/*   struct engine *e = (struct engine *)extra_data; */
-/*  */
-/*   [> Loop over this thread's chunk of cells to unskip <] */
-/*   for (int ind = 0; ind < count; ind++) { */
-/*  */
-/*     [> Handle on the cell <] */
-/*     struct cell *c = &e->s->cells_top[local_cells[ind]]; */
-/*     reset_cell_debugging_flags(c); */
-/*   } */
-/* } */
-/*  */
-
 /**
  * @brief Debugging checks loop over all hydro particles after each time step
  */
@@ -358,14 +325,6 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
                    s->sparts, s->nr_sparts, sizeof(struct spart),
                    threadpool_auto_chunk_size, /*extra_data=*/e);
 
-  /* Move the active local cells to the top of the list. */
-  int num_active_cells = s->nr_local_cells_with_tasks;
-
-  for (int ind = 0; ind < num_active_cells; ind++) {
-    struct cell *c = &e->s->cells_top[ind];
-    reset_cell_debugging_flags(c);
-  }
-
 #ifdef WITH_MPI
   /* Since we aren't sending data back, none of these checks will
    * pass a run over MPI. Make sure you run the threadpool functions
@@ -412,7 +371,7 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
 __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
     struct part *restrict p, int loc, const char *function_name) {
 
-  /* Have we been drifted? */
+  /* TODO: Fix drift checks. */
   /* if (p->rt_data.debug_drifted != 1 && loc != 1) */
   /*   [> The only place where we don't need to be drifted first is the <] */
   /*   [> ghost1 (finalise injection) step, so skip the test there. <] */

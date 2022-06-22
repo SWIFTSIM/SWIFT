@@ -20,10 +20,9 @@
 #define SWIFT_CELL_RT_H
 
 /* Config parameters. */
-/* #include "../config.h" */
+#include "../config.h"
 
 /* Local includes. */
-/* #include "lock.h" */
 #include "timeline.h"
 
 /**
@@ -73,18 +72,6 @@ struct cell_rt {
     /*! Bit mask of sorts that need to be computed for this cell.
      * Needed to be able to skip sorting undrifted cells. */
     uint16_t do_sort;
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-    /* TODO: chekc whether I actually use this */
-    /*! Last (integer) time the cell's sort arrays were updated. */
-    integertime_t ti_sort;
-
-    /* TODO: temporary */
-    int sendcount;
-    int recvcount;
-
-#endif
 
 #ifdef RT_NONE
   };

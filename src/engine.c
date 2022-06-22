@@ -1692,12 +1692,6 @@ void engine_skip_drift(struct engine *e) {
 void engine_launch(struct engine *e, const char *call) {
   const ticks tic = getticks();
 
-  message(
-      "================================================================= "
-      "started launch %s step %d",
-      call, e->step);
-  fflush(stdout);
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
   space_reset_task_counters(e->s);
@@ -1740,12 +1734,6 @@ void engine_launch(struct engine *e, const char *call) {
   if (e->verbose)
     message("(%s) took %.3f %s.", call, clocks_from_ticks(getticks() - tic),
             clocks_getunit());
-
-  message(
-      "================================================================= "
-      "finished launch %s step %d",
-      call, e->step);
-  fflush(stdout);
 }
 
 /**
@@ -2044,7 +2032,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   scheduler_write_dependencies(&e->sched, e->verbose, e->step);
-  scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
   /* Run the 0th time-step */
@@ -2555,7 +2542,6 @@ int engine_step(struct engine *e) {
   if (e->sched.frequency_dependency != 0 &&
       e->step % e->sched.frequency_dependency == 0) {
     scheduler_write_dependencies(&e->sched, e->verbose, e->step);
-    scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   }
 
   /* Write the task levels */
