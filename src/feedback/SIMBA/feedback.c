@@ -175,18 +175,7 @@ INLINE static void compute_SNII_feedback(
     //const double conv_factor = feedback_props->temp_to_u_factor;
 
     /* Compute kick speed based on local DM velocity dispersion */
-    if (sp->feedback_data.dm_ngb_N > 0) {
-      float dm_vel_disp_1d = 0.f;
-      float dm_vel_disp2[3] = {0.f, 0.f, 0.f};
-      for (int i = 0; i < 3; i++) {
-        dm_vel_disp2[i] = sp->feedback_data.dm_vel_disp2[i];
-        /* The final 1D vel. disp. will be the average of these three components */
-        dm_vel_disp2[i] /= sp->feedback_data.dm_ngb_N;
-        dm_vel_disp_1d += dm_vel_disp2[i];
-      }
-      dm_vel_disp_1d /= 3.0;
-      sp->feedback_data.dm_vel_disp_1d = sqrtf(dm_vel_disp_1d);
-    } 
+
     const double v_kick = compute_kick_speed(sp, feedback_props, us);
 
     /* u_kinetic in physical units.  We will work for now in physical units for
@@ -211,8 +200,8 @@ INLINE static void compute_SNII_feedback(
 
     /* Calculate the default ejection probability (accounting for round-off) */
     //double prob = f_E * E_SNe * N_SNe / (conv_factor * delta_T * ngb_gas_mass);
-    double prob = f_E * E_SNe * N_SNe / (u_kinetic * ngb_gas_mass);
-    message("V_KICK: z=%g  sp->id=%lld  nDM=%d  sigDM=%g  v_kick=%g  u_kinetic=%g  u_SN=%g  p=%g", cosmo->z, sp->id, sp->feedback_data.dm_ngb_N, sp->feedback_data.dm_vel_disp_1d, v_kick, u_kinetic, f_E*E_SNe, prob);
+    double prob = f_E * E_SNe * N_SNe / ((u_kinetic * cosmo->a2_inv) * ngb_gas_mass);
+    message("V_KICK: z=%g  sp->id=%lld  f_E=%g  sigDM=%g  v_kick=%g  u_kinetic=%g  u_SN=%g  p=%g", cosmo->z, sp->id, f_E, sp->feedback_data.dm_vel_disp_1d, v_kick, u_kinetic, f_E*E_SNe, prob);
     prob = max(prob, 0.0);
 
     /* Calculate the change in internal energy of the gas particles that get
