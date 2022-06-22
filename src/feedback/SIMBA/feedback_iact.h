@@ -450,12 +450,15 @@ runner_iact_nonsym_feedback_apply(
       const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
       const float thermal_frac = fb_props->SNII_fthermal;
       const float kinetic_frac = fb_props->SNII_fkinetic;
-      const double u_new =
-        u_init + thermal_frac * delta_u * (float)N_of_SNII_energy_inj_received_by_gas * cosmo->a2_inv;  // add in cosmology factor here to convert to comoving (system) units for u
-
-      /* Inject energy into the particle */
-      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      
+      /* heat particle thermal_frac of the time with SNII energy leftover after kick */
+      const double rand_thermal = random_unit_interval(pj->id, ti_current, random_number_stellar_feedback_2);
+      if (rand_thermal < thermal_frac) {
+	const double u_new = u_init + (1.-kinetic_frac) * delta_u * (float)N_of_SNII_energy_inj_received_by_gas * cosmo->a2_inv;  // add in cosmology factor here to convert to comoving (system) units for u
+        /* Inject energy into the particle */
+        hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+        hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      }
 
       /* si->feedback_data.to_distribute.dm_vel_disp_1d is the 1D velocity dispersion */
 
@@ -487,7 +490,7 @@ runner_iact_nonsym_feedback_apply(
       /* Update the signal velocity of the particle based on the velocity
        * kick
        */
-      hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick);
+      hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick * cosmo->a_inv);
 
       /* message( */
       /*     "We did some heating! id %llu star id %llu probability %.5e " */

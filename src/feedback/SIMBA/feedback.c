@@ -181,8 +181,13 @@ INLINE static void compute_SNII_feedback(
      * to add to particle thermal energy (in feedback_iact) */
     const double u_kinetic = 0.5 * v_kick * v_kick;
     const double E_SNe = feedback_props->E_SNII;
-    const double f_E =
-        eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
+    double f_E = eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
+
+    /* Adjust SNII energy for greater energy output at lower metallicity (Mufasa/Simba's GALAXY_HOTWIND_ZSCALE) */
+     const double Z = max(chemistry_get_star_total_metal_mass_fraction_for_feedback(sp),
+          exp10(log10_min_metallicity));
+    if (Z>1.e-9) f_E *= pow(10.,-0.0029*pow(log10(Z)+9,2.5)+0.417694);
+    else f_E *= 2.61634;
 
     /* Number of SNe at this time-step */
     double N_SNe;
