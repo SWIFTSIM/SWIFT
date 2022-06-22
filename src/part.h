@@ -122,6 +122,8 @@ struct threadpool;
 #include "./black_holes/Default/black_holes_part.h"
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes_part.h"
+#elif defined(BLACK_HOLES_SIMBA)
+#include "./black_holes/SIMBA/black_holes_part.h"
 #else
 #error "Invalid choice of black hole particle"
 #endif
