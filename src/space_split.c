@@ -278,7 +278,12 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
           cp->black_holes.count == 0 && cp->sinks.count == 0) {
 
-        space_recycle(s, cp);
+#ifdef SWIFT_DEBUG_CHECKS
+        if (cp->owner != thread_id)
+          error("Trying to recycle a cell allocated by a different thread!");
+#endif
+
+        space_recycle(s, cp, /*lock=*/0);
         c->progeny[k] = NULL;
 
       } else {
