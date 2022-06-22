@@ -448,8 +448,6 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     /* Is the cell buffer empty? */
     if (s->cells_sub[thread_id] == NULL) {
 
-      warning("realloc %d", thread_id);
-
       if (swift_memalign("cells_sub", (void **)&s->cells_sub[thread_id],
                          cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
