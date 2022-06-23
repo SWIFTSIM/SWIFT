@@ -1090,15 +1090,16 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
+  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   const float shift_threshold_x =
-      2. * ci->width[0] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[0] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[1] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[2] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
@@ -1443,15 +1444,16 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
+  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   const float shift_threshold_x =
-      2. * ci->width[0] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[0] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[1] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[2] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
