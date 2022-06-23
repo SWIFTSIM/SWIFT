@@ -28,6 +28,7 @@
 /* Local headers. */
 #include "black_holes.h"
 #include "chemistry.h"
+#include "feedback.h"
 #include "engine.h"
 #include "gravity.h"
 #include "neutrino.h"
@@ -265,6 +266,7 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 
   const struct cosmology *cosmo = e->cosmology;
   const struct stars_props *stars_properties = e->stars_properties;
+  const struct feedback_props *feedback_properties = e->feedback_props;
   const float a_factor_vel = cosmo->a;
 
   /* Convert velocities to internal units */
@@ -309,6 +311,9 @@ void space_first_init_sparts_mapper(void *restrict map_data, int count,
 
     /* Also initialise the chemistry */
     chemistry_first_init_spart(chemistry, &sp[k]);
+
+    /* Also initialise the feedback */
+    feedback_first_init_spart(&sp[k], feedback_properties);
 
     /* Also initialise the splitting data */
     particle_splitting_mark_part_as_not_split(&sp[k].split_data, sp[k].id);
