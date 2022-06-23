@@ -388,7 +388,8 @@ void *runner_main(void *data) {
           /* Cleanup only if any of the indices went stale. */
           runner_do_hydro_sort(
               r, ci, t->flags,
-              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin,
+              cell_get_flag(ci, cell_flag_rt_requests_sort), 1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
@@ -399,7 +400,7 @@ void *runner_main(void *data) {
            * don't have rt_sort tasks. */
           runner_do_hydro_sort(
               r, ci, t->flags,
-              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+              ci->hydro.dx_max_sort_old > space_maxreldx * ci->dmin, 1, 1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;

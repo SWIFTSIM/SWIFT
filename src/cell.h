@@ -341,9 +341,9 @@ enum cell_flags {
   cell_flag_do_hydro_sub_sync = (1UL << 18),
   cell_flag_unskip_self_grav_processed = (1UL << 19),
   cell_flag_unskip_pair_grav_processed = (1UL << 20),
-  cell_flag_skip_rt_sort = (1UL << 21),   /* skip rt_sort after a RT recv? */
-  cell_flag_do_rt_sub_sort = (1UL << 22), /* same as hydro_sub_sort for RT */
-  cell_flag_do_rt_sort = (1UL << 23)      /* was this sort requested by RT? */
+  cell_flag_skip_rt_sort = (1UL << 21),    /* skip rt_sort after a RT recv? */
+  cell_flag_do_rt_sub_sort = (1UL << 22),  /* same as hydro_sub_sort for RT */
+  cell_flag_rt_requests_sort = (1UL << 23) /* was this sort requested by RT? */
 };
 
 /**

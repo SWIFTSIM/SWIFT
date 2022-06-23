@@ -644,7 +644,7 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
  */
 void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
 
-  cell_set_flag(c, cell_flag_do_rt_sort);
+  cell_set_flag(c, cell_flag_rt_requests_sort);
 
   if (c == c->hydro.super) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -669,7 +669,7 @@ void cell_activate_rt_sorts_up(struct cell *c, struct scheduler *s) {
        * necessarily activate the hydro sorts tasks, yet the do_hydro_sub_sort
        * flag is used as an early exit while climbing up the tree. */
       cell_set_flag(parent, cell_flag_do_rt_sub_sort);
-      cell_set_flag(parent, cell_flag_do_rt_sort);
+      cell_set_flag(parent, cell_flag_rt_requests_sort);
 
       if (parent == c->hydro.super) {
 
