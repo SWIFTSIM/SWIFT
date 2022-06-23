@@ -130,17 +130,23 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
  * @param t_gradient The send_gradient #task, if already created.
  * @param t_prep1 The send_prep1 #task, if it has already been created.
  * @param t_limiter The send_limiter #task, if it has already been created.
+ * @param t_rt_gradient The send_rt_gradient #task, if it has already been
+ * created.
+ * @param t_rt_transport The send_rt_transport #task, if it has already been
  * @param with_feedback Are we running with stellar feedback?
  * @param with_limiter Are we running with the time-step limiter?
  * @param with_sync Are we running with time-step synchronization?
+ * @param with_rt Are we running with radiative transfer?
  */
 void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
                                 struct cell *cj, struct task *t_xv,
                                 struct task *t_rho, struct task *t_gradient,
                                 struct task *t_prep1, struct task *t_limiter,
                                 struct task *t_pack_limiter,
+                                struct task *t_rt_gradient,
+                                struct task *t_rt_transport,
                                 const int with_feedback, const int with_limiter,
-                                const int with_sync) {
+                                const int with_sync, const int with_rt) {
 
 #ifdef WITH_MPI
   struct link *l = NULL;
@@ -191,6 +197,13 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       }
 #endif
 
+      if (with_rt){
+        /* Add the RT sends */
+        t_rt_gradient = scheduler_addtask(s, task_type_send, task_subtype_rt_gradient, ci->mpi.tag, 0, ci, cj);
+
+        t_rt_transport = scheduler_addtask(s, task_type_send, task_subtype_rt_transport, ci->mpi.tag, 0, ci, cj);
+      }
+
 #ifdef EXTRA_HYDRO_LOOP
 
       scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.end_force);
@@ -235,7 +248,36 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
         scheduler_addunlock(s, t_prep1, ci->hydro.super->stars.prep2_ghost);
       }
 #endif
-    }
+
+      if (with_rt){ 
+        /* Don't send the transport stuff before the gradient stuff */
+        scheduler_addunlock(s, t_rt_gradient, t_rt_transport);
+
+        /* The send_gradient task depends on the cell's ghost1 task. */
+        scheduler_addunlock(s, ci->hydro.super->rt.rt_ghost1, t_rt_gradient);
+
+        /* The send_transport task depends on the cell's ghost2 task. */
+        scheduler_addunlock(s, ci->hydro.super->rt.rt_ghost2, t_rt_transport);
+
+        /* Safety measure: collect dependencies and make sure data is sent before modifying it */
+        scheduler_addunlock(s, t_rt_gradient, ci->hydro.super->rt.rt_ghost2);
+
+        /* Safety measure: collect dependencies and make sure data is sent before modifying it */
+        scheduler_addunlock(s, t_rt_transport, ci->hydro.super->rt.rt_transport_out);
+
+        /* Drift before you send. Especially intended to cover inactive cells
+         * being sent. */
+        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_gradient);
+        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_transport);
+
+        /* Make sure the gradient sends don't run before the xv is finished.
+         * This can occur when a cell itself is inactive for both hydro and
+         * RT, but needs to be sent over for some other cell's pair task. 
+         * The rt_gradient - xv dependency is special because when received,
+         * these two tasks will/may activate the sorts.*/
+        scheduler_addunlock(s, t_xv, t_rt_gradient);
+      }
+    } /* if t_xv == NULL */
 
     /* Add them to the local cell. */
     engine_addlink(e, &ci->mpi.send, t_xv);
@@ -250,6 +292,12 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 #ifdef EXTRA_STAR_LOOPS
     if (with_feedback) engine_addlink(e, &ci->mpi.send, t_prep1);
 #endif
+
+    if (with_rt) {
+      /* Add them to the local cell. */
+      engine_addlink(e, &ci->mpi.send, t_rt_gradient);
+      engine_addlink(e, &ci->mpi.send, t_rt_transport);
+    }
   }
 
   /* Recurse? */
@@ -258,7 +306,7 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_hydro(
             e, ci->progeny[k], cj, t_xv, t_rho, t_gradient, t_prep1, t_limiter,
-            t_pack_limiter, with_feedback, with_limiter, with_sync);
+            t_pack_limiter, t_rt_gradient, t_rt_transport, with_feedback, with_limiter, with_sync, with_rt);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -525,6 +573,7 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
           s, task_type_send, task_subtype_rt_gradient, ci->mpi.tag, 0, ci, cj);
       t_rt_transport = scheduler_addtask(
           s, task_type_send, task_subtype_rt_transport, ci->mpi.tag, 0, ci, cj);
+
       /* Don't send the transport stuff before the gradient stuff */
       scheduler_addunlock(s, t_rt_gradient, t_rt_transport);
 
@@ -548,15 +597,11 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_gradient);
       scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_transport);
 
-      /* Make sure the gradient sends don't run before the xv is finished.
-       * This can occur when a cell itself is inactive for both hydro and
-       * RT, but needs to be sent over for some other cell's pair task. */
-      /* This probably can and should be done in a better way in the future. */
       struct task *t_xv = NULL;
       for (struct link *l2 = ci->mpi.send; l2 != NULL; l2 = l2->next) {
         if ((l2->t->subtype == task_subtype_xv) &&
-            (l->t->ci->nodeID == nodeID ||
-             (l->t->cj != NULL && l->t->cj->nodeID == nodeID))) {
+            (l2->t->ci->nodeID == nodeID ||
+             (l2->t->cj != NULL && l2->t->cj->nodeID == nodeID))) {
           t_xv = l2->t;
           break;
         }
@@ -4188,6 +4233,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
   const int with_limiter = (e->policy & engine_policy_timestep_limiter);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_sync = (e->policy & engine_policy_timestep_sync);
+  const int with_rt = (e->policy & engine_policy_rt);
   struct cell_type_pair *cell_type_pairs = (struct cell_type_pair *)map_data;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -4200,18 +4246,17 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     struct cell *ci = cell_type_pairs[k].ci;
     struct cell *cj = cell_type_pairs[k].cj;
     const int type = cell_type_pairs[k].type;
-    struct task *tend = NULL;
 
 #ifdef WITH_MPI
 
     if (!cell_is_empty(ci)) {
       /* Add the timestep exchange task */
-      tend = scheduler_addtask(&e->sched, task_type_send, task_subtype_tend,
+      struct task *tend = scheduler_addtask(&e->sched, task_type_send, task_subtype_tend,
                                ci->mpi.tag, 0, ci, cj);
       scheduler_addunlock(&e->sched, ci->timestep_collect, tend);
       engine_addlink(e, &ci->mpi.send, tend);
 
-      if ((e->policy & engine_policy_rt) && (type & proxy_cell_type_hydro)) {
+      if (with_rt && (type & proxy_cell_type_hydro)) {
 
         /* If we're running with RT subcycling, we need to ensure that nothing
          * is sent before the advance cell time task has finished. This may
@@ -4220,6 +4265,10 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
         if (ci->super->rt.rt_advance_cell_time != NULL) {
           scheduler_addunlock(&e->sched, ci->super->rt.rt_advance_cell_time,
                               tend);
+#ifdef SWIFT_RT_DEBUG_CHECKS
+        } else {
+          error("Got local super cell without rt_advance_cell_time task");
+#endif        
         }
       }
     }
@@ -4232,7 +4281,8 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  /*t_rho=*/NULL, /*t_gradient=*/NULL,
                                  /*t_prep1=*/NULL,
                                  /*t_limiter=*/NULL, /*t_pack_limiter=*/NULL,
-                                 with_feedback, with_limiter, with_sync);
+                                 /*t_rt_gradient=*/NULL, /*t_rt_transport=*/NULL,
+                                 with_feedback, with_limiter, with_sync, with_rt);
 
     /* Add the send tasks for the cells in the proxy that have a stars
      * connection. */
@@ -4256,9 +4306,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
         (type & proxy_cell_type_gravity))
       engine_addtasks_send_gravity(e, ci, cj, /*t_grav=*/NULL);
 
-    if ((e->policy & engine_policy_rt) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_rt(e, ci, cj, /*t_rt_gradient=*/NULL,
-                              /*t_rt_transport=*/NULL, tend);
+    /* if ((e->policy & engine_policy_rt) && (type & proxy_cell_type_hydro)) */
+    /*   engine_addtasks_send_rt(e, ci, cj, [>t_rt_gradient=<]NULL, */
+    /*                           [>t_rt_transport=<]NULL, tend); */
   }
 }
 
