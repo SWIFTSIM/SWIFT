@@ -2999,11 +2999,11 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
         if (cj_active) {
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rt_gradient);
           if (sub_cycle) {
-            /* If we're in a sub-cycle, then there should be no sorts. But since 
-             * hydro sorts won't be active then, the RT sorts would run. Make 
-             * sure the cells are also marked to skip the RT sorts, otherwise 
-             * the 'sorted' flags will be wrongly set after a recv rt_gradient. 
-             * The recv tasks might also run on a higher level than the current 
+            /* If we're in a sub-cycle, then there should be no sorts. But since
+             * hydro sorts won't be active then, the RT sorts would run. Make
+             * sure the cells are also marked to skip the RT sorts, otherwise
+             * the 'sorted' flags will be wrongly set after a recv rt_gradient.
+             * The recv tasks might also run on a higher level than the current
              * cell, so walk all the way up. */
             cell_set_skip_rt_sort_flag_up(ci);
           }
