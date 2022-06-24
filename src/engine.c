@@ -2183,15 +2183,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Run the RT sub-cycles now. */
   engine_run_rt_sub_cycles(e);
 
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* Initialise additional RT data now that time bins are set
-   * In particular, the drift counters need to be set to the proper state */
-  /* TODO MLADEN: is this still necessary? */
-  if (e->policy & engine_policy_rt) {
-    space_convert_rt_quantities_after_zeroth_step(e->s, e->verbose);
-  }
-#endif
-
   clocks_gettime(&time2);
 
 #ifdef SWIFT_DEBUG_CHECKS

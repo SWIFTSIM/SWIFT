@@ -89,9 +89,8 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
 /**
  * @brief Reset the RT hydro particle data not related to the hydro density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
- * are both called individually. Also an extra call to rt_reset_part is made
- * in space_convert_rt_quantities_after_zeroth_step(). To reset RT data needed
- * in each RT sub-cycle, use rt_reset_part_each_subcycle().
+ * are both called individually. To reset RT data needed in each RT sub-cycle,
+ * use rt_reset_part_each_subcycle().
  *
  * @param p particle to work on
  * @param cosmo Cosmology.
@@ -154,31 +153,6 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 }
 
 /**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the particle density and time step to be known.
- *
- * @param p particle to work on
- * @param rt_props RT properties struct
- * @param cosmo #cosmology data structure.
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props,
-                               const struct cosmology* restrict cosmo) {
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* Since the inject_prep has been moved to the density loop, the
-   * initialization at startup is messing with the total counters
-   * for stars because the density is called, but not the force-and-kick
-   * tasks. So reset the total counters here as well so that they will
-   * match the star counters. */
-  p->rt_data.debug_iact_stars_inject = 0;
-  p->rt_data.debug_radiation_absorbed_tot = 0ULL;
-#endif
-}
-
-/**
  * @brief Initialisation of the RT density loop related star particle data.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
  * are both called individually.
@@ -212,8 +186,7 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
 /**
  * @brief Reset of the RT star particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
- * are both called individually. Also an extra call to rt_reset_spart is made
- * in space_convert_rt_quantities_after_zeroth_step().
+ * are both called individually.
  *
  * @param sp star particle to work on
  */
@@ -240,39 +213,6 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
   for (int g = 0; g < RT_NGROUPS; g++) {
     sp->rt_data.debug_injected_energy_tot[g] = 0.f;
   }
-#endif
-}
-
-/**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the star density and time step to be known.
- * @param sp star particle to work on
- * @param time current system time
- * @param star_age age of the star *at the end of the step*
- * @param dt star time step
- * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param internal_units struct holding internal units
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
-                               double star_age, double dt,
-                               const struct rt_props* rt_props,
-                               const struct phys_const* phys_const,
-                               const struct unit_system* internal_units) {
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* If we're running with debugging checks on, reset debugging
-   * counters and flags in particular after the zeroth step so
-   * that the checks work as intended. */
-  rt_init_spart(sp);
-  rt_reset_spart(sp);
-  /* Since the inject_prep has been moved to the density loop, the
-   * initialization at startup is messing with the total counters because
-   * the density is called, but not the force-and-kick tasks. So reset
-   * the total counters here as well. */
-  sp->rt_data.debug_radiation_emitted_tot = 0ULL;
 #endif
 }
 

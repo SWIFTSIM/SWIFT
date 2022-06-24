@@ -63,9 +63,9 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
 /**
  * @brief Reset the RT hydro particle data not related to the hydro density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
- * are both called individually. Also an extra call to rt_reset_part is made
- * in space_convert_rt_quantities_after_zeroth_step(). To reset RT data needed
- * in each RT sub-cycle, use rt_reset_part_each_subcycle().
+ * are both called individually. To reset RT data needed in each RT sub-cycle,
+ * use rt_reset_part_each_subcycle().
+ *
  * @param p particle to work on
  * @param cosmo Cosmology.
  */
@@ -90,20 +90,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
     struct part* restrict p, const struct cosmology* cosmo,
     const struct rt_props* restrict rt_props) {}
-
-/**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the particle density and time step to be known.
- *
- * @param p particle to work on
- * @param rt_props RT properties struct
- * @param cosmo #cosmology data structure.
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props,
-                               const struct cosmology* restrict cosmo) {}
 
 /**
  * @brief Initialisation of the RT density loop related star particle data.
@@ -132,25 +118,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_spart(
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_spart(
     struct spart* restrict sp) {}
-
-/**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the star density and time step to be known.
- * @param sp star particle to work on
- * @param time current system time
- * @param star_age age of the star *at the end of the step*
- * @param dt star time step
- * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param internal_units struct holding internal units
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
-                               double star_age, double dt,
-                               const struct rt_props* rt_props,
-                               const struct phys_const* phys_const,
-                               const struct unit_system* internal_units) {}
 
 /**
  * @brief Split the RT data of a particle into n pieces
