@@ -190,6 +190,21 @@ struct bpart {
   /*! Eddington fractions */
   float eddington_fraction;
 
+  /*! Wind velocity kick */
+  float v_kick;
+
+  /*! Fraction of Mdot,inflow that should be accreted, the rest is a wind */
+  float f_accretion;
+
+  /*! Specific angular momentum of the stars within the kernel */
+  float specific_angular_momentum_stars[3];
+
+  /*! Bulge mass of stars within the kernel (twice the counter-rotating mass) */
+  float stellar_bulge_mass;
+
+  /*! The mass of stars within the kernel */
+  float stellar_mass;
+
   /*! Integer (cumulative) number of energy injections in AGN feedback. At a
    * given time-step, an AGN-active BH may produce multiple energy injections.
    * The number of energy injections is equal to or more than the number of

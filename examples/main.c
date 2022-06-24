@@ -401,8 +401,8 @@ int main(int argc, char *argv[]) {
     with_star_formation = 1;
     with_cooling = 1;
     with_feedback = 1;
-    with_black_holes = 0;
-    with_fof = 0;
+    with_black_holes = 1;
+    with_fof = 1;
   }
 
   /* Deal with thread numbers */
