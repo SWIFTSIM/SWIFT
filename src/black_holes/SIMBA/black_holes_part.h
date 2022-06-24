@@ -205,6 +205,9 @@ struct bpart {
   /*! The mass of stars within the kernel */
   float stellar_mass;
 
+  /*! The radiative luminosity of the black hole */
+  float radiative_luminosity;
+  
   /*! Integer (cumulative) number of energy injections in AGN feedback. At a
    * given time-step, an AGN-active BH may produce multiple energy injections.
    * The number of energy injections is equal to or more than the number of

@@ -210,6 +210,21 @@ struct black_holes_props {
   /*! When does the jet start heating? (km/s) */
   float jet_heating_velocity_threshold;
 
+  /*! At what v_kick does the X-ray heating start? */
+  float xray_heating_velocity_threshold;
+
+  /*! How many times the particle's u value can we heat? */
+  float xray_maximum_heating_factor;
+
+  /*! How much of the X-ray energy should go into velocity for dense gas? */
+  float xray_kinetic_fraction;
+
+  /*! Above this density we should split X-ray energy into kinetic */ 
+  float xray_heating_n_H_threshold_cgs;
+
+  /*! Below this temperature we should split X-ray energy into kinetic */
+  float xray_heating_T_threshold_cgs;
+
   /*! What is the physical max. velocity of the jet? (km/s) */
   float jet_velocity;
 
@@ -220,10 +235,10 @@ struct black_holes_props {
   float eddington_fraction_lower_boundary;
 
   /*! Minimum mass for starting the jet (Msun) */
-  float jet_mass_min;
+  float jet_mass_min_Msun;
 
   /*! Maximum mass for starting the jet (Msun) */
-  float jet_mass_max;
+  float jet_mass_max_Msun;
 
   /*! Constrains momentum of outflowing wind to p = F * L / c */
   float wind_momentum_flux;
@@ -306,6 +321,30 @@ struct black_holes_props {
 
   /*! Conversion factor from internal time to yr */
   float time_to_yr;
+
+  /*! Conversion factor from density to cgs */
+  float conv_factor_density_to_cgs;
+
+  /*! Conversion factor from luminosity to cgs */
+  float conv_factor_energy_rate_to_cgs;
+
+  /*! Conversion factor from length to cgs */
+  float conv_factor_length_to_cgs;
+
+  /*! Conversion factor from mass to cgs */
+  float conv_factor_mass_to_cgs;
+
+  /*! Conversion factor from time to cgs */
+  float conv_factor_time_to_cgs;
+
+  /*! Conversion factor from specific energy to cgs */
+  float conv_factor_specific_energy_to_cgs;
+
+  /*! Proton mass */
+  float proton_mass_cgs_inv;
+
+  /*! Convert Kelvin to internal temperature */
+  float T_K_to_int;
 };
 
 /**
@@ -391,7 +430,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->torque_accretion_norm =
       parser_get_param_float(params, "SIMBAAGN:torque_accretion_norm");
-      
+
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "SIMBAAGN:use_multi_phase_bondi");
 
@@ -547,8 +586,44 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->jet_heating_velocity_threshold = 
       parser_get_param_float(params, "SIMBAAGN:jet_heating_velocity_threshold");
 
+  /* Convert to internal units */
+  const float jet_heating_velocity_threshold = 
+      bp->jet_heating_velocity_threshold * 1.0e5f;
+  bp->jet_heating_velocity_threshold =
+      jet_heating_velocity_threshold / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
+  bp->xray_heating_velocity_threshold =
+      parser_get_param_float(params, "SIMBAAGN:xray_heating_velocity_threshold");
+
+  /* Convert to internal units */
+  const float xray_heating_velocity_threshold = 
+      bp->xray_heating_velocity_threshold * 1.0e5f;
+  bp->xray_heating_velocity_threshold =
+      xray_heating_velocity_threshold / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
+  bp->xray_maximum_heating_factor = 
+      parser_get_opt_param_float(params, "SIMBAAGN:xray_maximum_heating_factor",
+            1000.0f);
+
+  bp->xray_kinetic_fraction =
+      parser_get_opt_param_float(params, "SIMBAAGN:xray_kinetic_fraction",
+            0.5f);
+
+  bp->xray_heating_n_H_threshold_cgs = 
+      parser_get_opt_param_float(params, "SIMBAAGN:xray_heating_n_H_threshold_cgs",
+        0.13f);
+
+  bp->xray_heating_T_threshold_cgs =
+      parser_get_opt_param_float(params, "SIMBAAGN:xray_heating_T_threshold_cgs",
+        5.0e5f);
+
   bp->jet_velocity = 
       parser_get_param_float(params, "SIMBAAGN:jet_velocity");
+
+  /* Convert to internal units */
+  const float jet_velocity = bp->jet_velocity * 1.0e5f;
+  bp->jet_velocity =
+      jet_velocity / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 
   bp->jet_temperature = 
       parser_get_param_float(params, "SIMBAAGN:jet_temperature");
@@ -556,11 +631,11 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->eddington_fraction_lower_boundary = 
       parser_get_param_float(params, "SIMBAAGN:eddington_fraction_lower_boundary");
 
-  bp->jet_mass_min = 
-      parser_get_opt_param_float(params, "SIMBAAGN:jet_mass_min", 4.5e7f);
+  bp->jet_mass_min_Msun = 
+      parser_get_opt_param_float(params, "SIMBAAGN:jet_mass_min_Msun", 4.5e7f);
 
-  bp->jet_mass_max = 
-      parser_get_opt_param_float(params, "SIMBAAGN:jet_mass_max", 5.0e7f); 
+  bp->jet_mass_max_Msun = 
+      parser_get_opt_param_float(params, "SIMBAAGN:jet_mass_max_Msun", 5.0e7f); 
 
   bp->wind_momentum_flux =
       parser_get_param_float(params, "SIMBAAGN:wind_momentum_flux");
@@ -676,6 +751,28 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->length_to_parsec = 1.f / phys_const->const_parsec;
 
   bp->time_to_yr = 1.f / phys_const->const_year;
+
+  /* Some useful conversion values */
+  bp->conv_factor_density_to_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  bp->conv_factor_energy_rate_to_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) /
+      units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  bp->conv_factor_length_to_cgs = 
+      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
+  bp->conv_factor_mass_to_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  bp->conv_factor_time_to_cgs = 
+      units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  bp->conv_factor_specific_energy_to_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
+
+  /* Useful constants */
+  bp->proton_mass_cgs_inv =
+      1. / (phys_const->const_proton_mass *
+            units_cgs_conversion_factor(us, UNIT_CONV_MASS));
+
+  bp->T_K_to_int = T_K_to_int;
 }
 
 /**

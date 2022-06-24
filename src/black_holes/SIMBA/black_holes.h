@@ -178,6 +178,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->specific_angular_momentum_stars[2] = 0.f;
   bp->stellar_mass = 0.f;
   bp->stellar_bulge_mass = 0.f;
+  bp->radiative_luminosity = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
   bp->reposition.delta_x[0] = -FLT_MAX;
@@ -889,6 +890,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double mass_rate = (1. - epsilon_r) * accr_rate;
   const double luminosity = epsilon_r * accr_rate * c * c;
 
+  /* This is used for X-ray feedback later */
+  bp->radiative_luminosity = luminosity;
+
   /* Integrate forward in time */
   bp->subgrid_mass += mass_rate * dt;
   bp->total_accreted_mass += mass_rate * dt;
@@ -934,8 +938,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Now that we have v_kick we can determine the accretion fraction f_acc */
   if (v_kick > 0.f) {
     if (bp->eddington_fraction < props->eddington_fraction_lower_boundary) {
-      const float mass_min = props->jet_mass_min * cosmo->a;  /* Msun */
-      const float mass_max = props->jet_mass_max * cosmo->a;
+      const float mass_min = props->jet_mass_min_Msun * cosmo->a;  /* Msun */
+      const float mass_max = props->jet_mass_max_Msun * cosmo->a;
       const float mass_sel = fminf(
         (subgrid_mass_Msun - mass_min) / (mass_max - mass_min + FLT_MIN), 
         1.f
@@ -956,7 +960,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       }
     }
 
-    v_kick *= cosmo->a;
+    /* Keep v_kick physical, there are a lot of comparisons */
     bp->v_kick = v_kick * props->kms_to_internal;
 
     /* Now that we have v_kick we can determine the accretion fraction f_acc */
@@ -1325,6 +1329,60 @@ __attribute__((always_inline)) INLINE static void
 black_holes_store_potential_in_part(struct black_holes_part_data* p_data,
                                     const struct gpart* gp) {
   p_data->potential = gp->potential;
+}
+
+/**
+ * @brief Compute how much heating there should be due to X-rays.
+ *
+ * @param bp The #bpart that is giving X-ray feedback.
+ * @param p The #part that is receiving X-ray feedback.
+ * @param props The properties of the black hole scheme.
+ * @param cosmo The current cosmological model.
+ * @param dt The timestep of the black hole in internal units.
+ */
+__attribute__((always_inline)) INLINE static float 
+black_holes_compute_xray_feedback(
+    struct bpart* bp, const struct part* p, 
+    const struct black_holes_props* props, 
+    const struct cosmology* cosmo,
+    const float dx[3],
+    double dt,
+    const float n_H_cgs,
+    const float T_gas_cgs) {
+    
+  float r2_phys = 0.f;
+  for (int i = 0; i < 3; i++) r2_phys += dx[i] * dx[i];
+  r2_phys *= cosmo->a * cosmo->a;
+  const float r2_cgs = r2_phys * props->conv_factor_length_to_cgs;
+
+  const float dt_cgs = dt * props->conv_factor_time_to_cgs;
+  const float luminosity_cgs = bp->radiative_luminosity *
+                               props->conv_factor_energy_rate_to_cgs;
+  /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
+
+  /* Let's do everything in cgs. See Choi et al 2012/2015 */
+  const float zeta = luminosity_cgs / (n_H_cgs * r2_cgs); 
+
+  const float S1 = 4.1e-35f * (1.9e7f - T_gas_cgs) * zeta;
+  const float zeta0_term1 = 
+      1.f / (1.5f / sqrtf(T_gas_cgs) + 1.5e12f / powf(T_gas_cgs, 2.5f));
+  const float zeta0_term2 = 
+      (4.0e10f / (T_gas_cgs * T_gas_cgs)) * 
+      (1.f + 80.f / expf((T_gas_cgs - 1.e4f) / 1.5e3f));
+
+  const float zeta0 = zeta0_term1 + zeta0_term2;
+  const float b = 1.1f - 
+                  1.1f / expf(T_gas_cgs / 1.8e5f) + 
+                  4.0e15f / (T_gas_cgs * T_gas_cgs * T_gas_cgs * T_gas_cgs);
+
+  const float S2 = 1.0e-23f * 
+                   (1.7e4f / powf(T_gas_cgs, 0.7f)) * 
+                   powf(zeta / zeta0, b) / 
+                   (1.f + powf(zeta / zeta0, b));
+  
+  const float du_cgs = (n_H_cgs * props->proton_mass_cgs_inv) * (S1 + S2) * dt_cgs;
+
+  return du_cgs / props->conv_factor_specific_energy_to_cgs;
 }
 
 /**

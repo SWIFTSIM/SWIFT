@@ -602,7 +602,52 @@ runner_iact_nonsym_bh_gas_swallow(
           "swallow id=%lld)",
           bi->id, pj->id, pj->black_holes_data.swallow_id);
     }
-  } /* ends section for rand < prob */
+  } else { /* ends section for rand < prob */
+    /* We were not lucky, but we are lucky to heat via X-rays */
+    if (bi->v_kick > bh_props->xray_heating_velocity_threshold) {
+
+      /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
+      const float n_H_cgs = hydro_get_physical_density(pj, cosmo) * 
+                            bh_props->rho_to_n_cgs;
+      const float u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+      const float T_gas_cgs = 
+          u_init / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
+
+      float du_xray_phys = 
+          black_holes_compute_xray_feedback(bi, pj, bh_props, 
+              cosmo, dx, dt, n_H_cgs, T_gas_cgs);
+
+      /* Look for cold dense gas. Then push it. */
+      if (n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
+          T_gas_cgs < bh_props->xray_heating_T_threshold_cgs) {
+        const float dv_phys = 2.f * sqrtf(
+                                  bh_props->xray_kinetic_fraction * 
+                                  du_xray_phys
+                              );
+        const float dv_comoving = dv_phys * cosmo->a;
+        const float prefactor = dv_comoving / r;
+
+        /* Push gas radially */
+        pj->v[0] += prefactor * dx[0];
+        pj->v[1] += prefactor * dx[1];
+        pj->v[2] += prefactor * dx[2];
+
+        du_xray_phys *= (1.f - bh_props->xray_kinetic_fraction);
+        if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
+          du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
+        }
+      } 
+
+      const float u_new = u_init + du_xray_phys;
+
+      message("BH_XRAY: heating bid=%lld, pid=%lld, u_new/u_old = %g",
+          bi->id, pj->id, u_new / u_init);
+
+      /* Do the energy injection. */
+      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+    }
+  }
 }
 
 /**
@@ -887,27 +932,42 @@ runner_iact_nonsym_bh_gas_feedback(
     const double random_number = 
         random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
     const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
-    for (int i = 0; i < 3; i++) pj->v[i] += bi->v_kick * dirsign * dir[i] / norm;
+    const float prefactor = bi->v_kick * cosmo->a * dirsign / norm;
+
+    pj->v[0] += prefactor * dir[0];
+    pj->v[1] += prefactor * dir[1];
+    pj->v[2] += prefactor * dir[2];
 
     message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
-        pj->id, bi->v_kick, bi->v_kick / pj_vel_norm);
+        pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
 
     /* Set delay time */
-    pj->feedback_data.decoupling_delay_time = 1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+    pj->feedback_data.decoupling_delay_time = 
+        1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
     /* Update the signal velocity of the particle based on the velocity kick */
-    hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick * cosmo->a_inv);
+    hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick);
 
     /* If we have a jet, we heat! */
     if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
+      message("BH_JET: bid=%lld kicking pid=%lld at v_kick=%g (internal), v_kick/v_part=%g",
+        bi->id, pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
+
       float new_Tj = 0.f;
       /* Use the halo Tvir? */
       if (bh_props->jet_temperature < 0.f) {
         /* TODO: Get the halo Tvir for pj */
-        new_Tj = 5.0e7f; /* K */
+        new_Tj = 1.0e8f; /* K */
       } else {
         new_Tj = bh_props->jet_temperature; /* K */
       }
+
+      /* Simba scales with velocity */
+      new_Tj *= (bi->v_kick * bi->v_kick) /
+                (bh_props->jet_velocity * bh_props->jet_velocity);
+      
+      message("BH_JET: bid=%lld heating pid=%lld to T=%g K",
+        bi->id, pj->id, new_Tj);
 
       /* Compute new energy per unit mass of this particle */
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
