@@ -194,11 +194,13 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Allow repartitioning to be changed between restarts. On restart this is
    * already allocated and freed on exit, so we need to copy over. */
+#ifdef WITH_MPI
   if (restart) {
     memcpy(e->reparttype, reparttype, sizeof(struct repartition));
   } else {
     e->reparttype = reparttype;
   }
+#endif
 
   if (restart && fof) {
     error(
@@ -223,6 +225,9 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->sched.frequency_dependency < 0) {
     error("Scheduler:dependency_graph_frequency should be >= 0");
   }
+  /* Get cellID for extra dependency graph dumps of specific cell */
+  e->sched.dependency_graph_cellID = parser_get_opt_param_longlong(
+      params, "Scheduler:dependency_graph_cell", 0LL);
 
   /* Get the frequency of the task level dumping */
   e->sched.frequency_task_levels = parser_get_opt_param_int(
