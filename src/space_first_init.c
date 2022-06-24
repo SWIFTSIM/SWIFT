@@ -28,8 +28,8 @@
 /* Local headers. */
 #include "black_holes.h"
 #include "chemistry.h"
-#include "feedback.h"
 #include "engine.h"
+#include "feedback.h"
 #include "gravity.h"
 #include "neutrino.h"
 #include "particle_splitting.h"
