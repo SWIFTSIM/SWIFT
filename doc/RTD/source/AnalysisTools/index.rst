@@ -21,6 +21,20 @@ If you wish to have more dependency graphs, you can use the parameter ``Schedule
 While the initial graph is showing all the tasks/dependencies, the next ones are only showing the active tasks/dependencies.
 
 
+Task dependencies for a single cell
+-----------------------------------
+
+There is an option to additionally write the dependency graphs of the task dependencies for a single cell. 
+You can select which cell to write using the ``Scheduler:dependency_graph_cell: cellID`` parameter, where ``cellID`` is the cell ID of type long long.
+This feature will create an individual file for each step specified by the ``Scheduler:dependency_graph_frequency`` and, differently from the full task graph, will create an individual file for each MPI rank that has this cell.
+
+Using this feature has several requirements:
+
+- You need to compile SWIFT including either ``--enable-debugging-checks`` or ``--enable-cell-graph``. Otherwise, cells won't have IDs.
+- There is a limit on how many cell IDs SWIFT can handle while enforcing them to be reproduceably unique. That limit is up to 32 top level cells in any dimension, and up to 16 levels of depth. If any of these thresholds are exceeded, the cells will still have unique cell IDs, but the actual IDs will most likely vary between any two runs.
+
+To plot the task dependencies, you can use the same script as before: ``tools/plot_task_dependencies.py``. The dependency graph now may have some tasks with a pink-ish background colour: These tasks represent dependencies that are unlocked by some other task which is executed for the requested cell, but the cell itself doesn't have an (active) task of that type itself in that given step.
+
 
 Task levels
 -----------------

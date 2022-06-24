@@ -145,6 +145,7 @@ Scheduler:
   engine_redist_alloc_margin:     1.2  # (Optional) Multiplier factor for the number of local particles to allocate on a given rank.
   engine_foreign_alloc_margin:    1.05 # (Optional) Multiplier factor for the number of foreign particles to allocate on a given rank.
   dependency_graph_frequency:       0  # (Optional) Dumping frequency of the dependency graph. By default, writes only at the first step.
+  dependency_graph_cell:            0  # (Optional) Write the dependency graph for a single cell with the same frequency as the full dependency graph. Select which cell to write using its cellID specified with this parameter.
   task_level_output_frequency:      0  # (Optional) Dumping frequency of the task level data. By default, writes only at the first step.
   free_foreign_during_restart:      0  # (Optional) Should the code free the foreign data when dumping restart files in order to get breathing space?
   free_foreign_during_rebuild:      0  # (Optional) Should the code free the foreign data when calling a rebuld in order to get breathing space?
