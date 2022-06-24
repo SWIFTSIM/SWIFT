@@ -127,12 +127,12 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 
 #ifdef SHADOWSWIFT
 void cell_write_grid(const struct cell *c, FILE *dfile,
-                         FILE *vfile, size_t *offset, int nodeID) {
+                         FILE *vfile, size_t *doffset, size_t *voffset, int nodeID) {
   /* Recurse? */
   if (c->grid.construction_level == above_construction_level) {
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
-        cell_write_grid(c->progeny[k], dfile, vfile, offset, nodeID);
+        cell_write_grid(c->progeny[k], dfile, vfile, doffset, voffset, nodeID);
       }
     }
     return;
@@ -145,12 +145,12 @@ void cell_write_grid(const struct cell *c, FILE *dfile,
 
   /* Have delaunay? */
   if (c->grid.delaunay != NULL) {
-    delaunay_write_tessellation(c->grid.delaunay, dfile, offset);
+    delaunay_write_tessellation(c->grid.delaunay, dfile, doffset);
   }
 
   /* Have voronoi? */
   if (c->grid.voronoi != NULL) {
-    voronoi_write_grid(c->grid.voronoi, vfile);
+    voronoi_write_grid(c->grid.voronoi, c->hydro.parts, c->hydro.count, vfile, voffset);
   }
 }
 #endif /* SHADOWSWIFT */
@@ -232,31 +232,26 @@ void engine_dump_snapshot(struct engine *e) {
 #endif
 
 #if defined(SHADOWSWIFT) && defined(SHADOWSWIFT_OUTPUT_GRIDS)
-#ifdef WITH_MPI
   char fname[50];
+#if WITH_MPI
   sprintf(fname, "voronoi_N%02d_%04d.txt", e->nodeID, e->snapshot_output_count - 1);
   FILE *vfile = fopen(fname, "w");
   sprintf(fname, "delaunay_%02d_%04d.txt", e->nodeID, e->snapshot_output_count - 1);
   FILE *file = fopen(fname, "w");
-  size_t offset = 0;
-  struct space *s = e->s;
-  for (int i = 0; i < s->nr_cells; ++i) {
-    cell_write_grid(&s->cells_top[i], file, vfile, &offset, e->nodeID);
-  }
-  fclose(vfile);
 #else
-  char fname[50];
   sprintf(fname, "voronoi%04d.txt", e->snapshot_output_count - 1);
   FILE *vfile = fopen(fname, "w");
   sprintf(fname, "delaunay%04d.txt", e->snapshot_output_count - 1);
   FILE *file = fopen(fname, "w");
+#endif
   size_t offset = 0;
+  size_t voffset = 0;
   struct space *s = e->s;
   for (int i = 0; i < s->nr_cells; ++i) {
-    cell_write_grid(&s->cells_top[i], file, vfile, &offset, e->nodeID);
+    cell_write_grid(&s->cells_top[i], file, vfile, &offset, &voffset, e->nodeID);
   }
   fclose(vfile);
-#endif
+  fclose(file);
 #endif
 
   /* Flag that we dumped a snapshot */

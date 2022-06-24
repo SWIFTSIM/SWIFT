@@ -342,8 +342,8 @@ inline static void voronoi_reset(struct voronoi *restrict v,
  * @param count The number of hydro particles in #parts
  */
 static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
-                                 struct part *parts,
-                                 const int *part_is_active, int count) {
+                                 struct part *parts, const int *part_is_active,
+                                 int count) {
 
   voronoi_assert(d->vertex_end > 0);
   voronoi_assert(d->active);
@@ -609,7 +609,7 @@ static inline void voronoi_check_grid(const struct voronoi *restrict v) {
  *
  * The output depends on the configuration. The maximal output contains 3
  * different types of output lines:
- *  - "G\tgx\tgx: x and y position of a single grid generator (optional).
+ *  - "G\tgx\tgy: x and y position of a single grid generator (optional).
  *  - "C\tcx\tcy\tV\tnface": centroid position, volume and (optionally) number
  *    of faces for a single Voronoi cell.
  *  - "F\tax\tay\tbx\tby\tleft\tngb\tright\tA\tmx\tmy": edge positions
@@ -620,7 +620,19 @@ static inline void voronoi_check_grid(const struct voronoi *restrict v) {
  * @param file File to write to.
  */
 static inline void voronoi_write_grid(const struct voronoi *restrict v,
-                                      FILE *file) {
+                                      const struct part *parts, int count,
+                                      FILE *file, size_t* offset) {
+
+  /* Write the generator positions */
+  for (int i = 0; i < count; i++)
+    fprintf(file, "G\t%g\t%g\t%lu\n", parts[i].x[0], parts[i].x[1], *offset + i);
+
+  /* Write the centroid positions */
+  for (int i = 0; i < count; i++)
+    fprintf(file, "C\t%g\t%g\tV\t%i\t%lu\n",
+            parts[i].x[0] + parts[i].geometry.centroid[0],
+            parts[i].x[1] + parts[i].geometry.centroid[1],
+            parts[i].geometry.nface, *offset + i);
 
   /* now write the pairs */
   for (int sid = 0; sid < 28; ++sid) {
@@ -631,10 +643,13 @@ static inline void voronoi_write_grid(const struct voronoi *restrict v,
       fprintf(file, "%g\t%g\t%g\t%g\t", pair->a[0], pair->a[1], pair->b[0],
               pair->b[1]);
 #endif
-      fprintf(file, "%i\t%g\t%g\t%g\n", sid, pair->surface_area,
-              pair->midpoint[0], pair->midpoint[1]);
+      fprintf(file, "%i\t%g\t%g\t%g\t%lu\n", sid, pair->surface_area,
+              pair->midpoint[0], pair->midpoint[1], *offset + pair->left_idx);
     }
   }
+
+  /* Update *offset */
+  *offset += count;
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_VORONOI_2D_H
