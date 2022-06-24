@@ -1808,9 +1808,12 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   struct cell *cells = s->cells_top;
   const double theta_crit = e->gravity_properties->theta_crit;
 
+  /* Some info about the zoom domain */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
   /* Compute how many cells away we need to walk */
-  const double distance = 2 * 2.5 * cells[0].width[0] / theta_crit;
-  int delta = (int)(distance / cells[0].width[0]) + 1;
+  const double distance = 2.5 * cells[bkg_cell_offset].width[0] / theta_crit;
+  int delta = (int)(distance / cells[bkg_cell_offset].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
