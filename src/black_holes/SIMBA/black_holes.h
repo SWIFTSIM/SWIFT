@@ -834,9 +834,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     }
   }
 
-  /* Limit the accretion rate to a fraction of the Eddington rate */
-  double accr_rate = min(Bondi_rate, f_Edd * Eddington_rate);
-  bp->accretion_rate = accr_rate;
+  /* The accretion rate estimators give Mdot,inflow  (Mdot,BH = f_acc * Mdot,inflow) */
+  double accr_rate = props->f_accretion * Bondi_rate;
 
   message("BH_ACCRETION: bondi accretion rate id=%lld, %g Msun/yr", 
       bp->id, accr_rate * props->mass_to_solar_mass / props->time_to_yr);
@@ -872,16 +871,19 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
         * powf(bp->subgrid_mass * mass_to_1e8solar, 1.f / 6.f) 
         * powf(r0, -3.f / 2.f) 
         / (1 + f0 / f_gas);
-    torque_accr_rate *= props->time_to_yr / props->mass_to_solar_mass;
+    torque_accr_rate *= props->f_accretion * (props->time_to_yr / props->mass_to_solar_mass);
 
     accr_rate += torque_accr_rate;
-    bp->accretion_rate += torque_accr_rate;
   }
 
   message("BH_ACCRETION: torque accretion rate id=%lld, %g Msun/yr", 
       bp->id, torque_accr_rate * props->mass_to_solar_mass / props->time_to_yr);
 
+  accr_rate = min(accr_rate, f_Edd * Eddington_rate);
   bp->eddington_fraction = accr_rate / Eddington_rate;
+  bp->accretion_rate = accr_rate;
+
+  message("BH_ACCRETION: id=%lld, f_Edd=%g", bp->id, bp->eddington_fraction);
 
   /* Factor in the radiative efficiency */
   const double mass_rate = (1. - epsilon_r) * accr_rate;
@@ -959,7 +961,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
     /* Now that we have v_kick we can determine the accretion fraction f_acc */
     const float momentum_scaling = epsilon_r * c / bp->v_kick;
-    bp->f_accretion = 1.0 / (1.0 + props->wind_momentum_flux * momentum_scaling);
+    bp->f_accretion = 1.f / (1.f + props->wind_momentum_flux * momentum_scaling);
   } else {
     bp->f_accretion = props->f_accretion;
     bp->v_kick = 0.f;
