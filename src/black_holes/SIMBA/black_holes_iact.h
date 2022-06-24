@@ -501,13 +501,9 @@ runner_iact_nonsym_bh_gas_swallow(
     dt = get_timestep(bi->time_bin, time_base);
   }
 
-  /* Start by checking the repositioning criteria */
-  /* Check if the BH needs to be fed. If not, we're done here */
-  const float bh_mass_deficit = bi->subgrid_mass - bi->mass_at_start_of_step;
-  if (bh_mass_deficit <= 0.f) return;
-
   /* Probability to swallow this particle */
   float prob = -1.f;
+
   /* Radiation was already accounted for in bi->subgrid_mass
     * so if is is bigger than bi->mass we can simply
     * flag particles to eat and satisfy the mass constraint.
@@ -518,7 +514,7 @@ runner_iact_nonsym_bh_gas_swallow(
     * The bi->mass variable is decreased previously to account
     * for the radiative losses.
     */
-  const float mass_deficit = bi->subgrid_mass - bi->mass;
+  const float mass_deficit = bi->subgrid_mass - bi->mass_at_start_of_step;
   if (mass_deficit >= 0.f) {
     /* Don't nibble from particles that are too small already */
     if (pj->mass < bh_props->min_gas_mass_for_nibbling) return;
@@ -599,13 +595,8 @@ runner_iact_nonsym_bh_gas_swallow(
     /* This particle is swallowed by the BH with the largest ID of all the
       * candidates wanting to swallow it */
     if (pj->black_holes_data.swallow_id < bi->id) {
-
-      message("BH %lld wants to swallow gas particle %lld", bi->id, pj->id);
-
       pj->black_holes_data.swallow_id = bi->id;
-
     } else {
-
       message(
           "BH %lld wants to swallow gas particle %lld BUT CANNOT (old "
           "swallow id=%lld)",
@@ -886,12 +877,20 @@ runner_iact_nonsym_bh_gas_feedback(
     for (int i = 0; i < 3; i++) norm += dir[i] * dir[i];
     norm = sqrtf(norm);
 
+    /* TODO: Remove */
+    float pj_vel_norm = 0.f;
+    for (int i = 0; i < 3; i++) pj_vel_norm += pj->v[i] * pj->v[i];
+    pj_vel_norm = sqrtf(pj_vel_norm);
+
     /* TODO: random_uniform() won't work here?? */
     /*const float dirsign = (random_uniform(-1.0, 1.0) > 0. ? 1.f : -1.f);*/
     const double random_number = 
         random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
     const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
     for (int i = 0; i < 3; i++) pj->v[i] += bi->v_kick * dirsign * dir[i] / norm;
+
+    message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
+        pj->id, bi->v_kick, bi->v_kick / pj_vel_norm);
 
     /* Set delay time */
     pj->feedback_data.decoupling_delay_time = 1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
