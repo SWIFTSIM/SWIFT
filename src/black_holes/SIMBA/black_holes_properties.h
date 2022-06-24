@@ -141,6 +141,11 @@ struct black_holes_props {
   /*! Where do we distinguish between hot gas for Bondi? */
   float environment_temperature_cut;
 
+  /*! How much of Mdot,inflow should we accrete? The rest is an outflowing wind */
+  float f_accretion;
+
+  /*! Normalization of the torque accretion rate */
+  float torque_accretion_norm;
 
   /* ---- Properties of the feedback model ------- */
 
@@ -220,6 +225,9 @@ struct black_holes_props {
   /*! Maximum mass for starting the jet (Msun) */
   float jet_mass_max;
 
+  /*! Constrains momentum of outflowing wind to p = F * L / c */
+  float wind_momentum_flux;
+
   /* ---- Properties of the repositioning model --- */
 
   /*! Maximal mass of BH to reposition */
@@ -289,6 +297,15 @@ struct black_holes_props {
 
   /*! Conversion factor from internal mass to solar masses */
   float mass_to_solar_mass;
+
+  /*! Conversion factor from km/s to internal velocity units (without a-factor) */
+  float kms_to_internal;
+
+  /*! Conversion factor from internal length to parsec */
+  float length_to_parsec;
+
+  /*! Conversion factor from internal time to yr */
+  float time_to_yr;
 };
 
 /**
@@ -369,6 +386,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->environment_temperature_cut =
       parser_get_opt_param_float(params, "SIMBAAGN:environment_temperature_cut", 1.0e5f);
 
+  bp->f_accretion = 
+      parser_get_param_float(params, "SIMBAAGN:f_accretion");
+
+  bp->torque_accretion_norm =
+      parser_get_param_float(params, "SIMBAAGN:torque_accretion_norm");
+      
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "SIMBAAGN:use_multi_phase_bondi");
 
@@ -414,7 +437,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     }
   }
 
-  bp->use_nibbling = parser_get_param_int(params, "SIMBAAGN:use_nibbling");
+  bp->use_nibbling = parser_get_opt_param_int(params, "SIMBAAGN:use_nibbling", 1);
   if (bp->use_nibbling) {
     bp->min_gas_mass_for_nibbling = parser_get_param_float(
         params, "SIMBAAGN:min_gas_mass_for_nibbling_Msun");
@@ -428,6 +451,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
           "than 10^5. That is probably indicating a typo in the parameter "
           "file.");
     }
+  } else {
+    error("It is impossible to use SIMBA without nibbling.");
   }
 
   bp->with_fixed_T_near_EoS =
@@ -537,6 +562,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->jet_mass_max = 
       parser_get_opt_param_float(params, "SIMBAAGN:jet_mass_max", 5.0e7f); 
 
+  bp->wind_momentum_flux =
+      parser_get_param_float(params, "SIMBAAGN:wind_momentum_flux");
+
   /* Reposition parameters --------------------------------- */
 
   bp->max_reposition_mass =
@@ -641,7 +669,13 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
   /* Conversion factor for internal mass to M_solar */
-  bp->mass_to_solar_mass = 1. / phys_const->const_solar_mass;
+  bp->mass_to_solar_mass = 1.f / phys_const->const_solar_mass;
+
+  bp->kms_to_internal = 1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
+  bp->length_to_parsec = 1.f / phys_const->const_parsec;
+
+  bp->time_to_yr = 1.f / phys_const->const_year;
 }
 
 /**

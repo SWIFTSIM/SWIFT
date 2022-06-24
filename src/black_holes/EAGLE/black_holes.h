@@ -1310,4 +1310,15 @@ INLINE static void black_holes_create_from_gas(
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
+/**
+ * @brief Should this bh particle be doing any stars looping?
+ *
+ * @param bp The #bpart.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static int bh_stars_loop_is_active(
+    const struct bpart* bp, const struct engine* e) {
+  return 0;
+}
+
 #endif /* SWIFT_EAGLE_BLACK_HOLES_H */

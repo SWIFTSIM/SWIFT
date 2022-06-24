@@ -38,6 +38,32 @@
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
+ * @param bi First particle (black hole).
+ * @param sj Second particle (stars, not updated).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_stars_density(
+    const float r2, const float dx[3],
+    struct bpart *bi, const struct part *sj) { }
+
+/**
+ * @brief Density interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param bi First particle (black hole).
+ * @param sj Second particle (stars, not updated).
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_stars_bulge(
+    const float r2, const float dx[3],
+    struct bpart *bi, const struct part *sj) { }
+
+/**
+ * @brief Density interaction between two particles (non-symmetric).
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param bi First particle (black hole).
@@ -58,7 +84,8 @@ runner_iact_nonsym_bh_gas_density(
     const struct gravity_props *grav_props,
     const struct black_holes_props *bh_props,
     const struct entropy_floor_properties *floor_props,
-    const integertime_t ti_current, const double time) {
+    const integertime_t ti_current, const double time,
+    const double time_base) {
 
   float wi, wi_dx;
 
@@ -278,7 +305,8 @@ runner_iact_nonsym_bh_gas_repos(
     const struct gravity_props *grav_props,
     const struct black_holes_props *bh_props,
     const struct entropy_floor_properties *floor_props,
-    const integertime_t ti_current, const double time) {
+    const integertime_t ti_current, const double time,
+    const double time_base) {
 
   float wi;
 
@@ -400,7 +428,8 @@ runner_iact_nonsym_bh_gas_swallow(
     const struct gravity_props *grav_props,
     const struct black_holes_props *bh_props,
     const struct entropy_floor_properties *floor_props,
-    const integertime_t ti_current, const double time) {
+    const integertime_t ti_current, const double time,
+    const double time_base) {
 
   float wi;
 
@@ -769,7 +798,8 @@ runner_iact_nonsym_bh_gas_feedback(
     const struct gravity_props *grav_props,
     const struct black_holes_props *bh_props,
     const struct entropy_floor_properties *floor_props,
-    const integertime_t ti_current, const double time) {
+    const integertime_t ti_current, const double time,
+    const double time_base) {
 
   /* Number of energy injections per BH per time-step */
   const int num_energy_injections_per_BH =
