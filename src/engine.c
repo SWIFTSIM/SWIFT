@@ -2205,6 +2205,15 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   e->force_checks_snapshot_flag = 0;
 #endif
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* if we're running the debug RT scheme, do some checks after every step.
+   * Do this after the output so we can safely reset debugging checks now. */
+  /* TODO MLADEN: is this still necessary? */
+  if (e->policy & engine_policy_rt) {
+    rt_debugging_checks_end_of_step(e, e->verbose);
+  }
+#endif
+
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
 }
 
@@ -2462,14 +2471,6 @@ int engine_step(struct engine *e) {
           "ngparts=%lld",
           num_gpart_mpole, e->total_nr_gparts);
   }
-#endif
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* if we're running the debug RT scheme, set some flags and do some
-   * checks before each step. */
-  /* TODO MLADEN: is this still necessary? */
-  if (e->policy & engine_policy_rt)
-    rt_debugging_checks_start_of_step(e, e->verbose);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

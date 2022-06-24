@@ -144,11 +144,6 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
-
-  /* Everything is active on startup.*/
-  p->rt_data.debug_hydro_active = 1;
-  p->rt_data.debug_rt_active_on_main_step = 1;
-  p->rt_data.debug_rt_zeroth_cycle_on_main_step = 1;
 #endif
 }
 

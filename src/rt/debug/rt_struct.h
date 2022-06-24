@@ -68,18 +68,6 @@ struct rt_part_data {
 
   /*! Current subcycle wrt (last) hydro step */
   int debug_nsubcycles;
-
-  /*! Is this particle active in hydro in this main step? */
-  /* Don't reset this in any task. */
-  int debug_hydro_active;
-
-  /*! Was the particle radioactive during the main step? */
-  /* Don't reset this in any task. */
-  int debug_rt_active_on_main_step;
-
-  /*! Was the particle radioactive during the main step? */
-  /* Don't reset this in any task. */
-  int debug_rt_zeroth_cycle_on_main_step;
 };
 
 /* Additional RT data in star particle struct */

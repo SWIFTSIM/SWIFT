@@ -224,60 +224,6 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
 }
 
 /**
- * @brief Debugging checks loop over all hydro particles after each time step
- */
-static void rt_debugging_start_of_step_hydro_mapper(void *restrict map_data,
-                                                    int count,
-                                                    void *restrict extra_data) {
-
-  struct part *restrict parts = (struct part *)map_data;
-  const struct engine *restrict e = (struct engine *)extra_data;
-
-  for (int k = 0; k < count; k++) {
-
-    struct part *restrict p = &parts[k];
-    p->rt_data.debug_hydro_active = part_is_active(p, e);
-    p->rt_data.debug_rt_active_on_main_step = part_is_rt_active(p, e);
-    p->rt_data.debug_rt_zeroth_cycle_on_main_step =
-        part_is_rt_active(p, e) && part_is_active(p, e);
-    /* Can't check for subcycle = 0 here, it hasn't been reset yet */
-  }
-}
-
-/**
- * @brief Do some checks and set necessary flags before each (main) step is
- * taken.
- *
- * @param e The #engine.
- * @param verbose Are we talkative?
- */
-__attribute__((always_inline)) INLINE static void
-rt_debugging_checks_start_of_step(struct engine *e, int verbose) {
-
-  struct space *s = e->s;
-  if (!(e->policy & engine_policy_rt)) return;
-
-  const ticks tic = getticks();
-
-  /* hydro particle loop */
-  if (s->nr_parts > 0)
-    threadpool_map(&e->threadpool, rt_debugging_start_of_step_hydro_mapper,
-                   s->parts, s->nr_parts, sizeof(struct part),
-                   threadpool_auto_chunk_size, /*extra_data=*/e);
-
-  /* star particle loop */
-  /* if (s->nr_sparts > 0) */
-  /*   threadpool_map(&e->threadpool, rt_debugging_start_of_step_stars_mapper,
-   */
-  /*                  s->sparts, s->nr_sparts, sizeof(struct spart), */
-  /*                  threadpool_auto_chunk_size, [>extra_data=<]e); */
-
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
-/**
  * @brief At the end of each time step, loop over both hydro and star
  * particles and do whatever checks for this particular time step you
  * want done.

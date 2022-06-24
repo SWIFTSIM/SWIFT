@@ -108,11 +108,6 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   rt_init_part(p);
   rt_reset_part(p, cosmo);
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
-
-  /* Everything is active on startup.*/
-  p->rt_data.debug_hydro_active = 1;
-  p->rt_data.debug_rt_active_on_main_step = 1;
-  p->rt_data.debug_rt_zeroth_cycle_on_main_step = 1;
 }
 
 /**
