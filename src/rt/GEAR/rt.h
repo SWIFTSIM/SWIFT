@@ -146,9 +146,6 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 
-  /* pretend particle is drifted during startup to pass checks*/
-  p->rt_data.debug_drifted = 1;
-
   /* Everything is active on startup.*/
   p->rt_data.debug_hydro_active = 1;
   p->rt_data.debug_rt_active_on_main_step = 1;
@@ -178,9 +175,6 @@ rt_init_part_after_zeroth_step(struct part* restrict p,
    * match the star counters. */
   p->rt_data.debug_iact_stars_inject = 0;
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
-  /* We pretended everything was drifted during the initialization, now put it
-   * back into the proper state. (see rt_first_init_part)*/
-  p->rt_data.debug_drifted = 0;
 #endif
 }
 
@@ -646,22 +640,6 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
 
   /* Don't update actual particle mass, that'll be done in the
    * hydro_kick_extra calls */
-}
-
-/**
- * @brief Extra operations done during the drift.
- * Note that we only drift when the particle is hydro-active, not when it's
- * radioactive.
- *
- * @param p Particle to act upon.
- * @param dt_drift timestep of the drift
- */
-__attribute__((always_inline)) INLINE static void rt_drift_part(
-    struct part* p, float dt_drift) {
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  p->rt_data.debug_drifted += 1;
-#endif
 }
 
 /**

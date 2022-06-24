@@ -205,7 +205,6 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
     absorption_sum_tot += p->rt_data.debug_radiation_absorbed_tot;
     /* Reset all values here in case particles won't be active next step */
     p->rt_data.debug_iact_stars_inject = 0;
-    p->rt_data.debug_drifted = 0;
 
     /* Sum up total energies for budget */
     for (int g = 0; g < RT_NGROUPS; g++) {
@@ -386,13 +385,6 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
  */
 __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
     struct part *restrict p, int loc, const char *function_name) {
-
-  /* Have we been drifted? */
-  if (p->rt_data.debug_drifted != 1 && loc != 1)
-    /* The only place where we don't need to be kicked first is the
-     * ghost1 (finalise injection) step, so skip the test there. */
-    error("called %s on particle %lld with wrong drift count=%d", function_name,
-          p->id, p->rt_data.debug_drifted);
 
   if (loc > 0) {
     /* Are kicks done? */

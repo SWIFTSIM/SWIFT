@@ -563,17 +563,6 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     const struct hydro_props* hydro_props) {}
 
 /**
- * @brief Extra operations done during the drift.
- * Note that we only drift when the particle is hydro-active, not when it's
- * radioactive.
- *
- * @param p Particle to act upon.
- * @param dt_drift timestep of the drift
- */
-__attribute__((always_inline)) INLINE static void rt_drift_part(
-    struct part* p, float dt_drift) {}
-
-/**
  * @brief Prepare a particle for the !HYDRO! force calculation.
  * E.g. for the meshless schemes, we need to take into account the
  * mass fluxes of the ionizing species between particles.

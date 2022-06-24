@@ -103,11 +103,6 @@ struct rt_part_data {
   /*! part got kicked? */
   int debug_kicked;
 
-  /*! part got drifted? */
-  /* Note: This gets reset for each particle after each step
-   * via the debugging routines. */
-  int debug_drifted;
-
   /*! calls from ghost1 tasks */
   int debug_injection_done;
 
