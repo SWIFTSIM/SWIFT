@@ -51,6 +51,7 @@
 #include "error.h"
 #include "multipole.h"
 #include "space.h"
+#include "space_getsid.h"
 #include "tools.h"
 
 /* Global variables. */
@@ -1326,7 +1327,13 @@ void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
 
 void cell_grid_set_pair_completeness(struct cell *restrict ci,
                                      struct cell *restrict cj, int sid,
-                                     int ci_local, int cj_local) {
+                                     const struct engine *e) {
+
+  int ci_local = ci->nodeID == e->nodeID;
+  int cj_local = cj != NULL ? cj->nodeID == e->nodeID : 0;
+  /* Anything to do here? */
+  if (!ci_local && !cj_local) return;
+
   /* Self or pair? */
   if (cj == NULL) {
     /* Self: Here we just need to recurse to hit all the pairs of sub-cells */
@@ -1335,7 +1342,7 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
       for (int k = 0; k < 8; k++) {
         if (ci->progeny[k] != NULL) {
           /* Recurse for self */
-          cell_grid_set_pair_completeness(ci->progeny[k], NULL, 0, 1, 0);
+          cell_grid_set_pair_completeness(ci->progeny[k], NULL, 0, e);
 
           /* Recurse for pairs of sub-cells */
           for (int l = k + 1; l < 8; l++) {
@@ -1343,7 +1350,7 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
               /* Get sid for pair */
               int sid_sub = sub_sid_flag[k][l];
               cell_grid_set_pair_completeness(ci->progeny[k], ci->progeny[l],
-                                              sid_sub, 1, 1);
+                                              sid_sub, e);
             }
           }
         }
@@ -1356,12 +1363,15 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
     if (ci->split && cj->split) {
       /* recurse */
       for (int i = 0; i < pairs.count; i++) {
-        int k = pairs.pairs[i].pid;
-        int l = pairs.pairs[i].pjd;
-        int sid_sub = pairs.pairs[i].sid;
-        if (ci->progeny[k] != NULL && cj->progeny[l] != NULL)
-          cell_grid_set_pair_completeness(ci->progeny[k], cj->progeny[l],
-                                          sid_sub, ci_local, cj_local);
+        struct cell *ci_sub = ci->progeny[pairs.pairs[i].pid];
+        struct cell *cj_sub = cj->progeny[pairs.pairs[i].pjd];
+        if (ci_sub == NULL || cj_sub == NULL) continue;
+        double shift[3];
+        int sid_sub = space_getsid(e->s, &ci_sub, &cj_sub, shift);
+#ifdef SWIFT_DEBUG_CHECKS
+        assert(sid_sub == pairs.pairs[i].sid);
+#endif
+        cell_grid_set_pair_completeness(ci_sub, cj_sub, sid_sub, e);
       }
     } else if (!ci->split && cj->split) {
       /* Set the completeness for the sub-cells of cj for this sid to 0 (they
@@ -1380,9 +1390,6 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
     }
 
     /* Update these cells' completeness flags */
-#ifdef SWIFT_DEBUG_CHECKS
-    assert(ci_local || cj_local);
-#endif
     if (ci_local) ci->grid.complete &= cj->grid.self_complete;
     if (cj_local) cj->grid.complete &= ci->grid.self_complete;
   }
@@ -1451,7 +1458,7 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
 
     /* Set update completeness for all the pairs of sub cells of this cell */
     const int ci_local = ci->nodeID == nodeID;
-    if (ci_local) cell_grid_set_pair_completeness(ci, NULL, 0, 1, 0);
+    if (ci_local) cell_grid_set_pair_completeness(ci, NULL, 0, e);
 
     /* Now loop over all the neighbours of this cell to also update the
      * completeness for pairs with this cell and all pairs of sub-cells */
@@ -1483,9 +1490,9 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
           const int flip = runner_flip[sid];
           sid = sortlistID[sid];
           if (flip) {
-            cell_grid_set_pair_completeness(cj, ci, sid, ci_local, cj_local);
+            cell_grid_set_pair_completeness(cj, ci, sid, e);
           } else {
-            cell_grid_set_pair_completeness(ci, cj, sid, ci_local, cj_local);
+            cell_grid_set_pair_completeness(ci, cj, sid, e);
           }
         }
       }
