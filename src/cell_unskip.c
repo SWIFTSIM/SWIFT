@@ -3098,18 +3098,11 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
     if (c->rt.rt_transport_out != NULL)
       scheduler_activate(s, c->rt.rt_transport_out);
     if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
-    /* This is for foreign cells */
-    /* TODO MLADEN: the rt_advance_cell_time task should now always
-     * be at the super level. Remove this later and check that everyting
-     * still runs as it should.. Also perhaps add debugging checks here.*/
-    if (c->rt.rt_advance_cell_time != NULL)
-      scheduler_activate(s, c->rt.rt_advance_cell_time);
-    /* This is for local cells */
     if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL)
       scheduler_activate(s, c->super->rt.rt_advance_cell_time);
     if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
     /* The rt_collect_times tasks replace the timestep_collect tasks
-     * during subcycles, so we only activate it during those. */
+     * during sub-cycles, so we only activate it when sub-cycling. */
     if (c->rt.rt_collect_times != NULL && sub_cycle)
       scheduler_activate(s, c->rt.rt_collect_times);
   }

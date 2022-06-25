@@ -1133,7 +1133,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
      * 2 extra space                                 | +  2 */
     n1 += 39;
 #ifdef WITH_MPI
-    n1 += 4; /* TODO: check this */
+    n1 += 2;
 #endif
   }
 
@@ -2206,9 +2206,8 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  /* if we're running the debug RT scheme, do some checks after every step.
-   * Do this after the output so we can safely reset debugging checks now. */
-  /* TODO MLADEN: is this still necessary? */
+  /* if we're running the debug RT scheme, do some checks after every step,
+   * and reset debugging flags now. */
   if (e->policy & engine_policy_rt) {
     rt_debugging_checks_end_of_step(e, e->verbose);
   }
@@ -2682,8 +2681,7 @@ int engine_step(struct engine *e) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* if we're running the debug RT scheme, do some checks after every step.
-   * Do this after the output so we can safely reset debugging checks now. */
-  /* TODO MLADEN: is this still necessary? */
+   * Do this after the output so we can safely reset debugging flags now. */
   if (e->policy & engine_policy_rt) {
     rt_debugging_checks_end_of_step(e, e->verbose);
   }

@@ -1601,14 +1601,16 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
 
+      /* Skip inhibited parts */
+      if (part_is_inhibited(p, e)) continue;
+
       if (c->nodeID == e->nodeID) {
-        /* Skip inhibited parts */
-        if (part_is_inhibited(p, e)) continue;
+        /* This test is not reliable on foreign cells. After a rebuild, we may
+         * end up with an active foreign cell which was not updated in this
+         * step because it had no active neighbouring cells, and its particle
+         * data may be random junk. */
 
         /* Skip inactive parts */
-        /* Note: parts on foreign cells will fail this check on the first
-         * step because they haven't been updated since the timestep task
-         * ran on their local node. */
         if (!part_is_rt_active(p, e)) continue;
 
         /* Run checks. */
@@ -1618,11 +1620,6 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
         /* TODO MLADEN: Not the best way of counting updates, but we do it
          * in debugging mode only, so leave it as is for now. */
         atomic_inc(&e->rt_updates);
-      } else {
-        /* TODO MLADEN: fix this check */
-        /* The last thing we know of foreign cells is that
-         * they should've finished the gradients. */
-        /* rt_debug_sequence_check(p, 3, __func__); */
       }
     }
   }
