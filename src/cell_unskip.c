@@ -3092,15 +3092,18 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
 
   /* Unskip all the other task types */
   if (cell_is_rt_active(c, e)) {
-    if (c->rt.rt_in != NULL) scheduler_activate(s, c->rt.rt_in);
-    if (c->rt.rt_ghost1 != NULL) scheduler_activate(s, c->rt.rt_ghost1);
-    if (c->rt.rt_ghost2 != NULL) scheduler_activate(s, c->rt.rt_ghost2);
-    if (c->rt.rt_transport_out != NULL)
-      scheduler_activate(s, c->rt.rt_transport_out);
-    if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
+    if (c->nodeID == nodeID) {
+      if (c->rt.rt_in != NULL) scheduler_activate(s, c->rt.rt_in);
+      if (c->rt.rt_ghost1 != NULL) scheduler_activate(s, c->rt.rt_ghost1);
+      if (c->rt.rt_ghost2 != NULL) scheduler_activate(s, c->rt.rt_ghost2);
+      if (c->rt.rt_transport_out != NULL)
+        scheduler_activate(s, c->rt.rt_transport_out);
+      if (c->rt.rt_tchem != NULL) scheduler_activate(s, c->rt.rt_tchem);
+      if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
+    }
+    /* The rt_advance_cell_time tasks also run on foreign cells */
     if (c->super != NULL && c->super->rt.rt_advance_cell_time != NULL)
       scheduler_activate(s, c->super->rt.rt_advance_cell_time);
-    if (c->rt.rt_out != NULL) scheduler_activate(s, c->rt.rt_out);
     /* The rt_collect_times tasks replace the timestep_collect tasks
      * during sub-cycles, so we only activate it when sub-cycling. */
     if (c->rt.rt_collect_times != NULL && sub_cycle)

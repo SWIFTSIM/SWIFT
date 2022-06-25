@@ -77,6 +77,10 @@ struct cell_rt {
   };
 #endif
 
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  int advanced_time;
+#endif
+
   /*! Minimum end of (integer) time step in this cell for RT tasks. */
   integertime_t ti_rt_end_min;
 

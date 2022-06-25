@@ -1565,7 +1565,9 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
 
 /**
  * @brief Update the cell's t_rt_end_min so that the sub-cycling can proceed
- * with correct cell times.
+ * with correct cell times. (During sub-cycles, the regular timestep and
+ * timestep_collect tasks do not run. This replaces the collection of cell
+ * times of timestep tasks during sub-cycles. )
  *
  * @param r The #runner thread.
  * @param c The #cell.
@@ -1576,6 +1578,10 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 
   struct engine *e = r->e;
   const int count = c->hydro.count;
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (c->super == c) c->rt.advanced_time = 1;
+#endif
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1591,9 +1597,9 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 #ifdef SWIFT_RT_DEBUG_CHECKS
   else {
     /* Do some debugging stuff on active particles before setting the cell time.
-     * This test is not reliable on foreign cells. After a rebuild, we may end 
-     * up with an active foreign cell which was not updated in this step because 
-     * it had no active neighbouring cells, and its particle data may be random 
+     * This test is not reliable on foreign cells. After a rebuild, we may end
+     * up with an active foreign cell which was not updated in this step because
+     * it had no active neighbouring cells, and its particle data may be random
      * junk. */
 
     if (c->nodeID == engine_rank) {
@@ -1633,8 +1639,9 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 
 /**
  * @brief Recursively collect the end-of-timestep information from the top-level
- * to the super level.
- * TODO MLADEN: documentation
+ * to the super level for the RT sub-cycling. (During sub-cycles, the regular
+ * timestep and timestep_collect tasks do not run. This replaces the
+ * timestep_collect task.)
  *
  * @param r The runner thread.
  * @param c The cell.
@@ -1643,17 +1650,38 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 void runner_do_collect_rt_times(struct runner *r, struct cell *c,
                                 const int timer) {
 
+  const struct engine *e = r->e;
+
+  if (e->ti_current == e->ti_current_subcycle)
+    error("called collect_rt_times during a main step");
+
   /* Early stop if we are at the super level.
-   * The time-step task would have set things at this level already */
-  if (c->super == c) return;
+   * The time-step/rt_advance_cell_time tasks would have set things at 
+   * this level already. */
+
+  if (c->super == c) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    /* Do a check before the early exit.
+     * rt_advanced_cell_time should be called exactly once before
+     * collect times. Except on the first subcycle, because the
+     * collect_rt_times task shouldn't be called in the main steps.
+     * In that case, it should be exactly 2. */
+    if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
+      /* This is the first subcycle */
+      if (c->rt.advanced_time != 2)
+        error("Called cell with wrong advanced_time counter. Expect=2, got=%d",
+            c->rt.advanced_time);
+    } else {
+      if (c->rt.advanced_time != 1)
+        error("Called cell with wrong advanced_time counter. Expect=1, got=%d",
+              c->rt.advanced_time);
+    }
+    c->rt.advanced_time = 0;
+#endif
+    return;
+  }
 
   integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
-
-  /* TODO MLADEN: add debugging checks here.
-   * - the rt_advance_cell_time task needs to have finished first.
-   * - this task must never run in the same step/cycle as a timestep
-   *   task.
-   */
 
   /* Collect the values from the progeny. */
   for (int k = 0; k < 8; k++) {

@@ -213,6 +213,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->rt.rt_collect_times = NULL;
     c->rt.ti_rt_end_min = -1;
     c->rt.ti_rt_min_step_size = -1;
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    c->rt.advanced_time = 0;
+#endif
 
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
