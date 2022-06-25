@@ -1656,7 +1656,7 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
     error("called collect_rt_times during a main step");
 
   /* Early stop if we are at the super level.
-   * The time-step/rt_advance_cell_time tasks would have set things at 
+   * The time-step/rt_advance_cell_time tasks would have set things at
    * this level already. */
 
   if (c->super == c) {
@@ -1670,7 +1670,7 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
       /* This is the first subcycle */
       if (c->rt.advanced_time != 2)
         error("Called cell with wrong advanced_time counter. Expect=2, got=%d",
-            c->rt.advanced_time);
+              c->rt.advanced_time);
     } else {
       if (c->rt.advanced_time != 1)
         error("Called cell with wrong advanced_time counter. Expect=1, got=%d",

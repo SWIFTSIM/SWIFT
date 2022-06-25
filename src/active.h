@@ -205,7 +205,7 @@ __attribute__((always_inline)) INLINE static int cell_is_rt_active(
    * the rt_advance_cell_time, so allow for that exception in this check. */
 
   int has_rt_advance_cell_time = 0;
-  if (c->super->rt.rt_advance_cell_time != NULL)
+  if (c->super != NULL)
     has_rt_advance_cell_time = c->super->rt.rt_advance_cell_time != NULL;
 
   if (has_rt_advance_cell_time &&
