@@ -1590,25 +1590,23 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
   }
 #ifdef SWIFT_RT_DEBUG_CHECKS
   else {
-    /* Do some debugging stuff on active particles before
-     * setting the cell time. */
+    /* Do some debugging stuff on active particles before setting the cell time.
+     * This test is not reliable on foreign cells. After a rebuild, we may end 
+     * up with an active foreign cell which was not updated in this step because 
+     * it had no active neighbouring cells, and its particle data may be random 
+     * junk. */
 
-    struct part *restrict parts = c->hydro.parts;
+    if (c->nodeID == engine_rank) {
+      struct part *restrict parts = c->hydro.parts;
 
-    /* Loop over the gas particles in this cell. */
-    for (int k = 0; k < count; k++) {
+      /* Loop over the gas particles in this cell. */
+      for (int k = 0; k < count; k++) {
 
-      /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
+        /* Get a handle on the part. */
+        struct part *restrict p = &parts[k];
 
-      /* Skip inhibited parts */
-      if (part_is_inhibited(p, e)) continue;
-
-      if (c->nodeID == e->nodeID) {
-        /* This test is not reliable on foreign cells. After a rebuild, we may
-         * end up with an active foreign cell which was not updated in this
-         * step because it had no active neighbouring cells, and its particle
-         * data may be random junk. */
+        /* Skip inhibited parts */
+        if (part_is_inhibited(p, e)) continue;
 
         /* Skip inactive parts */
         if (!part_is_rt_active(p, e)) continue;
