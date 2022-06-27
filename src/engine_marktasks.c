@@ -719,7 +719,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID)
             scheduler_activate(s, cj->hydro.super->sinks.sink_in);
         }
-
+      }
 
       /* RT gradient and transport tasks */
       else if (t_subtype == task_subtype_rt_gradient) {
