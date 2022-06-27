@@ -1821,7 +1821,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_grav:
         case task_subtype_grav_bkg:
         case task_subtype_grav_zoombkg:
-        case task_subtype_grav_bkgzoom:          
+        case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:
           return task_category_gravity;
 
