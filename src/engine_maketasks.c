@@ -1736,7 +1736,6 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
-  struct space *s = e->s;
   struct cell *cells_top = s->cells_top;
   int *local_cells_top = (int *)map_data;
 
