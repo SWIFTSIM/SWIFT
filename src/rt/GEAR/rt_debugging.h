@@ -51,6 +51,8 @@ __attribute__((always_inline)) INLINE static void
 rt_debugging_check_nr_subcycles(struct part *restrict p,
                                 const struct rt_props *rt_props) {
 
+  /* TODO: this check may fail when running with limiter/sync. */
+
   /* NOTE: we need to do this check somewhere in the hydro tasks.
    * (1) it needs to be done when all tasks are active and before the
    * particle hydro time step is changed.
@@ -64,15 +66,27 @@ rt_debugging_check_nr_subcycles(struct part *restrict p,
   if (p->rt_time_data.time_bin == 0)
     error("Got part %lld with RT time bin 0", p->id);
 
-  /* TODO: this check may fail when running with limiter/sync. */
-
   timebin_t bindiff = p->time_bin - p->rt_time_data.time_bin;
+
+  if (rt_props->debug_max_nr_subcycles <= 1) {
+    /* Running without subcycling. */
+    if (bindiff != 0)
+      error("Running without subcycling but got bindiff=%d for part=%lld",
+            bindiff, p->id);
+    if (p->rt_data.debug_nsubcycles != 1)
+      error("Running without subcycling but got part=%lld subcycle count=%d",
+            p->id, p->rt_data.debug_nsubcycles);
+    return;
+  }
+
   /* TODO: this assumes that max_nr_subcycles is not an upper limit,
    * but a fixed number of sub-cycles */
   timebin_t bindiff_expect = 0;
-  while (!(rt_props->debug_max_nr_subcycles & (1 << bindiff_expect)) ||
-         bindiff_expect == num_time_bins)
+
+  while (!(rt_props->debug_max_nr_subcycles & (1 << bindiff_expect)) &&
+         bindiff_expect != num_time_bins)
     ++bindiff_expect;
+
   if (bindiff_expect == num_time_bins)
     error(
         "Couldn't determine expected time bin difference. Max nr subcycles %d "
@@ -203,6 +217,7 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
     struct part *restrict p = &parts[k];
     absorption_sum_this_step += p->rt_data.debug_iact_stars_inject;
     absorption_sum_tot += p->rt_data.debug_radiation_absorbed_tot;
+
     /* Reset all values here in case particles won't be active next step */
     p->rt_data.debug_iact_stars_inject = 0;
 
@@ -237,12 +252,6 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
   struct space *s = e->s;
   if (!(e->policy & engine_policy_rt)) return;
 
-#ifdef WITH_MPI
-  /* Since we aren't sending data back, none of these checks will
-   * pass a run over MPI. */
-  return;
-#endif
-
   const ticks tic = getticks();
 
   /* reset values before the particle loops.
@@ -268,6 +277,13 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
     threadpool_map(&e->threadpool, rt_debugging_end_of_step_stars_mapper,
                    s->sparts, s->nr_sparts, sizeof(struct spart),
                    threadpool_auto_chunk_size, /*extra_data=*/e);
+
+#ifdef WITH_MPI
+  /* Since we aren't sending data back, none of these checks will
+   * pass a run over MPI. Make sure you run the threadpool functions
+   * first though so certain variables can get reset properly. */
+  return;
+#endif
 
   /* Have we accidentally invented or deleted some radiation somewhere? */
 
@@ -332,59 +348,19 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
 __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
     struct part *restrict p, int loc, const char *function_name) {
 
+  /* Note: Checking whether a particle has been drifted at all is not
+   * compatible with subcycling. There is no reliable point where to
+   * reset the counters and have sensible results. */
+
   if (loc > 0) {
     /* Are kicks done? */
-
-    /* For the kick check, we have following possible scenarios:
-     *
-     * Legend:
-     *  TS: timestep task
-     *  K1, K2: kick1, kick 2
-     *  RT0, RT1, ... : N-th RT subcycle.
-     *  H: hydro tasks. this resets the counter.
-     * Top row is task execution sequence. Bottom row is how the kick counter
-     * behaves.
-     *
-     * 1) part is hydro active, and remains hydro active after TS
-     *   H -> K2 -> RT 0 -> TS -> K1 -> RT 1 -> RT 2 ...
-     *   0     1       1     1     2       2       2
-     * 2) part is hydro active, and becomes hydro inactive after TS.
-     *    Kick1 still gets called, because part_is_starting = 1
-     *   H -> K2 -> RT 0 -> TS -> K1 -> RT 1 -> RT 2 ... |
-     *   0     1       1     1     2       2       2 ... |
-     * 3) part is hydro inactive, and remains hydro inactive
-     *    we pick up where 2 left off, and the counter doesn't change:
-     *   RT X -> TS -> RT X+1 -> RT X+2 ...
-     *      2     2         2         2
-     * 4) part is hydro inactive, and becomes active
-     *    Kick1 doesn't increase the counter because part_is_starting = 0
-     *   RT X -> TS -> K1 -> RT X+1 -> RT X+2 ... | H -> K2 -> RT 0 -> ...
-     *      2     2     2         2         2       0     1       1
-     *            ^-- becomes active here
-     * 5) Particle is hydro active, isn't radioactive after hydro, but becomes
-     *    radioactive during a subcycle. I.e. the zeroth subcycle does not
-     *    happen right after the kick2.
-     *  H -> K2 -> TS -> K1 | -> RT0 -> RT1 -> ...
-     *  0 ->  1 ->  1 ->  2 | ->   2 ->   2 -> ...
-     */
     if (p->rt_data.debug_nsubcycles == 0) {
-      if (p->rt_data.debug_rt_zeroth_cycle_on_main_step) {
-        /* This covers case 1 & 2 */
-        if (p->rt_data.debug_kicked != 1)
-          error(
-              "called %s on particle %lld with wrong kick count=%d (expected "
-              "1) cycle=%d",
-              function_name, p->id, p->rt_data.debug_kicked,
-              p->rt_data.debug_nsubcycles);
-      } else {
-        /* This covers case 5 */
-        if (p->rt_data.debug_kicked != 2)
-          error(
-              "called %s on particle %lld with wrong kick count=%d (expected "
-              "2) cycle=%d",
-              function_name, p->id, p->rt_data.debug_kicked,
-              p->rt_data.debug_nsubcycles);
-      }
+      if (p->rt_data.debug_kicked != 1)
+        error(
+            "called %s on particle %lld with wrong kick count=%d (expected "
+            "1) cycle=%d",
+            function_name, p->id, p->rt_data.debug_kicked,
+            p->rt_data.debug_nsubcycles);
     } else if (p->rt_data.debug_nsubcycles > 0) {
       /* This covers case 1, 2, 3, 4, 5 */
       if (p->rt_data.debug_kicked != 2)
@@ -401,36 +377,29 @@ __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
   if (loc > 1) {
     /* is injection done? */
     if (p->rt_data.debug_injection_done != 1)
-      error(
-          "Trying to do %s when finalise injection count is "
-          "%d ID %lld",
-          function_name, p->rt_data.debug_injection_done, p->id);
+      error("called %s on part %lld when finalise injection count is %d ID",
+            function_name, p->id, p->rt_data.debug_injection_done);
   }
 
   if (loc > 2) {
     /* are gradients done? */
     if (p->rt_data.debug_gradients_done != 1)
-      error(
-          "Trying to do %s on particle %lld when "
-          "gradients_done count is %d",
-          function_name, p->id, p->rt_data.debug_gradients_done);
+      error("called %s on part %lld when gradients_done count is %d",
+            function_name, p->id, p->rt_data.debug_gradients_done);
   }
 
   if (loc > 3) {
     /* is transport done? */
     if (p->rt_data.debug_transport_done != 1)
-      error(
-          "Part %lld trying to do thermochemistry when transport_done != 1: %d",
-          p->id, p->rt_data.debug_transport_done);
+      error("called %s on part %lld when transport_done != 1: %d",
+            function_name, p->id, p->rt_data.debug_transport_done);
   }
 
   if (loc > 4) {
     /* is thermochemistry done? */
     if (p->rt_data.debug_thermochem_done != 1)
-      error(
-          "Trying to do rescheduling on particle %lld with with "
-          "thermochem_done count=%d",
-          p->id, p->rt_data.debug_thermochem_done);
+      error("called %s on part %lld with thermochem_done count=%d",
+            function_name, p->id, p->rt_data.debug_thermochem_done);
   }
 }
 

@@ -172,9 +172,6 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
 
     /* Reset all values here in case particles won't be active next step */
     p->rt_data.debug_iact_stars_inject = 0;
-
-    /* Note: we're calling this at the end of a step, after the subcycling
-     * ist completed, and need the information for the step that follows. */
   }
 
   atomic_add(&e->rt_props->debug_radiation_absorbed_this_step,
