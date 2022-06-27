@@ -1732,13 +1732,12 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
   struct engine *e = (struct engine *)extra_data;
-  struct space *s = e->s;
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct cell *c = &s->cells_top[((int *)map_data)[ind]];
+    struct cell *c = &((struct cell *)map_data)[ind];
 
     /* Explict void cell skip */
     if (c->tl_cell_type == 2)
@@ -4480,14 +4479,8 @@ void engine_maketasks(struct engine *e) {
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   /* Append hierarchical tasks to each cell. */
-  threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper,
-                 s->zoom_props->local_bkg_cells_top,
-                 s->zoom_props->nr_local_bkg_cells, sizeof(int *),
-                 threadpool_auto_chunk_size, e);
-  threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper,
-                 s->zoom_props->local_zoom_cells_top,
-                 s->zoom_props->nr_local_zoom_cells, sizeof(int *),
-                 threadpool_auto_chunk_size, e);
+  threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
+                 nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
 
   tic2 = getticks();
 
