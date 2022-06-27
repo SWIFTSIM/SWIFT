@@ -719,9 +719,14 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Get new time-step */
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
+        /* ToDo: For now, this needs to be done before we update the particle's
+         * time bins. When we aren't using a fixed number of sub-cycles, we
+         * can move this down with the rest of the RT block. */
+        integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
+
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
 
         /* Update the tracers properties */
@@ -754,9 +759,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Same for RT */
         if (with_rt) {
-          /* Get RT time-step size (note <= hydro step size) */
-          /* TODO MLADEN: enforce <= hydro step size */
-          const integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
+          /* integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e); */
+          /* Enforce RT time-step size <= hydro step size */
+          ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
+
           p->rt_time_data.time_bin = get_time_bin(ti_rt_new_step);
 
           ti_rt_end_min =

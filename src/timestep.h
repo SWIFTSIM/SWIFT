@@ -183,9 +183,14 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
     new_dt_radiation = rt_compute_timestep(
         p, xp, e->rt_props, e->cosmology, e->hydro_properties,
         e->physical_constants, e->internal_units);
-    if (e->max_nr_rt_subcycles > 0 && new_dt_radiation != FLT_MAX)
+    if (e->max_nr_rt_subcycles > 0 && new_dt_radiation != FLT_MAX) {
       /* if max_nr_rt_subcycles == 0, we don't subcycle. */
+      /* ToDo: this is a temporary solution to enforce the exact
+       * number of RT subcycles. We multiply the new_dt_rad here by
+       * the number of subcycles, and don't when getting the
+       * actual RT time step. */
       new_dt_radiation *= e->max_nr_rt_subcycles;
+    }
   }
 
   /* Take the minimum of all */
