@@ -550,7 +550,7 @@ void task_unlock(struct task *t) {
       cell_unlocktree(ci);
       break;
 
-    case task_type_drift_gpart:
+    /* case task_type_drift_gpart: */
     case task_type_end_grav_force:
       cell_gunlocktree(ci);
       break;
@@ -783,7 +783,7 @@ int task_lock(struct task *t) {
       if (cell_slocktree(ci) != 0) return 0;
       break;
 
-    case task_type_drift_gpart:
+    /* case task_type_drift_gpart: */
     case task_type_end_grav_force:
       if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
