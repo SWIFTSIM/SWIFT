@@ -182,6 +182,16 @@ void *runner_main(void *data) {
       struct cell *ci = t->ci;
       struct cell *cj = t->cj;
 
+      if (ci != NULL) {
+        if (ci->tl_cell_type == 2)
+          error("The void cell has been given a task!")
+      }
+      if (cj != NULL) {
+        if (cj->tl_cell_type == 2)
+          error("The void cell is part of a pair task!")
+      }
+        
+
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;
