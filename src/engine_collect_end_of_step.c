@@ -352,3 +352,73 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
+
+/**
+ * @brief Mapping function to collect the data from the end of the sub-cycle
+ *
+ * This function will call a recursive function on all the top-level cells
+ * to collect the information we are after.
+ *
+ * @param map_data The list of cells with tasks on this node.
+ * @param num_elements The number of elements in the list this thread will work
+ * on.
+ * @param extra_data The #engine.
+ */
+void engine_collect_end_of_sub_cycle_mapper(void *map_data, int num_elements,
+                                            void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct space *s = e->s;
+  int *local_cells = (int *)map_data;
+
+  /* Local collectible */
+  long long rt_updated = 0;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &s->cells_top[local_cells[ind]];
+
+    if (c->hydro.count > 0) {
+
+      /* Aggregate data */
+      rt_updated += c->rt.updated;
+
+      /* Collected, so clear for next time. */
+      c->rt.updated = 0;
+    }
+  }
+
+  /* write back to the global data. */
+  atomic_add(&e->rt_updates, rt_updated);
+}
+
+/**
+ * @brief Collects additional data at the end of a subcycle.
+ * This function does not collect any data relevant to the
+ * time-steps or time integration.
+ *
+ * @param e The #engine.
+ */
+void engine_collect_end_of_sub_cycle(struct engine *e) {
+
+  const ticks tic = getticks();
+  struct space *s = e->s;
+
+  /* Collect information from the local top-level cells */
+  threadpool_map(&e->threadpool, engine_collect_end_of_sub_cycle_mapper,
+                 s->local_cells_top, s->nr_local_cells, sizeof(int),
+                 threadpool_auto_chunk_size, e);
+
+  /* Aggregate collective data from the different nodes for this step. */
+#ifdef WITH_MPI
+  long long rt_updates_tot = 0ll;
+  int test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG,
+                        MPI_SUM, 0, MPI_COMM_WORLD);
+  if (test != MPI_SUCCESS) error("MPI reduce failed");
+  /* Overwrite only on rank 0. */
+  if (e->nodeID == 0) e->rt_updates = rt_updates_tot;
+#endif
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}

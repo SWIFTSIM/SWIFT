@@ -78,6 +78,7 @@ struct cell_rt {
 #endif
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
+  /*! has rt_advance_cell_time run on this cell? */
   int advanced_time;
 #endif
 
@@ -89,6 +90,9 @@ struct cell_rt {
 
   /*! Minimum (integer) time step size in this cell for RT tasks. */
   integertime_t ti_rt_min_step_size;
+
+  /*! Number of #part updated for RT in this cell */
+  int updated;
 };
 
 #endif /* SWIFT_CELL_RT_H */
