@@ -147,6 +147,9 @@ struct black_holes_props {
   /*! Normalization of the torque accretion rate */
   float torque_accretion_norm;
 
+  /*! Factor in front of M/(dM/dt) for timestepping */
+  float dt_accretion_factor;
+
   /* ---- Properties of the feedback model ------- */
 
   /*! AGN feedback model: random, isotropic or minimum distance */
@@ -243,6 +246,9 @@ struct black_holes_props {
   /*! Constrains momentum of outflowing wind to p = F * L / c */
   float wind_momentum_flux;
 
+  /*! Factor in front of E/(dE/dt) for timestepping. */
+  float dt_feedback_factor;
+
   /* ---- Properties of the repositioning model --- */
 
   /*! Maximal mass of BH to reposition */
@@ -321,6 +327,9 @@ struct black_holes_props {
 
   /*! Conversion factor from internal time to yr */
   float time_to_yr;
+
+  /*! Conversion factor from internal time to Myr */
+  float time_to_Myr;
 
   /*! Conversion factor from density to cgs */
   float conv_factor_density_to_cgs;
@@ -430,6 +439,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->torque_accretion_norm =
       parser_get_param_float(params, "SIMBAAGN:torque_accretion_norm");
+
+  bp->dt_accretion_factor =
+      parser_get_opt_param_float(params, "SIMBAAGN:dt_accretion_factor", 1.f);
+  if (bp->dt_accretion_factor > 1.f || bp->dt_accretion_factor < 0.f) {
+    error("SIMBAAGN:dt_accretion_factor must be between 0 and 1");
+  }
 
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "SIMBAAGN:use_multi_phase_bondi");
@@ -640,6 +655,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->wind_momentum_flux =
       parser_get_param_float(params, "SIMBAAGN:wind_momentum_flux");
 
+  bp->dt_feedback_factor =
+      parser_get_opt_param_float(params, "SIMBAAGN:dt_feedback_factor", 1.f);
+  if (bp->dt_feedback_factor > 1.f || bp->dt_feedback_factor < 0.f) {
+    error("SIMBAAGN:dt_feedback_factor must be between 0 and 1");
+  }
+
   /* Reposition parameters --------------------------------- */
 
   bp->max_reposition_mass =
@@ -751,6 +772,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->length_to_parsec = 1.f / phys_const->const_parsec;
 
   bp->time_to_yr = 1.f / phys_const->const_year;
+
+  bp->time_to_Myr = units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+      (1.e6f * 365.25f * 24.f * 60.f * 60.f);
 
   /* Some useful conversion values */
   bp->conv_factor_density_to_cgs =
