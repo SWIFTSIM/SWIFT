@@ -4482,11 +4482,11 @@ void engine_maketasks(struct engine *e) {
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper,
                  s->zoom_props->local_bkg_cells_top,
-                 s->zoom_props->nr_local_bkg_cells, sizeof(struct cell),
+                 s->zoom_props->nr_local_bkg_cells, sizeof(int *),
                  threadpool_auto_chunk_size, e);
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper,
                  s->zoom_props->local_zoom_cells_top,
-                 s->zoom_props->nr_local_zoom_cells, sizeof(struct cell),
+                 s->zoom_props->nr_local_zoom_cells, sizeof(int *),
                  threadpool_auto_chunk_size, e);
 
   tic2 = getticks();
