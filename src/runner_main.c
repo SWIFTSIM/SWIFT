@@ -184,11 +184,11 @@ void *runner_main(void *data) {
 
       if (ci != NULL) {
         if (ci->tl_cell_type == 2)
-          error("The void cell has been given a task!")
+          error("The void cell has been given a task!");
       }
       if (cj != NULL) {
         if (cj->tl_cell_type == 2)
-          error("The void cell is part of a pair task!")
+          error("The void cell is part of a pair task!");
       }
         
 
