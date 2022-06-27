@@ -950,8 +950,10 @@ runner_iact_nonsym_bh_gas_feedback(
     pj->feedback_data.decoupling_delay_time = 
         1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
-    /* Update the signal velocity of the particle based on the velocity kick */
-    hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick);
+    /* Update the signal velocity of the particle based on the velocity kick.
+     * TODO: Maybe we should not do this, and just deal with inaccuracy.
+     */
+    /*hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick);*/
 
     /* If we have a jet, we heat! */
     if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
@@ -997,8 +999,9 @@ runner_iact_nonsym_bh_gas_feedback(
       }
     }
 
+    /* TODO: Maybe we should not do this and just deal with inaccuracy */
     /* Impose maximal viscosity */
-    hydro_diffusive_feedback_reset(pj);
+    /*hydro_diffusive_feedback_reset(pj);*/
     
     /* Synchronize the particle on the timeline */
     timestep_sync_part(pj);
