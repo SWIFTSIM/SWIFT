@@ -1040,10 +1040,28 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                     t->flags |= (1ULL << flag);
 
                   } else {
-                    if (ci->progeny[i]->tl_cell_type == zoom_tl_cell) {
+                    if (ci->progeny[i]->tl_cell_type == zoom_tl_cell &&
+                        cj->progeny[i]->tl_cell_type == zoom_tl_cell) {
                       /* Ok, we actually have to create a task */
                       scheduler_splittask_gravity(
-                        scheduler_addtask(s, task_type_pair, task_subtype_grav,
+                        scheduler_addtask(s, task_type_pair,
+                                          task_subtype_grav,
+                                          0, 0, ci->progeny[i],
+                                          cj->progeny[j]), s);
+                    } else if (ci->progeny[i]->tl_cell_type == zoom_tl_cell &&
+                               cj->progeny[i]->tl_cell_type <= 2) {
+                      /* Ok, we actually have to create a task */
+                      scheduler_splittask_gravity(
+                        scheduler_addtask(s, task_type_pair,
+                                          task_subtype_grav_zoombkg,
+                                          0, 0, ci->progeny[i],
+                                          cj->progeny[j]), s);
+                    } else if (cj->progeny[i]->tl_cell_type == zoom_tl_cell &&
+                               ci->progeny[i]->tl_cell_type <= 2) {
+                      /* Ok, we actually have to create a task */
+                      scheduler_splittask_gravity(
+                        scheduler_addtask(s, task_type_pair,
+                                          task_subtype_grav_bkgzoom,
                                           0, 0, ci->progeny[i],
                                           cj->progeny[j]), s);
                     } else {
@@ -1191,7 +1209,9 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav ||
-               t->subtype == task_subtype_grav_bkg) {
+               t->subtype == task_subtype_grav_bkg ||
+               t->subtype == task_subtype_grav_zoombkg ||
+               t->subtype == task_subtype_grav_bkgzoom) {
       scheduler_splittask_gravity(t, s);
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1580,7 +1600,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
       case task_type_pair:
         if (t->subtype == task_subtype_grav ||
-            t->subtype == task_subtype_grav_bkg) {
+            t->subtype == task_subtype_grav_bkg ||
+            t->subtype == task_subtype_grav_zoombkg ||
+            t->subtype == task_subtype_grav_bkgzoom) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
@@ -2064,6 +2086,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_sub_pair:
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_grav_bkg ||
+            t->subtype == task_subtype_grav_zoombkg ||
+            t->subtype == task_subtype_grav_bkgzoom ||
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
           if (qid < 0 ||

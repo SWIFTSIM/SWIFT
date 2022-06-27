@@ -2007,7 +2007,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
       } else if (t_subtype == task_subtype_grav ||
-                 t_subtype == task_subtype_grav_bkg) {
+                 t_subtype == task_subtype_grav_bkg ||
+                 t_subtype == task_subtype_grav_zoombkg ||
+                 t_subtype == task_subtype_grav_bkgzoom) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
       }
@@ -2039,7 +2041,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
       } else if (t_subtype == task_subtype_grav ||
-                 t_subtype == task_subtype_grav_bkg) {
+                 t_subtype == task_subtype_grav_bkg ||
+                 t_subtype == task_subtype_grav_zoombkg ||
+                 t_subtype == task_subtype_grav_bkgzoom) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
       }
@@ -2136,7 +2140,9 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Otherwise, pair interaction? */
     else if (t_type == task_type_pair && (t_subtype == task_subtype_grav ||
-                                          t_subtype == task_subtype_grav_bkg)) {
+                                          t_subtype == task_subtype_grav_bkg ||
+                                          t_subtype == task_subtype_grav_zoombkg ||
+                                          t_subtype == task_subtype_grav_bkgzoom)) {
 
       if (ci_nodeID == nodeID) {
 
@@ -2187,7 +2193,9 @@ void engine_link_gravity_tasks(struct engine *e) {
 
     /* Otherwise, sub-pair interaction? */
     else if (t_type == task_type_sub_pair && (t_subtype == task_subtype_grav ||
-                                              t_subtype == task_subtype_grav_bkg)) {
+                                              t_subtype == task_subtype_grav_bkg ||
+                                              t_subtype == task_subtype_grav_zoombkg ||
+                                              t_subtype == task_subtype_grav_bkgzoom)) {
 
       if (ci_nodeID == nodeID) {
 
