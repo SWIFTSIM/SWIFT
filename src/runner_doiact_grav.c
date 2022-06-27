@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -819,8 +819,9 @@ static INLINE void runner_dopair_grav_pp_full(
         error("Found a foreign gpart in the gravity interaction");
 
       if (gparts_i[pid].time_bin == time_bin_not_created &&
-          ci_cache->m[pid] != 0.f)
+          ci_cache->m[pid] != 0.f) {
         error("Found an extra gpart in the gravity interaction");
+      }
 
       if (r2 == 0.f && h2 == 0.)
         error("Interacting particles with 0 distance and 0 softening.");
@@ -999,11 +1000,13 @@ static INLINE void runner_dopair_grav_pp_truncated(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* The gravity_cache are sometimes allocated with more
+         place than required => flag with mass=0 */
       if (gparts_i[pid].time_bin == time_bin_not_created &&
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
-      if (!foreign_j && gparts_j[pjd].time_bin == time_bin_not_created &&
+      if (!foreign_j && pjd < gcount_j && gparts_j[pjd].time_bin == time_bin_not_created &&
           mass_j != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
@@ -1151,6 +1154,8 @@ static INLINE void runner_dopair_grav_pm_full(
     if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
+    /* The gravity_cache are sometimes allocated with more
+       place than required => flag with mass=0 */
     if (gparts_i[pid].time_bin == time_bin_not_created &&
         ci_cache->m[pid] != 0.) {
       error("Found an extra gpart in the gravity interaction");
@@ -1300,6 +1305,8 @@ static INLINE void runner_dopair_grav_pm_truncated(
     if (!use_mpole[pid]) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
+    /* The gravity_cache are sometimes allocated with more
+       place than required => flag with mass=0 */
     if (gparts_i[pid].time_bin == time_bin_not_created &&
         ci_cache->m[pid] != 0.) {
       error("Found an extra gpart in the gravity interaction");
@@ -1770,6 +1777,8 @@ static INLINE void runner_doself_grav_pp_full(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* The gravity_cache are sometimes allocated with more
+         place than required => flag with mass=0 */
       if (gparts[pid].time_bin == time_bin_not_created &&
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
@@ -1917,6 +1926,8 @@ static INLINE void runner_doself_grav_pp_truncated(
       const float h_inv_3 = h_inv * h_inv * h_inv;
 
 #ifdef SWIFT_DEBUG_CHECKS
+      /* The gravity_cache are sometimes allocated with more
+         place than required => flag with mass=0 */
       if (gparts[pid].time_bin == time_bin_not_created &&
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");

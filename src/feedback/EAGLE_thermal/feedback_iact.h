@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -98,10 +98,10 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
          * to randomly select the direction of the ith ray */
 
         /* Two random numbers in [0, 1[ */
-        const double rand_theta_SNII = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_theta_SNII = random_unit_interval_part_ID_and_index(
             si->id, i, ti_current,
             random_number_isotropic_SNII_feedback_ray_theta);
-        const double rand_phi_SNII = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_phi_SNII = random_unit_interval_part_ID_and_index(
             si->id, i, ti_current,
             random_number_isotropic_SNII_feedback_ray_phi);
 

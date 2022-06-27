@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -112,6 +112,9 @@ struct space {
 
   /*! Are we doing star formation through sink particles? */
   int with_sink;
+
+  /*! Are we running with some regular DM particles? */
+  int with_DM;
 
   /*! Are we running with some DM background particles? */
   int with_DM_background;
@@ -359,8 +362,8 @@ void space_init(struct space *s, struct swift_params *params,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int gravity, int star_formation, int with_sink,
-                int DM_background, int neutrinos, int verbose, int dry_run,
-                int nr_nodes);
+                int with_DM, int with_DM_background, int neutrinos, int verbose,
+                int dry_run, int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);

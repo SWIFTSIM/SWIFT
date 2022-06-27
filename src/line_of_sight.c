@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2020 Stuart McAlpine (stuart.mcalpine@helsinki.fi)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -534,6 +534,8 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
                      swift_type_count);
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", 1);
   io_write_attribute_i(h_grp, "ThisFile", 0);
+  io_write_attribute_s(h_grp, "SelectOutput", "Default");
+  io_write_attribute_i(h_grp, "Virtual", 0);
   io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
 
   /* Close group */

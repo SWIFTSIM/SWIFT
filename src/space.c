@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -1121,8 +1121,8 @@ void space_init(struct space *s, struct swift_params *params,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int self_gravity, int star_formation, int with_sink,
-                int DM_background, int neutrinos, int verbose, int dry_run,
-                int nr_nodes) {
+                int with_DM, int with_DM_background, int neutrinos, int verbose,
+                int dry_run, int nr_nodes) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1136,7 +1136,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
   s->with_sink = with_sink;
-  s->with_DM_background = DM_background;
+  s->with_DM = with_DM;
+  s->with_DM_background = with_DM_background;
   s->with_neutrinos = neutrinos;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
@@ -1197,7 +1198,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, hydro_properties, periodic, DM_background,
+    space_generate_gas(s, cosmo, hydro_properties, periodic, with_DM_background,
                        neutrinos, dim, verbose);
     parts = s->parts;
     gparts = s->gparts;
@@ -1216,7 +1217,7 @@ void space_init(struct space *s, struct swift_params *params,
     error("Value of 'InitialConditions:replicate' (%d) is too small",
           replicate);
   if (replicate > 1) {
-    if (DM_background)
+    if (with_DM_background)
       error("Can't replicate the space if background DM particles are in use.");
     if (neutrinos)
       error("Can't replicate the space if neutrino DM particles are in use.");
@@ -1693,6 +1694,15 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
   if (verbose) message("Remapping all the IDs");
 
+  size_t local_nr_dm_background = 0;
+  size_t local_nr_neutrino = 0;
+  for (size_t i = 0; i < s->nr_gparts; ++i) {
+    if (s->gparts[i].type == swift_type_neutrino)
+      local_nr_neutrino++;
+    else if (s->gparts[i].type == swift_type_dark_matter_background)
+      local_nr_dm_background++;
+  }
+
   /* Get the current local number of particles */
   const size_t local_nr_parts = s->nr_parts;
   const size_t local_nr_sinks = s->nr_sinks;
@@ -1702,7 +1712,9 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   const size_t local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
   const size_t local_nr_dm =
-      local_nr_gparts > 0 ? local_nr_gparts - local_nr_baryons : 0;
+      local_nr_gparts > 0 ? local_nr_gparts - local_nr_baryons -
+                                local_nr_neutrino - local_nr_dm_background
+                          : 0;
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -1710,6 +1722,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long offset_sparts = 0;
   long long offset_bparts = 0;
   long long offset_dm = 0;
+  long long offset_dm_background = 0;
 #ifdef WITH_MPI
   MPI_Exscan(&local_nr_parts, &offset_parts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
@@ -1721,6 +1734,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_dm, &offset_dm, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_dm_background, &offset_dm_background, 1,
+             MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   /* Total number of particles of each kind */
@@ -1728,7 +1743,9 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long total_parts = offset_parts + local_nr_parts;
   long long total_sinks = offset_sinks + local_nr_sinks;
   long long total_sparts = offset_sparts + local_nr_sparts;
-  // long long total_bparts = offset_bparts + local_nr_bparts;
+  long long total_bparts = offset_bparts + local_nr_bparts;
+  // long long total_dm_backgroud = offset_dm_background +
+  // local_nr_dm_background;
 
 #ifdef WITH_MPI
   /* The last rank now has the correct total, let's broadcast this back */
@@ -1736,17 +1753,23 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   MPI_Bcast(&total_parts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_sinks, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_sparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
-  // MPI_Bcast(&total_bparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1,
+  MPI_Bcast(&total_bparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  // MPI_Bcast(&total_dm_background, 1, MPI_LONG_LONG_INT, nr_nodes - 1,
   // MPI_COMM_WORLD);
 #endif
 
   /* Let's order the particles
-   * IDs will be DM then gas then sinks than stars then BHs */
+   * IDs will be DM then gas then sinks than stars then BHs then DM background
+   * Note that we leave a large gap (10x the number of particles) in-between the
+   * regular particles and the background ones. This allow for particle
+   * splitting to keep a compact set of ids. */
   offset_dm += 1;
   offset_parts += 1 + total_dm;
   offset_sinks += 1 + total_dm + total_parts;
   offset_sparts += 1 + total_dm + total_parts + total_sinks;
   offset_bparts += 1 + total_dm + total_parts + total_sinks + total_sparts;
+  offset_dm_background += 1 + 10 * (total_dm * total_parts + total_sinks +
+                                    total_sparts + total_bparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
   for (size_t i = 0; i < local_nr_parts; ++i) {
@@ -1761,11 +1784,17 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   for (size_t i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
-  for (size_t i = 0; i < local_nr_dm; ++i) {
-    if (s->gparts[i].type == swift_type_dark_matter ||
-        s->gparts[i].type == swift_type_dark_matter_background ||
-        s->gparts[i].type == swift_type_neutrino)
-      s->gparts[i].id_or_neg_offset = offset_dm + i;
+  size_t count_dm = 0;
+  size_t count_dm_background = 0;
+  for (size_t i = 0; i < s->nr_gparts; ++i) {
+    if (s->gparts[i].type == swift_type_dark_matter) {
+      s->gparts[i].id_or_neg_offset = offset_dm + count_dm;
+      count_dm++;
+    } else if (s->gparts[i].type == swift_type_dark_matter_background) {
+      s->gparts[i].id_or_neg_offset =
+          offset_dm_background + count_dm_background;
+      count_dm_background++;
+    }
   }
 }
 
@@ -1815,17 +1844,18 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   const size_t current_nr_parts = s->nr_parts;
   const size_t current_nr_gparts = s->nr_gparts;
 
+  /* Basic checks for unwanted modes */
   if (current_nr_parts != 0)
-    error("Generating gas particles from DM but gas already exists!");
+    error("Generating gas particles from DM but gas already exist!");
 
   if (s->nr_sparts != 0)
-    error("Generating gas particles from DM but stars already exists!");
+    error("Generating gas particles from DM but stars already exist!");
 
   if (s->nr_bparts != 0)
-    error("Generating gas particles from DM but BHs already exists!");
+    error("Generating gas particles from DM but BHs already exist!");
 
   if (s->nr_sinks != 0)
-    error("Generating gas particles from DM but sink already exists!");
+    error("Generating gas particles from DM but sinks already exist!");
 
   /* Pull out information about particle splitting */
   const int particle_splitting = hydro_properties->particle_splitting;
@@ -1883,11 +1913,18 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   size_t j = 0;
   for (size_t i = 0; i < current_nr_gparts; ++i) {
 
-    /* For the background & neutrino DM particles, just copy the data */
-    if (s->gparts[i].type == swift_type_dark_matter_background ||
-        s->gparts[i].type == swift_type_neutrino) {
+    /* For the neutrino DM particles, just copy the data */
+    if (s->gparts[i].type == swift_type_neutrino) {
 
       memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
+
+      /* For the background DM particles, copy the data and give a better ID */
+    } else if (s->gparts[i].type == swift_type_dark_matter_background) {
+
+      memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
+
+      /* Multiply the ID by two to match the convention of even IDs for DM. */
+      gparts[i].id_or_neg_offset *= 2;
 
     } else {
 
@@ -2102,6 +2139,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
  * @brief Compute the max id of any #part in this space.
  *
  * This function is inefficient. Don't call often.
+ * Background particles are ignored.
  *
  * @param s The #space.
  */
@@ -2114,9 +2152,10 @@ long long space_get_max_parts_id(struct space *s) {
     max_id = max(max_id, s->sparts[i].id);
   for (size_t i = 0; i < s->nr_bparts; ++i)
     max_id = max(max_id, s->bparts[i].id);
+
+  /* Note: We Explicitly do *NOT* consider background particles */
   for (size_t i = 0; i < s->nr_gparts; ++i)
     if (s->gparts[i].type == swift_type_dark_matter ||
-        s->gparts[i].type == swift_type_dark_matter_background ||
         s->gparts[i].type == swift_type_neutrino)
       max_id = max(max_id, s->gparts[i].id_or_neg_offset);
   return max_id;

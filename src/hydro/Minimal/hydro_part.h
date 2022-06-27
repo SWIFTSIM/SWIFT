@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -38,6 +38,7 @@
 #include "feedback_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
+#include "sink_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -192,6 +193,9 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;

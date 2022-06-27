@@ -22,7 +22,7 @@ This file is part of SWIFT.
 
 Copyright (C) 2015 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
                    Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
-                   Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+                   Matthieu Schaller (schaller@strw.leidenuniv.nl)
           (C) 2017 Peter W. Draper (p.w.draper@durham.ac.uk)
 All Rights Reserved.
 

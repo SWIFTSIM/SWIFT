@@ -268,7 +268,7 @@ AC_ARG_ENABLE([threadpool-debugging],
 )
 if test "$enable_threadpool_debugging" = "yes"; then
    AC_DEFINE([SWIFT_DEBUG_THREADPOOL],1,[Enable threadpool debugging])
-   LDFLAGS="$LDFLAGS -rdynamic"
+   LDFLAGS="$LDFLAGS -rdynamic -ldl"
 fi
 
 # Check if the general timers are switched on.
@@ -1657,7 +1657,7 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
-	with_subgrid_pressure_floor=GEAR
+	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=GEAR
@@ -1714,7 +1714,7 @@ case "$with_subgrid" in
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
 	with_subgrid_sink=none
-	with_subgrid_extra_io=EAGLE
+	with_subgrid_extra_io=none
 	enable_fof=yes
    ;;
    *)

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -127,9 +127,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
     c->hydro.prep1_ghost = NULL;
-    c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
-    c->hydro.star_formation_sink = NULL;
+    c->sinks.sink_formation = NULL;
+    c->sinks.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.density_ghost = NULL;
     c->stars.prep1_ghost = NULL;
@@ -138,9 +138,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.feedback = NULL;
     c->stars.prepare1 = NULL;
     c->stars.prepare2 = NULL;
-    c->sinks.compute_formation = NULL;
-    c->sinks.merger = NULL;
-    c->sinks.accretion = NULL;
+    c->sinks.swallow = NULL;
+    c->sinks.do_sink_swallow = NULL;
+    c->sinks.do_gas_swallow = NULL;
     c->black_holes.density_ghost = NULL;
     c->black_holes.swallow_ghost_0 = NULL;
     c->black_holes.swallow_ghost_1 = NULL;
@@ -169,7 +169,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.black_holes_in = NULL;
     c->black_holes.black_holes_out = NULL;
     c->sinks.sink_in = NULL;
-    c->sinks.ghost = NULL;
+    c->sinks.sink_ghost1 = NULL;
+    c->sinks.sink_ghost2 = NULL;
     c->sinks.sink_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;

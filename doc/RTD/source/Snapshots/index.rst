@@ -73,7 +73,7 @@ time-line. This is the smallest time-step size that the code can use. This field
 is zero in non-cosmological runs. Similarly, the field ``TimeBase_dt`` contains
 the smallest time-step size (in internal units) that the code can take. This
 would be the increase in time a particle in the time-bin one would have. Note
-that in cosmological runs this quantity evolves with redhsift as the (logarithm
+that in cosmological runs this quantity evolves with redshift as the (logarithm
 of the) scale-factor is used on the integer time-line.
 
 The field ``SelectOutput`` will contain the name of the
@@ -86,6 +86,13 @@ written to the snapshot. Note, however, that when sub-sampling the fields
 ``NumPart_Total``, ``NumPart_HighWord``, and ``NumPart_ThisFile`` contain the number
 of particles actually written (i.e. after sub-sampling), not the total number of
 particles in the run.
+
+The field ``CanHaveTypes`` contains information about whether a given particle
+type is to be expected in snapshots of the run. For instance, a simulation with
+star formation switched on, the code may not have formed a star yet but might in
+future snapshots. This allows reading tools to distinguish fields they will
+never expect to find in a given simulation from fields that may be present in
+other outputs.
 
 Meta-data about the code and run
 --------------------------------
@@ -379,9 +386,9 @@ expressed in the unit system used for the snapshots (see above) and are hence
 consistent with the particle positions themselves. 
 
 Once the cell(s) containing the region of interest has been located,
-users can use the ``/Cells/Offsets/PartTypeN/Files``,
-``/Cells/Offsets/PartTypeN/Counts`` and
-``/Cells/Offsets/PartTypeN/OffsetsInFile`` to retrieve the location of
+users can use the ``/Cells/Files/PartTypeN/``,
+``/Cells/Counts/PartTypeN/`` and
+``/Cells/OffsetsInFile/PartTypeN/`` to retrieve the location of
 the particles of type ``N`` in the ``/PartTypeN`` arrays.  These
 contain information about which file contains the particles of a given
 cell. It also gives the offset from the start of the ``/PartTypeN``
@@ -397,6 +404,15 @@ over the z axis, then y axis and x is the slowest varying dimension.
 In the case of a single-file snapshot, the ``Files`` array is just an array of
 zeroes since all the particles will be in the 0-th file. Note also that in the
 case of a multi-files snapshot, a cell is always contained in a single file.
+
+As noted above, particles can (slightly) drift out of their cells. This can be
+problematic in cases where one wants to find precisely all the particles in a
+given region. To help with this, the meta-data also contains a "cell bounding
+box". The arrays ``/Cells/MinPositions/PartTypeN`` and
+``/Cells/MaxPositions/PartTypeN`` contain the minimal (maximal) x,y,z
+coordinates of all the particles of this type in the cells. Note that these
+coordinates can be outside of the cell itself. When using periodic boundary
+conditions, no box-wrapping is applied.
 
 If a snapshot used a sub-sampled output, then the counts and offsets are
 adjusted accordingly and correspond to the actual content of the file

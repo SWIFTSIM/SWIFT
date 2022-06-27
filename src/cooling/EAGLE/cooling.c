@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -667,7 +667,7 @@ float cooling_get_temperature(
  * @brief Compute the electron pressure of a #part based on the cooling
  * function.
  *
- * There are no subgrid properties in this model, we return 0.
+ * Does not exist in this model. We return 0.
  *
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.

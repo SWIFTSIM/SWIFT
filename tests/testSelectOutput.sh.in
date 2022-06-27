@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Creating initial conditions"
-python @srcdir@/makeInput.py
+python3 @srcdir@/makeInput.py
 
 echo "Generating output"
 ./testSelectOutput 2>&1 | tee select_output.log

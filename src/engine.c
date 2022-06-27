@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -87,6 +87,7 @@
 #include "output_options.h"
 #include "partition.h"
 #include "potential.h"
+#include "power_spectrum.h"
 #include "pressure_floor.h"
 #include "profiler.h"
 #include "proxy.h"
@@ -131,7 +132,8 @@ const char *engine_policy_names[] = {"none",
                                      "csds",
                                      "line of sight",
                                      "sink",
-                                     "rt"};
+                                     "rt",
+                                     "power spectra"};
 
 const int engine_default_snapshot_subsample[swift_type_count] = {0};
 
@@ -1079,9 +1081,9 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   if (e->policy & engine_policy_hydro) {
     /* 2 self (density, force), 1 sort, 26/2 density pairs
        26/2 force pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
-       1 end_force, 2 extra space
+       1 end_force, 1 collect, 2 extra space
      */
-    n1 += 37;
+    n1 += 38;
     n2 += 2;
 #ifdef WITH_MPI
     n1 += 6;
@@ -1150,8 +1152,12 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* gradient: 1 self + 13 pairs                   |   14
      * transport: 1 self + 13 pairs                  | + 14
      * implicits: in + out, transport_out            | +  3
-     * others: ghost1, ghost2, thermochemistry       | +  3 */
-    n1 += 34;
+     * others: ghost1, ghost2, thermochemistry       | +  3
+     * 2 extra space                                 | +  2 */
+    n1 += 36;
+#ifdef WITH_MPI
+    n1 += 4; /* TODO: check this */
+#endif
   }
 
 #ifdef WITH_MPI
@@ -1620,8 +1626,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||
         t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
-        t->type == task_type_sink_ghost || t->type == task_type_sink_out ||
-        t->type == task_type_sink_formation ||
+        t->type == task_type_sink_ghost1 || t->type == task_type_sink_ghost2 ||
+        t->type == task_type_sink_formation || t->type == task_type_sink_out ||
         t->type == task_type_stars_prep_ghost1 ||
         t->type == task_type_hydro_prep_ghost1 ||
         t->type == task_type_stars_prep_ghost2 ||
@@ -1646,9 +1652,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_bpart_merger ||
         t->subtype == task_subtype_bpart_swallow ||
         t->subtype == task_subtype_bpart_feedback ||
-        t->subtype == task_subtype_sink_compute_formation ||
-        t->subtype == task_subtype_sink_merger ||
-        t->subtype == task_subtype_sink_accretion ||
+        t->subtype == task_subtype_sink_swallow ||
+        t->subtype == task_subtype_sink_do_sink_swallow ||
+        t->subtype == task_subtype_sink_do_gas_swallow ||
         t->subtype == task_subtype_tend || t->subtype == task_subtype_rho ||
         t->subtype == task_subtype_spart_density ||
         t->subtype == task_subtype_part_prep1 ||
@@ -1947,6 +1953,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 #endif
 
   scheduler_write_dependencies(&e->sched, e->verbose, e->step);
+  scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
   if (e->nodeID == 0) scheduler_write_task_level(&e->sched, e->step);
 
   /* Run the 0th time-step */
@@ -2158,7 +2165,7 @@ void engine_step(struct engine *e) {
     /* Print some information to the screen */
     printf(
         "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld "
-        "%12lld %12lld %21.3f %6d %21.3f\n",
+        "%12lld %12lld %21.3f %6d %17.3f\n",
         e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
@@ -2185,7 +2192,7 @@ void engine_step(struct engine *e) {
       fprintf(
           e->file_timesteps,
           "  %6d %14e %12.7f %12.7f %14e %4d %4d %12lld %12lld %12lld %12lld "
-          "%12lld %21.3f %6d %21.3f\n",
+          "%12lld %21.3f %6d %17.3f\n",
           e->step, e->time, e->cosmology->a, e->cosmology->z, e->time_step,
           e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
           e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
@@ -2402,8 +2409,10 @@ void engine_step(struct engine *e) {
 
   /* Write the dependencies */
   if (e->sched.frequency_dependency != 0 &&
-      e->step % e->sched.frequency_dependency == 0)
+      e->step % e->sched.frequency_dependency == 0) {
     scheduler_write_dependencies(&e->sched, e->verbose, e->step);
+    scheduler_write_cell_dependencies(&e->sched, e->verbose, e->step);
+  }
 
   /* Write the task levels */
   if (e->sched.frequency_task_levels != 0 &&
@@ -2836,7 +2845,6 @@ void engine_numa_policies(int rank, int verbose) {
  * @param Nnuparts Total number of neutrino DM particles.
  * @param policy The queuing policy to use.
  * @param verbose Is this #engine talkative ?
- * @param reparttype What type of repartition algorithm are we using ?
  * @param internal_units The system of units used internally.
  * @param physical_constants The #phys_const used for this run.
  * @param cosmo The #cosmology used for this run.
@@ -2849,6 +2857,7 @@ void engine_numa_policies(int rank, int verbose) {
  * @param neutrinos The #neutrino_props used for this run.
  * @param feedback The #feedback_props used for this run.
  * @param mesh The #pm_mesh used for the long-range periodic forces.
+ * @param pow_data The properties and pointers for power spectrum calculation.
  * @param potential The properties of the external potential.
  * @param cooling_func The properties of the cooling function.
  * @param starform The #star_formation model of this run.
@@ -2864,7 +2873,7 @@ void engine_init(
     struct output_options *output_options, long long Ngas, long long Ngparts,
     long long Nsinks, long long Nstars, long long Nblackholes,
     long long Nbackground_gparts, long long Nnuparts, int policy, int verbose,
-    struct repartition *reparttype, const struct unit_system *internal_units,
+    const struct unit_system *internal_units,
     const struct phys_const *physical_constants, struct cosmology *cosmo,
     struct hydro_props *hydro,
     const struct entropy_floor_properties *entropy_floor,
@@ -2874,7 +2883,8 @@ void engine_init(
     struct neutrino_response *neutrino_response,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
-    struct pm_mesh *mesh, const struct external_potential *potential,
+    struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
+    const struct external_potential *potential,
     struct cooling_function_data *cooling_func,
     const struct star_formation *starform,
     const struct chemistry_global_data *chemistry,
@@ -2902,7 +2912,6 @@ void engine_init(
   e->total_nr_neutrino_gparts = Nnuparts;
   e->proxy_ind = NULL;
   e->nr_proxies = 0;
-  e->reparttype = reparttype;
   e->ti_old = 0;
   e->ti_current = 0;
   e->ti_earliest_undrifted = 0;
@@ -2946,6 +2955,8 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
       parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
+  e->snapshot_invoke_ps =
+      parser_get_opt_param_int(params, "Snapshots:invoke_ps", 0);
   e->snapshot_use_delta_from_edge =
       parser_get_opt_param_int(params, "Snapshots:use_delta_from_edge", 0);
   if (e->snapshot_use_delta_from_edge) {
@@ -2963,6 +2974,7 @@ void engine_init(
   e->snapshot_output_count = 0;
   e->stf_output_count = 0;
   e->los_output_count = 0;
+  e->ps_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
   e->dt_max_RMS_displacement = FLT_MAX;
@@ -2980,6 +2992,7 @@ void engine_init(
   e->ti_next_stats = 0;
   e->ti_next_stf = 0;
   e->ti_next_fof = 0;
+  e->ti_next_ps = 0;
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->physical_constants = physical_constants;
@@ -2993,6 +3006,7 @@ void engine_init(
   e->neutrino_properties = neutrinos;
   e->neutrino_response = neutrino_response;
   e->mesh = mesh;
+  e->power_data = pow_data;
   e->external_potential = potential;
   e->cooling_func = cooling_func;
   e->star_formation = starform;
@@ -3084,6 +3098,16 @@ void engine_init(
         params, "LineOfSight:scale_factor_first", 0.1);
     e->delta_time_los =
         parser_get_opt_param_double(params, "LineOfSight:delta_time", -1.);
+  }
+
+  /* Initialise power spectrum output. */
+  if (e->policy & engine_policy_power_spectra) {
+    e->time_first_ps_output =
+        parser_get_opt_param_double(params, "PowerSpectrum:time_first", 0.);
+    e->a_first_ps_output = parser_get_opt_param_double(
+        params, "PowerSpectrum:scale_factor_first", 0.1);
+    e->delta_time_ps =
+        parser_get_opt_param_double(params, "PowerSpectrum:delta_time", -1.);
   }
 
   /* Initialise FoF calls frequency. */
@@ -3375,6 +3399,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
   output_list_clean(&e->output_list_stats);
   output_list_clean(&e->output_list_stf);
   output_list_clean(&e->output_list_los);
+  output_list_clean(&e->output_list_ps);
 
   output_options_clean(e->output_options);
 
@@ -3434,6 +3459,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->internal_units);
     free((void *)e->cosmology);
     free((void *)e->mesh);
+    free((void *)e->power_data);
     free((void *)e->chemistry);
     free((void *)e->entropy_floor);
     free((void *)e->cooling_func);
@@ -3453,6 +3479,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     if (e->output_list_stats) free((void *)e->output_list_stats);
     if (e->output_list_stf) free((void *)e->output_list_stf);
     if (e->output_list_los) free((void *)e->output_list_los);
+    if (e->output_list_ps) free((void *)e->output_list_ps);
 #ifdef WITH_CSDS
     if (e->policy & engine_policy_csds) free((void *)e->csds);
 #endif
@@ -3492,6 +3519,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   gravity_props_struct_dump(e->gravity_properties, stream);
   stars_props_struct_dump(e->stars_properties, stream);
   pm_mesh_struct_dump(e->mesh, stream);
+  power_spectrum_struct_dump(e->power_data, stream);
   potential_struct_dump(e->external_potential, stream);
   cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
@@ -3597,6 +3625,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct pm_mesh *mesh = (struct pm_mesh *)malloc(sizeof(struct pm_mesh));
   pm_mesh_struct_restore(mesh, stream);
   e->mesh = mesh;
+
+  struct power_spectrum_data *pow_data =
+      (struct power_spectrum_data *)malloc(sizeof(struct power_spectrum_data));
+  power_spectrum_struct_restore(pow_data, stream);
+  e->power_data = pow_data;
 
   struct external_potential *external_potential =
       (struct external_potential *)malloc(sizeof(struct external_potential));

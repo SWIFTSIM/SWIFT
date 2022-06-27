@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2014 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
+ * Copyright (c) 2014 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -174,6 +174,9 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;
 
   /*! Time-step length */
   timebin_t time_bin;

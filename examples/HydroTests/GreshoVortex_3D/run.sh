@@ -9,11 +9,11 @@ fi
 if [ ! -e greshoVortex.hdf5 ]
 then
     echo "Generating initial conditions for the Gresho-Chan vortex example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
 ../../swift --hydro --threads=4 gresho.yml 2>&1 | tee output.log
 
 # Plot the solution
-python plotSolution.py 11
+python3 plotSolution.py 11

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -116,6 +116,7 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
                            const int snap_num,
                            const long long global_counts[swift_type_count],
                            const long long global_offsets[swift_type_count],
+                           const int to_write[swift_type_count],
                            const int num_fields[swift_type_count],
                            const struct unit_system* internal_units,
                            const struct unit_system* snapshot_units);
