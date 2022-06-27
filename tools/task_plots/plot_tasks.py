@@ -40,17 +40,17 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from swift_hardcoded_data import TASKTYPES, SUBTYPES
+import argparse
+import sys
+import pylab as pl
+import matplotlib.ticker as plticker
+import matplotlib.collections as collections
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.collections as collections
-import matplotlib.ticker as plticker
-import pylab as pl
-import sys
-import argparse
 
 # import hardcoded data
-from swift_hardcoded_data import TASKTYPES, SUBTYPES
 
 #  Handle the command line.
 parser = argparse.ArgumentParser(description="Plot task graphs")
@@ -157,6 +157,7 @@ FULLTYPES = [
     "self/gradient",
     "self/density",
     "self/grav",
+    "self/grav_bkg",
     "sub_self/limiter",
     "sub_self/force",
     "sub_self/gradient",
@@ -166,6 +167,9 @@ FULLTYPES = [
     "pair/gradient",
     "pair/density",
     "pair/grav",
+    "pair/grav_bkg",
+    "pair/grav_zoombkg",
+    "pair/grav_bkgzoom",
     "sub_pair/limiter",
     "sub_pair/force",
     "sub_pair/gradient",
@@ -474,7 +478,8 @@ for rank in ranks:
                     typesseen.append(qtask)
 
             #  Now plot.
-            ax.broken_barh(tictocs, [i + 0.55, 0.9], facecolors=colours, linewidth=0)
+            ax.broken_barh(tictocs, [i + 0.55, 0.9],
+                           facecolors=colours, linewidth=0)
 
     #  Legend and room for it.
     nrow = len(typesseen) / 8
@@ -494,7 +499,8 @@ for rank in ranks:
         ax.plot([0, 0], [0, nethread + nrow + 1], "k--", linewidth=1)
     else:
         real_start = tic_step - mintic
-        ax.plot([real_start, real_start], [0, nethread + nrow + 1], "k--", linewidth=1)
+        ax.plot([real_start, real_start], [
+                0, nethread + nrow + 1], "k--", linewidth=1)
     ax.plot([end_t, end_t], [0, nethread + nrow + 1], "k--", linewidth=1)
 
     ax.set_xlabel("Wall clock time [ms]")
