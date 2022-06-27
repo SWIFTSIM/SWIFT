@@ -1669,7 +1669,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
-      scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
+      scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg, 0, 0, ci,
                         NULL);
     }
 
@@ -1723,7 +1723,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                                     /*is_tree_walk=*/0)) {
 
             /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0,
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0, 0,
                               ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2080,10 +2080,15 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
       /* Are the cells too close for a MM interaction ? */
       if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                 /*is_tree_walk=*/0)) {
-
-        /* Ok, we need to add a direct pair calculation */
-        scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
-                          cj);
+        if (ci->tl_cell_type <= 2) {
+          /* Ok, we need to add a direct pair calculation */
+          scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg,
+                            0, 0, ci, cj);
+        } else {
+          /* Ok, we need to add a direct pair calculation */
+          scheduler_addtask(sched, task_type_pair, task_subtype_grav, 0, 0, ci,
+                            cj);
+        }
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Ensure both cells are not in the same level */

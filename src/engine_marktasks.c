@@ -328,7 +328,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Activate the gravity drift */
-      else if (t_type == task_type_self && t_subtype == task_subtype_grav) {
+      else if (t_type == task_type_self &&(t_subtype == task_subtype_grav ||
+                                          t_subtype == task_subtype_grav_bkg)) {
         if (ci_active_gravity) {
           scheduler_activate(s, t);
           cell_activate_subcell_grav_tasks(t->ci, NULL, s);
@@ -649,20 +650,23 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Gravity */
-      else if ((t_subtype == task_subtype_grav) &&
+      else if ((t_subtype == task_subtype_grav ||
+                t_subtype == task_subtype_grav_bkg) &&
                ((ci_active_gravity && ci_nodeID == nodeID) ||
                 (cj_active_gravity && cj_nodeID == nodeID))) {
 
         scheduler_activate(s, t);
 
-        if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
+        if (t_type == task_type_pair && (t_subtype == task_subtype_grav ||
+                                         t_subtype == task_subtype_grav_bkg)) {
           /* Activate the gravity drift */
           cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
         }
 
 #ifdef SWIFT_DEBUG_CHECKS
         else if (t_type == task_type_sub_pair &&
-                 t_subtype == task_subtype_grav) {
+                 (t_subtype == task_subtype_grav ||
+                  t_subtype == task_subtype_grav_bkg) {
           error("Invalid task sub-type encountered");
         }
 #endif
@@ -1139,7 +1143,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       }
 
       /* Only interested in gravity tasks as of here. */
-      else if (t_subtype == task_subtype_grav) {
+      else if (t_subtype == task_subtype_grav ||
+               t_subtype == task_subtype_grav_bkg) {
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
