@@ -149,6 +149,9 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
     sp->rt_data.debug_iact_hydro_inject = 0;
     sp->rt_data.debug_iact_hydro_inject_prep = 0;
 
+#ifndef WITH_MPI
+    /* These checks will fail with MPI since we're not
+     * sending data back */
     for (int g = 0; g < RT_NGROUPS; g++) {
       /* also check now that we actually injected the correct
        * amount of energy
@@ -180,6 +183,7 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
       }
       emitted_energy[g] += sp->rt_data.debug_injected_energy[g];
     }
+#endif
 
     for (int g = 0; g < RT_NGROUPS; g++) {
       sp->rt_data.debug_injected_energy[g] = 0.f;
