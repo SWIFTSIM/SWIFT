@@ -1634,7 +1634,7 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
    * We only update the cell's own time after it's been active. */
   c->rt.ti_rt_end_min += c->rt.ti_rt_min_step_size;
 
-  if (timer) TIMER_TOC(timer_end_rt_advance_cell_time);
+  if (timer) TIMER_TOC(timer_do_rt_advance_cell_time);
 }
 
 /**
@@ -1701,5 +1701,5 @@ void runner_do_collect_rt_times(struct runner *r, struct cell *c,
   c->rt.ti_rt_end_min = ti_rt_end_min;
   c->rt.ti_rt_beg_max = ti_rt_beg_max;
 
-  /* TODO: timer */
+  if (timer) TIMER_TOC(timer_do_rt_collect_times);
 }
