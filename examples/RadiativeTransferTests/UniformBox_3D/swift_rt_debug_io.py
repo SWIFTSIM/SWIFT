@@ -168,10 +168,9 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             "Compile swift --with-rt=debug",
         )
 
-
     with_mpi = False
     mpistr = F["Code"].attrs["MPI library"]
-    if mpistr != b'Non-MPI version of SWIFT':
+    if mpistr != b"Non-MPI version of SWIFT":
         with_mpi = True
     rundata.with_mpi = with_mpi
 
