@@ -895,7 +895,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_feedback(
     const float r2, const float dx[3], const float hi, const float hj,
-    const struct bpart *bi, struct part *pj, struct xpart *xpj,
+    struct bpart *bi, struct part *pj, struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct black_holes_props *bh_props,
@@ -941,6 +941,11 @@ runner_iact_nonsym_bh_gas_feedback(
     message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
         pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
 
+    /* Make sure the timestepping knows of this kicking event */
+    bi->delta_energy_this_timestep +=
+        0.5f * hydro_get_mass(pj) * bi->v_kick * bi->v_kick *
+        cosmo->a * cosmo->a;
+
     /* Set delay time */
     pj->feedback_data.decoupling_delay_time = 
         1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
@@ -966,6 +971,9 @@ runner_iact_nonsym_bh_gas_feedback(
       new_Tj *= (bi->v_kick * bi->v_kick) /
                 (bh_props->jet_velocity * bh_props->jet_velocity);
       
+      /* Treat the jet temperature as an upper limit, in case v_kick > v_jet */
+      if (new_Tj > bh_props->jet_temperature) new_Tj = bh_props->jet_temperature;
+
       message("BH_JET: bid=%lld heating pid=%lld to T=%g K",
         bi->id, pj->id, new_Tj);
 
@@ -980,6 +988,10 @@ runner_iact_nonsym_bh_gas_feedback(
         hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
         const double delta_energy = (u_new - u_init) * hydro_get_mass(pj);
+
+        /* Make sure the timestepping knows of this heating event */
+        bi->delta_energy_this_timestep += delta_energy;
+
         tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
                                            time, delta_energy);
       }

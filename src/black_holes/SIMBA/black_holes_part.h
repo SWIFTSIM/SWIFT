@@ -222,8 +222,14 @@ struct bpart {
   /* Total energy injected into the gas in AGN feedback by this BH */
   float AGN_cumulative_energy;
 
-  /*! BH accretion-limited time-step */
+  /*! BH feedback-limited time-step */
   float dt_heat;
+
+  /*! BH accretion-limited time-step */
+  float dt_accr;
+  
+  /*! How much energy has been given away in this timestep? */
+  float delta_energy_this_timestep;
 
   /*! Union for the last AGN event time and the last AGN event scale factor */
   union {
