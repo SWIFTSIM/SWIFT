@@ -454,7 +454,7 @@ runner_iact_nonsym_feedback_apply(
       /* heat particle thermal_frac of the time with SNII energy leftover after kick */
       const double rand_thermal = random_unit_interval(pj->id, ti_current, random_number_stellar_feedback_2);
       if (rand_thermal < thermal_frac) {
-	const double u_new = u_init + (1.-kinetic_frac) * delta_u * (float)N_of_SNII_energy_inj_received_by_gas * cosmo->a2_inv;  // add in cosmology factor here to convert to comoving (system) units for u
+	const double u_new = u_init + delta_u * (float)N_of_SNII_energy_inj_received_by_gas * cosmo->a2_inv;  // add in cosmology factor here to convert to comoving (system) units for u
         /* Inject energy into the particle */
         hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
         hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
@@ -464,7 +464,7 @@ runner_iact_nonsym_feedback_apply(
 
       /* Kick particle with SNII energy */
 
-      const double v_kick = sqrtf(2.0 * kinetic_frac * delta_u);
+      const double v_kick = sqrtf(2.0 * kinetic_frac * (float)N_of_SNII_energy_inj_received_by_gas * delta_u);
      
       /* compute direction of kick: a x v */ 
       double dir[3], norm=0.;
