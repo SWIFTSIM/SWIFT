@@ -1599,11 +1599,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_pair:
-        if (t->subtype == task_subtype_grav_bkg) {
-          cost = 2.f * wscale * 1000;
-        }
-        else if (t->subtype == task_subtype_grav ||
-            /* t->subtype == task_subtype_grav_bkg || */
+        if (t->subtype == task_subtype_grav ||
+            t->subtype == task_subtype_grav_bkg ||
             t->subtype == task_subtype_grav_zoombkg ||
             t->subtype == task_subtype_grav_bkgzoom) {
           if (t->ci->nodeID != nodeID || t->cj->nodeID != nodeID)
