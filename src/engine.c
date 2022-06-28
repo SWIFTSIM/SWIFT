@@ -1663,7 +1663,7 @@ void engine_skip_drift(struct engine *e) {
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_drift_sink || t->type == task_type_init_grav)
+        t->type == task_type_drift_sink)
       t->skip = 1;
   }
 
@@ -2393,7 +2393,6 @@ void engine_step(struct engine *e) {
     scheduler_write_task_level(&e->sched, e->step);
 
   /* Start all the tasks. */
-  engine_skip_drift(e);
   TIMER_TIC;
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
