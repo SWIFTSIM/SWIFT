@@ -2398,6 +2398,7 @@ void engine_step(struct engine *e) {
     scheduler_write_task_level(&e->sched, e->step);
 
   /* Start all the tasks. */
+  engine_skip_drift(e);
   TIMER_TIC;
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
