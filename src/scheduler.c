@@ -1829,6 +1829,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * gcount_i;
         break;
       case task_type_grav_long_range:
+      case task_type_grav_long_range_bkg:
         cost = wscale * gcount_i;
         break;
       case task_type_grav_mm:
@@ -2065,6 +2066,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         break;
       case task_type_grav_down:
       case task_type_grav_long_range:
+      case task_type_grav_long_range_bkg:
       case task_type_end_grav_force:
       case task_type_drift_gpart:
       case task_type_init_grav:
