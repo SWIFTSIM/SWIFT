@@ -651,10 +651,15 @@ void engine_addtasks_recv_hydro(
       t_rt_sorts = scheduler_addtask(s, task_type_rt_sort, task_subtype_none, 0,
                                      0, c, NULL);
       c->rt.rt_sorts = t_rt_sorts;
-      /* TODO MLADEN: is this of any use? ----v*/
-      if (c->hydro.sorts != NULL) t_rt_sorts->flags = c->hydro.sorts->flags;
-      if (c->hydro.sorts != NULL)
+      if (c->hydro.sorts != NULL) {
+        /* Copy task flags. While these should always be empty for sorts, better
+         * be safe than spend hours looking for this. */
+        t_rt_sorts->flags = c->hydro.sorts->flags;
+        /* Make sure the normal hydro sorts run before the RT sorts run. */
+        scheduler_addunlock(s, c->hydro.sorts, t_rt_sorts);
+        /* Don't run gradients on unsorted cells. */
         scheduler_addunlock(s, c->hydro.sorts, t_rt_gradient);
+      }
 
       /* Make sure the second receive doesn't get enqueued before the first one
        * is done */
@@ -770,11 +775,6 @@ void engine_addtasks_recv_hydro(
       engine_addlink(e, &c->mpi.recv, t_rt_gradient);
       engine_addlink(e, &c->mpi.recv, t_rt_transport);
 
-      /* Make sure the normal hydro sorts run before the RT sorts run. */
-      /* TODO MLADEN: do I still need this, when it's done above already? */
-      if (c->hydro.sorts != NULL)
-        scheduler_addunlock(s, c->hydro.sorts, t_rt_sorts);
-
       for (struct link *l = c->rt.rt_gradient; l != NULL; l = l->next) {
         /* RT gradient tasks mustn't run before we receive necessary data */
         scheduler_addunlock(s, t_rt_gradient, l->t);
@@ -788,8 +788,9 @@ void engine_addtasks_recv_hydro(
         /* RT transport tasks (iact, not comm tasks!!) mustn't run before we
          * receive necessary data */
         scheduler_addunlock(s, t_rt_transport, l->t);
-        /* add dependency for the timestep communication tasks */
-        /* TODO MLADEN: is this still necessary with rt_advance_cell_time? */
+        /* add dependency for the timestep communication tasks. In cases where
+         * RT is inactive, rt_advance_cell_time won't run, so we need to make
+         * sure we don't receive data before we're done with all the work. */
         scheduler_addunlock(s, l->t, tend);
         /* advance cell time mustn't run before transport is done */
         scheduler_addunlock(s, l->t, t_rt_advance_cell_time);

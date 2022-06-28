@@ -514,10 +514,8 @@ void engine_unskip(struct engine *e) {
 
 void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
                                        void *extra_data) {
-  /* Unpack the meta data */
-  struct unskip_data *data = (struct unskip_data *)extra_data;
-  struct engine *e = data->e;
-  /* struct engine *e = (struct engine*)extra_data; */
+
+  struct engine *e = (struct engine *)extra_data;
   struct cell *const cells_top = e->s->cells_top;
 
   /* The current chunk of active cells */
@@ -533,6 +531,11 @@ void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
   }
 }
 
+/**
+ * @brief Unskip all the RT tasks that are active during this sub-cycle.
+ *
+ * @param e The #engine.
+ */
 void engine_unskip_sub_cycle(struct engine *e) {
 
   const ticks tic = getticks();
@@ -557,17 +560,9 @@ void engine_unskip_sub_cycle(struct engine *e) {
     }
   }
 
-  /* TODO MLADEN: is unskip_data still necessary? */
-  struct unskip_data data;
-  bzero(&data, sizeof(struct unskip_data));
-  data.e = e;
-  data.list_base = local_cells;
-  data.num_active_cells = num_active_cells;
-  data.multiplier = 1;
-
   /* Activate all the regular tasks */
   threadpool_map(&e->threadpool, engine_do_unskip_sub_cycle_mapper, local_cells,
-                 num_active_cells, sizeof(int), /*chunk=*/1, &data);
+                 num_active_cells, sizeof(int), /*chunk=*/1, e);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
