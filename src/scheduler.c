@@ -1957,7 +1957,8 @@ void scheduler_enqueue_mapper(void *map_data, int num_elements,
   struct task *tasks = s->tasks;
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[tid[ind]];
-    if (atomic_dec(&t->wait) == 1 && !t->skip) {
+    if ((atomic_dec(&t->wait) == 1 ||
+         t->type == task_type_init_grav) && !t->skip) {
       scheduler_enqueue(s, t);
     }
   }
