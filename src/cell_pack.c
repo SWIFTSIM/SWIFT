@@ -702,8 +702,8 @@ int cell_unpack_sf_counts(struct cell *restrict c,
  * @param count The number of voronoi faces to pack.
  * */
 void cell_pack_voronoi_faces(struct cell *restrict c,
-                             struct voronoi_pair *restrict faces, size_t count) {
-#if WITH_MPI
+                             struct pcell_faces *restrict pcell, size_t count) {
+#ifdef WITH_MPI
 
   if (c->grid.voronoi == NULL)
     error("Trying to pack voronoi faces, but no voronoi grid allocated!");
@@ -717,12 +717,13 @@ void cell_pack_voronoi_faces(struct cell *restrict c,
     size_t sid_count = vortess->pair_index[sid];
     if (sid_count == 0) continue;
 
-    memcpy(&faces[count_total], vortess->pairs[sid],
+    pcell->counts[sid] = sid_count;
+    memcpy(&pcell->faces[count_total], vortess->pairs[sid],
            sid_count * sizeof(struct voronoi_pair));
     count_total += sid_count;
   }
 
-#if SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   if (count_total != count) error("Incorrect number of voronoi faces packed!");
 #endif
 
@@ -738,21 +739,29 @@ void cell_pack_voronoi_faces(struct cell *restrict c,
  * @param pcell The packed representation of the voronoi faces to unpack.
  * */
 void cell_unpack_voronoi_faces(struct cell *restrict c,
-                               struct voronoi_pair *restrict faces) {
+                               struct pcell_faces *restrict pcell) {
 #ifdef WITH_MPI
 
-  struct voronoi *vortess = c->grid.voronoi;
+  /* Old voronoi still allocated? */
+  if (c->grid.voronoi != NULL) {
+    voronoi_destroy(c->grid.voronoi);
+  }
+  /* Allocate new voronoi tesselation */
+  struct voronoi *vortess = (struct voronoi *)malloc(sizeof(struct voronoi));
+  bzero(vortess, sizeof(struct voronoi));
+  c->grid.voronoi = vortess;
 
   size_t count_total = 0;
   for (int sid = 0; sid < 27; sid++) {
     if (sid == 13) continue;
 
-    size_t sid_count = vortess->pair_index[sid];
+    size_t sid_count = pcell->counts[sid];
     if (sid_count == 0) continue;
 
+    vortess->pair_index[sid] = sid_count;
     vortess->pairs[sid] = (struct voronoi_pair *)malloc(
         sid_count * sizeof(struct voronoi_pair));
-    memcpy(vortess->pairs[sid], &faces[count_total],
+    memcpy(vortess->pairs[sid], &pcell->faces[count_total],
            sid_count * sizeof(struct voronoi_pair));
     count_total += sid_count;
   }

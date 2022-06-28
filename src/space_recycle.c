@@ -218,6 +218,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grid.complete = 0;
 #if WITH_MPI
     c->grid.send_flags = 0;
+    c->grid.probing = 0;
 #endif
     c->grid.construction_level = uninitialized;
     c->grid.super = NULL;

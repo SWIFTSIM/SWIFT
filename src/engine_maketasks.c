@@ -644,22 +644,18 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
         /* Make sure this cell is tagged. */
         cell_ensure_tagged(ci);
 
-        struct task *t_face_info = scheduler_addtask(
-            s, task_type_send, task_subtype_face_info, ci->mpi.tag, 0, ci, cj);
         struct task *t_faces = scheduler_addtask(
             s, task_type_send, task_subtype_faces, ci->mpi.tag, 0, ci, cj);
 
         /* add unlocks  */
         /* The faces can only be sent after the grid ghost */
-        scheduler_addunlock(s, ci->grid.super->grid.ghost, t_face_info);
-        scheduler_addunlock(s, t_face_info, t_faces);
+        scheduler_addunlock(s, ci->grid.super->grid.ghost, t_faces);
 
         /* The send_faces unlocks the hydro ghost */
         scheduler_addunlock(s, t_faces,
                             ci->hydro.super->hydro.slope_estimate_ghost);
 
         /* Link to cell */
-        engine_addlink(e, &ci->mpi.send, t_face_info);
         engine_addlink(e, &ci->mpi.send, t_faces);
       }
 
@@ -1332,15 +1328,12 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
       if (c->mpi.tag < 0) error("Trying to receive from untagged cell.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-      struct task *t_face_info = scheduler_addtask(
-          s, task_type_recv, task_subtype_face_info, c->mpi.tag, 0, c, NULL);
       struct task *t_faces = scheduler_addtask(
           s, task_type_recv, task_subtype_faces, c->mpi.tag, 0, c, NULL);
 
       /* Dependencies */
       /* The faces can only be received after the sorts */
-      scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_face_info);
-      scheduler_addunlock(s, t_face_info, t_faces);
+      scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_faces);;
 
       /* The recv_faces unlocks the hydro pair interactions, which are on
        * or above the construction level of a cell. */
@@ -1358,7 +1351,6 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
       }
 
       /* Link to cell */
-      engine_addlink(e, &c->mpi.recv, t_face_info);
       engine_addlink(e, &c->mpi.recv, t_faces);
     }
 

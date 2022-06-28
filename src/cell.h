@@ -522,9 +522,9 @@ int cell_unpack_multipoles(struct cell *c, struct gravity_tensors *m);
 int cell_pack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 int cell_unpack_sf_counts(struct cell *c, struct pcell_sf *pcell);
 void cell_pack_voronoi_faces(struct cell *restrict c,
-                             struct voronoi_pair *restrict faces, size_t count);
+                             struct pcell_faces *restrict pcell, size_t count);
 void cell_unpack_voronoi_faces(struct cell *restrict c,
-                               struct voronoi_pair *restrict faces);
+                               struct pcell_faces *restrict pcell);
 int cell_get_tree_size(struct cell *c);
 int cell_link_parts(struct cell *c, struct part *parts);
 int cell_link_gparts(struct cell *c, struct gpart *gparts);

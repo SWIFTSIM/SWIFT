@@ -170,7 +170,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "rt_gradient",
     "rt_transport",
     "grid_construction",
-    "face_info",
     "faces",
 };
 
@@ -728,6 +727,39 @@ int task_lock(struct task *t) {
 
     /* Communication task? */
     case task_type_recv:
+#ifdef WITH_MPI
+      /* Do we need to probe the message to get the size of the buffer for the
+       * recieve? */
+      if (subtype == task_subtype_faces && t->ci->grid.probing) {
+        /* Probe the task to be able to allocate the buffer for the receive */
+        int flag;
+        MPI_Status status;
+        MPI_Iprobe(t->ci->nodeID, t->flags,
+                   subtaskMPI_comms[task_subtype_faces], &flag, &status);
+        if (flag) {
+          /* Unset probing flag */
+          t->ci->grid.probing = 0;
+          /* Get size of message */
+          int count;
+          MPI_Get_count(&status, MPI_BYTE, &count);
+          t->buff = malloc(count);
+          /* Setup Irecv */
+          err = MPI_Irecv(t->buff, count, MPI_BYTE, t->ci->nodeID, t->flags,
+                          subtaskMPI_comms[task_subtype_faces], &t->req);
+          if (err != MPI_SUCCESS) {
+            mpi_error(err, "Failed to emit irecv for particle data.");
+          }
+          /* And log, if logging enabled. */
+          mpiuse_log_allocation(t->type, task_subtype_faces, &t->req, 1, size,
+                                t->ci->nodeID, t->flags);
+        } else {
+          /* IProbe failed, still waiting for ISend to finish... Nothing else to
+           * do here. */
+          return 0;
+        }
+      }
+#endif
+      // fall through
     case task_type_send:
 #ifdef WITH_MPI
       /* Check the status of the MPI request. */

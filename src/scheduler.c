@@ -2291,19 +2291,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           count = size = t->ci->mpi.pcell_size * sizeof(struct pcell_sf);
           buff = t->buff = malloc(count);
 
-        } else if (t->subtype == task_subtype_face_info) {
-
-          /* Old voronoi still allocated? */
-          if (t->ci->grid.voronoi != NULL) {
-            voronoi_destroy(t->ci->grid.voronoi);
-          }
-          t->ci->grid.voronoi = malloc(sizeof(struct voronoi));
-          bzero(t->ci->grid.voronoi, sizeof(struct voronoi));
-
-          count = size = 28 * sizeof(int);
-          buff = t->buff = t->ci->grid.voronoi->pair_index;
-
         } else if (t->subtype == task_subtype_faces) {
+          /* Set probing flag */
+          t->ci->grid.probing = 1;
+
+          /* We do not need to do anything else yet (we need the size of the
+           * message to be able to allocate the receive buffer). */
+          qid = 1 % s->nr_queues;
+          break;
 
           count = 0;
           for (int i = 0; i < 27; i++) {
@@ -2420,32 +2415,15 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff = malloc(size);
           cell_pack_sf_counts(t->ci, (struct pcell_sf *)t->buff);
 
-        } else if (t->subtype == task_subtype_face_info) {
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Voronoi allocated? */
-          if (t->ci->grid.voronoi == NULL)
-            error("No voronoi allocated when sending Voronoi face info!");
-#endif
-          size = count = 28 * sizeof(int);
-          int *send_counts = (int *)malloc(size);
-          for (int i = 0; i < 28; i++) {
-            if (t->ci->grid.send_flags & 1 << i) {
-              send_counts[i] = t->ci->grid.voronoi->pair_index[i];
-            } else {
-              send_counts[i] = 0;
-            }
-          }
-          buff = t->buff = send_counts;
-
         } else if (t->subtype == task_subtype_faces) {
 
           count = cell_get_voronoi_face_send_count(t->ci);
-          size = count * sizeof(struct voronoi_pair);
+          size = offsetof(struct pcell_faces, faces[count]);
           buff = t->buff = malloc(size);
           bzero(buff, size);
-          cell_pack_voronoi_faces(t->ci, (struct voronoi_pair *)t->buff, count);
-          count = size;
+          cell_pack_voronoi_faces(t->ci, (struct pcell_faces *)t->buff, count);
           type = MPI_BYTE;
+          count = size;
 
         } else {
           error("Unknown communication sub-type");

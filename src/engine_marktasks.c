@@ -1360,7 +1360,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Send the particles of cj to the foreign node */
           scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
           /* Receive the voronoi faces from the foreign node */
-          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_face_info);
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_faces);
         } else if (ci_active_hydro && cj_nodeID != nodeID) {
           /* ci is local.
@@ -1372,8 +1371,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
 
           /* Send ci's voronoi grid to the foreign node. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_face_info,
-                                  cj_nodeID);
           scheduler_activate_send(s, ci->mpi.send, task_subtype_faces,
                                   cj_nodeID);
         }

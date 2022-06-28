@@ -34,9 +34,14 @@ struct cell_grid {
    * on the same level in all directions which are also complete. */
   int complete;
 
+#ifdef WITH_MPI
   /*! Flags indicating whether we should send the faces for the corresponding
    * SIDs over MPI */
   int send_flags;
+
+  /*! Flag indicating whether we are still probing for the send faces message.*/
+  int probing;
+#endif
 
   /*! Pointer to the voronoi struct of this cell (if any) */
   struct voronoi *voronoi;
@@ -66,6 +71,12 @@ struct cell_grid {
 
   /*! Time of last construction */
   integertime_t ti_old;
+};
+
+struct pcell_faces {
+  size_t counts[27];
+
+  struct voronoi_pair faces[];
 };
 
 #endif  // SWIFTSIM_CELL_GRID_H
