@@ -22,7 +22,7 @@
 
 /**
  * @file physical_constants_cgs.h
- * @brief Physical constaonts in the CGS-Gauss unit system.
+ * @brief Physical constants in the rationalized-CGS unit system.
  *
  * The constants declared in this file should _NOT_ be used directly
  * Users should use the converted values in the phys_const structure

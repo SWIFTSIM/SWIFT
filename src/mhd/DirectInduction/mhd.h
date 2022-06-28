@@ -18,6 +18,7 @@
  ******************************************************************************/
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_H
 #define SWIFT_DIRECT_INDUCTION_MHD_H
+#include <float.h>
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp) {
@@ -288,7 +289,8 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *p, struct xpart *xp) {
+    struct part *p, struct xpart *xp,
+    const struct mhd_global_data *mhd_data, const double Lsize) {
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);

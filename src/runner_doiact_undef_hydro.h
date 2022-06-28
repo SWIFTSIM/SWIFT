@@ -21,5 +21,6 @@
 #undef IACT_NONSYM
 #undef IACT_MHD
 #undef IACT_NONSYM_MHD
+#undef GET_MU0
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP

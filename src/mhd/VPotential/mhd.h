@@ -494,33 +494,33 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct mhd_global_data mhd_data, const double Lsize) {
+    const struct mhd_global_data *mhd_data, const double Lsize) {
 
-  const float mu0 = mhd_data.mu0;
+  const float mu0 = mhd_data->mu0;
   // const float Lsize = s->dims[0];
-  const float define_Bfield_in_ics = mhd_data.define_Bfield_in_ics;
+  const float define_Bfield_in_ics = mhd_data->define_Bfield_in_ics;
   const float Nvort = 7;
   const float Bini = define_Bfield_in_ics / (2 * M_PI * Nvort) * Lsize;
   if (define_Bfield_in_ics) {
 
-    p->mhd_data.APred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
+    p->mhd_data->APred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
                                    cos(2 * M_PI * p->x[1] / Lsize * Nvort));
-    p->mhd_data.APred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
+    p->mhd_data->APred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
                                    cos(2 * M_PI * p->x[2] / Lsize * Nvort));
-    p->mhd_data.APred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
+    p->mhd_data->APred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
                                    cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
-  p->mhd_data.APred[0] /= sqrt(mu0);
-  p->mhd_data.APred[1] /= sqrt(mu0);
-  p->mhd_data.APred[2] /= sqrt(mu0);
+  p->mhd_data->APred[0] /= sqrt(mu0);
+  p->mhd_data->APred[1] /= sqrt(mu0);
+  p->mhd_data->APred[2] /= sqrt(mu0);
 
-  p->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
-  p->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
-  p->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
-  xp->mhd_data.APot[0] = p->mhd_data.APred[0];
-  xp->mhd_data.APot[1] = p->mhd_data.APred[1];
-  xp->mhd_data.APot[2] = p->mhd_data.APred[2];
-  xp->mhd_data.Gau = p->mhd_data.Gau;
+  p->mhd_data->Bfld[0] = p->mhd_data->BPred[0];
+  p->mhd_data->Bfld[1] = p->mhd_data->BPred[1];
+  p->mhd_data->Bfld[2] = p->mhd_data->BPred[2];
+  xp->mhd_data->APot[0] = p->mhd_data->APred[0];
+  xp->mhd_data->APot[1] = p->mhd_data->APred[1];
+  xp->mhd_data->APot[2] = p->mhd_data->APred[2];
+  xp->mhd_data->Gau = p->mhd_data->Gau;
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);

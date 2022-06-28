@@ -59,6 +59,9 @@
  *  */
 #define mhd_propos_default_difussion_eta 0.0f
 
+#define monopole_beta 0.0f
+#define dedner_beta 0.0f
+
 /* Structs that store the relevant variables */
 
 /*! MHD parameters */
