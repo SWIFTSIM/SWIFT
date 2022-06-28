@@ -28,25 +28,34 @@
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+                   p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+                   p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
+  return 0.5f * b2;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  return p->mhd_data.APred[0] * p->mhd_data.BPred[0] +
+         p->mhd_data.APred[1] * p->mhd_data.BPred[1] +
+         p->mhd_data.APred[2] * p->mhd_data.BPred[2];
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  return p->v[0] * p->mhd_data.BPred[0] + p->v[1] * p->mhd_data.BPred[1] +
+         p->v[2] * p->mhd_data.BPred[2];
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
+                   p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
+                   p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
+  return fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-5));
 }
 
 /**
@@ -104,7 +113,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 
 /**
  * @brief Returns the Gauge Scalar Phi evolution
- * time the particle. Gaugeall variables in full step
+ * time the particle. Gauge all variables in full step
  *
  * @param p The particle of interest
  * @param Gauge Gauge
@@ -115,8 +124,10 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
 
   const float v_sig = hydro_get_signal_velocity(p);
 
-  return (-p->mhd_data.divA * v_sig * v_sig * 0.01 / a / a -
-          2.0f * v_sig * Gauge / p->h);
+  // return (-p->mhd_data.divA * v_sig * v_sig * 0.01 / a / a -
+  //        2.0f * v_sig * Gauge / p->h);
+  return (-p->mhd_data.divA * v_sig * v_sig * 0.01 * a * a -
+          2.0f * v_sig * Gauge / p->h * a);
 }
 
 /**

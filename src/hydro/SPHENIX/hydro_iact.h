@@ -221,7 +221,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 
   /* Signal velocity */
   const float new_v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -301,7 +301,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   /* Signal velocity */
   const float new_v_sig =
-      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -391,7 +391,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -536,7 +537,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;

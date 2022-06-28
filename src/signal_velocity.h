@@ -42,9 +42,10 @@
  */
 __attribute__((always_inline)) INLINE static float signal_velocity(
     const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta) {
+    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float a) {
 
-  return mhd_signal_velocity(dx, pi, pj, mu_ij, beta);
+  return mhd_signal_velocity(dx, pi, pj, mu_ij, beta, a);
 }
 
 #else
@@ -67,7 +68,8 @@ __attribute__((always_inline)) INLINE static float signal_velocity(
  */
 __attribute__((always_inline)) INLINE static float signal_velocity(
     const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta) {
+    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float a) {
 
   return hydro_signal_velocity(dx, pi, pj, mu_ij, beta);
 }
