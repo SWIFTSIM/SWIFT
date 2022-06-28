@@ -282,8 +282,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a * pow(a,3.*(hydro_gamma-1.));
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a * pow(a,3.*(hydro_gamma-1.));
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a *
+                         pow(a, 3. * (hydro_gamma - 1.));
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a *
+                         pow(a, 3. * (hydro_gamma - 1.));
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -406,8 +408,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a * pow(a,3.*(hydro_gamma-1.));
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a * pow(a,3.*(hydro_gamma-1.));
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a *
+                         pow(a, 3. * (hydro_gamma - 1.));
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a *
+                         pow(a, 3. * (hydro_gamma - 1.));
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 

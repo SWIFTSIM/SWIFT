@@ -23,27 +23,6 @@
 #include "statistics.h"
 
 /**
- * @brief Basic statistics
- *
- * @param parts The particle array.
- * @param statistic structure.
- */
-/*INLINE static void mhd_stats(const struct part* parts, struct statistics* s) {
-
-  float b2 = parts->mhd_data.BPred[0] * parts->mhd_data.BPred[0] +
-             parts->mhd_data.BPred[1] * parts->mhd_data.BPred[1] +
-             parts->mhd_data.BPred[2] * parts->mhd_data.BPred[2];
-  s->E_mag += 0.5 * b2;
-  // DivB error, with a small threshold for small Bfields
-  // WARNING MU0 internal units
-  s->eDivB += fabs(parts->mhd_data.divB * parts->h / sqrt(b2 + 1.e-5));
-  s->H_cross += parts->v[0] * parts->mhd_data.BPred[0] +
-                parts->v[1] * parts->mhd_data.BPred[1] +
-                parts->v[2] * parts->mhd_data.BPred[2];
-  return;
-}*/
-
-/**
  * @brief Specifies which particle fields to read from a dataset
  *
  * @param parts The particle array.
@@ -64,9 +43,10 @@ INLINE static int mhd_read_particles(struct part* parts,
  * */
 INLINE static void convert_B(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
-  ret[0] = p->mhd_data.BPred[0] * sqrt(e->hydro_properties->mhd.mu0);
-  ret[1] = p->mhd_data.BPred[1] * sqrt(e->hydro_properties->mhd.mu0);
-  ret[2] = p->mhd_data.BPred[2] * sqrt(e->hydro_properties->mhd.mu0);
+  float a_fac = pow(e->cosmology->a, 3.f / 2.f * (hydro_gamma - 1.f) - 2.f);
+  ret[0] = p->mhd_data.BPred[0] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+  ret[1] = p->mhd_data.BPred[1] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+  ret[2] = p->mhd_data.BPred[2] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
 }
 
 /**
