@@ -1823,7 +1823,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         cost = wscale * bcount_i;
         break;
       case task_type_init_grav:
-        cost = wscale * gcount_i;
+        cost = wscale * gcount_i + 1000;
         break;
       case task_type_grav_down:
         cost = wscale * gcount_i;
