@@ -745,7 +745,8 @@ inline static void voronoi_check_grid(struct voronoi *restrict v) {
  * @param file File to write to.
  */
 inline static void voronoi_write_grid(const struct voronoi *restrict v,
-                                      FILE *file) {
+                                      const struct part *parts, int count,
+                                      FILE *file, size_t* offset) {
   /* write the faces */
   for (int sid = 0; sid < 28; ++sid) {
     for (int i = 0; i < v->pair_index[sid]; ++i) {
@@ -761,22 +762,6 @@ inline static void voronoi_write_grid(const struct voronoi *restrict v,
       fprintf(file, "\n");
     }
   }
-}
-
-/**
- * @brief Print the Voronoi grid to a file with the given name.
- *
- * @param v Voronoi grid (read-only).
- * @param file_name Name of the output file.
- */
-static inline void voronoi_print_grid(const struct voronoi *restrict v,
-                                      const char *file_name) {
-
-  FILE *file = fopen(file_name, "w");
-
-  voronoi_write_grid(v, file);
-
-  fclose(file);
 }
 
 #endif  // SWIFTSIM_SHADOWSWIFT_VORONOI_3D_H

@@ -7,7 +7,7 @@
 
 #include "hydro.h"
 
-#include <stdlib.h>
+#include <float.h>
 
 typedef struct BBox {
   double anchor[3];
