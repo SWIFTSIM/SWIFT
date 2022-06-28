@@ -2534,12 +2534,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
         /* Minimal distance between any pair of particles */
-#ifdef WITH_ZOOM_REGION
-      const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
-#else
       const double min_radius2 =
           cell_min_dist2_same_size(top, cj, periodic, dim);
-#endif
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (min_radius2 > max_distance2) {
@@ -2595,12 +2591,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
         /* Minimal distance between any pair of particles */
-#ifdef WITH_ZOOM_REGION
-      const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
-#else
       const double min_radius2 =
-          cell_min_dist2_same_size(top, cj, periodic, dim);
-#endif
+          cell_min_dist2_diff_size(top, cj, periodic, dim);
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (min_radius2 > max_distance2) {

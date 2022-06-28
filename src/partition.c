@@ -1435,7 +1435,8 @@ static void partition_gather_weights(void *map_data, int num_elements,
         t->type == task_type_end_grav_force || t->type == task_type_cooling ||
         t->type == task_type_star_formation || t->type == task_type_timestep ||
         t->type == task_type_init_grav || t->type == task_type_grav_down ||
-        t->type == task_type_grav_long_range) {
+        t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_long_range_bkg) {
 
       /* Particle updates add only to vertex weight. */
       if (vweights) atomic_add_d(&weights_v[cid], w);
@@ -2413,7 +2414,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
         t->type == task_type_end_grav_force || t->type == task_type_cooling ||
         t->type == task_type_star_formation || t->type == task_type_timestep ||
         t->type == task_type_init_grav || t->type == task_type_grav_down ||
-        t->type == task_type_grav_long_range) {
+        t->type == task_type_grav_long_range ||
+        t->type == task_type_grav_long_range_bkg) {
 
       /* Particle updates add only to vertex weight. */
       if (vweights) weights_v[cid] += w;
