@@ -1065,6 +1065,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     n1 += 6;
 #endif
 
+#ifdef WITH_ZOOM_REGION
+    if (e->s->with_zoom_region)
+      n1 += 13; /* 26/2 max possible force pairs between grids */
+#endif
+
 #ifdef EXTRA_HYDRO_LOOP
     n1 += 15;
 #ifdef WITH_MPI
