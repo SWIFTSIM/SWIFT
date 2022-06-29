@@ -31,6 +31,7 @@
 #include "inline.h"
 #include "part.h"
 #include "space_getsid.h"
+#include "task.h"
 #include "timers.h"
 #include "zoom_region.h"
 
@@ -2194,7 +2195,7 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
  * particles in a pool of other cells.
  *
  * @param r The #runner.
- * @param t The pooled task we are running
+ * @param t The pooled task we are running.
  * @param gettimer Are we timing this ?
  */
 void runner_dopair_recursive_grav_pooled(struct runner *r, struct task *t,

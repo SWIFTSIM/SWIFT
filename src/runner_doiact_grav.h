@@ -22,6 +22,9 @@
 
 #include "../config.h"
 
+/* Local includes. */
+#include "task.h"
+
 struct runner;
 struct cell;
 
@@ -34,7 +37,7 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
                                   int gettimer);
 
 void runner_dopair_recursive_grav_pooled(struct runner *r, struct task *t,
-                                         int gettimer);
+                                         const int gettimer);
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
                                   struct cell *cj, int gettimer);
 
