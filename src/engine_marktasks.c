@@ -653,7 +653,9 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if ((t_subtype == task_subtype_grav ||
                 t_subtype == task_subtype_grav_bkg ||
                 t_subtype == task_subtype_grav_zoombkg ||
-                t_subtype == task_subtype_grav_bkgzoom) &&
+                t_subtype == task_subtype_grav_bkgzoom ||
+                t_subtype == task_subtype_grav_pooled ||
+                t_subtype == task_subtype_grav_pooled_bkg) &&
                ((ci_active_gravity && ci_nodeID == nodeID) ||
                 (cj_active_gravity && cj_nodeID == nodeID))) {
 
@@ -666,13 +668,24 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* Activate the gravity drift */
           cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
         }
+        else if (t_type == task_type_pair &&
+                 (t_subtype == task_subtype_grav_pooled ||
+                  t_subtype == task_subtype_grav_pooled_bkg)) {
+
+          /* Activate the gravity drift */
+          for (struct link *l = t->pool; l != NULL; l = l->next) {
+            cell_activate_subcell_grav_tasks(l->t->ci, l->t->cj, s);
+          }
+        }
 
 #ifdef SWIFT_DEBUG_CHECKS
         else if (t_type == task_type_sub_pair &&
                  (t_subtype == task_subtype_grav ||
                   t_subtype == task_subtype_grav_bkg ||
                   t_subtype == task_subtype_grav_zoombkg ||
-                  t_subtype == task_subtype_grav_bkgzoom) {
+                  t_subtype == task_subtype_grav_bkgzoom ||
+                  t_subtype == task_subtype_grav_pooled ||
+                  t_subtype == task_subtype_grav_pooled_bkg) {
           error("Invalid task sub-type encountered");
         }
 #endif
@@ -1152,7 +1165,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
       else if (t_subtype == task_subtype_grav ||
                t_subtype == task_subtype_grav_bkg ||
                t_subtype == task_subtype_grav_zoombkg ||
-               t_subtype == task_subtype_grav_bkgzoom) {
+               t_subtype == task_subtype_grav_bkgzoom ||) {
 
 #ifdef WITH_MPI
         /* Activate the send/recv tasks. */
@@ -1190,6 +1203,56 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                sent, i.e. drift the cell specified in the send task (l->t)
                itself. */
             cell_activate_drift_gpart(l->t->ci, s);
+          }
+        }
+#endif
+      }
+      /* Only interested in gravity tasks as of here. */
+      else if (t_subtype == task_subtype_grav_pooled ||
+               t_subtype == task_subtype_grav_pooled_bkg) {
+
+#ifdef WITH_MPI
+        for (struct link *pool_l = t->pool; pool_l != NULL;
+             pool_l = pool_l->next) {
+          struct cell *pool_cj = pool_l->t->cj;
+          const int pool_cj_active_gravity = cell_is_active_gravity(pool_cj, e);
+        
+          /* Activate the send/recv tasks. */
+          if (ci_nodeID != nodeID) {
+
+            /* If the local cell is active, receive data from the foreign cell. */
+            if (pool_cj_active_gravity)
+              scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gpart);
+
+            /* Is the foreign cell active and will need stuff from us? */
+            if (ci_active_gravity) {
+
+              struct link *l = scheduler_activate_send(
+                s, pool_cj->mpi.send, task_subtype_gpart, ci_nodeID);
+
+              /* Drift the cell which will be sent at the level at which it is
+                 sent, i.e. drift the cell specified in the send task (l->t)
+                 itself. */
+              cell_activate_drift_gpart(l->t->ci, s);
+            }
+
+          } else if (pool_cj->nodeID != nodeID) {
+            
+            /* If the local cell is active, receive data from the foreign cell. */
+            if (ci_active_gravity)
+              scheduler_activate_recv(s, pool_cj->mpi.recv, task_subtype_gpart);
+
+            /* Is the foreign cell active and will need stuff from us? */
+            if (pool_cj_active_gravity) {
+
+              struct link *l = scheduler_activate_send(
+                s, ci->mpi.send, task_subtype_gpart, pool_cj->nodeID);
+
+              /* Drift the cell which will be sent at the level at which it is
+                 sent, i.e. drift the cell specified in the send task (l->t)
+                 itself. */
+              cell_activate_drift_gpart(l->t->ci, s);
+            }
           }
         }
 #endif

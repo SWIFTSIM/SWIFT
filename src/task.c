@@ -136,6 +136,8 @@ const char *subtaskID_names[task_subtype_count] = {
     "grav_bkg",
     "grav_zoombkg",
     "grav_bkgzoom",
+    "grav_pooled",
+    "grav_pooled_bkg",
     "external_grav",
     "tend",
     "xv",
@@ -306,6 +308,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_grav_bkg:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_bkgzoom:
+        case task_subtype_grav_pooled:
+        case task_subtype_grav_pooled_bkg:
         case task_subtype_external_grav:
           return task_action_gpart;
           break;
@@ -613,7 +617,9 @@ void task_unlock(struct task *t) {
       if (subtype == task_subtype_grav ||
           subtype == task_subtype_grav_bkg ||
           subtype == task_subtype_grav_zoombkg ||
-          subtype == task_subtype_grav_bkgzoom) {
+          subtype == task_subtype_grav_bkgzoom ||
+          subtype == task_subtype_grav_pooled ||
+          subtype == task_subtype_grav_pooled_bkg) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         cell_gunlocktree(ci);
         cell_gunlocktree(cj);
@@ -881,7 +887,9 @@ int task_lock(struct task *t) {
       if (subtype == task_subtype_grav ||
           subtype == task_subtype_grav_bkg ||
           subtype == task_subtype_grav_zoombkg ||
-          subtype == task_subtype_grav_bkgzoom) {
+          subtype == task_subtype_grav_bkgzoom ||
+          subtype == task_subtype_grav_pooled ||
+          subtype == task_subtype_grav_pooled_bkg) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
         /* Lock the gparts and the m-pole in both cells */
         if (ci->grav.phold || cj->grav.phold) return 0;
@@ -1202,6 +1210,8 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_grav_bkg:
     case task_subtype_grav_zoombkg:
     case task_subtype_grav_bkgzoom:
+    case task_subtype_grav_pooled:
+    case task_subtype_grav_pooled_bkg:
       strcpy(cluster, "Gravity");
       break;
     case task_subtype_limiter:
@@ -1825,6 +1835,8 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_grav_bkg:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_bkgzoom:
+        case task_subtype_grav_pooled:
+        case task_subtype_grav_pooled_bkg:
         case task_subtype_external_grav:
           return task_category_gravity;
 

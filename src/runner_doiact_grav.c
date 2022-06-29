@@ -2191,6 +2191,29 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 
 /**
  * @brief Computes the interaction of all the particles in a cell with all the
+ * particles in a pool of other cells.
+ *
+ * @param r The #runner.
+ * @param t The pooled task we are running
+ * @param gettimer Are we timing this ?
+ */
+void runner_dopair_recursive_grav_pooled(struct runner *r, struct task *t,
+                                         const int gettimer) {
+
+  TIMER_TIC;
+  
+  /* Run over pooled cells and call the recursive pair gravity task. */
+  for (struct link *l = t->pool; l != NULL; l = l->next) {
+    struct task *tp = l->t;
+
+    runner_dopair_recursive_grav(r, tp->ci, tp->cj, /*getimer*/0);
+  }
+  
+  if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
+}
+
+/**
+ * @brief Computes the interaction of all the particles in a cell with all the
  * particles of another cell.
  *
  * This function will try to recurse as far down the tree as possible and only

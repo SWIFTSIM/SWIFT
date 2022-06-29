@@ -2147,7 +2147,9 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t_type == task_type_pair && (t_subtype == task_subtype_grav ||
                                           t_subtype == task_subtype_grav_bkg ||
                                           t_subtype == task_subtype_grav_zoombkg ||
-                                          t_subtype == task_subtype_grav_bkgzoom)) {
+                                          t_subtype == task_subtype_grav_bkgzoom ||
+                                          t_subtype == task_subtype_grav_pooled ||
+                                          t_subtype == task_subtype_grav_pooled_bkg)) {
 
       if (ci_nodeID == nodeID) {
 
@@ -2200,7 +2202,9 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t_type == task_type_sub_pair && (t_subtype == task_subtype_grav ||
                                               t_subtype == task_subtype_grav_bkg ||
                                               t_subtype == task_subtype_grav_zoombkg ||
-                                              t_subtype == task_subtype_grav_bkgzoom)) {
+                                              t_subtype == task_subtype_grav_bkgzoom ||
+                                              t_subtype == task_subtype_grav_pooled ||
+                                              t_subtype == task_subtype_grav_pooled_bkg)) {
 
       if (ci_nodeID == nodeID) {
 
@@ -4459,6 +4463,15 @@ void engine_maketasks(struct engine *e) {
 
   if (e->verbose)
     message("Counting and linking tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Pool the tasks. */
+  scheduler_pooltasks(sched);
+
+  if (e->verbose)
+    message("Pooling tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();

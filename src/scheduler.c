@@ -1223,6 +1223,181 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
 }
 
 /**
+ * @brief Split a gravity task if too large.
+ *
+ * @param t The #task
+ */
+static void scheduler_pooltask_gravity(struct task *t) {
+
+  /* Define the min cost for a pair task as two cells at the split limit. */
+  long long mincost = space_splitsize * space_splitsize;
+
+  /* Get a handle on the cells involved. */
+  struct cell *ci = t->ci;
+  struct cell *cj = t->cj;
+
+  /* Define this tasks cost */
+  const long long gcount_i = ci->grav.count;
+  const long long gcount_j = cj->grav.count;
+  long long cost = gcount_i * gcount_j;
+
+  /* Foreign task? */
+  if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+    t->skip = 1;
+  }
+ /* If these cells are too cheap lets pool tasks. */
+  else if (cost < mincost) {
+
+    /* Signal that this task is now pooled. */
+    if (ci->tl_cell_type == 3)
+      t->subtype->task_subtype_grav_pooled;
+    else
+      t->subtype->task_subtype_grav_pooled_bkg;
+
+    /* Assign the original pair to the pooled cells linked list. */
+    struct link *pool_l = t->pool;
+    pool_l->t = t;
+    pool_l->next = NULL;
+
+    /* Loop through linked list of gravity tasks. */
+    /* struct link *prev_l = NULL; */
+    for (struct link *l = ci->grav.grav; l != NULL || cost > mincost;
+         l = l->next) {
+      struct task *tp = l->t;
+      struct cell *pool_cj = t->cj;
+
+      /* Make sure we aren't pooling the task we are sitting on (t). */
+      if (tp->subtype == t->subtype) continue;
+
+      /* Skip anything that isnt a pair task. */
+      if (tp->type != task_type_pair) continue;
+
+      /* Skip this task if it is skipped or implicit (already pooled). */
+      if (tp->skip || tp->implicit) continue;
+
+      /* Label the now redundant pair task as implict so it does no work */
+      tp->implicit = 1;
+
+      /* Link this task into the pool */
+      struct link *pool_l = pool_l->next;
+      pool_l->t = tp;
+      pool_l->next = NULL;
+
+      /* Account for the extra cost. */
+      cost += pool_cj->grav.count * gcount_i;
+
+      /* /\* Clean up grav.grav linked list *\/ */
+      /* if (prev_l == NUL) { */
+      /*   ci->grav.grav = l->next; */
+      /* } else { */
+      /*   prev_l->next = l->next; */
+      /* } */
+
+      /* /\* Move previous link pointer along. *\/ */
+      /* prev_l = l; */
+    }
+  }
+}
+
+/**
+ * @brief Split a FOF task if too large.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
+
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
+
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Non-splittable task? */
+    if ((t->ci == NULL) || (t->type == task_type_fof_pair && t->cj == NULL) ||
+        t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* Self-interaction? */
+    if (t->type == task_type_fof_self) {
+
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Is this cell even split? */
+      if (cell_can_split_self_fof_task(ci)) {
+
+        /* Take a step back (we're going to recycle the current task)... */
+        redo = 1;
+
+        /* Add the self tasks. */
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+        t->ci = ci->progeny[first_child];
+        for (int k = first_child + 1; k < 8; k++)
+          if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+            scheduler_splittask_fof(
+                scheduler_addtask(s, task_type_fof_self, t->subtype, 0, 0,
+                                  ci->progeny[k], NULL),
+                s);
+
+        /* Make a task for each pair of progeny */
+        for (int j = 0; j < 8; j++)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->grav.count)
+            for (int k = j + 1; k < 8; k++)
+              if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+                scheduler_splittask_fof(
+                    scheduler_addtask(s, task_type_fof_pair, t->subtype, 0, 0,
+                                      ci->progeny[j], ci->progeny[k]),
+                    s);
+      } /* Cell is split */
+
+    } /* Self interaction */
+
+  } /* iterate over the current task. */
+}
+
+/**
+ * @brief Mapper function to split non-FOF tasks that may be too large.
+ *
+ * @param map_data the tasks to process
+ * @param num_elements the number of tasks.
+ * @param extra_data The #scheduler we are working in.
+ */
+void scheduler_pooltasks_mapper(void *map_data, int num_elements,
+                                 void *extra_data) {
+  /* Extract the parameters. */
+  struct task *tasks = (struct task *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &tasks[ind];
+
+    /* If this task is a pooling candidate lets try and pool it */
+    if (!(t->skip) && !(t->implicit) &&
+        (t->type == task_type_pair &&
+        (t->subtype == task_subtype_grav ||
+         t->subtype == task_subtype_grab_bkg ||
+         t->subtype == task_subtype_grav_zoombkg ||
+         t->subtype == task_subtype_grav_bkgzoom))) {
+      scheduler_pooltask_gravity(t);
+    }
+  }
+}
+
+/**
  * @brief Splits all the tasks in the scheduler that are too large.
  *
  * @param s The #scheduler.
@@ -1254,6 +1429,20 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                    s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    s);
   }
+}
+
+/**
+ * @brief Pool all gravity pair tasks in the scheduler that are too small.
+ *
+ * @param s The #scheduler.
+ * @param verbose Are we talkative?
+ */
+void scheduler_pooltasks(struct scheduler *s) {
+
+  /* Call the mapper on each current task. */
+  threadpool_map(s->threadpool, scheduler_pooltasks_mapper, s->tasks,
+                 s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+                 NULL);
 }
 
 /**
@@ -1607,7 +1796,15 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
-
+        } else if (t->subtype == task_subtype_grav_pooled ||
+                   t->subtype == task_subtype_grav_pooled_bkg) {
+          cost = 0;
+          for (struct link *lp = t->pool; lp != NULL; lp = lp->next) {
+            if (t->ci->nodeID != nodeID || lp->t->cj->nodeID != nodeID)
+              cost += 3.f * (wscale * gcount_i) * lp->t->cj->grav.count;
+            else
+              cost += 2.f * (wscale * gcount_i) * lp->t->cj->grav.count;
+          }
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
@@ -2090,6 +2287,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             t->subtype == task_subtype_grav_bkg ||
             t->subtype == task_subtype_grav_zoombkg ||
             t->subtype == task_subtype_grav_bkgzoom ||
+            t->subtype == task_subtype_grav_pooled ||
+            t->subtype == task_subtype_grav_pooled_bkg ||
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
           if (qid < 0 ||

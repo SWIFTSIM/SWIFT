@@ -132,6 +132,8 @@ enum task_subtypes {
   task_subtype_grav_bkg,
   task_subtype_grav_zoombkg,
   task_subtype_grav_bkgzoom,
+  task_subtype_grav_pooled,
+  task_subtype_grav_pooled_bkg,
   task_subtype_external_grav,
   task_subtype_tend,
   task_subtype_xv,
@@ -235,6 +237,9 @@ struct task {
 
   /*! Pointers to the cells this task acts upon */
   struct cell *ci, *cj;
+
+  /*! linked list of pooled tasks (if a pool exists) */
+  struct link *pool;
 
   /*! List of tasks unlocked by this one */
   struct task **unlock_tasks;
