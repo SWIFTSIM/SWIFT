@@ -1241,6 +1241,8 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
   const long long gcount_j = cj->grav.count;
   long long cost = gcount_i * gcount_j;
 
+  message("cost=%ll, mincost=%ll", cost, mincost);
+
   /* Foreign task? */
   if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
     t->skip = 1;
@@ -1260,7 +1262,6 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
     pool_l->next = NULL;
 
     /* Loop through linked list of gravity tasks. */
-    /* struct link *prev_l = NULL; */
     for (struct link *l = ci->grav.grav; l != NULL || cost > mincost;
          l = l->next) {
       struct task *tp = l->t;
