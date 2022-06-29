@@ -1718,7 +1718,7 @@ case "$with_subgrid" in
 	enable_fof=yes
    ;;
    SIMBA)
-	with_subgrid_cooling=SIMBA
+	with_subgrid_cooling=COLIBRE
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE

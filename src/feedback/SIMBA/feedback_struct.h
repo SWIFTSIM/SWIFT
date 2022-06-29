@@ -69,7 +69,7 @@ struct feedback_spart_data {
 
       /*! Total (unweighted) number gas neighbours in the stellar kernel */
       int ngb_N;
-      
+
     } to_collect;
 
     /**

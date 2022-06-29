@@ -48,7 +48,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
  * @param with_cosmology Is this a cosmological simulation?
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
-    struct part* p, struct xpart* xp, const struct engine* e, 
+    struct part* p, struct xpart* xp, const struct engine* e,
     const int with_cosmology) {
 
   /* No reason to do this is the decoupling time is zero */
@@ -60,8 +60,8 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
     /* Get particle time-step */
     double dt_part;
     if (with_cosmology) {
-      dt_part = cosmology_get_delta_time(e->cosmology, ti_begin,
-                                          ti_begin + ti_step);
+      dt_part =
+          cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
     } else {
       dt_part = get_timestep(p->time_bin, e->time_base);
     }

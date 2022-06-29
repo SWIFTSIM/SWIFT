@@ -154,6 +154,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[i];
       struct xpart *restrict xp = &xparts[i];
 
+      /* Do not cool decoupled kinetic wind particles */
       if (p->feedback_data.decoupling_delay_time > 0.f) continue;
 
       /* Anything to do here? (i.e. does this particle need updating?) */

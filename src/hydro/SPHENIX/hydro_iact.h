@@ -425,14 +425,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float acc = sph_acc_term + visc_acc_term;
 
   /* Use the force Luke ! */
-  if (pi->feedback_data.decoupling_delay_time <= 0.f && pj->feedback_data.decoupling_delay_time <= 0.f) {
-      pi->a_hydro[0] -= mj * acc * dx[0];
-      pi->a_hydro[1] -= mj * acc * dx[1];
-      pi->a_hydro[2] -= mj * acc * dx[2];
-    
-      pj->a_hydro[0] += mi * acc * dx[0];
-      pj->a_hydro[1] += mi * acc * dx[1];
-      pj->a_hydro[2] += mi * acc * dx[2];
+  if (pi->feedback_data.decoupling_delay_time <= 0.f &&
+      pj->feedback_data.decoupling_delay_time <= 0.f) {
+    pi->a_hydro[0] -= mj * acc * dx[0];
+    pi->a_hydro[1] -= mj * acc * dx[1];
+    pi->a_hydro[2] -= mj * acc * dx[2];
+
+    pj->a_hydro[0] += mi * acc * dx[0];
+    pj->a_hydro[1] += mi * acc * dx[1];
+    pj->a_hydro[2] += mi * acc * dx[2];
   }
 
   /* Get the time derivative for u. */
@@ -462,9 +463,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float du_dt_j = sph_du_term_j + visc_du_term - diff_du_term;
 
   /* Internal energy time derivative */
-  if (pi->feedback_data.decoupling_delay_time <= 0.f && pj->feedback_data.decoupling_delay_time <= 0.f) {
-      pi->u_dt += du_dt_i * mj;
-      pj->u_dt += du_dt_j * mi;
+  if (pi->feedback_data.decoupling_delay_time <= 0.f &&
+      pj->feedback_data.decoupling_delay_time <= 0.f) {
+    pi->u_dt += du_dt_i * mj;
+    pj->u_dt += du_dt_j * mi;
   }
 
   /* Get the time derivative for h. */

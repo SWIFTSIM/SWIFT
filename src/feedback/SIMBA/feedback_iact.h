@@ -21,9 +21,9 @@
 
 /* Local includes */
 #include "random.h"
-#include "tools.h"
 #include "rays.h"
 #include "timestep_sync_part.h"
+#include "tools.h"
 #include "tracers.h"
 
 /**
@@ -33,8 +33,8 @@
  * @param gj Second particle (not updated).
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_dm_vel_sum(struct spart *si, 
-                                        const struct gpart *gj) {
+runner_iact_nonsym_feedback_dm_vel_sum(struct spart *si,
+                                       const struct gpart *gj) {
   /* Get the DM mean velocity properties and save them. */
   for (int k = 0; k < 3; k++) {
     si->feedback_data.dm_vel_sum[k] += gj->v_full[k];
@@ -50,15 +50,17 @@ runner_iact_nonsym_feedback_dm_vel_sum(struct spart *si,
  * @param gj Second particle.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_dm_vel_disp(struct spart *si, 
+runner_iact_nonsym_feedback_dm_vel_disp(struct spart *si,
                                         const struct gpart *gj) {
   /* Get the DM velocity dispersion. */
   float v_mean_k = 0.f;
   float vj_diff = 0.f;
-  /* TODO: dm_vel_disp[3] is unnecessary to have in the structure, but leaving for now. */
+  /* TODO: dm_vel_disp[3] is unnecessary to have in the structure, but leaving
+   * for now. */
   for (int k = 0; k < 3; k++) {
     /* The real mean is divided by the total neighbours */
-    v_mean_k = si->feedback_data.dm_vel_sum[k] / (float)si->feedback_data.dm_ngb_N;
+    v_mean_k =
+        si->feedback_data.dm_vel_sum[k] / (float)si->feedback_data.dm_ngb_N;
     vj_diff = gj->v_full[k] - v_mean_k;
     si->feedback_data.dm_vel_disp2[k] += vj_diff * vj_diff;
   }
@@ -450,43 +452,64 @@ runner_iact_nonsym_feedback_apply(
       const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
       const float thermal_frac = fb_props->SNII_fthermal;
       const float kinetic_frac = fb_props->SNII_fkinetic;
-      
-      /* heat particle thermal_frac of the time with SNII energy leftover after kick */
-      const double rand_thermal = random_unit_interval(pj->id, ti_current, random_number_stellar_feedback_2);
+
+      /* heat particle thermal_frac of the time with SNII energy leftover after
+       * kick */
+      const double rand_thermal = random_unit_interval(
+          pj->id, ti_current, random_number_stellar_feedback_2);
       if (rand_thermal < thermal_frac) {
-	const double u_new = u_init + delta_u * (float)N_of_SNII_energy_inj_received_by_gas * cosmo->a2_inv;  // add in cosmology factor here to convert to comoving (system) units for u
+        const double u_new =
+            u_init +
+            delta_u * (float)N_of_SNII_energy_inj_received_by_gas *
+                cosmo->a2_inv;  // add in cosmology factor here to convert to
+                                // comoving (system) units for u
         /* Inject energy into the particle */
         hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
         hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
       }
 
-      /* si->feedback_data.to_distribute.dm_vel_disp_1d is the 1D velocity dispersion */
+      /* si->feedback_data.to_distribute.dm_vel_disp_1d is the 1D velocity
+       * dispersion */
 
       /* Kick particle with SNII energy */
 
-      const double v_kick = sqrtf(2.0 * kinetic_frac * (float)N_of_SNII_energy_inj_received_by_gas * delta_u);
-     
-      /* compute direction of kick: a x v */ 
-      double dir[3], norm=0.;
-      dir[0] = pj->gpart->a_grav[1] * pj->v[2] - pj->gpart->a_grav[2] * pj->v[1];
-      dir[1] = pj->gpart->a_grav[2] * pj->v[0] - pj->gpart->a_grav[0] * pj->v[2];
-      dir[2] = pj->gpart->a_grav[0] * pj->v[1] - pj->gpart->a_grav[1] * pj->v[0];
+      const double v_kick =
+          sqrtf(2.0 * kinetic_frac *
+                (float)N_of_SNII_energy_inj_received_by_gas * delta_u);
+
+      /* compute direction of kick: a x v */
+      double dir[3], norm = 0.;
+      dir[0] =
+          pj->gpart->a_grav[1] * pj->v[2] - pj->gpart->a_grav[2] * pj->v[1];
+      dir[1] =
+          pj->gpart->a_grav[2] * pj->v[0] - pj->gpart->a_grav[0] * pj->v[2];
+      dir[2] =
+          pj->gpart->a_grav[0] * pj->v[1] - pj->gpart->a_grav[1] * pj->v[0];
       for (int i = 0; i < 3; i++) norm += dir[i] * dir[i];
       norm = sqrtf(norm);
 
       /* kick the particle */
-      const int dirsign = (random_uniform(-1,1) > 0 ? 1 : -1);
+      const int dirsign = (random_uniform(-1, 1) > 0 ? 1 : -1);
       for (int i = 0; i < 3; i++) pj->v[i] += v_kick * dirsign * dir[i] / norm;
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
 
-      /* Mark this particle has having been heated/kicked by supernova feedback */
+      /* Mark this particle has having been heated/kicked by supernova feedback
+       */
       tracers_after_feedback(xpj);
 
       /* Set delay time */
-      pj->feedback_data.decoupling_delay_time = 0.02f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+      pj->feedback_data.decoupling_delay_time =
+          fb_props->Wind_decoupling_time_factor *
+          cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
+      message(
+          "V_KICK: z=%g  sp->id=%lld  f_E=%g  sigDM=%g  N_SNII=%d  tdelay=%g  "
+          "v_kick=%g",
+          cosmo->z, si->id, si->f_E, si->feedback_data.dm_vel_disp_1d,
+          N_of_SNII_energy_inj_received_by_gas,
+          pj->feedback_data.decoupling_delay_time, v_kick);
       /* Update the signal velocity of the particle based on the velocity
        * kick
        */
