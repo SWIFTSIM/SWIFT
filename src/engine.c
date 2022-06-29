@@ -1784,22 +1784,25 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   if (!(e->policy & engine_policy_rt)) return;
   if (e->max_nr_rt_subcycles <= 1) return;
 
-  /* Collect and print info before it's gone */
-  engine_collect_end_of_sub_cycle(e);
-  if (e->nodeID == 0) {
-    printf(
-        "  %6d cycle   0 (during regular tasks) min/max active bin=%2d/%2d "
-        "rt_updates=%18lld\n",
-        e->step, e->min_active_bin_subcycle, e->max_active_bin_subcycle,
-        e->rt_updates);
-  }
-
   const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_current;
   if (rt_step_size == 0) {
     /* When we arrive at the final step, the rt_step_size can be == 0 */
     if (!engine_is_done(e)) error("Got rt_step_size = 0");
     return;
   }
+
+  double dt_subcycle = rt_step_size * e->time_base;
+
+  /* Collect and print info before it's gone */
+  engine_collect_end_of_sub_cycle(e);
+  if (e->nodeID == 0) {
+    printf(
+        "  %6d cycle   0 (during regular tasks) dt=%14e "
+        "min/max active bin=%2d/%2d rt_updates=%18lld\n",
+        e->step, dt_subcycle, e->min_active_bin_subcycle,
+        e->max_active_bin_subcycle, e->rt_updates);
+  }
+
   /* At this point, the non-RT ti_end_min is up-to-date. Use that and
    * the time of the previous regular step to get how many subcycles
    * we need. */
@@ -1836,9 +1839,9 @@ void engine_run_rt_sub_cycles(struct engine *e) {
 
     if (e->nodeID == 0) {
       printf(
-          "  %6d cycle %3d time=%13.6e     min/max active bin=%2d/%2d "
-          "rt_updates=%18lld\n",
-          e->step, sub_cycle, e->time, e->min_active_bin_subcycle,
+          "  %6d cycle %3d time=%13.6e     dt=%14e "
+          "min/max active bin=%2d/%2d rt_updates=%18lld\n",
+          e->step, sub_cycle, e->time, dt_subcycle, e->min_active_bin_subcycle,
           e->max_active_bin_subcycle, e->rt_updates);
     }
   }
