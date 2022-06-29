@@ -211,6 +211,7 @@ extern int engine_rank;
     fflush(stdout);                                                   \
   })
 #endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
 
 /* Define which particles you'd like to trace. */
 #define PROBLEMPART1 -1
@@ -223,10 +224,8 @@ extern int engine_rank;
   ({                                                                  \
     if (p->id == PROBLEMPART1 || p->id == PROBLEMPART2)               \
       printf("%s %s: part %lld " s "\n", clocks_get_timesincestart(), \
-             __FUNCTION__, c->cellID, ##__VA_ARGS__);                 \
+             __FUNCTION__, p->id, ##__VA_ARGS__);                     \
     fflush(stdout);                                                   \
   })
-
-#endif /* SWIFT_DEBUG_CHECKS */
 
 #endif /* SWIFT_ERROR_H */
