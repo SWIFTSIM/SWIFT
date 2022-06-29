@@ -1275,6 +1275,9 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
       /* Skip this task if it is skipped or implicit (already pooled). */
       if (tp->skip || tp->implicit) continue;
 
+      /* Make sure we aren't pooling a large task */
+      if (ci->grav.count * pool_cj->grav.count > mincost) continue;
+
       /* Label the now redundant pair task as implict so it does no work */
       tp->implicit = 1;
 
@@ -2453,8 +2456,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* If no previous owner, pick a random queue. */
     /* Note that getticks() is random enough */
-    /* if (qid < 0) qid = getticks() % s->nr_queues; */
-    qid = getticks() % s->nr_queues;
+    if (qid < 0) qid = getticks() % s->nr_queues;
     
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
