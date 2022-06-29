@@ -646,8 +646,8 @@ runner_iact_nonsym_bh_gas_swallow(
 
       const float u_new = u_init + du_xray_phys;
 
-      message("BH_XRAY: heating bid=%lld, pid=%lld, u_new/u_old = %g",
-          bi->id, pj->id, u_new / u_init);
+      message("BH_XRAY: heating bid=%lld, pid=%lld, T_gas_cgs(old)=%g, u_new=%g, u_old=%g, u_new/u_old = %g",
+          bi->id, pj->id, T_gas_cgs, u_new, u_init, u_new / u_init);
 
       /* Do the energy injection. */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);

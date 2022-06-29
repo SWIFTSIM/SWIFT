@@ -1173,6 +1173,13 @@ black_holes_compute_xray_feedback(
   
   const float du_cgs = (n_H_cgs * props->proton_mass_cgs_inv) * (S1 + S2) * dt_cgs;
 
+  message("BH_XRAY_DEBUG: n_H(cgs)=%g, S1=%g, S2=%g, dt(cgs)=%g, du_cgs=%g, du_interal=%g",
+          n_H_cgs,
+          S1,
+          S2,
+          dt_cgs,
+          du_cgs,
+          du_cgs / props->conv_factor_specific_energy_to_cgs);
   return du_cgs / props->conv_factor_specific_energy_to_cgs;
 }
 
