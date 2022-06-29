@@ -1318,13 +1318,15 @@ void scheduler_pooltasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
+    /* Skip? Implicit? */
+    if (t->skip || t->implicit) continue;
+
     /* If this task is a pooling candidate lets try and pool it */
-    if (!(t->skip) && !(t->implicit) &&
-        (t->type == task_type_pair &&
+    if  (t->type == task_type_pair &&
         (t->subtype == task_subtype_grav ||
          t->subtype == task_subtype_grav_bkg ||
          t->subtype == task_subtype_grav_zoombkg ||
-         t->subtype == task_subtype_grav_bkgzoom))) {
+         t->subtype == task_subtype_grav_bkgzoom)) {
       scheduler_pooltask_gravity(t, s);
     }
   }
