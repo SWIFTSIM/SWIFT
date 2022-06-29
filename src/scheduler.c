@@ -1229,8 +1229,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  */
 static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
 
-  /* Define the min cost for a pair task as half the task split limit. */
-  long long mincost = space_subsize_pair_grav / 2;
+  /* Define the min cost for a pair task as 2 cells at the splitting limit. */
+  long long mincost = space_splitsize * space_splitsize;
 
   /* Get a handle on the cells involved. */
   struct cell *ci = t->ci;
@@ -1240,8 +1240,6 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
   const long long gcount_i = ci->grav.count;
   const long long gcount_j = cj->grav.count;
   long long cost = gcount_i * gcount_j;
-
-  message("Inside pooling cost=%lld, mincost=%lld", cost, mincost);
 
   /* Foreign task? */
   if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
