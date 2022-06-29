@@ -1227,7 +1227,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  *
  * @param t The #task
  */
-static void scheduler_pooltask_gravity(struct task *t) {
+static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
 
   /* Define the min cost for a pair task as two cells at the split limit. */
   long long mincost = space_splitsize * space_splitsize;
@@ -1250,9 +1250,9 @@ static void scheduler_pooltask_gravity(struct task *t) {
 
     /* Signal that this task is now pooled. */
     if (ci->tl_cell_type == 3)
-      t->subtype->task_subtype_grav_pooled;
+      t->subtype = task_subtype_grav_pooled;
     else
-      t->subtype->task_subtype_grav_pooled_bkg;
+      t->subtype = task_subtype_grav_pooled_bkg;
 
     /* Assign the original pair to the pooled cells linked list. */
     struct link *pool_l = t->pool;
@@ -1279,7 +1279,7 @@ static void scheduler_pooltask_gravity(struct task *t) {
       tp->implicit = 1;
 
       /* Link this task into the pool */
-      struct link *pool_l = pool_l->next;
+      pool_l = pool_l->next;
       pool_l->t = tp;
       pool_l->next = NULL;
 
@@ -1300,77 +1300,6 @@ static void scheduler_pooltask_gravity(struct task *t) {
 }
 
 /**
- * @brief Split a FOF task if too large.
- *
- * @param t The #task
- * @param s The #scheduler we are working in.
- */
-static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
-
-  /* Iterate on this task until we're done with it. */
-  int redo = 1;
-  while (redo) {
-
-    /* Reset the redo flag. */
-    redo = 0;
-
-    /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_fof_pair && t->cj == NULL) ||
-        t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
-      t->type = task_type_none;
-      t->subtype = task_subtype_none;
-      t->ci = NULL;
-      t->cj = NULL;
-      t->skip = 1;
-      break;
-    }
-
-    /* Self-interaction? */
-    if (t->type == task_type_fof_self) {
-
-      /* Get a handle on the cell involved. */
-      struct cell *ci = t->ci;
-
-      /* Foreign task? */
-      if (ci->nodeID != s->nodeID) {
-        t->skip = 1;
-        break;
-      }
-
-      /* Is this cell even split? */
-      if (cell_can_split_self_fof_task(ci)) {
-
-        /* Take a step back (we're going to recycle the current task)... */
-        redo = 1;
-
-        /* Add the self tasks. */
-        int first_child = 0;
-        while (ci->progeny[first_child] == NULL) first_child++;
-        t->ci = ci->progeny[first_child];
-        for (int k = first_child + 1; k < 8; k++)
-          if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
-            scheduler_splittask_fof(
-                scheduler_addtask(s, task_type_fof_self, t->subtype, 0, 0,
-                                  ci->progeny[k], NULL),
-                s);
-
-        /* Make a task for each pair of progeny */
-        for (int j = 0; j < 8; j++)
-          if (ci->progeny[j] != NULL && ci->progeny[j]->grav.count)
-            for (int k = j + 1; k < 8; k++)
-              if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
-                scheduler_splittask_fof(
-                    scheduler_addtask(s, task_type_fof_pair, t->subtype, 0, 0,
-                                      ci->progeny[j], ci->progeny[k]),
-                    s);
-      } /* Cell is split */
-
-    } /* Self interaction */
-
-  } /* iterate over the current task. */
-}
-
-/**
  * @brief Mapper function to split non-FOF tasks that may be too large.
  *
  * @param map_data the tasks to process
@@ -1380,6 +1309,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
 void scheduler_pooltasks_mapper(void *map_data, int num_elements,
                                  void *extra_data) {
   /* Extract the parameters. */
+  struct scheduler *s = (struct scheduler *)extra_data;
   struct task *tasks = (struct task *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
@@ -1389,10 +1319,10 @@ void scheduler_pooltasks_mapper(void *map_data, int num_elements,
     if (!(t->skip) && !(t->implicit) &&
         (t->type == task_type_pair &&
         (t->subtype == task_subtype_grav ||
-         t->subtype == task_subtype_grab_bkg ||
+         t->subtype == task_subtype_grav_bkg ||
          t->subtype == task_subtype_grav_zoombkg ||
          t->subtype == task_subtype_grav_bkgzoom))) {
-      scheduler_pooltask_gravity(t);
+      scheduler_pooltask_gravity(t, s);
     }
   }
 }
@@ -1442,7 +1372,7 @@ void scheduler_pooltasks(struct scheduler *s) {
   /* Call the mapper on each current task. */
   threadpool_map(s->threadpool, scheduler_pooltasks_mapper, s->tasks,
                  s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
-                 NULL);
+                 s);
 }
 
 /**
