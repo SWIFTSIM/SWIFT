@@ -1229,8 +1229,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  */
 static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
 
-  /* Define the min cost for a pair task as a quarter the task split limit. */
-  long long mincost = space_subsize_pair_grav / 4;
+  /* Define the min cost for a pair task as half the task split limit. */
+  long long mincost = space_subsize_pair_grav / 2;
 
   /* Get a handle on the cells involved. */
   struct cell *ci = t->ci;
