@@ -1032,7 +1032,6 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_rt_tchem(r, c->progeny[k], 0);
   } else {
 
-    /* const struct cosmology *cosmo = e->cosmology; */
     struct part *restrict parts = c->hydro.parts;
     struct xpart *restrict xparts = c->hydro.xparts;
 
@@ -1057,6 +1056,8 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
           ti_current_subcycle + 1, p->rt_time_data.time_bin);
       const integertime_t ti_end = ti_begin + ti_step;
 
+      const double dt = rt_part_dt(ti_begin, ti_end, e->time_base,
+                                   with_cosmology, cosmo);
 #ifdef SWIFT_DEBUG_CHECKS
       if (ti_begin != ti_current_subcycle)
         error(
@@ -1064,10 +1065,10 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
             "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
             ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
             ti_current_subcycle);
+      if (dt < 0.)
+        error("Got part with negative time-step: %lld, %.6g", p->id, dt);
 #endif
 
-      const double dt = rt_part_dt(ti_begin, ti_end, e->time_base,
-                                   with_cosmology, e->cosmology);
       rt_finalise_transport(p, dt, cosmo);
 
       /* And finally do thermochemistry */

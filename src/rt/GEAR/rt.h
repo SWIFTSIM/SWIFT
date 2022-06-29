@@ -105,12 +105,6 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   p->rt_data.debug_nsubcycles = 0;
   p->rt_data.debug_kicked = 0;
 #endif
-
-  rt_gradients_init(p);
-  /* the Gizmo-style slope limiting doesn't help for RT as is,
-   * so we're skipping it for now. */
-  /* rt_slope_limit_cell_init(p); */
-  rt_part_reset_fluxes(p);
 }
 
 /**
@@ -124,6 +118,12 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debugging_reset_each_subcycle(p);
 #endif
+
+  rt_gradients_init(p);
+  /* the Gizmo-style slope limiting doesn't help for RT as is,
+   * so we're skipping it for now. */
+  /* rt_slope_limit_cell_init(p); */
+  rt_part_reset_fluxes(p);
 }
 
 /**
