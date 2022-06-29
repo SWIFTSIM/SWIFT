@@ -1230,7 +1230,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
 static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
 
   /* Get the engine. */
-  const struct engine *e = s->space->e;
+  struct engine *e = s->space->e;
 
   /* Define the min cost for a pair task as 2 cells at the splitting limit. */
   long long mincost = space_splitsize * space_splitsize;
