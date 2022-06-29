@@ -1041,45 +1041,55 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
   }
 
   /* Deal with stf */
-  e->output_list_stf = NULL;
-  output_list_init(&e->output_list_stf, e, "StructureFinding",
-                   &e->delta_time_stf);
+  if (e->policy & engine_policy_structure_finding) {
 
-  if (e->output_list_stf) {
-    engine_compute_next_stf_time(e);
+    e->output_list_stf = NULL;
+    output_list_init(&e->output_list_stf, e, "StructureFinding",
+                     &e->delta_time_stf);
 
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_stf_output =
-          exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
-    else
-      e->time_first_stf_output = e->ti_next_stf * e->time_base + e->time_begin;
+    if (e->output_list_stf) {
+      engine_compute_next_stf_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_stf_output =
+            exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_stf_output =
+            e->ti_next_stf * e->time_base + e->time_begin;
+    }
   }
 
   /* Deal with line of sight */
-  e->output_list_los = NULL;
-  output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los);
+  if (e->policy & engine_policy_line_of_sight) {
 
-  if (e->output_list_los) {
-    engine_compute_next_los_time(e);
+    e->output_list_los = NULL;
+    output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los);
 
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_los =
-          exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
-    else
-      e->time_first_los = e->ti_next_los * e->time_base + e->time_begin;
+    if (e->output_list_los) {
+      engine_compute_next_los_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_los =
+            exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_los = e->ti_next_los * e->time_base + e->time_begin;
+    }
   }
 
   /* Deal with power-spectra */
-  e->output_list_ps = NULL;
-  output_list_init(&e->output_list_ps, e, "PowerSpectrum", &e->delta_time_ps);
+  if (e->policy & engine_policy_power_spectra) {
 
-  if (e->output_list_ps) {
-    engine_compute_next_ps_time(e);
+    e->output_list_ps = NULL;
+    output_list_init(&e->output_list_ps, e, "PowerSpectrum", &e->delta_time_ps);
 
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_ps_output =
-          exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
-    else
-      e->time_first_ps_output = e->ti_next_ps * e->time_base + e->time_begin;
+    if (e->output_list_ps) {
+      engine_compute_next_ps_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_ps_output =
+            exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_ps_output = e->ti_next_ps * e->time_base + e->time_begin;
+    }
   }
 }
