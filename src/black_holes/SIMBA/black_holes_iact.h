@@ -615,11 +615,11 @@ runner_iact_nonsym_bh_gas_swallow(
       /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
       const float n_H_cgs = hydro_get_physical_density(pj, cosmo) * 
                             bh_props->rho_to_n_cgs;
-      const float u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+      const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
       const float T_gas_cgs = 
           u_init / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
 
-      float du_xray_phys = 
+      double du_xray_phys = 
           black_holes_compute_xray_feedback(bi, pj, bh_props, 
               cosmo, dx, dt, n_H_cgs, T_gas_cgs);
 
@@ -638,13 +638,13 @@ runner_iact_nonsym_bh_gas_swallow(
         pj->v[1] += prefactor * dx[1];
         pj->v[2] += prefactor * dx[2];
 
-        du_xray_phys *= (1.f - bh_props->xray_kinetic_fraction);
+        du_xray_phys *= (1. - bh_props->xray_kinetic_fraction);
         if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
           du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
         }
       } 
 
-      const float u_new = u_init + du_xray_phys;
+      const double u_new = u_init + du_xray_phys;
 
       message("BH_XRAY: heating bid=%lld, pid=%lld, T_gas_cgs(old)=%g, u_new=%g, u_old=%g, u_new/u_old = %g",
           bi->id, pj->id, T_gas_cgs, u_new, u_init, u_new / u_init);

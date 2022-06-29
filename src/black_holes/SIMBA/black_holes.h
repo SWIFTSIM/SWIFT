@@ -1131,7 +1131,7 @@ black_holes_store_potential_in_part(struct black_holes_part_data* p_data,
  * @param cosmo The current cosmological model.
  * @param dt The timestep of the black hole in internal units.
  */
-__attribute__((always_inline)) INLINE static float 
+__attribute__((always_inline)) INLINE static double 
 black_holes_compute_xray_feedback(
     struct bpart* bp, const struct part* p, 
     const struct black_holes_props* props, 
@@ -1141,37 +1141,36 @@ black_holes_compute_xray_feedback(
     const float n_H_cgs,
     const float T_gas_cgs) {
     
-  float r2_phys = 0.f;
-  for (int i = 0; i < 3; i++) r2_phys += dx[i] * dx[i];
-  r2_phys *= cosmo->a * cosmo->a;
-  const float r2_cgs = r2_phys * props->conv_factor_length_to_cgs;
+  const float r2_phys = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) *
+                  cosmo->a * cosmo->a;
+  const double r2_cgs = r2_phys * props->conv_factor_length_to_cgs;
 
-  const float dt_cgs = dt * props->conv_factor_time_to_cgs;
-  const float luminosity_cgs = bp->radiative_luminosity *
+  const double dt_cgs = dt * props->conv_factor_time_to_cgs;
+  const double luminosity_cgs = bp->radiative_luminosity *
                                props->conv_factor_energy_rate_to_cgs;
   /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
 
   /* Let's do everything in cgs. See Choi et al 2012/2015 */
-  const float zeta = luminosity_cgs / (n_H_cgs * r2_cgs); 
+  const double zeta = luminosity_cgs / (n_H_cgs * r2_cgs); 
 
-  const float S1 = 4.1e-35f * (1.9e7f - T_gas_cgs) * zeta;
-  const float zeta0_term1 = 
-      1.f / (1.5f / sqrtf(T_gas_cgs) + 1.5e12f / powf(T_gas_cgs, 2.5f));
-  const float zeta0_term2 = 
-      (4.0e10f / (T_gas_cgs * T_gas_cgs)) * 
-      (1.f + 80.f / expf((T_gas_cgs - 1.e4f) / 1.5e3f));
+  const double S1 = 4.1e-35 * (1.9e7 - T_gas_cgs) * zeta;
+  const double zeta0_term1 = 
+      1. / (1.5 / sqrtf(T_gas_cgs) + 1.5e12 / powf(T_gas_cgs, 2.5));
+  const double zeta0_term2 = 
+      (4.0e10 / (T_gas_cgs * T_gas_cgs)) * 
+      (1. + 80. / expf((T_gas_cgs - 1.e4) / 1.5e3));
 
-  const float zeta0 = zeta0_term1 + zeta0_term2;
-  const float b = 1.1f - 
-                  1.1f / expf(T_gas_cgs / 1.8e5f) + 
-                  4.0e15f / (T_gas_cgs * T_gas_cgs * T_gas_cgs * T_gas_cgs);
+  const double zeta0 = zeta0_term1 + zeta0_term2;
+  const double b = 1.1 - 
+                  1.1 / expf(T_gas_cgs / 1.8e5) + 
+                  4.0e15 / (T_gas_cgs * T_gas_cgs * T_gas_cgs * T_gas_cgs);
 
-  const float S2 = 1.0e-23f * 
-                   (1.7e4f / powf(T_gas_cgs, 0.7f)) * 
+  const double S2 = 1.0e-23 * 
+                   (1.7e4 / powf(T_gas_cgs, 0.7)) * 
                    powf(zeta / zeta0, b) / 
-                   (1.f + powf(zeta / zeta0, b));
+                   (1. + powf(zeta / zeta0, b));
   
-  const float du_cgs = (n_H_cgs * props->proton_mass_cgs_inv) * (S1 + S2) * dt_cgs;
+  const double du_cgs = (n_H_cgs * props->proton_mass_cgs_inv) * (S1 + S2) * dt_cgs;
 
   message("BH_XRAY_DEBUG: n_H(cgs)=%g, S1=%g, S2=%g, dt(cgs)=%g, du_cgs=%g, du_interal=%g",
           n_H_cgs,
