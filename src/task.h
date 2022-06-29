@@ -25,6 +25,11 @@
 
 #include "../config.h"
 
+/* MPI headers. */
+#ifdef WITH_MPI
+#include <mpi.h>
+#endif
+
 /* Includes. */
 #include "align.h"
 #include "cycle.h"
