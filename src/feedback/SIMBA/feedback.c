@@ -175,6 +175,8 @@ INLINE static void compute_SNII_feedback(
     /* Conversion factor from T to internal energy */
     // const double conv_factor = feedback_props->temp_to_u_factor;
 
+    /* Compute kick speed based on local DM velocity dispersion */
+
     const double v_kick = compute_kick_speed(sp, feedback_props, us);
 
     /* u_kinetic in internal units.  We will work for now in internal units for

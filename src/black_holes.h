@@ -29,6 +29,9 @@
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes.h"
 #include "./black_holes/EAGLE/black_holes_iact.h"
+#elif defined(BLACK_HOLES_SIMBA)
+#include "./black_holes/SIMBA/black_holes.h"
+#include "./black_holes/SIMBA/black_holes_iact.h"
 #else
 #error "Invalid choice of black hole model"
 #endif

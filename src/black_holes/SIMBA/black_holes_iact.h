@@ -2,6 +2,7 @@
  * This file is part of SWIFT.
  * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2021 Edo Altamura (edoardo.altamura@manchester.ac.uk)
+ *               2022 Doug Rennehan (douglas.rennehan@gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,8 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_EAGLE_BH_IACT_H
-#define SWIFT_EAGLE_BH_IACT_H
+#ifndef SWIFT_SIMBA_BH_IACT_H
+#define SWIFT_SIMBA_BH_IACT_H
 
 /* Local includes */
 #include "black_holes_parameters.h"
@@ -44,7 +45,18 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_stars_density(
     const float r2, const float dx[3],
-    struct bpart *bi, const struct part *sj) { }
+    struct bpart *bi, const struct spart *sj) {
+
+  /* Neighbour's (drifted) velocity in the frame of the black hole
+   * (we don't include a Hubble term since we are interested in the
+   * velocity contribution at the location of the black hole) */
+  const float dv[3] = {sj->v[0] - bi->v[0], sj->v[1] - bi->v[1],
+                       sj->v[2] - bi->v[2]};
+
+  bi->specific_angular_momentum_stars[0] += dx[1] * dv[2] - dx[2] * dv[1];
+  bi->specific_angular_momentum_stars[1] += dx[2] * dv[0] - dx[0] * dv[2];
+  bi->specific_angular_momentum_stars[2] += dx[0] * dv[1] - dx[1] * dv[0];  
+}
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -57,7 +69,28 @@ runner_iact_nonsym_bh_stars_density(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_stars_bulge(
     const float r2, const float dx[3],
-    struct bpart *bi, const struct part *sj) { }
+    struct bpart *bi, const struct spart *sj) {
+
+  /* Neighbour's (drifted) velocity in the frame of the black hole
+   * (we don't include a Hubble term since we are interested in the
+   * velocity contribution at the location of the black hole) */
+  const float dv[3] = {sj->v[0] - bi->v[0], sj->v[1] - bi->v[1],
+                       sj->v[2] - bi->v[2]};
+
+  const float star_angular_momentum[3] = {
+    dx[1] * dv[2] - dx[2] * dv[1],
+    dx[2] * dv[0] - dx[0] * dv[2],
+    dx[0] * dv[1] - dx[1] * dv[0]
+  };
+
+  const float proj = star_angular_momentum[0] * bi->specific_angular_momentum_stars[0] 
+                      + star_angular_momentum[1] * bi->specific_angular_momentum_stars[1]
+                      + star_angular_momentum[2] * bi->specific_angular_momentum_stars[2];
+
+  bi->stellar_mass += sj->mass;
+  /* The bulge mass is twice the counter rotating mass */
+  if (proj < 0.f) bi->stellar_bulge_mass += 2.f * sj->mass;
+}
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -86,6 +119,9 @@ runner_iact_nonsym_bh_gas_density(
     const struct entropy_floor_properties *floor_props,
     const integertime_t ti_current, const double time,
     const double time_base) {
+
+  /* Ignore decoupled winds in density computation */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
   float wi, wi_dx;
 
@@ -141,10 +177,21 @@ runner_iact_nonsym_bh_gas_density(
   const float dv[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
                        pj->v[2] - bi->v[2]};
 
+  /* Account for hot and cold gas surrounding the SMBH */
+  const float Tj = uj * cosmo->a_factor_internal_energy /
+                       bh_props->temp_to_u_factor;
+
+  if (Tj > bh_props->environment_temperature_cut) {
+    bi->hot_gas_mass += mj;
+    bi->hot_gas_internal_energy += mj * uj; /* Not kernel weighted */
+  } else {
+    bi->cold_gas_mass += mj;
+  }
+
   /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
-  bi->velocity_gas[0] += mj * dv[0] * wi;
-  bi->velocity_gas[1] += mj * dv[1] * wi;
-  bi->velocity_gas[2] += mj * dv[2] * wi;
+  bi->velocity_gas[0] += mj * wi * dv[0];
+  bi->velocity_gas[1] += mj * wi * dv[1];
+  bi->velocity_gas[2] += mj * wi * dv[2];
 
   /* Contribution to the specific angular momentum of gas, which is later
    * converted to the circular velocity at the smoothing length */
@@ -308,6 +355,9 @@ runner_iact_nonsym_bh_gas_repos(
     const integertime_t ti_current, const double time,
     const double time_base) {
 
+  /* Ignore decoupled wind particles */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+
   float wi;
 
   /* Compute the kernel function; note that r cannot be optimised
@@ -431,6 +481,9 @@ runner_iact_nonsym_bh_gas_swallow(
     const integertime_t ti_current, const double time,
     const double time_base) {
 
+  /* IMPORTANT: Do not even consider wind particles for accretion/feedback */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+
   float wi;
 
   /* Compute the kernel function; note that r cannot be optimised
@@ -441,111 +494,166 @@ runner_iact_nonsym_bh_gas_swallow(
   const float ui = r * hi_inv;
   kernel_eval(ui, &wi);
 
-  /* Start by checking the repositioning criteria */
-  /* Check if the BH needs to be fed. If not, we're done here */
-  const float bh_mass_deficit = bi->subgrid_mass - bi->mass_at_start_of_step;
-  if (bh_mass_deficit <= 0.f) return;
+  /* Get particle time-step */
+  double dt;
+  if (with_cosmology) {
+    const integertime_t ti_step = get_integer_timestep(bi->time_bin);
+    const integertime_t ti_begin =
+        get_integer_time_begin(ti_current - 1, bi->time_bin);
 
-  if (bh_props->use_nibbling) {
+    dt = cosmology_get_delta_time(cosmo, ti_begin,
+                                  ti_begin + ti_step);
+  } else {
+    dt = get_timestep(bi->time_bin, time_base);
+  }
 
-    /* If we do nibbling, things are quite straightforward. We transfer
-     * the mass and all associated quantities right here. */
+  /* Probability to swallow this particle */
+  float prob = -1.f;
 
-    if (bh_props->epsilon_r == 1.f) return;
-
-    const float bi_mass_orig = bi->mass;
-    const float pj_mass_orig = hydro_get_mass(pj);
-
+  /* Radiation was already accounted for in bi->subgrid_mass
+    * so if is is bigger than bi->mass we can simply
+    * flag particles to eat and satisfy the mass constraint.
+    * 
+    * If bi->subgrid_mass < bi->mass then there is a problem,
+    * but we use the full accretion rate to select particles
+    * and then don't actually take anything away from them.
+    * The bi->mass variable is decreased previously to account
+    * for the radiative losses.
+    */
+  const float mass_deficit = bi->subgrid_mass - bi->mass_at_start_of_step;
+  if (mass_deficit >= 0.f) {
     /* Don't nibble from particles that are too small already */
-    if (pj_mass_orig < bh_props->min_gas_mass_for_nibbling) return;
+    if (pj->mass < bh_props->min_gas_mass_for_nibbling) return;
 
-    /* Next line is equivalent to w_ij * m_j / Sum_j (w_ij * m_j) */
-    const float particle_weight = hi_inv_dim * wi * pj_mass_orig / bi->rho_gas;
-    float nibble_mass = bh_mass_deficit * particle_weight;
+    prob = (mass_deficit / bi->f_accretion) 
+        * hi_inv_dim * wi / bi->rho_gas;
+  } else {
+    /* The subgrid mass has not caught up to the physical mass.
+      * The probability is modified so that we will have the 
+      * correct outflow.
+      * 
+      * bi->f_accretion is guaranteed to be nonzero.
+      * 
+      * bi->accretion_rate is the true accretion rate,
+      * and does not have the radiation taken out yet.
+      * We select particles assuming the full accretion rate,
+      * and then decrease the BH mass accordingly.
+      * That guarantees that the gas masses decrease fully,
+      * and that mass never makes it into the black hole.
+      */
+    prob = ((1.f - bi->f_accretion) / bi->f_accretion) 
+        * bi->accretion_rate 
+        * dt 
+        * (hi_inv_dim * wi / bi->rho_gas);
+  }
 
-    /* We radiated away some of the accreted mass, so need to take slightly
-     * more from the gas than the BH gained */
-    const float excess_fraction = 1.f / (1.f - bh_props->epsilon_r);
 
-    /* Need to check whether nibbling would push gas mass below minimum
-     * allowed mass */
-    float new_gas_mass = pj_mass_orig - nibble_mass * excess_fraction;
-    if (new_gas_mass < bh_props->min_gas_mass_for_nibbling) {
-      new_gas_mass = bh_props->min_gas_mass_for_nibbling;
-      nibble_mass = (pj_mass_orig - bh_props->min_gas_mass_for_nibbling) /
-                    excess_fraction;
+  /* Draw a random number (Note mixing both IDs) */
+  const float rand = random_unit_interval(bi->id + pj->id, ti_current,
+                                          random_number_BH_swallow);
+
+  /* Are we lucky? */
+  if (rand < prob) {
+
+    /* If the sub-grid mass is larger, eat away buddy */
+    if (mass_deficit > 0.f) {
+      const float bi_mass_orig = bi->mass;
+      const float pj_mass_orig = pj->mass;
+      const float nibbled_mass = bi->f_accretion * pj->mass;
+      const float new_gas_mass = pj->mass - nibbled_mass;
+      /* Don't go below the minimum for stability */
+      if (new_gas_mass < bh_props->min_gas_mass_for_nibbling) return;
+
+      bi->mass += nibbled_mass;
+      hydro_set_mass(pj, new_gas_mass);
+
+      /* Add the angular momentum of the accreted gas to the BH total.
+      * Note no change to gas here. The cosmological conversion factors for
+      * velocity (a^-1) and distance (a) cancel out, so the angular momentum
+      * is already in physical units. */
+      const float dv[3] = {bi->v[0] - pj->v[0], bi->v[1] - pj->v[1],
+                          bi->v[2] - pj->v[2]};
+      bi->swallowed_angular_momentum[0] +=
+          nibbled_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
+      bi->swallowed_angular_momentum[1] +=
+          nibbled_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
+      bi->swallowed_angular_momentum[2] +=
+          nibbled_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+
+      /* Update the BH momentum and velocity. Again, no change to gas here. */
+      const float bi_mom[3] = {bi_mass_orig * bi->v[0] + nibbled_mass * pj->v[0],
+                              bi_mass_orig * bi->v[1] + nibbled_mass * pj->v[1],
+                              bi_mass_orig * bi->v[2] + nibbled_mass * pj->v[2]};
+
+      bi->v[0] = bi_mom[0] / bi->mass;
+      bi->v[1] = bi_mom[1] / bi->mass;
+      bi->v[2] = bi_mom[2] / bi->mass;
+
+      /* Update the BH and also gas metal masses */
+      struct chemistry_bpart_data *bi_chem = &bi->chemistry_data;
+      struct chemistry_part_data *pj_chem = &pj->chemistry_data;
+      chemistry_transfer_part_to_bpart(
+          bi_chem, pj_chem, nibbled_mass,
+          nibbled_mass / pj_mass_orig);
+
     }
 
-    /* Correct for nibbling the particle mass that is stored in rays */
-    for (int i = 0; i < eagle_blackhole_number_of_rays; i++) {
-      if (bi->rays[i].id_min_length == pj->id) bi->rays[i].mass = new_gas_mass;
+    /* This particle is swallowed by the BH with the largest ID of all the
+      * candidates wanting to swallow it */
+    if (pj->black_holes_data.swallow_id < bi->id) {
+      pj->black_holes_data.swallow_id = bi->id;
+    } else {
+      message(
+          "BH %lld wants to swallow gas particle %lld BUT CANNOT (old "
+          "swallow id=%lld)",
+          bi->id, pj->id, pj->black_holes_data.swallow_id);
     }
+  } else { /* ends section for rand < prob */
+    /* We were not lucky, but we are lucky to heat via X-rays */
+    if (bi->v_kick > bh_props->xray_heating_velocity_threshold) {
 
-    /* Transfer (dynamical) mass from the gas particle to the BH */
-    bi->mass += nibble_mass;
-    hydro_set_mass(pj, new_gas_mass);
+      /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
+      const float n_H_cgs = hydro_get_physical_density(pj, cosmo) * 
+                            bh_props->rho_to_n_cgs;
+      const float u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+      const float T_gas_cgs = 
+          u_init / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
 
-    /* Add the angular momentum of the accreted gas to the BH total.
-     * Note no change to gas here. The cosmological conversion factors for
-     * velocity (a^-1) and distance (a) cancel out, so the angular momentum
-     * is already in physical units. */
-    const float dv[3] = {bi->v[0] - pj->v[0], bi->v[1] - pj->v[1],
-                         bi->v[2] - pj->v[2]};
-    bi->swallowed_angular_momentum[0] +=
-        nibble_mass * (dx[1] * dv[2] - dx[2] * dv[1]);
-    bi->swallowed_angular_momentum[1] +=
-        nibble_mass * (dx[2] * dv[0] - dx[0] * dv[2]);
-    bi->swallowed_angular_momentum[2] +=
-        nibble_mass * (dx[0] * dv[1] - dx[1] * dv[0]);
+      float du_xray_phys = 
+          black_holes_compute_xray_feedback(bi, pj, bh_props, 
+              cosmo, dx, dt, n_H_cgs, T_gas_cgs);
 
-    /* Update the BH momentum and velocity. Again, no change to gas here. */
-    const float bi_mom[3] = {bi_mass_orig * bi->v[0] + nibble_mass * pj->v[0],
-                             bi_mass_orig * bi->v[1] + nibble_mass * pj->v[1],
-                             bi_mass_orig * bi->v[2] + nibble_mass * pj->v[2]};
+      /* Look for cold dense gas. Then push it. */
+      if (n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
+          T_gas_cgs < bh_props->xray_heating_T_threshold_cgs) {
+        const float dv_phys = 2.f * sqrtf(
+                                  bh_props->xray_kinetic_fraction * 
+                                  du_xray_phys
+                              );
+        const float dv_comoving = dv_phys * cosmo->a;
+        const float prefactor = dv_comoving / r;
 
-    bi->v[0] = bi_mom[0] / bi->mass;
-    bi->v[1] = bi_mom[1] / bi->mass;
-    bi->v[2] = bi_mom[2] / bi->mass;
+        /* Push gas radially */
+        pj->v[0] += prefactor * dx[0];
+        pj->v[1] += prefactor * dx[1];
+        pj->v[2] += prefactor * dx[2];
 
-    /* Update the BH and also gas metal masses */
-    struct chemistry_bpart_data *bi_chem = &bi->chemistry_data;
-    struct chemistry_part_data *pj_chem = &pj->chemistry_data;
-    chemistry_transfer_part_to_bpart(
-        bi_chem, pj_chem, nibble_mass * excess_fraction,
-        nibble_mass * excess_fraction / pj_mass_orig);
+        du_xray_phys *= (1.f - bh_props->xray_kinetic_fraction);
+        if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
+          du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
+        }
+      } 
 
-  } else { /* ends nibbling section, below comes swallowing */
+      const float u_new = u_init + du_xray_phys;
 
-    /* Probability to swallow this particle
-     * Recall that in SWIFT the SPH kernel is recovered by computing
-     * kernel_eval() and muliplying by (1/h^d) */
-    const float prob =
-        (bi->subgrid_mass - bi->mass) * hi_inv_dim * wi / bi->rho_gas;
+      message("BH_XRAY: heating bid=%lld, pid=%lld, u_new/u_old = %g",
+          bi->id, pj->id, u_new / u_init);
 
-    /* Draw a random number (Note mixing both IDs) */
-    const float rand = random_unit_interval(bi->id + pj->id, ti_current,
-                                            random_number_BH_swallow);
-
-    /* Are we lucky? */
-    if (rand < prob) {
-
-      /* This particle is swallowed by the BH with the largest ID of all the
-       * candidates wanting to swallow it */
-      if (pj->black_holes_data.swallow_id < bi->id) {
-
-        message("BH %lld wants to swallow gas particle %lld", bi->id, pj->id);
-
-        pj->black_holes_data.swallow_id = bi->id;
-
-      } else {
-
-        message(
-            "BH %lld wants to swallow gas particle %lld BUT CANNOT (old "
-            "swallow id=%lld)",
-            bi->id, pj->id, pj->black_holes_data.swallow_id);
-      }
+      /* Do the energy injection. */
+      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
     }
-  } /* ends section for swallowing */
+  }
 }
 
 /**
@@ -793,7 +901,7 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_gas_feedback(
     const float r2, const float dx[3], const float hi, const float hj,
-    const struct bpart *bi, struct part *pj, struct xpart *xpj,
+    struct bpart *bi, struct part *pj, struct xpart *xpj,
     const int with_cosmology, const struct cosmology *cosmo,
     const struct gravity_props *grav_props,
     const struct black_holes_props *bh_props,
@@ -801,68 +909,128 @@ runner_iact_nonsym_bh_gas_feedback(
     const integertime_t ti_current, const double time,
     const double time_base) {
 
-  /* Number of energy injections per BH per time-step */
-  const int num_energy_injections_per_BH =
-      bi->to_distribute.AGN_number_of_energy_injections;
+  /* This shouldn't happen, but just be sure anyway */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
-  /* Are we doing some feedback? */
-  if (num_energy_injections_per_BH > 0) {
+  /* In SIMBA, all nibbled particles are ejected as a wind */
+  if (pj->black_holes_data.swallow_id == bi->id) {
+    /* Save gas density and entropy before feedback */
+    tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
 
-    /* Number of energy injections that have reached this gas particle */
-    int num_of_energy_inj_received_by_gas = 0;
+    /* TODO: Don't we have the angular momentum already? */
+    /* Compute relative peculiar velocity between the two particles */
+    const float delta_v[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
+                              pj->v[2] - bi->v[2]};
 
-    /* Find out how many rays (= energy injections) this gas particle
-     * has received */
-    for (int i = 0; i < num_energy_injections_per_BH; i++) {
-      if (pj->id == bi->rays[i].id_min_length)
-        num_of_energy_inj_received_by_gas++;
-    }
+    /* compute direction of kick: r x v */ 
+    float dir[3];
+    float norm = 0.f;
+    dir[0] = dx[1] * delta_v[2] - dx[2] * delta_v[1];
+    dir[1] = dx[2] * delta_v[0] - dx[0] * delta_v[2];
+    dir[2] = dx[0] * delta_v[1] - dx[1] * delta_v[0];
+    for (int i = 0; i < 3; i++) norm += dir[i] * dir[i];
+    norm = sqrtf(norm);
 
-    /* If the number of received rays is non-zero, inject
-     * AGN energy in thermal form */
-    if (num_of_energy_inj_received_by_gas > 0) {
+    /* TODO: Remove */
+    float pj_vel_norm = 0.f;
+    for (int i = 0; i < 3; i++) pj_vel_norm += pj->v[i] * pj->v[i];
+    pj_vel_norm = sqrtf(pj_vel_norm);
 
-      /* Save gas density and entropy before feedback */
-      tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
+    /* TODO: random_uniform() won't work here?? */
+    /*const float dirsign = (random_uniform(-1.0, 1.0) > 0. ? 1.f : -1.f);*/
+    const double random_number = 
+        random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
+    const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
+    const float prefactor = bi->v_kick * cosmo->a * dirsign / norm;
 
-      /* Compute new energy per unit mass of this particle
-       * The energy the particle receives is proportional to the number of rays
-       * (num_of_energy_inj_received_by_gas) to which the particle was found to
-       * be closest. */
+    pj->v[0] += prefactor * dir[0];
+    pj->v[1] += prefactor * dir[1];
+    pj->v[2] += prefactor * dir[2];
+
+    message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
+        pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
+
+    /* Make sure the timestepping knows of this kicking event */
+    bi->delta_energy_this_timestep +=
+        0.5f * hydro_get_mass(pj) * bi->v_kick * bi->v_kick *
+        cosmo->a * cosmo->a;
+
+    /* Set delay time */
+    pj->feedback_data.decoupling_delay_time = 
+        1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+
+    /* Update the signal velocity of the particle based on the velocity kick. */
+    hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick);
+
+    /* If we have a jet, we heat! */
+    if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
+      message("BH_JET: bid=%lld kicking pid=%lld at v_kick=%g (internal), v_kick/v_part=%g",
+        bi->id, pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
+
+      float new_Tj = 0.f;
+      /* Use the halo Tvir? */
+      if (bh_props->jet_temperature < 0.f) {
+        /* TODO: Get the halo Tvir for pj */
+        new_Tj = 1.0e8f; /* K */
+      } else {
+        new_Tj = bh_props->jet_temperature; /* K */
+      }
+
+      /* Simba scales with velocity */
+      new_Tj *= (bi->v_kick * bi->v_kick) /
+                (bh_props->jet_velocity * bh_props->jet_velocity);
+      
+      /* Treat the jet temperature as an upper limit, in case v_kick > v_jet */
+      if (new_Tj > bh_props->jet_temperature) new_Tj = bh_props->jet_temperature;
+
+      message("BH_JET: bid=%lld heating pid=%lld to T=%g K",
+        bi->id, pj->id, new_Tj);
+
+      /* Compute new energy per unit mass of this particle */
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
-      const float delta_u = bi->to_distribute.AGN_delta_u *
-                            (float)num_of_energy_inj_received_by_gas;
-      const double u_new = u_init + delta_u;
+      const double u_new = bh_props->temp_to_u_factor * new_Tj;
 
-      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      /* Don't decrease the gas temperature if it's already hotter */
+      if (u_new > u_init) {
+        /* We are overwriting the internal energy of the particle */
+        hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+        hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
-      /* Impose maximal viscosity */
-      hydro_diffusive_feedback_reset(pj);
+        const double delta_energy = (u_new - u_init) * hydro_get_mass(pj);
 
-      /* Store the feedback energy */
-      const double delta_energy = delta_u * hydro_get_mass(pj);
-      tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
-                                         time, delta_energy);
+        /* Make sure the timestepping knows of this heating event */
+        bi->delta_energy_this_timestep += delta_energy;
 
-      /* message( */
-      /*     "We did some AGN heating! id %llu BH id %llu probability " */
-      /*     " %.5e  random_num %.5e du %.5e du/ini %.5e", */
-      /*     pj->id, bi->id, 0.f, 0.f, delta_u, delta_u / u_init); */
-
-      /* Synchronize the particle on the timeline */
-      timestep_sync_part(pj);
+        tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
+                                           time, delta_energy);
+      }
     }
-  }
+
+    /* Impose maximal viscosity */
+    hydro_diffusive_feedback_reset(pj);
+    
+    /* Synchronize the particle on the timeline */
+    timestep_sync_part(pj);
+
+    /* IMPORTANT: The particle MUST NOT be swallowed. 
+     * We are taking a f_accretion from each particle, and then
+     * kicking the rest. We used the swallow marker as a temporary
+     * passer in order to remember which particles have been "nibbled"
+     * so that we can kick them out.
+     */
+    black_holes_mark_part_as_not_swallowed(&pj->black_holes_data);
 
 #ifdef DEBUG_INTERACTIONS_BH
-  /* Update ngb counters */
-  if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)
-    bi->ids_ngbs_force[si->num_ngb_force] = pj->id;
+    /* Update ngb counters */
+    if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)
+      bi->ids_ngbs_force[si->num_ngb_force] = pj->id;
 
-  /* Update ngb counters */
-  ++si->num_ngb_force;
+    /* Update ngb counters */
+    ++si->num_ngb_force;
 #endif
+  } else {
+    return;
+  }
 }
 
-#endif /* SWIFT_EAGLE_BH_IACT_H */
+#endif /* SWIFT_SIMBA_BH_IACT_H */
