@@ -1241,7 +1241,7 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
   const long long gcount_j = cj->grav.count;
   long long cost = gcount_i * gcount_j;
 
-  message("cost=%lld, mincost=%lld", cost, mincost);
+  message("Inside pooling cost=%lld, mincost=%lld", cost, mincost);
 
   /* Foreign task? */
   if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
@@ -1311,7 +1311,7 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
  * @param extra_data The #scheduler we are working in.
  */
 void scheduler_pooltasks_mapper(void *map_data, int num_elements,
-                                 void *extra_data) {
+                                void *extra_data) {
   /* Extract the parameters. */
   struct scheduler *s = (struct scheduler *)extra_data;
   struct task *tasks = (struct task *)map_data;
@@ -1319,15 +1319,17 @@ void scheduler_pooltasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &tasks[ind];
 
-    /* Skip? Implicit? */
-    if (t->skip || t->implicit) continue;
+    /* Implicit? */
+    if (t->implicit) continue;
+
+    /* Not pair? */
+    if (t->type != task_type_pair) continue;
 
     /* If this task is a pooling candidate lets try and pool it */
-    if  (t->type == task_type_pair &&
-        (t->subtype == task_subtype_grav ||
-         t->subtype == task_subtype_grav_bkg ||
-         t->subtype == task_subtype_grav_zoombkg ||
-         t->subtype == task_subtype_grav_bkgzoom)) {
+    if (t->subtype == task_subtype_grav ||
+        t->subtype == task_subtype_grav_bkg ||
+        t->subtype == task_subtype_grav_zoombkg ||
+        t->subtype == task_subtype_grav_bkgzoom) {
       scheduler_pooltask_gravity(t, s);
     }
   }
