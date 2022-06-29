@@ -1229,6 +1229,9 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  */
 static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
 
+  /* Get the engine. */
+  const struct engine *e = s->space->e;
+
   /* Define the min cost for a pair task as 2 cells at the splitting limit. */
   long long mincost = space_splitsize * space_splitsize;
 
@@ -1255,9 +1258,7 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
       t->subtype = task_subtype_grav_pooled_bkg;
 
     /* Assign the original pair to the pooled cells linked list. */
-    struct link *pool_l = t->pool;
-    pool_l->t = t;
-    pool_l->next = NULL;
+    engine_addlink(e, &t->pool, t);
 
     /* Loop through linked list of gravity tasks. */
     for (struct link *l = ci->grav.grav; l != NULL || cost > mincost;
@@ -1283,9 +1284,7 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
       tp->implicit = 1;
 
       /* Link this task into the pool */
-      pool_l = pool_l->next;
-      pool_l->t = tp;
-      pool_l->next = NULL;
+      engine_addlink(e, &t->pool, tp);
 
       /* Account for the extra cost. */
       cost += pool_cj->grav.count * gcount_i;
