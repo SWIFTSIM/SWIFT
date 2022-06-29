@@ -730,18 +730,20 @@ int task_lock(struct task *t) {
 #ifdef WITH_MPI
       /* Do we need to probe the message to get the size of the buffer for the
        * recieve? */
-      if (subtype == task_subtype_faces && t->ci->grid.probing) {
+      if (t->req == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (subtype != task_subtype_faces)
+          error(
+              "Probing for size of message is only supported for recv faces!");
+#endif
         /* Probe the task to be able to allocate the buffer for the receive */
-        int flag;
-        MPI_Status status;
-        MPI_Iprobe(t->ci->nodeID, t->flags,
-                   subtaskMPI_comms[task_subtype_faces], &flag, &status);
-        if (flag) {
-          /* Unset probing flag */
-          t->ci->grid.probing = 0;
+        err = MPI_Iprobe(t->ci->nodeID, t->flags,
+                   subtaskMPI_comms[task_subtype_faces], &res, &stat);
+        if (err != MPI_SUCCESS) mpi_error(err, "Failed to IProbe for message.");
+        if (res) {
           /* Get size of message */
           int count;
-          MPI_Get_count(&status, MPI_BYTE, &count);
+          MPI_Get_count(&stat, MPI_BYTE, &count);
           t->buff = malloc(count);
           /* Setup Irecv */
           err = MPI_Irecv(t->buff, count, MPI_BYTE, t->ci->nodeID, t->flags,

@@ -38,9 +38,6 @@ struct cell_grid {
   /*! Flags indicating whether we should send the faces for the corresponding
    * SIDs over MPI */
   int send_flags;
-
-  /*! Flag indicating whether we are still probing for the send faces message.*/
-  int probing;
 #endif
 
   /*! Pointer to the voronoi struct of this cell (if any) */

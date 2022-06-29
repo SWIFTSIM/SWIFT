@@ -2022,14 +2022,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1e9;
         break;
       case task_type_grid_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
-        break;
       case task_type_slope_estimate_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
-        break;
       case task_type_slope_limiter_ghost:
-        if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
-        break;
       case task_type_flux_ghost:
         if (t->ci == t->ci->hydro.super) cost = wscale * count_i;
         break;
@@ -2292,22 +2286,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           buff = t->buff = malloc(count);
 
         } else if (t->subtype == task_subtype_faces) {
-          /* Set probing flag */
-          t->ci->grid.probing = 1;
+          /* Set request explicitely to NULL to indicate that we still need to
+           * probe for the size of the message. */
+          t->req = NULL;
 
           /* We do not need to do anything else yet (we need the size of the
            * message to be able to allocate the receive buffer). */
           qid = 1 % s->nr_queues;
           break;
-
-          count = 0;
-          for (int i = 0; i < 27; i++) {
-            count += t->ci->grid.voronoi->pair_index[i];
-          }
-          size = count * sizeof(struct voronoi_pair);
-          buff = t->buff = malloc(size);
-          type = MPI_BYTE;
-          count = size;
 
         } else {
           error("Unknown communication sub-type");
