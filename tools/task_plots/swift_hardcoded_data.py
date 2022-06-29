@@ -97,6 +97,8 @@ SUBTYPES = [
     "grav_bkg",
     "grav_zoombkg",
     "grav_bkgzoom",
+    "grav_pool",
+    "grav_pool_bkg",
     "external_grav",
     "tend",
     "xv",

@@ -170,6 +170,8 @@ FULLTYPES = [
     "pair/grav_bkg",
     "pair/grav_zoombkg",
     "pair/grav_bkgzoom",
+    "pair/grav_pool",
+    "pair/grav_pool_bkg",
     "sub_pair/limiter",
     "sub_pair/force",
     "sub_pair/gradient",
