@@ -28,14 +28,13 @@
 #include "random.h"
 #include "timers.h"
 
-
 /**
  * @brief Computes the fraction of the available super-novae energy to
- * inject for a given event.
+ * inject for a given event.  This assumes each SNII has E_SNII_cgs
+ * of energy output (typically 1.e51).  The actual value can be
+ * higher e.g. at low-Z, or lower due to sub-resolution radiative losses.
  *
- * Note that the fraction can be > 1.
- *
- * This allows a choice of different f_th scaling functions.
+ * This function allows a choice of different f_th scaling functions.
  *
  * @param sp The #spart.
  * @param props The properties of the feedback model.
@@ -76,14 +75,7 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
 
   /* Different behaviour for different scaling functions ahead */
   double f_th;
-  if (props->SNII_energy_scaling == SNII_scaling_independent) {
-    /* Independent scaling of f_th with Z and n. Here, we have a second
-     * parameter for the max f_th increase due to density, delta_E_n. */
-    const double delta_E_n = props->SNII_delta_E_n;
-    f_th = (f_E_max - (f_E_max - f_E_min) / (1. + Z_term)) *
-           (delta_E_n - (delta_E_n - 1.) / (1. + n_term));
-
-  } else if (props->SNII_energy_scaling == SNII_scaling_separable) {
+  if (props->SNII_energy_scaling == SNII_scaling_separable) {
     /* Separable scaling between fixed fE_min and fE_max */
     f_th = f_E_max - (f_E_max - f_E_min) / ((1. + Z_term) * (1. + n_term));
 
@@ -96,20 +88,28 @@ double eagle_feedback_energy_fraction(const struct spart* sp,
     f_th = -1.;
   }
 
+  /* Adjust SNII energy for greater energy output at lower metallicity
+   * (Mufasa/Simba's GALAXY_HOTWIND_ZSCALE) */
+  f_th *= pow(10., props->E_SNII_Z_scaling_amplitude *
+                           pow(log10(max(Z, 1.e-9)) + 9, 2.5) +
+                       props->E_SNII_Z_scaling_power);
+
   return f_th;
 }
 
 /**
- * @brief Calculates speed particles will be kicked based on
- * host galaxy properties in internal velocity units.
+ * @brief Calculates speed particles will be kicked from a *single*
+ * SNII event.  Result returned in internal velocity units.
+ * Note that the mass loading factor scales as 1/v_w^2, so this
+ * effectively sets the mass loading factor also (for a given E_SNII).
  *
  * @param sp The sparticle doing the feedback
  * @param feedback_props The properties of the feedback model
  */
-double compute_kick_speed(struct spart* sp, const struct feedback_props* props, const struct unit_system* us) {
+double compute_kick_speed(struct spart* sp, const struct feedback_props* props,
+                          const struct unit_system* us) {
 
   return props->SNII_vkick_factor * sp->feedback_data.dm_vel_disp_1d;
-
 }
 
 /**
@@ -138,9 +138,10 @@ double compute_kick_speed(struct spart* sp, const struct feedback_props* props, 
  * masses).
  */
 INLINE static void compute_SNII_feedback(
-    struct spart* sp, const struct unit_system* us, const double star_age, const double dt,
-    const int ngb_gas_N, const float ngb_gas_mass, const double ngb_nH_cgs,
-    const double ngb_Z, const struct feedback_props* feedback_props,
+    struct spart* sp, const struct unit_system* us, const double star_age,
+    const double dt, const int ngb_gas_N, const float ngb_gas_mass,
+    const double ngb_nH_cgs, const double ngb_Z,
+    const struct feedback_props* feedback_props,
     const double min_dying_mass_Msun, const double max_dying_mass_Msun,
     const integertime_t ti_begin, const struct cosmology* cosmo) {
 
@@ -169,27 +170,22 @@ INLINE static void compute_SNII_feedback(
 
     /* Properties of the model (all in internal units) */
 
-    //const double delta_T =
+    // const double delta_T =
     //    eagle_feedback_temperature_change(sp, feedback_props);
     /* Conversion factor from T to internal energy */
-    //const double conv_factor = feedback_props->temp_to_u_factor;
+    // const double conv_factor = feedback_props->temp_to_u_factor;
 
     /* Compute kick speed based on local DM velocity dispersion */
 
     const double v_kick = compute_kick_speed(sp, feedback_props, us);
 
     /* u_kinetic in internal units.  We will work for now in internal units for
-     * consistency, only converting to physical when we need 
+     * consistency, only converting to physical when we need
      * to add to particle thermal energy (in feedback_iact) */
     const double u_kinetic = 0.5 * v_kick * v_kick;
     const double E_SNe = feedback_props->E_SNII;
-    double f_E = eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
-
-    /* Adjust SNII energy for greater energy output at lower metallicity (Mufasa/Simba's GALAXY_HOTWIND_ZSCALE) */
-     const double Z = max(chemistry_get_star_total_metal_mass_fraction_for_feedback(sp),
-          exp10(log10_min_metallicity));
-    if (Z>1.e-9) f_E *= pow(10.,-0.0029*pow(log10(Z)+9,2.5)+0.417694);
-    else f_E *= 2.61634;
+    double f_E =
+        eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
 
     /* Number of SNe at this time-step */
     double N_SNe;
@@ -204,9 +200,10 @@ INLINE static void compute_SNII_feedback(
     if (N_SNe <= 0.) return;
 
     /* Calculate the default ejection probability (accounting for round-off) */
-    //double prob = f_E * E_SNe * N_SNe / (conv_factor * delta_T * ngb_gas_mass);
-    double prob = f_E * E_SNe * N_SNe / ((u_kinetic * cosmo->a2_inv) * ngb_gas_mass);
-    message("V_KICK: z=%g  sp->id=%lld  f_E=%g  sigDM=%g  v_kick=%g  u_kinetic=%g  u_SN=%g  p=%g", cosmo->z, sp->id, f_E, sp->feedback_data.dm_vel_disp_1d, v_kick, u_kinetic, f_E*E_SNe, prob);
+    // double prob = f_E * E_SNe * N_SNe / (conv_factor * delta_T *
+    // ngb_gas_mass);
+    double prob =
+        f_E * E_SNe * N_SNe / ((u_kinetic * cosmo->a2_inv) * ngb_gas_mass);
     prob = max(prob, 0.0);
 
     /* Calculate the change in internal energy of the gas particles that get
@@ -237,10 +234,10 @@ INLINE static void compute_SNII_feedback(
       number_of_SN_events = ngb_gas_N;
     }
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (f_E < feedback_props->f_E_min || f_E > feedback_props->f_E_max)
-      error("f_E is not in the valid range! f_E=%f sp->id=%lld", f_E, sp->id);
-#endif
+    /* #ifdef SWIFT_DEBUG_CHECKS  -- THIS IS NO LONGER VALID WITH
+    E_SNII_Z_scaling if (f_E < feedback_props->f_E_min || f_E >
+    feedback_props->f_E_max) error("f_E is not in the valid range! f_E=%f
+    sp->id=%lld", f_E, sp->id); #endif */
 
     /* If we have more heating events than the maximum number of
      * rays (eagle_feedback_number_of_rays), then we cannot
@@ -344,7 +341,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
     float dm_vel_disp2[3] = {0.f, 0.f, 0.f};
     for (int i = 0; i < 3; i++) {
       dm_vel_disp2[i] = sp->feedback_data.dm_vel_disp2[i];
-      /* The final 1D vel. disp. will be the average of these three components */
+      /* The final 1D vel. disp. will be the average of these three components
+       */
       dm_vel_disp2[i] /= (float)sp->feedback_data.dm_ngb_N;
       dm_vel_disp_1d += dm_vel_disp2[i];
     }
@@ -387,8 +385,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   if (feedback_props->with_SNII_feedback) {
     compute_SNII_feedback(sp, us, age, dt, ngb_Number, ngb_gas_mass,
                           ngb_gas_phys_nH_cgs, ngb_gas_Z, feedback_props,
-                          min_dying_mass_Msun, max_dying_mass_Msun, 
-                          ti_begin, cosmo);
+                          min_dying_mass_Msun, max_dying_mass_Msun, ti_begin,
+                          cosmo);
   }
 
   /* Integration interval is zero - this can happen if minimum and maximum
@@ -561,10 +559,6 @@ void feedback_props_init(struct feedback_props* fp,
     fp->SNII_energy_scaling = SNII_scaling_EAGLE;
   } else if (strcmp(energy_fraction, "Separable") == 0) {
     fp->SNII_energy_scaling = SNII_scaling_separable;
-  } else if (strcmp(energy_fraction, "Independent") == 0) {
-    fp->SNII_energy_scaling = SNII_scaling_independent;
-    fp->SNII_delta_E_n = parser_get_param_double(
-        params, "SIMBAFeedback:SNII_energy_fraction_delta_E_n");
   } else {
     error(
         "Invalid value of "
@@ -630,6 +624,12 @@ void feedback_props_init(struct feedback_props* fp,
       params, "SIMBAFeedback:SNII_energy_fraction_use_birth_density");
   fp->use_birth_Z_for_f_th = parser_get_param_int(
       params, "SIMBAFeedback:SNII_energy_fraction_use_birth_metallicity");
+
+  /* Set power-law scaling for metallicity dependence of SNII energy */
+  fp->E_SNII_Z_scaling_power =
+      parser_get_param_double(params, "SIMBAFeedback:SNII_Z_scaling_power");
+  fp->E_SNII_Z_scaling_amplitude =
+      parser_get_param_double(params, "SIMBAFeedback:SNII_Z_scaling_amplitude");
 
   /* Properties of the SNII enrichment model -------------------------------- */
 
@@ -723,12 +723,14 @@ void feedback_props_init(struct feedback_props* fp,
 
   /* Properties of Simba kinetic winds -------------------------------------- */
 
-  fp->SNII_fthermal =
-      parser_get_param_double(params, "SIMBAFeedback:SNII_energy_fraction_thermal");
-  fp->SNII_fkinetic =
-      parser_get_param_double(params, "SIMBAFeedback:SNII_energy_fraction_kinetic");
+  fp->SNII_fthermal = parser_get_param_double(
+      params, "SIMBAFeedback:SNII_energy_fraction_thermal");
+  fp->SNII_fkinetic = parser_get_param_double(
+      params, "SIMBAFeedback:SNII_energy_fraction_kinetic");
   fp->SNII_vkick_factor =
       parser_get_param_double(params, "SIMBAFeedback:SNII_vkick_factor");
+  fp->Wind_decoupling_time_factor = parser_get_param_double(
+      params, "SIMBAFeedback:Wind_decoupling_time_factor");
 
   /* Gather common conversion factors --------------------------------------- */
 
@@ -792,18 +794,20 @@ void feedback_props_init(struct feedback_props* fp,
    * mass bins used in IMF  */
   compute_ejecta(fp);
 
-  const double s_n = 1.0 / (M_LN10 * fp->n_n);
-  const double s_Z = 1.0 / (M_LN10 * fp->n_Z);
+  // const double s_n = 1.0 / (M_LN10 * fp->n_n);
+  // const double s_Z = 1.0 / (M_LN10 * fp->n_Z);
 
   if (engine_rank == 0) {
     message("Feedback model is SIMBA (%s)", energy_fraction);
-    message("Feedback energy fraction min=%f, max=%f", fp->f_E_min,
-            fp->f_E_max);
-    message("Feedback energy fraction powers: n_n=%f, n_Z=%f", fp->n_n,
-            fp->n_Z);
-    message("Feedback energy fraction widths: s_n=%f, s_Z=%f", s_n, s_Z);
-    message("Feedback energy fraction pivots: Z_0=%f, n_0_cgs=%f", fp->Z_0,
-            fp->n_0_cgs);
+    message("Feedback energy fraction thermal=%f, kinetic=%f",
+            fp->SNII_fthermal, fp->SNII_fkinetic);
+    message(
+        "Feedback wind parameters: v_kick= %f sigma_DM, t_decouple=%f t_hubble",
+        fp->SNII_vkick_factor, fp->Wind_decoupling_time_factor);
+    message("Feedback energy Z scaling: slope=%f, ampl=%f",
+            fp->E_SNII_Z_scaling_power, fp->E_SNII_Z_scaling_amplitude);
+    message("Feedback energy scaling (%d) min=%f, max=%f",
+            fp->SNII_energy_scaling, fp->f_E_min, fp->f_E_max);
   }
 }
 

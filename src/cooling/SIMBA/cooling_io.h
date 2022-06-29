@@ -186,15 +186,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   }
 
   /* Initial step convergence */
-  cooling->max_step = parser_get_opt_param_int(
-      parameter_file, "SIMBACooling:max_steps", 10000);
+  cooling->max_step =
+      parser_get_opt_param_int(parameter_file, "SIMBACooling:max_steps", 10000);
 
   cooling->convergence_limit = parser_get_opt_param_double(
       parameter_file, "SIMBACooling:convergence_limit", 1e-2);
 
   /* Thermal time */
-  cooling->thermal_time = parser_get_param_double(
-      parameter_file, "SIMBACooling:thermal_time_myr");
+  cooling->thermal_time =
+      parser_get_param_double(parameter_file, "SIMBACooling:thermal_time_myr");
   cooling->thermal_time *= phys_const->const_year * 1e6;
 }
 

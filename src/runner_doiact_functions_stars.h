@@ -92,7 +92,6 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
     /* Skip inactive particles */
     if (!spart_is_active(si, e)) continue;
 
-
     /* Skip inactive particles */
     int si_active_feedback = feedback_is_active(si, e);
     if (!si_active_feedback && !with_rt) continue;

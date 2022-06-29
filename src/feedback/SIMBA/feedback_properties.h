@@ -279,9 +279,6 @@ struct feedback_props {
   /*! Maximal energy fraction for supernova type II feedback */
   double f_E_max;
 
-  /*! Maximum energy increase due to density */
-  double SNII_delta_E_n;
-
   /*! Pivot point for the metallicity dependance of the feedback energy fraction
    * model */
   double Z_0;
@@ -305,6 +302,13 @@ struct feedback_props {
    * feedback time? */
   int use_birth_Z_for_f_th;
 
+  /*! Slope of the metallicity dependance of SNII energy */
+  double E_SNII_Z_scaling_power;  // 0.417694 in Simba (from models of Schaerer
+                                  // 2000)
+
+  /*! Amplitude of the metallicity dependance of SNII energy */
+  double E_SNII_Z_scaling_amplitude;  // -0.0029 in Simba
+
   /* ------------ Enrichment sampling properties ------------ */
 
   /*! Star age above which the enrichment will be downsampled (in internal
@@ -322,9 +326,11 @@ struct feedback_props {
   /*! Fraction of SNII energy used to kick gas particle */
   float SNII_fkinetic;
 
-  /*! v_kick = (this factor) * sigma_DM_1D */
+  /*! v_kick = (this factor) * sigma_DM_1D, per SNII event */
   float SNII_vkick_factor;
 
+  /*! max decoupling time is (this factor) * current Hubble time */
+  float Wind_decoupling_time_factor;
 };
 
 void feedback_props_init(struct feedback_props *fp,
