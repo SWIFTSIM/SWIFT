@@ -120,6 +120,9 @@ runner_iact_nonsym_bh_gas_density(
     const integertime_t ti_current, const double time,
     const double time_base) {
 
+  /* Ignore decoupled winds in density computation */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+
   float wi, wi_dx;
 
   /* Compute the kernel function; note that r cannot be optimised
@@ -351,6 +354,9 @@ runner_iact_nonsym_bh_gas_repos(
     const struct entropy_floor_properties *floor_props,
     const integertime_t ti_current, const double time,
     const double time_base) {
+
+  /* Ignore decoupled wind particles */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
   float wi;
 
@@ -902,6 +908,9 @@ runner_iact_nonsym_bh_gas_feedback(
     const struct entropy_floor_properties *floor_props,
     const integertime_t ti_current, const double time,
     const double time_base) {
+
+  /* This shouldn't happen, but just be sure anyway */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* In SIMBA, all nibbled particles are ejected as a wind */
   if (pj->black_holes_data.swallow_id == bi->id) {

@@ -105,8 +105,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     /* Only do DM vel. disp. loop if necessary for the model. */
-    int si_active_dm_loop = stars_dm_loop_is_active(si, e);
-    if (si_active_dm_loop) {
+    if (stars_dm_loop_is_active(si, e)) {
       for (int gjd = 0; gjd < gcount; gjd++) {
         struct gpart *restrict gj = &gparts[gjd];
         if (gj->type == swift_type_dark_matter) {
@@ -440,8 +439,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       /* Only do DM vel. disp. loop if necessary for the model. */
-      int si_active_dm_loop = stars_dm_loop_is_active(spi, e);
-      if (si_active_dm_loop) {
+      if (stars_dm_loop_is_active(spi, e)) {
         /* TODO: Remove brute force for distance check against all DM */
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
@@ -636,8 +634,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       /* Only do DM vel. disp. loop if necessary for the model. */
-      int sj_active_dm_loop = stars_dm_loop_is_active(spj, e);
-      if (sj_active_dm_loop) {
+      if (stars_dm_loop_is_active(spj, e)) {
         /* TODO: Remove brute force for distance check against all DM */
         for (int gid = 0; gid < gcount_i; gid++) {
           struct gpart *restrict gi = &gparts_i[gid];
@@ -815,7 +812,13 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   const float H = cosmo->H;
 
   const int count_j = cj->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int gcount_j = cj->grav.count;
+#endif
   struct part *restrict parts_j = cj->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  struct gpart *restrict gparts_j = cj->grav.parts;
+#endif
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -827,6 +830,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   /* Sparts are on the left? */
   if (!flipped) {
 
+    
     /* Loop over the sparts_i. */
     for (int pid = 0; pid < scount; pid++) {
 
@@ -839,6 +843,48 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
       const float hig2 = hi * hi * kernel_gamma2;
       const double di = hi * kernel_gamma + dxj + pix * runner_shift[sid][0] +
                         piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+      /* Only do DM vel. disp. loop if necessary for the model. */
+      if (stars_dm_loop_is_active(spi, e)) {
+        /* TODO: Remove brute force for distance check against all DM */
+        for (int gjd = 0; gjd < gcount_j; gjd++) {
+          struct gpart *restrict gj = &gparts_j[gjd];
+          if (gj->type == swift_type_dark_matter) {
+            /* Compute the pairwise distance. */
+            const double gjx = gj->x[0];
+            const double gjy = gj->x[1];
+            const double gjz = gj->x[2];
+
+            /* Compute the pairwise distance. */
+            float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
+                          (float)(piz - gjz)};
+            const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+            if (r2 < hig2) {
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+            }
+          }
+        }
+        /* D. Rennehan: I am worried that these loops might join together... */
+        for (int gjd = 0; gjd < gcount_j; gjd++) {
+          struct gpart *restrict gj = &gparts_j[gjd];
+          if (gj->type == swift_type_dark_matter) {
+            /* Can probably optimize and save above */
+            const double gjx = gj->x[0];
+            const double gjy = gj->x[1];
+            const double gjz = gj->x[2];
+
+            /* Compute the pairwise distance. */
+            float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
+                          (float)(piz - gjz)};
+            const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+            if (r2 < hig2) {
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+            }
+          }
+        }
+      }
+#endif
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
@@ -902,6 +948,48 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
       const float hig2 = hi * hi * kernel_gamma2;
       const double di = -hi * kernel_gamma - dxj + pix * runner_shift[sid][0] +
                         piy * runner_shift[sid][1] + piz * runner_shift[sid][2];
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+      /* Only do DM vel. disp. loop if necessary for the model. */
+      if (stars_dm_loop_is_active(spi, e)) {
+        /* TODO: Remove brute force for distance check against all DM */
+        for (int gjd = 0; gjd < gcount_j; gjd++) {
+          struct gpart *restrict gj = &gparts_j[gjd];
+          if (gj->type == swift_type_dark_matter) {
+            /* Compute the pairwise distance. */
+            const double gjx = gj->x[0];
+            const double gjy = gj->x[1];
+            const double gjz = gj->x[2];
+
+            /* Compute the pairwise distance. */
+            float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
+                          (float)(piz - gjz)};
+            const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+            if (r2 < hig2) {
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+            }
+          }
+        }
+        /* D. Rennehan: I am worried that these loops might join together... */
+        for (int gjd = 0; gjd < gcount_j; gjd++) {
+          struct gpart *restrict gj = &gparts_j[gjd];
+          if (gj->type == swift_type_dark_matter) {
+            /* Can probably optimize and save above */
+            const double gjx = gj->x[0];
+            const double gjy = gj->x[1];
+            const double gjz = gj->x[2];
+
+            /* Compute the pairwise distance. */
+            float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
+                          (float)(piz - gjz)};
+            const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+            if (r2 < hig2) {
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+            }
+          }
+        }
+      }
+#endif
 
       /* Loop over the parts in cj. */
       for (int pjd = count_j - 1; pjd >= 0 && di < sort_j[pjd].d; pjd--) {
@@ -982,8 +1070,13 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
   const float H = cosmo->H;
 
   const int count_j = cj->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int gcount_j = cj->grav.count;
+#endif
   struct part *restrict parts_j = cj->hydro.parts;
-
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  struct gpart *restrict gparts_j = cj->grav.parts;
+#endif
   /* Early abort? */
   if (count_j == 0) return;
 
@@ -1002,6 +1095,48 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
     if (!spart_is_active(spi, e))
       error("Trying to correct smoothing length of inactive particle !");
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+    /* Only do DM vel. disp. loop if necessary for the model. */
+    if (stars_dm_loop_is_active(spi, e)) {
+      /* TODO: Remove brute force for distance check against all DM */
+      for (int gjd = 0; gjd < gcount_j; gjd++) {
+        struct gpart *restrict gj = &gparts_j[gjd];
+        if (gj->type == swift_type_dark_matter) {
+          /* Compute the pairwise distance. */
+          const double gjx = gj->x[0];
+          const double gjy = gj->x[1];
+          const double gjz = gj->x[2];
+
+          /* Compute the pairwise distance. */
+          float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
+                        (float)(piz - gjz)};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+          if (r2 < hig2) {
+            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+          }
+        }
+      }
+      /* D. Rennehan: I am worried that these loops might join together... */
+      for (int gjd = 0; gjd < gcount_j; gjd++) {
+        struct gpart *restrict gj = &gparts_j[gjd];
+        if (gj->type == swift_type_dark_matter) {
+          /* Can probably optimize and save above */
+          const double gjx = gj->x[0];
+          const double gjy = gj->x[1];
+          const double gjz = gj->x[2];
+
+          /* Compute the pairwise distance. */
+          float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
+                        (float)(piz - gjz)};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+          if (r2 < hig2) {
+            runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+          }
+        }
+      }
+    }
 #endif
 
     /* Loop over the parts in cj. */
@@ -1073,7 +1208,13 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   const float H = cosmo->H;
 
   const int count_i = ci->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int gcount_i = ci->grav.count;
+#endif
   struct part *restrict parts_j = ci->hydro.parts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  struct gpart *restrict gparts_j = ci->grav.parts;
+#endif
 
   /* Early abort? */
   if (count_i == 0) return;
@@ -1092,6 +1233,44 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
     if (!spart_is_active(spi, e))
       error("Inactive particle in subset function!");
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+    /* Only do DM vel. disp. loop if necessary for the model. */
+    if (stars_dm_loop_is_active(spi, e)) {
+      /* TODO: Remove brute force for distance check against all DM */
+      for (int gjd = 0; gjd < gcount_i; gjd++) {
+        struct gpart *restrict gj = &gparts_j[gjd];
+        if (gj->type == swift_type_dark_matter) {
+          /* Compute the pairwise distance. */
+           /* Compute the pairwise distance. */
+          const float gjx[3] = {(float)(gj->x[0] - ci->loc[0]),
+                                (float)(gj->x[1] - ci->loc[1]),
+                                (float)(gj->x[2] - ci->loc[2])};
+          float dx[3] = {spix[0] - gjx[0], spix[1] - gjx[1], spix[2] - gjx[2]};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+          if (r2 < hig2) {
+            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+          }
+        }
+      }
+      /* D. Rennehan: I am worried that these loops might join together... */
+      for (int gjd = 0; gjd < gcount_i; gjd++) {
+        struct gpart *restrict gj = &gparts_j[gjd];
+        if (gj->type == swift_type_dark_matter) {
+          /* Can probably optimize and save above */
+          /* Compute the pairwise distance. */
+          const float gjx[3] = {(float)(gj->x[0] - ci->loc[0]),
+                                (float)(gj->x[1] - ci->loc[1]),
+                                (float)(gj->x[2] - ci->loc[2])};
+          float dx[3] = {spix[0] - gjx[0], spix[1] - gjx[1], spix[2] - gjx[2]};
+          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+          if (r2 < hig2) {
+            runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+          }
+        }
+      }
+    }
 #endif
 
     /* Loop over the parts in cj. */

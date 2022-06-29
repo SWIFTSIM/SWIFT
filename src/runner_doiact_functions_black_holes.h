@@ -504,8 +504,14 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
   const int bi_is_local = ci->nodeID == e->nodeID;
 
   const int count_j = cj->hydro.count;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  const int scount_j = cj->stars.count;
+#endif
   struct part *restrict parts_j = cj->hydro.parts;
   struct xpart *restrict xparts_j = cj->hydro.xparts;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+  struct spart *restrict sparts_j = cj->stars.parts;
+#endif
 
   /* Early abort? */
   if (count_j == 0) return;
@@ -525,6 +531,56 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 #ifdef SWIFT_DEBUG_CHECKS
     if (!bpart_is_active(bi, e))
       error("Trying to correct smoothing length of inactive particle !");
+#endif
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+    /* Only do bh-stars loop if necessary for the model. */
+    if (bh_stars_loop_is_active(bi, e)) {
+      for (int sjd = 0; sjd < scount_j; sjd++) {
+        struct spart *restrict sj = &sparts_j[sjd];
+
+        /* Compute the pairwise distance. */
+        const double sjx = sj->x[0];
+        const double sjy = sj->x[1];
+        const double sjz = sj->x[2];
+
+        /* Compute the pairwise distance. */
+        const float dx[3] = {(float)(bix - sjx), (float)(biy - sjy),
+                            (float)(biz - sjz)};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Star is within smoothing length of black hole */
+        if (r2 < hig2) {
+          runner_iact_nonsym_bh_stars_density(r2, dx, bi, sj);
+        }
+      }
+
+      /* TODO: One possible speed-up is just to flag the BH id 
+        * that each star is associated with in the previous loop,
+        * and then just use that to loop instead of doing the distance
+        * calculation everytime.
+        */
+
+      /* Now that we have the angular momentum, find the bulge mass */
+      for (int sjd = 0; sjd < scount_j; sjd++) {
+        struct spart *restrict sj = &sparts_j[sjd];
+
+        /* Compute the pairwise distance. */
+        const double sjx = sj->x[0];
+        const double sjy = sj->x[1];
+        const double sjz = sj->x[2];
+
+        /* Compute the pairwise distance. */
+        const float dx[3] = {(float)(bix - sjx), (float)(biy - sjy),
+                            (float)(biz - sjz)};
+        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+        /* Star is within smoothing length of black hole */
+        if (r2 < hig2) {
+          runner_iact_nonsym_bh_stars_bulge(r2, dx, bi, sj);
+        }
+      }
+    }
 #endif
 
     /* Loop over the parts in cj. */

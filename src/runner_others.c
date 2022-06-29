@@ -154,7 +154,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[i];
       struct xpart *restrict xp = &xparts[i];
 
-      if (p->feedback_data.decoupling_delay_time > 0.f) continue;
+      /* D. Rennehan: Moved this into cooling_cool_part
+       * if (p->feedback_data.decoupling_delay_time > 0.f) continue;
+       */
 
       /* Anything to do here? (i.e. does this particle need updating?) */
       if (part_is_active(p, e)) {
