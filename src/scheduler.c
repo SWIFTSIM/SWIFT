@@ -1263,13 +1263,15 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
     for (struct link *l = ci->grav.grav; l != NULL || cost > mincost;
          l = l->next) {
       struct task *tp = l->t;
+
+      /* Skip anything that isnt a pair task. */
+      if (tp->type != task_type_pair) continue;
+
+      /* Get pair cell. */
       struct cell *pool_cj = t->cj;
 
       /* Make sure we aren't pooling the task we are sitting on (t). */
       if (tp->subtype == t->subtype) continue;
-
-      /* Skip anything that isnt a pair task. */
-      if (tp->type != task_type_pair) continue;
 
       /* Skip this task if it is skipped or implicit (already pooled). */
       if (tp->skip || tp->implicit) continue;
