@@ -200,7 +200,6 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
     struct part p_boundary = *p;
     cell_reflect_coordinates(c, p->x, sid, &p_boundary.x[0]);
 #ifdef SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
-    /* TODO just skip this? */
     for (int i = 0; i < 3; i++) {
       if (sortlist_shift_vector[sid][i] != 0) {
         /* Reflect the velocity along this axis */

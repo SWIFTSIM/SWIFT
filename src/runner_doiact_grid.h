@@ -655,8 +655,7 @@ runner_doself_branch_grid_construction(struct runner *restrict r,
 #ifdef SHADOWSWIFT_HILBERT_ORDERING
   const int count = c->hydro.count;
 
-  /* Calculate hilbert keys + sort
-   * TODO: Move this to the sorts and avoid doing it every timestep? */
+  /* Calculate hilbert keys + sort */
   unsigned long *hilbert_keys =
       (unsigned long *)malloc(count * sizeof(unsigned long));
   get_hilbert_keys(c, hilbert_keys);

@@ -2752,59 +2752,6 @@ static inline void engine_make_hydro_loops_dependencies(
 #endif
 
 /**
- * @brief Creates all the task dependencies for the grid construction
- *
- * @param e The #engine
- */
-void engine_link_grid_tasks(struct engine *e) {
-  struct scheduler *sched = &e->sched;
-  const int nr_tasks = sched->nr_tasks;
-
-  for (int k = 0; k < nr_tasks; k++) {
-    /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
-
-    if (t->type == task_type_none) continue;
-
-    /* Get the cell we act on */
-    struct cell *ci = t->ci;
-    const enum task_types t_type = t->type;
-    const enum task_subtypes t_subtype = t->subtype;
-
-    /* Node ID (if running with MPI) TODO */
-
-    if (t_subtype == task_subtype_grid_construction) {
-      /* Self grid construction task?
-       * super.drift --> self_construction --> ghost_construction */
-      if (t_type == task_type_self) {
-        scheduler_addunlock(sched, ci->grid.super->hydro.drift, t);
-        scheduler_addunlock(sched, t, ci->grid.ghost);
-      }
-      /* Pair grid construction task?
-       * Drift --> pair_construction --> ghost_construction
-       *  |-->Sort --^ */
-      else if (t_type == task_type_pair) {
-        /* Get the cell we receive particles from */
-        struct cell *cj = t->cj;
-
-        scheduler_addunlock(sched, ci->grid.super->hydro.drift, t);
-        scheduler_addunlock(sched, ci->grid.super->hydro.sorts, t);
-        if (ci->grid.super != cj->grid.super) {
-          scheduler_addunlock(sched, cj->grid.super->hydro.drift, t);
-          scheduler_addunlock(sched, cj->grid.super->hydro.sorts, t);
-        }
-        scheduler_addunlock(sched, t, ci->grid.ghost);
-      }
-    }
-
-    if (t_type == task_type_grid_ghost) {
-      /* This is only temporarily, should unlock the grid hydro tasks */
-      scheduler_addunlock(sched, t, ci->super->kick2);
-    }
-  }
-}
-
-/**
  * @brief Duplicates the first hydro loop and construct all the
  * dependencies for the hydro part
  *
