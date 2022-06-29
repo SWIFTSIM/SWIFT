@@ -43,8 +43,8 @@
 #define scheduler_maxwait 3
 #define scheduler_init_nr_unlocks 10000
 #define scheduler_dosub 1
-#define scheduler_maxsteal 50
-#define scheduler_maxtries 10
+#define scheduler_maxsteal 10
+#define scheduler_maxtries 2
 #define scheduler_doforcesplit            \
   0 /* Beware: switching this on can/will \
        break engine_addlink as it assumes \

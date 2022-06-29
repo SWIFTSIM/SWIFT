@@ -2324,8 +2324,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
     /* If no previous owner, pick a random queue. */
     /* Note that getticks() is random enough */
-    if (qid < 0) qid = getticks() % s->nr_queues;
-
+    /* if (qid < 0) qid = getticks() % s->nr_queues; */
+    qid = getticks() % s->nr_queues;
+    
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
 
