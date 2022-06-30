@@ -1280,7 +1280,7 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
         struct cell *pool_cj = t->cj;
 
         /* Skip this task if it is skipped or implicit (already pooled). */
-        if (tp->skip || tp->implicit) continue;
+        if (tp->implicit) continue;
 
         /* Make sure we aren't pooling a large task */
         if (ci->grav.count * pool_cj->grav.count > mincost) continue;
