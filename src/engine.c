@@ -1784,23 +1784,12 @@ void engine_run_rt_sub_cycles(struct engine *e) {
   if (!(e->policy & engine_policy_rt)) return;
   if (e->max_nr_rt_subcycles <= 1) return;
 
+  /* Get the subcycling step */
   const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_current;
   if (rt_step_size == 0) {
     /* When we arrive at the final step, the rt_step_size can be == 0 */
     if (!engine_is_done(e)) error("Got rt_step_size = 0");
     return;
-  }
-
-  double dt_subcycle = rt_step_size * e->time_base;
-
-  /* Collect and print info before it's gone */
-  engine_collect_end_of_sub_cycle(e);
-  if (e->nodeID == 0) {
-    printf(
-        "  %6d cycle   0 (during regular tasks) dt=%14e "
-        "min/max active bin=%2d/%2d rt_updates=%18lld\n",
-        e->step, dt_subcycle, e->min_active_bin_subcycle,
-        e->max_active_bin_subcycle, e->rt_updates);
   }
 
   /* At this point, the non-RT ti_end_min is up-to-date. Use that and
@@ -1812,6 +1801,25 @@ void engine_run_rt_sub_cycles(struct engine *e) {
    * sizes for some main steps such that they coincide with the RT bins,
    * yielding effectively no subcycles. (At least for low numbers.) */
 
+  /* Get some time variables for printouts. Don't update the ones in the
+   * engine like in the regular step, or the outputs in the regular steps
+   * will be wrong. */
+  /* think cosmology one day: needs adapting here */
+  if (e->policy & engine_policy_cosmology)
+    error("Can't run RT subcycling with cosmology yet");
+  const double dt_subcycle = rt_step_size * e->time_base;
+  double time = e->ti_current_subcycle * e->time_base + e->time_begin;
+
+  /* Collect and print info before it's gone */
+  engine_collect_end_of_sub_cycle(e);
+  if (e->nodeID == 0) {
+    printf(
+        "  %6d cycle   0 (during regular tasks) dt=%14e "
+        "min/max active bin=%2d/%2d rt_updates=%18lld\n",
+        e->step, dt_subcycle, e->min_active_bin_subcycle,
+        e->max_active_bin_subcycle, e->rt_updates);
+  }
+
   /* Note: zeroth sub-cycle already happened during the regular tasks,
    * so we need to do one less than that. */
   for (int sub_cycle = 1; sub_cycle < nr_rt_cycles; ++sub_cycle) {
@@ -1822,15 +1830,12 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
     e->min_active_bin_subcycle =
         get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
-
     /* think cosmology one day: needs adapting here */
     if (e->policy & engine_policy_cosmology)
       error("Can't run RT subcycling with cosmology yet");
-    e->time = e->ti_current_subcycle * e->time_base + e->time_begin;
-    e->time_old =
-        (e->ti_current_subcycle - rt_step_size) * e->time_base + e->time_begin;
-    e->time_step = rt_step_size * e->time_base;
+    time = e->ti_current_subcycle * e->time_base + e->time_begin;
 
+    /* Do the actual work now. */
     engine_unskip_sub_cycle(e);
     engine_launch(e, "cycles");
 
@@ -1841,7 +1846,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
       printf(
           "  %6d cycle %3d time=%13.6e     dt=%14e "
           "min/max active bin=%2d/%2d rt_updates=%18lld\n",
-          e->step, sub_cycle, e->time, dt_subcycle, e->min_active_bin_subcycle,
+          e->step, sub_cycle, time, dt_subcycle, e->min_active_bin_subcycle,
           e->max_active_bin_subcycle, e->rt_updates);
     }
   }
