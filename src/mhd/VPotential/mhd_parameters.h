@@ -46,6 +46,8 @@
  */
 
 #define mhd_propos_default_mu0 4.f * M_PI
+#define MHD_MU0 4.f * M_PI
+#define MHD_MU0_1 1.f / (4.f * M_PI)
 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 

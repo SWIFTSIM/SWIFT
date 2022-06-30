@@ -122,16 +122,17 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
     const float a, const struct cosmology *c) {
 
   const float v_sig = hydro_get_signal_velocity(p);
- // const float div_v = hydro_get_div_v(p);
+  // const float div_v = hydro_get_div_v(p);
   const float afac1 = pow(c->a, -3.f * (hydro_gamma - 1.f));
   const float afac2 = pow(c->a, 1.f - 3.f / 2.f * (hydro_gamma - 1.f));
 
   return (-hyp * p->mhd_data.divB * v_sig * v_sig * afac1 -
           par * v_sig * p->mhd_data.phi / p->h * afac2 -
-//          0.5f * p->mhd_data.phi * div_v -
+          //          0.5f * p->mhd_data.phi * div_v -
           (2.f - 3.f / 2.f * (hydro_gamma - 1.f)) * c->a * c->a * c->H *
               p->mhd_data.phi);
-// NOTE > should be (2 + n), but the div_v term already has one hubble term substracted
+  // NOTE > should be (2 + n), but the div_v term already has one hubble term
+  // substracted
 }
 
 /**
@@ -191,7 +192,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
   //    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
   const float rho_inv = 1.f / p->rho;
-  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv; 
+  p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv;
 }
 
 /**
