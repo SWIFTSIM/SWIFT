@@ -608,51 +608,6 @@ runner_iact_nonsym_bh_gas_swallow(
           "swallow id=%lld)",
           bi->id, pj->id, pj->black_holes_data.swallow_id);
     }
-  } else { /* ends section for rand < prob */
-    /* We were not lucky, but we are lucky to heat via X-rays */
-    if (bi->v_kick > bh_props->xray_heating_velocity_threshold) {
-
-      /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
-      const float n_H_cgs = hydro_get_physical_density(pj, cosmo) * 
-                            bh_props->rho_to_n_cgs;
-      const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
-      const float T_gas_cgs = 
-          u_init / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
-
-      double du_xray_phys = 
-          black_holes_compute_xray_feedback(bi, pj, bh_props, 
-              cosmo, dx, dt, n_H_cgs, T_gas_cgs);
-
-      /* Look for cold dense gas. Then push it. */
-      if (n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
-          T_gas_cgs < bh_props->xray_heating_T_threshold_cgs) {
-        const float dv_phys = 2.f * sqrtf(
-                                  bh_props->xray_kinetic_fraction * 
-                                  du_xray_phys
-                              );
-        const float dv_comoving = dv_phys * cosmo->a;
-        const float prefactor = dv_comoving / r;
-
-        /* Push gas radially */
-        pj->v[0] += prefactor * dx[0];
-        pj->v[1] += prefactor * dx[1];
-        pj->v[2] += prefactor * dx[2];
-
-        du_xray_phys *= (1. - bh_props->xray_kinetic_fraction);
-        if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
-          du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
-        }
-      } 
-
-      const double u_new = u_init + du_xray_phys;
-
-      message("BH_XRAY: heating bid=%lld, pid=%lld, T_gas_cgs(old)=%g, u_new=%g, u_old=%g, u_new/u_old = %g",
-          bi->id, pj->id, T_gas_cgs, u_new, u_init, u_new / u_init);
-
-      /* Do the energy injection. */
-      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-    }
   }
 }
 
@@ -1029,7 +984,50 @@ runner_iact_nonsym_bh_gas_feedback(
     ++si->num_ngb_force;
 #endif
   } else {
-    return;
+        /* We were not lucky, but we are lucky to heat via X-rays */
+    if (bi->v_kick > bh_props->xray_heating_velocity_threshold) {
+
+      /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
+      const float n_H_cgs = hydro_get_physical_density(pj, cosmo) * 
+                            bh_props->rho_to_n_cgs;
+      const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+      const float T_gas_cgs = 
+          u_init / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
+
+      double du_xray_phys = 
+          black_holes_compute_xray_feedback(bi, pj, bh_props, 
+              cosmo, dx, dt, n_H_cgs, T_gas_cgs);
+
+      /* Look for cold dense gas. Then push it. */
+      if (n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
+          T_gas_cgs < bh_props->xray_heating_T_threshold_cgs) {
+        const float dv_phys = 2.f * sqrtf(
+                                  bh_props->xray_kinetic_fraction * 
+                                  du_xray_phys
+                              );
+        const float dv_comoving = dv_phys * cosmo->a;
+        const float prefactor = dv_comoving / r;
+
+        /* Push gas radially */
+        pj->v[0] += prefactor * dx[0];
+        pj->v[1] += prefactor * dx[1];
+        pj->v[2] += prefactor * dx[2];
+
+        du_xray_phys *= (1. - bh_props->xray_kinetic_fraction);
+        if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
+          du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
+        }
+      } 
+
+      const double u_new = u_init + du_xray_phys;
+
+      message("BH_XRAY: heating bid=%lld, pid=%lld, T_gas_cgs(old)=%g, u_new=%g, u_old=%g, u_new/u_old = %g",
+          bi->id, pj->id, T_gas_cgs, u_new, u_init, u_new / u_init);
+
+      /* Do the energy injection. */
+      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+    }
   }
 }
 
