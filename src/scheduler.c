@@ -1283,7 +1283,7 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
         if (ci->grav.count * pool_cj->grav.count > mincost) continue;
 
         /* Label the now redundant pair task as implict so it does no work */
-        atomic_inc(tp->implicit);
+        tp->implicit = 1;
 
         /* Link this task into the pool */
         engine_addlink(e, &t->pool, tp);
@@ -1358,7 +1358,7 @@ void scheduler_pooltasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
   threadpool_map(s->threadpool, scheduler_pooltasks_mapper, s->space->cells_top,
-                 s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
+                 s->space->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
                  s);
 }
 
