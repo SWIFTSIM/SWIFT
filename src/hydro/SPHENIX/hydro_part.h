@@ -218,9 +218,6 @@ struct part {
   /*! Additional data used by the MHD scheme */
   struct mhd_part_data mhd_data;
 
-  /*! Additional data used by the MHD scheme */
-  struct mhd_part_data mhd_data;
-
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
