@@ -1267,7 +1267,7 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
 
       /* Loop through linked list of gravity tasks starting
        * at the pooling candidate. */
-      while (l != NULL || cost > mincost) {
+      while (l != NULL && cost < mincost) {
         struct task *tp = l->t;
 
         /* Skip anything that isnt a pair task. */
@@ -1295,11 +1295,11 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
         l = l->next;
         
       } /* Inner cell grav links loop */
-
-      /* If we reached the end of the linked list in the while loop break */
-      if (l == NULL) break;
-      
     } /* Can be pooled */
+    
+    /* If we reached the end of the linked list in the while loop break */
+    if (l == NULL) break;
+    
   } /* Outer cell grav links loop */
 }
 
