@@ -1011,6 +1011,12 @@ runner_iact_nonsym_bh_gas_feedback(
           black_holes_compute_xray_feedback(bi, pj, bh_props, 
               cosmo, dx, dt, n_H_cgs, T_gas_cgs);
 
+      /* Limit the amount of heating BEFORE dividing to avoid numerical
+       * instability */
+      if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
+        du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
+      }
+
       /* Look for cold dense gas. Then push it. */
       if (n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
           T_gas_cgs < bh_props->xray_heating_T_threshold_cgs) {
@@ -1027,19 +1033,21 @@ runner_iact_nonsym_bh_gas_feedback(
         pj->v[2] += prefactor * dx[2];
 
         du_xray_phys *= (1. - bh_props->xray_kinetic_fraction);
-        if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
-          du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
-        }
+
+        /* Update the signal velocity of the particle based on the velocity kick. */
+        hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+        message("BH_XRAY_KICK: dv_phys(km/s)=%g",
+                dv_phys / bh_props->kms_to_internal)
       } 
 
       const double u_new = u_init + du_xray_phys;
 
-      message("BH_XRAY: heating bid=%lld, pid=%lld, T_gas_cgs(old)=%g, u_new=%g, u_old=%g, u_new/u_old = %g",
-          bi->id, pj->id, T_gas_cgs, u_new, u_init, u_new / u_init);
-
       /* Do the energy injection. */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+
+      /* Synchronize the particle on the timeline */
+      timestep_sync_part(pj);
     }
   }
 }
