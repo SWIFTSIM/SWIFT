@@ -1146,8 +1146,8 @@ black_holes_compute_xray_feedback(
   const double r2_cgs = r2_phys * props->conv_factor_length_to_cgs;
 
   const double dt_cgs = dt * props->conv_factor_time_to_cgs;
-  const double luminosity_cgs = bp->radiative_luminosity *
-                               props->conv_factor_energy_rate_to_cgs;
+  const double luminosity_cgs = (double)bp->radiative_luminosity *
+                                props->conv_factor_energy_rate_to_cgs;
   /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
 
   /* Let's do everything in cgs. See Choi et al 2012/2015 */
@@ -1177,17 +1177,19 @@ black_holes_compute_xray_feedback(
   const double du_cgs = (n_H_cgs * props->proton_mass_cgs_inv) * (S1 + S2) * dt_cgs;
 
   message("BH_XRAY_DEBUG: n_H(cgs)=%g, S1=%g, S2=%g, dt(cgs)=%g,"
-          "du_cgs=%g, luminosity(cgs)=%g, r2(cgs)=%g, zeta=%g,"
-          "zeta0=%g",
+          "du_cgs=%g, luminosity(cgs)=%g, radiative_lum(int)=%g, r2(cgs)=%g, zeta=%g,"
+          "zeta0=%g, conv_lum=%g",
           n_H_cgs,
           S1,
           S2,
           dt_cgs,
           du_cgs,
           luminosity_cgs,
+          bp->radiative_luminosity,
           r2_cgs,
           zeta,
-          zeta0);
+          zeta0,
+          props->conv_factor_energy_rate_to_cgs);
   return du_cgs / props->conv_factor_specific_energy_to_cgs;
 }
 

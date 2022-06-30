@@ -332,28 +332,28 @@ struct black_holes_props {
   float time_to_Myr;
 
   /*! Conversion factor from density to cgs */
-  float conv_factor_density_to_cgs;
+  double conv_factor_density_to_cgs;
 
   /*! Conversion factor from luminosity to cgs */
-  float conv_factor_energy_rate_to_cgs;
+  double conv_factor_energy_rate_to_cgs;
 
   /*! Conversion factor from length to cgs */
-  float conv_factor_length_to_cgs;
+  double conv_factor_length_to_cgs;
 
   /*! Conversion factor from mass to cgs */
-  float conv_factor_mass_to_cgs;
+  double conv_factor_mass_to_cgs;
 
   /*! Conversion factor from time to cgs */
-  float conv_factor_time_to_cgs;
+  double conv_factor_time_to_cgs;
 
   /*! Conversion factor from specific energy to cgs */
-  float conv_factor_specific_energy_to_cgs;
+  double conv_factor_specific_energy_to_cgs;
 
   /*! Proton mass */
-  float proton_mass_cgs_inv;
+  double proton_mass_cgs_inv;
 
   /*! Convert Kelvin to internal temperature */
-  float T_K_to_int;
+  double T_K_to_int;
 };
 
 /**
