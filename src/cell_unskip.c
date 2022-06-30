@@ -1746,9 +1746,9 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
             t->subtype ==  task_subtype_grav_pooled_bkg) {
           
           /* Loop over the pool of tasks */
-          for (struct link *l = t->pool; l != NULL; l = l->next) {
-            struct task *tp = l->t;
-            cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
+          for (struct link *lp = t->pool; lp != NULL; lp = lp->next) {
+            struct task *tp = lp->t;
+            cell_activate_subcell_grav_tasks(tp->ci, tp->cj, s);
           }
           
         } else {
