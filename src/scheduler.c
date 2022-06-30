@@ -1262,11 +1262,11 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
       else
         t->subtype = task_subtype_grav_pooled_bkg;
 
-      /* /\* Assign the original pair to the pooled cells linked list. *\/ */
-      /* engine_addlink(e, &t->pool, t); */
+      /* Assign the original pair to the pooled cells linked list. */
+      engine_addlink(e, &t->pool, t);
+      l = l->next;
 
-      /* Loop through linked list of gravity tasks starting
-       * at the pooling candidate. */
+      /* Loop through linked list of gravity tasks. */
       while (l != NULL && cost < mincost) {
         struct task *tp = l->t;
 
