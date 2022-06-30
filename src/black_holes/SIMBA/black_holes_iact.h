@@ -986,7 +986,20 @@ runner_iact_nonsym_bh_gas_feedback(
   } else {
         /* We were not lucky, but we are lucky to heat via X-rays */
     if (bi->v_kick > bh_props->xray_heating_velocity_threshold) {
+      /* Get particle time-step */
+      double dt;
+      if (with_cosmology) {
+        const integertime_t ti_step = get_integer_timestep(bi->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(ti_current - 1, bi->time_bin);
 
+        dt = cosmology_get_delta_time(cosmo, ti_begin,
+                                      ti_begin + ti_step);
+      } else {
+        dt = get_timestep(bi->time_bin, time_base);
+      }
+
+      const float r = sqrtf(r2);
       /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
       const float n_H_cgs = hydro_get_physical_density(pj, cosmo) * 
                             bh_props->rho_to_n_cgs;
