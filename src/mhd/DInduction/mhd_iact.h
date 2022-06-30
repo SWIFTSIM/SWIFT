@@ -231,8 +231,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1;
   float Bi[3], Bj[3], dv[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -333,8 +333,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1;
   float Bi[3], Bj[3], dv[3];
   float mm_i[3][3], mm_j[3][3];
 

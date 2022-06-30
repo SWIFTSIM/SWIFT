@@ -49,7 +49,6 @@
 #define MHD_MU0 4.f * M_PI
 #define MHD_MU0_1 1.f / (4.f * M_PI)
 
-
 /* if set to 0 NO dedner cleaning
  * hyperbolic term of Dender Scalar field evolution */
 #define mhd_propos_dedner_hyperbolic 1.0f

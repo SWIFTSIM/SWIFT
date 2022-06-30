@@ -71,8 +71,8 @@ INLINE static int mhd_write_particles(const struct part* parts,
                            -3.f / 2.f * (hydro_gamma - 1.f) - 1.f, parts,
                            mhd_data.divB, "co-moving DivB of the particles");
 
-  list[2] = io_make_output_field("Phi", FLOAT, 1, UNIT_CONV_NO_UNITS, 
-                           -3.f / 2.f * (hydro_gamma - 1.f) + 1.f, parts,
+  list[2] = io_make_output_field("Phi", FLOAT, 1, UNIT_CONV_NO_UNITS,
+                                 -3.f / 2.f * (hydro_gamma - 1.f) + 1.f, parts,
                                  mhd_data.phi, "Dedner scalar field");
 
   return 3;

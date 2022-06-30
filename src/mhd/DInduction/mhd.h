@@ -94,21 +94,21 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
        pi->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_i *= Bpro2_i;
-  float mag_speed_i =
-      sqrtf(0.5 * (vcsa2_i +
-                   sqrtf(max((vcsa2_i * vcsa2_i -
-                              4.f * ci * ci * pow(a, 3.f) * Bpro2_i / pi->rho * MHD_MU0_1),
-                             0.f))));
+  float mag_speed_i = sqrtf(
+      0.5 * (vcsa2_i +
+             sqrtf(max((vcsa2_i * vcsa2_i - 4.f * ci * ci * pow(a, 3.f) *
+                                                Bpro2_i / pi->rho * MHD_MU0_1),
+                       0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
        pj->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_j *= Bpro2_j;
-  float mag_speed_j =
-      sqrtf(0.5 * (vcsa2_j +
-                   sqrtf(max((vcsa2_j * vcsa2_j -
-                              4.f * cj * cj * pow(a, 3.f) * Bpro2_j / pj->rho * MHD_MU0_1),
-                             0.f))));
+  float mag_speed_j = sqrtf(
+      0.5 * (vcsa2_j +
+             sqrtf(max((vcsa2_j * vcsa2_j - 4.f * cj * cj * pow(a, 3.f) *
+                                                Bpro2_j / pj->rho * MHD_MU0_1),
+                       0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
 }
@@ -429,9 +429,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props) {
-
-}
+    const struct hydro_props *hydro_props) {}
 
 /**
  * @brief Initialises the particles for the first time
@@ -453,11 +451,11 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
   if (define_Bfield_in_ics) {
 
     p->mhd_data.BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
-                                    cos(2 * M_PI * p->x[1] / Lsize * Nvort));
+                                   cos(2 * M_PI * p->x[1] / Lsize * Nvort));
     p->mhd_data.BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
-                                    cos(2 * M_PI * p->x[2] / Lsize * Nvort));
+                                   cos(2 * M_PI * p->x[2] / Lsize * Nvort));
     p->mhd_data.BPred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
-                                    cos(2 * M_PI * p->x[0] / Lsize * Nvort));
+                                   cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
 
   p->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
