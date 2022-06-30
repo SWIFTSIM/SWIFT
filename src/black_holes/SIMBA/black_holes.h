@@ -1153,32 +1153,40 @@ black_holes_compute_xray_feedback(
   /* Let's do everything in cgs. See Choi et al 2012/2015 */
   const double zeta = luminosity_cgs / (n_H_cgs * r2_cgs); 
 
+  /* Don't allow cooling of hot gas */
+  if (T_gas_cgs > 1.9e7) T_gas_cgs = 1.9e7;
+
   const double S1 = 4.1e-35 * (1.9e7 - T_gas_cgs) * zeta;
   const double zeta0_term1 = 
-      1. / (1.5 / sqrtf(T_gas_cgs) + 1.5e12 / powf(T_gas_cgs, 2.5));
+      1. / (1.5 / sqrt(T_gas_cgs) + 1.5e12 / pow(T_gas_cgs, 2.5));
   const double zeta0_term2 = 
       (4.0e10 / (T_gas_cgs * T_gas_cgs)) * 
-      (1. + 80. / expf((T_gas_cgs - 1.e4) / 1.5e3));
+      (1. + 80. / exp((T_gas_cgs - 1.e4) / 1.5e3));
 
   const double zeta0 = zeta0_term1 + zeta0_term2;
   const double b = 1.1 - 
-                  1.1 / expf(T_gas_cgs / 1.8e5) + 
+                  1.1 / exp(T_gas_cgs / 1.8e5) + 
                   4.0e15 / (T_gas_cgs * T_gas_cgs * T_gas_cgs * T_gas_cgs);
 
   const double S2 = 1.0e-23 * 
-                   (1.7e4 / powf(T_gas_cgs, 0.7)) * 
-                   powf(zeta / zeta0, b) / 
-                   (1. + powf(zeta / zeta0, b));
+                   (1.7e4 / pow(T_gas_cgs, 0.7)) * 
+                   pow(zeta / zeta0, b) / 
+                   (1. + pow(zeta / zeta0, b));
   
   const double du_cgs = (n_H_cgs * props->proton_mass_cgs_inv) * (S1 + S2) * dt_cgs;
 
-  message("BH_XRAY_DEBUG: n_H(cgs)=%g, S1=%g, S2=%g, dt(cgs)=%g, du_cgs=%g, du_interal=%g",
+  message("BH_XRAY_DEBUG: n_H(cgs)=%g, S1=%g, S2=%g, dt(cgs)=%g,"
+          "du_cgs=%g, luminosity(cgs)=%g, r2(cgs)=%g, zeta=%g,"
+          "zeta0=%g",
           n_H_cgs,
           S1,
           S2,
           dt_cgs,
           du_cgs,
-          du_cgs / props->conv_factor_specific_energy_to_cgs);
+          luminosity_cgs,
+          r2_cgs,
+          zeta,
+          zeta0);
   return du_cgs / props->conv_factor_specific_energy_to_cgs;
 }
 
