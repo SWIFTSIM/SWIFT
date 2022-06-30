@@ -1233,7 +1233,7 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
   struct engine *e = s->space->e;
 
   /* Define the min cost for a pair task */
-  long long mincost = space_subsize_pair_grav;
+  long long mincost = space_subsize_pair_grav / 2;
 
   /* Get a handle on the cells involved. */
   struct cell *ci = t->ci;
