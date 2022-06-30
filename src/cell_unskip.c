@@ -1742,7 +1742,21 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
                   t->subtype == task_subtype_grav_bkg)) {
         cell_activate_subcell_grav_tasks(ci, NULL, s);
       } else if (t->type == task_type_pair) {
-        cell_activate_subcell_grav_tasks(ci, cj, s);
+        if (t->subtype ==  task_subtype_grav_pooled ||
+            t->subtype ==  task_subtype_grav_pooled_bkg) {
+          
+          /* Loop over the pool of tasks */
+          for (struct link *l = t->pool; l != NULL; l = l->next) {
+            struct task *tp = l->t;
+            cell_activate_subcell_grav_tasks(t->ci, t->cj, s);
+          }
+          
+        } else {
+          
+          cell_activate_subcell_grav_tasks(ci, cj, s);
+          
+        }
+        
       } else if (t->type == task_type_grav_mm) {
 #ifdef SWIFT_DEBUG_CHECKS
         error("Incorrectly linked M-M task!");
