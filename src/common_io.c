@@ -43,6 +43,7 @@
 #include "fof_io.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "mhd_io.h"
 #include "neutrino_io.h"
 #include "particle_splitting.h"
 #include "rt_io.h"
@@ -529,6 +530,7 @@ void io_write_meta_data(hid_t h_file, const struct engine* e,
     if (h_grp < 0) error("Error while creating SPH group");
     hydro_props_print_snapshot(h_grp, e->hydro_properties);
     hydro_write_flavour(h_grp);
+    mhd_write_flavour(h_grp);
     H5Gclose(h_grp);
   }
 
@@ -1672,6 +1674,8 @@ void io_select_hydro_fields(const struct part* const parts,
                             struct io_props* const list) {
 
   hydro_write_particles(parts, xparts, list, num_fields);
+
+  *num_fields += mhd_write_particles(parts, xparts, list + *num_fields);
 
   *num_fields += particle_splitting_write_particles(
       parts, xparts, list + *num_fields, with_cosmology);

@@ -482,6 +482,28 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 }
 
 /**
+ * @brief Compute the signal velocity between two gas particles
+ *
+ * This is eq. (103) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
+ *
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @brief pi The first #part.
+ * @brief pj The second #part.
+ * @brief mu_ij The velocity on the axis linking the particles, or zero if the
+ * particles are moving away from each other,
+ * @brief beta The non-linear viscosity constant.
+ */
+__attribute__((always_inline)) INLINE static float hydro_signal_velocity(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const float mu_ij, const float beta) {
+
+  const float ci = pi->force.soundspeed;
+  const float cj = pj->force.soundspeed;
+
+  return ci + cj - beta * mu_ij;
+}
+
+/**
  * @brief Does some extra hydro operations once the actual physical time step
  * for the particle is known.
  *
@@ -567,6 +589,44 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->density.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->density.div_v += cosmo->H * hydro_dimension;
 }
+
+/**
+ * @brief Prepare a particle for the gradient calculation.
+ *
+ * This function is called after the density loop and before the gradient loop.
+ * Nothing to do in this scheme as the gradient loop is not used.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ * @param hydro_props Hydrodynamic properties.
+ */
+__attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props) {}
+
+/**
+ * @brief Resets the variables that are required for a gradient calculation.
+ *
+ * This function is called after hydro_prepare_gradient.
+ * Nothing to do in this scheme as the gradient loop is not used.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param cosmo The cosmological model.
+ */
+__attribute__((always_inline)) INLINE static void hydro_reset_gradient(
+    struct part *restrict p) {}
+
+/**
+ * @brief Finishes the gradient calculation.
+ *
+ * Nothing to do in this scheme as the gradient loop is not used.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void hydro_end_gradient(
+    struct part *p) {}
 
 /**
  * @brief Sets all particle fields to sensible values when the #part has 0 ngbs.

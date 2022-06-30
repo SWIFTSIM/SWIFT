@@ -35,19 +35,16 @@
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_functions_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the black hole feedback loop functions. */
 #define FUNCTION swallow
 #define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
 #include "runner_doiact_functions_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the black hole feedback loop functions. */
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_functions_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"

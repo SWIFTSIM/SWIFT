@@ -37,6 +37,7 @@
 #include "const.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
+#include "signal_velocity.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -262,9 +263,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute sound speeds and signal velocity */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
@@ -391,12 +390,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float omega_ij = min(dvdr, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
-  /* Compute sound speeds */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-
   /* Signal velocity */
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);

@@ -33,6 +33,7 @@
 #include "gravity_properties.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
+#include "mhd.h"
 #include "parser.h"
 #include "pressure_floor.h"
 #include "units.h"
@@ -270,6 +271,9 @@ void hydro_props_print(const struct hydro_props *p) {
   /* Same for the diffusion */
   diffusion_print(&(p->diffusion));
 
+  /* Same for MHD */
+  message("MHD scheme: %s.", MHD_IMPLEMENTATION);
+
   // MATTHIEU: Temporary location for this planetary SPH i/o business.
 
 #ifdef PLANETARY_SPH
@@ -295,6 +299,7 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
     io_write_attribute_s(h_grpsph, "Neighbour number definition", "unweighted");
   }
   io_write_attribute_s(h_grpsph, "Scheme", SPH_IMPLEMENTATION);
+  io_write_attribute_s(h_grpsph, "MHD Scheme", MHD_IMPLEMENTATION);
   io_write_attribute_s(h_grpsph, "Kernel function", kernel_name);
   io_write_attribute_f(h_grpsph, "Kernel target N_ngb", p->target_neighbours);
   io_write_attribute_f(h_grpsph, "Kernel delta N_ngb", p->delta_neighbours);
