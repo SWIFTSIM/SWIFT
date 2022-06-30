@@ -17,10 +17,19 @@
  *
  ******************************************************************************/
 
+/* A large number of macros are defined in runner_doiact_hydro.h
+ * based on the values of some macros defined in runner_main.c
+ * For each loop definition (density, force, etc.) the values are different
+ * so we need to undefine everything before redefining them.
+ * This is done here in a single place to avoid code duplication and missing
+ * undefs if they were scattered all over the place */
 #undef IACT
 #undef IACT_NONSYM
 #undef IACT_MHD
 #undef IACT_NONSYM_MHD
+#undef IACT_STARS
+#undef IACT_BH_GAS
+#undef IACT_BH_BH
 #undef GET_MU0
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP

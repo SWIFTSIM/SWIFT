@@ -16,26 +16,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H
-#define SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H
+#ifndef SWIFT_NONE_MHD_DEBUG_H
+#define SWIFT_NONE_MHD_DEBUG_H
 
 /**
- * @brief Particle-carried fields for the MHD scheme.
+ * @brief Print out the mhd fields of a particle.
+ *
+ * Function used for debugging purposes.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
  */
-struct mhd_part_data {
+__attribute__((always_inline)) INLINE static void mhd_debug_particle(
+    const struct part *p, const struct xpart *xp) {}
 
-  float B_over_rho[3];
-
-  float B_over_rho_dt[3];
-
-  float B_mon;
-
-  float psi;
-};
-
-/**
- * @brief Particle-carried extra fields for the MHD scheme.
- */
-struct mhd_xpart_data {};
-
-#endif /* SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H */
+#endif /* SWIFT_NONE_MHD_DEBUG_H */
