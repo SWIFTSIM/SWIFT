@@ -93,6 +93,12 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
 
+  /* Set the top level cell owner. Doing it here ensures top level cells
+   * have the same owner as their progeny. */
+  if (depth == 0) {
+    c->owner = thread_id;
+  }
+
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
                                bbuff == NULL && sink_buff == NULL);
