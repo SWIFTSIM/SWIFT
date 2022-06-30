@@ -85,6 +85,8 @@
 #include "./mhd/None/mhd_debug.h"
 #elif defined(VECTOR_POTENTIAL_MHD)
 #include "./mhd/VPotential/mhd_debug.h"
+#elif defined(DIRECT_INDUCTION_FEDE_MHD)
+#include "./mhd/DInduction/mhd_debug.h"
 #else
 #error "Invalid choice of MHD variant"
 #endif
