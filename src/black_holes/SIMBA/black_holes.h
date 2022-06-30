@@ -1153,10 +1153,11 @@ black_holes_compute_xray_feedback(
   /* Let's do everything in cgs. See Choi et al 2012/2015 */
   const double zeta = luminosity_cgs / (n_H_cgs * r2_cgs); 
 
-  /* Don't allow cooling of hot gas */
-  if (T_gas_cgs > 1.9e7) T_gas_cgs = 1.9e7;
+  double S1 = 4.1e-35 * (1.9e7 - T_gas_cgs) * zeta;
 
-  const double S1 = 4.1e-35 * (1.9e7 - T_gas_cgs) * zeta;
+  /* Don't allow cooling of hot gas */
+  if (T_gas_cgs > 1.9e7) S1 = 0.;
+
   const double zeta0_term1 = 
       1. / (1.5 / sqrt(T_gas_cgs) + 1.5e12 / pow(T_gas_cgs, 2.5));
   const double zeta0_term2 = 
