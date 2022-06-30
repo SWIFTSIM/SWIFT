@@ -38,6 +38,7 @@ void test(void) {
   /* Start with some values for the cosmological parameters */
   const float a = (float)random_uniform(0.8, 1.);
   const float H = 1.f;
+  const float mu_0 = 4. * M_PI;
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
@@ -81,6 +82,7 @@ void test(void) {
 
   /* --- Test the density loop --- */
   runner_iact_nonsym_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_mhd_density(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
@@ -100,6 +102,7 @@ void test(void) {
 #ifdef EXTRA_HYDRO_LOOP
 
   runner_iact_nonsym_gradient(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_mhd_gradient(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
 
   /* Check whether pj has been modified */
   j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
@@ -115,6 +118,7 @@ void test(void) {
 
   /* --- Test the force loop --- */
   runner_iact_nonsym_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_nonsym_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
 
   /* Check that the particles are the same */
   j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
