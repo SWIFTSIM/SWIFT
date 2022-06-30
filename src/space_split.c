@@ -92,6 +92,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   struct sink *sinks = c->sinks.parts;
   struct engine *e = s->e;
   const integertime_t ti_current = e->ti_current;
+  
+  message("cell_type=%d, owner=%d", c->tl_cell_type, thread_id);
 
   /* If the buff is NULL, allocate it, and remember to free it. */
   const int allocate_buffer = (buff == NULL && gbuff == NULL && sbuff == NULL &&
@@ -198,7 +200,6 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    message("cell_type=%d, owner=%d", c->tl_cell_type, thread_id);
     space_getcells(s, 8, c->progeny, thread_id);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
