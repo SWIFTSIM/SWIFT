@@ -1295,6 +1295,10 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
         l = l->next;
         
       } /* Inner cell grav links loop */
+
+      /* If we reached the end of the linked list in the while loop break */
+      if (l == NULL) break;
+      
     } /* Can be pooled */
   } /* Outer cell grav links loop */
 }
