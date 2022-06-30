@@ -34,9 +34,9 @@ __attribute__((always_inline)) INLINE static void mhd_debug_particle(
       "Bpred=[%.3e,%.3e,%.3e], "
       "dBdt=[%.3e,%.3e,%.3e], \n"
       "divB=%.3e, Q1=%.3e, Q0=%.3e, phi=%.3e\n",
-      xp->mhd_data.Bfld[0], xp->mhd_data.Bfld[1], xp->mhd_data.Bfld[2],
+      p->mhd_data.Bfld[0], p->mhd_data.Bfld[1], p->mhd_data.Bfld[2],
       p->mhd_data.BPred[0], p->mhd_data.BPred[1], p->mhd_data.BPred[2],
-      p->mhd_data.dAdt[0], p->mhd_data.dAdt[1], p->mhd_data.dAdt[2],
+      p->mhd_data.dBdt[0], p->mhd_data.dBdt[1], p->mhd_data.dBdt[2],
       p->mhd_data.divB, p->mhd_data.Q1, p->mhd_data.Q0, p->mhd_data.phi);
 }
 #endif /* SWIFT_DI_MHD_DEBUG_H */
