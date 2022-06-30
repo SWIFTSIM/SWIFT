@@ -440,6 +440,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
 
   const float a = 1.f;
   const float H = 0.f;
+  const float mu_0 = 4. * M_PI;
 
   strcpy(serial_filename, filePrefix);
   strcpy(vec_filename, filePrefix);
@@ -521,8 +522,8 @@ void test_force_interactions(struct part test_part, struct part *parts,
       runner_iact_nonsym_force(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h,
                                &pi_serial, &pj_serial[i], a, H);
       runner_iact_nonsym_mhd_force(r2[i], &(dx[3 * i]), pi_serial.h,
-                                   pj_serial[i].h, &pi_serial, &pj_serial[i], a,
-                                   H);
+                                   pj_serial[i].h, &pi_serial, &pj_serial[i],
+                                   mu_0, a, H);
     }
     serial_time += getticks() - tic;
   }
