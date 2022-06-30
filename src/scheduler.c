@@ -1271,16 +1271,28 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
         struct task *tp = l->t;
 
         /* Skip anything that isnt a pair task. */
-        if (tp->type != task_type_pair) continue;
+        if (tp->type != task_type_pair) {
+          /* Move to the next task */
+          l = l->next;
+          continue;
+        }
 
         /* Get pair cell. */
         struct cell *pool_cj = t->cj;
 
         /* Skip this task if it is skipped or implicit (already pooled). */
-        if (tp->implicit) continue;
+        if (tp->implicit) {
+          /* Move to the next task */
+          l = l->next;
+          continue;
+        }
 
         /* Make sure we aren't pooling a large task */
-        if (ci->grav.count * pool_cj->grav.count > mincost) continue;
+        if (ci->grav.count * pool_cj->grav.count > mincost) {
+          /* Move to the next task */
+          l = l->next;
+          continue;
+        }
 
         /* Label the now redundant pair task as implict so it does no work */
         tp->implicit = 1;
