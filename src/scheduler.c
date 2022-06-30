@@ -1227,7 +1227,7 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
  *
  * @param t The #task
  */
-static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
+static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
 
   /* Get the engine. */
   struct engine *e = s->space->e;
@@ -1235,71 +1235,64 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
   /* Define the min cost for a pair task */
   long long mincost = space_subsize_pair_grav / 2;
 
-  /* Get a handle on the cells involved. */
-  struct cell *ci = t->ci;
-  struct cell *cj = t->cj;
+  /* Loop through this cells linked list of gravity tasks. */
+  struct link *l;
+  for (l = ci->grav.grav; l != NULL; l = l->next) {
+    struct task *t = l->t;
 
-  /* Define this tasks cost */
-  const long long gcount_i = ci->grav.count;
-  const long long gcount_j = cj->grav.count;
-  long long cost = gcount_i * gcount_j;
+    /* Skip anything that isnt a pair task. */
+    if (t->type != task_type_pair) continue;
 
-  /* Foreign task? */
-  if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
-    t->skip = 1;
-  }
- /* If these cells are too cheap lets pool tasks. */
-  else if (cost < mincost) {
+    /* Skip this task if it is implicit (already pooled). */
+    if (t->implicit) continue;
 
-    /* Signal that this task is now pooled. */
-    if (ci->tl_cell_type == 3)
-      t->subtype = task_subtype_grav_pooled;
-    else
-      t->subtype = task_subtype_grav_pooled_bkg;
+    /* Get a handle on pair cell involved. */
+    struct cell *cj = t->cj;
 
-    /* Assign the original pair to the pooled cells linked list. */
-    engine_addlink(e, &t->pool, t);
+    /* Define this tasks cost */
+    const long long gcount_i = ci->grav.count;
+    const long long gcount_j = cj->grav.count;
+    long long cost = gcount_i * gcount_j;
 
-    /* Loop through linked list of gravity tasks. */
-    for (struct link *l = ci->grav.grav; l != NULL || cost > mincost;
-         l = l->next) {
-      struct task *tp = l->t;
+    /* If these cells are too cheap lets pool tasks. */
+    if (cost < mincost) {
 
-      /* Skip anything that isnt a pair task. */
-      if (tp->type != task_type_pair) continue;
+      /* Signal that this task is now pooled. */
+      if (ci->tl_cell_type == 3)
+        t->subtype = task_subtype_grav_pooled;
+      else
+        t->subtype = task_subtype_grav_pooled_bkg;
 
-      /* Get pair cell. */
-      struct cell *pool_cj = t->cj;
+      /* Assign the original pair to the pooled cells linked list. */
+      engine_addlink(e, &t->pool, t);
 
-      /* Make sure we aren't pooling the task we are sitting on (t). */
-      if (tp->subtype == t->subtype) continue;
+      /* Loop through linked list of gravity tasks. */
+      for (l = l->next; l != NULL || cost > mincost; l = l->next) {
+        struct task *tp = l->t;
 
-      /* Skip this task if it is skipped or implicit (already pooled). */
-      if (tp->skip || tp->implicit) continue;
+        /* Skip anything that isnt a pair task. */
+        if (tp->type != task_type_pair) continue;
 
-      /* Make sure we aren't pooling a large task */
-      if (ci->grav.count * pool_cj->grav.count > mincost) continue;
+        /* Get pair cell. */
+        struct cell *pool_cj = t->cj;
 
-      /* Label the now redundant pair task as implict so it does no work */
-      tp->implicit = 1;
+        /* Skip this task if it is skipped or implicit (already pooled). */
+        if (tp->skip || tp->implicit) continue;
 
-      /* Link this task into the pool */
-      engine_addlink(e, &t->pool, tp);
+        /* Make sure we aren't pooling a large task */
+        if (ci->grav.count * pool_cj->grav.count > mincost) continue;
 
-      /* Account for the extra cost. */
-      cost += pool_cj->grav.count * gcount_i;
+        /* Label the now redundant pair task as implict so it does no work */
+        atomic_inc(tp->implicit);
 
-      /* /\* Clean up grav.grav linked list *\/ */
-      /* if (prev_l == NUL) { */
-      /*   ci->grav.grav = l->next; */
-      /* } else { */
-      /*   prev_l->next = l->next; */
-      /* } */
+        /* Link this task into the pool */
+        engine_addlink(e, &t->pool, tp);
 
-      /* /\* Move previous link pointer along. *\/ */
-      /* prev_l = l; */
-    }
-  }
+        /* Account for the extra cost. */
+        cost += pool_cj->grav.count * gcount_i;
+      } /*inner  cell links loop */
+    } /* Can be pooled */
+  } /* Outer cell grav links loop */
 }
 
 /**
@@ -1313,24 +1306,11 @@ void scheduler_pooltasks_mapper(void *map_data, int num_elements,
                                 void *extra_data) {
   /* Extract the parameters. */
   struct scheduler *s = (struct scheduler *)extra_data;
-  struct task *tasks = (struct task *)map_data;
+  struct cell *cells_top = (struct cell *)map_data;
 
   for (int ind = 0; ind < num_elements; ind++) {
-    struct task *t = &tasks[ind];
-
-    /* Implicit? */
-    if (t->implicit) continue;
-
-    /* Not pair? */
-    if (t->type != task_type_pair) continue;
-
-    /* If this task is a pooling candidate lets try and pool it */
-    if (t->subtype == task_subtype_grav ||
-        t->subtype == task_subtype_grav_bkg ||
-        t->subtype == task_subtype_grav_zoombkg ||
-        t->subtype == task_subtype_grav_bkgzoom) {
-      scheduler_pooltask_gravity(t, s);
-    }
+    struct cell *c = &cells_top[ind];
+    scheduler_pooltask_gravity(c, s);
   }
 }
 
@@ -1377,8 +1357,8 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
 void scheduler_pooltasks(struct scheduler *s) {
 
   /* Call the mapper on each current task. */
-  threadpool_map(s->threadpool, scheduler_pooltasks_mapper, s->tasks,
-                 s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
+  threadpool_map(s->threadpool, scheduler_pooltasks_mapper, s->space->cells_top,
+                 s->nr_cells, sizeof(struct cell), threadpool_auto_chunk_size,
                  s);
 }
 
