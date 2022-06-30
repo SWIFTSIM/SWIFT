@@ -1233,7 +1233,7 @@ static void scheduler_pooltask_gravity(struct task *t, struct scheduler *s) {
   struct engine *e = s->space->e;
 
   /* Define the min cost for a pair task as 2 cells at the splitting limit. */
-  long long mincost = space_splitsize * space_splitsize;
+  long long mincost = space_splitsize * space_splitsize * 10;
 
   /* Get a handle on the cells involved. */
   struct cell *ci = t->ci;
