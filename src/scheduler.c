@@ -1236,9 +1236,6 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
   long long mincost = space_subsize_pair_grav / 2;
 
   /* Loop through this cells linked list of gravity tasks. */
-  /* NOTE (Will): I'm sure there's a better way of doing this loop such that
-   * you don't retread the tasks considered in the inneer linked list loop
-   * but when I tried it wasn't safe and segfaulted.*/
   for (struct link *l = ci->grav.grav; l != NULL; l = l->next) {
     struct task *t = l->t;
 
@@ -1270,8 +1267,8 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
 
       /* Loop through linked list of gravity tasks starting
        * at the pooling candidate. */
-      for (struct link *lp = l; lp != NULL || cost > mincost; lp = lp->next) {
-        struct task *tp = lp->t;
+      while (l != NULL || cost > mincost) {
+        struct task *tp = l->t;
 
         /* Skip anything that isnt a pair task. */
         if (tp->type != task_type_pair) continue;
@@ -1293,7 +1290,11 @@ static void scheduler_pooltask_gravity(struct cell *ci, struct scheduler *s) {
 
         /* Account for the extra cost. */
         cost += pool_cj->grav.count * gcount_i;
-      } /*inner  cell links loop */
+
+        /* Move to the next task */
+        l = l->next;
+        
+      } /* Inner cell grav links loop */
     } /* Can be pooled */
   } /* Outer cell grav links loop */
 }
