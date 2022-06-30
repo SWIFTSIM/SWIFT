@@ -716,20 +716,21 @@ be:
 Physical Constants
 ------------------
 
-For some idealised test it can be useful to overwrite the value of
-some physical constants; in particular the value of the gravitational
-constant. SWIFT offers an optional parameter to overwrite the value of
-:math:`G_N`.
+For some idealised test it can be useful to overwrite the value of some physical
+constants; in particular the value of the gravitational constant and vacuum
+permeability. SWIFT offers an optional parameter to overwrite the value of
+:math:`G_N` and :math:`\mu_0`.
 
 .. code:: YAML
 
    PhysicalConstants:
-     G:   1
+     G:    1
+     mu_0: 1
 
 Note that this set :math:`G` to the specified value in the internal system
 of units. Setting a value of `1` when using the system of units (10^10 Msun,
 Mpc, km/s) will mean that :math:`G_N=1` in these units [#f2]_ instead of the
-normal value :math:`G_N=43.00927`.
+normal value :math:`G_N=43.00927`. The same applies to :math:`\mu_0`.
 
 This option is only used for specific tests and debugging. This entire
 section of the YAML file can typically be left out. More constants may

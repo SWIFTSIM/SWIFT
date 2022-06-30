@@ -20,6 +20,7 @@
 #define SWIFT_PRESSURE_ENTROPY_HYDRO_IACT_H
 
 #include "hydro_parameters.h"
+#include "signal_velocity.h"
 
 /**
  * @file PressureEntropy/hydro_iact.h
@@ -188,6 +189,47 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 }
 
 /**
+ * @brief Calculate the gradient interaction between particle i and particle j
+ *
+ * Nothing to do here in this scheme.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+/**
+ * @brief Calculate the gradient interaction between particle i and particle j:
+ * non-symmetric version
+ *
+ * Nothing to do here in this scheme.
+ *
+ * @param r2 Comoving squared distance between particle i and particle j.
+ * @param dx Comoving distance vector between the particles (dx = pi->x -
+ * pj->x).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+/**
  * @brief Force interaction between two particles.
  *
  * @param r2 Comoving square distance between the two particles.
@@ -246,10 +288,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float S_gamma_i = pi->entropy_one_over_gamma;
   const float S_gamma_j = pj->entropy_one_over_gamma;
 
-  /* Compute sound speeds */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
@@ -264,7 +302,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
@@ -360,10 +398,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float S_gamma_i = pi->entropy_one_over_gamma;
   const float S_gamma_j = pj->entropy_one_over_gamma;
 
-  /* Compute sound speeds */
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
-
   /* Compute dv dot r. */
   const float dvdr = (pi->v[0] - pj->v[0]) * dx[0] +
                      (pi->v[1] - pj->v[1]) * dx[1] +
@@ -378,7 +412,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Now construct the full viscosity term */
   const float rho_ij = 0.5f * (rhoi + rhoj);
