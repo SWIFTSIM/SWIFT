@@ -59,6 +59,8 @@ struct voronoi {
   struct voronoi_pair *pairs[28];
   int pair_index[28];
 };
+
+static inline void voronoi_destroy(struct voronoi *restrict v){}
 #endif
 
 #endif  // SWIFTSIM_SHADOWSWIFT_VORONOI_H
