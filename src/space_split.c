@@ -198,7 +198,7 @@ void space_split_recursive(struct space *s, struct cell *c,
     c->split = 1;
 
     /* Create the cell's progeny. */
-    message("cell_type=%d, owner=", c->tl_cell_type, thread_id);
+    message("cell_type=%d, owner=%d", c->tl_cell_type, thread_id);
     space_getcells(s, 8, c->progeny, thread_id);
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
