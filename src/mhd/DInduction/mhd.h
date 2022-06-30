@@ -461,11 +461,11 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
   const float Bini = define_Bfield_in_ics;  //(2*M_PI*Nvort)*Lsize;
   if (define_Bfield_in_ics) {
     p->mhd_data->BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[1] / Lsize * Nvort));
+                                    cos(2 * M_PI * p->x[1] / Lsize * Nvort));
     p->mhd_data->BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[2] / Lsize * Nvort));
+                                    cos(2 * M_PI * p->x[2] / Lsize * Nvort));
     p->mhd_data->BPred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
-                                   cos(2 * M_PI * p->x[0] / Lsize * Nvort));
+                                    cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
   p->mhd_data->BPred[0] /= sqrt(mu0);
   p->mhd_data->BPred[1] /= sqrt(mu0);

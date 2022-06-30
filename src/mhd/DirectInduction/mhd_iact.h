@@ -122,10 +122,10 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const double mu_0, const float a,
-    const float H) {
+    struct part *restrict pi, struct part *restrict pj, const double mu_0,
+    const float a, const float H) {
 
-/* Get r and 1/r. */
+  /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
@@ -134,7 +134,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-    
+
   float Bi[3];
   float Bj[3];
   Bi[0] = pi->mhd_data.B_over_rho[0] * rhoi;
@@ -144,10 +144,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
   const float psi_i = pi->mhd_data.psi;
-  const float psi_j = pj->mhd_data.psi; 
-  
-  const float permeability_inv = 1.f / mu_0;  
-  
+  const float psi_j = pj->mhd_data.psi;
+
+  const float permeability_inv = 1.f / mu_0;
+
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -163,7 +163,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
-  
+
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
@@ -179,10 +179,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
   const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
-  
+
   /* SPH acceleration term in x direction, i_th particle */
   float sph_acc_term_i[3] = {0.f, 0.f, 0.f};
-  
+
   /* Accelerations along X */
 
   /* Isotropic MHD pressure term */
@@ -195,9 +195,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   sph_acc_term_i[0] +=
       -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[0];
   sph_acc_term_i[0] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[0];  
-  
-  
+      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[0];
+
   /* Accelerations along Y */
 
   /* Isotropic MHD pressure term */
@@ -211,10 +210,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
       -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[1];
   sph_acc_term_i[1] +=
       -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[1];
-      
-  
-  /* Accelerations along Z */  
-  
+
+  /* Accelerations along Z */
+
   /* Isotropic MHD pressure term */
   sph_acc_term_i[2] +=
       0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[2];
@@ -226,7 +224,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
       -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[2];
   sph_acc_term_i[2] +=
       -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[2];
-      
 
   /* SPH acceleration term in x direction, j_th particle */
   float sph_acc_term_j[3];
@@ -275,15 +272,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->a_hydro[0] -= mi * sph_acc_term_j[0];
   pj->a_hydro[1] -= mi * sph_acc_term_j[1];
   pj->a_hydro[2] -= mi * sph_acc_term_j[2];
-  
+
   /* Calculate monopole term */
-  float B_mon_i =
-      - over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
-  float B_mon_j =
-      - over_rho2_j * rhoj * (Bri - Brj) * wj_dr * r_inv;
+  float B_mon_i = -over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
+  float B_mon_j = -over_rho2_j * rhoj * (Bri - Brj) * wj_dr * r_inv;
   pi->mhd_data.B_mon += mj * B_mon_i;
-  pj->mhd_data.B_mon += mi * B_mon_j;  
-  
+  pj->mhd_data.B_mon += mi * B_mon_j;
+
   /* */
   const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
   const float dB_dt_pref_j = over_rho2_j * wj_dr * r_inv;
@@ -320,7 +315,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[0] += mi * dedner_beta * grad_psi_j * dx[0];
   pj->mhd_data.B_over_rho_dt[1] += mi * dedner_beta * grad_psi_j * dx[1];
   pj->mhd_data.B_over_rho_dt[2] += mi * dedner_beta * grad_psi_j * dx[2];
-
 }
 
 /**
@@ -338,10 +332,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, const struct part *restrict pj, const double mu_0, const float a,
-    const float H) {
+    struct part *restrict pi, const struct part *restrict pj, const double mu_0,
+    const float a, const float H) {
 
-/* Get r and 1/r. */
+  /* Get r and 1/r. */
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
 
@@ -350,7 +344,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float mj = pj->mass;
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
-    
+
   float Bi[3];
   float Bj[3];
   Bi[0] = pi->mhd_data.B_over_rho[0] * rhoi;
@@ -360,10 +354,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
   const float psi_i = pi->mhd_data.psi;
-  const float psi_j = pj->mhd_data.psi; 
-  
-  const float permeability_inv = 1.f / mu_0;  
-  
+  const float psi_j = pj->mhd_data.psi;
+
+  const float permeability_inv = 1.f / mu_0;
+
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
   const float hid_inv = pow_dimension_plus_one(hi_inv); /* 1/h^(d+1) */
@@ -379,7 +373,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
-  
+
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
@@ -395,10 +389,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /* Compute gradient terms */
   const float over_rho2_i = 1.0f / (rhoi * rhoi) * f_ij;
   const float over_rho2_j = 1.0f / (rhoj * rhoj) * f_ji;
-  
+
   /* SPH acceleration term in x direction, i_th particle */
   float sph_acc_term_i[3] = {0.f, 0.f, 0.f};
-  
+
   /* Accelerations along X */
 
   /* Isotropic MHD pressure term */
@@ -411,9 +405,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   sph_acc_term_i[0] +=
       -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[0];
   sph_acc_term_i[0] +=
-      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[0];  
-  
-  
+      -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[0];
+
   /* Accelerations along Y */
 
   /* Isotropic MHD pressure term */
@@ -427,10 +420,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[1];
   sph_acc_term_i[1] +=
       -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[1];
-      
-  
-  /* Accelerations along Z */  
-  
+
+  /* Accelerations along Z */
+
   /* Isotropic MHD pressure term */
   sph_acc_term_i[2] +=
       0.5f * B2i * permeability_inv * over_rho2_i * wi_dr * r_inv * dx[2];
@@ -442,7 +434,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
       -1.f * over_rho2_i * wi_dr * Bri * permeability_inv * r_inv * Bi[2];
   sph_acc_term_i[2] +=
       -1.f * over_rho2_j * wj_dr * Brj * permeability_inv * r_inv * Bj[2];
-  
+
   /* Divergence cleaning term */
   /* Manifestly *NOT* symmetric in i <-> j */
 
@@ -467,11 +459,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->a_hydro[2] -= mj * sph_acc_term_i[2];
 
   /* Calculate monopole term */
-  float B_mon_i =
-      - over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
+  float B_mon_i = -over_rho2_i * rhoi * (Bri - Brj) * wi_dr * r_inv;
   pi->mhd_data.B_mon += mj * B_mon_i;
 
-  
   /* */
   const float dB_dt_pref_i = over_rho2_i * wi_dr * r_inv;
 
@@ -493,7 +483,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   pi->mhd_data.B_over_rho_dt[0] -= mj * dedner_beta * grad_psi_i * dx[0];
   pi->mhd_data.B_over_rho_dt[1] -= mj * dedner_beta * grad_psi_i * dx[1];
   pi->mhd_data.B_over_rho_dt[2] -= mj * dedner_beta * grad_psi_i * dx[2];
-
 }
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */
