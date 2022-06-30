@@ -25,7 +25,7 @@
 struct mhd_part_data {
 
   /*! Full Step Magnetic field */
-  float Bfld[3];
+  //float Bfld[3];
   /*! Predicted Bfield */
   float BPred[3];
   /*! Predicted BSmooth */

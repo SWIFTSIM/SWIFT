@@ -46,8 +46,9 @@
  */
 
 #define mhd_propos_default_mu0 4.f * M_PI
+#define MHD_MU0 4.f * M_PI
+#define MHD_MU0_1 1.f / (4.f * M_PI)
 
-/* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
 /* if set to 0 NO dedner cleaning
  * hyperbolic term of Dender Scalar field evolution */
@@ -133,7 +134,7 @@ static INLINE void mhd_init(struct swift_params* params,
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 
-  message("MU0: %.3f", mhd->mu0);
+  message("MU0: %.3f", MHD_MU0);
   message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
           mhd->par_dedner);
   message("NOT IMPLEMENTED! MHD global dissipation Eta: %.3f", mhd->mhd_eta);

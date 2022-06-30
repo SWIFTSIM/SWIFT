@@ -243,10 +243,10 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle.
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
  * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.

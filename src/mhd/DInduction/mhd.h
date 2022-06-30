@@ -23,7 +23,7 @@
 #include "mhd_parameters.h"
 
 #include <float.h>
-
+// WARNING there should be Mu_0 around
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp) {
 
@@ -81,10 +81,12 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 
   const float b2_i = (pi->mhd_data.BPred[0] * pi->mhd_data.BPred[0] +
                       pi->mhd_data.BPred[1] * pi->mhd_data.BPred[1] +
-                      pi->mhd_data.BPred[2] * pi->mhd_data.BPred[2]);
+                      pi->mhd_data.BPred[2] * pi->mhd_data.BPred[2]) *
+                     MHD_MU0_1;
   const float b2_j = (pj->mhd_data.BPred[0] * pj->mhd_data.BPred[0] +
                       pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
-                      pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
+                      pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]) *
+                     MHD_MU0_1;
   const float vcsa2_i = ci * ci + pow(a, 3.f) * b2_i / pi->rho;
   const float vcsa2_j = cj * cj + pow(a, 3.f) * b2_j / pj->rho;
   float Bpro2_i =
@@ -95,7 +97,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   float mag_speed_i =
       sqrtf(0.5 * (vcsa2_i +
                    sqrtf(max((vcsa2_i * vcsa2_i -
-                              4.f * ci * ci * pow(a, 3.f) * Bpro2_i / pi->rho),
+                              4.f * ci * ci * pow(a, 3.f) * Bpro2_i / pi->rho * MHD_MU0_1),
                              0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
@@ -105,7 +107,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   float mag_speed_j =
       sqrtf(0.5 * (vcsa2_j +
                    sqrtf(max((vcsa2_j * vcsa2_j -
-                              4.f * cj * cj * pow(a, 3.f) * Bpro2_j / pj->rho),
+                              4.f * cj * cj * pow(a, 3.f) * Bpro2_j / pj->rho * MHD_MU0_1),
                              0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
@@ -187,9 +189,6 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
 __attribute__((always_inline)) INLINE static void mhd_end_density(
     struct part *p, const struct cosmology *cosmo) {
 
-  //    const float h = p->h;
-  //    const float h_inv = 1.0f / h;                       /* 1/h */
-  //    const float h_inv_dim = pow_dimension(h_inv);       /* 1/h^d */
   const float h_inv_dim_plus_one = pow_dimension(1.f / p->h) / p->h;
   const float rho_inv = 1.f / p->rho;
   p->mhd_data.divB *= h_inv_dim_plus_one * rho_inv;
@@ -283,13 +282,13 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
       DBDT_Corr > 0.5f * DBDT_True ? 0.5f * DBDT_True / DBDT_Corr : 1.0f;
 
   /* Estimation of the tensile instability due divB */
-  p->mhd_data.Q0 = pressure / (b2 / 2.0f);  // Plasma Beta
+  p->mhd_data.Q0 = pressure / (b2 / 2.0f * MHD_MU0_1);  // Plasma Beta
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(
-      p->mhd_data.divB * sqrt(b2));  // this should go with a /p->h, but I take
-                                     // simplify becasue of ACC_mhd also.
+  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) *
+                              MHD_MU0_1);  // this should go with a /p->h, but I
+  //    take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
   const float ACC_mhd = b2 / (p->h);
@@ -363,7 +362,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
 /**
  * @brief Finishes the force calculation.
  *
- * Multiplies the force and accelerations by the appropriate constants
+ * Multiplies the force and accelerations by the appropiate constants
  * and add the self-contribution term. In most cases, there is little
  * to do here.
  *
@@ -432,13 +431,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props) {
 
-  float a_fac = pow(cosmo->a, 2.f - 3.f / 2.f * (hydro_gamma - 1.f));
-  p->mhd_data.BPred[0] *= a_fac;
-  p->mhd_data.BPred[1] *= a_fac;
-  p->mhd_data.BPred[2] *= a_fac;
-  p->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
-  p->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
-  p->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
 }
 
 /**
@@ -455,21 +447,18 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *restrict p, struct xpart *restrict xp,
     const struct mhd_global_data *mhd_data, const double Lsize) {
 
-  const float mu0 = mhd_data->mu0;
   const float define_Bfield_in_ics = mhd_data->define_Bfield_in_ics;
   const float Nvort = 7;
-  const float Bini = define_Bfield_in_ics;  //(2*M_PI*Nvort)*Lsize;
+  const float Bini = define_Bfield_in_ics;
   if (define_Bfield_in_ics) {
-    p->mhd_data->BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
+
+    p->mhd_data.BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
                                     cos(2 * M_PI * p->x[1] / Lsize * Nvort));
-    p->mhd_data->BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
+    p->mhd_data.BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
                                     cos(2 * M_PI * p->x[2] / Lsize * Nvort));
-    p->mhd_data->BPred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
+    p->mhd_data.BPred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
                                     cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
-  p->mhd_data.BPred[0] /= sqrt(mu0);
-  p->mhd_data.BPred[1] /= sqrt(mu0);
-  p->mhd_data.BPred[2] /= sqrt(mu0);
 
   p->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
   p->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
@@ -478,27 +467,6 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);
-}
-
-/**
- * @brief Print out the mhd fields of a particle.
- *
- * Function used for debugging purposes.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- */
-__attribute__((always_inline)) INLINE static void mhd_debug_particle(
-    const struct part *p, const struct xpart *xp) {
-  printf(
-      "Bfld=[%.3e,%.3e,%.3e], "
-      "Bpred=[%.3e,%.3e,%.3e], "
-      "dBdt=[%.3e,%.3e,%.3e], \n"
-      "divB=%.3e, Q1=%.3e Q0=%.3e, phi=%.3e\n",
-      p->mhd_data.Bfld[0], p->mhd_data.Bfld[1], p->mhd_data.Bfld[2],
-      p->mhd_data.BPred[0], p->mhd_data.BPred[1], p->mhd_data.BPred[2],
-      p->mhd_data.dBdt[0], p->mhd_data.dBdt[1], p->mhd_data.dBdt[2],
-      p->mhd_data.divB, p->mhd_data.Q1, p->mhd_data.Q0, p->mhd_data.phi);
 }
 
 #endif /* SWIFT_DI_MHD_H */
