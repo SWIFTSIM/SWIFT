@@ -145,6 +145,10 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   const float new_dt_hydro =
       hydro_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
 
+  /* Compute the next timestep (MHD condition) */
+  const float new_dt_mhd =
+      mhd_compute_timestep(p, xp, e->hydro_properties, e->cosmology);
+
   /* Compute the next timestep (cooling condition) */
   float new_dt_cooling = FLT_MAX;
   if (e->policy & engine_policy_cooling)
@@ -180,8 +184,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
         p, xp, e->rt_props, e->cosmology, e->hydro_properties,
         e->physical_constants, e->internal_units);
 
-  float new_dt = min5(new_dt_hydro, new_dt_cooling, new_dt_grav,
-                      new_dt_chemistry, new_dt_radiation);
+  /* Take the minimum of all */
+  float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
+  new_dt = min4(new_dt, new_dt_mhd, new_dt_chemistry, new_dt_radiation);
 
   /* Limit change in smoothing length */
   const float dt_h_change =

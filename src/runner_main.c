@@ -45,38 +45,33 @@
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the gradient loop functions (if required). */
 #ifdef EXTRA_HYDRO_LOOP
 #define FUNCTION gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_GRADIENT
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 #endif
 
 /* Import the force loop functions. */
 #define FUNCTION force
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the limiter loop functions. */
 #define FUNCTION limiter
 #define FUNCTION_TASK_LOOP TASK_LOOP_LIMITER
 #include "runner_doiact_limiter.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the stars density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 #ifdef EXTRA_STAR_LOOPS
 
@@ -84,15 +79,13 @@
 #define FUNCTION prep1
 #define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP1
 #include "runner_doiact_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the stars prepare2 loop functions. */
 #define FUNCTION prep2
 #define FUNCTION_TASK_LOOP TASK_LOOP_STARS_PREP2
 #include "runner_doiact_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 #endif /* EXTRA_STAR_LOOPS */
 
@@ -100,43 +93,37 @@
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_stars.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the black hole density loop functions. */
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the black hole feedback loop functions. */
 #define FUNCTION swallow
 #define FUNCTION_TASK_LOOP TASK_LOOP_SWALLOW
 #include "runner_doiact_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the black hole feedback loop functions. */
 #define FUNCTION feedback
 #define FUNCTION_TASK_LOOP TASK_LOOP_FEEDBACK
 #include "runner_doiact_black_holes.h"
-#undef FUNCTION_TASK_LOOP
-#undef FUNCTION
+#include "runner_doiact_undef.h"
 
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the RT transport (force) loop functions. */
 #define FUNCTION rt_transport
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_TRANSPORT
 #include "runner_doiact_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /**
  * @brief The #runner main thread routine.
