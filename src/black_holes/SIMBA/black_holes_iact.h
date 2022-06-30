@@ -1037,7 +1037,7 @@ runner_iact_nonsym_bh_gas_feedback(
         /* Update the signal velocity of the particle based on the velocity kick. */
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
         message("BH_XRAY_KICK: dv_phys(km/s)=%g",
-                dv_phys / bh_props->kms_to_internal)
+                dv_phys / bh_props->kms_to_internal);
       } 
 
       const double u_new = u_init + du_xray_phys;
