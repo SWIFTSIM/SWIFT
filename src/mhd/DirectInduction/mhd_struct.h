@@ -32,12 +32,16 @@ struct mhd_part_data {
 	
 	float psi;
 	
-
+	float psi_dt;
 };
 
 /**
  * @brief Particle-carried extra fields for the MHD scheme.
  */
-struct mhd_xpart_data {};
+struct mhd_xpart_data {
+
+	float B_over_rho_full[3];
+
+};
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H */

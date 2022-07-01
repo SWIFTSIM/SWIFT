@@ -31,11 +31,11 @@ using Plots
 function read_snap(filename :: String)
     
     pos  = h5read(filename,"PartType0/Coordinates")
-    Bfl  = h5read(filename,"PartType0/Bfield") 
+    Bfl  = h5read(filename,"PartType0/MagneticFluxDensities") 
     Vel  = h5read(filename,"PartType0/Velocities")
 #    alp  = h5read(filename,"PartType0/EPalpha")
 #    bet  = h5read(filename,"PartType0/EPbeta")
-    divB = h5read(filename,"PartType0/divB")
+    divB = h5read(filename,"PartType0/MonopoleTerm")
     #Ids  = h5read(filename,"PartType0/ParticleIDs")
     h    = h5read(filename,"PartType0/SmoothingLengths")
     rho  = h5read(filename,"PartType0/Densities")
