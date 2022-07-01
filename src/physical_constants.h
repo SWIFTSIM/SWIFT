@@ -61,8 +61,11 @@ struct phys_const {
   /*! Stefan-Boltzmann constant */
   double const_stefan_boltzmann;
 
-  /*! Charge of the electron  */
+  /*! Charge of the electron */
   double const_electron_charge;
+
+  /*! Vacuum permeability */
+  double const_vacuum_permeability;
 
   /*! Electron-Volt */
   double const_electron_volt;

@@ -48,6 +48,7 @@
 #include "error.h"
 #include "kernel_hydro.h"
 #include "lock.h"
+#include "mhd.h"
 #include "minmax.h"
 #include "proxy.h"
 #include "restart.h"
@@ -858,8 +859,10 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
   for (int k = 0; k < count; k++) {
-    if (parts[k].time_bin <= num_time_bins)
+    if (parts[k].time_bin <= num_time_bins) {
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+    }
   }
 }
 
