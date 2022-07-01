@@ -76,7 +76,9 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
-    const float mu_0, const float mu_ij, const float beta) {
+    const float mu_ij, const float beta) {
+  
+  const float mu_0 = 1.0f;  
   
   /* Get r and 1/r. */  
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);

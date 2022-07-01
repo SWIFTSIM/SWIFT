@@ -84,7 +84,7 @@
 #if defined(NONE_MHD)
 #include "./mhd/None/mhd_debug.h"
 #else
-#error "Invalid choice of MHD variant"
+//#error "Invalid choice of MHD variant"
 #endif
 
 /* Import the right gravity definition */
