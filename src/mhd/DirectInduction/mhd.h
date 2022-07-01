@@ -76,11 +76,9 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
-    const float mu_ij, const float beta) {
+    const float mu_0, const float mu_ij, const float beta) {
   
-  /* Get r and 1/r. */
-  const double mu_0 = 1.0;  
-  
+  /* Get r and 1/r. */  
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;  
@@ -404,10 +402,6 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     struct part *p, struct xpart *xp,
     const struct mhd_global_data mhd_data, const double Lsize) {
-
-  xp->mhd_data.B_over_rho_full[0] = p->mhd_data.B_over_rho[0];
-  xp->mhd_data.B_over_rho_full[1] = p->mhd_data.B_over_rho[1];
-  xp->mhd_data.B_over_rho_full[2] = p->mhd_data.B_over_rho[2];
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);
