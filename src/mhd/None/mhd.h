@@ -19,24 +19,50 @@
 #ifndef SWIFT_NONE_MHD_H
 #define SWIFT_NONE_MHD_H
 
+/**
+ * @brief Returns the magnetic energy contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp) {
 
   return 0.f;
 }
 
+/**
+ * @brief Returns the magnetic helicity contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
     const struct part *p, const struct xpart *xp) {
 
   return 0.f;
 }
 
+/**
+ * @brief Returns the magnetic cross-helicity contained in the particle.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
     const struct part *p, const struct xpart *xp) {
 
   return 0.f;
 }
 
+/**
+ * @brief Returns the magnetic field divergence of the particle.
+ *
+ * This is (div B) / (B / h) and is hence dimensionless.
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ */
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
@@ -286,21 +312,11 @@ __attribute__((always_inline)) INLINE static void mhd_convert_quantities(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_first_init_part(
-    struct part *p, struct xpart *xp) {
+    struct part *p, struct xpart *xp, const struct mhd_global_data *mhd_data,
+    const double Lsize) {
 
   mhd_reset_acceleration(p);
   mhd_init_part(p);
 }
-
-/**
- * @brief Print out the mhd fields of a particle.
- *
- * Function used for debugging purposes.
- *
- * @param p The particle to act upon
- * @param xp The extended particle data to act upon
- */
-__attribute__((always_inline)) INLINE static void mhd_debug_particle(
-    const struct part *p, const struct xpart *xp) {}
 
 #endif /* SWIFT_NONE_MHD_H */

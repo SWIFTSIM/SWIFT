@@ -47,8 +47,6 @@
 
 #define mhd_propos_default_mu0 4.f * M_PI
 
-/* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
-
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 
 /* Magnetic Diffusion, if set to 0 IDEAL mhd

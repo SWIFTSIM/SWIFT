@@ -131,7 +131,9 @@ struct hydro_props {
   /*! Thermal diffusion parameters */
   struct diffusion_global_data diffusion;
 
-  /* ------ Viscosity and diffusion ---------------- */
+  /* ------ MHD properties ------------------------- */
+
+  /*! MHD parameters */
   struct mhd_global_data mhd;
 };
 

@@ -288,10 +288,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a *
-                         pow(a, 3. * (hydro_gamma - 1.));
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a *
-                         pow(a, 3. * (hydro_gamma - 1.));
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi);
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj);
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -338,9 +336,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
   const float SourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
+      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2])
+      - a* a* H * (dA[0] * pi->x[0] + dA[1] * pi->x[1] + dA[2] * pi->x[2]);
   const float SourceAj =
-      -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
+      -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2])
+      - a* a* H * (dA[0] * pj->x[0] + dA[1] * pj->x[1] + dA[2] * pj->x[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   float SAj = SourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
@@ -365,10 +365,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle.
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
  * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
@@ -416,10 +416,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) / a *
-                         pow(a, 3. * (hydro_gamma - 1.));
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) / a *
-                         pow(a, 3. * (hydro_gamma - 1.));
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi);
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj);
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -460,7 +458,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
   const float SourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
+      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2])
+      - a* a* H * (dA[0] * pi->x[0] + dA[1] * pi->x[1] + dA[2] * pi->x[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];

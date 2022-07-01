@@ -125,6 +125,9 @@ EXTRA_DIST = Cooling/CoolingBox/coolingBox.yml Cooling/CoolingBox/plotEnergy.py 
 	     HydroTests/SodShock_2D/getGlass.sh HydroTests/SodShock_2D/makeIC.py HydroTests/SodShock_2D/plotSolution.py HydroTests/SodShock_2D/run.sh HydroTests/SodShock_2D/sodShock.yml \
 	     HydroTests/SodShock_3D/getGlass.sh HydroTests/SodShock_3D/makeIC.py HydroTests/SodShock_3D/plotSolution.py HydroTests/SodShock_3D/run.sh HydroTests/SodShock_3D/sodShock.yml \
 	     HydroTests/SquareTest_2D/makeIC.py HydroTests/SquareTest_2D/plotSolution.py HydroTests/SquareTest_2D/run.sh HydroTests/SquareTest_2D/square.yml \
+             HydroTests/ToroTest2_1D/makeIC.py HydroTests/ToroTest2_1D/run.sh HydroTests/ToroTest2_1D/plotSolution.py HydroTests/ToroTest2_1D/toroTest2.yml \
+             HydroTests/ToroTest2_2D/makeIC.py HydroTests/ToroTest2_2D/run.sh HydroTests/ToroTest2_2D/plotSolution.py HydroTests/ToroTest2_2D/toroTest2.yml HydroTests/ToroTest2_2D/getGlass.sh \
+             HydroTests/ToroTest2_3D/makeIC.py HydroTests/ToroTest2_3D/run.sh HydroTests/ToroTest2_3D/plotSolution.py HydroTests/ToroTest2_3D/toroTest2.yml HydroTests/ToroTest2_3D/getGlass.sh \
 	     HydroTests/UniformBox_2D/makeIC.py HydroTests/UniformBox_2D/run.sh HydroTests/UniformBox_2D/uniformPlane.yml \
 	     HydroTests/UniformBox_3D/makeICbig.py HydroTests/UniformBox_3D/makeIC.py HydroTests/UniformBox_3D/run.sh HydroTests/UniformBox_3D/uniformBox.yml \
              SmallCosmoVolume/SmallCosmoVolume_hydro/README SmallCosmoVolume/SmallCosmoVolume_hydro/getIC.sh SmallCosmoVolume/SmallCosmoVolume_hydro/run.sh SmallCosmoVolume/SmallCosmoVolume_hydro/small_cosmo_volume.yml SmallCosmoVolume/SmallCosmoVolume_hydro/plotTempEvolution.py \

@@ -1416,10 +1416,12 @@ void power_spectrum_struct_restore(struct power_spectrum_data* p,
                                    FILE* stream) {
   restart_read_blocks((void*)p, sizeof(struct power_spectrum_data), 1, stream,
                       NULL, "power spectrum data");
-  p->types1 = malloc(p->spectrumcount * sizeof(enum power_type));
+  p->types1 =
+      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
   restart_read_blocks(p->types1, p->spectrumcount, sizeof(enum power_type),
                       stream, NULL, "power types 1");
-  p->types2 = malloc(p->spectrumcount * sizeof(enum power_type));
+  p->types2 =
+      (enum power_type*)malloc(p->spectrumcount * sizeof(enum power_type));
   restart_read_blocks(p->types2, p->spectrumcount, sizeof(enum power_type),
                       stream, NULL, "power types 2");
 

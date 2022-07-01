@@ -80,6 +80,13 @@
 #error "Invalid choice of SPH variant"
 #endif
 
+/* Import the right MHD definition */
+#if defined(NONE_MHD)
+#include "./mhd/None/mhd_debug.h"
+#else
+#error "Invalid choice of MHD variant"
+#endif
+
 /* Import the right gravity definition */
 #if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_debug.h"

@@ -54,7 +54,7 @@ INLINE static int mhd_read_particles(struct part* parts,
  * @param parts The particle array.
  * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
- * @param num_fields The number of i/o fields to write.
+ * @return The number of i/o fields to write.
  */
 INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,

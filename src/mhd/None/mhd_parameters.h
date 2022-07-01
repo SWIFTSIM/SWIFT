@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk)
+ * Coypright (c) 2022 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-
 #ifndef SWIFT_NONE_MHD_PARAMETERS_H
 #define SWIFT_NONE_MHD_PARAMETERS_H
 
@@ -59,87 +58,31 @@
  *  */
 #define mhd_propos_default_difussion_eta 0.0f
 
-/* Structs that store the relevant variables */
-
 /*! MHD parameters */
-struct mhd_global_data {
-  /*! For the fixed, simple case of direct induction. */
-  float hyp_dedner;
-  float par_dedner;
-  float mhd_eta;
-};
+struct mhd_global_data {};
 
 /* Functions for reading from parameter file */
 
-/* Forward declartions */
-// struct swift_params;
-// struct phys_const;
-// struct unit_system;
-
-/* Viscosity */
-
 /**
- * @brief Initialises the viscosity parameters in the struct from
+ * @brief Initialises the mhd parameters in the struct from
  *        the parameter file, or sets them to defaults.
  *
  * @param params: the pointer to the swift_params file
  * @param us: pointer to the internal unit system
  * @param phys_const: pointer to the physical constants system
- * @param viscosity: pointer to the viscosity_global_data struct to be filled.
+ * @param mhd: pointer to the mhd_global_data struct to be filled.
  **/
 static INLINE void mhd_init(struct swift_params* params,
                             const struct unit_system* us,
                             const struct phys_const* phys_const,
-                            struct mhd_global_data* mhd) {
-
-  /* Read the mhd parameters from the file, if they exist,
-   * otherwise set them to the defaults defined above. */
-
-  mhd->hyp_dedner = parser_get_opt_param_float(params, "MHD:hyperbolic_dedner",
-                                               mhd_propos_dedner_hyperbolic);
-  mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
-                                               mhd_propos_dedner_parabolic);
-  mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
-                                            mhd_propos_default_difussion_eta);
-}
+                            struct mhd_global_data* mhd) {}
 
 /**
- * @brief Initialises a viscosity struct to sensible numbers for mocking
- *        purposes.
+ * @brief Prints out the mhd parameters at the start of a run.
  *
- * @param viscosity: pointer to the viscosity_global_data struct to be filled.
- **/
-// static INLINE void viscosity_init_no_hydro(
-//    struct viscosity_global_data* viscosity) {
-//  viscosity->alpha = hydro_props_default_viscosity_alpha;
-//}
-
-/**
- * @brief Prints out the viscosity parameters at the start of a run.
- *
- * @param viscosity: pointer to the viscosity_global_data struct found in
+ * @param mhd: pointer to the mhd_global_data struct found in
  *                   hydro_properties
  **/
-static INLINE void mhd_print(const struct mhd_global_data* mhd) {
-
-  message("Dedner Hyperbolic/Parabolic: %.3f, %.3f ", mhd->hyp_dedner,
-          mhd->par_dedner);
-  message("MHD global dissipation Eta: %.3f", mhd->mhd_eta);
-}
-
-#if defined(HAVE_HDF5)
-/** XXX TO BE IMPLEMENTED
- * @brief Prints the viscosity information to the snapshot when writing.
- *
- * @param h_grpsph: the SPH group in the ICs to write attributes to.
- * @param viscosity: pointer to the viscosity_global_data struct.
- **/
-// static INLINE void viscosity_print_snapshot(
-//    hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
-//
-//  io_write_attribute_f(h_grpsph, "Alpha viscosity", viscosity->alpha);
-//  io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
-//}
-#endif
+static INLINE void mhd_print(const struct mhd_global_data* mhd) {}
 
 #endif /* SWIFT_NONE_MHD_PARAMETERS_H */

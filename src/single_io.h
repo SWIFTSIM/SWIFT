@@ -31,18 +31,17 @@
 struct engine;
 struct unit_system;
 
-void read_ic_single(const char* fileName,
-                    const struct unit_system* internal_units, double dim[3],
-                    struct part** parts, struct gpart** gparts,
-                    struct sink** sinks, struct spart** sparts,
-                    struct bpart** bparts, size_t* Ngas, size_t* Ndm,
-                    size_t* Ndm_background, size_t* Nnuparts, size_t* Nsinks,
-                    size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
-                    int with_hydro, int with_gravity, int with_sinks,
-                    int with_stars, int with_black_holes, int with_cosmology,
-                    int cleanup_h, int cleanup_sqrt_a, double h, double a,
-                    int nr_threads, int dry_run, int remap_ids,
-                    struct ic_info* ics_metadata);
+void read_ic_single(
+    const char* fileName, const struct unit_system* internal_units,
+    double dim[3], struct part** parts, struct gpart** gparts,
+    struct sink** sinks, struct spart** sparts, struct bpart** bparts,
+    size_t* Ngas, size_t* Ndm, size_t* Ndm_background, size_t* Nnuparts,
+    size_t* Nsinks, size_t* Nstars, size_t* Nblackholes, int* flag_entropy,
+    const int with_hydro, const int with_gravity, const int with_sinks,
+    const int with_stars, const int with_black_holes, const int with_cosmology,
+    const int cleanup_h, const int cleanup_sqrt_a, const double h,
+    const double a, const int nr_threads, const int dry_run,
+    const int remap_ids, struct ic_info* ics_metadata);
 
 void write_output_single(struct engine* e,
                          const struct unit_system* internal_units,
