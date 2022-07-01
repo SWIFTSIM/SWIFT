@@ -167,17 +167,27 @@ hydro_gizmo_mfv_density_drift_term(const float mass_flux, const float dt,
 /**
  * @brief Add the gravitational contribution to the fluid velocity drift.
  *
+ * @param v (drifted) particle velocity.
  * @param fluid_v Fluid velocity.
- * @param v (Undrifted) particle velocity.
- * @param v_full (Drifted) particle velocity.
+ * @param v_full (Undrifted) particle velocity.
+ * @param a_grav Gravitational acceleration.
+ * @param dt_kick_grav Time-step to kick the particle gravitationally.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_mfv_extra_velocity_drift(float* fluid_v, const float* v,
-                                     const float* v_full) {
+hydro_gizmo_mfv_extra_velocity_drift(float* restrict v, float* restrict fluid_v,
+                                     const float* restrict v_full,
+                                     const float* restrict a_grav,
+                                     float dt_kick_grav) {
 
-  fluid_v[0] += v[0] - v_full[0];
-  fluid_v[1] += v[1] - v_full[1];
-  fluid_v[2] += v[2] - v_full[2];
+  /* Reset particle velocity */
+  v[0] = v_full[0];
+  v[1] = v_full[1];
+  v[2] = v_full[2];
+
+  /* Drift fluid velocity */
+  fluid_v[0] += a_grav[0] * dt_kick_grav;
+  fluid_v[1] += a_grav[1] * dt_kick_grav;
+  fluid_v[2] += a_grav[2] * dt_kick_grav;
 }
 
 /**
@@ -185,28 +195,29 @@ hydro_gizmo_mfv_extra_velocity_drift(float* fluid_v, const float* v,
  * gravitational energy.
  *
  * @param dt_kick_corr Time step for the potential energy correction.
- * @param dt_grav Time step for the (optional) kinetic energy correction.
  * @param p Particle.
  * @param momentum Momentum of the particle, explicitly requested so that it is
  * clear from the code that the momentum needs to be updated after the call to
  * this function.
  * @param a_grav Gravitational acceleration.
+ * @param grav_kick_factor Gravitational kick factor
+ * (a_grav * dt + a_grav_mesh * dt_mesh)
  * @return Term used to update the energy variable.
  */
 __attribute__((always_inline)) INLINE static float
 hydro_gizmo_mfv_gravity_energy_update_term(const float dt_kick_corr,
-                                           const float dt_grav,
                                            const struct part* restrict p,
                                            const float* momentum,
-                                           const float* a_grav) {
+                                           const float* a_grav,
+                                           const float* grav_kick_factor) {
 
   float dE =
       -0.5f * dt_kick_corr *
       (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
        p->gravity.mflux[2] * a_grav[2]);
 #if defined(GIZMO_TOTAL_ENERGY)
-  dE += dt_grav * (momentum[0] * a_grav[0] + momentum[1] * a_grav[1] +
-                   momentum[2] * a_grav[2]);
+  dE += momentum[0] * grav_kick_factor[0] + momentum[1] * grav_kick_factor[1] +
+        momentum[2] * grav_kick_factor[2];
 #endif
   return dE;
 }

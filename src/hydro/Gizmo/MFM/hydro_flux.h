@@ -137,35 +137,46 @@ hydro_gizmo_mfv_density_drift_term(const float mass_flux, const float dt,
 /**
  * @brief Add the gravitational contribution to the fluid velocity drift.
  *
- * This method does nothing, since this is Gizmo MFM.
+ * This just needs to reset the particle velocity, which was incorrectly
+ * drifted, since this is Gizmo MFM.
  *
+ * @param v (drifted) particle velocity.
  * @param fluid_v Fluid velocity.
- * @param v (Undrifted) particle velocity.
- * @param v_full (Drifted) particle velocity.
+ * @param v_full (Undrifted) particle velocity.
+ * @param a_grav Gravitational acceleration.
+ * @param dt_kick_grav Time-step to kick the particle gravitationally.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gizmo_mfv_extra_velocity_drift(float* fluid_v, const float* v,
-                                     const float* v_full) {}
+hydro_gizmo_mfv_extra_velocity_drift(float* restrict v, float* restrict fluid_v,
+                                     const float* restrict v_full,
+                                     const float* restrict a_grav,
+                                     float dt_kick_grav) {
+  /* Just reset particle velocity */
+  v[0] = v_full[0];
+  v[1] = v_full[1];
+  v[2] = v_full[2];
+}
 
 /**
  * @brief Get the term required to update the MFV energy due to the change in
  * gravitational energy.
  *
  * @param dt_kick_corr Time step for the potential energy correction.
- * @param dt_grav Time step for the (optional) kinetic energy correction.
  * @param p Particle.
  * @param momentum Momentum of the particle, explicitly requested so that it is
  * clear from the code that the momentum needs to be updated after the call to
  * this function.
  * @param a_grav Gravitational acceleration.
+ * @param grav_kick_factor Gravitational kick factor
+ * (a_grav * dt + a_grav_mesh * dt_mesh)
  * @return 0, since this is Gizmo MFM.
  */
 __attribute__((always_inline)) INLINE static float
 hydro_gizmo_mfv_gravity_energy_update_term(const float dt_kick_corr,
-                                           const float dt_grav,
                                            const struct part* restrict p,
                                            const float* momentum,
-                                           const float* a_grav) {
+                                           const float* a_grav,
+                                           const float* grav_kick_factor) {
 
   return 0.0f;
 }
