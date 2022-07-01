@@ -175,6 +175,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
      is to have a way of remembering that we need more neighbours for this
      particle */
   p->geometry.wcorr = 1.0f;
+
+  p->feedback_data.decoupling_delay_time = 0.f;
 }
 
 /**

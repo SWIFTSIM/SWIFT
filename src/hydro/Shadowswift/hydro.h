@@ -168,6 +168,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   /* Set the active flag to active. */
   p->force.active = 1;
+
+  p->feedback_data.decoupling_delay_time = 0.f;
 }
 
 /**

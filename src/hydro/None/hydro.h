@@ -705,6 +705,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->a_grav[2] = 0.f;
 
   hydro_init_part(p, NULL);
+
+  p->feedback_data.decoupling_delay_time = 0.f;
 }
 
 /**
