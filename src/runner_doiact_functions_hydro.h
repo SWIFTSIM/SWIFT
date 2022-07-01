@@ -2790,10 +2790,3 @@ void DOSUB_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
 
   if (gettimer) TIMER_TOC(timer_dosub_subset);
 }
-
-#undef PART_IS_ACTIVE
-#undef CELL_IS_ACTIVE
-#undef CELL_ARE_PART_DRIFTED
-#ifdef DO_DRIFT_DEBUG_CHECKS
-#undef DO_DRIFT_DEBUG_CHECKS
-#endif
