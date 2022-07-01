@@ -52,12 +52,30 @@ INLINE static void chemistry_copy_star_formation_properties(
   float mass = hydro_get_mass(p);
 
   /* Store the chemistry struct in the star particle */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    sp->chemistry_data.metal_mass_fraction[i] =
-        p->chemistry_data.smoothed_metal_mass_fraction[i];
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    sp->chemistry_data.metal_mass_fraction[k] =
+        p->chemistry_data.smoothed_metal_mass_fraction[k];
 
     /* Remove the metals taken by the star. */
-    p->chemistry_data.metal_mass[i] *= mass / (mass + sp->mass);
+    p->chemistry_data.metal_mass[k] *= mass / (mass + sp->mass);
+  }
+}
+
+
+/**
+ * @brief Copies the chemistry properties of the sink particle over to the
+ * stellar particle.
+ *
+ * @param sink the sink particle with its properties.
+ * @param sp the new star particles.
+ */
+INLINE static void chemistry_copy_sink_properties_to_star(
+    struct sink* sink, struct spart* sp) {
+
+  /* Store the chemistry struct in the star particle */
+  for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
+    sp->chemistry_data.metal_mass_fraction[k] =
+        sink->chemistry_data.metal_mass_fraction[k];
   }
 }
 
@@ -84,6 +102,8 @@ INLINE static void chemistry_copy_sink_properties(
         
   }
 }
+
+
 
 
 

@@ -583,7 +583,8 @@ INLINE static void sink_copy_properties_to_star(
 
 
   /* Copy the chemistry properties */
-  //chemistry_copy_star_formation_properties(p, xp, sp);
+  chemistry_copy_sink_properties_to_star(sink, sp);
+  
 
   /* Copy the progenitor id */
   sp->sf_data.progenitor_id = sink->id;
