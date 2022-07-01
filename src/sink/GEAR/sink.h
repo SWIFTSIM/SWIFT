@@ -22,6 +22,7 @@
 #include <float.h>
 
 /* Local includes */
+#include "chemistry.h"
 #include "cooling.h"
 #include "minmax.h"
 #include "random.h"
@@ -275,7 +276,7 @@ INLINE static int sink_should_convert_to_sink(
  * @param with_cosmology if we run with cosmology.
  */
 INLINE static void sink_copy_properties(
-    const struct part* p, const struct xpart* xp, struct sink* sink,
+    struct part* p, const struct xpart* xp, struct sink* sink,
     const struct engine* e, const struct sink_props* sink_props,
     const struct cosmology* cosmo, const int with_cosmology,
     const struct phys_const* phys_const,
@@ -285,6 +286,9 @@ INLINE static void sink_copy_properties(
 
   /* First initialisation */
   sink_init_sink(sink);
+  
+  /* Set a smoothing length */
+  sink->r_cut = e->sink_properties->cut_off_radius;
 
   /* Flag it as not swallowed */
   sink_mark_sink_as_not_swallowed(&sink->merger_data);
@@ -293,6 +297,11 @@ INLINE static void sink_copy_properties(
   
   /* setup the target mass for sink star formation */
   sink_update_target_mass(sink, sink_props, e, 0);
+  
+  
+  /* Copy the chemistry properties */
+  chemistry_copy_sink_properties(p, xp, sink);  
+  
   
   /* test the mass distribution */
   //for (int i=0;i<1000000;i++)
@@ -320,6 +329,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
   /* Get the current dynamical masses */
   const float gas_mass = hydro_get_mass(p);
   const float sink_mass = sp->mass;
+
+  /* store the mass of the sink part i */
+  const float msp_old = sp->mass;
 
   /* Increase the dynamical mass of the sink. */
   sp->mass += gas_mass;
@@ -366,10 +378,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
       (dv[0] * dx[0] + dv[1] * dx[1] + dv[2] * dx[2]) / dr);
   */
 
-  /* Update the sink metal masses */
-  struct chemistry_sink_data* sp_chem = &sp->chemistry_data;
-  const struct chemistry_part_data* p_chem = &p->chemistry_data;
-  chemistry_add_part_to_sink(sp_chem, p_chem, gas_mass);
+  /* Update the sink metal masses fraction */
+  chemistry_add_part_to_sink(sp, p, msp_old);
 
   /* This sink swallowed a gas particle */
   sp->number_of_gas_swallows++;
@@ -390,6 +400,9 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   /* Get the current dynamical masses */
   const float spi_dyn_mass = spi->mass;
   const float spj_dyn_mass = spj->mass;
+
+  /* store the mass of the sink part i */
+  const float mi_old = spi->mass;
 
   /* Increase the masses of the sink. */
   spi->mass += spj->mass;
@@ -413,10 +426,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
   spi->gpart->v_full[1] = spi->v[1];
   spi->gpart->v_full[2] = spi->v[2];
 
-  /* Update the sink metal masses */
-  struct chemistry_sink_data* spi_chem = &spi->chemistry_data;
-  const struct chemistry_sink_data* spj_chem = &spj->chemistry_data;
-  chemistry_add_sink_to_sink(spi_chem, spj_chem);
+  /* Update the sink metal masses fraction */
+  chemistry_add_sink_to_sink(spi, spj, mi_old);
 
   /* This sink swallowed a sink particle */
   spi->number_of_sink_swallows++;

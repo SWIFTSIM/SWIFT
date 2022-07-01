@@ -68,7 +68,7 @@ struct chemistry_bpart_data {};
 struct chemistry_sink_data {
 
   /*! Total mass of element in a particle. */
-  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  double metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
   
 };
 

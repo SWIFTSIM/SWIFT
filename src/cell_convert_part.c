@@ -1063,9 +1063,6 @@ struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
   gp->ti_drift = sp->ti_drift;
 #endif
 
-  /* Set a smoothing length */
-  sp->r_cut = e->sink_properties->cut_off_radius;
-
   /* Here comes the Sink! */
   return sp;
 }
