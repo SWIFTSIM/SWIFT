@@ -372,7 +372,7 @@ void engine_collect_end_of_sub_cycle_mapper(void *map_data, int num_elements,
   int *local_cells = (int *)map_data;
 
   /* Local collectible */
-  long long rt_updated = 0;
+  long long rt_updated = 0LL;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &s->cells_top[local_cells[ind]];

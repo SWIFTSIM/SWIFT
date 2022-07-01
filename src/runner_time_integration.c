@@ -1595,6 +1595,8 @@ void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
 
   struct engine *e = r->e;
   const int count = c->hydro.count;
+  /* Reset update count regardless whether cell is active or not */
+  c->rt.updated = 0;
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (c->super == c) c->rt.advanced_time = 1;
