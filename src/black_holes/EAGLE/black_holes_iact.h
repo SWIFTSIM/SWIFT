@@ -44,7 +44,7 @@
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_stars_density(
     const float r2, const float dx[3],
-    struct bpart *bi, const struct part *sj) { }
+    struct bpart *bi, const struct spart *sj) { }
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -57,7 +57,7 @@ runner_iact_nonsym_bh_stars_density(
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_stars_bulge(
     const float r2, const float dx[3],
-    struct bpart *bi, const struct part *sj) { }
+    struct bpart *bi, const struct spart *sj) { }
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
