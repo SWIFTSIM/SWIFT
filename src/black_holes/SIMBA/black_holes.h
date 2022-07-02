@@ -671,25 +671,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->accretion_boost_factor = 1.f;
   }
 
-  /* Compute the reduction factor from Rosas-Guevara et al. (2015) */
-  if (with_angmom_limiter) {
-    const double Bondi_radius = G * BH_mass / gas_c_phys2;
-    const double Bondi_time = Bondi_radius / gas_c_phys;
-    const double r_times_v_tang = Bondi_radius * tangential_velocity;
-    const double r_times_v_tang_3 =
-        r_times_v_tang * r_times_v_tang * r_times_v_tang;
-    const double viscous_time =
-        2. * M_PI * r_times_v_tang_3 /
-        (1e-6 * props->alpha_visc * G * G * BH_mass * BH_mass);
 
-    const double f_visc = min(Bondi_time / viscous_time, 1.);
-    bp->f_visc = f_visc;
-
-    /* Limit the accretion rate by the Bondi-to-viscous time ratio */
-    Bondi_rate *= f_visc;
-  } else {
-    bp->f_visc = 1.f;
-  }
+  bp->f_visc = 1.f;
 
   /* Compute the Eddington rate (internal units) */
   const double Eddington_rate =
