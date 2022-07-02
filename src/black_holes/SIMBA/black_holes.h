@@ -152,6 +152,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->num_ngbs_to_heat = props->num_ngbs_to_heat; /* Filler value */
   bp->dt_heat = FLT_MAX;
   bp->dt_accr = FLT_MAX;
+  bp->radiative_luminosity = 0.f;
   bp->delta_energy_this_timestep = 0.f;
   bp->AGN_number_of_AGN_events = 0;
   bp->AGN_number_of_energy_injections = 0;
@@ -197,6 +198,8 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->stellar_mass = 0.f;
   bp->stellar_bulge_mass = 0.f;
   bp->radiative_luminosity = 0.f;
+  bp->delta_energy_this_timestep = 0.f;
+  bp->energy_reservoir = 0.f;
   bp->ngb_mass = 0.f;
   bp->num_ngbs = 0;
   bp->reposition.delta_x[0] = -FLT_MAX;
@@ -530,9 +533,6 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
   const struct chemistry_bpart_data* bpj_chem = &bpj->chemistry_data;
   chemistry_add_bpart_to_bpart(bpi_chem, bpj_chem);
 
-  /* Update the energy reservoir */
-  bpi->energy_reservoir += bpj->energy_reservoir;
-
   /* Add up all the BH seeds */
   bpi->cumulative_number_seeds += bpj->cumulative_number_seeds;
 
@@ -546,37 +546,6 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
 
   /* We had another merger */
   bpi->number_of_mergers++;
-}
-
-/**
- * @brief Computes the energy reservoir threshold for AGN feedback.
- *
- * If adaptive, this is proportional to the accretion rate, with an
- * asymptotic upper limit.
- *
- * @param bp The #bpart.
- * @param props The properties of the black hole model.
- */
-__attribute__((always_inline)) INLINE static double
-black_hole_energy_reservoir_threshold(struct bpart* bp,
-                                      const struct black_holes_props* props) {
-
-  /* If we want a constant threshold, this is short and sweet. */
-  if (!props->use_adaptive_energy_reservoir_threshold)
-    return props->num_ngbs_to_heat;
-
-  double num_to_heat = props->nheat_alpha *
-                       (bp->accretion_rate / props->nheat_maccr_normalisation);
-
-  /* Impose smooth truncation of num_to_heat towards props->nheat_limit */
-  if (num_to_heat > props->nheat_alpha) {
-    const double coeff_b = 1. / (props->nheat_limit - props->nheat_alpha);
-    const double coeff_a = exp(coeff_b * props->nheat_alpha) / coeff_b;
-    num_to_heat = props->nheat_limit - coeff_a * exp(-coeff_b * num_to_heat);
-  }
-
-  bp->num_ngbs_to_heat = num_to_heat;
-  return num_to_heat;
 }
 
 /**
@@ -747,7 +716,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Integrate forward in time */
   bp->subgrid_mass += mass_rate * dt;
   bp->total_accreted_mass += mass_rate * dt;
-  bp->energy_reservoir += luminosity * epsilon_f * dt;
+  /* Energy available this step */
+  bp->energy_reservoir = luminosity * dt;
 
   if (props->use_nibbling && bp->subgrid_mass < bp->mass) {
     /* In this case, the BH is still accreting from its (assumed) subgrid gas

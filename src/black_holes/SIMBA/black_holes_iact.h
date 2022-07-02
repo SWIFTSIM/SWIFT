@@ -905,10 +905,10 @@ runner_iact_nonsym_bh_gas_feedback(
     message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
         pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
 
-    /* Make sure the timestepping knows of this kicking event */
+    /* Make sure the timestepping knows of this kicking event.
+     * PHYSICAL */
     bi->delta_energy_this_timestep +=
-        0.5f * hydro_get_mass(pj) * bi->v_kick * bi->v_kick *
-        cosmo->a * cosmo->a;
+        0.5f * hydro_get_mass(pj) * bi->v_kick * bi->v_kick;
 
     /* Set delay time */
     pj->feedback_data.decoupling_delay_time = 
@@ -985,7 +985,8 @@ runner_iact_nonsym_bh_gas_feedback(
 #endif
   } else {
         /* We were not lucky, but we are lucky to heat via X-rays */
-    if (bi->v_kick > bh_props->xray_heating_velocity_threshold) {
+    if (bi->v_kick > bh_props->xray_heating_velocity_threshold
+        && bi->delta_energy_this_timestep < bi->energy_reservoir) {
       /* Get particle time-step */
       double dt;
       if (with_cosmology) {
@@ -1016,6 +1017,19 @@ runner_iact_nonsym_bh_gas_feedback(
       if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
         du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
       }
+
+      const double dE_this_step = du_xray_phys * pj->mass;
+      const double energy_after_step = 
+          bi->delta_energy_this_timestep + dE_this_step;
+      if (energy_after_step > bi->energy_reservoir) {
+        du_xray_phys = 
+            (bi->energy_reservoir - bi->delta_energy_this_timestep) /
+            pj->mass;
+      }
+
+      /* If it goes over energy_reservoir it doesn't matter,
+       * because we don't want it to continue anyway */
+      bi->delta_energy_this_timestep += dE_this_step;
 
       /* Look for cold dense gas. Then push it. */
       if (n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
