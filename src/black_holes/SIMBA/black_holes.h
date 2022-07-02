@@ -585,7 +585,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double f_Edd = props->f_Edd;
   const double f_Edd_recording = props->f_Edd_recording;
   const double epsilon_r = props->epsilon_r;
-  const double epsilon_f = props->epsilon_f;
 
   /* (Subgrid) mass of the BH (internal units) */
   const double BH_mass = bp->subgrid_mass;
