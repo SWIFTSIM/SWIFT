@@ -2244,7 +2244,7 @@ void runner_do_recursive_bkg_grav(struct runner *r, struct cell *ci,
   const int k = ci->loc[2] * s->iwidth[2];
 
   /* Get this cells index. */
-  const int cid = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+  const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
   TIMER_TIC;
   
