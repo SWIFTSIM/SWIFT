@@ -1310,6 +1310,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     else if (t_type == task_type_grav_down ||
              t_type == task_type_grav_long_range ||
              t_type == task_type_grav_long_range_bkg ||
+             t_type == task_type_grav_bkg_pair ||
              t_type == task_type_init_grav ||
              t_type == task_type_init_grav_out ||
              t_type == task_type_drift_gpart_out ||

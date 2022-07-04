@@ -2024,6 +2024,12 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       }
 #endif
 
+      /* Link bkg pair tasks to cells. */
+    } else if (t_type == task_type_grav_bkg_pair) {
+      atomic_inc(&ci->nr_tasks);
+        engine_addlink(e, &ci->grav.grav, t);
+      }
+
       /* Link sub-self tasks to cells. */
     } else if (t_type == task_type_sub_self) {
       atomic_inc(&ci->nr_tasks);
@@ -2166,6 +2172,19 @@ void engine_link_gravity_tasks(struct engine *e) {
           scheduler_addunlock(sched, cj_parent->grav.init_out, t);
           scheduler_addunlock(sched, t, cj_parent->grav.down_in);
         }
+      }
+    }
+
+        /* Otherwise, pair interaction? */
+    else if (t_type == task_type_grav_bkg_pair) {
+
+      if (ci_nodeID == nodeID) {
+
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav.down_in);
       }
     }
 
