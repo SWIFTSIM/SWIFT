@@ -2028,7 +2028,6 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     } else if (t_type == task_type_grav_bkg_pair) {
       atomic_inc(&ci->nr_tasks);
         engine_addlink(e, &ci->grav.grav, t);
-      }
 
       /* Link sub-self tasks to cells. */
     } else if (t_type == task_type_sub_self) {
