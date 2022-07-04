@@ -81,6 +81,7 @@ const char *taskID_names[task_type_count] = {
     "unpack",
     "grav_long_range",
     "grav_long_range_bkg",
+    "grav_bkg_pair",
     "grav_mm",
     "grav_down_in",
     "grav_down",

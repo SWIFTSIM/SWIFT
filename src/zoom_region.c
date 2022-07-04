@@ -1673,113 +1673,121 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                         NULL);
     }
 
-    /* Loop over every other cell within (Manhattan) range delta */
-    for (int ii = -delta_m; ii <= delta_p; ii++) {
-      int iii = i + ii;
-      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -delta_m; jj <= delta_p; jj++) {
-        int jjj = j + jj;
-        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -delta_m; kk <= delta_p; kk++) {
-          int kkk = k + kk;
-          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
+    /* If this cell is not neighbouring the zoom region add a simplified task
+     * for runner_dopair_recursive_grav_bkg. */
+    if (ci->tl_cell_type == 0) {
+      scheduler_addtask(sched, task_type_grav_bkg_pair, task_subtype_none,
+                        0, 0, ci, NULL);
+    } else { /* It is a neighbouring cell -> use a pair task */
 
-          /* Get the cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
-          struct cell *cj = &cells[cjd];
+      /* Loop over every other cell within (Manhattan) range delta */
+      for (int ii = -delta_m; ii <= delta_p; ii++) {
+        int iii = i + ii;
+        if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+        iii = (iii + cdim[0]) % cdim[0];
+        for (int jj = -delta_m; jj <= delta_p; jj++) {
+          int jjj = j + jj;
+          if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+          jjj = (jjj + cdim[1]) % cdim[1];
+          for (int kk = -delta_m; kk <= delta_p; kk++) {
+            int kkk = k + kk;
+            if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+            kkk = (kkk + cdim[2]) % cdim[2];
 
-          /* Avoid duplicates, empty cells and completely foreign pairs */
-          if (cid >= cjd || cj->grav.count == 0 ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
-            continue;
+            /* Get the cell */
+            const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+            struct cell *cj = &cells[cjd];
 
-          /* Recover the multipole information */
-          const struct gravity_tensors *multi_i = ci->grav.multipole;
-          const struct gravity_tensors *multi_j = cj->grav.multipole;
+            /* Avoid duplicates, empty cells and completely foreign pairs */
+            if (cid >= cjd || cj->grav.count == 0 ||
+                (ci->nodeID != nodeID && cj->nodeID != nodeID))
+              continue;
 
-          if (multi_i == NULL && ci->nodeID != nodeID)
-            error(
-                "Multipole of ci was not exchanged properly via the proxies "
-                "(nodeID=%d, ci->nodeID=%d)",
-                nodeID, ci->nodeID);
-          if (multi_j == NULL && cj->nodeID != nodeID)
-            error(
-                "Multipole of cj was not exchanged properly via the proxies "
-                "(nodeID=%d, cj->nodeID=%d)",
-                nodeID, cj->nodeID);
+            /* Recover the multipole information */
+            const struct gravity_tensors *multi_i = ci->grav.multipole;
+            const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-          /* Minimal distance between any pair of particles */
-          const double min_radius2 =
+            if (multi_i == NULL && ci->nodeID != nodeID)
+              error(
+                    "Multipole of ci was not exchanged properly via the proxies "
+                    "(nodeID=%d, ci->nodeID=%d)",
+                    nodeID, ci->nodeID);
+            if (multi_j == NULL && cj->nodeID != nodeID)
+              error(
+                    "Multipole of cj was not exchanged properly via the proxies "
+                    "(nodeID=%d, cj->nodeID=%d)",
+                    nodeID, cj->nodeID);
+
+            /* Minimal distance between any pair of particles */
+            const double min_radius2 =
               cell_min_dist2_same_size(ci, cj, periodic, dim);
+            
+            /* Are we beyond the distance where the truncated forces are 0 ?*/
+            if (periodic && min_radius2 > max_distance2) continue;
+            
+            /* Are the cells too close for a MM interaction ? */
+            if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                      /*is_tree_walk=*/0)) {
 
-          /* Are we beyond the distance where the truncated forces are 0 ?*/
-          if (periodic && min_radius2 > max_distance2) continue;
-
-          /* Are the cells too close for a MM interaction ? */
-          if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                    /*is_tree_walk=*/0)) {
-
-            /* Ok, we need to add a direct pair calculation */
-            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0, 0,
-                              ci, cj);
+              /* Ok, we need to add a direct pair calculation */
+              scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0, 0,
+                                ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-            /* Ensure both cells are background cells */
-            if (ci->tl_cell_type == 3 || cj->tl_cell_type == 3) {
-              error(
-                  "Cell %d and cell %d are not background cells! "
-                  "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-                  cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
-            }
+              /* Ensure both cells are background cells */
+              if (ci->tl_cell_type == 3 || cj->tl_cell_type == 3) {
+                error(
+                      "Cell %d and cell %d are not background cells! "
+                      "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
+                      cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+              }
 #ifdef WITH_MPI
 
-            /* Let's cross-check that we had a proxy for that cell */
-            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+              /* Let's cross-check that we had a proxy for that cell */
+              if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
 
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[cj->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", cj->nodeID);
+                /* Find the proxy for this node */
+                const int proxy_id = e->proxy_ind[cj->nodeID];
+                if (proxy_id < 0)
+                  error("No proxy exists for that foreign node %d!", cj->nodeID);
 
-              const struct proxy *p = &e->proxies[proxy_id];
+                const struct proxy *p = &e->proxies[proxy_id];
 
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == cj) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cjd);
-            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+                /* Check whether the cell exists in the proxy */
+                int n = 0;
+                for (; n < p->nr_cells_in; n++)
+                  if (p->cells_in[n] == cj) {
+                    break;
+                  }
+                if (n == p->nr_cells_in)
+                  error(
+                        "Cell %d not found in the proxy but trying to construct "
+                        "grav task!",
+                        cjd);
+              } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+                
+                /* Find the proxy for this node */
+                const int proxy_id = e->proxy_ind[ci->nodeID];
+                if (proxy_id < 0)
+                  error("No proxy exists for that foreign node %d!", ci->nodeID);
+                
+                const struct proxy *p = &e->proxies[proxy_id];
 
-              /* Find the proxy for this node */
-              const int proxy_id = e->proxy_ind[ci->nodeID];
-              if (proxy_id < 0)
-                error("No proxy exists for that foreign node %d!", ci->nodeID);
-
-              const struct proxy *p = &e->proxies[proxy_id];
-
-              /* Check whether the cell exists in the proxy */
-              int n = 0;
-              for (; n < p->nr_cells_in; n++)
-                if (p->cells_in[n] == ci) {
-                  break;
-                }
-              if (n == p->nr_cells_in)
-                error(
-                    "Cell %d not found in the proxy but trying to construct "
-                    "grav task!",
-                    cid);
-            }
+                /* Check whether the cell exists in the proxy */
+                int n = 0;
+                for (; n < p->nr_cells_in; n++)
+                  if (p->cells_in[n] == ci) {
+                    break;
+                  }
+                if (n == p->nr_cells_in)
+                  error(
+                        "Cell %d not found in the proxy but trying to construct "
+                        "grav task!",
+                        cid);
+              }
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
+            }
           }
         }
       }

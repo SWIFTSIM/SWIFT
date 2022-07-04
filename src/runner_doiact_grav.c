@@ -31,6 +31,7 @@
 #include "inline.h"
 #include "part.h"
 #include "space_getsid.h"
+#include "task.h"
 #include "timers.h"
 #include "zoom_region.h"
 
@@ -2187,6 +2188,110 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     if (lock_unlock(&ci->grav.plock) != 0) error("Error unlocking cell");
 #endif
   }
+}
+
+/**
+ * @brief Computes the interaction of all the particles in a cell with all the
+ * particles in a pool of other cells.
+ *
+ * @param r The #runner.
+ * @param t The pooled task we are running.
+ * @param gettimer Are we timing this ?
+ */
+void runner_do_recursive_bkg_grav(struct runner *r, struct cell *ci,
+                                         const int gettimer) {
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  struct cell *cells = s->cells_top;
+  const double theta_crit = e->gravity_properties->theta_crit;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  if (ci->nodeID != engine_rank)
+    error("Non-local cell in bkg pair gravity task!");
+
+  /* Some info about the zoom domain */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
+  /* Compute how many cells away we need to walk */
+  const double distance = 2.5 * cells[bkg_cell_offset].width[0] / theta_crit;
+  int delta = (int)(distance / cells[bkg_cell_offset].width[0]) + 1;
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one.
+   * NOTE: This should never be the case by this point but lets check
+   * for safety. */
+  if (delta >= cdim[0] / 2) {
+    if (cdim[0] % 2 == 0) {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2 - 1;
+    } else {
+      delta_m = cdim[0] / 2;
+      delta_p = cdim[0] / 2;
+    }
+  }
+
+  TIMER_TIC;
+  
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = -delta_m; ii <= delta_p; ii++) {
+    int iii = i + ii;
+    if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+    iii = (iii + cdim[0]) % cdim[0];
+    for (int jj = -delta_m; jj <= delta_p; jj++) {
+      int jjj = j + jj;
+      if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+      jjj = (jjj + cdim[1]) % cdim[1];
+      for (int kk = -delta_m; kk <= delta_p; kk++) {
+        int kkk = k + kk;
+        if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+        kkk = (kkk + cdim[2]) % cdim[2];
+
+        /* Get the cell */
+        const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+        struct cell *cj = &cells[cjd];
+
+        /* Avoid duplicates and empty cells. */
+        if (cid >= cjd || cj->grav.count == 0)
+          continue;
+
+        /* Recover the multipole information */
+        const struct gravity_tensors *multi_i = ci->grav.multipole;
+        const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+        if (multi_i == NULL && ci->nodeID != nodeID)
+          error(
+                "Multipole of ci was not exchanged properly via the proxies "
+                "(nodeID=%d, ci->nodeID=%d)",
+                nodeID, ci->nodeID);
+        if (multi_j == NULL && cj->nodeID != nodeID)
+          error(
+                "Multipole of cj was not exchanged properly via the proxies "
+                "(nodeID=%d, cj->nodeID=%d)",
+                nodeID, cj->nodeID);
+
+        /* Minimal distance between any pair of particles */
+        const double min_radius2 =
+          cell_min_dist2_same_size(ci, cj, periodic, dim);
+        
+        /* Are we beyond the distance where the truncated forces are 0 ?*/
+        if (periodic && min_radius2 > max_distance2) continue;
+        
+        /* Are the cells too close for a MM interaction ? */
+        if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                  /*is_tree_walk=*/0)) {
+          /* Lets do a pair task! */
+          runner_dopair_recursive_grav(r, ci, cj, /* gettimer=*/ 0)
+        }
+      } /* i loop */
+    } /* j loop */
+  } /* k loop */
+  if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
 }
 
 /**

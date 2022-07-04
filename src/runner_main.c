@@ -572,6 +572,8 @@ void *runner_main(void *data) {
         case task_type_grav_long_range_bkg:
           runner_do_grav_long_range(r, t->ci, 1);
           break;
+        case task_type_grav_bkg_pair:
+            runner_do_recursive_bkg_grav(r, ci, 1);
         case task_type_grav_mm:
           runner_dopair_grav_mm_progenies(r, t->flags, t->ci, t->cj);
           break;
