@@ -55,7 +55,7 @@
 /* Check for unphysical values and crash if they occur. */
 //#define GIZMO_UNPHYSICAL_ERROR
 /* Check for unphysical values and reset them to safe values. */
-#define GIZMO_UNPHYSICAL_RESCUE
+//#define GIZMO_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset (only works if
    GIZMO_UNPHYSICAL_RESCUE is also selected). */
 #ifdef SWIFT_DEBUG_CHECKS
