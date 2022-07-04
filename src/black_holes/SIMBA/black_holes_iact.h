@@ -987,6 +987,18 @@ runner_iact_nonsym_bh_gas_feedback(
         /* We were not lucky, but we are lucky to heat via X-rays */
     if (bi->v_kick > bh_props->xray_heating_velocity_threshold
         && bi->delta_energy_this_timestep < bi->energy_reservoir) {
+      const float f_gas = bi->cold_gas_mass / 
+                          (bi->hot_gas_mass + bi->cold_gas_mass + bi->stellar_mass);
+
+      float f_rad_loss = bh_props->xray_radiation_loss * 
+                         (bh_props->xray_f_gas_limit - f_gas) / 
+                         bh_props->xray_f_gas_limit;
+      if (f_rad_loss > bh_props->xray_radiation_loss) {
+        f_rad_loss = bh_props->xray_radiation_loss;
+      }
+
+      if (f_rad_loss < 0.f) return;
+
       /* Get particle time-step */
       double dt;
       if (with_cosmology) {
@@ -1017,6 +1029,9 @@ runner_iact_nonsym_bh_gas_feedback(
       if (du_xray_phys > bh_props->xray_maximum_heating_factor * u_init) {
         du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
       }
+
+      /* Account for X-rays lost due to radiation */
+      du_xray_phys *= f_rad_loss;
 
       const double dE_this_step = du_xray_phys * pj->mass;
       const double energy_after_step = 

@@ -228,6 +228,12 @@ struct black_holes_props {
   /*! Below this temperature we should split X-ray energy into kinetic */
   float xray_heating_T_threshold_cgs;
 
+  /*! Amount of radiation lost to X-rays */
+  float xray_radiation_loss;
+
+  /*! The limit for X-ray feedback, below this use X-ray feedback */
+  float xray_f_gas_limit;
+
   /*! What is the physical max. velocity of the jet? (km/s) */
   float jet_velocity;
 
@@ -632,6 +638,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
       parser_get_opt_param_float(params, "SIMBAAGN:xray_heating_T_threshold_cgs",
         5.0e5f);
 
+  bp->xray_radiation_loss =
+      parser_get_param_float(params, "SIMBAAGN:xray_radiation_loss");
+
+  bp->xray_f_gas_limit = 
+      parser_get_param_float(params, "SIMBAAGN:xray_f_gas_limit");
+      
   bp->jet_velocity = 
       parser_get_param_float(params, "SIMBAAGN:jet_velocity");
 
