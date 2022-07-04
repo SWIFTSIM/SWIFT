@@ -2204,6 +2204,7 @@ void runner_do_recursive_bkg_grav(struct runner *r, struct cell *ci,
   struct engine *e = r->e;
   struct space *s = e->s;
   const int periodic = s->periodic;
+  const int nodeID = e->nodeID;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
@@ -2241,6 +2242,9 @@ void runner_do_recursive_bkg_grav(struct runner *r, struct cell *ci,
   const int i = ci->loc[0] * s->iwidth[0];
   const int j = ci->loc[1] * s->iwidth[1];
   const int k = ci->loc[2] * s->iwidth[2];
+
+  /* Get this cells index. */
+  const int cid = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
 
   TIMER_TIC;
   
@@ -2292,7 +2296,7 @@ void runner_do_recursive_bkg_grav(struct runner *r, struct cell *ci,
         if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                   /*is_tree_walk=*/0)) {
           /* Lets do a pair task! */
-          runner_dopair_recursive_grav(r, ci, cj, /* gettimer=*/ 0)
+          runner_dopair_recursive_grav(r, ci, cj, /* gettimer=*/ 0);
         }
       } /* i loop */
     } /* j loop */
