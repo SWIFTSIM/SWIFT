@@ -349,7 +349,8 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *p, struct xpart *xp, float dt_drift, float dt_therm,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    float dt_kick_grav, const struct cosmology* cosmo,
+    const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
   /* skip the drift if we are using Lloyd's algorithm */
@@ -459,7 +460,7 @@ hydro_convert_conserved_to_primitive(struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
-    float dt_grav, float dt_hydro, float dt_kick_corr,
+    float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
@@ -468,22 +469,30 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Retrieve the current value of the gravitational acceleration from the
        gpart. We are only allowed to do this because this is the kick. We still
        need to check whether gpart exists though.*/
-    float a_grav[3];
+    float a_grav[3], grav_kick_factor[3];
 
-    /* TODO also add mesh acceleration? */
-    a_grav[0] = p->gpart->a_grav[0];
-    a_grav[1] = p->gpart->a_grav[1];
-    a_grav[2] = p->gpart->a_grav[2];
+    a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
+    a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+    a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
 
-    p->conserved.energy += hydro_gravity_energy_update_term(
-        dt_kick_corr, dt_grav, p, p->conserved.momentum, a_grav);
+    grav_kick_factor[0] = dt_grav * p->gpart->a_grav[0];
+    grav_kick_factor[1] = dt_grav * p->gpart->a_grav[1];
+    grav_kick_factor[2] = dt_grav * p->gpart->a_grav[2];
+    if (dt_grav_mesh != 0) {
+      grav_kick_factor[0] += dt_grav_mesh * p->gpart->a_grav_mesh[0];
+      grav_kick_factor[1] += dt_grav_mesh * p->gpart->a_grav_mesh[1];
+      grav_kick_factor[2] += dt_grav_mesh * p->gpart->a_grav_mesh[2];
+    }
 
     /* Kick the momentum for half a time step */
     /* Note that this also affects the particle movement, as the velocity for
        the particles is set after this. */
-    p->conserved.momentum[0] += p->conserved.mass * a_grav[0] * dt_grav;
-    p->conserved.momentum[1] += p->conserved.mass * a_grav[1] * dt_grav;
-    p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
+    p->conserved.momentum[0] += p->conserved.mass * grav_kick_factor[0];
+    p->conserved.momentum[1] += p->conserved.mass * grav_kick_factor[1];
+    p->conserved.momentum[2] += p->conserved.mass * grav_kick_factor[2];
+
+    p->conserved.energy += hydro_gravity_energy_update_term(
+        dt_kick_corr, p, p->conserved.momentum, a_grav, grav_kick_factor);
   }
 
   if (dt_therm < 0.0f) {
