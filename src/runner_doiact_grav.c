@@ -2236,6 +2236,12 @@ void runner_do_recursive_bkg_grav(struct runner *r, struct cell *ci,
     }
   }
 
+  /* Get the (i,j,k) location of the top-level cell in the grid,
+   * ignoring zoom/void cell for now */
+  const int i = ci->loc[0] * s->iwidth[0];
+  const int j = ci->loc[1] * s->iwidth[1];
+  const int k = ci->loc[2] * s->iwidth[2];
+
   TIMER_TIC;
   
   /* Loop over every other cell within (Manhattan) range delta */
