@@ -259,7 +259,6 @@ void space_recycle(struct space *s, struct cell *c) {
   c->next = s->cells_sub[owner];
   s->cells_sub[owner] = c;
   atomic_dec(&s->tot_cells);
-
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
 }
