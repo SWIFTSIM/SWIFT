@@ -150,6 +150,12 @@ struct black_holes_props {
   /*! Factor in front of M/(dM/dt) for timestepping */
   float dt_accretion_factor;
 
+  /*! Suppress growth via Hopkins+'21 */
+  int suppress_growth;
+
+  /*! sigma_crit from Hopkins+'21 */
+  float sigma_crit_Msun_pc2;
+
   /* ---- Properties of the feedback model ------- */
 
   /*! AGN feedback model: random, isotropic or minimum distance */
@@ -451,6 +457,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   if (bp->dt_accretion_factor > 1.f || bp->dt_accretion_factor < 0.f) {
     error("SIMBAAGN:dt_accretion_factor must be between 0 and 1");
   }
+
+  bp->suppress_growth = 
+      parser_get_param_int(params, "SIMBAAGN:suppress_growth");
+
+  bp->sigma_crit_Msun_pc2 = 
+      parser_get_param_float(params, "SIMBAAGN:sigma_crit_Msun_pc2");
 
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "SIMBAAGN:use_multi_phase_bondi");
