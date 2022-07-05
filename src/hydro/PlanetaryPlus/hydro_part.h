@@ -304,45 +304,40 @@ struct part {
   /*! Sum of W_ij * exp(-Ij) for rho_new */
   float sum_wij_exp;
 
-  /* sum w_ij*/
+  /*! sum w_ij*/
   float sum_wij;
-    
-  float last_corrected_rho;
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  
-  /* Derivative of density w.r.t. smoothing length */  
+  /*! Derivative of density w.r.t. smoothing length */  
   float drho_dh;
     
-  float smoothing_error;
-    
+  /*! Density gradient */   
+  float grad_rho[3];    
+   
+  /*! Gradient of drho_dh */   
+  float grad_drho_dh[3];   
+      
+  /*! Sum of P_SPH f_g Wij see eq ... */   
   float P_tilde_numerator;
     
+  /*! Sum of f_g Wij (Sandnes+ 2022 eq ...) */   
   float P_tilde_denominator;
     
-  float S_numerator;
-    
-  float S_denominator;
-    
-  float I; 
-    
+  /*! Max particle density within H */   
   float max_ngb_sph_rho;
     
+  /*! Min particle density within H */   
   float min_ngb_sph_rho;
+
+  /*! S (Sandnes+ 2022 eq ...) */   
+  float smoothing_error;    
     
+  /*! Last time-step corrected rho. Used for matrix method and quad visc volume elements */   
   float last_corrected_rho;
     
-  float sum_f_within_H;
-    
-  float sum_s_f_within_H;
-    
-  float last_S_tilde;
-  
-  float sum_r_w_V[3];
-    
-  float is_vac_boundary;  
-  
+  /*! Good or bad last time-step? Used for matrix method and quad visc volume elements */     
+  float last_f_S;  
 #endif
     
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC

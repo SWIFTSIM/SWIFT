@@ -515,6 +515,9 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   p->drho_dh = 0.f;  
+  p->grad_rho[0] = 0.f;
+  p->grad_rho[1] = 0.f;
+  p->grad_rho[2] = 0.f;   
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
@@ -607,6 +610,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   p->drho_dh -= p->mass * hydro_dimension * kernel_root;
   p->drho_dh *= h_inv_dim_plus_one;    
+    
+  p->grad_rho[0] *= h_inv_dim_plus_one;
+  p->grad_rho[1] *= h_inv_dim_plus_one;
+  p->grad_rho[2] *= h_inv_dim_plus_one;    
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
@@ -753,15 +760,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  p->P_tilde_numerator = 0.f;
-  p->P_tilde_denominator = 0.f;
-    
-  p->S_numerator = 0.f;  
-  p->S_denominator = 0.f;
-    
-  p->max_ngb_sph_rho = p->rho;
-  p->min_ngb_sph_rho = p->rho;
-    
   // Compute the pressure
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
@@ -773,14 +771,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->P = pressure;
   p->T = temperature;
     
-  p->smoothing_error = p->h * p->drho_dh / p->rho;
+  p->P_tilde_numerator = 0.f;
+  p->P_tilde_denominator = 0.f;
+
+  p->max_ngb_sph_rho = p->rho;
+  p->min_ngb_sph_rho = p->rho;  
     
-  p->sum_f_within_H = 0.f;
-  p->sum_s_f_within_H = 0.f;
-  
-  p->sum_r_w_V[0] = 0.f;
-  p->sum_r_w_V[1] = 0.f;
-  p->sum_r_w_V[2] = 0.f; 
+  p->grad_drho_dh[0] = 0.f;
+  p->grad_drho_dh[1] = 0.f;
+  p->grad_drho_dh[2] = 0.f;    
 #endif
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
@@ -952,9 +951,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
         gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
   p->P = P;
   p->T = T;
-    
-  p->last_corrected_rho = p->rho;
-
 #endif
 
 #ifdef PLANETARY_SMOOTHING_CORRECTION
@@ -962,80 +958,55 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   const float h = p->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
+  const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */    
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
-   
-      
- 
-  float s = p->smoothing_error;
-  p->P_tilde_numerator += sqrtf(kernel_root) * p->P * expf(-1000.f * s * s);
-  p->P_tilde_denominator += sqrtf(kernel_root) * expf(-1000.f * s * s);
-  p->S_numerator += kernel_root * logf(fabs(s) + FLT_MIN);
-  p->S_denominator += kernel_root;
-    
-  p->sum_f_within_H += sqrtf(kernel_root) * expf(-1000.f * s * s);
-  p->sum_s_f_within_H += sqrtf(kernel_root) * fabs(s) * expf(-1000.f * s * s);
+  p->grad_drho_dh[0] *= h_inv_dim_plus_one;
+  p->grad_drho_dh[1] *= h_inv_dim_plus_one;
+  p->grad_drho_dh[2] *= h_inv_dim_plus_one;
     
     
-   float S_tilde;  
+  float f_g = 0.5f * (1.f + tanhf(3.f - 3.f / (0.5f)));
+    
+  p->P_tilde_numerator += kernel_root * p->P * f_g; 
+  p->P_tilde_denominator += kernel_root * f_g;
+     
+   float S;  
+   float f_S; 
    float P_tilde; 
-  /* Turn S_tilde to 0 if dividing by 0 or if  h == h_max */
-  if (p->is_h_max || p->P_tilde_denominator == 0.f || p->S_denominator == 0.f || p->sum_s_f_within_H == 0.f) {
-    S_tilde = 0.f;
-    P_tilde = p->P;//this shouldn't matter  
+  /* Turn S to 0 if h == h_max */
+  if (p->is_h_max) {
+    S = 0.f; //This is only for output files
+    f_S = 1.f;   
   }else{
-      float mean_s_of_good_particles = p->sum_s_f_within_H / p->sum_f_within_H;
-    
       P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
-    
-      float rho_tilde = update_rho(p, P_tilde);
+      
+      float grad_drho_dh = sqrtf(p->grad_drho_dh[0] * p->grad_drho_dh[0] + p->grad_drho_dh[1] * p->grad_drho_dh[1] + p->grad_drho_dh[2] * p->grad_drho_dh[2]); 
+      S = (p->h /p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
+      
+      // Compute new P
+     f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.15f))); 
+     float P_new = f_S * p->P + (1.f - f_S) * P_tilde;
+      
+       // Compute rho from u, P_new
+      float rho_new_from_u = update_rho(p, P_new);
 
-      S_tilde = max(0.f, (p->rho / rho_tilde) * (expf(p->S_numerator / p->S_denominator) - mean_s_of_good_particles));
+      if (rho_new_from_u > p->max_ngb_sph_rho){
+          rho_new_from_u = p->max_ngb_sph_rho;
+      }
+      if (rho_new_from_u < p->min_ngb_sph_rho){
+          rho_new_from_u = p->min_ngb_sph_rho;
+      }
+
+      // Ensure new density is not lower than minimum SPH density
+      if (rho_new_from_u > rho_min){
+        p->rho = rho_new_from_u;
+      } else {
+        p->rho = rho_min;
+      }
   }
-
-
-  p->I = S_tilde; //This is just to make output same as Imbalance for comparison
-    
-
-  p->sum_r_w_V[0] *= h_inv_dim; //delete these if everything works
-  p->sum_r_w_V[1] *= h_inv_dim;
-  p->sum_r_w_V[2] *= h_inv_dim;
  
-    
-  float centre_of_volume = sqrtf(p->sum_r_w_V[0] * p->sum_r_w_V[0] + p->sum_r_w_V[1] * p->sum_r_w_V[1] + p->sum_r_w_V[2] * p->sum_r_w_V[2]) / (p->h);
-  if (centre_of_volume > 0.1f){
-      p->is_vac_boundary = 1.f;
-  }else{
-      p->is_vac_boundary = 0.f;
-  }
-      
-    
-
-  p->smoothing_error = centre_of_volume;
-    
-  if (p->P_tilde_denominator > 0.f && p->P_tilde_numerator > 0.f && S_tilde > 0.f) {
-      
-    // Compute new P
-    float f_S_tilde = expf(-1000.f * S_tilde * S_tilde);
-    float P_new = f_S_tilde * p->P + (1.f - f_S_tilde) * P_tilde;
-      
-    // Compute rho from u, P_new
-    float rho_new_from_u = update_rho(p, P_new);
-      
-    if (rho_new_from_u > p->max_ngb_sph_rho){
-        rho_new_from_u = p->max_ngb_sph_rho;
-    }
-    if (rho_new_from_u < p->min_ngb_sph_rho){
-        rho_new_from_u = p->min_ngb_sph_rho;
-    }
-      
-    // Ensure new density is not lower than minimum SPH density
-    if (rho_new_from_u > rho_min){
-      p->rho = rho_new_from_u;
-    } else {
-      p->rho = rho_min;
-    }
-  }
+  p->smoothing_error = S;
     
   // finish computations
   const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
@@ -1045,7 +1016,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->T = T;  
     
   p->last_corrected_rho = p->rho;
-  p->last_S_tilde = S_tilde;
+  p->last_f_S = f_S;
 #endif
 }
 
@@ -1150,6 +1121,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* In this section we:
       1) take the inverse of the Cinv matrix;
+      
+      Note: This is here rather than in hydro_end_gradient since we have access to hydro_props->h_max
   */
 
 
