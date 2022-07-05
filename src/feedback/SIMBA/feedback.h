@@ -139,6 +139,23 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
  * enrichment/feedback.
  *
  * @param sp The #spart.
+ * @param dm_ngb_N the integer number of neighbours from the previous loop
+ * @param dm_mean_velocity the mass-weighted (unnormalized) three components of velocity
+ */
+INLINE static double feedback_intermediate_density_normalize(
+    const struct spart* sp, int *dm_ngb_N, float dm_mean_velocity[3]) {
+  if (dm_ngb_N <= 0) return;
+  sp->dm_ngb_N = dm_ngb_N;
+  dm_mean_velocity[0] /= (float)dm_ngb_N;
+  dm_mean_velocity[1] /= (float)dm_ngb_N;
+  dm_mean_velocity[2] /= (float)dm_ngb_N;
+}
+
+/**
+ * @brief Returns the length of time since the particle last did
+ * enrichment/feedback.
+ *
+ * @param sp The #spart.
  * @param with_cosmology Are we running with cosmological time integration on?
  * @param cosmo The cosmological model.
  * @param time The current time (since the Big Bang / start of the run) in
@@ -196,10 +213,9 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   /* Zero the DM vel. disp. */
   sp->feedback_data.dm_vel_disp_1d = 0.f;
   sp->feedback_data.dm_ngb_N = 0;
-  for (int i = 0; i < 3; i++) {
-    sp->feedback_data.dm_vel_sum[i] = 0.f;
-    sp->feedback_data.dm_vel_disp2[i] = 0.f;
-  }
+  sp->feedback_data.dm_vel_diff2[0] = 0.f;
+  sp->feedback_data.dm_vel_diff2[1] = 0.f;
+  sp->feedback_data.dm_vel_diff2[2] = 0.f;
 }
 
 /**
@@ -219,10 +235,9 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
   /* These will be reset in feedback_reset_feedback each timestep */
   sp->feedback_data.dm_ngb_N = 0;
   sp->feedback_data.dm_vel_disp_1d = 0.f;
-  for (int i = 0; i < 3; i++) {
-    sp->feedback_data.dm_vel_sum[i] = 0.f;
-    sp->feedback_data.dm_vel_disp2[i] = 0.f;
-  }
+  sp->feedback_data.dm_vel_diff2[0] = 0.f;
+  sp->feedback_data.dm_vel_diff2[1] = 0.f;
+  sp->feedback_data.dm_vel_diff2[2] = 0.f;
 }
 
 /**

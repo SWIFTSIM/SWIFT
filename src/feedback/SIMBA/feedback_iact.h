@@ -34,13 +34,14 @@
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_dm_vel_sum(struct spart *si,
-                                       const struct gpart *gj) {
-  /* Get the DM mean velocity properties and save them. */
-  for (int k = 0; k < 3; k++) {
-    si->feedback_data.dm_vel_sum[k] += gj->v_full[k];
-  }
+                                       const struct gpart *gj,
+                                       int *dm_ngb_N,
+                                       float dm_mean_velocity[3]) {
 
-  si->feedback_data.dm_ngb_N++;
+  dm_mean_velocity[0] += gj->v_full[0];
+  dm_mean_velocity[1] += gj->v_full[1];
+  dm_mean_velocity[2] += gj->v_full[2];
+  *dm_ngb_N++;
 }
 
 /**
@@ -51,19 +52,17 @@ runner_iact_nonsym_feedback_dm_vel_sum(struct spart *si,
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_dm_vel_disp(struct spart *si,
-                                        const struct gpart *gj) {
-  /* Get the DM velocity dispersion. */
-  float v_mean_k = 0.f;
-  float vj_diff = 0.f;
-  /* TODO: dm_vel_disp[3] is unnecessary to have in the structure, but leaving
-   * for now. */
-  for (int k = 0; k < 3; k++) {
-    /* The real mean is divided by the total neighbours */
-    v_mean_k =
-        si->feedback_data.dm_vel_sum[k] / (float)si->feedback_data.dm_ngb_N;
-    vj_diff = gj->v_full[k] - v_mean_k;
-    si->feedback_data.dm_vel_disp2[k] += vj_diff * vj_diff;
-  }
+                                        const struct gpart *gj,
+                                        const int dm_ngb_N,
+                                        const float dm_mean_velocity[3]) {
+
+  if (si->dm_ngb_N <= 0) return;
+  si->feedback_data.dm_vel_diff2[0] += (gj->v_full[0] - dm_mean_velocity[0]) *
+                                       (gj->v_full[0] - dm_mean_velocity[0]);
+  si->feedback_data.dm_vel_diff2[1] += (gj->v_full[1] - dm_mean_velocity[1]) *
+                                       (gj->v_full[1] - dm_mean_velocity[1]);
+  si->feedback_data.dm_vel_diff2[2] += (gj->v_full[2] - dm_mean_velocity[2]) *
+                                       (gj->v_full[2] - dm_mean_velocity[2]);
 }
 
 /**
@@ -470,9 +469,6 @@ runner_iact_nonsym_feedback_apply(
         hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
         hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
       }
-
-      /* si->feedback_data.to_distribute.dm_vel_disp_1d is the 1D velocity
-       * dispersion */
 
       /* Kick particle with SNII energy */
 

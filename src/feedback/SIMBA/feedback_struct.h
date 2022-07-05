@@ -127,14 +127,11 @@ struct feedback_spart_data {
   /* Instantiate ray structs for SNII isotropic feedback  */
   struct ray_data SNII_rays[eagle_SNII_feedback_num_of_rays];
 
-  /*! Mean neighbourhood DM velocity in each direction */
-  float dm_vel_sum[3];
-
   /*! Number of dark matter neighbours in the (gas) neighbourhood */
   int dm_ngb_N;
 
   /*! DM velocity dispersion in each direction */
-  float dm_vel_disp2[3];
+  float dm_vel_diff2[3];
 
   /*! DM 1D vel. disp. from Vogelsberger et al (2013) equation 14. */
   float dm_vel_disp_1d;

@@ -105,6 +105,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     /* Only do DM vel. disp. loop if necessary for the model. */
     if (stars_dm_loop_is_active(si, e)) {
+      int dm_ngb_N = 0;
+      float dm_mean_velocity[3] = {0.f};
       for (int gjd = 0; gjd < gcount; gjd++) {
         struct gpart *restrict gj = &gparts[gjd];
         if (gj->type == swift_type_dark_matter) {
@@ -115,11 +117,13 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
           float dx[3] = {six[0] - gjx[0], six[1] - gjx[1], six[2] - gjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_sum(si, gj);
+            runner_iact_nonsym_feedback_dm_vel_sum(si, gj, &dm_ngb_N, dm_mean_velocity);
           }
         }
       }
-      /* D. Rennehan: I am worried that these loops might join together... */
+
+      feedback_intermediate_density_normalize(si, dm_ngb_N, dm_mean_velocity);
+
       for (int gjd = 0; gjd < gcount; gjd++) {
         struct gpart *restrict gj = &gparts[gjd];
         if (gj->type == swift_type_dark_matter) {
@@ -439,6 +443,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       /* Only do DM vel. disp. loop if necessary for the model. */
       if (stars_dm_loop_is_active(spi, e)) {
+        int dm_ngb_N = 0;
+        float dm_mean_velocity[3] = {0.f};
         /* TODO: Remove brute force for distance check against all DM */
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
@@ -450,11 +456,13 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pix - gjx, piy - gjy, piz - gjz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
             }
           }
         }
-        /* D. Rennehan: I am worried that these loops might join together... */
+        
+        feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
+
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
           if (gj->type == swift_type_dark_matter) {
@@ -634,6 +642,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       /* Only do DM vel. disp. loop if necessary for the model. */
       if (stars_dm_loop_is_active(spj, e)) {
+        int dm_ngb_N = 0;
+        float dm_mean_velocity[3] = {0.f};
         /* TODO: Remove brute force for distance check against all DM */
         for (int gid = 0; gid < gcount_i; gid++) {
           struct gpart *restrict gi = &gparts_i[gid];
@@ -645,11 +655,13 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pjx - gix, pjy - giy, pjz - giz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hjg2) {
-              runner_iact_nonsym_feedback_dm_vel_sum(spj, gi);
+              runner_iact_nonsym_feedback_dm_vel_sum(spj, gi, &dm_ngb_N, dm_mean_velocity);
             }
           }
         }
-        /* D. Rennehan: I am worried that these loops might join together... */
+        
+        feedback_intermediate_density_normalize(spj, dm_ngb_N, dm_mean_velocity);
+
         for (int gid = 0; gid < gcount_i; gid++) {
           struct gpart *restrict gi = &gparts_i[gid];
           if (gi->type == swift_type_dark_matter) {
@@ -846,6 +858,8 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       /* Only do DM vel. disp. loop if necessary for the model. */
       if (stars_dm_loop_is_active(spi, e)) {
+        int dm_ngb_N = 0;
+        float dm_mean_velocity[3] = {0.f};
         /* TODO: Remove brute force for distance check against all DM */
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
@@ -860,11 +874,13 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           (float)(piz - gjz)};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
             }
           }
         }
-        /* D. Rennehan: I am worried that these loops might join together... */
+        
+        feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
+
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
           if (gj->type == swift_type_dark_matter) {
@@ -951,6 +967,8 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
       /* Only do DM vel. disp. loop if necessary for the model. */
       if (stars_dm_loop_is_active(spi, e)) {
+        int dm_ngb_N = 0;
+        float dm_mean_velocity[3] = {0.f};
         /* TODO: Remove brute force for distance check against all DM */
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
@@ -965,11 +983,13 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           (float)(piz - gjz)};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
             }
           }
         }
-        /* D. Rennehan: I am worried that these loops might join together... */
+        
+        feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
+
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
           if (gj->type == swift_type_dark_matter) {
@@ -1099,6 +1119,8 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     /* Only do DM vel. disp. loop if necessary for the model. */
     if (stars_dm_loop_is_active(spi, e)) {
+      int dm_ngb_N = 0;
+      float dm_mean_velocity[3] = {0.f};
       /* TODO: Remove brute force for distance check against all DM */
       for (int gjd = 0; gjd < gcount_j; gjd++) {
         struct gpart *restrict gj = &gparts_j[gjd];
@@ -1113,11 +1135,13 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                         (float)(piz - gjz)};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
           }
         }
       }
-      /* D. Rennehan: I am worried that these loops might join together... */
+      
+      feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
+
       for (int gjd = 0; gjd < gcount_j; gjd++) {
         struct gpart *restrict gj = &gparts_j[gjd];
         if (gj->type == swift_type_dark_matter) {
@@ -1237,6 +1261,8 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
     /* Only do DM vel. disp. loop if necessary for the model. */
     if (stars_dm_loop_is_active(spi, e)) {
+      int dm_ngb_N = 0;
+      float dm_mean_velocity[3] = {0.f};
       /* TODO: Remove brute force for distance check against all DM */
       for (int gjd = 0; gjd < gcount_i; gjd++) {
         struct gpart *restrict gj = &gparts_j[gjd];
@@ -1249,11 +1275,13 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
           float dx[3] = {spix[0] - gjx[0], spix[1] - gjx[1], spix[2] - gjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj);
+            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
           }
         }
       }
-      /* D. Rennehan: I am worried that these loops might join together... */
+      
+      feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
+
       for (int gjd = 0; gjd < gcount_i; gjd++) {
         struct gpart *restrict gj = &gparts_j[gjd];
         if (gj->type == swift_type_dark_matter) {
