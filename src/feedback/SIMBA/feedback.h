@@ -142,10 +142,10 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
  * @param dm_ngb_N the integer number of neighbours from the previous loop
  * @param dm_mean_velocity the mass-weighted (unnormalized) three components of velocity
  */
-INLINE static double feedback_intermediate_density_normalize(
-    const struct spart* sp, int *dm_ngb_N, float dm_mean_velocity[3]) {
+INLINE static void feedback_intermediate_density_normalize(
+    const struct spart* sp, const int dm_ngb_N, float dm_mean_velocity[3]) {
   if (dm_ngb_N <= 0) return;
-  sp->dm_ngb_N = dm_ngb_N;
+  sp->feedback_data.dm_ngb_N = dm_ngb_N;
   dm_mean_velocity[0] /= (float)dm_ngb_N;
   dm_mean_velocity[1] /= (float)dm_ngb_N;
   dm_mean_velocity[2] /= (float)dm_ngb_N;

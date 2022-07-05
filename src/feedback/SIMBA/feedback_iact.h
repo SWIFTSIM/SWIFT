@@ -53,10 +53,9 @@ runner_iact_nonsym_feedback_dm_vel_sum(struct spart *si,
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_dm_vel_disp(struct spart *si,
                                         const struct gpart *gj,
-                                        const int dm_ngb_N,
                                         const float dm_mean_velocity[3]) {
 
-  if (si->dm_ngb_N <= 0) return;
+  if (si->feedback_data.dm_ngb_N <= 0) return;
   si->feedback_data.dm_vel_diff2[0] += (gj->v_full[0] - dm_mean_velocity[0]) *
                                        (gj->v_full[0] - dm_mean_velocity[0]);
   si->feedback_data.dm_vel_diff2[1] += (gj->v_full[1] - dm_mean_velocity[1]) *

@@ -134,7 +134,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
           float dx[3] = {six[0] - gjx[0], six[1] - gjx[1], six[2] - gjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_disp(si, gj);
+            runner_iact_nonsym_feedback_dm_vel_disp(si, gj, dm_mean_velocity);
           }
         }
       }
@@ -473,7 +473,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pix - gjx, piy - gjy, piz - gjz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
             }
           }
         }
@@ -672,7 +672,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pjx - gix, pjy - giy, pjz - giz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hjg2) {
-              runner_iact_nonsym_feedback_dm_vel_disp(spj, gi);
+              runner_iact_nonsym_feedback_dm_vel_disp(spj, gi, dm_mean_velocity);
             }
           }
         }
@@ -894,7 +894,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           (float)(piz - gjz)};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
             }
           }
         }
@@ -1003,7 +1003,7 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
                           (float)(piz - gjz)};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
             }
           }
         }
@@ -1155,7 +1155,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                         (float)(piz - gjz)};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+            runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
           }
         }
       }
@@ -1293,7 +1293,7 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
           float dx[3] = {spix[0] - gjx[0], spix[1] - gjx[1], spix[2] - gjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_disp(spi, gj);
+            runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
           }
         }
       }
