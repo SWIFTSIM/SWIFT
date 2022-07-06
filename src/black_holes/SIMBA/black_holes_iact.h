@@ -509,6 +509,7 @@ runner_iact_nonsym_bh_gas_swallow(
 
   /* Probability to swallow this particle */
   float prob = -1.f;
+  float f_accretion = bi->f_accretion;
 
   /* Radiation was already accounted for in bi->subgrid_mass
     * so if is is bigger than bi->mass we can simply
@@ -545,6 +546,10 @@ runner_iact_nonsym_bh_gas_swallow(
         * bi->accretion_rate 
         * dt 
         * (hi_inv_dim * wi / bi->rho_gas);
+    /* We do NOT accrete when subgrid_mass < physical_mass
+     * but we still kick.
+     */
+    f_accretion = 0.f;
   }
 
 
@@ -556,10 +561,10 @@ runner_iact_nonsym_bh_gas_swallow(
   if (rand < prob) {
 
     /* If the sub-grid mass is larger, eat away buddy */
-    if (mass_deficit > 0.f) {
+    if (mass_deficit > 0.f && f_accretion > 0.f) {
       const float bi_mass_orig = bi->mass;
       const float pj_mass_orig = pj->mass;
-      const float nibbled_mass = bi->f_accretion * pj->mass;
+      const float nibbled_mass = f_accretion * pj->mass;
       const float new_gas_mass = pj->mass - nibbled_mass;
       /* Don't go below the minimum for stability */
       if (new_gas_mass < bh_props->min_gas_mass_for_nibbling) return;
