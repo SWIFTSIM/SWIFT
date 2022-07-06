@@ -103,6 +103,13 @@ vx_std = np.zeros(119)
 vy_std = np.zeros(119)
 vz_std = np.zeros(119)
 
+bx_mean = np.zeros(119)
+by_mean = np.zeros(119)
+bz_mean = np.zeros(119)
+bx_std = np.zeros(119)
+by_std = np.zeros(119)
+bz_std = np.zeros(119)
+
 for i in range(119):
     sim = h5py.File("box_%04d.hdf5" % i, "r")
 
@@ -132,6 +139,14 @@ for i in range(119):
     vx_std[i] = np.std(v[:, 0])
     vy_std[i] = np.std(v[:, 1])
     vz_std[i] = np.std(v[:, 2])
+
+    b = sim["/PartType0/Bfield"][:, :]
+    bx_mean[i] = np.mean(b[:, 0])
+    by_mean[i] = np.mean(b[:, 1])
+    bz_mean[i] = np.mean(b[:, 2])
+    bx_std[i] = np.std(b[:, 0])
+    by_std[i] = np.std(b[:, 1])
+    bz_std[i] = np.std(b[:, 2])
 
 # Move to physical quantities
 rho_mean_phys = rho_mean / a ** 3
@@ -187,9 +202,12 @@ ylabel("${\\rm Comoving~entropy}~A / A_0$", labelpad=0.0)
 
 # Peculiar velocity evolution ---------------------
 subplot(234)
-semilogx(a, vx_mean, "-", color="r", lw=1)
-semilogx(a, vy_mean, "-", color="g", lw=1)
-semilogx(a, vz_mean, "-", color="b", lw=1)
+#semilogx(a, vx_mean, "-", color="r", lw=1)
+#semilogx(a, vy_mean, "-", color="g", lw=1)
+#semilogx(a, vz_mean, "-", color="b", lw=1)
+semilogx(a, bx_mean, "*", color="r", lw=1)
+semilogx(a, by_mean, "*", color="g", lw=1)
+semilogx(a, bz_mean, "*", color="b", lw=1)
 xlabel("${\\rm Scale-factor}$", labelpad=0.0)
 ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=-5.0)
 
@@ -198,6 +216,9 @@ subplot(235)
 semilogx(a, vx_std, "--", color="r", lw=1)
 semilogx(a, vy_std, "--", color="g", lw=1)
 semilogx(a, vz_std, "--", color="b", lw=1)
+semilogx(a, bx_std, ".", color="r", lw=1)
+semilogx(a, by_std, ".", color="g", lw=1)
+semilogx(a, bz_std, ".", color="b", lw=1)
 xlabel("${\\rm Scale-factor}$", labelpad=0.0)
 ylabel("${\\rm Peculiar~velocity~std-dev}$", labelpad=0.0)
 
