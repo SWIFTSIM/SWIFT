@@ -41,7 +41,7 @@ runner_iact_nonsym_feedback_dm_vel_sum(struct spart *si,
   dm_mean_velocity[0] += gj->v_full[0];
   dm_mean_velocity[1] += gj->v_full[1];
   dm_mean_velocity[2] += gj->v_full[2];
-  *dm_ngb_N++;
+  (*dm_ngb_N)++;
 }
 
 /**
