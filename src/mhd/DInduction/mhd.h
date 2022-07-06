@@ -23,14 +23,13 @@
 #include "mhd_parameters.h"
 
 #include <float.h>
-// WARNING there should be Mu_0 around
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp) {
 
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return 0.5f * b2;
+  return 0.5f * b2 * MHD_MU0_1;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
@@ -81,34 +80,34 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
 
   const float b2_i = (pi->mhd_data.BPred[0] * pi->mhd_data.BPred[0] +
                       pi->mhd_data.BPred[1] * pi->mhd_data.BPred[1] +
-                      pi->mhd_data.BPred[2] * pi->mhd_data.BPred[2]) *
-                     MHD_MU0_1;
+                      pi->mhd_data.BPred[2] * pi->mhd_data.BPred[2]);
   const float b2_j = (pj->mhd_data.BPred[0] * pj->mhd_data.BPred[0] +
                       pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
-                      pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]) *
-                     MHD_MU0_1;
-  const float vcsa2_i = ci * ci + pow(a, 3.f) * b2_i / pi->rho;
-  const float vcsa2_j = cj * cj + pow(a, 3.f) * b2_j / pj->rho;
+                      pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
+  const float vcsa2_i =
+      ci * ci + pow(a, 3.f) * b2_i / pi->rho * 0.5 * MHD_MU0_1;
+  const float vcsa2_j =
+      cj * cj + pow(a, 3.f) * b2_j / pj->rho * 0.5 * MHD_MU0_1;
   float Bpro2_i =
       (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
        pi->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_i *= Bpro2_i;
-  float mag_speed_i = sqrtf(
-      0.5 * (vcsa2_i +
-             sqrtf(max((vcsa2_i * vcsa2_i - 4.f * ci * ci * pow(a, 3.f) *
-                                                Bpro2_i / pi->rho * MHD_MU0_1),
-                       0.f))));
+  float mag_speed_i =
+      sqrtf(0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
+                                        4.f * ci * ci * pow(a, 3.f) * Bpro2_i /
+                                            pi->rho * 0.5 * MHD_MU0_1),
+                                       0.f))));
   float Bpro2_j =
       (pj->mhd_data.BPred[0] * dx[0] + pj->mhd_data.BPred[1] * dx[1] +
        pj->mhd_data.BPred[2] * dx[2]) *
       r_inv;
   Bpro2_j *= Bpro2_j;
-  float mag_speed_j = sqrtf(
-      0.5 * (vcsa2_j +
-             sqrtf(max((vcsa2_j * vcsa2_j - 4.f * cj * cj * pow(a, 3.f) *
-                                                Bpro2_j / pj->rho * MHD_MU0_1),
-                       0.f))));
+  float mag_speed_j =
+      sqrtf(0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
+                                        4.f * cj * cj * pow(a, 3.f) * Bpro2_j /
+                                            pj->rho * 0.5 * MHD_MU0_1),
+                                       0.f))));
 
   return (mag_speed_i + mag_speed_j - beta / 2. * mu_ij);
 }
@@ -121,7 +120,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
  */
 __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
     const struct part *restrict p, const float hyp, const float par,
-    const float a, const struct cosmology *c) {
+    const struct cosmology *c) {
 
   const float v_sig = hydro_get_signal_velocity(p);
   // const float div_v = hydro_get_div_v(p);
@@ -133,8 +132,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
           //          0.5f * p->mhd_data.phi * div_v -
           (2.f - 3.f / 2.f * (hydro_gamma - 1.f)) * c->a * c->a * c->H *
               p->mhd_data.phi);
-  // NOTE > should be (2 + n), but the div_v term already has one hubble term
-  // substracted
 }
 
 /**
@@ -154,7 +151,8 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 
   return p->mhd_data.divB != 0.f
              ? cosmo->a * hydro_properties->CFL_condition *
-                   sqrtf(p->rho / (p->mhd_data.divB * p->mhd_data.divB))
+                   sqrtf(p->rho /
+                         (p->mhd_data.divB * p->mhd_data.divB * MHD_MU0_1))
              : FLT_MAX;
 }
 
@@ -268,15 +266,14 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props, const float dt_alpha) {
 
-  // const float a_inv = cosmo->a_inv;
-  // the cosmological factors cancel out
   const float pressure = hydro_get_comoving_pressure(p);
   /* Estimation of de Dedner correction and check if worth correcting */
   float const DBDT_Corr = fabs(p->mhd_data.phi / p->h);
   const float b2 = (p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                     p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                     p->mhd_data.BPred[2] * p->mhd_data.BPred[2]);
-  float const DBDT_True = b2 * sqrt(0.5 / p->rho) / p->h;  // b * v_alfven /h
+  float const DBDT_True =
+      b2 * sqrt(0.5 / p->rho * MHD_MU0_1) / p->h;  // b * v_alfven /h
   /* Re normalize the correction in the Induction equation */
   p->mhd_data.Q1 =
       DBDT_Corr > 0.5f * DBDT_True ? 0.5f * DBDT_True / DBDT_Corr : 1.0f;
@@ -286,12 +283,12 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) *
-                              MHD_MU0_1);  // this should go with a /p->h, but I
-  //    take simplify becasue of ACC_mhd also.
+  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * MHD_MU0_1);
+  // this should go with a /p->h, but I
+  // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
   // add the correct hydro acceleration?
-  const float ACC_mhd = b2 / (p->h);
+  const float ACC_mhd = (b2 / p->h) * MHD_MU0_1;
   /* Re normalize the correction in eth momentum from the DivB errors*/
   p->mhd_data.Q0 =
       ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
@@ -356,7 +353,7 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.BPred[2] += p->mhd_data.dBdt[2] * dt_therm;
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
-  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo->a, cosmo) * dt_therm;
+  p->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
 }
 
 /**
@@ -409,8 +406,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
 
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
-  xp->mhd_data.phi +=
-      hydro_get_dphi_dt(p, hyp, par, cosmo->a, cosmo) * dt_therm;
+  xp->mhd_data.phi += hydro_get_dphi_dt(p, hyp, par, cosmo) * dt_therm;
 }
 
 /**
