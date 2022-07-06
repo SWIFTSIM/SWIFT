@@ -92,7 +92,7 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
 /* Option controlling output of grids */
-//#define SHADOWSWIFT_OUTPUT_GRIDS
+#define SHADOWSWIFT_OUTPUT_GRIDS
 /* Option to enable the hilbert order insertion during the grid construction */
 #define SHADOWSWIFT_HILBERT_ORDERING
 /* Option to enable the bvh acceleration structure for neighbour searching */
@@ -117,6 +117,12 @@
 #define SHADOWSWIFT_UNPHYSICAL_WARNING
 /* This option halts the execution in the case of unphysical conditions */
 //#define SHADOWSWIFT_UNPHYSICAL_ERROR
+#if defined(SHADOWSWIFT_UNPHYSICAL_ERROR) && \
+    defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
+error(
+    "Only one of SHADOWSWIFT_UNPHYSICAL_ERROR and "
+    "SHADOWSWIFT_UNPHYSICAL_RESCUE can be defined at a time!")
+#endif
 
 /* Source terms */
 #define SOURCETERMS_NONE
