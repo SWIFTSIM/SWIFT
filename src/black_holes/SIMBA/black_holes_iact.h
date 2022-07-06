@@ -867,123 +867,8 @@ runner_iact_nonsym_bh_gas_feedback(
   /* This shouldn't happen, but just be sure anyway */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
-  /* In SIMBA, all nibbled particles are ejected as a wind */
-  if (pj->black_holes_data.swallow_id == bi->id) {
-    /* Save gas density and entropy before feedback */
-    tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
-
-    /* TODO: Don't we have the angular momentum already? */
-    /* Compute relative peculiar velocity between the two particles */
-    const float delta_v[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
-                              pj->v[2] - bi->v[2]};
-
-    /* compute direction of kick: r x v */ 
-    float dir[3];
-    float norm = 0.f;
-    dir[0] = dx[1] * delta_v[2] - dx[2] * delta_v[1];
-    dir[1] = dx[2] * delta_v[0] - dx[0] * delta_v[2];
-    dir[2] = dx[0] * delta_v[1] - dx[1] * delta_v[0];
-    for (int i = 0; i < 3; i++) norm += dir[i] * dir[i];
-    norm = sqrtf(norm);
-
-    /* TODO: Remove */
-    float pj_vel_norm = 0.f;
-    for (int i = 0; i < 3; i++) pj_vel_norm += pj->v[i] * pj->v[i];
-    pj_vel_norm = sqrtf(pj_vel_norm);
-
-    /* TODO: random_uniform() won't work here?? */
-    /*const float dirsign = (random_uniform(-1.0, 1.0) > 0. ? 1.f : -1.f);*/
-    const double random_number = 
-        random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
-    const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
-    const float prefactor = bi->v_kick * cosmo->a * dirsign / norm;
-
-    pj->v[0] += prefactor * dir[0];
-    pj->v[1] += prefactor * dir[1];
-    pj->v[2] += prefactor * dir[2];
-
-    message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
-        pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
-
-    /* Make sure the timestepping knows of this kicking event.
-     * PHYSICAL */
-    bi->delta_energy_this_timestep +=
-        0.5f * hydro_get_mass(pj) * bi->v_kick * bi->v_kick;
-
-    /* Set delay time */
-    pj->feedback_data.decoupling_delay_time = 
-        1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
-
-    /* Update the signal velocity of the particle based on the velocity kick. */
-    hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick);
-
-    /* If we have a jet, we heat! */
-    if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
-      message("BH_JET: bid=%lld kicking pid=%lld at v_kick=%g (internal), v_kick/v_part=%g",
-        bi->id, pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
-
-      float new_Tj = 0.f;
-      /* Use the halo Tvir? */
-      if (bh_props->jet_temperature < 0.f) {
-        /* TODO: Get the halo Tvir for pj */
-        new_Tj = 1.0e8f; /* K */
-      } else {
-        new_Tj = bh_props->jet_temperature; /* K */
-      }
-
-      /* Simba scales with velocity */
-      new_Tj *= (bi->v_kick * bi->v_kick) /
-                (bh_props->jet_velocity * bh_props->jet_velocity);
-      
-      /* Treat the jet temperature as an upper limit, in case v_kick > v_jet */
-      if (new_Tj > bh_props->jet_temperature) new_Tj = bh_props->jet_temperature;
-
-      message("BH_JET: bid=%lld heating pid=%lld to T=%g K",
-        bi->id, pj->id, new_Tj);
-
-      /* Compute new energy per unit mass of this particle */
-      const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
-      const double u_new = bh_props->temp_to_u_factor * new_Tj;
-
-      /* Don't decrease the gas temperature if it's already hotter */
-      if (u_new > u_init) {
-        /* We are overwriting the internal energy of the particle */
-        hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-        hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-
-        const double delta_energy = (u_new - u_init) * hydro_get_mass(pj);
-
-        /* Make sure the timestepping knows of this heating event */
-        bi->delta_energy_this_timestep += delta_energy;
-
-        tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
-                                           time, delta_energy);
-      }
-    }
-
-    /* Impose maximal viscosity */
-    hydro_diffusive_feedback_reset(pj);
-    
-    /* Synchronize the particle on the timeline */
-    timestep_sync_part(pj);
-
-    /* IMPORTANT: The particle MUST NOT be swallowed. 
-     * We are taking a f_accretion from each particle, and then
-     * kicking the rest. We used the swallow marker as a temporary
-     * passer in order to remember which particles have been "nibbled"
-     * so that we can kick them out.
-     */
-    black_holes_mark_part_as_not_swallowed(&pj->black_holes_data);
-
-#ifdef DEBUG_INTERACTIONS_BH
-    /* Update ngb counters */
-    if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)
-      bi->ids_ngbs_force[si->num_ngb_force] = pj->id;
-
-    /* Update ngb counters */
-    ++si->num_ngb_force;
-#endif
-  } else {
+  /* Do X-ray feedback first */
+  if (pj->black_holes_data.swallow_id != bi->id) {
         /* We were not lucky, but we are lucky to heat via X-rays */
     if (bi->v_kick > bh_props->xray_heating_velocity_threshold
         && bi->delta_energy_this_timestep < bi->energy_reservoir) {
@@ -1067,18 +952,131 @@ runner_iact_nonsym_bh_gas_feedback(
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
         message("BH_XRAY_KICK: dv_phys(km/s)=%g",
                 dv_phys / bh_props->kms_to_internal);
-      } 
+      }
 
       const double u_new = u_init + du_xray_phys;
 
       /* Do the energy injection. */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-
-      /* Synchronize the particle on the timeline */
-      timestep_sync_part(pj);
     }
   }
+
+  /* Save gas density and entropy before feedback */
+  tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
+
+  /* TODO: Don't we have the angular momentum already? */
+  /* Compute relative peculiar velocity between the two particles */
+  const float delta_v[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
+                            pj->v[2] - bi->v[2]};
+
+  /* compute direction of kick: r x v */ 
+  float dir[3];
+  float norm = 0.f;
+  dir[0] = dx[1] * delta_v[2] - dx[2] * delta_v[1];
+  dir[1] = dx[2] * delta_v[0] - dx[0] * delta_v[2];
+  dir[2] = dx[0] * delta_v[1] - dx[1] * delta_v[0];
+  for (int i = 0; i < 3; i++) norm += dir[i] * dir[i];
+  norm = sqrtf(norm);
+
+  /* TODO: Remove */
+  float pj_vel_norm = 0.f;
+  for (int i = 0; i < 3; i++) pj_vel_norm += pj->v[i] * pj->v[i];
+  pj_vel_norm = sqrtf(pj_vel_norm);
+
+  /* TODO: random_uniform() won't work here?? */
+  /*const float dirsign = (random_uniform(-1.0, 1.0) > 0. ? 1.f : -1.f);*/
+  const double random_number = 
+      random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
+  const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
+  const float prefactor = bi->v_kick * cosmo->a * dirsign / norm;
+
+  pj->v[0] += prefactor * dir[0];
+  pj->v[1] += prefactor * dir[1];
+  pj->v[2] += prefactor * dir[2];
+
+  message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
+      pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
+
+  /* Make sure the timestepping knows of this kicking event.
+    * PHYSICAL */
+  bi->delta_energy_this_timestep +=
+      0.5f * hydro_get_mass(pj) * bi->v_kick * bi->v_kick;
+
+  /* Set delay time */
+  pj->feedback_data.decoupling_delay_time = 
+      1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+
+  /* Update the signal velocity of the particle based on the velocity kick. */
+  hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick);
+
+  /* If we have a jet, we heat! */
+  if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
+    message("BH_JET: bid=%lld kicking pid=%lld at v_kick=%g (internal), v_kick/v_part=%g",
+      bi->id, pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
+
+    float new_Tj = 0.f;
+    /* Use the halo Tvir? */
+    if (bh_props->jet_temperature < 0.f) {
+      /* TODO: Get the halo Tvir for pj */
+      new_Tj = 1.0e8f; /* K */
+    } else {
+      new_Tj = bh_props->jet_temperature; /* K */
+    }
+
+    /* Simba scales with velocity */
+    new_Tj *= (bi->v_kick * bi->v_kick) /
+              (bh_props->jet_velocity * bh_props->jet_velocity);
+    
+    /* Treat the jet temperature as an upper limit, in case v_kick > v_jet */
+    if (new_Tj > bh_props->jet_temperature) new_Tj = bh_props->jet_temperature;
+
+    message("BH_JET: bid=%lld heating pid=%lld to T=%g K",
+      bi->id, pj->id, new_Tj);
+
+    /* Compute new energy per unit mass of this particle */
+    const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
+    const double u_new = bh_props->temp_to_u_factor * new_Tj;
+
+    /* Don't decrease the gas temperature if it's already hotter */
+    if (u_new > u_init) {
+      /* We are overwriting the internal energy of the particle */
+      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+
+      const double delta_energy = (u_new - u_init) * hydro_get_mass(pj);
+
+      /* Make sure the timestepping knows of this heating event */
+      bi->delta_energy_this_timestep += delta_energy;
+
+      tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
+                                          time, delta_energy);
+    }
+  }
+
+  /* Impose maximal viscosity */
+  hydro_diffusive_feedback_reset(pj);
+  
+  /* Synchronize the particle on the timeline */
+  timestep_sync_part(pj);
+
+    /* IMPORTANT: The particle MUST NOT be swallowed. 
+    * We are taking a f_accretion from each particle, and then
+    * kicking the rest. We used the swallow marker as a temporary
+    * passer in order to remember which particles have been "nibbled"
+    * so that we can kick them out.
+    */
+  black_holes_mark_part_as_not_swallowed(&pj->black_holes_data);
+
+#ifdef DEBUG_INTERACTIONS_BH
+  /* Update ngb counters */
+  if (si->num_ngb_force < MAX_NUM_OF_NEIGHBOURS_BH)
+    bi->ids_ngbs_force[si->num_ngb_force] = pj->id;
+
+  /* Update ngb counters */
+  ++si->num_ngb_force;
+#endif
+
 }
 
 #endif /* SWIFT_SIMBA_BH_IACT_H */
