@@ -107,7 +107,7 @@ INLINE static void sink_write_particles(const struct sink* sinks,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 5;
+  *num_fields = 7;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sink(
@@ -132,11 +132,19 @@ INLINE static void sink_write_particles(const struct sink* sinks,
       UNIT_CONV_NO_UNITS, 0.f, sinks, chemistry_data.metal_mass_fraction,
       "Mass fraction of each element");
 
+  list[5] = io_make_output_field(
+      "NumberOfSinkSwallows", INT, 1,
+      UNIT_CONV_NO_UNITS, 0.f, sinks, number_of_sink_swallows, "Total number of sink merger events");      
+      
+  list[6] = io_make_output_field(
+      "NumberOfGasSwallows", INT, 1,
+      UNIT_CONV_NO_UNITS, 0.f, sinks, number_of_gas_swallows, "Total number of gas merger events");       
+            
 
 #ifdef DEBUG_INTERACTIONS_SINKS
 
   list += *num_fields;
-  *num_fields += 6;
+  *num_fields += 4;
 
   list[0] =
       io_make_output_field("Num_ngb_formation", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
@@ -152,14 +160,6 @@ INLINE static void sink_write_particles(const struct sink* sinks,
   list[3] = io_make_output_field(
       "Ids_ngb_merger", LONGLONG, MAX_NUM_OF_NEIGHBOURS_SINKS,
       UNIT_CONV_NO_UNITS, 0.f, sinks, ids_ngbs_merger, "IDs of the neighbors");
-      
-  list[4] = io_make_output_field(
-      "NumberOfSinkSwallows", INT, 1,
-      UNIT_CONV_NO_UNITS, 0.f, sinks, number_of_sink_swallows, "Total number of sink merger events");      
-      
-  list[5] = io_make_output_field(
-      "NumberOfGasSwallows", INT, 1,
-      UNIT_CONV_NO_UNITS, 0.f, sinks, number_of_gas_swallows, "Total number of gas merger events");       
       
 #endif
 }

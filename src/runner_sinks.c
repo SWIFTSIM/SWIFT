@@ -609,8 +609,6 @@ void runner_do_sinks_gas_swallow(struct runner *r, struct cell *c, int timer) {
             /* If the gas particle is local, remove it */
             if (c->nodeID == e->nodeID) {
 
-              message("sink %lld removing gas particle %lld", sp->id, p->id);
-
               lock_lock(&e->s->lock);
 
               /* Re-check that the particle has not been removed
@@ -808,9 +806,6 @@ void runner_do_sinks_sink_swallow(struct runner *r, struct cell *c, int timer) {
 
             /* If the sink particle is local, remove it */
             if (c->nodeID == e->nodeID) {
-
-              message("sink %lld removing sink particle %lld", sp->id,
-                      cell_sp->id);
 
               /* Finally, remove the sink particle from the system
                * Recall that the gpart associated with it is also removed

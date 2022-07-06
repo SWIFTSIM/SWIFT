@@ -206,7 +206,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
   const int current_stars_count = c->stars.count;
 
   TIMER_TIC;
-
+  
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->nodeID != e->nodeID)
     error("Running star formation task on a foreign node!");
