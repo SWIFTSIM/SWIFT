@@ -13,6 +13,8 @@ config.sub
 ltmain.sh
 libtool
 build
+LOG
+github_token
 
 src/version_string.h
 swift*.tar.gz
