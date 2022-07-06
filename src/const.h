@@ -106,9 +106,11 @@
 //#define SHADOWSWIFT_EXTRAPOLATE_TIME
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWSWIFT_TOTAL_ENERGY
-/* This option enables reflective boundary conditions for non-periodic
- * ShadowSWIFT runs */
-#define SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
+/* This option enables boundary conditions for non-periodic ShadowSWIFT runs */
+#define VACUUM_BC 0
+#define REFLECTIVE_BC 1
+#define OPEN_BC 2
+#define SHADOWSWIFT_BC REFLECTIVE_BC
 /* This option tries to recover from unphysical situations */
 #define SHADOWSWIFT_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset */
