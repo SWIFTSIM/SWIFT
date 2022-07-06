@@ -1041,7 +1041,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 
                   } else {
                     if (ci->progeny[i]->tl_cell_type == zoom_tl_cell &&
-                        cj->progeny[i]->tl_cell_type == zoom_tl_cell) {
+                        cj->progeny[j]->tl_cell_type == zoom_tl_cell) {
                       /* Ok, we actually have to create a task */
                       scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair,
@@ -1049,7 +1049,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                                           0, 0, ci->progeny[i],
                                           cj->progeny[j]), s);
                     } else if (ci->progeny[i]->tl_cell_type == zoom_tl_cell &&
-                               cj->progeny[i]->tl_cell_type <= 2) {
+                               cj->progeny[j]->tl_cell_type <= 2) {
                       /* Ok, we actually have to create a task */
                       scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair,
@@ -1057,7 +1057,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                                           0, 0, ci->progeny[i],
                                           cj->progeny[j]), s);
                     } else if (cj->progeny[i]->tl_cell_type == zoom_tl_cell &&
-                               ci->progeny[i]->tl_cell_type <= 2) {
+                               ci->progeny[j]->tl_cell_type <= 2) {
                       /* Ok, we actually have to create a task */
                       scheduler_splittask_gravity(
                         scheduler_addtask(s, task_type_pair,
