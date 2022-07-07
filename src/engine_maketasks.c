@@ -4699,6 +4699,10 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     struct task *t = &((struct task *)map_data)[ind];
+
+    /* Escape early */
+    if (t->type == task_type_none) continue;
+
     const enum task_types t_type = t->type;
     const enum task_subtypes t_subtype = t->subtype;
     const long long flags = t->flags;
