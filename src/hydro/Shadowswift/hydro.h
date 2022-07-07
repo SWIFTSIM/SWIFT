@@ -137,6 +137,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   Q[4] += 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
 #endif
 
+  shadowswift_check_physical_quantities("mass", "energy", Q[0], Q[1], Q[2],
+                                        Q[3], Q[4]);
+
   /* overwrite all hydro variables if we are using Lloyd's algorithm */
   /* TODO */
 
@@ -319,23 +322,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 }
 
 /**
- * @brief Converts the hydrodynamic variables from the initial condition file to
- * conserved variables that can be used during the integration
- *
- * We no longer do this, as the mass needs to be provided in the initial
- * condition file, and the mass alone is enough to initialize all conserved
- * variables. This is now done in hydro_first_init_part.
- *
- * @param p The particle to act upon.
- */
-__attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props) {
-
-  p->conserved.energy /= cosmo->a_factor_internal_energy;
-}
-
-/**
  * @brief Extra operations to be done during the drift
  *
  * This predicted the primitive variables a half timestep into the future, but
@@ -349,7 +335,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *p, struct xpart *xp, float dt_drift, float dt_therm,
-    float dt_kick_grav, const struct cosmology* cosmo,
+    float dt_kick_grav, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
@@ -360,7 +346,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Extrapolate primitive quantities in time */
   float W[5], dW[5];
   hydro_part_get_primitive_variables(p, W);
-  hydro_gradients_extrapolate_in_time(p, W, 0.5f * dt_therm, /*return*/dW);
+  hydro_gradients_extrapolate_in_time(p, W, 0.5f * dt_therm, /*return*/ dW);
 
   /* Update primitive quantities with extrapolations */
   p->dW_time[0] += dW[0];
@@ -443,6 +429,26 @@ hydro_convert_conserved_to_primitive(struct part *restrict p,
   if (p->P < 0.) {
     error("Negative pressure!");
   }
+}
+
+/**
+ * @brief Converts the conserved hydrodynamic variables from the initial
+ * condition file to primitive quantities used for flux calculation. This can
+ * only happen after the initial volume calculation.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void hydro_convert_quantities(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props) {
+
+  p->conserved.energy /= cosmo->a_factor_internal_energy;
+
+  shadowswift_check_physical_quantities(
+      "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
+
+  hydro_convert_conserved_to_primitive(p, xp);
 }
 
 /**

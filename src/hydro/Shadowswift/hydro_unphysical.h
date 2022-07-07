@@ -27,15 +27,15 @@
 #endif
 
 #define shadowswift_check_physical_quantity(name, quantity) \
-  if (quantity < 0.f) {                               \
+  if (quantity < 0.f) {                                     \
     shadowswift_unphysical_message(name, quantity);         \
-    quantity = 0.f;                                   \
+    quantity = 0.f;                                         \
   }
 
-#define shadowswift_check_physical_quantities(                                      \
+#define shadowswift_check_physical_quantities(                                \
     mass_name, energy_name, mass, momentum_x, momentum_y, momentum_z, energy) \
-  shadowswift_check_physical_quantity(mass_name, mass);                             \
-  shadowswift_check_physical_quantity(energy_name, energy);                         \
+  shadowswift_check_physical_quantity(mass_name, mass);                       \
+  shadowswift_check_physical_quantity(energy_name, energy);                   \
   /* now check for vacuum and make sure we have a real vacuum */              \
   if (mass == 0.f || energy == 0.f) {                                         \
     mass = 0.f;                                                               \
