@@ -130,6 +130,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   }
   bp->total_accreted_mass = 0.f;
   bp->accretion_rate = 0.f;
+  bp->mass_accreted_this_step = 0.f;
   bp->formation_time = -1.f;
   bp->energy_reservoir = 0.f;
   bp->cumulative_number_seeds = 1;
@@ -208,6 +209,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->reposition.min_potential = FLT_MAX;
   bp->reposition.potential = FLT_MAX;
   bp->accretion_rate = 0.f; /* Optionally accumulated ngb-by-ngb */
+  bp->mass_accreted_this_step = 0.f;
   bp->f_visc = FLT_MAX;
   bp->accretion_boost_factor = -FLT_MAX;
   bp->mass_at_start_of_step = bp->mass; /* bp->mass may grow in nibbling mode */

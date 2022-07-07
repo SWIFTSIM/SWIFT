@@ -89,6 +89,9 @@ struct bpart {
   /*! Subgrid mass of the black hole */
   float subgrid_mass;
 
+  /*! The mass marked for accretion this timestep */
+  float mass_accreted_this_step;
+  
   /*! Total accreted mass of the black hole (not including mass merged in
    * from other black holes) */
   float total_accreted_mass;
