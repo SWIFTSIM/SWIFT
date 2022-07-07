@@ -576,7 +576,9 @@ void engine_addtasks_send_rt(struct engine *e, struct cell *ci, struct cell *cj,
  */
 void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
                                struct cell *cj, struct task *t_xv,
-                               struct task *t_gradient, int with_hydro) {
+                               struct task *t_gradient, struct task *t_limiter,
+                               struct task *t_pack_limiter,
+                               const int with_hydro, const int with_limiter) {
 
 #ifdef WITH_MPI
 
@@ -649,7 +651,7 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
         /* The faces can only be sent after the grid ghost */
         scheduler_addunlock(s, ci->grid.super->grid.ghost, t_faces);
 
-        /* The send_faces unlocks the flux ghost */
+        /* The send_faces unlocks the hydro ghost */
         scheduler_addunlock(s, t_faces,
                             ci->hydro.super->hydro.slope_estimate_ghost);
 
@@ -670,7 +672,7 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
     /* If so, add t_xv and gradient task */
     if (l != NULL) {
 
-      /* Create the gradient task? */
+      /* Create the gradient/limiter task? */
       if (t_gradient == NULL) {
 
         /* Make sure this cell is tagged. */
@@ -685,10 +687,25 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
 
         /* The gradient task should unlock the super-cell's flux ghost task. */
         scheduler_addunlock(s, t_gradient, ci->hydro.super->hydro.flux_ghost);
+
+        /* The limiter pair tasks follow the same structure as the hydro pair
+         * interactions */
+        if (with_limiter) {
+          t_limiter = scheduler_addtask(s, task_type_send, task_subtype_limiter,
+                                        ci->mpi.tag, 0, ci, cj);
+          t_pack_limiter = scheduler_addtask(
+              s, task_type_pack, task_subtype_limiter, 0, 0, ci, cj);
+
+          scheduler_addunlock(s, t_pack_limiter, t_limiter);
+        }
       }
 
       /* Add it to the local cell. */
       engine_addlink(e, &ci->mpi.send, t_gradient);
+      if (with_limiter) {
+        engine_addlink(e, &ci->mpi.send, t_limiter);
+        engine_addlink(e, &ci->mpi.pack, t_pack_limiter);
+      }
 
       if (!added_t_xv) {
         if (t_xv == NULL) {
@@ -712,11 +729,12 @@ void engine_addtasks_send_grid(struct engine *e, struct cell *ci,
   }
 
   /* Recurse? */
-  if (ci->grid.split)
+  if (ci->split)
     for (int k = 0; k < 8; k++)
       if (ci->progeny[k] != NULL)
         engine_addtasks_send_grid(e, ci->progeny[k], cj, t_xv, t_gradient,
-                                  with_hydro);
+                                  t_limiter, t_pack_limiter, with_hydro,
+                                  with_limiter);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1250,7 +1268,9 @@ void engine_addtasks_recv_rt(struct engine *e, struct cell *c,
  */
 void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
                                struct task *t_xv, struct task *t_gradient,
-                               struct task *tend, int with_hydro) {
+                               struct task *t_limiter,
+                               struct task *t_unpack_limiter, struct task *tend,
+                               const int with_hydro, const int with_limiter) {
 
 #ifdef WITH_MPI
 
@@ -1298,9 +1318,10 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
   if (with_hydro) {
 
-    /* Are we at the construction level, meaning that we have to recieve faces?
-     */
-    if (c->grid.construction_level == on_construction_level) {
+    /* Are we at the construction level and is this cell linked to any
+     * construction tasks, meaning that we have to recieve faces?*/
+    if (c->grid.construction_level == on_construction_level &&
+        c->grid.construction != NULL) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure this cell has a valid tag. */
@@ -1312,7 +1333,7 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
       /* Dependencies */
       /* The faces can only be received after the sorts */
-      scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_faces);
+      scheduler_addunlock(s, c->hydro.super->hydro.sorts, t_faces);;
 
       /* The recv_faces unlocks the hydro pair interactions, which are on
        * or above the construction level of a cell. */
@@ -1346,6 +1367,15 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
         t_gradient = scheduler_addtask(s, task_type_recv, task_subtype_gradient,
                                        c->mpi.tag, 0, c, NULL);
+
+        if (with_limiter) {
+          t_limiter = scheduler_addtask(s, task_type_recv, task_subtype_limiter,
+                                        c->mpi.tag, 0, c, NULL);
+          t_unpack_limiter = scheduler_addtask(
+              s, task_type_unpack, task_subtype_limiter, 0, 0, c, NULL);
+
+          scheduler_addunlock(s, t_limiter, t_unpack_limiter);
+        }
       }
 
       /* Dependencies */
@@ -1362,6 +1392,10 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
 
       /* add it to cell */
       engine_addlink(e, &c->mpi.recv, t_gradient);
+      if (with_limiter) {
+        engine_addlink(e, &c->mpi.recv, t_limiter);
+        engine_addlink(e, &c->mpi.unpack, t_unpack_limiter);
+      }
 
       /* Still need to add t_xv? */
       if (!added_t_xv) {
@@ -1399,11 +1433,12 @@ void engine_addtasks_recv_grid(struct engine *e, struct cell *c,
   }
 
   /* Recurse? */
-  if (c->grid.split)
+  if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_gradient, tend,
-                                  with_hydro);
+        engine_addtasks_recv_grid(e, c->progeny[k], t_xv, t_gradient, t_limiter,
+                                  t_unpack_limiter, tend, with_hydro,
+                                  with_limiter);
 
 #else
   error("SWIFT was not compiled with MPI support.");
@@ -1452,14 +1487,14 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
 
     if (with_star_formation_sink &&
         (c->hydro.count > 0 || c->sinks.count > 0)) {
-      c->hydro.star_formation_sink = scheduler_addtask(
+      c->sinks.star_formation_sink = scheduler_addtask(
           s, task_type_star_formation_sink, task_subtype_none, 0, 0, c, NULL);
     }
 
     if (with_sinks) {
-      /* hydro.sink_formation plays the role of a ghost => always created when
+      /* sinks.sink_formation plays the role of a ghost => always created when
        * playing with sinks*/
-      c->hydro.sink_formation = scheduler_addtask(
+      c->sinks.sink_formation = scheduler_addtask(
           s, task_type_sink_formation, task_subtype_none, 0, 0, c, NULL);
     }
   }
@@ -1521,8 +1556,8 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       if (with_star_formation_sink &&
           (c->hydro.count > 0 || c->sinks.count > 0)) {
         scheduler_addunlock(s, kick2_or_csds,
-                            c->top->hydro.star_formation_sink);
-        scheduler_addunlock(s, c->top->hydro.star_formation_sink, c->timestep);
+                            c->top->sinks.star_formation_sink);
+        scheduler_addunlock(s, c->top->sinks.star_formation_sink, c->timestep);
       }
 
       /* Time-step limiter */
@@ -1706,7 +1741,7 @@ void engine_make_hierarchical_tasks_grid(struct engine *e, struct cell *c) {
     if (c->nodeID == e->nodeID) {
       if (c->grid.super != NULL)
         error("Somehow ended up below grid super level!");
-      if (!c->grid.split) {
+      if (!c->split) {
         error("Cell is above grid super level, but is not split!");
       }
     }
@@ -1751,7 +1786,7 @@ void engine_make_hierarchical_tasks_grid_hydro(struct engine *e,
 #ifdef SWIFT_DEBUG_CHECKS
     if (c->nodeID == e->nodeID) {
       if (c->hydro.super != NULL) error("Somehow ended up below super level!");
-      if (!c->grid.split) {
+      if (!c->split) {
         error("Cell is above grid super level, but is not split!");
       }
     }
@@ -1875,7 +1910,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.stars_resort = scheduler_addtask(
           s, task_type_stars_resort, task_subtype_none, 0, 0, c, NULL);
 
-      scheduler_addunlock(s, c->top->hydro.star_formation_sink,
+      scheduler_addunlock(s, c->top->sinks.star_formation_sink,
                           c->hydro.stars_resort);
     }
   }
@@ -1963,7 +1998,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         if (with_stars &&
             (c->top->hydro.count > 0 || c->top->sinks.count > 0)) {
           scheduler_addunlock(s, c->hydro.super->sinks.sink_out,
-                              c->top->hydro.star_formation_sink);
+                              c->top->sinks.star_formation_sink);
         }
       }
 
@@ -2058,7 +2093,7 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
         /* Star formation from sinks */
         if (with_star_formation_sink &&
             (c->top->hydro.count > 0 || c->top->sinks.count > 0))
-          scheduler_addunlock(s, c->top->hydro.star_formation_sink,
+          scheduler_addunlock(s, c->top->sinks.star_formation_sink,
                               c->hydro.rt_in);
         if (with_feedback)
           scheduler_addunlock(s, c->stars.stars_out, c->hydro.rt_in);
@@ -2423,6 +2458,13 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_grid_construction) {
         engine_addlink(e, &ci->grid.construction, t);
+#ifdef SHADOWSWIFT_BVH
+        /* Now that the grid construction is on the right level we can also add
+         * the bvh task (TODO Move this to grid hierarchical tasks?) */
+        atomic_inc(&ci->nr_tasks);
+        ci->grid.build_bvh = scheduler_addtask(
+            sched, task_type_bvh, task_subtype_none, 0, 0, ci, NULL);
+#endif
       } else if (t_subtype == task_subtype_flux) {
         error("Flux exchange tasks should not yet have been constructed!");
       }
@@ -2710,59 +2752,6 @@ static inline void engine_make_hydro_loops_dependencies(
 #endif
 
 /**
- * @brief Creates all the task dependencies for the grid construction
- *
- * @param e The #engine
- */
-void engine_link_grid_tasks(struct engine *e) {
-  struct scheduler *sched = &e->sched;
-  const int nr_tasks = sched->nr_tasks;
-
-  for (int k = 0; k < nr_tasks; k++) {
-    /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
-
-    if (t->type == task_type_none) continue;
-
-    /* Get the cell we act on */
-    struct cell *ci = t->ci;
-    const enum task_types t_type = t->type;
-    const enum task_subtypes t_subtype = t->subtype;
-
-    /* Node ID (if running with MPI) TODO */
-
-    if (t_subtype == task_subtype_grid_construction) {
-      /* Self grid construction task?
-       * super.drift --> self_construction --> ghost_construction */
-      if (t_type == task_type_self) {
-        scheduler_addunlock(sched, ci->grid.super->hydro.drift, t);
-        scheduler_addunlock(sched, t, ci->grid.ghost);
-      }
-      /* Pair grid construction task?
-       * Drift --> pair_construction --> ghost_construction
-       *  |-->Sort --^ */
-      else if (t_type == task_type_pair) {
-        /* Get the cell we receive particles from */
-        struct cell *cj = t->cj;
-
-        scheduler_addunlock(sched, ci->grid.super->hydro.drift, t);
-        scheduler_addunlock(sched, ci->grid.super->hydro.sorts, t);
-        if (ci->grid.super != cj->grid.super) {
-          scheduler_addunlock(sched, cj->grid.super->hydro.drift, t);
-          scheduler_addunlock(sched, cj->grid.super->hydro.sorts, t);
-        }
-        scheduler_addunlock(sched, t, ci->grid.ghost);
-      }
-    }
-
-    if (t_type == task_type_grid_ghost) {
-      /* This is only temporarily, should unlock the grid hydro tasks */
-      scheduler_addunlock(sched, t, ci->super->kick2);
-    }
-  }
-}
-
-/**
  * @brief Duplicates the first hydro loop and construct all the
  * dependencies for the hydro part
  *
@@ -3005,12 +2994,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         /* Do the sink_formation */
         scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                            ci->top->hydro.sink_formation);
+                            ci->top->sinks.sink_formation);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            ci->top->hydro.sink_formation);
+                            ci->top->sinks.sink_formation);
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                            ci->top->hydro.sink_formation);
-        scheduler_addunlock(sched, ci->top->hydro.sink_formation,
+                            ci->top->sinks.sink_formation);
+        scheduler_addunlock(sched, ci->top->sinks.sink_formation,
                             t_sink_swallow);
 
         /* Do the sink_swallow */
@@ -3323,12 +3312,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Do the sink_formation */
           scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                              ci->top->hydro.sink_formation);
+                              ci->top->sinks.sink_formation);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              ci->top->hydro.sink_formation);
+                              ci->top->sinks.sink_formation);
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                              ci->top->hydro.sink_formation);
-          scheduler_addunlock(sched, ci->top->hydro.sink_formation,
+                              ci->top->sinks.sink_formation);
+          scheduler_addunlock(sched, ci->top->sinks.sink_formation,
                               t_sink_swallow);
 
           /* Do the sink_swallow */
@@ -3480,12 +3469,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             /* Do the sink_formation */
             scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
-                                cj->top->hydro.sink_formation);
+                                cj->top->sinks.sink_formation);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                cj->top->hydro.sink_formation);
+                                cj->top->sinks.sink_formation);
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
-                                cj->top->hydro.sink_formation);
-            scheduler_addunlock(sched, cj->top->hydro.sink_formation,
+                                cj->top->sinks.sink_formation);
+            scheduler_addunlock(sched, cj->top->sinks.sink_formation,
                                 t_sink_swallow);
 
             /* Do the sink_swallow */
@@ -3782,12 +3771,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
         /* Do the sink_formation */
         scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                            ci->top->hydro.sink_formation);
+                            ci->top->sinks.sink_formation);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                            ci->top->hydro.sink_formation);
+                            ci->top->sinks.sink_formation);
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                            ci->top->hydro.sink_formation);
-        scheduler_addunlock(sched, ci->top->hydro.sink_formation,
+                            ci->top->sinks.sink_formation);
+        scheduler_addunlock(sched, ci->top->sinks.sink_formation,
                             t_sink_swallow);
 
         /* Do the sink_swallow */
@@ -4111,12 +4100,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           /* Do the sink_formation */
           scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
-                              ci->top->hydro.sink_formation);
+                              ci->top->sinks.sink_formation);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
-                              ci->top->hydro.sink_formation);
+                              ci->top->sinks.sink_formation);
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
-                              ci->top->hydro.sink_formation);
-          scheduler_addunlock(sched, ci->top->hydro.sink_formation,
+                              ci->top->sinks.sink_formation);
+          scheduler_addunlock(sched, ci->top->sinks.sink_formation,
                               t_sink_swallow);
 
           /* Do the sink_swallow */
@@ -4267,12 +4256,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             /* Do the sink_formation */
             scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
-                                cj->top->hydro.sink_formation);
+                                cj->top->sinks.sink_formation);
             scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
-                                cj->top->hydro.sink_formation);
+                                cj->top->sinks.sink_formation);
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
-                                cj->top->hydro.sink_formation);
-            scheduler_addunlock(sched, cj->top->hydro.sink_formation,
+                                cj->top->sinks.sink_formation);
+            scheduler_addunlock(sched, cj->top->sinks.sink_formation,
                                 t_sink_swallow);
 
             /* Do the sink_swallow */
@@ -4698,12 +4687,14 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const int with_timestep_limiter =
+      (e->policy & engine_policy_timestep_limiter);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_slope_estimate = NULL;
   struct task *t_slope_limiter = NULL;
 #endif
   struct task *t_flux = NULL;
-  /* TODO add limiter dependencies */
+  struct task *t_limiter = NULL;
 
   for (int ind = 0; ind < num_elements; ind++) {
 
@@ -4719,6 +4710,14 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
     /* Escape early */
     if (t_type == task_type_none) continue;
 
+#ifdef SHADOWSWIFT_BVH
+    /* BVH construction interaction? */
+    if (t_type == task_type_bvh) {
+      /* Set unlocks */
+      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+    }
+#endif
+
     /* Grid construction interaction? */
     if (t_subtype == task_subtype_grid_construction) {
 
@@ -4729,6 +4728,10 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
         /* Grid construction task unlocks the construction ghost*/
         scheduler_addunlock(sched, t, ci->grid.super->grid.ghost);
+#ifdef SHADOWSWIFT_BVH
+        /* Grid construction of ci needs ci's BVH */
+        scheduler_addunlock(sched, ci->grid.build_bvh, t);
+#endif
       }
 
       /* Self task? */
@@ -4757,6 +4760,12 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_flux = scheduler_addtask(sched, task_type_self, task_subtype_flux,
                                    flags, 0, ci, NULL);
 
+        /* the task for the time-step limiter */
+        if (with_timestep_limiter) {
+          t_limiter = scheduler_addtask(
+              sched, task_type_self, task_subtype_limiter, flags, 0, ci, NULL);
+        }
+
         /* Create hydro loop dependencies*/
 #ifdef EXTRA_HYDRO_LOOP
         engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
@@ -4764,6 +4773,12 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #else
         engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
 #endif
+        if (with_timestep_limiter) {
+          scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+          scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+          scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
+        }
 
         /* Link tasks to cell */
 #ifdef EXTRA_HYDRO_LOOP
@@ -4771,6 +4786,9 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->hydro.slope_limiter, t_slope_limiter);
 #endif
         engine_addlink(e, &ci->hydro.flux, t_flux);
+        if (with_timestep_limiter) {
+          engine_addlink(e, &ci->hydro.limiter, t_limiter);
+        }
 
       } else if (t_type == task_type_pair) {
 
@@ -4829,16 +4847,47 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
           t_flux = scheduler_addtask(sched, task_type_pair, task_subtype_flux,
                                      sid, 0, ci, cj);
 
+          /* and the task for the time-step limiter */
+          if (with_timestep_limiter) {
+            t_limiter = scheduler_addtask(
+                sched, task_type_pair, task_subtype_limiter, flags, 0, ci, cj);
+          }
+
           /* Create hydro loop dependencies. */
 #ifdef EXTRA_HYDRO_LOOP
-          if (ci_local)
+          if (ci_local) {
             engine_make_grid_hydroloop_dependencies(sched, ci, t_slope_estimate,
                                                     t_slope_limiter, t_flux);
+            if (with_timestep_limiter) {
+              scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                  t_limiter);
+              scheduler_addunlock(sched, ci->super->timestep, t_limiter);
+              scheduler_addunlock(sched, t_limiter, ci->super->kick1);
+              scheduler_addunlock(sched, t_limiter,
+                                  ci->super->timestep_limiter);
+            }
+          }
           /* We also need a dependency on the construction task of cj, since the
            * interaction might be flipped */
-          if (cj->hydro.super != ci->hydro.super && cj_local)
-            engine_make_grid_hydroloop_dependencies(sched, cj, t_slope_estimate,
-                                                    t_slope_limiter, t_flux);
+          if (cj_local) {
+            if (cj->hydro.super != ci->hydro.super) {
+              engine_make_grid_hydroloop_dependencies(
+                  sched, cj, t_slope_estimate, t_slope_limiter, t_flux);
+              if (with_timestep_limiter) {
+                scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                    t_limiter);
+              }
+            }
+
+            if (ci->super != cj->super) {
+              if (with_timestep_limiter) {
+                scheduler_addunlock(sched, cj->super->timestep, t_limiter);
+                scheduler_addunlock(sched, t_limiter, cj->super->kick1);
+                scheduler_addunlock(sched, t_limiter,
+                                    cj->super->timestep_limiter);
+              }
+            }
+          }
 #else
           if (ci_local)
             engine_make_grid_hydroloop_dependencies(sched, ci, t_flux);
@@ -4848,7 +4897,7 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
             engine_make_grid_hydroloop_dependencies(sched, cj, t_flux);
 #endif
 
-            /* link tasks to cells */
+          /* link tasks to cells */
 #ifdef EXTRA_HYDRO_LOOP
           engine_addlink(e, &ci->hydro.slope_estimate, t_slope_estimate);
           engine_addlink(e, &cj->hydro.slope_estimate, t_slope_estimate);
@@ -4857,6 +4906,10 @@ void engine_make_grid_hydroloop_tasks_mapper(void *map_data, int num_elements,
 #endif
           engine_addlink(e, &ci->hydro.flux, t_flux);
           engine_addlink(e, &cj->hydro.flux, t_flux);
+          if (with_timestep_limiter) {
+            engine_addlink(e, &ci->hydro.limiter, t_limiter);
+            engine_addlink(e, &cj->hydro.limiter, t_limiter);
+          }
         } /* Should we add a flux pair interaction? */
       } else {
         error("Unknown task type for subtype task_subtype_grid_construction");
@@ -4939,8 +4992,9 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
     if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
-      engine_addtasks_send_grid(e, ci, cj, NULL, NULL,
-                                e->policy & engine_policy_grid_hydro);
+      engine_addtasks_send_grid(e, ci, cj, NULL, NULL, NULL, NULL,
+                                e->policy & engine_policy_grid_hydro,
+                                with_limiter);
   }
 }
 
@@ -5016,8 +5070,9 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
     /* Add the send tasks for the cells in the proxy that have a grid
      * connection */
     if ((e->policy & engine_policy_grid) && (type & proxy_cell_type_hydro))
-      engine_addtasks_recv_grid(e, ci, /*t_xv*/ NULL, /*t_gradient*/ NULL, tend,
-                                e->policy & engine_policy_grid_hydro);
+      engine_addtasks_recv_grid(
+          e, ci, /*t_xv*/ NULL, /*t_gradient*/ NULL, NULL, NULL, tend,
+          e->policy & engine_policy_grid_hydro, with_limiter);
   }
 }
 

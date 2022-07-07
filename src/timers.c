@@ -146,6 +146,7 @@ const char* timers_names[timer_count] = {
     "dosub_self_rt_transport",
     "dosub_pair_rt_transport",
     "rt_tchem",
+    "bvh",
     "doself_grid_construction",
     "dopair_grid_construction",
     "do_grid_ghost",

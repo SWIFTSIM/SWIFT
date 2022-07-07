@@ -92,28 +92,37 @@
 #define SHADOWSWIFT_SLOPE_LIMITER_CELL_WIDE
 #endif
 /* Option controlling output of grids */
-#define SHADOWSWIFT_OUTPUT_GRIDS
+//#define SHADOWSWIFT_OUTPUT_GRIDS
 /* Option to enable the hilbert order insertion during the grid construction */
-// #define SHADOWSWIFT_HILBERT_ORDERING
+#define SHADOWSWIFT_HILBERT_ORDERING
+/* Option to enable the bvh acceleration structure for neighbour searching */
+#define SHADOWSWIFT_BVH
 /* This option disables cell movement */
 //#define SHADOWSWIFT_FIX_PARTICLES
 /* This option enables cell steering, i.e. trying to keep the cells regular by
    adding a correction to the cell velocities.*/
 #define SHADOWSWIFT_STEER_MOTION
+/* Option to enable time extrapolation */
+//#define SHADOWSWIFT_EXTRAPOLATE_TIME
 /* This option evolves the total energy instead of the thermal energy */
 //#define SHADOWSWIFT_TOTAL_ENERGY
-/* This option destroys the  grids as soon as they are no longer needed, saving
- * on memory. */
-//#define SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
-/* This option enables reflective boundary conditions for non-periodic
- * ShadowSWIFT runs */
-#define SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
+/* This option enables boundary conditions for non-periodic ShadowSWIFT runs */
+#define VACUUM_BC 0
+#define REFLECTIVE_BC 1
+#define OPEN_BC 2
+#define SHADOWSWIFT_BC REFLECTIVE_BC
 /* This option tries to recover from unphysical situations */
 #define SHADOWSWIFT_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset */
 #define SHADOWSWIFT_UNPHYSICAL_WARNING
 /* This option halts the execution in the case of unphysical conditions */
 //#define SHADOWSWIFT_UNPHYSICAL_ERROR
+#if defined(SHADOWSWIFT_UNPHYSICAL_ERROR) && \
+    defined(SHADOWSWIFT_UNPHYSICAL_RESCUE)
+error(
+    "Only one of SHADOWSWIFT_UNPHYSICAL_ERROR and "
+    "SHADOWSWIFT_UNPHYSICAL_RESCUE can be defined at a time!")
+#endif
 
 /* Source terms */
 #define SOURCETERMS_NONE

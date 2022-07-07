@@ -1700,6 +1700,11 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   if (c->hydro.count == 0) return;
   if (!cell_is_active_hydro(c, e)) return;
 
+  /* The bvh is no longer needed (and will be invalidated anyway when we update
+   * the search radii here).*/
+  bvh_destroy(c->grid.bvh);
+  c->grid.bvh = NULL;
+
   /* Init the list of active particles that have to be updated and their
    * search radii. */
   int *pid = NULL;
@@ -1768,7 +1773,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
       /* Add boundary particles? */
       if (!periodic)
-        runner_add_boundary_particles_subset_grid_construction(r, c, parts, pid, count);
+        runner_add_boundary_particles_subset_grid_construction(r, c, parts, pid,
+                                                               count);
 
       /* We are already at the construction level, so we can run through this
        * cell's grid construction interactions directly. */
@@ -1842,57 +1848,46 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   for (int i = 0; i < c->hydro.count; i++)
     part_is_active_mask[i] = part_is_active(&parts[i], e);
   voronoi_build(c->grid.voronoi, c->grid.delaunay, c->hydro.parts,
-                part_is_active_mask);
-#ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
+                part_is_active_mask, c->hydro.count);
   /* The delaunay tesselation is no longer needed */
   delaunay_destroy(c->grid.delaunay);
   c->grid.delaunay = NULL;
-#endif
 
-  /* Set the geometry properties of the particles and prepare the particles for
-   * the gradient calculation */
-  for (int i = 0; i < c->hydro.count; i++) {
-    struct part *p = &c->hydro.parts[i];
-    if (part_is_active_mask[i]) {
-      p->geometry.volume = (float)c->grid.voronoi->cells[i].volume;
-      p->geometry.centroid[0] =
-          (float)(c->grid.voronoi->cells[i].centroid[0] - p->x[0]);
-      p->geometry.centroid[1] =
-          (float)(c->grid.voronoi->cells[i].centroid[1] - p->x[1]);
-      p->geometry.centroid[2] =
-          (float)(c->grid.voronoi->cells[i].centroid[2] - p->x[2]);
+  if (e->policy & engine_policy_grid_hydro) {
+    /* Set the geometry properties of the particles and prepare the particles
+     * for the gradient calculation */
+    for (int i = 0; i < c->hydro.count; i++) {
+      if (!part_is_active_mask[i]) continue;
 
-      if (e->policy & engine_policy_grid_hydro) {
-
+      struct part *p = &c->hydro.parts[i];
 #ifdef EXTRA_HYDRO_LOOP
-        /* get a handle on the xp */
-        struct xpart *xp = &c->hydro.xparts[i];
+      /* get a handle on the xp */
+      struct xpart *xp = &c->hydro.xparts[i];
 
-        /* Prepare particle for gradient calculation */
-        hydro_prepare_gradient(p, xp, cosmo, hydro_props);
+      /* Prepare particle for gradient calculation */
+      hydro_prepare_gradient(p, xp, cosmo, hydro_props);
 #endif
 
-        /* Calculate the time-step for passing to hydro_prepare_force.
-         * This is the physical time between the start and end of the time-step
-         * without any scale-factor powers. */
-        double dt_therm;
+      /* Calculate the time-step for passing to hydro_prepare_force.
+       * This is the physical time between the start and end of the time-step
+       * without any scale-factor powers. */
+      double dt_therm;
 
-        if (e->policy & engine_policy_cosmology) {
-          const integertime_t ti_step = get_integer_timestep(p->time_bin);
-          const integertime_t ti_begin =
-              get_integer_time_begin(e->ti_current, p->time_bin);
+      if (e->policy & engine_policy_cosmology) {
+        const integertime_t ti_step = get_integer_timestep(p->time_bin);
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, p->time_bin);
 
-          dt_therm = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
-                                                     ti_begin + ti_step);
-        } else {
-          dt_therm = get_timestep(p->time_bin, e->time_base);
-        }
-
-        /* Set timestep for flux calculation */
-        hydro_timestep_extra(p, (float)dt_therm);
-
-        /* TODO: Update the primitive variables here again? Esp. density? */
+        dt_therm = cosmology_get_therm_kick_factor(e->cosmology, ti_begin,
+                                                   ti_begin + ti_step);
+      } else {
+        dt_therm = get_timestep(p->time_bin, e->time_base);
       }
+
+      /* Set timestep for flux calculation */
+      hydro_timestep_extra(p, (float)dt_therm);
+
+      /* TODO: Update the primitive variables here again? Esp. density? */
     }
   }
 
@@ -2002,10 +1997,6 @@ void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer) {
   if (!e->s->periodic) {
     runner_dopair_boundary_flux_exchange(r, c);
   }
-
-#ifdef SHADOWSWIFT_ALWAYS_DESTROY_GRIDS
-  cell_free_grid_rec(c);
-#endif
 
   if (timer) TIMER_TOC(timer_do_flux_ghost);
 }

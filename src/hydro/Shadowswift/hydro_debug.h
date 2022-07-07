@@ -19,8 +19,8 @@
 
 __attribute__((always_inline)) INLINE static void hydro_debug_particle(
     const struct part* p, const struct xpart* xp) {
-  printf(
-      "x=[%.16e,%.16e,%.16e], "
+  warning(
+      "[PID%lld] x=[%.16e,%.16e,%.16e], "
       "v=[%.3e,%.3e,%.3e], "
       "a=[%.3e,%.3e,%.3e], "
       "h=%.3e, "
@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       "volume=%.3e, "
       "timestepvars={"
       "vmax=%.3e}\n",
-      p->x[0], p->x[1], p->x[2], xp->v_full[0], xp->v_full[1], xp->v_full[2],
+      p->id, p->x[0], p->x[1], p->x[2], xp->v_full[0], xp->v_full[1], xp->v_full[2],
       p->a_hydro[0], p->a_hydro[1], p->a_hydro[2], p->h, p->time_bin,
       p->limiter_data.wakeup, p->v[0], p->v[1], p->v[2], p->rho, p->P,
       p->gradients.rho[0], p->gradients.rho[1], p->gradients.rho[2],

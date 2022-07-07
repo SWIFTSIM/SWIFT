@@ -21,7 +21,6 @@ params = {
     "figure.subplot.hspace": 0.2,  # the amount of height reserved for white space between subplots
     "lines.markersize": 4,
     #'axes.formatter.limits' : (, 0),
-    "text.latex.unicode": True,
 }
 rcParams.update(params)
 rc("font", family="serif")

@@ -284,7 +284,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
             (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
 
-#ifdef SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
+#if SHADOWSWIFT_BC == REFLECTIVE_BC
           /* reflect the coordinates and velocity of the particle */
           for (int i = 0; i < 3; i++) {
             if (p->x[i] > dim[i]) {
@@ -522,7 +522,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
             (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
             (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
 
-#ifdef SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
+#if SHADOWSWIFT_BC == REFLECTIVE_BC
           /* reflect the coordinates and velocity of the particle */
           for (int i = 0; i < 3; i++) {
             if (gp->x[i] > dim[i]) {

@@ -37,6 +37,13 @@
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
 
+enum kick_type {
+  KICK1,
+  KICK2,
+  ROLLBACK,
+  RESTORE_AFTER_ROLLBACK,
+};
+
 /**
  * @brief Particle fields not needed during the SPH loops over neighbours.
  *
@@ -157,6 +164,11 @@ struct part {
 
   } limiter;
 
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  /* Time extrapolations of primitive variables (cumulative over timestep) */
+  float dW_time[5];
+#endif
+
   /* The conserved hydrodynamical variables. */
   struct {
 
@@ -193,12 +205,20 @@ struct part {
 
   struct {
 
-    /*! Volume of the corresponding voronoi cell */
+    /*! Voronoi cell volume. */
     float volume;
 
-    /*! Centroid of the corresponding voronoi cell relative to the particles
-     * position. */
+    /*! Voronoi cell centroid, relative to this particles position. */
     float centroid[3];
+
+    /*! Number of faces of this voronoi cell. */
+    int nface;
+
+    /*! cell_pair_connections offset in voronoi tesselation */
+    int pair_connections_offset;
+
+    /*! Minimal distance from generator to a face */
+    float min_face_dist;
 
     /*! Flags indicating to which neighbouring cells this particle has already
      * been added. */
@@ -210,6 +230,9 @@ struct part {
 
     /* Signal velocity */
     float vmax;
+
+    /* Last kick applied to this particle. */
+    enum kick_type last_kick;
 
   } timestepvars;
 

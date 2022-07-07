@@ -38,14 +38,14 @@ hydro_slope_limit_face_quantity(float phi_i, float phi_j, float phi_mid0,
   phibar = phi_i + xij_norm / r * (phi_j - phi_i);
 
   /* if sign(phimax+delta1) == sign(phimax) */
-  if ((phimax + delta1) * phimax > 0.0f) {
+  if ((phimax + delta1) * phimax >= 0.0f) {
     phiplus = phimax + delta1;
   } else {
     phiplus = phimax / (1.0f + delta1 / fabsf(phimax));
   }
 
   /* if sign(phimin-delta1) == sign(phimin) */
-  if ((phimin - delta1) * phimin > 0.0f) {
+  if ((phimin - delta1) * phimin >= 0.0f) {
     phiminus = phimin - delta1;
   } else {
     phiminus = phimin / (1.0f + delta1 / fabsf(phimin));

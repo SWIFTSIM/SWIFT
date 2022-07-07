@@ -11,9 +11,6 @@
 #define VORONOI_STORE_FACES
 #endif
 
-/*! @brief Store cell generators. */
-//#define VORONOI_STORE_GENERATORS
-
 /*! @brief Activate runtime assertions. */
 //#define VORONOI_DO_ASSERTIONS
 
@@ -41,38 +38,29 @@
 #define voronoi_assert(condition)
 #endif
 
-/**
- * @brief Voronoi cell.
- *
- * A cell stores geometrical information about a Voronoi cell: its volume and
- * the location of its centroid (for compatibility reasons, these must always be
- * 3D vectors (also for the 2D voronoi algorithm).
- */
-struct voronoi_cell {
-  /*! Cell volume. */
-  double volume;
-
-  /*! Cell centroid. */
-  double centroid[3];
-
-#ifdef VORONOI_STORE_GENERATORS
-  /*! Position of the cell generator. */
-  double x[3];
-#endif
-
-  /*! Number of faces of this cell. */
-  int nface;
-
-  /*! cell_pair_connections offset */
-  int pair_connections_offset;
-};
-
+#ifdef MOVING_MESH
 #ifdef HYDRO_DIMENSION_2D
 #include "algorithm2d/voronoi.h"
 #elif defined(HYDRO_DIMENSION_3D)
 #include "algorithm3d/voronoi.h"
 #else
 #error "Only 2D and 3D schemes are supported by ShadowSWIFT!"
+#endif
+#else
+struct voronoi_pair {
+  double midpoint[3];
+  double surface_area;
+  int left_idx;
+  int right_idx;
+  int sid;
+};
+
+struct voronoi {
+  struct voronoi_pair *pairs[28];
+  int pair_index[28];
+};
+
+static inline void voronoi_destroy(struct voronoi *restrict v){}
 #endif
 
 #endif  // SWIFTSIM_SHADOWSWIFT_VORONOI_H

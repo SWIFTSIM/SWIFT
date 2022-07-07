@@ -212,8 +212,8 @@ struct pcell {
 
   /*! Grid variables */
   struct {
-    /*! split flag */
-    int split;
+    /*! self complete flag */
+    int self_complete;
   } grid;
 
   /*! Maximal depth in that part of the tree */
@@ -613,7 +613,7 @@ void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
 void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
                                              void *extra_data);
-void cell_set_split_grid_mapper(void *map_data, int num_elements,
+void cell_grid_set_self_completeness_mapper(void *map_data, int num_elements,
                                 void *extra_data);
 void cell_check_spart_pos(const struct cell *c,
                           const struct spart *global_sparts);
@@ -1341,6 +1341,12 @@ __attribute__((always_inline)) INLINE static void cell_free_grid(
       delaunay_destroy(c->grid.delaunay);
       c->grid.delaunay = NULL;
     }
+#ifdef SHADOWSWIFT_BVH
+    if (c->grid.bvh != NULL) {
+      bvh_destroy(c->grid.bvh);
+      c->grid.bvh = NULL;
+    }
+#endif
   }
 #endif
 }
@@ -1491,18 +1497,21 @@ __attribute__((always_inline)) INLINE void cell_assign_cell_index(
 }
 
 /*! @brief return the total number of voronoi faces for all directions,
- * excluding the local faces, which will be sent over mpi. */
+ * excluding the local faces, which will be sent over MPI. */
 __attribute__((always_inline)) INLINE static size_t
 cell_get_voronoi_face_send_count(struct cell *c) {
-
+#if WITH_MPI
   if (c->grid.voronoi == NULL) return 0;
 
   size_t count = 0;
   for (int sid = 0; sid < 27; sid++) {
-    if (sid == 13) continue;
+    if (!(c->grid.send_flags & 1 << sid)) continue;
     count += c->grid.voronoi->pair_index[sid];
   }
   return count;
+#else
+  return 0;
+#endif
 }
 
 /*! @brief Reflect the given position across the cell face corresponding to

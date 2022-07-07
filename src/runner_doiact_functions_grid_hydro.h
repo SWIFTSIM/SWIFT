@@ -9,6 +9,7 @@
    runner_iact_FUNCTION. */
 
 #include "runner_doiact_grid_hydro.h"
+#include "swift.h"
 
 /*! @brief Method to do the flux exchange over the faces between a pair of
  * cells.
@@ -138,7 +139,7 @@ void DOPAIR(struct runner *restrict r, struct cell *ci, struct cell *cj,
 
 void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
                    struct cell *cj) {
-  struct engine *e = r->e;
+  const struct engine *e = r->e;
 
   int ci_active = cell_is_active_hydro(ci, e);
   int cj_active = cell_is_active_hydro(cj, e);
@@ -171,7 +172,7 @@ void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
 
 void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
-  struct engine *e = r->e;
+  const struct engine *e = r->e;
 
   /* Recurse? */
   if (c->grid.construction_level == above_construction_level) {
@@ -198,16 +199,53 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
     /* Reconstruct boundary particle */
     struct part p_boundary = *p;
     cell_reflect_coordinates(c, p->x, sid, &p_boundary.x[0]);
-#ifdef SHADOWSWIFT_REFLECTIVE_BOUNDARY_CONDITIONS
-    /* TODO just skip this? */
+
+    /* Make sure boundary faces do not move perpendicular to the boundary. */
+    for (int i = 0; i < 3; i++)
+      if (sortlist_shift_vector[sid][i] != 0)
+        p_boundary.v_full[i] *= -1;
+
+#if (SHADOWSWIFT_BC == VACUUM_BC)
+    /* Set all primitive quantities and gradients of the vacuum particle to 0 */
+    p_boundary.rho = 0.;
+    p_boundary.v[0] = 0.;
+    p_boundary.v[1] = 0.;
+    p_boundary.v[2] = 0.;
+    p_boundary.P = 0.;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+    for (int i = 0; i < 3; i++) {
+      p_boundary.gradients.rho[i] = 0.;
+      p_boundary.gradients.v[0][i] = 0.;
+      p_boundary.gradients.v[1][i] = 0.;
+      p_boundary.gradients.v[2][i] = 0.;
+      p_boundary.gradients.P[i] = 0.;
+    }
+#endif
+#elif (SHADOWSWIFT_BC == OPEN_BC)
+    /* Here we just flip the gradients for the flipped axis to ensure that the
+     * extrapolated quantities on both sides of the face are the same during
+     * the flux exchange */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+    for (int i = 0; i < 3; i++) {
+      if (sortlist_shift_vector[sid][i] != 0) {
+        p_boundary.gradients.rho[i] *= -1;
+        p_boundary.gradients.v[0][i] *= -1;
+        p_boundary.gradients.v[1][i] *= -1;
+        p_boundary.gradients.v[2][i] *= -1;
+        p_boundary.gradients.P[i] *= -1;
+      }
+    }
+#endif
+#elif SHADOWSWIFT_BC == REFLECTIVE_BC
+    /* Here we need to flip the fluid velocities and the gradients
+     * perpendicular to the boundary (except the gradient of the flipped
+     * velocity components). */
     for (int i = 0; i < 3; i++) {
       if (sortlist_shift_vector[sid][i] != 0) {
         /* Reflect the velocity along this axis */
         p_boundary.v[i] = -p_boundary.v[i];
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
-        /* We also need to flip the gradients along this axis (but not the
-         * velocity component of this axis)... */
         p_boundary.gradients.rho[i] *= -1;
         p_boundary.gradients.v[(i + 1) % 3][i] *= -1;
         p_boundary.gradients.v[(i + 2) % 3][i] *= -1;

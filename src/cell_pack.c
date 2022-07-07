@@ -66,7 +66,7 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->black_holes.count = c->black_holes.count;
   pc->maxdepth = c->maxdepth;
 
-  pc->grid.split = c->grid.split;
+  pc->grid.self_complete = c->grid.self_complete;
 
   /* Copy the Multipole related information */
   if (with_gravity) {
@@ -259,7 +259,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->black_holes.count = pc->black_holes.count;
   c->maxdepth = pc->maxdepth;
 
-  c->grid.split = pc->grid.split;
+  c->grid.self_complete = pc->grid.self_complete;
 
 #ifdef SWIFT_DEBUG_CHECKS
   c->cellID = pc->cellID;
@@ -712,7 +712,7 @@ void cell_pack_voronoi_faces(struct cell *restrict c,
 
   size_t count_total = 0;
   for (int sid = 0; sid < 27; sid++) {
-    if (sid == 13) continue;
+    if (!(c->grid.send_flags & 1 << sid)) continue;
 
     size_t sid_count = vortess->pair_index[sid];
     if (sid_count == 0) continue;
@@ -723,7 +723,7 @@ void cell_pack_voronoi_faces(struct cell *restrict c,
     count_total += sid_count;
   }
 
-#if SWIFT_DEBUG_CHECKS
+#ifdef SWIFT_DEBUG_CHECKS
   if (count_total != count) error("Incorrect number of voronoi faces packed!");
 #endif
 
@@ -742,15 +742,14 @@ void cell_unpack_voronoi_faces(struct cell *restrict c,
                                struct pcell_faces *restrict pcell) {
 #ifdef WITH_MPI
 
+  /* Old voronoi still allocated? */
   if (c->grid.voronoi != NULL) {
     voronoi_destroy(c->grid.voronoi);
-    c->grid.voronoi = NULL;
   }
-
-  c->grid.voronoi = malloc(sizeof(struct voronoi));
-  bzero(c->grid.voronoi, sizeof(struct voronoi));
-
-  struct voronoi *vortess = c->grid.voronoi;
+  /* Allocate new voronoi tesselation */
+  struct voronoi *vortess = (struct voronoi *)malloc(sizeof(struct voronoi));
+  bzero(vortess, sizeof(struct voronoi));
+  c->grid.voronoi = vortess;
 
   size_t count_total = 0;
   for (int sid = 0; sid < 27; sid++) {

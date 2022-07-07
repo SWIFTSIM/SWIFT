@@ -31,6 +31,7 @@
 /* Standard headers. */
 #include <limits.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 
 /* Local headers. */
@@ -314,4 +315,23 @@ int clocks_random_seed(void) {
 #else
   return (getticks() % INT_MAX);
 #endif
+}
+
+/**
+ * @brief Get the current time, either in SWIFT format, "%T %F %Z"
+ *        or seconds in the epoch.
+ * @param swift return SWIFT format.
+ * @result the formatted time, take a copy if you need to keep it longer than
+ *         the next call.
+ */
+const char *clocks_now(int swift) {
+  static char now[64];
+  time_t tm = time(NULL);
+  struct tm *timeinfo = localtime(&tm);
+  if (swift) {
+    strftime(now, 64, "%T %F %Z", timeinfo);
+  } else {
+    strftime(now, 64, "%s", timeinfo);
+  }
+  return now;
 }

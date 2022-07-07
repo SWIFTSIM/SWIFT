@@ -13,18 +13,18 @@
  * @param v_full (Drifted) particle velocity.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gravity_extra_velocity_drift(struct part *p) {
+hydro_gravity_extra_velocity_drift(struct part* p) {
   /* TODO This is not longer used */
 
   /* First transfer the velocity drift to the actual fluid velocity */
-//  p->fluid_v[0] += p->v[0] - p->v_old[0];
-//  p->fluid_v[1] += p->v[1] - p->v_old[1];
-//  p->fluid_v[2] += p->v[2] - p->v_old[2];
+  //  p->fluid_v[0] += p->v[0] - p->v_old[0];
+  //  p->fluid_v[1] += p->v[1] - p->v_old[1];
+  //  p->fluid_v[2] += p->v[2] - p->v_old[2];
 
   /* Update v_old */
-//  p->v_old[0] = p->v[0];
-//  p->v_old[1] = p->v[1];
-//  p->v_old[2] = p->v[2];
+  //  p->v_old[0] = p->v[0];
+  //  p->v_old[1] = p->v[1];
+  //  p->v_old[2] = p->v[2];
 }
 
 /**
@@ -42,18 +42,17 @@ hydro_gravity_extra_velocity_drift(struct part *p) {
  */
 __attribute__((always_inline)) INLINE static float
 hydro_gravity_energy_update_term(const float dt_kick_corr,
-                                           const float dt_grav,
-                                           const struct part* restrict p,
-                                           const float* momentum,
-                                           const float* a_grav) {
+                                 const struct part* restrict p,
+                                 const float* momentum, const float* a_grav,
+                                 const float* grav_kick_factor) {
 
   float dE =
       -0.5f * dt_kick_corr *
       (p->gravity.mflux[0] * a_grav[0] + p->gravity.mflux[1] * a_grav[1] +
        p->gravity.mflux[2] * a_grav[2]);
 #if defined(SHADOWSWIFT_TOTAL_ENERGY)
-  dE += dt_grav * (momentum[0] * a_grav[0] + momentum[1] * a_grav[1] +
-                   momentum[2] * a_grav[2]);
+  dE += momentum[0] * grav_kick_factor[0] + momentum[1] * grav_kick_factor[1] +
+        momentum[2] * grav_kick_factor[2];
 #endif
   return dE;
 }

@@ -68,6 +68,7 @@ examples/Cooling/CoolingRates/cooling_element_*.dat
 examples/Cooling/CoolingRates/cooling_output.dat
 examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
 examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
+examples/SmallCosmoVolume/SmallCosmoVolume_DM/power_spectra
 
 tests/testActivePair
 tests/testActivePair.sh

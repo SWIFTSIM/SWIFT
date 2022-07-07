@@ -89,9 +89,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
       sqrtf(hydro_gamma * W[4] / W[0]);
   vmax = max(vmax, p->timestepvars.vmax);
 
-  const float psize = cosmo->a * cosmo->a *
-                      powf(p->geometry.volume / hydro_dimension_unit_sphere,
-                           hydro_dimension_inv);
+  float psize = cosmo->a * cosmo->a *
+                powf(p->geometry.volume / hydro_dimension_unit_sphere,
+                     hydro_dimension_inv);
+  if (p->geometry.min_face_dist < 0.25 * psize)
+    psize = p->geometry.min_face_dist;
+
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
     dt = psize / vmax;
@@ -133,6 +136,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
 #ifdef SHADOWSWIFT_TOTAL_ENERGY
   Q[4] += 0.5f * (Q[1] * W[1] + Q[2] * W[2] + Q[3] * W[3]);
 #endif
+
+  shadowswift_check_physical_quantities("mass", "energy", Q[0], Q[1], Q[2],
+                                        Q[3], Q[4]);
 
   /* overwrite all hydro variables if we are using Lloyd's algorithm */
   /* TODO */
@@ -316,23 +322,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 }
 
 /**
- * @brief Converts the hydrodynamic variables from the initial condition file to
- * conserved variables that can be used during the integration
- *
- * We no longer do this, as the mass needs to be provided in the initial
- * condition file, and the mass alone is enough to initialize all conserved
- * variables. This is now done in hydro_first_init_part.
- *
- * @param p The particle to act upon.
- */
-__attribute__((always_inline)) INLINE static void hydro_convert_quantities(
-    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props) {
-
-  p->conserved.energy /= cosmo->a_factor_internal_energy;
-}
-
-/**
  * @brief Extra operations to be done during the drift
  *
  * This predicted the primitive variables a half timestep into the future, but
@@ -346,25 +335,27 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     struct part *p, struct xpart *xp, float dt_drift, float dt_therm,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    float dt_kick_grav, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
   /* skip the drift if we are using Lloyd's algorithm */
   /* TODO */
 
-  float W[5];
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+  /* Extrapolate primitive quantities in time */
+  float W[5], dW[5];
   hydro_part_get_primitive_variables(p, W);
+  hydro_gradients_extrapolate_in_time(p, W, 0.5f * dt_therm, /*return*/ dW);
 
+  /* Update primitive quantities with extrapolations */
+  p->dW_time[0] += dW[0];
+  p->dW_time[1] += dW[1];
+  p->dW_time[2] += dW[2];
+  p->dW_time[3] += dW[3];
+  p->dW_time[4] += dW[4];
   // MATTHIEU: Apply the entropy floor here.
-
-  /* add the gravitational contribution to the fluid velocity drift */
-  /* The fluid velocity is now drifted directly by drift_part() */
-  //  hydro_gravity_extra_velocity_drift(&W[1], p->v, xp->v_full);
-
-  /* TODO Predict primitive variables forward? Would be with outdated gradients,
-   * so maybe better in flux? */
-
-  hydro_part_set_primitive_variables(p, W);
+#endif
 
   /* Reset the delaunay flags after a particle has been drifted */
   p->geometry.delaunay_flags = 0;
@@ -406,7 +397,7 @@ hydro_convert_conserved_to_primitive(struct part *restrict p,
   const float volume_inv = 1.f / p->geometry.volume;
 
   W[0] = Q[0] * volume_inv;
-  hydro_velocities_from_momentum(&Q[1], m_inv, W[0], &W[1]);
+  hydro_velocity_from_momentum(&Q[1], m_inv, W[0], &W[1]);
 
 #ifdef EOS_ISOTHERMAL_GAS
   /* although the pressure is not formally used anywhere if an isothermal eos
@@ -441,6 +432,26 @@ hydro_convert_conserved_to_primitive(struct part *restrict p,
 }
 
 /**
+ * @brief Converts the conserved hydrodynamic variables from the initial
+ * condition file to primitive quantities used for flux calculation. This can
+ * only happen after the initial volume calculation.
+ *
+ * @param p The particle to act upon.
+ */
+__attribute__((always_inline)) INLINE static void hydro_convert_quantities(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props) {
+
+  p->conserved.energy /= cosmo->a_factor_internal_energy;
+
+  shadowswift_check_physical_quantities(
+      "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+      p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
+
+  hydro_convert_conserved_to_primitive(p, xp);
+}
+
+/**
  * @brief Extra operations done during the kick.
  *
  * @param p The particle to act upon.
@@ -455,7 +466,7 @@ hydro_convert_conserved_to_primitive(struct part *restrict p,
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, float dt_therm,
-    float dt_grav, float dt_hydro, float dt_kick_corr,
+    float dt_grav, float dt_grav_mesh, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
@@ -464,85 +475,126 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Retrieve the current value of the gravitational acceleration from the
        gpart. We are only allowed to do this because this is the kick. We still
        need to check whether gpart exists though.*/
-    float a_grav[3];
+    float a_grav[3], grav_kick_factor[3];
 
-    /* TODO also add mesh acceleration? */
-    a_grav[0] = p->gpart->a_grav[0];
-    a_grav[1] = p->gpart->a_grav[1];
-    a_grav[2] = p->gpart->a_grav[2];
+    a_grav[0] = p->gpart->a_grav[0] + p->gpart->a_grav_mesh[0];
+    a_grav[1] = p->gpart->a_grav[1] + p->gpart->a_grav_mesh[1];
+    a_grav[2] = p->gpart->a_grav[2] + p->gpart->a_grav_mesh[2];
 
-    p->conserved.energy += hydro_gravity_energy_update_term(
-        dt_kick_corr, dt_grav, p, p->conserved.momentum, a_grav);
+    grav_kick_factor[0] = dt_grav * p->gpart->a_grav[0];
+    grav_kick_factor[1] = dt_grav * p->gpart->a_grav[1];
+    grav_kick_factor[2] = dt_grav * p->gpart->a_grav[2];
+    if (dt_grav_mesh != 0) {
+      grav_kick_factor[0] += dt_grav_mesh * p->gpart->a_grav_mesh[0];
+      grav_kick_factor[1] += dt_grav_mesh * p->gpart->a_grav_mesh[1];
+      grav_kick_factor[2] += dt_grav_mesh * p->gpart->a_grav_mesh[2];
+    }
 
     /* Kick the momentum for half a time step */
     /* Note that this also affects the particle movement, as the velocity for
        the particles is set after this. */
-    p->conserved.momentum[0] += p->conserved.mass * a_grav[0] * dt_grav;
-    p->conserved.momentum[1] += p->conserved.mass * a_grav[1] * dt_grav;
-    p->conserved.momentum[2] += p->conserved.mass * a_grav[2] * dt_grav;
+    p->conserved.momentum[0] += p->conserved.mass * grav_kick_factor[0];
+    p->conserved.momentum[1] += p->conserved.mass * grav_kick_factor[1];
+    p->conserved.momentum[2] += p->conserved.mass * grav_kick_factor[2];
+
+    p->conserved.energy += hydro_gravity_energy_update_term(
+        dt_kick_corr, p, p->conserved.momentum, a_grav, grav_kick_factor);
   }
 
-  if (p->flux.dt > 0.0f) {
-    /* I.e. we are in kick2 (end of timestep). */
-    float flux[5];
-    hydro_part_get_fluxes(p, flux);
+  if (dt_therm < 0.0f) {
+    /* We are reversing a kick1 due to the timestep limiter */
+    /* Note on the fluxes: Since a particle can only receive time integrated
+     * fluxes over time steps smaller than or equal to its own time step, we do
+     * not need any rescaling or other special care. */
 
-    /* Update conserved variables. */
-    p->conserved.mass += flux[0];
-    p->conserved.momentum[0] += flux[1];
-    p->conserved.momentum[1] += flux[2];
-    p->conserved.momentum[2] += flux[3];
+#ifdef SWIFT_DEBUG_CHECKS
+    assert(p->timestepvars.last_kick == KICK1);
+#endif
+
+    /* Signal that we just did a rollback */
+    p->timestepvars.last_kick = ROLLBACK;
+
+    /* Reset the flux.dt */
+    p->flux.dt = -1.0f;
+
+    /* Nothing else to do here. */
+    return;
+  }
+
+  if (p->timestepvars.last_kick == KICK1) {
+    /* I.e. we are in kick2 (end of timestep), since the dt_therm > 0. */
+
+#ifdef SWIFT_DEBUG_CHECKS
+    assert(p->flux.dt >= 0.0f);
+#endif
+
+    if (p->flux.dt > 0.0f) {
+      /* We are in kick2 of a normal timestep (not the very beginning of the
+       * simulation) */
+      float flux[5];
+      hydro_part_get_fluxes(p, flux);
+
+      /* Update conserved variables. */
+      p->conserved.mass += flux[0];
+      p->conserved.momentum[0] += flux[1];
+      p->conserved.momentum[1] += flux[2];
+      p->conserved.momentum[2] += flux[3];
 #if defined(EOS_ISOTHERMAL_GAS)
-    /* We use the EoS equation in a sneaky way here just to get the constant u
-     */
-    p->conserved.energy =
-        p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
+      /* We use the EoS equation in a sneaky way here just to get the constant u
+       */
+      p->conserved.energy =
+          p->conserved.mass * gas_internal_energy_from_entropy(0.0f, 0.0f);
 #else
-    p->conserved.energy += flux[4];
+      p->conserved.energy += flux[4];
 #endif
 
 #ifndef HYDRO_GAMMA_5_3
 
-    const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
-    p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
-    p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
-    p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
+      const float Pcorr = (dt_hydro - dt_therm) * p->geometry.volume;
+      p->conserved.momentum[0] -= Pcorr * p->gradients.P[0];
+      p->conserved.momentum[1] -= Pcorr * p->gradients.P[1];
+      p->conserved.momentum[2] -= Pcorr * p->gradients.P[2];
 #ifdef SHADOWSWIFT_TOTAL_ENERGY
-    p->conserved.energy -=
-        Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
-                 p->v[2] * p->gradients.P[2]);
+      p->conserved.energy -=
+          Pcorr * (p->v[0] * p->gradients.P[0] + p->v[1] * p->gradients.P[1] +
+                   p->v[2] * p->gradients.P[2]);
 #endif
 #endif
 
-    /* Apply the minimal energy limit */
-    const float min_energy =
-        hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
-    if (p->conserved.energy < min_energy * p->conserved.mass) {
-      p->conserved.energy = min_energy * p->conserved.mass;
-    }
+      /* Apply the minimal energy limit */
+      const float min_energy = hydro_props->minimal_internal_energy /
+                               cosmo->a_factor_internal_energy;
+      if (p->conserved.energy < min_energy * p->conserved.mass) {
+        p->conserved.energy = min_energy * p->conserved.mass;
+      }
 
-    // MATTHIEU: Apply the entropy floor here.
+      // MATTHIEU: Apply the entropy floor here.
 
-    /* Check conserved quantities */
-    shadowswift_check_physical_quantities(
-        "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
-        p->conserved.momentum[1], p->conserved.momentum[2], p->conserved.energy);
+      /* Check conserved quantities */
+      shadowswift_check_physical_quantities(
+          "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
+          p->conserved.momentum[1], p->conserved.momentum[2],
+          p->conserved.energy);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (p->conserved.mass < 0.) {
-      error(
-          "Negative mass after conserved variables update (mass: %g, dmass: "
-          "%g)!",
-          p->conserved.mass, p->flux.mass);
-    }
+      if (p->conserved.mass < 0.) {
+        error(
+            "Negative mass after conserved variables update (mass: %g, dmass: "
+            "%g)!",
+            p->conserved.mass, p->flux.mass);
+      }
 
-    if (p->conserved.energy < 0.) {
-      error(
-          "Negative energy after conserved variables update (energy: %g, "
-          "denergy: %g)!",
-          p->conserved.energy, p->flux.energy);
-    }
+      if (p->conserved.energy < 0.) {
+        error(
+            "Negative energy after conserved variables update (energy: %g, "
+            "denergy: %g)!",
+            p->conserved.energy, p->flux.energy);
+      }
 #endif
+
+      /* Now that the mass is udated, update gpart mass accordingly */
+      hydro_gravity_update_gpart_mass(p);
+    }
 
     /* Reset the fluxes so that they do not get used again in the kick1. */
     hydro_part_reset_fluxes(p);
@@ -551,24 +603,54 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
      * velocity p->v. */
     hydro_convert_conserved_to_primitive(p, xp);
 
-    /* Update gpart mass */
-    hydro_gravity_update_gpart_mass(p);
+#ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
+    /* Reset time extrapolations of primitive quantities */
+    p->dW_time[0] = 0.0f;
+    p->dW_time[1] = 0.0f;
+    p->dW_time[2] = 0.0f;
+    p->dW_time[3] = 0.0f;
+    p->dW_time[4] = 0.0f;
+#endif
 
-  } else if (p->flux.dt == 0.0f) {
-    /* This can only occur in kick2 the beginning of the simulation. We simply
-     * need to reset the flux.dt to -1.0f and calculate the primitive
-     * quantities. */
+    /* Signal we just did kick2 */
+    p->timestepvars.last_kick = KICK2;
 
-    /* Reset the fluxes so that they do not get used again in the kick1. */
-    hydro_part_reset_fluxes(p);
+  } else if (p->timestepvars.last_kick == ROLLBACK) {
+#ifdef SWIFT_DEBUG_CHECKS
+    assert(p->flux.dt == -1.0f);
+#endif
+    /* Update the flux.dt */
+    p->flux.dt = dt_therm;
 
-    /* Update primitive quantities */
-    hydro_convert_conserved_to_primitive(p, xp);
+    /* Signal we just did a restore */
+    p->timestepvars.last_kick = RESTORE_AFTER_ROLLBACK;
 
-  } else {
-    /* flux.dt < 0 implies that we are in kick1. */
+  } else if (p->timestepvars.last_kick == RESTORE_AFTER_ROLLBACK) {
+    /* We are in kick1 after a rollback. */
+#ifdef SWIFT_DEBUG_CHECKS
+    assert(p->flux.dt >= 0.0f);
+#endif
 
-    /* Update the timestep used in the flux calculation */
+    /* Add the remainder of this particle's timestep to flux.dt */
+    p->flux.dt += 2.f * dt_therm;
+
+    /* Reset v_max */
+    p->timestepvars.vmax = 0.f;
+
+    /* Now that we have received both half kicks, we can set the actual
+     * velocity of the ShadowSWIFT particle (!= fluid velocity) */
+    hydro_velocities_set(p, xp);
+
+    /* Signal we just did a kick1 */
+    p->timestepvars.last_kick = KICK1;
+
+  } else if (p->timestepvars.last_kick == KICK2) {
+    /* We are in kick1 after a kick2 (normal scenario). */
+#ifdef SWIFT_DEBUG_CHECKS
+    assert(p->flux.dt == -1.0f);
+#endif
+
+    /* Update the time step used in the flux calculation */
     p->flux.dt = 2.f * dt_therm;
 
     /* Reset v_max */
@@ -577,11 +659,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     /* Now that we have received both half kicks, we can set the actual
      * velocity of the ShadowSWIFT particle (!= fluid velocity) */
     hydro_velocities_set(p, xp);
-  }
 
-  /* TODO: check for negative dt_therm (implying that we are rolling back a kick
-   * due to the timestep limiter or the timestep sync). This means that we must
-   * rescale the time integrated fluxes this particle has received. */
+    /* Signal we just did a kick1 */
+    p->timestepvars.last_kick = KICK1;
+
+  } else {
+    error("Impossible scenario!");
+  }
 
   /* undo the flux exchange and kick the particles towards their centroid */
   /* TODO Lloyd */

@@ -128,10 +128,10 @@ void cell_activate_star_formation_sink_tasks(struct cell *c,
 #endif
 
   /* Have we already unskipped that task? */
-  if (c->hydro.star_formation_sink->skip == 0) return;
+  if (c->sinks.star_formation_sink->skip == 0) return;
 
   /* Activate the star formation task */
-  scheduler_activate(s, c->hydro.star_formation_sink);
+  scheduler_activate(s, c->sinks.star_formation_sink);
 
   /* Activate the star resort tasks at whatever level they are */
   if (with_feedback) {
@@ -154,10 +154,10 @@ void cell_activate_sink_formation_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   /* Have we already unskipped that task? */
-  if (c->hydro.sink_formation->skip == 0) return;
+  if (c->sinks.sink_formation->skip == 0) return;
 
   /* Activate the star formation task */
-  scheduler_activate(s, c->hydro.sink_formation);
+  scheduler_activate(s, c->sinks.sink_formation);
 }
 
 /**
@@ -1679,7 +1679,7 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
       cell_activate_star_formation_tasks(c->top, s, with_feedback);
       cell_activate_super_spart_drifts(c->top, s);
     }
-    if (c->top->hydro.star_formation_sink != NULL) {
+    if (c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
     }
   }
@@ -2925,8 +2925,9 @@ int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s) {
  */
 int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
   const struct engine *e = s->space->e;
-
   int nodeID = e->nodeID;
+  const int with_timestep_limiter =
+      (e->policy & engine_policy_timestep_limiter);
 
   int rebuild = 0;
 
@@ -2938,7 +2939,6 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
   /* Are we at super level and local? */
   if (c->grid.super == c && c->nodeID == nodeID) {
-    /* TODO activate limiter? */
     scheduler_activate(s, c->grid.ghost);
   }
 
@@ -2952,6 +2952,17 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         "level!");
 #endif
 
+#ifdef SHADOWSWIFT_BVH
+  /* Unskip the bvh task for local cells */
+  if (c->nodeID == nodeID) scheduler_activate(s, c->grid.build_bvh);
+#endif
+
+#if WITH_MPI
+  /* Reset the send flags, they will be set below */
+  if (c->nodeID == nodeID) c->grid.send_flags = 0;
+#endif
+
+  /* Loop over construction tasks linked to this cell */
   for (struct link *l = c->grid.construction; l != NULL; l = l->next) {
 
     struct task *t = l->t;
@@ -2972,6 +2983,9 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
 
       /* Activate hydro drift */
       cell_activate_drift_part(ci, s);
+
+      /* Activate limiter */
+      if (with_timestep_limiter) cell_activate_limiter(c, s);
     }
 
     /* Pair task for constructing the grid of c? */
@@ -2989,6 +3003,18 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
         cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
         cell_activate_hydro_sorts(ci, t->flags, s);
         cell_activate_hydro_sorts(cj, t->flags, s);
+
+#if WITH_MPI
+        /* Do we need to send the voronoi faces to cj's node for this sid? */
+        if (cj_nodeID != nodeID) {
+          struct cell *ci_temp = ci;
+          struct cell *cj_temp = cj;
+          double shift[3];
+          int sid = space_getsid(s->space, &ci_temp, &cj_temp, shift);
+          if (ci == ci_temp) sid = 26 - sid;
+          ci->grid.send_flags |= 1 << sid;
+        }
+#endif
       }
 
       /* Activate the drift tasks for local cells only. Note that the particles
@@ -2996,6 +3022,13 @@ int cell_unskip_grid_tasks(struct cell *c, struct scheduler *s) {
        * will be sent of to ci's node. */
       if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
       if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+      /* Activate the limiter for local cells */
+      /* Activate the limiter tasks. */
+      if (ci_nodeID == nodeID && with_timestep_limiter)
+        cell_activate_limiter(ci, s);
+      if (cj_nodeID == nodeID && with_timestep_limiter)
+        cell_activate_limiter(cj, s);
 
       /* Check if we need to rebuild. */
       rebuild = cell_need_rebuild_for_grid_pair(ci, cj);
@@ -3040,6 +3073,9 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
 
   struct engine *e = s->space->e;
   int nodeID = e->nodeID;
+#ifdef WITH_MPI
+  const int with_timestep_limiter = e->policy & engine_policy_timestep_limiter;
+#endif
   const int is_flux_interaction = l->t->subtype == task_subtype_flux;
 #ifdef SWIFT_DEBUG_CHECKS
   int counter = 0;
@@ -3138,6 +3174,19 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
                                     ci_nodeID);
           }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (ci_active && with_timestep_limiter) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (cj_active && with_timestep_limiter) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                    ci_nodeID);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                    ci_nodeID);
+          }
         } else if (cj_nodeID != nodeID) {
           /* If the local cell is active, receive data from remote node */
           if (ci_active) {
@@ -3146,6 +3195,19 @@ cell_unskip_grid_hydro_interaction_tasks(struct link *l, struct scheduler *s) {
           /* If the foreign cell is active, send data to remote */
           if (cj_active) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (cj_active && with_timestep_limiter) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (ci_active && with_timestep_limiter) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                    cj_nodeID);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
                                     cj_nodeID);
           }
         }
@@ -3206,6 +3268,8 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->hydro.slope_limiter_ghost != NULL)
       scheduler_activate(s, c->hydro.slope_limiter_ghost);
     if (c->hydro.flux_ghost != NULL) scheduler_activate(s, c->hydro.flux_ghost);
+    for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
+      scheduler_activate(s, l->t);
     if (c->kick1 != NULL) scheduler_activate(s, c->kick1);
     if (c->kick2 != NULL) scheduler_activate(s, c->kick2);
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);

@@ -129,9 +129,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
     c->hydro.prep1_ghost = NULL;
-    c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
-    c->hydro.star_formation_sink = NULL;
+    c->sinks.sink_formation = NULL;
+    c->sinks.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.density_ghost = NULL;
     c->stars.prep1_ghost = NULL;
@@ -210,14 +210,19 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.rt_transport_out = NULL;
     c->hydro.rt_tchem = NULL;
     c->hydro.rt_out = NULL;
+    c->grid.bvh = NULL;
     c->grid.voronoi = NULL;
     c->grid.delaunay = NULL;
     c->grid.hilbert_r_sort = NULL;
-    c->grid.unsplittable_flag = 0;
-    c->grid.split = 0;
+    c->grid.self_complete = 0;
+    c->grid.complete = 0;
+#if WITH_MPI
+    c->grid.send_flags = 0;
+#endif
     c->grid.construction_level = uninitialized;
     c->grid.super = NULL;
     c->grid.ti_old = 0;
+    c->grid.build_bvh = NULL;
     c->grid.construction = NULL;
     c->grid.ghost = NULL;
     c->hydro.slope_estimate = NULL;

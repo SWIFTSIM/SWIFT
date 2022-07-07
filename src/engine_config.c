@@ -157,11 +157,13 @@ static void engine_dumper_init(struct engine *e) {
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
+ * @param reparttype What type of repartition algorithm are we using.
  */
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file) {
+                   int verbose, const char *restart_file,
+                   struct repartition *reparttype) {
 
   struct clocks_time tic, toc;
   if (nodeID == 0) clocks_gettime(&tic);
@@ -190,6 +192,16 @@ void engine_config(int restart, int fof, struct engine *e,
   e->restart_dt = 0;
   e->run_fof = 0;
 
+  /* Allow repartitioning to be changed between restarts. On restart this is
+   * already allocated and freed on exit, so we need to copy over. */
+#ifdef WITH_MPI
+  if (restart) {
+    memcpy(e->reparttype, reparttype, sizeof(struct repartition));
+  } else {
+    e->reparttype = reparttype;
+  }
+#endif
+
   if (restart && fof) {
     error(
         "Can't configure the engine to be a stand-alone FOF and restarting "
@@ -213,6 +225,9 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->sched.frequency_dependency < 0) {
     error("Scheduler:dependency_graph_frequency should be >= 0");
   }
+  /* Get cellID for extra dependency graph dumps of specific cell */
+  e->sched.dependency_graph_cellID = parser_get_opt_param_longlong(
+      params, "Scheduler:dependency_graph_cell", 0LL);
 
   /* Get the frequency of the task level dumping */
   e->sched.frequency_task_levels = parser_get_opt_param_int(
@@ -462,7 +477,7 @@ void engine_config(int restart, int fof, struct engine *e,
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
-              "[%s] %6s %s [%s]\n",
+              "[%s] %6s %12s [%s]\n",
               "Step", "Time", "Scale-factor", "Redshift", "Time-step",
               "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
               "b-Updates", "Wall-clock time", clocks_getunit(), "Props",

@@ -1705,7 +1705,7 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
-	with_subgrid_pressure_floor=GEAR
+	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
 	with_subgrid_feedback=GEAR
@@ -1877,6 +1877,7 @@ case "$with_hydro" in
    ;;
    shadowswift)
        AC_DEFINE([SHADOWSWIFT], [1], [Moving mesh hydrodynamics])
+       AC_DEFINE([MOVING_MESH], [1], [Unstructured Voronoi mesh])
        need_riemann_solver=yes
    ;;
    planetary)

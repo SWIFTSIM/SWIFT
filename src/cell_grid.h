@@ -6,6 +6,7 @@
 #define SWIFTSIM_CELL_GRID_H
 
 #include "const.h"
+#include "shadowswift/bvh.h"
 #include "shadowswift/delaunay.h"
 #include "shadowswift/voronoi.h"
 
@@ -25,13 +26,19 @@ struct cell_grid {
    * this level. */
   struct cell *super;
 
-  /*! Flag that indicates whether this cell is unsplittable or has a directly
-   * neighbouring cell on the same level that is unsplittable. */
-  int unsplittable_flag;
+  /*! Whether this cell is complete (at least one particle in all 27 sub-cells
+   * if this cell is divided in thirds along each axis). */
+  int self_complete;
 
-  /*! Whether this cell can safely be split for grid construction (cell can be
-   * split if all of it's progeny is complete). */
-  int split;
+  /*! Whether this cell is itself complete and has directly neighbouring cell
+   * on the same level in all directions which are also complete. */
+  int complete;
+
+#ifdef WITH_MPI
+  /*! Flags indicating whether we should send the faces for the corresponding
+   * SIDs over MPI */
+  int send_flags;
+#endif
 
   /*! Pointer to the voronoi struct of this cell (if any) */
   struct voronoi *voronoi;
@@ -39,12 +46,22 @@ struct cell_grid {
   /*! Pointer to the delaunay struct of this cell (if any) */
   struct delaunay *delaunay;
 
+#ifdef SHADOWSWIFT_BVH
+  /*! Pointer to the bvh struct of this cell (if any) */
+  struct BVH *bvh;
+#endif
+
   /*! Indices sorting the particles of this cell according to their hilbert
    * ordering */
   int *hilbert_r_sort;
 
   /*! Linked list of this cells construction tasks. */
   struct link *construction;
+
+#ifdef SHADOWSWIFT_BVH
+  /*! Pointer to this cells BVH construction task. */
+  struct task *build_bvh;
+#endif
 
   /*! Pointer to this cells construction ghost task. */
   struct task *ghost;

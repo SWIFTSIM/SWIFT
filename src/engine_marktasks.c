@@ -52,6 +52,7 @@
 #include "error.h"
 #include "feedback.h"
 #include "proxy.h"
+#include "space_getsid.h"
 #include "timers.h"
 
 /**
@@ -361,6 +362,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           }
 #endif
           scheduler_activate(s, t);
+          if (with_timestep_limiter) cell_activate_limiter(ci, s);
         }
       }
 
@@ -842,11 +844,28 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           cell_activate_drift_part(ci, s);
           if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
 
-          /* TODO the limiter tasks? */
+          /* And the limiter */
+          if (with_timestep_limiter) {
+            cell_activate_limiter(ci, s);
+            if (cj_nodeID == nodeID)
+              cell_activate_limiter(cj, s);
+          }
 
           /* Check the sorts and activate them if needed. */
           cell_activate_hydro_sorts(ci, t->flags, s);
           cell_activate_hydro_sorts(cj, t->flags, s);
+
+#if WITH_MPI
+          /* Do we need to send the voronoi faces to cj's node for this sid? */
+          if (cj_nodeID != nodeID) {
+            struct cell *ci_temp = ci;
+            struct cell *cj_temp = cj;
+            double shift[3];
+            int sid = space_getsid(s->space, &ci_temp, &cj_temp, shift);
+            if (ci == ci_temp) sid = 26 - sid;
+            ci->grid.send_flags |= 1 << sid;
+          }
+#endif
         }
       }
       /* Activate slope estimate or limiter task only for pairs with at least
@@ -1374,6 +1393,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
             scheduler_activate_send(s, cj->mpi.send, task_subtype_xv,
                                     ci_nodeID);
           }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, ci->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_limiter,
+                                    ci_nodeID);
+            scheduler_activate_pack(s, cj->mpi.pack, task_subtype_limiter,
+                                    ci_nodeID);
+          }
         } else if (cj_nodeID != nodeID) {
           /* If the local cell is active, receive data from remote node */
           if (ci_active_hydro) {
@@ -1382,6 +1414,19 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           /* If the foreign cell is active, send data to remote */
           if (cj_active_hydro) {
             scheduler_activate_send(s, ci->mpi.send, task_subtype_xv,
+                                    cj_nodeID);
+          }
+          /* If the foreign cell is active, we want its particles for the
+           * limiter */
+          if (cj_active_hydro && with_timestep_limiter) {
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_limiter);
+            scheduler_activate_unpack(s, cj->mpi.unpack, task_subtype_limiter);
+          }
+          /* If the local cell is active, send its particles for the limiting */
+          if (ci_active_hydro && with_timestep_limiter) {
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_limiter,
+                                    cj_nodeID);
+            scheduler_activate_pack(s, ci->mpi.pack, task_subtype_limiter,
                                     cj_nodeID);
           }
         }
@@ -1608,6 +1653,20 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         cell_activate_super_sink_drifts(t->ci, s);
       }
     }
+
+#ifdef SHADOWSWIFT_BVH
+    /* bvh task? */
+    else if (t_type == task_type_bvh) {
+      if (cell_is_active_hydro(t->ci, e)) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (!(e->policy & engine_policy_grid)) {
+          error("Encountered bvh task without engine_policy_grid!");
+        }
+#endif
+        scheduler_activate(s, t);
+      }
+    }
+#endif
 
     /* Grid ghost task? */
     else if (t_type == task_type_grid_ghost) {
