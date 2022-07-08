@@ -156,6 +156,12 @@ struct black_holes_props {
   /*! sigma_crit from Hopkins+'21 */
   float sigma_crit_Msun_pc2;
 
+  /*! A factor to account for not being able to resolve sigma_crit */
+  float sigma_crit_resolution_factor;
+
+  /*! The factor for exponentially limiting black hole growth in early stages. */
+  float bh_characteristic_suppression_mass;
+
   /* ---- Properties of the feedback model ------- */
 
   /*! AGN feedback model: random, isotropic or minimum distance */
@@ -464,6 +470,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->sigma_crit_Msun_pc2 = 
       parser_get_param_float(params, "SIMBAAGN:sigma_crit_Msun_pc2");
 
+  bp->sigma_crit_resolution_factor =
+      parser_get_param_float(params, "SIMBAAGN:sigma_crit_resolution_factor");
+
+  bp->bh_characteristic_suppression_mass =
+      parser_get_param_float(params, "SIMBAAGN:bh_characteristic_suppression_mass");
+      
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "SIMBAAGN:use_multi_phase_bondi");
 

@@ -693,19 +693,22 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
         * powf(bp->subgrid_mass * mass_to_1e8solar, 1.f / 6.f) 
         * powf(r0, -3.f / 2.f) 
         / (1 + f0 / f_gas);
-    torque_accr_rate *= (props->time_to_yr / props->mass_to_solar_mass);
+    torque_accr_rate *= props->f_accretion * (props->time_to_yr / props->mass_to_solar_mass);
 
     if (props->suppress_growth == 1) {
       /* r0 is in physical units, and in 1/(100 pc) units */
       const float sigma_eff = gas_stars_mass_in_kernel * props->mass_to_solar_mass / 
                               (M_PI * r0 * r0 * 100.f * 100.f); /* Msun / pc^2 */
 
-      torque_accr_rate *= sigma_eff / (sigma_eff + props->sigma_crit_Msun_pc2);
+      torque_accr_rate *= sigma_eff / 
+          (sigma_eff + props->sigma_crit_resolution_factor * props->sigma_crit_Msun_pc2);
       message("BH_SUPPRESS: suppression factor=%g", 
-              sigma_eff / (sigma_eff + props->sigma_crit_Msun_pc2));
+              sigma_eff / (sigma_eff + props->sigma_crit_resolution_factor * props->sigma_crit_Msun_pc2));
     }
     else if (props->suppress_growth == 2) {
-      torque_accr_rate *= 1. - exp(-BH_mass * props->mass_to_solar_mass / props->sigma_crit_Msun_pc2);
+      torque_accr_rate *= 1. - exp(
+          -BH_mass * props->mass_to_solar_mass / props->bh_characteristic_suppression_mass
+      );
     }
 
     accr_rate += torque_accr_rate;

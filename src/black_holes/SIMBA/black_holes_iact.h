@@ -996,11 +996,6 @@ runner_iact_nonsym_bh_gas_feedback(
     message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
         pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
 
-    /* Make sure the timestepping knows of this kicking event.
-      * PHYSICAL */
-    bi->delta_energy_this_timestep +=
-        0.5f * hydro_get_mass(pj) * bi->v_kick * bi->v_kick;
-
     /* Set delay time */
     pj->feedback_data.decoupling_delay_time = 
         1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
@@ -1043,9 +1038,6 @@ runner_iact_nonsym_bh_gas_feedback(
         hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
         const double delta_energy = (u_new - u_init) * hydro_get_mass(pj);
-
-        /* Make sure the timestepping knows of this heating event */
-        bi->delta_energy_this_timestep += delta_energy;
 
         tracers_after_black_holes_feedback(pj, xpj, with_cosmology, cosmo->a,
                                             time, delta_energy);
