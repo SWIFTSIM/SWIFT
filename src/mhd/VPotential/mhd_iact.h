@@ -66,9 +66,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   double dA[3];
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  /// TEST TEST TEST
-  dA[1] = nearest(dA[1], 0.75*sqrt(MHD_MU0));
-  //dA[1] = -0.75 * sqrt(MHD_MU0) * dx[2];
 
   const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
   pi->mhd_data.divA -= faci * dAdr;
@@ -125,9 +122,6 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   double dA[3];
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  /// TEST TEST TEST
-  dA[1] = nearest(dA[1], 0.75*sqrt(MHD_MU0));
-  //dA[1] = -0.75 * sqrt(MHD_MU0) * dx[2];
 
   const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
   pi->mhd_data.divA -= faci * dAdr;
@@ -339,6 +333,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float mag_VPIndi = wi_dr * r_inv / rhoi;
   const float mag_VPIndj = wj_dr * r_inv / rhoj;
   // ADVECTIVE GAUGE
+  double dA[3];
+  for (int i = 0; i < 3; i++)
+    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
   float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
@@ -349,15 +346,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   float SourceAj = dv[0] * pj->mhd_data.APred[0] +
                          dv[1] * pj->mhd_data.APred[1] +
                          dv[2] * pj->mhd_data.APred[2];
-  // Normal Gauge
-  double dA[3];
-  for (int i = 0; i < 3; i++)
-    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  
-  SourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
-  SourceAj =
-      -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   float SAj = SourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
@@ -464,6 +452,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   /////////////////////////// VP INDUCTION
   const float mag_VPIndi = wi_dr * r_inv / rhoi;
   // ADVECTIVE GAUGE
+  double dA[3];
+  for (int i = 0; i < 3; i++)
+    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
   float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
@@ -471,13 +462,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   float SourceAi = dv[0] * pi->mhd_data.APred[0] +
                          dv[1] * pi->mhd_data.APred[1] +
                          dv[2] * pi->mhd_data.APred[2];
-  // Normal Gauge
-  double dA[3];
-  for (int i = 0; i < 3; i++)
-    dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
 
-  SourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];
