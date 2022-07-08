@@ -353,9 +353,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  /// TEST TEST TEST
-  dA[1] = nearest(dA[1], 0.75*sqrt(MHD_MU0));
-  // dA[1] = -0.75 * sqrt(MHD_MU0) * dx[2];
   
   SourceAi =
       -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
@@ -478,9 +475,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  /// TEST TEST TEST
-  dA[1] = nearest(dA[1], 0.75*sqrt(MHD_MU0));
-  //dA[1] = -0.75 * sqrt(MHD_MU0) * dx[2];
 
   SourceAi =
       -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
