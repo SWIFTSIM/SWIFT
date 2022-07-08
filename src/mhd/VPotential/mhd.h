@@ -223,7 +223,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  //p->force.balsara = 1.f;
+  // p->force.balsara = 1.f;
   xp->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
   xp->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
   xp->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
@@ -314,14 +314,15 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-//  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * MHD_MU0_1);
+  //  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * MHD_MU0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
-//  const float ACC_mhd = b2 / (p->h);
+  //  const float ACC_mhd = b2 / (p->h);
   /* Re normalize the correction in eth momentum from the DivB errors*/
-//  p->mhd_data.Q0 =
-//      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
+  //  p->mhd_data.Q0 =
+  //      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr :
+  //      p->mhd_data.Q0;
 }
 
 /**
@@ -393,8 +394,8 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   // THIS CAN BE REMOVED
   float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
   change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
-                     ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
-                     : change_Gau;
+                   ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
+                   : change_Gau;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -450,8 +451,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   // Dont allow middle change
   float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
   change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
-                     ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
-                     : change_Gau;
+                   ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
+                   : change_Gau;
   xp->mhd_data.Gau += change_Gau;
 }
 
