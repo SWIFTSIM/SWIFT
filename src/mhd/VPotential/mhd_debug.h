@@ -30,12 +30,10 @@
 __attribute__((always_inline)) INLINE static void mhd_debug_particle(
     const struct part *p, const struct xpart *xp) {
   printf(
-      "Bfld=[%.3e,%.3e,%.3e], "
       "Bpred=[%.3e,%.3e,%.3e], "
       "Apred=[%.3e,%.3e,%.3e], "
       "dAdt=[%.3e,%.3e,%.3e], \n"
       "divB=%.3e, divA=%.3e, Q0=%.3e, Gau=%.3e\n",
-      xp->mhd_data.Bfld[0], xp->mhd_data.Bfld[1], xp->mhd_data.Bfld[2],
       p->mhd_data.BPred[0], p->mhd_data.BPred[1], p->mhd_data.BPred[2],
       p->mhd_data.APred[0], p->mhd_data.APred[1], p->mhd_data.APred[2],
       p->mhd_data.dAdt[0], p->mhd_data.dAdt[1], p->mhd_data.dAdt[2],

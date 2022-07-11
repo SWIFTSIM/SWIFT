@@ -61,8 +61,9 @@
 struct mhd_global_data {
   /*! For the fixed, simple case of direct induction. */
   float mhd_eta;
-  float mu0;
+  //float mu0;
   float define_Bfield_in_ics;
+  float define_Afield_in_ics;
 };
 
 /* Functions for reading from parameter file */
@@ -93,11 +94,16 @@ static INLINE void mhd_init(struct swift_params* params,
 
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
                                             mhd_propos_default_difussion_eta);
-  mhd->mu0 =
-      parser_get_opt_param_float(params, "MHD:mu0", mhd_propos_default_mu0);
+  //mhd->mu0 =
+  //    parser_get_opt_param_float(params, "MHD:mu0", mhd_propos_default_mu0);
 
   mhd->define_Bfield_in_ics =
       parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
+  if(mhd->define_Bfield_in_ics != 0.f){
+  float a_beg=parser_get_param_float(params, "Cosmology:a_begin");
+  mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics * a_beg;} 
+  else mhd->define_Afield_in_ics = 0.f; 
+  //mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics;
 }
 
 /**

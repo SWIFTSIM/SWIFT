@@ -337,8 +337,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
 
-  SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
-  SourceAj = -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
+  const float SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
+  const float SourceAj = -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   float SAj = SourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
@@ -449,7 +449,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
 
-  SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
+  const float SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];

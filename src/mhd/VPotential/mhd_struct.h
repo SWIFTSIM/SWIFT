@@ -24,8 +24,6 @@
  */
 struct mhd_part_data {
 
-  /*! Full Step Magnetic field */
-  // float Bfld[3];
   /*! Predicted Bfield */
   float BPred[3];
   /*! Predicted BSmooth */
@@ -38,7 +36,7 @@ struct mhd_part_data {
   float APred[3];
   /* predicted step Gauge, divA */
   float Gau, divA;
-  float GauSmooth;
+  //float GauSmooth;
   /* VP evolution */
   float dAdt[3];
   float Deta;
@@ -51,8 +49,6 @@ struct mhd_xpart_data {
 
   /* Full step Gauge */
   float Gau;
-  /* Full step VPotential */
-  float Bfld[3];
   /* Full step VPotential */
   float APot[3];
 };

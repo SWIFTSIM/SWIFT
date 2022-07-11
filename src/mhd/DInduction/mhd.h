@@ -321,9 +321,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
 
-  p->mhd_data.BPred[0] = p->mhd_data.Bfld[0];
-  p->mhd_data.BPred[1] = p->mhd_data.Bfld[1];
-  p->mhd_data.BPred[2] = p->mhd_data.Bfld[2];
+  p->mhd_data.BPred[0] = xp->mhd_data.Bfld[0];
+  p->mhd_data.BPred[1] = xp->mhd_data.Bfld[1];
+  p->mhd_data.BPred[2] = xp->mhd_data.Bfld[2];
   p->mhd_data.phi = xp->mhd_data.phi;
 }
 
@@ -370,6 +370,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo) {
+  p->mhd_data.dBdt[0] = 0.0f;
+  p->mhd_data.dBdt[1] = 0.0f;
+  p->mhd_data.dBdt[2] = 0.0f;
   float a_fac =
       (2.f - 3.f / 2.f * (hydro_gamma - 1.)) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dBdt[0] -= a_fac * p->mhd_data.BPred[0];
@@ -400,9 +403,9 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct entropy_floor_properties *floor_props) {
 
   /* Integrate the magnetic field */  // XXX check is Bfld is a p or xp
-  p->mhd_data.Bfld[0] += p->mhd_data.dBdt[0] * dt_therm;
-  p->mhd_data.Bfld[1] += p->mhd_data.dBdt[1] * dt_therm;
-  p->mhd_data.Bfld[2] += p->mhd_data.dBdt[2] * dt_therm;
+  xp->mhd_data.Bfld[0] += p->mhd_data.dBdt[0] * dt_therm;
+  xp->mhd_data.Bfld[1] += p->mhd_data.dBdt[1] * dt_therm;
+  xp->mhd_data.Bfld[2] += p->mhd_data.dBdt[2] * dt_therm;
 
   const float hyp = hydro_props->mhd.hyp_dedner;
   const float par = hydro_props->mhd.par_dedner;
@@ -442,10 +445,9 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     const struct mhd_global_data *mhd_data, const double Lsize) {
 
   const float define_Bfield_in_ics = mhd_data->define_Bfield_in_ics;
-  const float Nvort = 7;
+  const float Nvort = 1;
   const float Bini = define_Bfield_in_ics;
   if (define_Bfield_in_ics) {
-
     p->mhd_data.BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
                                    cos(2 * M_PI * p->x[1] / Lsize * Nvort));
     p->mhd_data.BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
@@ -454,9 +456,9 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
                                    cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
 
-  p->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
-  p->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
-  p->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
+  xp->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
+  xp->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
+  xp->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
   xp->mhd_data.phi = p->mhd_data.phi;
 
   mhd_reset_acceleration(p);
