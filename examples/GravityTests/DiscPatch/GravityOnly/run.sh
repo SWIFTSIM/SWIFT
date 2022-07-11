@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../../../swift --external-gravity --threads=2 disc-patch.yml
+../../../../swift --external-gravity --threads=2 disc-patch.yml
 
 # Verify energy conservation
 python3 test.py

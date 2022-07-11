@@ -8,7 +8,7 @@ then
 fi
 
 # Run for 10 dynamical times
-../../swift --external-gravity --hydro --threads=1 hydrostatic.yml 2>&1 | tee output.log
+../../../swift --external-gravity --hydro --threads=1 hydrostatic.yml 2>&1 | tee output.log
 
 echo "Plotting density profiles"
 mkdir plots

@@ -6,7 +6,7 @@ then
     ./getIC.sh
 fi 
 
-../../swift --external-gravity --self-gravity --stars --threads=16 isolated_galaxy.yml 2>&1 | tee output.log
+../../../swift --external-gravity --self-gravity --stars --threads=16 isolated_galaxy.yml 2>&1 | tee output.log
 
 
 echo "Make plots of conservation of total angular momentum" 

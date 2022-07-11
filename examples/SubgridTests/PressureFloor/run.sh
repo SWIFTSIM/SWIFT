@@ -15,7 +15,7 @@ fi
 
 rm pressureFloor_*
 # Run SWIFT
-../../swift --self-gravity --hydro --cooling --threads=8 pressureFloor.yml
+../../../swift --self-gravity --hydro --cooling --threads=8 pressureFloor.yml
 
 # Check if the simulation collapsed
 python3 plotDensity.py 80

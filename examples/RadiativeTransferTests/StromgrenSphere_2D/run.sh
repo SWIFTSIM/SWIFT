@@ -20,7 +20,7 @@ if [ ! -f 'stromgrenSphere-2D.hdf5' ]; then
 fi
 
 # Run SWIFT with RT
-../../swift \
+../../../swift \
     --hydro --threads=4 --stars --external-gravity \
     --feedback --radiation \
     stromgrenSphere-2D.yml 2>&1 | tee output.log

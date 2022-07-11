@@ -36,8 +36,8 @@ if [ "$RUN_DM" = "1" ]; then
     rm $VEL_OUTPUT/vel_$TEST*
 
     # Run test using SWIFT + VELOCIraptor
-    echo "Running: mpirun -np $NUM_MPI_PROC ../swift_mpi --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly"
-    mpirun -np $NUM_MPI_PROC ../swift_mpi --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly
+    echo "Running: mpirun -np $NUM_MPI_PROC ../../../swift_mpi --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly"
+    mpirun -np $NUM_MPI_PROC ../../../swift_mpi --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly
 
     # Run test using VELOCIraptor
     echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_dmonly_0000 -C $VELOCIRAPTOR_PATH/stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"
@@ -80,8 +80,8 @@ if [ "$RUN_GAS" = "1" ]; then
     rm $VEL_OUTPUT/vel_$TEST*
 
     # Run test using SWIFT + VELOCIraptor
-    echo "Running: mpirun -np $NUM_MPI_PROC ../swift_mpi --hydro --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas"
-    mpirun -np $NUM_MPI_PROC ../swift_mpi --hydro --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas
+    echo "Running: mpirun -np $NUM_MPI_PROC ../../../swift_mpi --hydro --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas"
+    mpirun -np $NUM_MPI_PROC ../../../swift_mpi --hydro --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas
 
     # Run test using VELOCIraptor
     echo "Running: mpirun -np $NUM_MPI_PROC $VELOCIRAPTOR_PATH/bin/stf-gas -I 2 -i eagle_gas_0000 -C ./stf_input_$TEST.cfg -o ./$VEL_OUTPUT/vel_$TEST"

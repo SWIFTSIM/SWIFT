@@ -1,7 +1,7 @@
 #!/bin/bash
 
 beta=(1.0 0.1 0.01 0.001)
-swift_location="../../swift"
+swift_location="../../../swift"
 flags="--hydro --limiter --threads=2"
 parameter="diffusion.yml"
 parameter_fixed="diffusion_fixed_alpha.yml"

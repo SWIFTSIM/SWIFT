@@ -107,15 +107,14 @@ This may be required as a dependency of HEALPix.
 Initial Setup
 -------------
 
-We use autotools for setup. To get a basic running version of the code
-(the binary is created in swiftsim/examples) on most platforms, run
-
+We use autotools for setup. To get a basic running version of the code use:
 .. code-block:: bash
 
   ./autogen.sh
   ./configure
   make
 
+the executable binaries are found in the top directory.
 
 MacOS Specific Oddities
 ~~~~~~~~~~~~~~~~~~~~~~~

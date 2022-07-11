@@ -12,7 +12,7 @@ then
   mkdir snap
 fi
 
-../../swift --self-gravity --threads=8 params.yml 2>&1 | tee output.log
+../../../swift --self-gravity --threads=8 params.yml 2>&1 | tee output.log
 
 echo "Plotting results..."
 # If params.yml is left at default values, should produce 10 snapshots
