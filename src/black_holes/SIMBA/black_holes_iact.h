@@ -970,11 +970,6 @@ runner_iact_nonsym_bh_gas_feedback(
     /* Save gas density and entropy before feedback */
     tracers_before_black_holes_feedback(pj, xpj, cosmo->a);
 
-    /* TODO: Don't we have the angular momentum already? */
-    /* Compute relative peculiar velocity between the two particles */
-    const float delta_v[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
-                              pj->v[2] - bi->v[2]};
-
     /* Kick along the angular momentum axis of gas in the kernel */
     const float norm = sqrtf(
       bi->angular_momentum_gas[0] * bi->angular_momentum_gas[0] + 
