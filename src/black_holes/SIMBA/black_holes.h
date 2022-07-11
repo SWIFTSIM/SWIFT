@@ -638,6 +638,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   float f_gas = 0.f;
   if (disk_mass > 0.f) f_gas = bp->cold_gas_mass / disk_mass;
 
+  const float r0 = bp->h * cosmo->a * (props->length_to_parsec / 100.f);
   if (f_disk > 0.f && f_gas > 0.f && gas_stars_mass_in_kernel > 0.f) {
     /* alpha from Hopkins & Quataert 2011 */
     const float alpha = 5.f;
@@ -649,8 +650,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       disk_mass * mass_to_1e9solar, 
       -1.f / 3.f
     );
-
-    const float r0 = bp->h * cosmo->a * (props->length_to_parsec / 100.f);
 
     /* When scaled, this comes out to Msun/yr so must be converted to internal units */
     torque_accr_rate = props->torque_accretion_norm 
