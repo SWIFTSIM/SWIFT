@@ -162,6 +162,9 @@ struct black_holes_props {
   /*! The factor for exponentially limiting black hole growth in early stages. */
   float bh_characteristic_suppression_mass;
 
+  /*! Bondi rate cannot exceed the rate for BH of this mass. */
+  float bondi_rate_limiting_bh_mass;
+
   /* ---- Properties of the feedback model ------- */
 
   /*! AGN feedback model: random, isotropic or minimum distance */
@@ -475,6 +478,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->bh_characteristic_suppression_mass =
       parser_get_param_float(params, "SIMBAAGN:bh_characteristic_suppression_mass");
+      
+  bp->bondi_rate_limiting_bh_mass =
+      parser_get_param_float(params, "SIMBAAGN:bondi_rate_limiting_bh_mass");
       
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "SIMBAAGN:use_multi_phase_bondi");

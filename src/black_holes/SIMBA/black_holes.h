@@ -656,6 +656,12 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     }
   }
 
+  /* Limit Bondi rate to Eddington */
+  Bondi_rate = min(Bondi_rate, Eddington_rate); 
+
+  /* Limit Bondi rate to Bondi rate */
+  Bondi_rate = min(Bondi_rate, 4. * M_PI * G * props->bondi_rate_limiting_bh_mass / props->mass_to_solar_mass * proton_mass / (epsilon_r * c * sigma_Thomson));
+
   /* The accretion rate estimators give Mdot,inflow  (Mdot,BH = f_acc * Mdot,inflow) */
   double accr_rate = props->f_accretion * Bondi_rate;
 
@@ -717,6 +723,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   message("BH_ACCRETION: torque accretion rate id=%lld, %g Msun/yr", 
       bp->id, torque_accr_rate * props->mass_to_solar_mass / props->time_to_yr);
 
+  /* Limit overall accretion rate */
   accr_rate = min(accr_rate, f_Edd * Eddington_rate);
   bp->eddington_fraction = accr_rate / Eddington_rate;
   bp->accretion_rate = accr_rate;
