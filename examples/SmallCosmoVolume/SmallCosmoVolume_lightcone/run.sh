@@ -33,6 +33,6 @@ fi
 
 
 # Run SWIFT
-../../swift --cosmology --eagle --lightcone --pin --threads=8 \
+../../../swift --cosmology --eagle --lightcone --pin --threads=8 \
     small_cosmo_volume.yml 2>&1 | tee output.log
 

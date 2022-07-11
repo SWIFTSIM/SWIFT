@@ -24,4 +24,4 @@ then
     ../getEaglePhotometryTable.sh
 fi
 
-../../swift --threads=16 --feedback --external-gravity --self-gravity --stars --star-formation --cooling --temperature --hydro --limiter --sync --black-holes idealised_cluster_M13.yml 2>&1 | tee output.log
+../../../swift --threads=16 --feedback --external-gravity --self-gravity --stars --star-formation --cooling --temperature --hydro --limiter --sync --black-holes idealised_cluster_M13.yml 2>&1 | tee output.log
