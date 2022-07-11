@@ -179,10 +179,6 @@ __attribute__((always_inline)) INLINE static void mhd_init_part(
     struct part *p) {
 
   p->mhd_data.divA = 0.f;
-  // XXX todo, really is not the predicted variable will be the full step
-  p->mhd_data.BPred[0] = 0.f;
-  p->mhd_data.BPred[1] = 0.f;
-  p->mhd_data.BPred[2] = 0.f;
 }
 
 /**
@@ -206,7 +202,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
 
   p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
   for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
+    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv / cosmo->a;
 }
 
 /**
@@ -223,10 +219,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
 
-  // p->force.balsara = 1.f;
-  xp->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
-  xp->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
-  xp->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
+  p->force.balsara = 1.f;
 }
 
 /**
@@ -314,15 +307,14 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
   p->mhd_data.Q0 =
       p->mhd_data.Q0 < 10.0f ? 1.0f : 0.0f;  // No correction if not magnetized
   /* divB contribution */
-  //  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * MHD_MU0_1);
+  const float ACC_corr = fabs(p->mhd_data.divB * sqrt(b2) * MHD_MU0_1);
   // this should go with a /p->h, but I
   // take simplify becasue of ACC_mhd also.
   /* isotropic magnetic presure */
-  //  const float ACC_mhd = b2 / (p->h);
+  const float ACC_mhd = (b2 / p->h) * MHD_MU0_1;
   /* Re normalize the correction in eth momentum from the DivB errors*/
-  //  p->mhd_data.Q0 =
-  //      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr :
-  //      p->mhd_data.Q0;
+  p->mhd_data.Q0 =
+      ACC_corr > ACC_mhd ? p->mhd_data.Q0 * ACC_mhd / ACC_corr : p->mhd_data.Q0;
 }
 
 /**
@@ -353,9 +345,9 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
 
   // MAy Bpred differenet and now we have to smooth
-  p->mhd_data.BPred[0] = p->mhd_data.BSmooth[0];
-  p->mhd_data.BPred[1] = p->mhd_data.BSmooth[1];
-  p->mhd_data.BPred[2] = p->mhd_data.BSmooth[2];
+  //p->mhd_data.BPred[0] = p->mhd_data.BSmooth[0];
+  //p->mhd_data.BPred[1] = p->mhd_data.BSmooth[1];
+  //p->mhd_data.BPred[2] = p->mhd_data.BSmooth[2];
 
   p->mhd_data.Gau = xp->mhd_data.Gau;
   // p->mhd_data.Gau = p->mhd_data.GauSmooth;
@@ -390,12 +382,10 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
   p->mhd_data.APred[1] += p->mhd_data.dAdt[1] * dt_therm;
   p->mhd_data.APred[2] += p->mhd_data.dAdt[2] * dt_therm;
 
-  // p->mhd_data.Gau += hydro_get_dGau_dt(p,p->mhd_data.Gau) * dt_therm;
-  // THIS CAN BE REMOVED
   float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
-  change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
-                   ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
-                   : change_Gau;
+ // change_Gau = fabs(change_Gau / p->mhd_data.Gau) > 0.5f
+ //                  ? copysign(p->mhd_data.Gau * 0.5, change_Gau)
+ //                  : change_Gau;
   p->mhd_data.Gau += change_Gau;
 }
 
@@ -413,6 +403,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo) {
+  p->mhd_data.dAdt[0] = 0.0f;
+  p->mhd_data.dAdt[1] = 0.0f;
+  p->mhd_data.dAdt[2] = 0.0f;
   float a_fac =
       (1.f - 3.f / 2.f * (hydro_gamma - 1.)) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
@@ -442,17 +435,14 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  /* Integrate the magnetic field */  // XXX check is Bfld is a p or xp
+  /* Integrate the magnetic field */  
   xp->mhd_data.APot[0] += p->mhd_data.dAdt[0] * dt_therm;
   xp->mhd_data.APot[1] += p->mhd_data.dAdt[1] * dt_therm;
   xp->mhd_data.APot[2] += p->mhd_data.dAdt[2] * dt_therm;
-  // this is fine ? XXX
-  // xp->mhd_data.Gau = p->mhd_data.Gau + hydro_get_dGau_dt(p) * dt_therm;
-  // Dont allow middle change
   float change_Gau = hydro_get_dGau_dt(p, p->mhd_data.Gau, cosmo) * dt_therm;
-  change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
-                   ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
-                   : change_Gau;
+  //change_Gau = fabs(change_Gau / xp->mhd_data.Gau) > 0.5f
+  //                 ? copysign(xp->mhd_data.Gau * 0.5, change_Gau)
+  //                 : change_Gau;
   xp->mhd_data.Gau += change_Gau;
 }
 
@@ -494,10 +484,17 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
 
   // const float Lsize = s->dims[0];
   const float define_Bfield_in_ics = mhd_data->define_Bfield_in_ics;
-  const float Nvort = 7;
-  const float Aini = define_Bfield_in_ics / (2 * M_PI * Nvort) * Lsize;
+  const float define_Afield_in_ics = mhd_data->define_Afield_in_ics;
+  const float Nvort = 1;
+  const float Bini = define_Bfield_in_ics;
+  const float Aini = define_Afield_in_ics / (2 * M_PI * Nvort) * Lsize;
   if (define_Bfield_in_ics) {
-
+    p->mhd_data.BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
+                                   cos(2 * M_PI * p->x[1] / Lsize * Nvort));
+    p->mhd_data.BPred[1] = Bini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
+                                   cos(2 * M_PI * p->x[2] / Lsize * Nvort));
+    p->mhd_data.BPred[2] = Bini * (sin(2 * M_PI * p->x[1] / Lsize * Nvort) +
+                                   cos(2 * M_PI * p->x[0] / Lsize * Nvort));
     p->mhd_data.APred[0] = Aini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
                                    cos(2 * M_PI * p->x[1] / Lsize * Nvort));
     p->mhd_data.APred[1] = Aini * (sin(2 * M_PI * p->x[0] / Lsize * Nvort) +
@@ -506,9 +503,6 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
                                    cos(2 * M_PI * p->x[0] / Lsize * Nvort));
   }
 
-  xp->mhd_data.Bfld[0] = p->mhd_data.BPred[0];
-  xp->mhd_data.Bfld[1] = p->mhd_data.BPred[1];
-  xp->mhd_data.Bfld[2] = p->mhd_data.BPred[2];
   xp->mhd_data.APot[0] = p->mhd_data.APred[0];
   xp->mhd_data.APot[1] = p->mhd_data.APred[1];
   xp->mhd_data.APot[2] = p->mhd_data.APred[2];
