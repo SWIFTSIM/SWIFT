@@ -136,10 +136,6 @@ struct bpart {
    * radius (calculated as j_gas / h_BH, where j is specific ang. mom.) */
   float circular_velocity_gas[3];
 
-  /*! Multiplicative factor for accretion rates, from Rosas-Guevara et al.
-   * (2015) angular momentum based accretion disc model */
-  float f_visc;
-
   /*! Total mass of the gas neighbours. */
   float ngb_mass;
 
@@ -201,7 +197,7 @@ struct bpart {
 
   /*! Angular momentum of the gas */
   float angular_momentum_gas[3];
-  
+
   /*! Specific angular momentum of the stars within the kernel */
   float specific_angular_momentum_stars[3];
 

@@ -479,9 +479,15 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->bh_characteristic_suppression_mass =
       parser_get_param_float(params, "SIMBAAGN:bh_characteristic_suppression_mass");
       
+
+  /* Conversion factor for internal mass to M_solar */
+  bp->mass_to_solar_mass = 1.f / phys_const->const_solar_mass;
+
+  
   bp->bondi_rate_limiting_bh_mass =
       parser_get_param_float(params, "SIMBAAGN:bondi_rate_limiting_bh_mass");
-      
+  bp->bondi_rate_limiting_bh_mass /= bp->mass_to_solar_mass;  /* Convert to internal units */
+
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "SIMBAAGN:use_multi_phase_bondi");
 
@@ -805,9 +811,6 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   const double X_H = hydro_props->hydrogen_mass_fraction;
   bp->rho_to_n_cgs =
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
-
-  /* Conversion factor for internal mass to M_solar */
-  bp->mass_to_solar_mass = 1.f / phys_const->const_solar_mass;
 
   bp->kms_to_internal = 1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 

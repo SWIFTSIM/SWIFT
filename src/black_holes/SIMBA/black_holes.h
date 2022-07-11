@@ -49,56 +49,22 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
     const struct bpart* const bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo) {
 
-  /* Compute instantaneous energy supply rate to the BH energy reservoir
-   * which is proportional to the BH mass accretion rate */
-  const float Energy_rate =
-      bp->f_accretion * props->epsilon_f * 
-      props->epsilon_r * bp->accretion_rate * 
-      constants->const_speed_light_c * constants->const_speed_light_c;
-
   /* Allow for finer timestepping if necessary! */
-  float dt_heat = FLT_MAX;
   float dt_accr = FLT_MAX;
-
-  /* TODO: Probably remove this, if it's never smaller than accretion
-   * limit */
-  if (Energy_rate > 0.f && bp->delta_energy_this_timestep > 0.f) {
-    dt_heat = props->dt_feedback_factor * 
-              bp->delta_energy_this_timestep / Energy_rate;
-  }
-
-  /* These rates should be the same but Simba doesn't exactly
-   * conserve energy, so let's be safe.
-   * Ex: Where does the jet heating energy come from??
-   * But really they would both be zero at the same time for sure!
-   * TODO: Optimize.
-   */
   if (bp->accretion_rate > 0.f) {
     dt_accr = props->dt_accretion_factor * 
               bp->mass / bp->accretion_rate;
   }
 
-  float bh_timestep = min(dt_heat, dt_accr);
-
-  /* TODO: Remove debugging */
-  if (bh_timestep < props->time_step_min) {
-    message("BH_TIMESTEP_LOW: bh_timestep (%g Myr) is below time_step_min (%g Myr).",
+  if (dt_accr < props->time_step_min) {
+    message("Warning! BH_TIMESTEP_LOW: id=%llu (%g Myr) is below time_step_min (%g Myr).",
+            bp->id,
             bh_timestep * props->time_to_Myr,
             props->time_step_min * props->time_to_Myr);
   }
 
-  bh_timestep = max(bh_timestep, props->time_step_min);
+  return max(dt_accr, props->time_step_min);
 
-  message("BH_TIMESTEP: Energy_rate=%g, delta_energy_this_timestep=%g,"
-          "dt_heat=%g Myr, dt_accr=%g Myr, dt_bh/dt_min=%g",
-          Energy_rate, 
-          bp->delta_energy_this_timestep, 
-          dt_heat * props->time_to_Myr,
-          dt_accr * props->time_to_Myr,
-          bh_timestep / props->time_step_min);
-
-
-  return bh_timestep;
 }
 
 /**
@@ -213,7 +179,6 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->reposition.potential = FLT_MAX;
   bp->accretion_rate = 0.f; /* Optionally accumulated ngb-by-ngb */
   bp->mass_accreted_this_step = 0.f;
-  bp->f_visc = FLT_MAX;
   bp->accretion_boost_factor = -FLT_MAX;
   bp->mass_at_start_of_step = bp->mass; /* bp->mass may grow in nibbling mode */
 
@@ -643,9 +608,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->accretion_boost_factor = 1.f;
   }
 
-
-  bp->f_visc = 1.f;
-
   /* Compute the Eddington rate (internal units) */
   const double Eddington_rate =
       4. * M_PI * G * BH_mass * proton_mass / (epsilon_r * c * sigma_Thomson);
@@ -659,17 +621,13 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     }
   }
 
-  /* Limit Bondi rate to Eddington */
-  Bondi_rate = min(Bondi_rate, Eddington_rate); 
-
-  /* Limit Bondi rate to Bondi rate */
-  Bondi_rate = min(Bondi_rate, 4. * M_PI * G * props->bondi_rate_limiting_bh_mass / props->mass_to_solar_mass * proton_mass / (epsilon_r * c * sigma_Thomson));
-
   /* The accretion rate estimators give Mdot,inflow  (Mdot,BH = f_acc * Mdot,inflow) */
   double accr_rate = props->f_accretion * Bondi_rate;
 
-  message("BH_ACCRETION: bondi accretion rate id=%lld, %g Msun/yr", 
-      bp->id, accr_rate * props->mass_to_solar_mass / props->time_to_yr);
+  /* Limit to Eddington_rate, as well as the Eddington rate for a specified, custom Msun BH */
+  const double Eddington_rate_custom_mass = 
+      Eddington_rate * (props->bondi_rate_limiting_bh_mass / BH_mass);
+  Bondi_rate = min3(Bondi_rate, Eddington_rate, Eddington_rate_custom_mass);
 
   /* Let's compute the accretion rate from the torque limiter */
   float torque_accr_rate = 0.f;
@@ -711,8 +669,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
       torque_accr_rate *= sigma_eff / 
           (sigma_eff + props->sigma_crit_resolution_factor * props->sigma_crit_Msun_pc2);
-      message("BH_SUPPRESS: suppression factor=%g", 
-              sigma_eff / (sigma_eff + props->sigma_crit_resolution_factor * props->sigma_crit_Msun_pc2));
     }
     else if (props->suppress_growth == 2) {
       torque_accr_rate *= 1. - exp(
@@ -723,15 +679,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     accr_rate += torque_accr_rate;
   }
 
-  message("BH_ACCRETION: torque accretion rate id=%lld, %g Msun/yr", 
-      bp->id, torque_accr_rate * props->mass_to_solar_mass / props->time_to_yr);
-
   /* Limit overall accretion rate */
   accr_rate = min(accr_rate, f_Edd * Eddington_rate);
   bp->eddington_fraction = accr_rate / Eddington_rate;
   bp->accretion_rate = accr_rate;
-
-  message("BH_ACCRETION: id=%lld, f_Edd=%g", bp->id, bp->eddington_fraction);
 
   /* Factor in the radiative efficiency */
   const double mass_rate = (1. - epsilon_r) * accr_rate;
@@ -780,9 +731,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     v_kick = 500.f + (500.f / 3.f) * (log10f(subgrid_mass_Msun) - 6.f);
   }
 
-  message("BH_FEEDBACK: prepared id=%lld, subgridmass=%g Msun, mass=%g Msun, v_kick=%g km/s", 
-          bp->id, subgrid_mass_Msun, bp->mass * props->mass_to_solar_mass, v_kick);
-
   /* Now that we have v_kick we can determine the accretion fraction f_acc */
   if (v_kick > 0.f) {
     if (bp->eddington_fraction < props->eddington_fraction_lower_boundary) {
@@ -803,8 +751,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
           ), /* option 1 */
           mass_sel * props->jet_velocity /* option 2 */
         );
-
-        message("BH_FEEDBACK: prepared jet id=%lld, v_kick=%g km/s", bp->id, v_kick);
       }
     }
 
@@ -1081,21 +1027,6 @@ black_holes_compute_xray_feedback(
                    (1. + pow(zeta / zeta0, b));
   
   const double du_cgs = (n_H_cgs * props->proton_mass_cgs_inv) * (S1 + S2) * dt_cgs;
-
-  message("BH_XRAY_DEBUG: n_H(cgs)=%g, S1=%g, S2=%g, dt(cgs)=%g,"
-          "du_cgs=%g, luminosity(cgs)=%g, radiative_lum(int)=%g, r2(cgs)=%g, zeta=%g,"
-          "zeta0=%g, conv_lum=%g",
-          n_H_cgs,
-          S1,
-          S2,
-          dt_cgs,
-          du_cgs,
-          luminosity_cgs,
-          bp->radiative_luminosity,
-          r2_cgs,
-          zeta,
-          zeta0,
-          props->conv_factor_energy_rate_to_cgs);
   return du_cgs / props->conv_factor_specific_energy_to_cgs;
 }
 
