@@ -57,9 +57,9 @@ __attribute__((always_inline)) INLINE static float black_holes_compute_timestep(
   }
 
   if (dt_accr < props->time_step_min) {
-    message("Warning! BH_TIMESTEP_LOW: id=%llu (%g Myr) is below time_step_min (%g Myr).",
+    message("Warning! BH_TIMESTEP_LOW: id=%lld (%g Myr) is below time_step_min (%g Myr).",
             bp->id,
-            bh_timestep * props->time_to_Myr,
+            dt_accr * props->time_to_Myr,
             props->time_step_min * props->time_to_Myr);
   }
 
@@ -768,13 +768,15 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   message("BH_DETAILS "
           "%2.12f %u "
           " %g %g %g %g %g %g %g "
-          " %g %g %g %g %g %g %g %g %g "
+          " %g %g %g %g " 
+          " %g %g %g %g %g "
           " %2.10f %2.10f %2.10f "
           " %2.7f %2.7f %2.7f "
           " %g %g %g  %g %g %g",
           cosmo->a, bp->id,
           bp->mass, bp->subgrid_mass, disk_mass, bp->accretion_rate, Bondi_rate, torque_accr_rate, dt,
-          bp->rho_gas * cosmo->a3_inv, bp->hot_gas_internal_energy, bp->hot_gas_mass, bp->stellar_mass, 0.f, bp->stellar_bulge_mass, r0,
+          bp->rho_gas * cosmo->a3_inv, bp->hot_gas_internal_energy, 0.f, (bp->hot_gas_mass + bp->cold_gas_mass), 
+          bp->hot_gas_mass, bp->stellar_mass, 0.f, bp->stellar_bulge_mass, r0,
           bp->x[0], bp->x[1], bp->x[2], bp->v[0], bp->v[1], bp->v[2],
           bp->angular_momentum_gas[0], bp->angular_momentum_gas[1], bp->angular_momentum_gas[2],
           bp->specific_angular_momentum_stars[0], bp->specific_angular_momentum_stars[1], bp->specific_angular_momentum_stars[2]);
