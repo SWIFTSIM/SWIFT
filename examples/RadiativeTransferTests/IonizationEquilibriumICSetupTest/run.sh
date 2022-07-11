@@ -9,7 +9,7 @@ if [ ! -f ./ionization_equilibrium_test.hdf5 ]; then
 fi
 
 # Run SWIFT with RT
-../../swift \
+../../../swift \
     --hydro \
     --threads=1 \
     --verbose=0  \

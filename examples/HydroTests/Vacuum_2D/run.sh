@@ -13,7 +13,7 @@ then
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=4 vacuum.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=4 vacuum.yml 2>&1 | tee output.log
 
 # Plot the result
 python3 plotSolution.py 1

@@ -14,4 +14,4 @@ then
 fi
 
 # Run for some sound crossing time
-../../swift --hydro --self-gravity --threads=1 jeansfragmentation.yml 2>&1 | tee output.log
+../../../swift --hydro --self-gravity --threads=1 jeansfragmentation.yml 2>&1 | tee output.log

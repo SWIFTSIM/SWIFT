@@ -12,7 +12,7 @@ if [ ! -f feedback.hdf5 ]; then
 fi
 
 # Run SWIFT
-../../swift --hydro --cooling --limiter --threads=4 feedback.yml 2>&1 | tee output.log
+../../../swift --hydro --cooling --limiter --threads=4 feedback.yml 2>&1 | tee output.log
 
 # Plot the solution
 python3 plotSolution.py 5

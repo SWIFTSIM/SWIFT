@@ -17,7 +17,7 @@ do
 
     cd default_diffmax_$diffusion_alpha_max
 
-    ../../../swift --hydro --cooling --limiter --threads=16 --param="SPH:diffusion_alpha_max:${diffusion_alpha_max}" ../feedback.yml 2>&1 | tee output.log 
+    ../../../../swift --hydro --cooling --limiter --threads=16 --param="SPH:diffusion_alpha_max:${diffusion_alpha_max}" ../feedback.yml 2>&1 | tee output.log 
 
     cd ..
     
@@ -25,7 +25,7 @@ do
 
     cd nocool_diffmax_$diffusion_alpha_max
 
-    ../../../swift --hydro --temperature --limiter --threads=16 --param="SPH:diffusion_alpha_max:${diffusion_alpha_max}" ../feedback.yml 2>&1 | tee output.log 
+    ../../../../swift --hydro --temperature --limiter --threads=16 --param="SPH:diffusion_alpha_max:${diffusion_alpha_max}" ../feedback.yml 2>&1 | tee output.log 
 
     cd ..
 done

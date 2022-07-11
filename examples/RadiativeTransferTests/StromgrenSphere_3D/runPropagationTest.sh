@@ -16,7 +16,7 @@ if [ ! -f 'propagationTest-3D.hdf5' ]; then
 fi
 
 # Run SWIFT with RT
-../../swift \
+../../../swift \
     --hydro --threads=4 --stars --external-gravity \
     --feedback --radiation \
     ./propagationTest-3D.yml 2>&1 | tee output.log

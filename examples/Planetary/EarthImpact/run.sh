@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../../swift -s -G -t 8 earth_impact.yml 2>&1 | tee output.log
+../../../swift -s -G -t 8 earth_impact.yml 2>&1 | tee output.log
 
 # Plot the snapshots
 python3 plot_solution.py

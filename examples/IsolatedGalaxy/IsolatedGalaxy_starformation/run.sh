@@ -30,7 +30,7 @@ then
     ../getEaglePhotometryTable.sh
 fi
 
-../../swift --threads=16 --external-gravity --self-gravity --stars --star-formation --cooling --hydro isolated_galaxy.yml 2>&1 | tee output.log
+../../../swift --threads=16 --external-gravity --self-gravity --stars --star-formation --cooling --hydro isolated_galaxy.yml 2>&1 | tee output.log
 
 # Kennicutt-Schmidt law plot
 python3 plotSolution.py
