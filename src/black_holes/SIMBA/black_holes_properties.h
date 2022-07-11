@@ -255,6 +255,9 @@ struct black_holes_props {
   /*! The temperature of the jet. Set < 0.f for halo virial temperature */
   float jet_temperature;
 
+  /*! Should we scale the jet temperature with the BH mass? */
+  int scale_jet_temperature_with_mass;
+  
   /*! What lower Mdot,BH/Mdot,Edd boundary does the jet activate? */
   float eddington_fraction_lower_boundary;
 
@@ -483,7 +486,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   /* Conversion factor for internal mass to M_solar */
   bp->mass_to_solar_mass = 1.f / phys_const->const_solar_mass;
 
-  
+
   bp->bondi_rate_limiting_bh_mass =
       parser_get_param_float(params, "SIMBAAGN:bondi_rate_limiting_bh_mass");
   bp->bondi_rate_limiting_bh_mass /= bp->mass_to_solar_mass;  /* Convert to internal units */
@@ -690,6 +693,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->jet_temperature = 
       parser_get_param_float(params, "SIMBAAGN:jet_temperature");
+
+  bp->scale_jet_temperature_with_mass =
+      parser_get_param_int(params, "SIMBAAGN:scale_jet_temperature_with_mass");
 
   bp->eddington_fraction_lower_boundary = 
       parser_get_param_float(params, "SIMBAAGN:eddington_fraction_lower_boundary");

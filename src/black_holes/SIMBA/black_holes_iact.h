@@ -975,17 +975,13 @@ runner_iact_nonsym_bh_gas_feedback(
     const float delta_v[3] = {pj->v[0] - bi->v[0], pj->v[1] - bi->v[1],
                               pj->v[2] - bi->v[2]};
 
-    /* compute direction of kick: r x v */ 
-    const float dir[3] = {dx[1] * delta_v[2] - dx[2] * delta_v[1],
-                          dx[2] * delta_v[0] - dx[0] * delta_v[2],
-                          dx[0] * delta_v[1] - dx[1] * delta_v[0]};
-    const float norm = 
-        sqrtf(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+    /* Kick along the angular momentum axis of gas in the kernel */
+    const float norm = sqrtf(
+      bi->angular_momentum_gas[0] * bi->angular_momentum_gas[0] + 
+      bi->angular_momentum_gas[1] * bi->angular_momentum_gas[1] + 
+      bi->angular_momentum_gas[2] * bi->angular_momentum_gas[2]);
 
-    /* TODO: Remove */
-    float pj_vel_norm = 0.f;
-    for (int i = 0; i < 3; i++) pj_vel_norm += pj->v[i] * pj->v[i];
-    pj_vel_norm = sqrtf(pj_vel_norm);
+    const float pj_vel_norm = sqrtf(pj->v[0] * pj->v[0] + pj->v[1] * pj->v[1] + pj->v[2] * pj->v[2]);
 
     /* TODO: random_uniform() won't work here?? */
     /*const float dirsign = (random_uniform(-1.0, 1.0) > 0. ? 1.f : -1.f);*/
@@ -994,12 +990,12 @@ runner_iact_nonsym_bh_gas_feedback(
     const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
     const float prefactor = bi->v_kick * cosmo->a * dirsign / norm;
 
-    pj->v[0] += prefactor * dir[0];
-    pj->v[1] += prefactor * dir[1];
-    pj->v[2] += prefactor * dir[2];
+    pj->v[0] += prefactor * bi->angular_momentum_gas[0];
+    pj->v[1] += prefactor * bi->angular_momentum_gas[1];
+    pj->v[2] += prefactor * bi->angular_momentum_gas[2];
 
-    message("BH_KICK: kicking id=%lld, v_kick=%g (internal), v_kick/v_part=%g",
-        pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
+    message("BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s, v_kick/v_part=%g",
+       bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
 
     /* Set delay time */
     pj->feedback_data.decoupling_delay_time = 
@@ -1010,14 +1006,14 @@ runner_iact_nonsym_bh_gas_feedback(
 
     /* If we have a jet, we heat! */
     if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
-      message("BH_JET: bid=%lld kicking pid=%lld at v_kick=%g (internal), v_kick/v_part=%g",
-        bi->id, pj->id, bi->v_kick * cosmo->a, bi->v_kick * cosmo->a / pj_vel_norm);
+      message("BH_KICK_JET: bid=%lld kicking pid=%lld at v_kick=%g km/s, v_kick/v_part=%g",
+        bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
 
       float new_Tj = 0.f;
       /* Use the halo Tvir? */
-      if (bh_props->jet_temperature < 0.f) {
-        /* TODO: Get the halo Tvir for pj */
-        new_Tj = 1.0e8f; /* K */
+      if (bh_props->scale_jet_temperature_with_mass) {
+        new_Tj = bh_props->jet_temperature * 
+                 powf(bi->subgrid_mass * (bh_props->mass_to_solar_mass / 1.e9f), 2.0 / 3.0);
       } else {
         new_Tj = bh_props->jet_temperature; /* K */
       }
@@ -1029,7 +1025,7 @@ runner_iact_nonsym_bh_gas_feedback(
       /* Treat the jet temperature as an upper limit, in case v_kick > v_jet */
       if (new_Tj > bh_props->jet_temperature) new_Tj = bh_props->jet_temperature;
 
-      message("BH_JET: bid=%lld heating pid=%lld to T=%g K",
+      message("BH_KICK_JET_HEAT: bid=%lld heating pid=%lld to T=%g K",
         bi->id, pj->id, new_Tj);
 
       /* Compute new energy per unit mass of this particle */
