@@ -188,6 +188,11 @@ runner_iact_nonsym_bh_gas_density(
     bi->cold_gas_mass += mj;
   }
 
+  /* Gas angular momentum in kernel */
+  bi->angular_momentum_gas[0] += mj * (dx[1] * dv[2] - dx[2] * dv[1]);
+  bi->angular_momentum_gas[1] += mj * (dx[2] * dv[0] - dx[0] * dv[2]);
+  bi->angular_momentum_gas[2] += mj * (dx[0] * dv[1] - dx[1] * dv[0]);  
+
   /* Contribution to the smoothed velocity (gas w.r.t. black hole) */
   bi->velocity_gas[0] += mj * wi * dv[0];
   bi->velocity_gas[1] += mj * wi * dv[1];

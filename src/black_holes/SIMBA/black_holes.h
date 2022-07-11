@@ -193,6 +193,9 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->circular_velocity_gas[0] = 0.f;
   bp->circular_velocity_gas[1] = 0.f;
   bp->circular_velocity_gas[2] = 0.f;
+  bp->angular_momentum_gas[0] = 0.f;
+  bp->angular_momentum_gas[1] = 0.f;
+  bp->angular_momentum_gas[2] = 0.f;
   bp->specific_angular_momentum_stars[0] = 0.f;
   bp->specific_angular_momentum_stars[1] = 0.f;
   bp->specific_angular_momentum_stars[2] = 0.f;
@@ -815,6 +818,21 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->f_accretion = props->f_accretion;
     bp->v_kick = 0.f;
   }
+
+  message("BH_DETAILS "
+          "%2.12f %u "
+          " %g %g %g %g %g %g %g "
+          " %g %g %g %g %g %g %g %g %g "
+          " %2.10f %2.10f %2.10f "
+          " %2.7f %2.7f %2.7f "
+          " %g %g %g  %g %g %g",
+          cosmo->a, bp->id,
+          bp->mass, bp->subgrid_mass, disk_mass, bp->accretion_rate, Bondi_rate, torque_accr_rate, dt,
+          bp->rho_gas * cosmo->a3_inv, bp->hot_gas_internal_energy, bp->hot_gas_mass, bp->stellar_mass, 0.f, bp->stellar_bulge_mass, r0,
+          bp->x[0], bp->x[1], bp->x[2], bp->v[0], bp->v[1], bp->v[2],
+          bp->angular_momentum_gas[0], bp->angular_momentum_gas[1], bp->angular_momentum_gas[2],
+          bp->specific_angular_momentum_stars[0], bp->specific_angular_momentum_stars[1], bp->specific_angular_momentum_stars[2]);
+
 }
 
 /**

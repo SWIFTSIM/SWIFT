@@ -199,6 +199,9 @@ struct bpart {
   /*! Fraction of Mdot,inflow that should be accreted, the rest is a wind */
   float f_accretion;
 
+  /*! Angular momentum of the gas */
+  float angular_momentum_gas[3];
+  
   /*! Specific angular momentum of the stars within the kernel */
   float specific_angular_momentum_stars[3];
 
