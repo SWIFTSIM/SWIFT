@@ -370,9 +370,9 @@ __attribute__((always_inline)) INLINE static void mhd_predict_extra(
  */
 __attribute__((always_inline)) INLINE static void mhd_end_force(
     struct part *p, const struct cosmology *cosmo) {
-  p->mhd_data.dBdt[0] = 0.0f;
-  p->mhd_data.dBdt[1] = 0.0f;
-  p->mhd_data.dBdt[2] = 0.0f;
+//  p->mhd_data.dBdt[0] = 0.0f;
+//  p->mhd_data.dBdt[1] = 0.0f;
+//  p->mhd_data.dBdt[2] = 0.0f;
   float a_fac =
       (2.f - 3.f / 2.f * (hydro_gamma - 1.)) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dBdt[0] -= a_fac * p->mhd_data.BPred[0];
@@ -445,7 +445,7 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
     const struct mhd_global_data *mhd_data, const double Lsize) {
 
   const float define_Bfield_in_ics = mhd_data->define_Bfield_in_ics;
-  const float Nvort = 1;
+  const float Nvort = 10;
   const float Bini = define_Bfield_in_ics;
   if (define_Bfield_in_ics) {
     p->mhd_data.BPred[0] = Bini * (sin(2 * M_PI * p->x[2] / Lsize * Nvort) +
