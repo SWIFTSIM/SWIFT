@@ -20,7 +20,7 @@ then
 fi
 
 # Run SWIFT
-../../swift --hydro --cosmology --cooling --threads=4 const_cosmo_temp_evol.yml 2>&1 | tee output.log
+../../../swift --hydro --cosmology --cooling --threads=4 const_cosmo_temp_evol.yml 2>&1 | tee output.log
 
 # Plot the result
 python3 plot_thermal_history.py cooling_box

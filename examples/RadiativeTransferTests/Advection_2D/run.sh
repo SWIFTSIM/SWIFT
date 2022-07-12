@@ -17,7 +17,7 @@ then
 fi
 
 # Run SWIFT with RT
-../../swift \
+../../../swift \
     --hydro \
     --threads=4 \
     --verbose=0  \

@@ -35,7 +35,7 @@ fi
 # Threading options - run with threads and pinning (latter not required but improves performance)
 # The corresponding parameter file for this run
 
-../../swift \
+../../../swift \
     --cosmology --eagle \
     --threads=16 --pin \
     eagle_50.yml
