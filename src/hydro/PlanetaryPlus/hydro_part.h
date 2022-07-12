@@ -283,7 +283,7 @@ struct part {
   char limited_part;
 #endif
 
-#ifdef PLANETARY_FIXED_ENTROPY
+#if defined PLANETARY_FIXED_ENTROPY || defined PLANETARY_SMOOTHING_CORRECTION
   /* Fixed specific entropy */
   float s_fixed;
 #endif

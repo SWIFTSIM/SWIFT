@@ -51,7 +51,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                         struct io_props* list,
                                         int* num_fields) {
 
-#ifdef PLANETARY_FIXED_ENTROPY
+#if defined PLANETARY_FIXED_ENTROPY || defined PLANETARY_SMOOTHING_CORRECTION
   *num_fields = 10;
 #else
   *num_fields = 9;
@@ -76,7 +76,7 @@ INLINE static void hydro_read_particles(struct part* parts,
                                 UNIT_CONV_DENSITY, parts, rho);
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
-#ifdef PLANETARY_FIXED_ENTROPY
+#if defined PLANETARY_FIXED_ENTROPY || defined PLANETARY_SMOOTHING_CORRECTION
   list[9] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
                                 UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
                                 s_fixed);
