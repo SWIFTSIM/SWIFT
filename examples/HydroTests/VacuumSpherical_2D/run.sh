@@ -13,7 +13,7 @@ then
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=4 vacuum.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=4 vacuum.yml 2>&1 | tee output.log
 
 # Get the 1D high resolution reference result if not present.
 if [ ! -e vacuumSpherical2D_exact.txt ]
