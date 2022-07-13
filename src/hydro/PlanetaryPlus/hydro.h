@@ -463,9 +463,10 @@ __attribute__((always_inline)) INLINE static float update_s(struct part *p, floa
   float u_low, u_high, u_mid;
 
   float s_sph = p->s_fixed;
-  float u_sph = u_new;
+  float u_sph = gas_internal_energy_from_entropy(rho_fixed, s_sph, p->mat_id);;
   // return if condition already satisfied
   if (u_new == u_sph) {
+      
     return s_sph;
   }
   
@@ -577,12 +578,14 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->grad_rho[1] = 0.f;
   p->grad_rho[2] = 0.f;   
     
-    
+ 
   #ifndef PLANETARY_FIXED_ENTROPY  //if fixed entropy, don't update s_fixed
   // Update entropy. Thus only changes because of viscous heating  
+
   if(p->last_corrected_rho){ 
-    p->s_fixed = update_s(p, p->u, p->last_corrected_rho);
+    p->s_fixed = update_s(p, p->u, p->last_corrected_rho);   
    }
+
   #endif    
 #endif
 
@@ -1124,7 +1127,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
       }
   }
  
-  p->smoothing_error = S;
+  p->smoothing_error = p->s_fixed;//S;
     
   // finish computations
   const float P = gas_pressure_from_entropy(p->rho, p->s_fixed, p->mat_id);
@@ -1171,7 +1174,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 #if defined PLANETARY_FIXED_ENTROPY || defined PLANETARY_SMOOTHING_CORRECTION
   /* Override the internal energy to satisfy the fixed entropy */
   p->u = gas_internal_energy_from_entropy(p->rho, p->s_fixed, p->mat_id);
-
+  
   xp->u_full = p->u;
 #endif
 
