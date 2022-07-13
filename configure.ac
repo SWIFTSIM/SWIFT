@@ -207,8 +207,8 @@ AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 # Indicate that MPIRUN can be modified by an environment variable
 AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
-# Add libtool support (now that CC is defined).
-LT_INIT
+# Add libtool support (now that CC is defined). Disable shared libraries by default.
+LT_INIT([disable-shared])
 
 # Need C99 and inline support.
 AC_PROG_CC_C99
