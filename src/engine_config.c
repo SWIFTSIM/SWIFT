@@ -196,7 +196,11 @@ void engine_config(int restart, int fof, struct engine *e,
    * already allocated and freed on exit, so we need to copy over. */
 #ifdef WITH_MPI
   if (restart) {
+    int *celllist = e->reparttype->celllist;
+    int ncelllist = e->reparttype->ncelllist;
     memcpy(e->reparttype, reparttype, sizeof(struct repartition));
+    e->reparttype->celllist = celllist;
+    e->reparttype->ncelllist = ncelllist;
   } else {
     e->reparttype = reparttype;
   }
