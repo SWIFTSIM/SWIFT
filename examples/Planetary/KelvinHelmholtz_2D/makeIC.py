@@ -42,9 +42,9 @@ numPart2 = L2 * L2
 L1 = int(sqrt(numPart2 / rho2 * rho1))
 numPart1 = L1 * L1
 
-# print "N2 =", numPart2, "N1 =", numPart1
-# print "L2 =", L2, "L1 = ", L1
-# print "rho2 =", rho2, "rho1 =", (float(L1*L1)) / (float(L2*L2))
+print("N2 =", numPart2, "N1 =", numPart1)
+print("L2 =", L2, "L1 = ", L1)
+print("rho2 =", rho2, "rho1 =", (float(L1 * L1)) / (float(L2 * L2)))
 
 coords1 = zeros((numPart1, 3))
 coords2 = zeros((numPart2, 3))
@@ -110,8 +110,8 @@ vel[:, 1] = (
     omega0
     * sin(4 * pi * coords[:, 0])
     * (
-        exp(-(coords[:, 1] - 0.25) ** 2 / (2 * sigma ** 2))
-        + exp(-(coords[:, 1] - 0.75) ** 2 / (2 * sigma ** 2))
+        exp(-((coords[:, 1] - 0.25) ** 2) / (2 * sigma ** 2))
+        + exp(-((coords[:, 1] - 0.75) ** 2) / (2 * sigma ** 2))
     )
 )
 
@@ -154,6 +154,5 @@ ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids.reshape((numPart, 1))
 ds = grp.create_dataset("MaterialIDs", (numPart, 1), "i")
 ds[()] = mat.reshape((numPart, 1))
-
 
 fileOutput.close()
