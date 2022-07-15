@@ -42,6 +42,18 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
     const struct engine* restrict e, const int with_cosmology) {}
 
 /**
+ * @brief Recouple wind particles.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
+ */
+__attribute__((always_inline)) INLINE static void feedback_recouple_part(
+    struct part* p, struct xpart* xp, const struct engine* e,
+    const int with_cosmology) { } 
+    
+/**
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.
  *

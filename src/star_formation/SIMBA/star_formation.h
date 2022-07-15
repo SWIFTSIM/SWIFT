@@ -313,6 +313,9 @@ INLINE static int star_formation_is_star_forming(
     const struct unit_system* us, const struct cooling_function_data* cooling,
     const struct entropy_floor_properties* entropy_floor_props) {
 
+  /* No star forming for particles in the wind */
+  if (p->feedback_data.decoupling_delay_time > 0.f) return 0;
+
   /* Minimal density (converted from mean baryonic density)
    * for star formation */
   const double rho_mean_b_times_min_over_den =
