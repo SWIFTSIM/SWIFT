@@ -13,6 +13,10 @@ config.sub
 ltmain.sh
 libtool
 build
+swift
+swift_mpi
+fof
+fof_mpi
 
 src/version_string.h
 swift*.tar.gz
@@ -23,10 +27,6 @@ doc/latex/
 doc/man/
 doc/Doxyfile
 
-examples/swift
-examples/swift_mpi
-examples/fof
-examples/fof_mpi
 examples/*/*/*.xmf
 examples/*/*/*.dat
 examples/*/*/*.png
