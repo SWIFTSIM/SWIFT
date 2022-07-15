@@ -30,7 +30,6 @@
 #include "./mhd/None/mhd.h"
 #include "./mhd/None/mhd_iact.h"
 #define MHD_IMPLEMENTATION "No MHD scheme"
-#define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of MHD variant"
 #endif
