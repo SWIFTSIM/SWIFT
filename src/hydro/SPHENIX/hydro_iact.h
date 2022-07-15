@@ -48,8 +48,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
-  /* Ignore wind neighbors */
-  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+  /* Ignore wind neighbors, unless they're both wind */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) {
+    if (pi->feedback_data.decoupling_delay_time <= 0.f) return;
+  }
   
   float wi, wj, wi_dx, wj_dx;
   float dv[3], curlvr[3];
@@ -204,9 +206,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
-  /* Skip wind particles for gradient calculations */
-  if (pi->feedback_data.decoupling_delay_time > 0.f ||
-      pj->feedback_data.decoupling_delay_time > 0.f) return;
+  /* Skip wind particles for gradient calculations, unless they're both wind */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) {
+    if (pi->feedback_data.decoupling_delay_time <= 0.f) return;
+  }
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */

@@ -154,10 +154,6 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
       struct part *restrict p = &parts[i];
       struct xpart *restrict xp = &xparts[i];
 
-      /* D. Rennehan: Moved this into cooling_cool_part
-       * if (p->feedback_data.decoupling_delay_time > 0.f) continue;
-       */
-
       /* Anything to do here? (i.e. does this particle need updating?) */
       if (part_is_active(p, e)) {
 
@@ -177,6 +173,9 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
           dt_therm = get_timestep(p->time_bin, time_base);
         }
 
+        /* Recouple before cooling */
+        feedback_recouple_part(p, xp, e, with_cosmology);
+        
         /* Let's cool ! */
         cooling_cool_part(constants, us, cosmo, hydro_props,
                           entropy_floor_props, cooling_func, p, xp, dt_cool,

@@ -37,17 +37,14 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const double dt, const integertime_t ti_begin);
 
 /**
- * @brief Update the properties of a particle due to feedback effects after
- * the cooling was applied.
- *
- * Nothing to do here in the SIMBA model.
+ * @brief Recouple wind particles.
  *
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
  * @param with_cosmology Is this a cosmological simulation?
  */
-__attribute__((always_inline)) INLINE static void feedback_update_part(
+__attribute__((always_inline)) INLINE static void feedback_recouple_part(
     struct part* p, struct xpart* xp, const struct engine* e,
     const int with_cosmology) {
 
@@ -74,6 +71,21 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
     p->feedback_data.decoupling_delay_time = 0.f;
   }
 }
+
+/**
+ * @brief Update the properties of a particle due to feedback effects after
+ * the cooling was applied.
+ *
+ * Nothing to do here in the SIMBA model.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
+ */
+__attribute__((always_inline)) INLINE static void feedback_update_part(
+    struct part* p, struct xpart* xp, const struct engine* e,
+    const int with_cosmology) { }
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
