@@ -509,9 +509,10 @@ runner_iact_nonsym_feedback_apply(
       hydro_reset_acceleration(pj);
 
       message(
-          "V_KICK: z=%g  sp->id=%lld  pj->id=%lld f_E=%g  sigDM=%g  N_SNII=%d  tdelay=%g  "
+          "V_KICK: z=%g  sp->id=%lld  pj->id=%lld f_E=%g  sigDM=%g  dm_N_ngb=%d N_SNII=%d  tdelay=%g  "
           "v_kick=%g km/s",
           cosmo->z, si->id, pj->id, si->f_E, si->feedback_data.dm_vel_disp_1d,
+          si->feedback_data.dm_ngb_N,
           N_of_SNII_energy_inj_received_by_gas,
           pj->feedback_data.decoupling_delay_time, v_kick * cosmo->a_inv / fb_props->kms_to_internal);
       /* Update the signal velocity of the particle based on the velocity
