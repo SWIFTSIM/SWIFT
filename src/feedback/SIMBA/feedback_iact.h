@@ -501,6 +501,8 @@ runner_iact_nonsym_feedback_apply(
           fb_props->Wind_decoupling_time_factor *
           cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
+      pj->feedback_data.number_of_times_decoupled++;
+      
       /* Immediately set hydro acceleration to zero */
       hydro_reset_acceleration(pj);
 

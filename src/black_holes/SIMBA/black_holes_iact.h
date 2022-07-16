@@ -996,6 +996,8 @@ runner_iact_nonsym_bh_gas_feedback(
     pj->feedback_data.decoupling_delay_time = 
         1.0e-4f * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
+    pj->feedback_data.number_of_times_decoupled += 1000;
+    
     /* Immediately set hydro accelerations to zero */
     hydro_reset_acceleration(pj);
 

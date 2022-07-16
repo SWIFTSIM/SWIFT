@@ -31,6 +31,9 @@
 struct feedback_part_data {
   /*! remaining time left for decoupling */
   float decoupling_delay_time;
+
+  /*! Number of times decoupled */
+  int number_of_times_decoupled;
 };
 
 /**

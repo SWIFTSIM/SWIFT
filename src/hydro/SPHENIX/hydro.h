@@ -471,6 +471,16 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->viscosity.v_sig);
 
+  /* TODO remove debugging */
+  if (p->feedback_data.number_of_times_decoupled > 0) {
+    message("PART_TIMESTEP: id=%lld dt_cfl=%g prefactor=%g p->h=%g denominator=%g delay=%g N=%d",
+            dt_cfl,
+            2.f * kernel_gamma * CFL_condition * cosmo->a,
+            p->h,
+            cosmo->a_factor_sound_speed * p->viscosity.v_sig,
+            p->feedback_data.decoupling_delay_time,
+            p->feedback_data.number_of_times_decoupled);
+  }
   return dt_cfl;
 }
 
@@ -1224,6 +1234,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   hydro_init_part(p, NULL);
 
   p->feedback_data.decoupling_delay_time = 0.f;
+  p->feedback_data.number_of_times_decoupled = 0;
 }
 
 /**
