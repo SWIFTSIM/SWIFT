@@ -337,13 +337,22 @@ struct part {
   float last_corrected_rho;
     
   /*! Good or bad last time-step? Used for matrix method and quad visc volume elements */     
-  float last_f_S;  
+  float last_f_S; 
+    
+  float rho_sph;  
+    
+  float P_sph;  
 #endif
     
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   /*! Particle C matrix. */
   float C[3][3], Cinv[3][3];
-
+    
+  float sum_w_V;
+    
+  float sum_r_w_V[3];  
+    
+  int is_vacuum_boundary;  
 #endif
 
 #ifdef PLANETARY_QUAD_VISC

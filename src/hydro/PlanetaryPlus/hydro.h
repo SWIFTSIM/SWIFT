@@ -780,9 +780,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   p->grad_drho_dh[0] = 0.f;
   p->grad_drho_dh[1] = 0.f;
   p->grad_drho_dh[2] = 0.f;    
+    
 #endif
 
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
+  p->sum_w_V = 0.f;
+  p->sum_r_w_V[0] = 0.f;
+  p->sum_r_w_V[1] = 0.f;
+  p->sum_r_w_V[2] = 0.f;     
+    
  int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -971,6 +977,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->P_tilde_numerator += kernel_root * p->P * f_g; 
   p->P_tilde_denominator += kernel_root * f_g;
      
+    p->rho_sph = p->rho;
+    p->P_sph = p->P;
+    
    float S;  
    float f_S; 
    float P_tilde; 
@@ -985,7 +994,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
       S = (p->h /p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
       
       // Compute new P
-     f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.15f))); 
+     f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.15f)));
      float P_new = f_S * p->P + (1.f - f_S) * P_tilde;
       
        // Compute rho from u, P_new
@@ -1006,7 +1015,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
       }
   }
  
-  p->smoothing_error = S;
+ 
     
   // finish computations
   const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
@@ -1015,9 +1024,34 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->P = P;
   p->T = T;  
     
+ 
+    
+     p->smoothing_error = S;
+    
+    
   p->last_corrected_rho = p->rho;
   p->last_f_S = f_S;
 #endif
+    
+    
+#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC    
+      p->sum_r_w_V[0] *= h_inv_dim; 
+  p->sum_r_w_V[1] *= h_inv_dim;
+  p->sum_r_w_V[2] *= h_inv_dim;
+    
+  p->sum_w_V += kernel_root * (p->mass / p->rho);
+  p->sum_w_V *= h_inv_dim; 
+    
+  float centre_of_volume = sqrtf(p->sum_r_w_V[0] * p->sum_r_w_V[0] + p->sum_r_w_V[1] * p->sum_r_w_V[1] + p->sum_r_w_V[2] * p->sum_r_w_V[2]) / (p->sum_w_V * p->h);  
+    
+  if (centre_of_volume > 0.05f){
+      p->is_vacuum_boundary = 1;
+  }else{
+      p->is_vacuum_boundary = 0;
+  }
+#endif    
+    
+    
 }
 
 /**
@@ -1128,8 +1162,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
    * the volume stops working */
-  if (!p->is_h_max) {
 
+  if (!p->is_h_max && !p->is_vacuum_boundary) {
+      
+      
+      
     float determinant = 0.f;
     /* We normalise the Cinv matrix to the mean of its 9 elements to stop us
      * hitting float precision limits during matrix inversion process */
@@ -1150,7 +1187,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
           (p->Cinv[0][i] * (p->Cinv[1][(i + 1) % 3] * p->Cinv[2][(i + 2) % 3] -
                             p->Cinv[1][(i + 2) % 3] * p->Cinv[2][(i + 1) % 3]));
     }
-
+      
+      
     for (i = 0; i < 3; i++) {
       for (j = 0; j < 3; j++) {
         /* Find C from inverse of Cinv */
