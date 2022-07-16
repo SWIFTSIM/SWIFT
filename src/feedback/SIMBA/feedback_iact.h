@@ -476,22 +476,21 @@ runner_iact_nonsym_feedback_apply(
                 (float)N_of_SNII_energy_inj_received_by_gas * delta_u);
 
       /* compute direction of kick: a x v */
-      double dir[3], norm = 0.;
-      dir[0] =
-          pj->gpart->a_grav[1] * pj->v[2] - pj->gpart->a_grav[2] * pj->v[1];
-      dir[1] =
-          pj->gpart->a_grav[2] * pj->v[0] - pj->gpart->a_grav[0] * pj->v[2];
-      dir[2] =
-          pj->gpart->a_grav[0] * pj->v[1] - pj->gpart->a_grav[1] * pj->v[0];
-      for (int i = 0; i < 3; i++) norm += dir[i] * dir[i];
-      norm = sqrtf(norm);
+      const double dir[3] = {
+          pj->gpart->a_grav[1] * pj->v[2] - pj->gpart->a_grav[2] * pj->v[1],
+          pj->gpart->a_grav[2] * pj->v[0] - pj->gpart->a_grav[0] * pj->v[2],
+          pj->gpart->a_grav[0] * pj->v[1] - pj->gpart->a_grav[1] * pj->v[0]
+      }
+      const double norm = sqrtf(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
 
       /* kick the particle */
       const int dirsign = (random_uniform(-1, 1) > 0 ? 1 : -1);
-      for (int i = 0; i < 3; i++) pj->v[i] += v_kick * dirsign * dir[i] / norm;
+      pj->v[0] += v_kick * dirsign * dir[0] / norm;
+      pj->v[1] += v_kick * dirsign * dir[1] / norm;
+      pj->v[2] += v_kick * dirsign * dir[2] / norm;
 
       /* Impose maximal viscosity */
-      hydro_diffusive_feedback_reset(pj);
+      /*hydro_diffusive_feedback_reset(pj);*/
 
       /* Mark this particle has having been heated/kicked by supernova feedback
        */
@@ -506,11 +505,11 @@ runner_iact_nonsym_feedback_apply(
       hydro_reset_acceleration(pj);
 
       message(
-          "V_KICK: z=%g  sp->id=%lld  f_E=%g  sigDM=%g  N_SNII=%d  tdelay=%g  "
-          "v_kick=%g",
-          cosmo->z, si->id, si->f_E, si->feedback_data.dm_vel_disp_1d,
+          "V_KICK: z=%g  sp->id=%lld  pj->id=%lld f_E=%g  sigDM=%g  N_SNII=%d  tdelay=%g  "
+          "v_kick=%g km/s",
+          cosmo->z, si->id, pj->id, si->f_E, si->feedback_data.dm_vel_disp_1d,
           N_of_SNII_energy_inj_received_by_gas,
-          pj->feedback_data.decoupling_delay_time, v_kick);
+          pj->feedback_data.decoupling_delay_time, v_kick * cosmo->a_inv / fb_props->kms_to_internal);
       /* Update the signal velocity of the particle based on the velocity
        * kick
        */

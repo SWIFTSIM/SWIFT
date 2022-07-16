@@ -331,6 +331,9 @@ struct feedback_props {
 
   /*! max decoupling time is (this factor) * current Hubble time */
   float Wind_decoupling_time_factor;
+
+  /*! Factor to convert km/s to internal units */
+  float kms_to_internal;
 };
 
 void feedback_props_init(struct feedback_props *fp,

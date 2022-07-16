@@ -753,6 +753,8 @@ void feedback_props_init(struct feedback_props* fp,
   fp->rho_to_n_cgs =
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
+  fp->kms_to_internal = 1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
   /* Initialise the IMF ------------------------------------------------- */
 
   init_imf(fp);
