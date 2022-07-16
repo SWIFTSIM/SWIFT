@@ -79,6 +79,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -94,6 +97,9 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip all wind particles for ALL parts of the hydro calculations */
+      if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -212,6 +218,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -227,6 +236,9 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip all wind particles for ALL parts of the hydro calculations */
+      if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
       const int pj_active = part_is_active(pj, e);
       const float hj = pj->h;
@@ -348,6 +360,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -363,6 +378,9 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip all wind particles for ALL parts of the hydro calculations */
+      if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -484,6 +502,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
     const int pi_active = part_is_active(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -499,6 +520,9 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip all wind particles for ALL parts of the hydro calculations */
+      if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
@@ -622,6 +646,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *restrict pi = &parts_i[ind[pid]];
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+  
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k] - shift[k];
     const float hi = pi->h;
@@ -640,6 +667,9 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip all wind particles for ALL parts of the hydro calculations */
+      if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
       /* Compute the pairwise distance. */
       float r2 = 0.0f;
@@ -730,6 +760,8 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Get a hold of the ith part in ci. */
       struct part *restrict pi = &parts_i[ind[pid]];
+      /* Skip wind particles */
+      if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
       const double pix = pi->x[0] - (shift[0]);
       const double piy = pi->x[1] - (shift[1]);
       const double piz = pi->x[2] - (shift[2]);
@@ -746,6 +778,9 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
         const float hj = pj->h;
         const double pjx = pj->x[0];
@@ -951,6 +986,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
     /* Get a hold of the ith part in ci. */
     struct part *pi = &parts[ind[pid]];
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
     const float pix[3] = {(float)(pi->x[0] - ci->loc[0]),
                           (float)(pi->x[1] - ci->loc[1]),
                           (float)(pi->x[2] - ci->loc[2])};
@@ -972,6 +1010,9 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
 
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
+
+      /* Skip all wind particles for ALL parts of the hydro calculations */
+      if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
       const float hj = pj->h;
 
@@ -1107,6 +1148,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       /* Skip inactive particles */
       if (!part_is_active(pi, e)) continue;
 
+      /* Skip wind particles */
+      if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
@@ -1125,6 +1169,9 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
         const float hj = pj->h;
         const float pjx = pj->x[0] - cj->loc[0];
@@ -1507,6 +1554,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
     const float hi = pi->h;
 
     /* Is there anything we need to interact with (for this specific hi) ? */
@@ -1536,6 +1586,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
          * ti_end_max), particles may have nevertheless been inhibted by BH
          * swallowing in the mean time. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
         const float hj = pj->h;
 
@@ -1614,6 +1667,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
         const float hj = pj->h;
 
@@ -1713,6 +1769,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pj, e)) continue;
 
+    /* Skip wind particles */
+    if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
+    
     const float hj = pj->h;
 
     /* Is there anything we need to interact with (for this specific hj) ? */
@@ -1742,6 +1801,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
          * ti_end_max), particles may have nevertheless been inhibted by BH
          * swallowing in the mean time. */
         if (part_is_inhibited(pi, e)) continue;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
 
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
@@ -1821,6 +1883,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pi, e)) continue;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
 
         const float hi = pi->h;
         const float hig2 = hi * hi * kernel_gamma2;
@@ -2057,6 +2122,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
     /* Get the particle position and radius. */
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
@@ -2072,6 +2140,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Check that particles have been drifted to the current time */
@@ -2124,6 +2195,9 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
         const float hj = pj->h;
 
@@ -2295,6 +2369,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
+    /* Skip wind particles */
+    if (pi->feedback_data.decoupling_delay_time > 0.f) continue;
+
     /* Get the particle position and radius. */
     double pix[3];
     for (int k = 0; k < 3; k++) pix[k] = pi->x[k];
@@ -2310,6 +2387,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Get a pointer to the jth particle. */
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
         /* Compute the pairwise distance. */
         float r2 = 0.0f;
@@ -2362,6 +2442,9 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
         /* Skip inhibited particles. */
         if (part_is_inhibited(pj, e)) continue;
+
+        /* Skip all wind particles for ALL parts of the hydro calculations */
+        if (pj->feedback_data.decoupling_delay_time > 0.f) continue;
 
         const float hj = pj->h;
 

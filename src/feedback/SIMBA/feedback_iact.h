@@ -502,6 +502,9 @@ runner_iact_nonsym_feedback_apply(
           fb_props->Wind_decoupling_time_factor *
           cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
+      /* Immediately set hydro acceleration to zero */
+      hydro_reset_acceleration(pj);
+
       message(
           "V_KICK: z=%g  sp->id=%lld  f_E=%g  sigDM=%g  N_SNII=%d  tdelay=%g  "
           "v_kick=%g",
