@@ -23,7 +23,7 @@
 #include "rays_struct.h"
 
 /*! The total number of rays used in stellar feedback */
-#define eagle_SNII_feedback_num_of_rays FEEDBACK_NR_RAYS_SNII
+#define eagle_SNII_feedback_num_of_rays 57
 
 /**
  * @brief Feedback fields carried by each hydro particles
