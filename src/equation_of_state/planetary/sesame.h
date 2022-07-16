@@ -99,26 +99,26 @@ INLINE static void set_ANEOS_Fe85Si15(struct SESAME_params *mat,
 /*
     Skip a line while reading a file.
 */
-INLINE static int skip_line(FILE* f) {
-    int c;
+INLINE static int skip_line(FILE *f) {
+  int c;
 
-    // Read each character until reaching the end of the line or file
-    do {
-        c = fgetc(f);
-    } while ((c != '\n') && (c != EOF));
+  // Read each character until reaching the end of the line or file
+  do {
+    c = fgetc(f);
+  } while ((c != '\n') && (c != EOF));
 
-    return c;
+  return c;
 }
 
 /*
     Skip n lines while reading a file.
 */
-INLINE static int skip_lines(FILE* f, int n) {
-    int c;
+INLINE static int skip_lines(FILE *f, int n) {
+  int c;
 
-    for (int i = 0; i < n; i++) c = skip_line(f);
+  for (int i = 0; i < n; i++) c = skip_line(f);
 
-    return c;
+  return c;
 }
 
 /*
@@ -131,8 +131,8 @@ INLINE static int skip_lines(FILE* f, int n) {
     num_rho  num_T
     rho[0]   rho[1]  ...  rho[num_rho]                          (kg/m^3)
     T[0]     T[1]    ...  T[num_T]                              (K)
-    u[0, 0]                 P[0, 0]     c[0, 0]     s[0, 0]     (J/kg, Pa, m/s, J/K/kg)
-    u[1, 0]                 ...         ...         ...
+    u[0, 0]                 P[0, 0]     c[0, 0]     s[0, 0]     (J/kg, Pa, m/s,
+   J/K/kg) u[1, 0]                 ...         ...         ...
     ...                     ...         ...         ...
     u[num_rho-1, 0]         ...         ...         ...
     u[0, 1]                 ...         ...         ...
