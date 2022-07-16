@@ -480,14 +480,16 @@ runner_iact_nonsym_feedback_apply(
           pj->gpart->a_grav[1] * pj->v[2] - pj->gpart->a_grav[2] * pj->v[1],
           pj->gpart->a_grav[2] * pj->v[0] - pj->gpart->a_grav[0] * pj->v[2],
           pj->gpart->a_grav[0] * pj->v[1] - pj->gpart->a_grav[1] * pj->v[0]
-      }
+      };
       const double norm = sqrtf(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
 
       /* kick the particle */
       const int dirsign = (random_uniform(-1, 1) > 0 ? 1 : -1);
-      pj->v[0] += v_kick * dirsign * dir[0] / norm;
-      pj->v[1] += v_kick * dirsign * dir[1] / norm;
-      pj->v[2] += v_kick * dirsign * dir[2] / norm;
+      const double prefactor = v_kick * dirsign / norm;
+
+      pj->v[0] += prefactor * dir[0];
+      pj->v[1] += prefactor * dir[1];
+      pj->v[2] += prefactor * dir[2];
 
       /* Impose maximal viscosity */
       /*hydro_diffusive_feedback_reset(pj);*/
@@ -502,7 +504,7 @@ runner_iact_nonsym_feedback_apply(
           cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
       pj->feedback_data.number_of_times_decoupled++;
-      
+
       /* Immediately set hydro acceleration to zero */
       hydro_reset_acceleration(pj);
 

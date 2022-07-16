@@ -474,6 +474,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* TODO remove debugging */
   if (p->feedback_data.number_of_times_decoupled > 0) {
     message("PART_TIMESTEP: id=%lld dt_cfl=%g prefactor=%g p->h=%g denominator=%g delay=%g N=%d",
+            p->id,
             dt_cfl,
             2.f * kernel_gamma * CFL_condition * cosmo->a,
             p->h,
