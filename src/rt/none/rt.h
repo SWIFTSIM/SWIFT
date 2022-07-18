@@ -64,18 +64,22 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * @brief Reset of the RT hydro particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
  * are both called individually.
- *
- * @param p Particle to work on
+ * @param p particle to work on
+ * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p) {}
+    struct part* restrict p, const struct cosmology* cosmo) {}
 
 /**
  * @brief First initialisation of the RT hydro particle data.
+ *
  * @param p particle to work on
+ * @param cosmo #cosmology data structure.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p, const struct rt_props* restrict rt_props) {}
+    struct part* restrict p, const struct cosmology* cosmo,
+    const struct rt_props* restrict rt_props) {}
 
 /**
  * @brief Initialises particle quantities that can't be set
@@ -84,10 +88,12 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
  *
  * @param p particle to work on
  * @param rt_props RT properties struct
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void
 rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props) {}
+                               const struct rt_props* rt_props,
+                               const struct cosmology* restrict cosmo) {}
 
 /**
  * @brief Initialisation of the RT density loop related star particle data.
@@ -248,18 +254,21 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
  * @brief finishes up the gradient computation
  *
  * @param p particle to work on
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
-    struct part* restrict p) {}
+    struct part* restrict p, const struct cosmology* cosmo) {}
 
 /**
  * @brief finishes up the transport step
  *
  * @param p particle to work on
  * @param dt the current time step of the particle
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt) {}
+    struct part* restrict p, const double dt,
+    const struct cosmology* restrict cosmo) {}
 
 /**
  * @brief Do the thermochemistry on a particle.

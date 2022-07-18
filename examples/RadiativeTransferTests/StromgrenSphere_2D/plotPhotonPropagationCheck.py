@@ -214,33 +214,49 @@ def plot_photons(filename, emin, emax, fmin, fmax):
         print("RT scheme not identified. Exit.")
         exit()
     L = None
+
     if use_const_emission_rates:
         # read emission rate parameter as string
         if scheme.startswith("GEAR M1closure"):
             emissionstr = meta.parameters["GEARRT:star_emission_rates_LSol"].decode(
                 "utf-8"
             )
+            # clean string up
+            if emissionstr.startswith("["):
+                emissionstr = emissionstr[1:]
+            if emissionstr.endswith("]"):
+                emissionstr = emissionstr[:-1]
+
+            # transform string values to floats with unyts
+            emissions = emissionstr.split(",")
+            emlist = []
+            for er in emissions:
+                emlist.append(float(er))
+            const_emission_rates = unyt.unyt_array(emlist, unyt.L_Sun)
+            L = const_emission_rates[group_index]
         elif scheme.startswith("SPH M1closure"):
-            emissionstr = meta.parameters["SPHM1RT:star_emission_rates_LSol"].decode(
-                "utf-8"
-            )
+            unit_l_in_cgs = meta.units.length
+            unit_v_in_cgs = meta.units.length / meta.units.time
+            unit_m_in_cgs = meta.units.mass
+            emissionstr = meta.parameters["SPHM1RT:star_emission_rates"].decode("utf-8")
+            # clean string up
+            if emissionstr.startswith("["):
+                emissionstr = emissionstr[1:]
+            if emissionstr.endswith("]"):
+                emissionstr = emissionstr[:-1]
+
+            # transform string values to floats with unyts
+            emissions = emissionstr.split(",")
+            emlist = []
+            for er in emissions:
+                emlist.append(
+                    float(er) * unit_m_in_cgs * unit_v_in_cgs ** 3 / unit_l_in_cgs
+                )
+            const_emission_rates = unyt.unyt_array(emlist, "erg/s")
+            L = const_emission_rates[group_index]
         else:
             print("Error: Unknown RT scheme " + scheme)
             exit()
-
-        # clean string up
-        if emissionstr.startswith("["):
-            emissionstr = emissionstr[1:]
-        if emissionstr.endswith("]"):
-            emissionstr = emissionstr[:-1]
-
-        # transform string values to floats with unyts
-        emissions = emissionstr.split(",")
-        emlist = []
-        for er in emissions:
-            emlist.append(float(er))
-        const_emission_rates = unyt.unyt_array(emlist, unyt.L_Sun)
-        L = const_emission_rates[group_index]
 
     if plot_anisotropy_estimate:
         ncols = 4
