@@ -40,6 +40,7 @@
 #include "feedback_debug.h"
 #include "hydro.h"
 #include "inline.h"
+#include "mhd.h"
 #include "part.h"
 #include "particle_splitting.h"
 #include "pressure_floor_debug.h"
@@ -79,6 +80,13 @@
 #error "Invalid choice of SPH variant"
 #endif
 
+/* Import the right MHD definition */
+#if defined(NONE_MHD)
+#include "./mhd/None/mhd_debug.h"
+#else
+#error "Invalid choice of MHD variant"
+#endif
+
 /* Import the right gravity definition */
 #if defined(DEFAULT_GRAVITY)
 #include "./gravity/Default/gravity_debug.h"
@@ -112,6 +120,7 @@ void printParticle(const struct part *parts, const struct xpart *xparts,
       warning("[PID%lld] ## Particle[%zu]:\n id=%lld ", parts[i].id, i,
               parts[i].id);
       hydro_debug_particle(&parts[i], &xparts[i]);
+      mhd_debug_particle(&parts[i], &xparts[i]);
       chemistry_debug_particle(&parts[i], &xparts[i]);
       cooling_debug_particle(&parts[i], &xparts[i]);
       particle_splitting_debug_particle(&parts[i], &xparts[i]);
@@ -173,6 +182,7 @@ void printParticle_single(const struct part *p, const struct xpart *xp) {
 
   warning("[PID%lld] ## Particle: id=%lld ", p->id, p->id);
   hydro_debug_particle(p, xp);
+  mhd_debug_particle(p, xp);
   chemistry_debug_particle(p, xp);
   cooling_debug_particle(p, xp);
   particle_splitting_debug_particle(p, xp);

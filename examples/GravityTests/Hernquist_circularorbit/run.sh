@@ -12,7 +12,7 @@ then
 fi
 
 # self gravity G, external potential g, hydro s, threads t and high verbosity v
-../../swift --external-gravity --threads=6 hernquistcirc.yml 2>&1 | tee output.log
+../../../swift --external-gravity --threads=6 hernquistcirc.yml 2>&1 | tee output.log
 
 
 echo "Save plots of the circular orbits"

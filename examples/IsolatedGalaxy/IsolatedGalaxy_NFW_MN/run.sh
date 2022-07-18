@@ -6,4 +6,4 @@ then
     ./getIC.sh
 fi
 
-../../swift -g -G -s --threads=16 isolated_galaxy.yml
+../../../swift -g -G -s --threads=16 isolated_galaxy.yml

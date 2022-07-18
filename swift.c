@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
   int with_mpole_reconstruction = 0;
   int with_structure_finding = 0;
   int with_csds = 0;
-  int with_sink = 0;
+  int with_sinks = 0;
   int with_qla = 0;
   int with_eagle = 0;
   int with_gear = 0;
@@ -237,8 +237,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
-      OPT_BOOLEAN('k', "sinks", &with_sink, "Run with sink particles.", NULL, 0,
-                  0),
+      OPT_BOOLEAN('k', "sinks", &with_sinks, "Run with sink particles.", NULL,
+                  0, 0),
       OPT_BOOLEAN(
           'u', "fof", &with_fof,
           "Run Friends-of-Friends algorithm to perform black hole seeding.",
@@ -487,13 +487,13 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef WITH_MPI
-  if (with_sink) {
+  if (with_sinks) {
     printf("Error: sink particles are not available yet with MPI.\n");
     return 1;
   }
 #endif
 
-  if (with_sink && with_star_formation) {
+  if (with_sinks && with_star_formation) {
     printf(
         "Error: The sink particles are not supposed to be run with star "
         "formation.\n");
@@ -637,7 +637,7 @@ int main(int argc, char *argv[]) {
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
-  if (with_sink) {
+  if (with_sinks) {
     error("Running with sink particles but compiled without them!");
   }
 #endif
@@ -1123,7 +1123,7 @@ int main(int argc, char *argv[]) {
       bzero(&black_holes_properties, sizeof(struct black_holes_props));
 
     /* Initialise the sink properties */
-    if (with_sink) {
+    if (with_sinks) {
       sink_props_init(&sink_properties, &prog_const, &us, params, &cosmo);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
@@ -1211,7 +1211,7 @@ int main(int argc, char *argv[]) {
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                      &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
                      &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                     with_gravity, with_sink, with_stars, with_black_holes,
+                     with_gravity, with_sinks, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
                      nr_threads, dry_run, remap_ids, &ics_metadata);
@@ -1219,7 +1219,7 @@ int main(int argc, char *argv[]) {
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                   with_gravity, with_sink, with_stars, with_black_holes,
+                   with_gravity, with_sinks, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    dry_run, remap_ids, &ics_metadata);
@@ -1228,7 +1228,7 @@ int main(int argc, char *argv[]) {
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, with_hydro,
-                   with_gravity, with_sink, with_stars, with_black_holes,
+                   with_gravity, with_sinks, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    nr_threads, dry_run, remap_ids, &ics_metadata);
 #endif
@@ -1266,7 +1266,7 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
     }
-    if (!with_sink && !dry_run) {
+    if (!with_sinks && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_sink) error("Linking problem");
     }
@@ -1358,6 +1358,7 @@ int main(int argc, char *argv[]) {
 
     /* Initialize the space with these data. */
     if (myrank == 0) clocks_gettime(&tic);
+<<<<<<< HEAD:examples/main.c
     space_init(&s, params, &cosmo, dim, &hydro_properties, &gravity_properties,
                parts, gparts, sinks, sparts, bparts, Ngas, Ngpart, Nsink,
                Nspart, Nbpart, Nnupart, periodic, replicate, remap_ids,
@@ -1366,6 +1367,14 @@ int main(int argc, char *argv[]) {
                with_DM_background_particles,
                with_neutrinos, talking, dry_run, nr_nodes);
 
+=======
+    space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
+               sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart,
+               periodic, replicate, remap_ids, generate_gas_in_ics, with_hydro,
+               with_self_gravity, with_star_formation, with_sinks,
+               with_DM_particles, with_DM_background_particles, with_neutrinos,
+               talking, dry_run, nr_nodes);
+>>>>>>> master:swift.c
 
     /* Initialise the line of sight properties. */
     if (with_line_of_sight) los_init(s.dim, &los_properties, params);
@@ -1504,7 +1513,7 @@ int main(int argc, char *argv[]) {
     if (with_fof) engine_policies |= engine_policy_fof;
     if (with_csds) engine_policies |= engine_policy_csds;
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
-    if (with_sink) engine_policies |= engine_policy_sinks;
+    if (with_sinks) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
     if (with_power) engine_policies |= engine_policy_power_spectra;
 

@@ -33,6 +33,7 @@
 #include "hydro_properties.h"
 #include "lightcone/lightcone_crossing.h"
 #include "lightcone/lightcone_replications.h"
+#include "mhd.h"
 #include "part.h"
 #include "sink.h"
 #include "stars.h"
@@ -198,6 +199,7 @@ __attribute__((always_inline)) INLINE static void drift_part(
 
   /* Predict the values of the extra fields */
   hydro_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props, floor);
+  mhd_predict_extra(p, xp, dt_drift, dt_therm, cosmo, hydro_props, floor);
 
   /* Compute offsets since last cell construction */
   for (int k = 0; k < 3; k++) {

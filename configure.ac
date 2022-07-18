@@ -221,8 +221,8 @@ AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 # Indicate that MPIRUN can be modified by an environment variable
 AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
-# Add libtool support (now that CC is defined).
-LT_INIT
+# Add libtool support (now that CC is defined). Disable shared libraries by default.
+LT_INIT([disable-shared])
 
 # Need C99 and inline support.
 AC_PROG_CC_C99
@@ -1857,11 +1857,38 @@ case "$with_hydro" in
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
 
-
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
 esac
+
+# SPMHD scheme.
+AC_ARG_WITH([spmhd],
+   [AS_HELP_STRING([--with-spmhd=<scheme>],
+      [Magneto Hydro Dynamics SPH scheme to use @<:@none, direct-induction, direct-induction-fede, vector-potential default:none@:>@]
+   )],
+   [with_spmhd="$withval"],
+   [with_spmhd="none"]
+)
+
+case "$with_spmhd" in
+   none)
+      AC_DEFINE([NONE_MHD], [1], [No mhd])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
+   ;;
+esac
+
+if test "$with_hydro" = "gizmo-mfm" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "gizmo-mfv" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "shadowfax" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
 
 # Check if debugging interactions stars is switched on.
 AC_ARG_ENABLE([debug-interactions-stars],
@@ -2791,6 +2818,7 @@ AC_MSG_RESULT([
    Equation of state  : $with_eos
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
+   SPMHD scheme       : $with_spmhd
 
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
