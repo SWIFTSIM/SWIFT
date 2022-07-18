@@ -54,7 +54,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-5));
+  return fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-18));
 }
 
 /**
@@ -202,7 +202,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_density(
 
   p->mhd_data.divA *= h_inv_dim_plus_one * rho_inv;
   for (int i = 0; i < 3; i++)
-    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv / cosmo->a;
+    p->mhd_data.BPred[i] *= h_inv_dim_plus_one * rho_inv;
 }
 
 /**
@@ -407,7 +407,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
 //  p->mhd_data.dAdt[1] = 0.0f;
 //  p->mhd_data.dAdt[2] = 0.0f;
   float a_fac =
-      (1.f - 3.f / 2.f * (hydro_gamma - 1.)) * cosmo->a * cosmo->a * cosmo->H;
+      (2.f - 3.f / 2.f * (hydro_gamma - 1.f)) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];

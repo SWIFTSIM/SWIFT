@@ -99,11 +99,11 @@ static INLINE void mhd_init(struct swift_params* params,
 
   mhd->define_Bfield_in_ics =
       parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
-  if(mhd->define_Bfield_in_ics != 0.f){
-  float a_beg=parser_get_param_float(params, "Cosmology:a_begin");
-  mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics * a_beg;} 
-  else mhd->define_Afield_in_ics = 0.f; 
-  //mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics;
+  //if(mhd->define_Bfield_in_ics != 0.f){
+  //float a_beg=parser_get_param_float(params, "Cosmology:a_begin");
+  //mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics * a_beg;} 
+  //else mhd->define_Afield_in_ics = 0.f; 
+  mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics;
 }
 
 /**
