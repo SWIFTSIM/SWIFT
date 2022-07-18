@@ -538,6 +538,7 @@ int main(int argc, char *argv[]) {
   struct engine engine;
   struct cosmology cosmo;
   struct hydro_props hydro_props;
+  struct phys_const prog_const;
   struct runner *runner;
   static long long partId = 0;
   char outputFileNameExtension[100] = "";
@@ -619,6 +620,9 @@ int main(int argc, char *argv[]) {
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
   engine.nodeID = NODE_ID;
+
+  prog_const.const_vacuum_permeability = 1.0;
+  engine.physical_constants = &prog_const;
 
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
