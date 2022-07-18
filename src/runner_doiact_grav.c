@@ -2527,9 +2527,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
                                  s->zoom_props->iwidth[2])) + 1;
 
     /* Get the (i,j,k) location of the top-level cell in the grid. */
-    const int top_i = top->loc[0] * s->iwidth[0];
-    const int top_j = top->loc[1] * s->iwidth[1];
-    const int top_k = top->loc[2] * s->iwidth[2];
+    const int top_i = (top->loc[0] - s->zoom_props->region_bounds[0])
+      * s->zoom_props->iwidth[0];
+    const int top_j = (top->loc[1] - s->zoom_props->region_bounds[2])
+      * s->zoom_props->iwidth[1];
+    const int top_k = (top->loc[2] - s->zoom_props->region_bounds[4])
+      * s->zoom_props->iwidth[2];
 
     /* Handle the case where all zoom cells are within the criterion. */
     if (d >= (s->zoom_props->cdim[0] / 2)) {
