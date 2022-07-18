@@ -24,6 +24,8 @@
  * @brief Main header file for the 'none' radiative transfer scheme properties.
  */
 
+#define RT_IMPLEMENTATION "none"
+
 /**
  * @brief Properties of the 'none' radiative transfer model
  */
