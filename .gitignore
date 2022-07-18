@@ -32,6 +32,7 @@ examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.pdf
 examples/*/*/*.mp4
+examples/*/*/*.jpg
 examples/*/*/*.txt
 examples/*/*/*.rst
 examples/*/*/*.hdf5
@@ -69,6 +70,9 @@ examples/Cooling/CoolingRates/cooling_output.dat
 examples/SubgridTests/StellarEvolution/StellarEvolutionSolution*
 examples/SubgridTests/CosmologicalStellarEvolution/StellarEvolutionSolution*
 examples/SmallCosmoVolume/SmallCosmoVolume_DM/power_spectra
+examples/*/*/*.ipynb
+examples/*/*/.ipynb*
+examples/*/*/*.h5
 
 tests/testActivePair
 tests/testActivePair.sh
