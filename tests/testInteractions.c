@@ -115,7 +115,7 @@ void prepare_force(struct part *parts, size_t count) {
     !defined(MINIMAL_SPH) && !defined(PLANETARY_SPH) &&              \
     !defined(HOPKINS_PU_SPH) && !defined(HOPKINS_PU_SPH_MONAGHAN) && \
     !defined(ANARCHY_PU_SPH) && !defined(SPHENIX_SPH) &&             \
-    !defined(PHANTOM_SPH) && !defined(GASOLINE_SPH)
+    !defined(PHANTOM_SPH) && !defined(GASOLINE_SPH)  && !defined(PLANETARY_PLUS_SPH)
   struct part *p;
   for (size_t i = 0; i < count; ++i) {
     p = &parts[i];
@@ -142,7 +142,7 @@ void dump_indv_particle_fields(char *fileName, struct part *p) {
           "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
           p->id, p->x[0], p->x[1], p->x[2], p->v[0], p->v[1], p->v[2], p->h,
           hydro_get_comoving_density(p),
-#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) || \
+#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) || defined(PLANETARY_SPH) || \
     defined(SHADOWFAX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
           0.f,
 #else

@@ -43,6 +43,8 @@
 #include "./hydro/Shadowswift/hydro_io.h"
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_io.h"
+#elif defined(PLANETARY_PLUS_SPH)
+#include "./hydro/PlanetaryPlus/hydro_io.h"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_io.h"
 #elif defined(GASOLINE_SPH)

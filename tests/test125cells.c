@@ -115,7 +115,7 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
     defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(PLANETARY_SPH)
+#elif defined(PLANETARY_SPH) || defined(PLANETARY_PLUS_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
   part->conserved.energy = pressure / (hydro_gamma_minus_one * density);
@@ -393,7 +393,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||    \
     defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||  \
     defined(SHADOWFAX_SPH) || defined(HOPKINS_PU_SPH) || \
-    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(GASOLINE_SPH)
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(GASOLINE_SPH) || defined(PLANETARY_PLUS_SPH)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
