@@ -20,6 +20,7 @@
 
 # ---------------------------------------------------------------------
 # Add a single star in the center of a glass distribution
+# The gas is set up with pure hydrogen gas.
 # ---------------------------------------------------------------------
 
 from swiftsimio import Writer
@@ -29,6 +30,10 @@ import numpy as np
 import h5py
 
 gamma = 5.0 / 3.0
+
+# switch to replace the central gas particle with a star
+# else put the star particle among gas particles
+replace_gas = False
 
 
 def get_number_densities(Temp, XH, XHe):
@@ -308,12 +313,20 @@ if __name__ == "__main__":
     h = parts["SmoothingLength"][:]
     glass.close()
 
-    # find particles closest to the center
-    # and select a couple of them to put the star in their middle
     r = np.sqrt(np.sum((0.5 - xp) ** 2, axis=1))
-    mininds = np.argsort(r)
-    center_parts = xp[mininds[:4]]
-    xs = center_parts.sum(axis=0) / center_parts.shape[0]
+
+    if replace_gas == True:
+        # replace a central gas particle with a star particle
+        rmin = np.argmin(r)
+        xs = xp[rmin]
+        xp = np.delete(xp, rmin, axis=0)
+        h = np.delete(h, rmin)
+    else:
+        # find particles closest to the center
+        # and select a couple of them to put the star in their middle
+        mininds = np.argsort(r)
+        center_parts = xp[mininds[:4]]
+        xs = center_parts.sum(axis=0) / center_parts.shape[0]
 
     # Double-check all particles for boundaries
     for i in range(3):
@@ -345,17 +358,17 @@ if __name__ == "__main__":
     w.stars.smoothing_length = w.gas.smoothing_length[:1]
 
     # get gas masses
+    XH = 1.0  # hydrogen mass fraction
+    XHe = 0.0  # helium mass fraction
     nH = 1e-3 * unyt.cm ** (-3)
-    rhoH = nH * unyt.proton_mass
-    Mtot = rhoH * edgelen ** 3
+    rho_gas = nH * unyt.proton_mass / XH
+    Mtot = rho_gas * edgelen ** 3
     mpart = Mtot / xp.shape[0]
     mpart = mpart.to(cosmo_units["mass"])
     w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
     w.stars.masses = np.ones(xs.shape[0], dtype=np.float64) * mpart
 
     # get gas internal energy for a given temperature and composition
-    XH = 1.0  # hydrogen mass fraction
-    XHe = 0.0  # hydrogen mass fraction
     T = 100 * unyt.K
     XHI, XHII, XHeI, XHeII, XHeIII = get_mass_fractions(T, XH, XHe)
     mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)
