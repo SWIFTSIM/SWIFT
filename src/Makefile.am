@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the non-standard paths to the included library headers
-AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS) $(OPENMP_CFLAGS) $(CHEALPIX_CFLAGS)
+AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(OPENMP_CFLAGS) $(CHEALPIX_CFLAGS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -25,7 +25,7 @@ AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
 GIT_CMD = @GIT_CMD@
 
 # Additional dependencies for shared libraries.
-EXTRA_LIBS = $(GSL_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(CHEALPIX_LIBS)
+EXTRA_LIBS = $(GSL_LIBS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(PROFILER_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS)  $(SUNDIALS_LIBS) $(CHEALPIX_LIBS)
 
 # MPI libraries.
 MPI_LIBS = $(PARMETIS_LIBS) $(METIS_LIBS) $(MPI_THREAD_LIBS)
@@ -126,6 +126,19 @@ GEAR_FEEDBACK_SOURCES += feedback/GEAR/stellar_evolution.c feedback/GEAR/feedbac
 	feedback/GEAR/initial_mass_function.c feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c
 endif
 
+# source files for GEAR RT
+GEAR_RT_SOURCES =
+if HAVEGEARRT
+GEAR_RT_SOURCES += rt/GEAR/rt_interaction_rates.c
+endif
+
+# source files for SPHM1RT cooling
+SPHM1RT_RT_SOURCES =
+if HAVESPHM1RTRT
+SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_rate_equations.c
+SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
+endif
+
 # Common source files
 AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c 
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c 
@@ -169,6 +182,8 @@ AM_SOURCES += $(QLA_COOLING_SOURCES) $(QLA_EAGLE_COOLING_SOURCES)
 AM_SOURCES += $(EAGLE_COOLING_SOURCES) $(EAGLE_FEEDBACK_SOURCES) 
 AM_SOURCES += $(GRACKLE_COOLING_SOURCES) $(GEAR_FEEDBACK_SOURCES) 
 AM_SOURCES += $(COLIBRE_COOLING_SOURCES)
+AM_SOURCES += $(SPHM1RT_RT_SOURCES)
+AM_SOURCES += $(GEAR_RT_SOURCES)
 
 # Include files for distribution, not installation.
 nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h 
@@ -311,6 +326,8 @@ nobase_noinst_HEADERS += rt/GEAR/rt_thermochemistry.h
 nobase_noinst_HEADERS += rt/GEAR/rt_thermochemistry_utils.h
 nobase_noinst_HEADERS += rt/GEAR/rt_unphysical.h
 nobase_noinst_HEADERS += rt/SPHM1RT/rt.h  
+nobase_noinst_HEADERS += rt/SPHM1RT/rt_getters.h 
+nobase_noinst_HEADERS += rt/SPHM1RT/rt_setters.h 
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_iact.h 
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_io.h 
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_parameters.h
@@ -318,6 +335,11 @@ nobase_noinst_HEADERS += rt/SPHM1RT/rt_properties.h
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_struct.h
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_gradients.h 
 nobase_noinst_HEADERS += rt/SPHM1RT/rt_additions.h 
+nobase_noinst_HEADERS += rt/SPHM1RT/rt_cooling.h
+nobase_noinst_HEADERS += rt/SPHM1RT/rt_cooling_rates.h
+nobase_noinst_HEADERS += rt/SPHM1RT/rt_unphysical.h
+nobase_noinst_HEADERS += rt/SPHM1RT/rt_species_and_elements.h 
+nobase_noinst_HEADERS += rt/SPHM1RT/rt_stellar_emission_rate.h 
 nobase_noinst_HEADERS += stars.h stars_io.h stars_csds.h 
 nobase_noinst_HEADERS += stars/None/stars.h stars/None/stars_iact.h stars/None/stars_io.h 
 nobase_noinst_HEADERS += stars/None/stars_debug.h stars/None/stars_part.h
