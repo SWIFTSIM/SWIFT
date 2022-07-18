@@ -68,6 +68,7 @@ scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
 neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
 eta = sim["/HydroScheme"].attrs["Kernel eta"]
+MHD_scheme = sim["/HydroScheme"].attrs["MHD Scheme"]
 git = sim["Code"].attrs["Git Revision"]
 H_0 = sim["/Cosmology"].attrs["H0 [internal units]"][0]
 unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
@@ -152,6 +153,7 @@ for i in range(119):
 rho_mean_phys = rho_mean / a ** 3
 u_mean_phys = u_mean / a ** (3 * (gas_gamma - 1.0))
 S_mean_phys = S_mean
+B_mean_phys = sqrt(bx_mean * bx_mean + by_mean * by_mean + bz_mean * bz_mean) /sqrt(8* 3.14) / a ** (3./2. * (gas_gamma - 1.0))
 
 # Solution in physical coordinates
 # T_solution = np.ones(T) / a
@@ -209,7 +211,8 @@ semilogx(a, bx_mean, "*", color="r", lw=1)
 semilogx(a, by_mean, "*", color="g", lw=1)
 semilogx(a, bz_mean, "*", color="b", lw=1)
 xlabel("${\\rm Scale-factor}$", labelpad=0.0)
-ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=-5.0)
+#ylabel("${\\rm Peculiar~velocity~mean}$", labelpad=-5.0)
+ylabel("${\\rm Peculiar~B~mean }$", labelpad=-5.0)
 
 # Peculiar velocity evolution ---------------------
 subplot(235)
@@ -231,6 +234,7 @@ text(-0.49, 0.5, "$\\textsc{Swift}$ %s" % git, fontsize=10)
 text(-0.49, 0.4, scheme, fontsize=10)
 text(-0.49, 0.3, kernel, fontsize=10)
 text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta), fontsize=10)
+text(-0.49, 0.1, MHD_scheme, fontsize=10)
 xlim(-0.5, 0.5)
 ylim(0, 1)
 xticks([])
@@ -259,6 +263,12 @@ semilogx(a, S_mean_phys, "-", color="r", lw=1)
 xlabel("${\\rm Scale-factor}$")
 ylabel("${\\rm Physical~entropy}$")
 
+# B evolution --------------------------------
+subplot(234)  # , yscale="log")
+semilogx(a, B_mean_phys, "-", color="r", lw=1)
+xlabel("${\\rm Scale-factor}$")
+ylabel("${\\rm Physical~B}$")
+
 # Information -------------------------------------
 subplot(236, frameon=False)
 
@@ -267,6 +277,7 @@ text(-0.49, 0.5, "$\\textsc{Swift}$ %s" % git, fontsize=10)
 text(-0.49, 0.4, scheme, fontsize=10)
 text(-0.49, 0.3, kernel, fontsize=10)
 text(-0.49, 0.2, "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta), fontsize=10)
+text(-0.49, 0.1, MHD_scheme, fontsize=10)
 xlim(-0.5, 0.5)
 ylim(0, 1)
 xticks([])
