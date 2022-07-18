@@ -2522,9 +2522,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
     const int d =
-        ceil(max_distance * max3(s->zoom->props->iwidth[0],
-                                 s->zoom->props->iwidth[1],
-                                 s->zoom->props->iwidth[2])) + 1;
+        ceil(max_distance * max3(s->zoom_props->iwidth[0],
+                                 s->zoom_props->iwidth[1],
+                                 s->zoom_props->iwidth[2])) + 1;
 
     /* Get the (i,j,k) location of the top-level cell in the grid. */
     const int top_i = top->loc[0] * s->iwidth[0];
