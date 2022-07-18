@@ -56,4 +56,47 @@ INLINE static int find_value_in_monot_incr_array(const float x,
     return index_low;
 }
 
+/**
+ * @brief Search for a value in a monotonically increasing array to find the
+ *      index such that table[i,j] = array[i*n_col + j] < value < 
+ *      table[i + 1, j] = array[(i + 1)*n_col + j]
+ *
+ * @param x The value to find
+ * @param array The array to search
+ * @param n_row The number of rows of the table
+ * @param n_col The number of columns of the table 
+ * @param j The column index to perform the search 
+ *
+ * Return -1 and n for x below and above the array edge values respectively.
+ */
+INLINE static int vertical_find_value_in_monot_incr_array(const float x,
+                                                 const float *array,
+                                                 const int n_row,
+                                                 const int n_col,
+                                                 const int j
+                                                 ) {
+    
+                                
+  int i_mid, i_low = 0, i_high = n_row - 1;  // nrow - 1 or n_row?
+
+  // Until table[i_low,j] < x < table[i_high=i_low + 1, j]
+  while (i_high - i_low > 1) {
+    i_mid = (i_high + i_low) / 2;  // Middle index
+
+    // Replace the low or high i with the middle
+    if (array[i_mid*n_col + j] <= x)
+      i_low = i_mid;
+    else
+      i_high = i_mid;
+  }
+
+  // Set index with the found i_low or an error value if outside the array
+  if (x < array[j])
+    return -1;
+  else if (array[(n_row - 1)*n_col + j] <= x)
+    return n_row;
+  else
+    return i_low;
+}
+
 #endif /* SWIFT_UTILITIES_H */

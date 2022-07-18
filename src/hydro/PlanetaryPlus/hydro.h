@@ -10,7 +10,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARThydro_timestep_extraICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
@@ -505,16 +505,6 @@ __attribute__((always_inline)) INLINE static void hydro_timestep_extra(
     struct part *p, float dt) {}
 
 /**
- * @brief Does some extra hydro operations once the actual physical time step
- * for the particle is known.
- *
- * @param p The particle to act upon.
- * @param dt Physical time step of the particle during the next step.
- */
-__attribute__((always_inline)) INLINE static void hydro_timestep_extra(
-    struct part *p, float dt) {}
-
-/**
  * @brief Prepares a particle for the density calculation.
  *
  * Zeroes all the relevant arrays in preparation for the sums taking place in
@@ -816,12 +806,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   const float pressure =
       gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
 
-  // Compute the temperature
-  const float temperature =
-      gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
-
   p->P = pressure;
-  p->T = temperature;
     
   p->P_tilde_numerator = 0.f;
   p->P_tilde_denominator = 0.f;
@@ -1071,12 +1056,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
   // finish computations
   const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
-  const float T =
-        gas_temperature_from_internal_energy(p->rho, p->u, p->mat_id);
-  p->P = P;
-  p->T = T;  
-    
- 
+  p->P = P; 
     
      p->smoothing_error = S;
     
