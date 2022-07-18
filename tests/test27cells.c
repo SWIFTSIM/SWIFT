@@ -487,6 +487,10 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
+  struct phys_const prog_const;
+  prog_const.const_vacuum_permeability = 1.0;
+  engine.physical_constants = &prog_const;
+
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
