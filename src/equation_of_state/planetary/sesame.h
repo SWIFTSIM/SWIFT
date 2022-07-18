@@ -43,7 +43,7 @@
 // SESAME parameters
 struct SESAME_params {
   float *table_log_rho;
-  float *table_log_T;  
+  float *table_log_T;
   float *table_log_u_rho_T;
   float *table_P_rho_T;
   float *table_c_rho_T;
@@ -201,7 +201,7 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
 
   // Allocate table memory
   mat->table_log_rho = (float *)malloc(mat->num_rho * sizeof(float));
-  mat->table_log_T = (float *)malloc(mat->num_T * sizeof(float));  
+  mat->table_log_T = (float *)malloc(mat->num_T * sizeof(float));
   mat->table_log_u_rho_T =
       (float *)malloc(mat->num_rho * mat->num_T * sizeof(float));
   mat->table_P_rho_T =
@@ -223,10 +223,16 @@ INLINE static void load_table_SESAME(struct SESAME_params *mat,
     }
   }
 
-  // Temperatures (ignored)
+  // Temperatures (not log yet)
   for (int i_T = -1; i_T < mat->num_T; i_T++) {
-    c = fscanf(f, "%f", &ignore);
-    if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
+    // Ignore the first elements of rho = 0, T = 0
+    if (i_T == -1) {
+      c = fscanf(f, "%f", &ignore);
+      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
+    } else {
+      c = fscanf(f, "%f", &mat->table_log_T[i_T]);
+      if (c != 1) error("Failed to read the SESAME EoS table %s", table_file);
+    }
   }
 
   // Sp. int. energies (not log yet), pressures, sound speeds, and sp.
@@ -261,7 +267,7 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
   // Convert temperatures to log(temperature)
   for (int i_T = 0; i_T < mat->num_T; i_T++) {
     mat->table_log_T[i_T] = logf(mat->table_log_T[i_T]);
-  }  
+  }
 
   // Initialise tiny values
   mat->u_tiny = FLT_MAX;
@@ -327,7 +333,7 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
 
       mat->table_log_s_rho_T[i_rho * mat->num_T + i_T] =
           logf(mat->table_log_s_rho_T[i_rho * mat->num_T + i_T]);
-        
+
       // Ensure P > 0
       if (mat->table_P_rho_T[i_rho * mat->num_T + i_T] <= 0) {
         mat->table_P_rho_T[i_rho * mat->num_T + i_T] = mat->P_tiny;
@@ -350,7 +356,7 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
       }
     }
   }
-  
+
   // Ensure partial P/partial rho at fixed T >= 0
   for (int i_rho = mat->num_rho - 1; i_rho > 0; i_rho--) {
     for (int i_T = 0; i_T < mat->num_T; i_T++) {
@@ -359,9 +365,9 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
 
         mat->table_P_rho_T[(i_rho - 1) * mat->num_T + i_T] =
               mat->table_P_rho_T[i_rho * mat->num_T + i_T];
-      }    
+      }
     }
-  }     
+  }
 }
 
 // Convert to internal units
@@ -378,13 +384,13 @@ INLINE static void convert_units_SESAME(struct SESAME_params *mat,
         logf(units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY) /
              units_cgs_conversion_factor(us, UNIT_CONV_DENSITY));
   }
-    
+
   // Temperatures (log)
   for (int i_T = 0; i_T < mat->num_T; i_T++) {
     mat->table_log_T[i_T] +=
         logf(units_cgs_conversion_factor(&si, UNIT_CONV_TEMPERATURE) /
              units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE));
-  }    
+  }
 
   // Sp. int. energies (log), pressures, sound speeds, and sp. entropies
   for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
@@ -875,10 +881,10 @@ INLINE static float SESAME_temperature_from_internal_energy(
   log_T_1 += intp_u_1*(mat->table_log_T[idx_u_1 + 1] - mat->table_log_T[idx_u_1]);
   log_T_2 = mat->table_log_T[idx_u_2];
   log_T_2 += intp_u_2*(mat->table_log_T[idx_u_2 + 1] - mat->table_log_T[idx_u_2]);
-  
+
   // Intersect line passing through (log_rho_1, log_T_1), (log_rho_2, log_T_2)
-  // with line density = log_rho 
-  
+  // with line density = log_rho
+
   // Check for log_T_1 == log_T_2
   if (log_T_1 == log_T_2) {
       log_T = log_T_1;
@@ -888,10 +894,10 @@ INLINE static float SESAME_temperature_from_internal_energy(
       intercept = log_rho_1 - slope*log_T_1;
       log_T = (log_rho - intercept)/slope;
   }
-  
+
   // Convert back from log
   T = expf(log_T);
-  
+
   return T;
 }
 
@@ -914,7 +920,7 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
   // Temperature index
   idx_T =
       find_value_in_monot_incr_array(log_T, mat->table_log_T, mat->num_T);
-      
+
   // If outside the table then extrapolate from the edge and edge-but-one values
   if (idx_T <= -1) {
     idx_T = 0;
@@ -965,7 +971,7 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
   } else {
     intp_P_2 = 1.f;
   }
-  
+
   // Compute line points
   log_T_1 = mat->table_log_T[idx_T];
   log_T_2 = mat->table_log_T[idx_T + 1];
@@ -975,8 +981,8 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
   log_rho_2 += intp_P_2*(mat->table_log_rho[idx_P_2 + 1] - mat->table_log_rho[idx_P_2]);
 
   // Intersect line passing through (log_rho_1, log_T_1), (log_rho_2, log_T_2)
-  // with line temperature = log_T 
-  
+  // with line temperature = log_T
+
   // Check for log_rho_1 == log_rho_2
   if (log_rho_1 == log_rho_2) {
       log_rho = log_rho_1;
@@ -986,10 +992,10 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
       intercept = log_T_1 - slope*log_rho_1;
       log_rho = (log_T - intercept)/slope;
   }
-  
+
   // Convert back from log
   rho = expf(log_rho);
-  
+
   return rho;
 }
 #endif /* SWIFT_SESAME_EQUATION_OF_STATE_H */
