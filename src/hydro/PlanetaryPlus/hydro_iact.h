@@ -636,16 +636,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
-  float rhoi_sph = pi->rho;
-  float rhoj_sph = pj->rho;
-  float pressurei_sph = pi->force.pressure;
-  float pressurej_sph = pj->force.pressure;
-  #ifdef PLANETARY_SMOOTHING_CORRECTION
-      rhoi_sph = pi->rho_sph;
-      rhoj_sph = pj->rho_sph;
-      pressurei_sph = pi->P_sph;
-      pressurej_sph = pj->P_sph;
-  #endif      
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -952,8 +942,8 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
       kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
       kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
 
-      P_i_term = pressurei_sph / (rhoi_sph * rhoj_sph);
-      P_j_term = pressurej_sph / (rhoi_sph * rhoj_sph);  
+      P_i_term = pi->P_sph / (pi->rho_sph * pj->rho_sph);
+      P_j_term = pj->P_sph / (pi->rho_sph * pj->rho_sph);  
 
     #else 
 
@@ -966,8 +956,8 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
       kernel_gradient_j[2] = Gj[2];
 
 
-      P_i_term = pressurei_sph / (rhoi_sph * rhoi_sph);
-      P_j_term = pressurej_sph / (rhoj_sph * rhoj_sph);
+      P_i_term = pi->P_sph / (pi->rho_sph * pi->rho_sph);
+      P_j_term = pj->P_sph / (pj->rho_sph * pj->rho_sph);
 
     #endif    
 
@@ -1054,16 +1044,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
-  float rhoi_sph = pi->rho;
-  float rhoj_sph = pj->rho;
-  float pressurei_sph = pi->force.pressure;
-  float pressurej_sph = pj->force.pressure;
-  #ifdef PLANETARY_SMOOTHING_CORRECTION
-      rhoi_sph = pi->rho_sph;
-      rhoj_sph = pj->rho_sph;
-      pressurei_sph = pi->P_sph;
-      pressurej_sph = pj->P_sph;
-  #endif  
 
   /* Get the kernel for hi. */
   const float hi_inv = 1.0f / hi;
@@ -1350,8 +1330,7 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
   pi->a_hydro[1] -= mj * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
   pi->a_hydro[2] -= mj * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
     
-    
-    
+
 
 // Use standard SPH P, rho and gradients for adiabatic heating    
 #ifdef PLANETARY_SMOOTHING_CORRECTION   
@@ -1366,7 +1345,7 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
       kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
       kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
 
-      P_i_term = pressurei_sph / (rhoi_sph * rhoj_sph);
+      P_i_term = pi->P_sph / (pi->rho_sph * pj->rho_sph);
 
     #else 
 
@@ -1374,13 +1353,11 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
       kernel_gradient_i[1] = Gi[1];
       kernel_gradient_i[2] = Gi[2];
 
-      P_i_term = pressurei_sph / (rhoi_sph * rhoi_sph);
+      P_i_term = pi->P_sph / (pi->rho_sph * pi->rho_sph);
 
     #endif    
 
-#endif     
-    
-  
+#endif    
     
     
       /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
