@@ -91,13 +91,11 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
                                const struct part *restrict pj,
                                const double mu_0, const float a,
                                const float H) {
-  //  float wi, wj, wi_dx, wj_dx;
   float wi, wi_dx;
 
   const float r = sqrtf(r2);
 
-  /* Get the masses. */
-  //  const float mi = pi->mass;
+  /* Get the mass. */
   const float mj = pj->mass;
 
   /* Compute density of pi. */
@@ -106,15 +104,9 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
 
   kernel_deval(ui, &wi, &wi_dx);
 
-  /* Compute density of pj. */
-  //  const float hj_inv = 1.f / hj;
-  //  const float uj = r * hj_inv;
-  //  kernel_deval(uj, &wj, &wj_dx);
-
   /* Now we need to compute the div terms */
   const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
-  //  const float facj = mi * wj_dx * r_inv;
 
   double dB[3];
   for (int i = 0; i < 3; ++i)
@@ -146,10 +138,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
-    const float a, const float H) {
-
-  return;
-}
+    const float a, const float H) {}
 
 /**
  * @brief Calculate the MHDgradient interaction between particle i and particle
@@ -175,9 +164,7 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
                                 struct part *restrict pi,
                                 const struct part *restrict pj,
                                 const double mu_0, const float a,
-                                const float H) {
-  return;
-}
+                                const float H) {}
 
 /**
  * @brief MHD-Force interaction between two particles.
@@ -196,10 +183,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const double mu_0,
     const float a, const float H) {
-
-  /* Cosmological factors entering the EoMs */
-  // const float fac_mu = pow_three_gamma_minus_five_over_two(a);
-  // const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -231,8 +214,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1;
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1;
+  const float a_fac = pow(a,2.f*mhd_comoving_factor+3.f*(hydro_gamma-1.f));
+
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1 * a_fac;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1 * a_fac;
   float Bi[3], Bj[3], dv[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -333,8 +318,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1;
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1;
+  const float a_fac = pow(a,2.f*mhd_comoving_factor+3.f*(hydro_gamma-1.f));
+  
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1 * a_fac;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1 * a_fac;
   float Bi[3], Bj[3], dv[3];
   float mm_i[3][3], mm_j[3][3];
 

@@ -374,7 +374,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
 //  p->mhd_data.dBdt[1] = 0.0f;
 //  p->mhd_data.dBdt[2] = 0.0f;
   float a_fac =
-      (2.f - 3.f / 2.f * (hydro_gamma - 1.)) * cosmo->a * cosmo->a * cosmo->H;
+      (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dBdt[0] -= a_fac * p->mhd_data.BPred[0];
   p->mhd_data.dBdt[1] -= a_fac * p->mhd_data.BPred[1];
   p->mhd_data.dBdt[2] -= a_fac * p->mhd_data.BPred[2];
