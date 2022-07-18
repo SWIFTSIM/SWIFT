@@ -2515,63 +2515,151 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   } else if (top->tl_cell_type == zoom_tl_cell) { /* Zoom cell case */
 
     /* Zoom cell case
-     * We can loop over all zoom top-level cells
-     * but limit to only the neighbour background cells. */
+     * We can loop over the zoom top-level cells within the gravity criterion
+     * but with a small mesh this can be all cells, for zoom->bkg
+     * interactions limit to only the neighbour background cells. */
 
-    /* Loop over plausibly useful cells, skipping out of range coordinates */
-    for (int n = 0; n <= s->zoom_props->nr_zoom_cells; ++n) {
+    /* Maximal distance any interaction can take place
+     * before the mesh kicks in, rounded up to the next integer */
+    const int d =
+        ceil(max_distance * max3(s->zoom->props->iwidth[0],
+                                 s->zoom->props->iwidth[1],
+                                 s->zoom->props->iwidth[2])) + 1;
 
-      /* Handle on the top-level cell */
-      struct cell *cj = &cells[n];
+    /* Get the (i,j,k) location of the top-level cell in the grid. */
+    const int top_i = top->loc[0] * s->iwidth[0];
+    const int top_j = top->loc[1] * s->iwidth[1];
+    const int top_k = top->loc[2] * s->iwidth[2];
 
-      /* Avoid self contributions */
-      if (top == cj) continue;
+    /* Handle the case where all zoom cells are within the criterion. */
+    if (d >= (s->zoom_props->cdim[0] / 2)) {
+      
+      /* Loop over plausibly useful cells, skipping out of range coordinates */
+      for (int n = 0; n <= s->zoom_props->nr_zoom_cells; ++n) {
 
-      /* Handle on the top-level cell's gravity business*/
-      const struct gravity_tensors *multi_j = cj->grav.multipole;
+        /* Handle on the top-level cell */
+        struct cell *cj = &cells[n];
 
-      /* Skip empty cells */
-      if (multi_j->m_pole.M_000 == 0.f) continue;
+        /* Avoid self contributions */
+        if (top == cj) continue;
+
+        /* Handle on the top-level cell's gravity business*/
+        const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+        /* Skip empty cells */
+        if (multi_j->m_pole.M_000 == 0.f) continue;
 
         /* Minimal distance between any pair of particles */
-      const double min_radius2 =
+        const double min_radius2 =
           cell_min_dist2_same_size(top, cj, periodic, dim);
 
-      /* Are we beyond the distance where the truncated forces are 0 ?*/
-      if (min_radius2 > max_distance2) {
+        /* Are we beyond the distance where the truncated forces are 0 ?*/
+        if (min_radius2 > max_distance2) {
 #ifdef SWIFT_DEBUG_CHECKS
-        /* Need to account for the interactions we missed */
-        accumulate_add_ll(&multi_i->pot.num_interacted,
-                          multi_j->m_pole.num_gpart);
+          /* Need to account for the interactions we missed */
+          accumulate_add_ll(&multi_i->pot.num_interacted,
+                            multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-        /* Need to account for the interactions we missed */
-        accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                          multi_j->m_pole.num_gpart);
+          /* Need to account for the interactions we missed */
+          accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                            multi_j->m_pole.num_gpart);
 #endif
 
-        /* Record that this multipole received a contribution */
-        multi_i->pot.interacted = 1;
+          /* Record that this multipole received a contribution */
+          multi_i->pot.interacted = 1;
 
-        /* We are done here. */
-        continue;
-      }
+          /* We are done here. */
+          continue;
+        }
 
-      /* Shall we interact with this cell? */
-      if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/0)) {
+        /* Shall we interact with this cell? */
+        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/0)) {
 
-        /* Call the PM interaction function on the active sub-cells of ci
-         */
-        runner_dopair_grav_mm_nonsym(r, ci, cj);
-        // runner_dopair_recursive_grav_pm(r, ci, cj);
+          /* Call the PM interaction function on the active sub-cells of ci
+           */
+          runner_dopair_grav_mm_nonsym(r, ci, cj);
+          // runner_dopair_recursive_grav_pm(r, ci, cj);
 
-        /* Record that this multipole received a contribution */
-        multi_i->pot.interacted = 1;
+          /* Record that this multipole received a contribution */
+          multi_i->pot.interacted = 1;
 
-      } /* We are in charge of this pair */
-    }   /* Loop over zoom top-level cells*/
+        } /* We are in charge of this pair */
+      }   /* Loop over zoom top-level cells*/
+    }     /* All zoom cells are within the criterion */
+    
+    /* We can loop over a subset of zoom cells. */
+    else {
+      
+      /* Loop over plausibly useful cells skipping at the boundaries
+       * since the zoom region isn't periodic. */
+      for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+        if (ii < 0 || ii >= s->zoom_props->cdim[0]) continue;
+        for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+          if (jj < 0 || jj >= s->zoom_props->cdim[1]) continue;
+          for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+            if (kk < 0 || kk >= s->zoom_props->cdim[2]) continue;
+
+            /* Get the cell */
+            const int cell_index = cell_getid(s->cdim, ii, jj, kk);
+
+            /* Handle on the top-level cell */
+            struct cell *cj = &cells[cell_index];
+
+            /* Avoid self contributions  */
+            if (top == cj) continue;
+
+            /* Handle on the top-level cell's gravity business*/
+            const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+            /* Skip empty cells */
+            if (multi_j->m_pole.M_000 == 0.f) continue;
+
+            /* Minimal distance between any pair of particles */
+            const double min_radius2 =
+              cell_min_dist2_same_size(top, cj, periodic, dim);
+
+            /* Are we beyond the distance where the truncated forces are 0 ?*/
+            if (min_radius2 > max_distance2) {
+#ifdef SWIFT_DEBUG_CHECKS
+              /* Need to account for the interactions we missed */
+              accumulate_add_ll(&multi_i->pot.num_interacted,
+                                multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+              /* Need to account for the interactions we missed */
+              accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                                multi_j->m_pole.num_gpart);
+#endif
+
+              /* Record that this multipole received a contribution */
+              multi_i->pot.interacted = 1;
+              
+              /* We are done here. */
+              continue;
+            }
+
+            /* Shall we interact with this cell? */
+            if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                     /*is_tree_walk=*/0)) {
+
+              /* Call the PM interaction function on the active sub-cells of ci
+               */
+              runner_dopair_grav_mm_nonsym(r, ci, cj);
+              // runner_dopair_recursive_grav_pm(r, ci, cj);
+
+              /* Record that this multipole received a contribution */
+              multi_i->pot.interacted = 1;
+
+            } /* We are in charge of this pair */
+          }   /* Loop over relevant top-level cells (k) */
+        }     /* Loop over relevant top-level cells (j) */
+      }       /* Loop over relevant top-level cells (i) */
+    }         /* Not all zoom cells are within the criterion */
+
 
     /* Now we need to loop over over the neighbouring background
      * top-level cells */
@@ -2634,8 +2722,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * top-level grid that are not covered by the mesh.
      * Add some buffer for safety */
 
-    /* Get the (i,j,k) location of the top-level cell in the grid,
-     * ignoring zoom/void cell for now */
+    /* Get the (i,j,k) location of the top-level cell in the grid. */
     const int top_i = top->loc[0] * s->iwidth[0];
     const int top_j = top->loc[1] * s->iwidth[1];
     const int top_k = top->loc[2] * s->iwidth[2];
