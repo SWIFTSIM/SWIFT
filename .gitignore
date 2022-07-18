@@ -23,8 +23,8 @@ doc/latex/
 doc/man/
 doc/Doxyfile
 
-examples/swift
-examples/swift_mpi
+swift
+swift_mpi
 examples/fof
 examples/fof_mpi
 examples/*/*/*.xmf
