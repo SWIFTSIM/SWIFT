@@ -358,7 +358,7 @@ runner_iact_nonsym_feedback_apply(
     message("V_KICK_PROB: prob=%g rand_kick=%g", 
             si->feedback_data.kick_probability,
             rand_kick);
-            
+
     /* We already know the probability to kick, let's check if we do it now */
     if (rand_kick < si->feedback_data.kick_probability) {
 
@@ -405,10 +405,10 @@ runner_iact_nonsym_feedback_apply(
       tracers_after_feedback(xpj);
 
       /* Set delay time */
-      p->feedback_data.decoupling_delay_time = fb_props->Wind_decoupling_time_factor *
+      pj->feedback_data.decoupling_delay_time = fb_props->Wind_decoupling_time_factor *
             cosmology_get_time_since_big_bang(cosmo, cosmo->a);;
 
-      p->feedback_data.number_of_times_decoupled++;
+      pj->feedback_data.number_of_times_decoupled++;
 
       /* Immediately set hydro acceleration to zero */
       hydro_reset_acceleration(pj);

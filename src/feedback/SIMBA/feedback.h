@@ -72,40 +72,6 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
 }
 
 /**
- * @brief Recouple wind particles.
- *
- * @param p The #part to consider.
- * @param xp The #xpart to consider.
- * @param e The #engine.
- * @param with_cosmology Is this a cosmological simulation?
- */
-__attribute__((always_inline)) INLINE static void feedback_decouple_part(
-    struct part* p, struct xpart* xp, const struct cosmology *cosmo,
-    const float delay_time, const float v_kick_phys, const int encoding) {
-
-  /* Impose maximal viscosity */
-  hydro_diffusive_feedback_reset(p);
-
-  /* Mark this particle has having been heated/kicked by feedback */
-  tracers_after_feedback(xp);
-
-  /* Set delay time */
-  p->feedback_data.decoupling_delay_time = delay_time;
-
-  p->feedback_data.number_of_times_decoupled += encoding;
-
-  /* Immediately set hydro acceleration to zero */
-  hydro_reset_acceleration(p);
-
-  /* Update the signal velocity of the particle based on the velocity kick */
-  hydro_set_v_sig_based_on_velocity_kick(p, cosmo, v_kick_phys);
-
-  /* Synchronize the particle on the timeline */
-  timestep_sync_part(p);
-
-}
-
-/**
  * @brief Update the properties of a particle due to feedback effects after
  * the cooling was applied.
  *
