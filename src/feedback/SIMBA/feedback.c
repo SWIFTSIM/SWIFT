@@ -175,7 +175,7 @@ INLINE static void compute_SNII_feedback(
     /* delta_u in internal units.  We will work for now in internal units for
      * consistency, only converting to physical when we need
      * to add to particle thermal energy (in feedback_iact) */
-    const double delta_u = 0.5 * v_kick * v_kick;
+    double delta_u = 0.5 * v_kick * v_kick;
     const double E_SNe = feedback_props->E_SNII;
     double f_E =
         eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
