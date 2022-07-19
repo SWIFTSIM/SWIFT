@@ -1133,7 +1133,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
   const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                        s->zoom_props->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int periodic = 0;
+  const int periodic = s->periodic;
   const double cell_width[3] = {cells[0].width[0], cells[0].width[1],
                                 cells[0].width[2]};
 
@@ -1381,7 +1381,7 @@ void engine_makeproxies_between_grids(struct engine *e) {
   /* Some info about the domain */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int periodic = 0; /* Only natural cell interactions are periodic */
+  const int periodic = s->periodic;
   const double cell_width[3] = {cells[bkg_cell_offset].width[0],
                                 cells[bkg_cell_offset].width[1],
                                 cells[bkg_cell_offset].width[2]};
