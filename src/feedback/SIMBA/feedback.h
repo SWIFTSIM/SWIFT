@@ -25,7 +25,6 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "rays.h"
 #include "units.h"
 
 #include <strings.h>
@@ -70,6 +69,40 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
   } else {
     p->feedback_data.decoupling_delay_time = 0.f;
   }
+}
+
+/**
+ * @brief Recouple wind particles.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
+ */
+__attribute__((always_inline)) INLINE static void feedback_decouple_part(
+    struct part* p, struct xpart* xp, const struct cosmology *cosmo,
+    const float delay_time, const float v_kick_phys, const int encoding) {
+
+  /* Impose maximal viscosity */
+  hydro_diffusive_feedback_reset(p);
+
+  /* Mark this particle has having been heated/kicked by feedback */
+  tracers_after_feedback(xp);
+
+  /* Set delay time */
+  p->feedback_data.decoupling_delay_time = delay_time;
+
+  p->feedback_data.number_of_times_decoupled += encoding;
+
+  /* Immediately set hydro acceleration to zero */
+  hydro_reset_acceleration(p);
+
+  /* Update the signal velocity of the particle based on the velocity kick */
+  hydro_set_v_sig_based_on_velocity_kick(p, cosmo, v_kick_phys);
+
+  /* Synchronize the particle on the timeline */
+  timestep_sync_part(p);
+
 }
 
 /**
@@ -137,9 +170,6 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   sp->feedback_data.to_collect.ngb_mass = 0.f;
   sp->feedback_data.to_collect.ngb_rho = 0.f;
   sp->feedback_data.to_collect.ngb_Z = 0.f;
-
-  /* Reset all ray structs carried by this star particle */
-  ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
 
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 0;
@@ -228,6 +258,8 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   sp->feedback_data.dm_vel_diff2[0] = 0.f;
   sp->feedback_data.dm_vel_diff2[1] = 0.f;
   sp->feedback_data.dm_vel_diff2[2] = 0.f;
+
+  sp->feedback_data.kick_probability = 0.f;
 }
 
 /**
@@ -250,6 +282,7 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
   sp->feedback_data.dm_vel_diff2[0] = 0.f;
   sp->feedback_data.dm_vel_diff2[1] = 0.f;
   sp->feedback_data.dm_vel_diff2[2] = 0.f;
+  sp->feedback_data.kick_probability = 0.f;
 }
 
 /**

@@ -168,13 +168,6 @@ INLINE static void compute_SNII_feedback(
       return;
     }
 
-    /* Properties of the model (all in internal units) */
-
-    // const double delta_T =
-    //    eagle_feedback_temperature_change(sp, feedback_props);
-    /* Conversion factor from T to internal energy */
-    // const double conv_factor = feedback_props->temp_to_u_factor;
-
     /* Compute kick speed based on local DM velocity dispersion */
 
     const double v_kick = compute_kick_speed(sp, feedback_props, us);
@@ -200,8 +193,6 @@ INLINE static void compute_SNII_feedback(
     if (N_SNe <= 0.) return;
 
     /* Calculate the default ejection probability (accounting for round-off) */
-    // double prob = f_E * E_SNe * N_SNe / (conv_factor * delta_T *
-    // ngb_gas_mass);
     double prob =
         f_E * E_SNe * N_SNe / ((u_kinetic * cosmo->a2_inv) * ngb_gas_mass);
     prob = max(prob, 0.0);
@@ -219,9 +210,9 @@ INLINE static void compute_SNII_feedback(
       delta_u = u_kinetic;
 
       for (int i = 0; i < ngb_gas_N; i++) {
-        const double rand_thermal = random_unit_interval_part_ID_and_index(
+        const double rand_kick= random_unit_interval_part_ID_and_index(
             sp->id, i, ti_begin, random_number_stellar_feedback_3);
-        if (rand_thermal < prob) number_of_SN_events++;
+        if (rand_kick < prob) number_of_SN_events++;
       }
 
     } else {
@@ -230,25 +221,8 @@ INLINE static void compute_SNII_feedback(
          desired deltaT to ensure we inject all the available energy. */
       delta_u = f_E * E_SNe * N_SNe / ngb_gas_mass;
 
-      /* Number of SNIa events is equal to the number of Ngbs */
+      /* Number of SN events is equal to the number of Ngbs */
       number_of_SN_events = ngb_gas_N;
-    }
-
-    /* #ifdef SWIFT_DEBUG_CHECKS  -- THIS IS NO LONGER VALID WITH
-    E_SNII_Z_scaling if (f_E < feedback_props->f_E_min || f_E >
-    feedback_props->f_E_max) error("f_E is not in the valid range! f_E=%f
-    sp->id=%lld", f_E, sp->id); #endif */
-
-    /* If we have more heating events than the maximum number of
-     * rays (eagle_feedback_number_of_rays), then we cannot
-     * distribute all of the heating events (since 1 event = 1 ray), so we need
-     * to increase the thermal energy per ray and make the number of events
-     * equal to the number of rays */
-    if (number_of_SN_events > eagle_SNII_feedback_num_of_rays) {
-      const double alpha_thermal =
-          (double)number_of_SN_events / (double)eagle_SNII_feedback_num_of_rays;
-      delta_u *= alpha_thermal;
-      number_of_SN_events = eagle_SNII_feedback_num_of_rays;
     }
 
     /* Current total f_E for this star */
@@ -258,6 +232,7 @@ INLINE static void compute_SNII_feedback(
     star_f_E = (star_f_E + f_E) / (sp->number_of_SNII_events + 1.);
 
     /* Store all of this in the star for delivery onto the gas and recording */
+    sp->feedback_data.kick_probability = (float)number_of_SN_events / (float)ngb_gas_N;
     sp->f_E = star_f_E;
     sp->number_of_SNII_events++;
     sp->feedback_data.to_distribute.SNII_delta_u = delta_u;

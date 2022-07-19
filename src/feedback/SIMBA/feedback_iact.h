@@ -21,7 +21,6 @@
 
 /* Local includes */
 #include "random.h"
-#include "rays.h"
 #include "timestep_sync_part.h"
 #include "tools.h"
 #include "tracers.h"
@@ -126,90 +125,6 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   if (rho != 0.f)
     si->feedback_data.to_collect.enrichment_weight_inv += wi / rho;
 
-  /* Choose SNII feedback model */
-  switch (fb_props->feedback_model) {
-    case SNII_isotropic_model: {
-
-      /* Compute arc lengths in stellar isotropic feedback and collect
-       * relevant data for later use in the feedback_apply loop */
-
-      /* Loop over rays */
-      for (int i = 0; i < eagle_SNII_feedback_num_of_rays; i++) {
-
-        /* We generate two random numbers that we use
-         * to randomly select the direction of the ith ray */
-
-        /* Two random numbers in [0, 1[ */
-        const double rand_theta_SNII = random_unit_interval_part_ID_and_index(
-            si->id, i, ti_current,
-            random_number_isotropic_SNII_feedback_ray_theta);
-        const double rand_phi_SNII = random_unit_interval_part_ID_and_index(
-            si->id, i, ti_current,
-            random_number_isotropic_SNII_feedback_ray_phi);
-
-        /* Compute arclength */
-        ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays + i,
-                               /*ray_type=*/ray_feedback_thermal, pj->id,
-                               rand_theta_SNII, rand_phi_SNII, mj,
-                               /*ray_ext=*/NULL, /*v=*/NULL);
-      }
-      break;
-    }
-    case SNII_minimum_distance_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this
-       * star), then bi->num_ngbs = 1 and there is nothing to sort. Note that
-       * the maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(si->feedback_data.to_collect.ngb_N,
-                               eagle_SNII_feedback_num_of_rays);
-
-      /* Minimise separation between the gas particles and the star. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the star. */
-      ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj);
-      break;
-    }
-    case SNII_minimum_density_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this
-       * star), then bi->num_ngbs = 1 and there is nothing to sort. Note that
-       * the maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(si->feedback_data.to_collect.ngb_N,
-                               eagle_SNII_feedback_num_of_rays);
-
-      /* Minimise separation between the gas particles and the star. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the star. */
-      ray_minimise_distance(rho, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj);
-      break;
-    }
-    case SNII_random_ngb_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this
-       * star), then bi->num_ngbs = 1 and there is nothing to sort. Note that
-       * the maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(si->feedback_data.to_collect.ngb_N,
-                               eagle_SNII_feedback_num_of_rays);
-
-      /* To mimic a random draw among all the particles in the kernel, we
-       * draw random distances in [0,1) and then pick the particle(s) with
-       * the smallest of these 'fake' distances */
-      const float dist = random_unit_interval_two_IDs(
-          si->id, pj->id, ti_current, random_number_stellar_feedback_1);
-
-      /* Minimise separation between the gas particles and the BH. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller 'fake' distances to the BH. */
-      ray_minimise_distance(dist, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            mj);
-      break;
-    }
-  }
 }
 
 /**
@@ -437,45 +352,35 @@ runner_iact_nonsym_feedback_apply(
   /* Are we doing some SNII feedback? */
   if (N_of_SNII_thermal_energy_inj > 0) {
 
-    int N_of_SNII_energy_inj_received_by_gas = 0;
+    const float rand_kick = random_unit_interval_two_IDs(
+            si->id, pj->id, ti_current, random_number_stellar_feedback_1);
 
-    /* Find out how many rays this gas particle has received. */
-    for (int i = 0; i < N_of_SNII_thermal_energy_inj; i++) {
-      if (pj->id == si->feedback_data.SNII_rays[i].id_min_length)
-        N_of_SNII_energy_inj_received_by_gas++;
-    }
-
-    /* If the number of SNII energy injections > 0, do SNII feedback */
-    if (N_of_SNII_energy_inj_received_by_gas > 0) {
+    message("V_KICK_PROB: prob=%g rand_kick=%g", 
+            si->feedback_data.kick_probability,
+            rand_kick);
+            
+    /* We already know the probability to kick, let's check if we do it now */
+    if (rand_kick < si->feedback_data.kick_probability) {
 
       /* Compute new energy of this particle */
+
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
       const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
       const float thermal_frac = fb_props->SNII_fthermal;
       const float kinetic_frac = fb_props->SNII_fkinetic;
 
-      /* heat particle thermal_frac of the time with SNII energy leftover after
-       * kick */
-      const double rand_thermal = random_unit_interval(
-          pj->id, ti_current, random_number_stellar_feedback_2);
-      if (rand_thermal < thermal_frac) {
-        const double u_new =
-            u_init +
-            delta_u * (float)N_of_SNII_energy_inj_received_by_gas *
-                cosmo->a2_inv;  // add in cosmology factor here to convert to
-                                // comoving (system) units for u
-        /* Inject energy into the particle */
-        hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-        hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-      }
+      /* Need delta_u * cosmo->a2_inv to have energy in physical units */
+      const double u_new = u_init + (delta_u * cosmo->a2_inv) * thermal_frac;
+
+      /* Inject energy into the particle */
+      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
       /* Kick particle with SNII energy */
 
-      const double v_kick =
-          sqrtf(2.0 * kinetic_frac *
-                (float)N_of_SNII_energy_inj_received_by_gas * delta_u);
+      const double v_kick = sqrtf(2.0 * kinetic_frac * delta_u);
 
-      /* compute direction of kick: a x v */
+      /* Direction of kick: a x v */
       const double dir[3] = {
           pj->gpart->a_grav[1] * pj->v[2] - pj->gpart->a_grav[2] * pj->v[1],
           pj->gpart->a_grav[2] * pj->v[0] - pj->gpart->a_grav[0] * pj->v[2],
@@ -483,8 +388,10 @@ runner_iact_nonsym_feedback_apply(
       };
       const double norm = sqrtf(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
 
-      /* kick the particle */
-      const int dirsign = (random_uniform(-1, 1) > 0 ? 1 : -1);
+      /* Random number to choose to kick the particle */
+      const double rand_dir = random_unit_interval(
+          pj->id, ti_current, random_number_stellar_feedback_2);
+      const int dirsign = rand_dir > 0.5 ? 1 : -1;
       const double prefactor = v_kick * dirsign / norm;
 
       pj->v[0] += prefactor * dir[0];
@@ -492,41 +399,33 @@ runner_iact_nonsym_feedback_apply(
       pj->v[2] += prefactor * dir[2];
 
       /* Impose maximal viscosity */
-      /*hydro_diffusive_feedback_reset(pj);*/
+      hydro_diffusive_feedback_reset(pj);
 
-      /* Mark this particle has having been heated/kicked by supernova feedback
-       */
+      /* Mark this particle has having been heated/kicked by feedback */
       tracers_after_feedback(xpj);
 
       /* Set delay time */
-      pj->feedback_data.decoupling_delay_time =
-          fb_props->Wind_decoupling_time_factor *
-          cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+      p->feedback_data.decoupling_delay_time = fb_props->Wind_decoupling_time_factor *
+            cosmology_get_time_since_big_bang(cosmo, cosmo->a);;
 
-      pj->feedback_data.number_of_times_decoupled++;
+      p->feedback_data.number_of_times_decoupled++;
 
       /* Immediately set hydro acceleration to zero */
       hydro_reset_acceleration(pj);
 
-      message(
-          "V_KICK: z=%g  sp->id=%lld  pj->id=%lld f_E=%g  sigDM=%g  dm_N_ngb=%d N_SNII=%d  tdelay=%g  "
-          "v_kick=%g km/s",
-          cosmo->z, si->id, pj->id, si->f_E, si->feedback_data.dm_vel_disp_1d,
-          si->feedback_data.dm_ngb_N,
-          N_of_SNII_energy_inj_received_by_gas,
-          pj->feedback_data.decoupling_delay_time, v_kick * cosmo->a_inv / fb_props->kms_to_internal);
-      /* Update the signal velocity of the particle based on the velocity
-       * kick
-       */
+      /* Update the signal velocity of the particle based on the velocity kick */
       hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick * cosmo->a_inv);
-
-      /* message( */
-      /*     "We did some heating! id %llu star id %llu probability %.5e " */
-      /*     "random_num %.5e du %.5e du/ini %.5e", */
-      /*     pj->id, si->id, 0., 0., delta_u, delta_u / u_init); */
 
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);
+
+      message(
+          "V_KICK: z=%g  sp->id=%lld  pj->id=%lld f_E=%g  sigDM=%g km/s  tdelay=%g  "
+          "v_kick=%g km/s",
+          cosmo->z, si->id, pj->id, si->f_E, 
+          si->feedback_data.dm_vel_disp_1d * cosmo->a_inv / fb_props->kms_to_internal,
+          pj->feedback_data.decoupling_delay_time, v_kick * cosmo->a_inv / fb_props->kms_to_internal);
+
     }
   }
 }

@@ -20,10 +20,6 @@
 #define SWIFT_FEEDBACK_STRUCT_SIMBA_H
 
 #include "chemistry_struct.h"
-#include "rays_struct.h"
-
-/*! The total number of rays used in stellar feedback */
-#define eagle_SNII_feedback_num_of_rays 57
 
 /**
  * @brief Feedback fields carried by each hydro particles
@@ -127,9 +123,6 @@ struct feedback_spart_data {
     } to_distribute;
   };
 
-  /* Instantiate ray structs for SNII isotropic feedback  */
-  struct ray_data SNII_rays[eagle_SNII_feedback_num_of_rays];
-
   /*! Number of dark matter neighbours in the (gas) neighbourhood */
   int dm_ngb_N;
 
@@ -138,6 +131,9 @@ struct feedback_spart_data {
 
   /*! DM 1D vel. disp. from Vogelsberger et al (2013) equation 14. */
   float dm_vel_disp_1d;
+
+  /*! The probability to kick a gas neighbour */
+  float kick_probability;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_SIMBA_H */
