@@ -1360,7 +1360,8 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
 /**
  * @brief Create and fill the proxies for relations between cell grids.
  *
- * This is done "lazily" by just making proxies for all neighbour cells.
+ * This is done "lazily" by just making proxies for all neighbour cells
+ * as these are defined to be within the gravity criterion.
  *
  * @param e The #engine.
  */
@@ -1384,6 +1385,9 @@ void engine_makeproxies_between_grids(struct engine *e) {
   const double cell_width[3] = {cells[bkg_cell_offset].width[0],
                                 cells[bkg_cell_offset].width[1],
                                 cells[bkg_cell_offset].width[2]};
+  const double zoom_cell_width[3] = {cells[0].width[0],
+                                     cells[0].width[1],
+                                     cells[0].width[2]};
 
   /* Get some info about the physics */
   const int with_hydro = (e->policy & engine_policy_hydro);
@@ -1397,9 +1401,13 @@ void engine_makeproxies_between_grids(struct engine *e) {
                          cell_width[1] * cell_width[1] +
                          cell_width[2] * cell_width[2];
   const double r_diag = 0.5 * sqrt(r_diag2);
+  const double zoom_r_diag2 = zoom_cell_width[0] * zoom_cell_width[0] +
+                              zoom_cell_width[1] * zoom_cell_width[1] +
+                              zoom_cell_width[2] * zoom_cell_width[2];
+  const double zoom_r_diag = 0.5 * sqrt(zoom_r_diag2);
 
   /* Maximal distance from shifted CoM to any corner */
-  const double r_max = 2 * r_diag;
+  const double r_max = r_diag + zoom_r_diag;
 
   /* Loop over each zoom cell in the space. */
   for (int cid = 0; cid < bkg_cell_offset; cid++) {
