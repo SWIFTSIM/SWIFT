@@ -1196,15 +1196,15 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
-          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+          if (iii < 0 || iii >= cdim[0]) continue;
           iii = (iii + cdim[0]) % cdim[0];
           for (int jj = -delta_m; jj <= delta_p; jj++) {
             int jjj = j + jj;
-            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+            if (jjj < 0 || jjj >= cdim[1]) continue;
             jjj = (jjj + cdim[1]) % cdim[1];
             for (int kk = -delta_m; kk <= delta_p; kk++) {
               int kkk = k + kk;
-              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+              if (kkk < 0 || kkk >= cdim[2]) continue;
               kkk = (kkk + cdim[2]) % cdim[2];
 
               /* Get the cell ID. */
@@ -1445,12 +1445,9 @@ void engine_makeproxies_between_grids(struct engine *e) {
 
         /* This is super-ugly but checks for direct neighbours */
         /* with periodic BC */
-        if (((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
-              abs(i - ii + cdim[0]) <= 1) &&
-             (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
-              abs(j - jj + cdim[1]) <= 1) &&
-             (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
-              abs(k - kk + cdim[2]) <= 1)))
+        if (((abs(i - ii) <= 1) &&
+             (abs(j - jj) <= 1) &&
+             (abs(k - kk) <= 1)))
           proxy_type |= (int)proxy_cell_type_hydro;
       }
 
@@ -1462,12 +1459,9 @@ void engine_makeproxies_between_grids(struct engine *e) {
 
         /* This is super-ugly but checks for direct neighbours */
         /* with periodic BC */
-        if (((abs(i - ii) <= 1 || abs(i - ii - cdim[0]) <= 1 ||
-              abs(i - ii + cdim[0]) <= 1) &&
-             (abs(j - jj) <= 1 || abs(j - jj - cdim[1]) <= 1 ||
-              abs(j - jj + cdim[1]) <= 1) &&
-             (abs(k - kk) <= 1 || abs(k - kk - cdim[2]) <= 1 ||
-              abs(k - kk + cdim[2]) <= 1))) {
+        if (((abs(i - ii) <= 1) &&
+             (abs(j - jj) <= 1) &&
+             (abs(k - kk) <= 1))) {
 
           proxy_type |= (int)proxy_cell_type_gravity;
         } else {
