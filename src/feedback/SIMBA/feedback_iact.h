@@ -355,10 +355,6 @@ runner_iact_nonsym_feedback_apply(
     const float rand_kick = random_unit_interval_two_IDs(
             si->id, pj->id, ti_current, random_number_stellar_feedback_1);
 
-    message("V_KICK_PROB: prob=%g rand_kick=%g", 
-            si->feedback_data.kick_probability,
-            rand_kick);
-
     /* We already know the probability to kick, let's check if we do it now */
     if (rand_kick < si->feedback_data.kick_probability) {
 

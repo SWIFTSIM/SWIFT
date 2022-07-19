@@ -205,11 +205,9 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
 
-  if (new_dt < e->dt_min) {
-    message("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
+  if (new_dt < e->dt_min)
+    error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
           new_dt, e->dt_min);
-    new_dt = e->dt_min;
-  }
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
