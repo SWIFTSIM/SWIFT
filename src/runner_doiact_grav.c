@@ -2664,7 +2664,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     }         /* Not all zoom cells are within the criterion */
 
 
-    /* Now we need to loop over over the neighbouring background
+    /* Now we need to loop over the neighbouring background
      * top-level cells */
 
     /* Extract the neighbour cell information */
