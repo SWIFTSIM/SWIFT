@@ -35,6 +35,7 @@
 #include "common_io.h"
 #include "error.h"
 #include "inline.h"
+#include "adiabatic_index.h"
 
 /**
  * @file None/mhd_parameters.h
@@ -45,10 +46,15 @@
  *        as well as a number of compile-time parameters.
  */
 
-#define mhd_propos_default_mu0 4.f * M_PI
 #define MHD_MU0 4.f * M_PI
 #define MHD_MU0_1 1.f / (4.f * M_PI)
 
+/* Freedom to choose the way the Comoving Bfield behaves
+ * the comoving conversion goes like:
+ * B_phi = a^MHD_COMOVING_FACTOR * B_co
+ */
+#define mhd_comoving_factor -2.f 
+//#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f) 
 /* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
@@ -61,7 +67,6 @@
 struct mhd_global_data {
   /*! For the fixed, simple case of direct induction. */
   float mhd_eta;
-  //float mu0;
   float define_Bfield_in_ics;
   float define_Afield_in_ics;
 };
@@ -94,16 +99,16 @@ static INLINE void mhd_init(struct swift_params* params,
 
   mhd->mhd_eta = parser_get_opt_param_float(params, "MHD:diffusion_eta",
                                             mhd_propos_default_difussion_eta);
-  //mhd->mu0 =
-  //    parser_get_opt_param_float(params, "MHD:mu0", mhd_propos_default_mu0);
-
   mhd->define_Bfield_in_ics =
       parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
-  //if(mhd->define_Bfield_in_ics != 0.f){
-  //float a_beg=parser_get_param_float(params, "Cosmology:a_begin");
-  //mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics * a_beg;} 
-  //else mhd->define_Afield_in_ics = 0.f; 
-  mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics;
+  // calculate the comoving seed field
+  if(mhd->define_Bfield_in_ics != 0.f){
+  float a_beg=parser_get_param_float(params, "Cosmology:a_begin");
+  mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics * pow(a_beg,-mhd_comoving_factor-1.f);
+  mhd->define_Bfield_in_ics = mhd->define_Bfield_in_ics * pow(a_beg,-mhd_comoving_factor);
+  } 
+  else mhd->define_Afield_in_ics = 0.f; 
+  //mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics;
 }
 
 /**
@@ -133,18 +138,20 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 }
 
 #if defined(HAVE_HDF5)
-/** XXX TO BE IMPLEMENTED
- * @brief Prints the viscosity information to the snapshot when writing.
+/** 
+ * @brief Prints the MHD information to the snapshot when writing.
  *
  * @param h_grpsph: the SPH group in the ICs to write attributes to.
- * @param viscosity: pointer to the viscosity_global_data struct.
+ * @param mhd_data: pointer to the mhd_global_data struct.
  **/
-// static INLINE void viscosity_print_snapshot(
-//    hid_t h_grpsph, const struct viscosity_global_data* viscosity) {
-//
-//  io_write_attribute_f(h_grpsph, "Alpha viscosity", viscosity->alpha);
-//  io_write_attribute_f(h_grpsph, "Beta viscosity", const_viscosity_beta);
-//}
+ static INLINE void mhd_print_snapshot(
+    hid_t h_grpsph, const struct mhd_global_data* mhd_data) {
+
+  io_write_attribute_f(h_grpsph, "MU0", MHD_MU0);
+  io_write_attribute_f(h_grpsph, "Diffusion Eta", mhd_data->mhd_eta);
+  io_write_attribute_f(h_grpsph, "Generate comoving BField in ICs", mhd_data->define_Bfield_in_ics);
+  io_write_attribute_f(h_grpsph, "Comoving exponent", mhd_comoving_factor);
+}
 #endif
 
 #endif /* SWIFT_VECTOR_POTENTIAL_MHD_PARAMETERS_H */

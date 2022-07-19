@@ -53,8 +53,8 @@
  * the comoving conversion goes like:
  * B_phi = a^MHD_COMOVING_FACTOR * B_co
  */
-//#define mhd_comoving_factor -2.f 
-#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f) 
+#define mhd_comoving_factor -2.f 
+//#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f) 
 
 /* if set to 0 NO dedner cleaning
  * hyperbolic term of Dender Scalar field evolution */
@@ -111,10 +111,15 @@ static INLINE void mhd_init(struct swift_params* params,
                                                mhd_propos_dedner_hyperbolic);
   mhd->par_dedner = parser_get_opt_param_float(params, "MHD:parabolic_dedner",
                                                mhd_propos_dedner_parabolic);
-  mhd->define_Bfield_in_ics =
-      parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
   //  mhd->mhd_eta = parser_get_opt_param_float(
   //      params, "MHD:diffusion_eta", mhd_propos_default_difussion_eta);
+  mhd->define_Bfield_in_ics =
+      parser_get_opt_param_float(params, "MHD:define_B_in_ics", 0.f);
+  // calculate the comoving seed field
+  if(mhd->define_Bfield_in_ics != 0.f){
+  float a_beg=parser_get_param_float(params, "Cosmology:a_begin");
+  mhd->define_Bfield_in_ics = mhd->define_Bfield_in_ics * pow(a_beg,-mhd_comoving_factor);
+  } 
 }
 
 /**
