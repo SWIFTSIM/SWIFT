@@ -53,8 +53,8 @@
  * the comoving conversion goes like:
  * B_phi = a^MHD_COMOVING_FACTOR * B_co
  */
-#define mhd_comoving_factor -2.f 
-//#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f) 
+//#define mhd_comoving_factor -2.f 
+#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f) 
 
 /* if set to 0 NO dedner cleaning
  * hyperbolic term of Dender Scalar field evolution */

@@ -73,6 +73,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a) {
 
+  const float a_fac = 2.f* mhd_comoving_factor + 3.f + 3.f*(hydro_gamma-1.f);
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -85,9 +86,9 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
                       pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
                       pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
   const float vcsa2_i =
-      ci * ci + pow(a, 3.f) * b2_i / pi->rho * 0.5 * MHD_MU0_1;
+      ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 * MHD_MU0_1;
   const float vcsa2_j =
-      cj * cj + pow(a, 3.f) * b2_j / pj->rho * 0.5 * MHD_MU0_1;
+      cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 * MHD_MU0_1;
   float Bpro2_i =
       (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
        pi->mhd_data.BPred[2] * dx[2]) *
@@ -95,7 +96,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   Bpro2_i *= Bpro2_i;
   float mag_speed_i =
       sqrtf(0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
-                                        4.f * ci * ci * pow(a, 3.f) * Bpro2_i /
+                                        4.f * ci * ci * pow(a, a_fac) * Bpro2_i /
                                             pi->rho * 0.5 * MHD_MU0_1),
                                        0.f))));
   float Bpro2_j =
@@ -105,7 +106,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   Bpro2_j *= Bpro2_j;
   float mag_speed_j =
       sqrtf(0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
-                                        4.f * cj * cj * pow(a, 3.f) * Bpro2_j /
+                                        4.f * cj * cj * pow(a, a_fac) * Bpro2_j /
                                             pj->rho * 0.5 * MHD_MU0_1),
                                        0.f))));
 
