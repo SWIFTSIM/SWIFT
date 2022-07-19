@@ -172,10 +172,10 @@ INLINE static void compute_SNII_feedback(
 
     const double v_kick = compute_kick_speed(sp, feedback_props, us);
 
-    /* u_kinetic in internal units.  We will work for now in internal units for
+    /* delta_u in internal units.  We will work for now in internal units for
      * consistency, only converting to physical when we need
      * to add to particle thermal energy (in feedback_iact) */
-    const double u_kinetic = 0.5 * v_kick * v_kick;
+    const double delta_u = 0.5 * v_kick * v_kick;
     const double E_SNe = feedback_props->E_SNII;
     double f_E =
         eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
@@ -193,24 +193,19 @@ INLINE static void compute_SNII_feedback(
     if (N_SNe <= 0.) return;
 
     /* Calculate the default ejection probability (accounting for round-off) */
-    double prob =
-        f_E * E_SNe * N_SNe / ((u_kinetic * cosmo->a2_inv) * ngb_gas_mass);
+    double prob = 0.;
+    if (delta_u > 0.) {
+      prob = f_E * E_SNe * N_SNe / ((delta_u * cosmo->a2_inv) * ngb_gas_mass);
+    } 
     prob = max(prob, 0.0);
-
-    /* Calculate the change in internal energy of the gas particles that get
-     * heated */
-    double delta_u;
 
     /* Number of SNII events for this stellar particle */
     int number_of_SN_events = 0;
 
     if (prob <= 1.) {
 
-      /* Normal case */
-      delta_u = u_kinetic;
-
       for (int i = 0; i < ngb_gas_N; i++) {
-        const double rand_kick= random_unit_interval_part_ID_and_index(
+        const double rand_kick = random_unit_interval_part_ID_and_index(
             sp->id, i, ti_begin, random_number_stellar_feedback_3);
         if (rand_kick < prob) number_of_SN_events++;
       }
@@ -312,7 +307,8 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
   /* Compute DM vel. disp. */
   float dm_vel_disp_1d = 0.f;
-  if (sp->feedback_data.dm_ngb_N > 0) {
+  /* Make sure there are enough neighbors to sample */
+  if (sp->feedback_data.dm_ngb_N > 16) {
     float dm_vel_disp2[3] = {0.f};
     for (int i = 0; i < 3; i++) {
       dm_vel_disp2[i] = sp->feedback_data.dm_vel_diff2[i];
