@@ -570,8 +570,6 @@ __attribute__((nonnull)) INLINE static int gravity_multipole_equal(
     return 0;
   }
 #endif
-
-  return 1;
   tolerance *= 10.;
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 2
   /* Manhattan Norm of 3rd order terms */
