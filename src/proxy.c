@@ -156,29 +156,19 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   tic2 = getticks();
 
   /* Wait for each recv and unpack the tags into the local cells. */
-  float t_waiting = 0;
-  float t_unpacking = 0;
-  ticks ticw;
-  ticks ticu;
   for (int k = 0; k < num_reqs_in; k++) {
     int pid = MPI_UNDEFINED;
     MPI_Status status;
-    ticw = getticks();
     if (MPI_Waitany(num_reqs_in, reqs_in, &pid, &status) != MPI_SUCCESS ||
         pid == MPI_UNDEFINED)
       error("MPI_Waitany failed.");
     const int cid = cids_in[pid];
-    t_waiting += clocks_from_ticks(getticks() - ticw);
-    ticu = getticks();
     cell_unpack_tags(&tags_in[offset_in[cid]], &s->cells_top[cid]);
-    t_unpacking += clocks_from_ticks(getticks() - ticu);
   }
 
   if (s->e->verbose)
     message("Cell unpack tags took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
-  message("Time spent waiting: %.3f %s", t_waiting, clocks_getunit());
-  message("Time spent unpacking: %.3f %s", t_unpacking, clocks_getunit());
 
   /* Wait for all the sends to have completed. */
   if (MPI_Waitall(num_reqs_out, reqs_out, MPI_STATUSES_IGNORE) != MPI_SUCCESS)
