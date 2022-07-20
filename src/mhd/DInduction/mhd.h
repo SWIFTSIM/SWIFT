@@ -51,7 +51,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
   const float b2 = p->mhd_data.BPred[0] * p->mhd_data.BPred[0] +
                    p->mhd_data.BPred[1] * p->mhd_data.BPred[1] +
                    p->mhd_data.BPred[2] * p->mhd_data.BPred[2];
-  return fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-5));
+  return fabs(p->mhd_data.divB * p->h / sqrt(b2 + 1.e-18));
 }
 
 /**
@@ -125,13 +125,13 @@ __attribute__((always_inline)) INLINE static float hydro_get_dphi_dt(
 
   const float v_sig = hydro_get_signal_velocity(p);
   // const float div_v = hydro_get_div_v(p);
-  const float afac1 = pow(c->a, -3.f * (hydro_gamma - 1.f));
-  const float afac2 = pow(c->a, 1.f - 3.f / 2.f * (hydro_gamma - 1.f));
+  const float afac1 = pow(c->a, 2.f*mhd_comoving_factor);
+  const float afac2 = pow(c->a, 1.f + mhd_comoving_factor);
 
   return (-hyp * p->mhd_data.divB * v_sig * v_sig * afac1 -
           par * v_sig * p->mhd_data.phi / p->h * afac2 -
           //          0.5f * p->mhd_data.phi * div_v -
-          (2.f - 3.f / 2.f * (hydro_gamma - 1.f)) * c->a * c->a * c->H *
+          (2.f + mhd_comoving_factor) * c->a * c->a * c->H *
               p->mhd_data.phi);
 }
 

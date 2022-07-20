@@ -294,11 +294,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
-  /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1;
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1;
+  const float a_fac = pow(a,2.f*mhd_comoving_factor+3.f*(hydro_gamma-1.f));
+
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1 * a_fac;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1 * a_fac;
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -336,7 +337,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  float dv[3];
+  /*float dv[3];
   dv[0] = pi->v[0] - pj->v[0];
   dv[1] = pi->v[1] - pj->v[1];
   dv[2] = pi->v[2] - pj->v[2];
@@ -346,8 +347,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float SourceAj = dv[0] * pj->mhd_data.APred[0] +
                          dv[1] * pj->mhd_data.APred[1] +
                          dv[2] * pj->mhd_data.APred[2];
-  //const float SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
-  //const float SourceAj = -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
+  */
+  const float SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
+  const float SourceAj = -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   float SAj = SourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
@@ -423,8 +425,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1;
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1;
+  const float a_fac = pow(a,2.f*mhd_comoving_factor+3.f*(hydro_gamma-1.f));
+  
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1 * a_fac;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1 * a_fac;
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -457,15 +461,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  float dv[3];
-  dv[0] = pi->v[0] - pj->v[0];
-  dv[1] = pi->v[1] - pj->v[1];
-  dv[2] = pi->v[2] - pj->v[2];
-  const float SourceAi = dv[0] * pi->mhd_data.APred[0] +
-                         dv[1] * pi->mhd_data.APred[1] +
-                         dv[2] * pi->mhd_data.APred[2];
+  //float dv[3];
+  //dv[0] = pi->v[0] - pj->v[0];
+  //dv[1] = pi->v[1] - pj->v[1];
+  //dv[2] = pi->v[2] - pj->v[2];
+  //const float SourceAi = dv[0] * pi->mhd_data.APred[0] +
+  //                       dv[1] * pi->mhd_data.APred[1] +
+  //                       dv[2] * pi->mhd_data.APred[2];
 
-  //const float SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
+  const float SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];

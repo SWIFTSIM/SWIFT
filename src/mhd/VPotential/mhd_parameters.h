@@ -55,8 +55,8 @@
  */
 #define mhd_comoving_factor -2.f 
 //#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f) 
-/* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 
+/* Magnetic Diffusion parameters -- Defaults can be changed in RunTime */
 /* Magnetic Diffusion, if set to 0 IDEAL mhd
  *  */
 #define mhd_propos_default_difussion_eta 0.0f
@@ -104,7 +104,7 @@ static INLINE void mhd_init(struct swift_params* params,
   // calculate the comoving seed field
   if(mhd->define_Bfield_in_ics != 0.f){
   float a_beg=parser_get_param_float(params, "Cosmology:a_begin");
-  mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics * pow(a_beg,-mhd_comoving_factor-1.f);
+  mhd->define_Afield_in_ics = mhd->define_Bfield_in_ics * pow(a_beg,-mhd_comoving_factor);
   mhd->define_Bfield_in_ics = mhd->define_Bfield_in_ics * pow(a_beg,-mhd_comoving_factor);
   } 
   else mhd->define_Afield_in_ics = 0.f; 

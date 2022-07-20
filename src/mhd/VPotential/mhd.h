@@ -76,6 +76,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const struct part *restrict pj, const float mu_ij, const float beta,
     const float a) {
 
+  const float a_fac = 2.f* mhd_comoving_factor + 3.f + 3.f*(hydro_gamma-1.f);
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -88,9 +89,9 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
                       pj->mhd_data.BPred[1] * pj->mhd_data.BPred[1] +
                       pj->mhd_data.BPred[2] * pj->mhd_data.BPred[2]);
   const float vcsa2_i =
-      ci * ci + pow(a, 3.f) * b2_i / pi->rho * 0.5 * MHD_MU0_1;
+      ci * ci + pow(a, a_fac) * b2_i / pi->rho * 0.5 * MHD_MU0_1;
   const float vcsa2_j =
-      cj * cj + pow(a, 3.f) * b2_j / pj->rho * 0.5 * MHD_MU0_1;
+      cj * cj + pow(a, a_fac) * b2_j / pj->rho * 0.5 * MHD_MU0_1;
   float Bpro2_i =
       (pi->mhd_data.BPred[0] * dx[0] + pi->mhd_data.BPred[1] * dx[1] +
        pi->mhd_data.BPred[2] * dx[2]) *
@@ -98,7 +99,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   Bpro2_i *= Bpro2_i;
   float mag_speed_i =
       sqrtf(0.5 * (vcsa2_i + sqrtf(max((vcsa2_i * vcsa2_i -
-                                        4.f * ci * ci * pow(a, 3.f) * Bpro2_i /
+                                        4.f * ci * ci * pow(a, a_fac) * Bpro2_i /
                                             pi->rho * 0.5 * MHD_MU0_1),
                                        0.f))));
   float Bpro2_j =
@@ -108,7 +109,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   Bpro2_j *= Bpro2_j;
   float mag_speed_j =
       sqrtf(0.5 * (vcsa2_j + sqrtf(max((vcsa2_j * vcsa2_j -
-                                        4.f * cj * cj * pow(a, 3.f) * Bpro2_j /
+                                        4.f * cj * cj * pow(a, a_fac) * Bpro2_j /
                                             pj->rho * 0.5 * MHD_MU0_1),
                                        0.f))));
 
@@ -127,12 +128,12 @@ __attribute__((always_inline)) INLINE static float hydro_get_dGau_dt(
     const struct cosmology *c) {
 
   const float v_sig = hydro_get_signal_velocity(p);
-  const float afac1 = pow(c->a, -3.f * (hydro_gamma - 1.f));
-  const float afac2 = pow(c->a, 1.f - 3.f / 2.f * (hydro_gamma - 1.f));
+  const float afac1 = pow(c->a, 2.f*mhd_comoving_factor);
+  const float afac2 = pow(c->a, 1.f + mhd_comoving_factor);
 
   return (-p->mhd_data.divA * v_sig * v_sig * 0.01 * afac1 -
           2.0f * v_sig * Gauge / p->h * afac2 -
-          (2.f - 3.f / 2.f * (hydro_gamma - 1.f)) * c->a * c->a * c->H * Gauge);
+          (2.f + mhd_comoving_factor) * c->a * c->a * c->H * Gauge);
 }
 
 /**
@@ -259,7 +260,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_gradient(
   //  p->mhd_data.GauSmooth += p->mass * kernel_root * p->mhd_data.Gau;
   p->mhd_data.Q0 += p->mass * kernel_root;
 
-  for (int i = 0; i < 3; i++) p->mhd_data.BSmooth[i] /= p->mhd_data.Q0;
+  for (int i = 0; i < 3; i++) p->mhd_data.BPred[i] = p->mhd_data.BSmooth[i] / p->mhd_data.Q0;
   //  p->mhd_data.GauSmooth /= p->mhd_data.Q0;
 }
 
@@ -344,11 +345,6 @@ __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
 __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     struct part *p, const struct xpart *xp, const struct cosmology *cosmo) {
 
-  // MAy Bpred differenet and now we have to smooth
-  //p->mhd_data.BPred[0] = p->mhd_data.BSmooth[0];
-  //p->mhd_data.BPred[1] = p->mhd_data.BSmooth[1];
-  //p->mhd_data.BPred[2] = p->mhd_data.BSmooth[2];
-
   p->mhd_data.Gau = xp->mhd_data.Gau;
   // p->mhd_data.Gau = p->mhd_data.GauSmooth;
 
@@ -407,7 +403,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
 //  p->mhd_data.dAdt[1] = 0.0f;
 //  p->mhd_data.dAdt[2] = 0.0f;
   float a_fac =
-      (2.f - 3.f / 2.f * (hydro_gamma - 1.f)) * cosmo->a * cosmo->a * cosmo->H;
+      (2.f + mhd_comoving_factor) * cosmo->a * cosmo->a * cosmo->H;
   p->mhd_data.dAdt[0] -= a_fac * p->mhd_data.APred[0];
   p->mhd_data.dAdt[1] -= a_fac * p->mhd_data.APred[1];
   p->mhd_data.dAdt[2] -= a_fac * p->mhd_data.APred[2];
