@@ -563,9 +563,6 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
 __attribute__((always_inline)) INLINE static void hydro_init_part(
     struct part *restrict p, const struct hydro_space *hs) {
 
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
-
   p->density.wcount = 0.f;
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;

@@ -47,10 +47,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
-
-  /* Skip wind particles for force calculations */
-  if (pi->feedback_data.decoupling_delay_time > 0.f ||
-      pj->feedback_data.decoupling_delay_time > 0.f) return;
   
   float wi, wj, wi_dx, wj_dx;
   float dv[3], curlvr[3];
@@ -206,10 +202,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
 
-  /* Skip wind particles for force calculations */
-  if (pi->feedback_data.decoupling_delay_time > 0.f ||
-      pj->feedback_data.decoupling_delay_time > 0.f) return;
-
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
@@ -289,10 +281,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
-
-    /* Skip wind particles for force calculations */
-  if (pi->feedback_data.decoupling_delay_time > 0.f ||
-      pj->feedback_data.decoupling_delay_time > 0.f) return;
       
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */

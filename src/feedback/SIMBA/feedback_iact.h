@@ -362,15 +362,15 @@ runner_iact_nonsym_feedback_apply(
 
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);
       const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
-      const float thermal_frac = fb_props->SNII_fthermal;
       const float kinetic_frac = fb_props->SNII_fkinetic;
+      if (fb_props->SNII_fthermal > 0.f) {
+        /* Need delta_u * cosmo->a2_inv to have energy in physical units */
+        const double u_new = u_init + (delta_u * cosmo->a2_inv) * fb_props->SNII_fthermal;
 
-      /* Need delta_u * cosmo->a2_inv to have energy in physical units */
-      const double u_new = u_init + (delta_u * cosmo->a2_inv) * thermal_frac;
-
-      /* Inject energy into the particle */
-      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+        /* Inject energy into the particle */
+        hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+        hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      }
 
       /* Kick particle with SNII energy */
 
@@ -402,7 +402,7 @@ runner_iact_nonsym_feedback_apply(
 
       /* Set delay time */
       pj->feedback_data.decoupling_delay_time = fb_props->Wind_decoupling_time_factor *
-            cosmology_get_time_since_big_bang(cosmo, cosmo->a);;
+            cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
       pj->feedback_data.number_of_times_decoupled++;
 
