@@ -395,7 +395,7 @@ runner_iact_nonsym_feedback_apply(
       pj->v[2] += prefactor * dir[2];
 
       /* Impose maximal viscosity */
-      /*hydro_diffusive_feedback_reset(pj);*/
+      hydro_diffusive_feedback_reset(pj);
 
       /* Mark this particle has having been heated/kicked by feedback */
       tracers_after_feedback(xpj);
