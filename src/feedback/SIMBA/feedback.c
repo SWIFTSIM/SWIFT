@@ -202,22 +202,10 @@ INLINE static void compute_SNII_feedback(
     /* Number of SNII events for this stellar particle */
     int number_of_SN_events = 0;
 
-    if (prob <= 1.) {
-
-      for (int i = 0; i < ngb_gas_N; i++) {
-        const double rand_kick = random_unit_interval_part_ID_and_index(
-            sp->id, i, ti_begin, random_number_stellar_feedback_3);
-        if (rand_kick < prob) number_of_SN_events++;
-      }
-
-    } else {
-
-      /* Special case: we need to adjust the energy irrespective of the
-         desired deltaT to ensure we inject all the available energy. */
-      delta_u = f_E * E_SNe * N_SNe / ngb_gas_mass;
-
-      /* Number of SN events is equal to the number of Ngbs */
-      number_of_SN_events = ngb_gas_N;
+    for (int i = 0; i < ngb_gas_N; i++) {
+      const double rand_kick = random_unit_interval_part_ID_and_index(
+          sp->id, i, ti_begin, random_number_stellar_feedback_3);
+      if (rand_kick < prob) number_of_SN_events++;
     }
 
     /* Current total f_E for this star */
@@ -308,7 +296,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   /* Compute DM vel. disp. */
   float dm_vel_disp_1d = 0.f;
   /* Make sure there are enough neighbors to sample */
-  if (sp->feedback_data.dm_ngb_N > 16) {
+  if (sp->feedback_data.dm_ngb_N > 1) {
     float dm_vel_disp2[3] = {0.f};
     for (int i = 0; i < 3; i++) {
       dm_vel_disp2[i] = sp->feedback_data.dm_vel_diff2[i];
