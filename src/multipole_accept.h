@@ -193,36 +193,35 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
 
 /**
  * Compute the distance above which an M2L kernel is allowed to be used.
- * 
- * This uses conservative assumptions to garanty that all the possible cell pair interactions
- * that need a direct interaction are below this distance.
+ *
+ * This uses conservative assumptions to garanty that all the possible cell pair
+ * interactions that need a direct interaction are below this distance.
  *
  * @param props The properties of the gravity scheme.
  * @param size The size of the multipoles (here the cell size).
  * @param max_softening The maximal softening accross all particles.
  * @param min_a_grav The minimal acceleration accross all particles.
- * @param max_mpole_power The maximum multipole power accross all the multipoles.
+ * @param max_mpole_power The maximum multipole power accross all the
+ * multipoles.
  * @param periodic Are we using periodic BCs?
  */
-__attribute__((nonnull, pure)) INLINE static double gravity_M2L_min_accept_distance(
-										    const struct gravity_props *props,
-										    const double size,
-										    const double max_softening,
-										    const double min_a_grav,
-										    const double max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER],
-										    const int periodic
-)
-{
+__attribute__((nonnull, pure)) INLINE static double
+gravity_M2L_min_accept_distance(
+    const struct gravity_props *props, const double size,
+    const double max_softening, const double min_a_grav,
+    const double max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER],
+    const int periodic) {
 
   /* Order of the expansion */
   const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
 
   float E_BA_term = 0.f;
   for (int n = 0; n <= p; ++n) {
-    E_BA_term += binomial(p, n) * max_mpole_power[n] * integer_powf(size, p - n);
+    E_BA_term +=
+        binomial(p, n) * max_mpole_power[n] * integer_powf(size, p - n);
   }
   E_BA_term *= 4.f;
-  
+
   /* Get the basic geometric critical angle */
   const float theta_crit = props->theta_crit;
   const float theta_crit2 = theta_crit * theta_crit;
@@ -232,16 +231,19 @@ __attribute__((nonnull, pure)) INLINE static double gravity_M2L_min_accept_dista
 
   /* Get the relative tolerance */
   const float eps = props->adaptive_tolerance;
-  
+
   if (props->use_advanced_MAC) {
 
-    /* Distance obtained by solving for the geometric criterion with theta = 1 */
+    /* Distance obtained by solving for the geometric criterion with theta = 1
+     */
     const double dist_tree = size_sum;
 
-    const double dist_adapt = pow(E_BA_term / (eps * min_a_grav), 1. / (p + 2.));
-    
+    const double dist_adapt =
+        pow(E_BA_term / (eps * min_a_grav), 1. / (p + 2.));
+
     /* Distance obtained by demanding > softening */
-    const double dist_soft = props->use_tree_below_softening ? 0. : max_softening;
+    const double dist_soft =
+        props->use_tree_below_softening ? 0. : max_softening;
 
     return max3(dist_tree, dist_adapt, dist_soft);
 
@@ -251,7 +253,8 @@ __attribute__((nonnull, pure)) INLINE static double gravity_M2L_min_accept_dista
     const double dist_tree = sqrt(size_sum * size_sum / theta_crit2);
 
     /* Distance obtained by demanding > softening */
-    const double dist_soft = props->use_tree_below_softening ? 0. : max_softening;
+    const double dist_soft =
+        props->use_tree_below_softening ? 0. : max_softening;
 
     return max(dist_tree, dist_soft);
   }

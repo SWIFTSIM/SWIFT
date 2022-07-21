@@ -1763,22 +1763,16 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   struct cell *cells = s->cells_top;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-  const double max_softening = 0.; // TODO !!!
+  const double max_softening = 0.;  // TODO !!!
   const double max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER] = {0.};
   const double min_a_grav = 0.1;
 
-  
   /* Compute maximal distance where we can expect a direct interaction */
-  const double distance = gravity_M2L_min_accept_distance(e->gravity_properties, cells[0].width[0],
-							  max_softening,
-							  min_a_grav,
-							  max_mpole_power,
-							  periodic);
+  const double distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, cells[0].width[0], max_softening, min_a_grav,
+      max_mpole_power, periodic);
 
-  
-  //const double distance = 2.5 * cells[0].width[0] / theta_crit;
-
-  /* Convert the maximal search distance to a number of cells 
+  /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
   const int delta = (int)(distance / cells[0].width[0]) + 1;
   int delta_m = delta;
@@ -1833,18 +1827,18 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
 
       for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
-	/* Escape if non-periodic and beyond range */
+        /* Escape if non-periodic and beyond range */
         if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
         for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
-	  /* Escape if non-periodic and beyond range */
+          /* Escape if non-periodic and beyond range */
           if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
-	  /* Apply periodic BC (not harmful if not using periodic BC) */
-	  const int iii = (ii + cdim[0]) % cdim[0];
-	  const int jjj = (jj + cdim[1]) % cdim[1];
-	  const int kkk = (kk + cdim[2]) % cdim[2];
+          /* Apply periodic BC (not harmful if not using periodic BC) */
+          const int iii = (ii + cdim[0]) % cdim[0];
+          const int jjj = (jj + cdim[1]) % cdim[1];
+          const int kkk = (kk + cdim[2]) % cdim[2];
 
           /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
