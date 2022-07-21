@@ -202,10 +202,15 @@ INLINE static void compute_SNII_feedback(
     /* Number of SNII events for this stellar particle */
     int number_of_SN_events = 0;
 
-    for (int i = 0; i < ngb_gas_N; i++) {
-      const double rand_kick = random_unit_interval_part_ID_and_index(
-          sp->id, i, ti_begin, random_number_stellar_feedback_3);
-      if (rand_kick < prob) number_of_SN_events++;
+    if (prob <= 1.) {
+      for (int i = 0; i < ngb_gas_N; i++) {
+        const double rand_kick = random_unit_interval_part_ID_and_index(
+            sp->id, i, ti_begin, random_number_stellar_feedback_3);
+        if (rand_kick < prob) number_of_SN_events++;
+      }
+    } else {
+      delta_u = f_E * E_SNe * N_SNe / ngb_gas_mass;
+      number_of_SN_events = ngb_gas_N;
     }
 
     /* Current total f_E for this star */
