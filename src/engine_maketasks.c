@@ -1761,13 +1761,26 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double theta_crit = e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
+  const double max_softening = 0.; // TODO !!!
+  const double max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER] = {0.};
+  const double min_a_grav = 0.1;
 
-  /* Compute how many cells away we need to walk */
-  const double distance = 2.5 * cells[0].width[0] / theta_crit;
-  int delta = (int)(distance / cells[0].width[0]) + 1;
+  
+  /* Compute maximal distance where we can expect a direct interaction */
+  const double distance = gravity_M2L_min_accept_distance(e->gravity_properties, cells[0].width[0],
+							  max_softening,
+							  min_a_grav,
+							  max_mpole_power,
+							  periodic);
+
+  
+  //const double distance = 2.5 * cells[0].width[0] / theta_crit;
+
+  /* Convert the maximal search distance to a number of cells 
+   * Define a lower and upper delta in case things are not symmetric */
+  const int delta = (int)(distance / cells[0].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
