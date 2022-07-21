@@ -68,3 +68,6 @@ As the hydrodynamics are described in :ref:`hydro`, we are only showing the grav
     In the second one, the gas particles tagged as "to be swallowed" are effectively swallowed.
     In the third one, the sink particles tagged as "to be swallowed" are effectively swallowed.
     This was done with SWIFT v0.9.0.
+
+For documentation on the radiative transfer tasking system, please refer to its 
+:ref:`own page <rt_task_system>`.
