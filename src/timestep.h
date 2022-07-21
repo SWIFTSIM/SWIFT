@@ -205,9 +205,11 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
   /* Limit timestep within the allowed range */
   new_dt = min(new_dt, e->dt_max);
 
-  if (new_dt < e->dt_min)
+  if (new_dt < e->dt_min) {
+    message("id %lld p->h %g p->viscosity.v_sig=%g", p->id, p->h, p->viscosity.v_sig);
     error("part (id=%lld) wants a time-step (%e) below dt_min (%e)", p->id,
           new_dt, e->dt_min);
+  }
 
   /* Convert to integer time */
   const integertime_t new_dti = make_integer_timestep(
