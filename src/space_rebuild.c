@@ -902,6 +902,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_cells_with_particles = 0;
   s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
+  s->min_a_grav = FLT_MAX;
+  s->max_softening = 0.f;
+  bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
@@ -955,6 +958,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Add this cell to the list of non-empty cells */
       s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
       s->nr_local_cells_with_particles++;
+      s->min_a_grav =
+          min(s->min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      s->max_softening =
+          max(s->max_softening, c->grav.multipole->m_pole.max_softening);
+      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+        s->max_mpole_power[n] =
+            max(s->max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
     }
   }
   if (verbose) {

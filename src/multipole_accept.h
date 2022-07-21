@@ -205,11 +205,11 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
  * multipoles.
  * @param periodic Are we using periodic BCs?
  */
-__attribute__((nonnull, pure)) INLINE static double
+__attribute__((nonnull, pure)) INLINE static float
 gravity_M2L_min_accept_distance(
-    const struct gravity_props *props, const double size,
-    const double max_softening, const double min_a_grav,
-    const double max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER],
+    const struct gravity_props *props, const float size,
+    const float max_softening, const float min_a_grav,
+    const float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1],
     const int periodic) {
 
   /* Order of the expansion */
@@ -236,25 +236,25 @@ gravity_M2L_min_accept_distance(
 
     /* Distance obtained by solving for the geometric criterion with theta = 1
      */
-    const double dist_tree = size_sum;
+    const float dist_tree = size_sum;
 
-    const double dist_adapt =
-        pow(E_BA_term / (eps * min_a_grav), 1. / (p + 2.));
+    const float dist_adapt =
+        powf(E_BA_term / (eps * min_a_grav), 1.f / (p + 2.f));
 
     /* Distance obtained by demanding > softening */
-    const double dist_soft =
-        props->use_tree_below_softening ? 0. : max_softening;
+    const float dist_soft =
+        props->use_tree_below_softening ? 0.f : max_softening;
 
     return max3(dist_tree, dist_adapt, dist_soft);
 
   } else {
 
     /* Distance obtained by solving for the geometric criterion */
-    const double dist_tree = sqrt(size_sum * size_sum / theta_crit2);
+    const float dist_tree = sqrtf(size_sum * size_sum / theta_crit2);
 
     /* Distance obtained by demanding > softening */
-    const double dist_soft =
-        props->use_tree_below_softening ? 0. : max_softening;
+    const float dist_soft =
+        props->use_tree_below_softening ? 0.f : max_softening;
 
     return max(dist_tree, dist_soft);
   }

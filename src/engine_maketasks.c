@@ -1763,14 +1763,11 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   struct cell *cells = s->cells_top;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-  const double max_softening = 0.;  // TODO !!!
-  const double max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER] = {0.};
-  const double min_a_grav = 0.1;
 
   /* Compute maximal distance where we can expect a direct interaction */
-  const double distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, cells[0].width[0], max_softening, min_a_grav,
-      max_mpole_power, periodic);
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, cells[0].width[0], s->max_softening, s->min_a_grav,
+      s->max_mpole_power, periodic);
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
