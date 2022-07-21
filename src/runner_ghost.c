@@ -1124,9 +1124,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
       error("Can't allocate memory for right.");
     for (int k = 0; k < c->hydro.count; k++)
       if (part_is_active(&parts[k], e)) {
-        /* Do not recompute h for wind particles */
-        struct part *p = &parts[k];
-        if (p->feedback_data.decoupling_delay_time > 0.f) continue;
         pid[count] = k;
         h_0[count] = parts[k].h;
         left[count] = 0.f;

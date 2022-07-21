@@ -471,17 +471,6 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->viscosity.v_sig);
 
-  /*
-  if (p->feedback_data.number_of_times_decoupled > 0) {
-    message("PART_TIMESTEP: id=%lld dt_cfl=%g prefactor=%g p->h=%g denominator=%g delay=%g N=%d",
-            p->id,
-            dt_cfl,
-            2.f * kernel_gamma * CFL_condition * cosmo->a,
-            p->h,
-            cosmo->a_factor_sound_speed * p->viscosity.v_sig,
-            p->feedback_data.decoupling_delay_time,
-            p->feedback_data.number_of_times_decoupled);
-  }*/
   return dt_cfl;
 }
 
@@ -609,9 +598,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 __attribute__((always_inline)) INLINE static void hydro_end_density(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
-
   /* Some smoothing length multiples. */
   const float h = p->h;
   const float h_inv = 1.0f / h;                       /* 1/h */
@@ -666,9 +652,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props) {
-
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
 
   const float fac_B = cosmo->a_factor_Balsara_eps;
 
@@ -742,9 +725,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
-
   p->viscosity.v_sig = 2.f * p->force.soundspeed;
   p->force.alpha_visc_max_ngb = p->viscosity.alpha;
 }
@@ -761,9 +741,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
  */
 __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     struct part *p) {
-
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* Some smoothing length multiples. */
   const float h = p->h;
@@ -842,9 +819,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const float dt_alpha) {
-
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* Here we need to update the artificial viscosity */
 
@@ -964,9 +938,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
     struct part *restrict p) {
 
-  /* We reset manually on decoupling */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
-
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
   p->a_hydro[1] = 0.0f;
@@ -988,9 +959,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
 __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     struct part *restrict p, const struct xpart *restrict xp,
     const struct cosmology *cosmo) {
-
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* Re-set the predicted velocities */
   p->v[0] = xp->v_full[0];
@@ -1036,9 +1004,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
@@ -1104,9 +1069,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 __attribute__((always_inline)) INLINE static void hydro_end_force(
     struct part *restrict p, const struct cosmology *cosmo) {
 
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
-
   p->force.h_dt *= p->h * hydro_dimension_inv;
 }
 
@@ -1131,9 +1093,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-
-  /* Never reset wind particle properties */
-  if (p->feedback_data.decoupling_delay_time > 0.f) return;
   
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
