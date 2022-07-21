@@ -190,7 +190,7 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Limit change in smoothing length */
   const float dt_h_change =
-      (p->force.h_dt != 0.0f && p->feedback_data.decoupling_delay_time == 0.f)
+      (p->force.h_dt != 0.0f)
           ? fabsf(e->hydro_properties->log_max_h_change * p->h / p->force.h_dt)
           : FLT_MAX;
 

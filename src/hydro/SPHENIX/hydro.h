@@ -964,6 +964,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
     struct part *restrict p) {
 
+  /* We reset manually on decoupling */
+  if (p->feedback_data.decoupling_delay_time > 0.f) return;
+
   /* Reset the acceleration. */
   p->a_hydro[0] = 0.0f;
   p->a_hydro[1] = 0.0f;

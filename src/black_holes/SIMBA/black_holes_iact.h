@@ -999,7 +999,11 @@ runner_iact_nonsym_bh_gas_feedback(
     pj->feedback_data.number_of_times_decoupled += 1000;
     
     /* Immediately set hydro accelerations to zero */
-    hydro_reset_acceleration(pj);
+    //hydro_reset_acceleration(pj);
+    /* Reset the acceleration. */
+    pj->a_hydro[0] = 0.0f;
+    pj->a_hydro[1] = 0.0f;
+    pj->a_hydro[2] = 0.0f;
 
     /* Update the signal velocity of the particle based on the velocity kick. */
     hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, bi->v_kick);
