@@ -16,13 +16,13 @@ if [ ! -f 'stromgrenSphere-3D.hdf5' ]; then
 fi
 
 # Run SWIFT with RT
-../../swift \
+../../../swift \
     --hydro --threads=4 --stars --external-gravity \
     --feedback --radiation \
     stromgrenSphere-3D-singlebin.yml 2>&1 | tee output.log
 
 # option with mpi
-# mpirun -np 2 ../../swift_mpi --hydro --threads=14 --stars --external-gravity --feedback --radiation stromgrenSphere-3D-singlebin.yml 2>&1 | tee output.log
+# mpirun -np 2 ../../../swift_mpi --hydro --threads=14 --stars --external-gravity --feedback --radiation stromgrenSphere-3D-singlebin.yml 2>&1 | tee output.log
 
 # Plot the Stromgren 3D single frequency checks.
 python3 ./plotStromgren3DsinglebinCheck.py 50
