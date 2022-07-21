@@ -687,8 +687,8 @@ void feedback_props_init(struct feedback_props* fp,
       params, "SIMBAFeedback:SNII_energy_fraction_kinetic");
   fp->SNII_vkick_factor =
       parser_get_param_double(params, "SIMBAFeedback:SNII_vkick_factor");
-  fp->Wind_decoupling_time_factor = parser_get_param_double(
-      params, "SIMBAFeedback:Wind_decoupling_time_factor");
+  fp->wind_decouple_time_factor = parser_get_param_double(
+      params, "SIMBAFeedback:wind_decouple_time_factor");
 
   /* Gather common conversion factors --------------------------------------- */
 
@@ -763,7 +763,7 @@ void feedback_props_init(struct feedback_props* fp,
             fp->SNII_fthermal, fp->SNII_fkinetic);
     message(
         "Feedback wind parameters: v_kick= %f sigma_DM, t_decouple=%f t_hubble",
-        fp->SNII_vkick_factor, fp->Wind_decoupling_time_factor);
+        fp->SNII_vkick_factor, fp->wind_decouple_time_factor);
     message("Feedback energy Z scaling: slope=%f, ampl=%f",
             fp->E_SNII_Z_scaling_power, fp->E_SNII_Z_scaling_amplitude);
     message("Feedback energy scaling (%d) min=%f, max=%f",

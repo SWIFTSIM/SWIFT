@@ -270,8 +270,8 @@ struct black_holes_props {
   /*! Constrains momentum of outflowing wind to p = F * L / c */
   float wind_momentum_flux;
 
-  /*! Factor in front of E/(dE/dt) for timestepping. */
-  float dt_feedback_factor;
+  /*! This times 1/H(z) for decoupling time */
+  float wind_decouple_time_factor;
 
   /* ---- Properties of the repositioning model --- */
 
@@ -709,11 +709,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->wind_momentum_flux =
       parser_get_param_float(params, "SIMBAAGN:wind_momentum_flux");
 
-  bp->dt_feedback_factor =
-      parser_get_opt_param_float(params, "SIMBAAGN:dt_feedback_factor", 1.f);
-  if (bp->dt_feedback_factor > 1.f || bp->dt_feedback_factor < 0.f) {
-    error("SIMBAAGN:dt_feedback_factor must be between 0 and 1");
-  }
+  bp->wind_decouple_time_factor =
+      parser_get_param_float(params, "SIMBAAGN:wind_decouple_time_factor");
 
   /* Reposition parameters --------------------------------- */
 
