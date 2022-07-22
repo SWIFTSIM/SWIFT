@@ -1299,7 +1299,6 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 #ifdef SWIFT_RT_DEBUG_CHECKS
               rt_debugging_check_nr_subcycles(p, e->rt_props);
 #endif
-              rt_reset_part(p);
               rt_reset_part(p, cosmo);
             }
 

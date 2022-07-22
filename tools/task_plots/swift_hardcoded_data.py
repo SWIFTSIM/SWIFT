@@ -82,9 +82,6 @@ TASKTYPES = [
     "rt_ghost2",
     "rt_transport_out",
     "rt_tchem",
-    "rt_advance_cell_time",
-    "rt_sort",
-    "rt_collect_times",
     #  "count",
 ]
 
