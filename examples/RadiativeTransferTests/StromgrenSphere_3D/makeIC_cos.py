@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
@@ -22,10 +21,7 @@
 
 # ---------------------------------------------------------------------
 # Add a single star in the center of a glass distribution
-# The gas is set up with a mixture of hydrogen and helium
-# with 75% hydrogen and 25% helium in mass.
-# This initial condition is comparable to Section 5.3.2 of
-# Pawlik & Schaye 2011 doi:10.1111/j.1365-2966.2010.18032.x.
+# The gas is set up with pure hydrogen gas.
 # ---------------------------------------------------------------------
 
 from swiftsimio import Writer
@@ -341,8 +337,13 @@ if __name__ == "__main__":
         xp[mask, i] -= 1.0
 
     # Set up metadata
+
+    # cosmological parameter to get the coordinate and density
+    a_beg = 0.1 # the scale factor in the initial condition
+
     unitL = unyt.Mpc
-    edgelen = 22 * 1e-3 * unitL  # 22 so we can cut off 1kpc on each edge for image
+    edgelen_physical = 40 * 1e-3 * unitL  # box size in physical unit
+    edgelen = edgelen_physical/a_beg  # box size in comoving unit 
     edgelen = edgelen.to(unitL)
     boxsize = np.array([1.0, 1.0, 1.0]) * edgelen
 
@@ -363,22 +364,22 @@ if __name__ == "__main__":
     w.stars.smoothing_length = w.gas.smoothing_length[:1]
 
     # get gas masses
-    XH = 0.75  # hydrogen mass fraction
-    XHe = 0.25  # helium mass fraction
-    nH = 1e-3 * unyt.cm ** (-3)
-    rho_gas = nH * unyt.proton_mass / XH
-    Mtot = rho_gas * edgelen ** 3
+    XH = 1.0  # hydrogen mass fraction
+    XHe = 0.0  # helium mass fraction
+    nH_physical = 1.12e-3 * unyt.cm ** (-3) # hydrogen number density (physical cm^-3)
+    rho_gas = nH_physical * unyt.proton_mass / XH
+    Mtot = rho_gas * edgelen_physical ** 3
     mpart = Mtot / xp.shape[0]
     mpart = mpart.to(cosmo_units["mass"])
     w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * mpart
     w.stars.masses = np.ones(xs.shape[0], dtype=np.float64) * mpart
 
     # get gas internal energy for a given temperature and composition
-    T = 100.0 * unyt.K
+    T = 100 * unyt.K
     XHI, XHII, XHeI, XHeII, XHeIII = get_mass_fractions(T, XH, XHe)
     mu = mean_molecular_weight(XHI, XHII, XHeI, XHeII, XHeIII)
     internal_energy = internal_energy(T, mu)
 
     w.gas.internal_energy = np.ones(xp.shape[0], dtype=np.float64) * internal_energy
 
-    w.write("stromgrenSphere-3D-HHe.hdf5")
+    w.write("stromgrenSphere-3D-cos.hdf5")

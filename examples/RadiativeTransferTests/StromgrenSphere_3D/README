@@ -28,6 +28,12 @@ This directory contains two examples in one:
         `plotStromgren3DMFHHeCheck.py`, comparing the neutral fraction 
         and temperature with published solutions. 
 
+        - `run_singlebin_cos.sh`: single-frequency-bin static fixed 
+        temperature Stromgren Sphere with pure hydrogen with cosmology. 
+        This script will make use of `makeIC_cos.py` and 
+        `plotStromgren3DsinglebincosCheck.py`, plotting the evolution 
+        of ionization front.
+
 
     -   run a propagation test of photons emitted from a single 
         central source in an otherwise uniform box.
