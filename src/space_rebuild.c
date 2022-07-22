@@ -902,7 +902,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_cells_with_particles = 0;
   s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
-  
+
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
@@ -956,11 +956,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Add this cell to the list of non-empty cells */
       s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
       s->nr_local_cells_with_particles++;
-
     }
   }
-      
-  
+
   if (verbose) {
     message("Have %d local top-level cells with particles (total=%d)",
             s->nr_local_cells_with_particles, s->nr_cells);
@@ -984,10 +982,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     for (int k = 0; k < s->nr_cells; k++)
       cell_check_multipole(&s->cells_top[k], s->e->gravity_properties);
 #endif
-  
+
   /* Clean up any stray sort indices in the cell buffer. */
   space_free_buff_sort_indices(s);
-  
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
