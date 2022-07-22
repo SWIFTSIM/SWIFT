@@ -137,6 +137,7 @@ endif
 SIMBA_FEEDBACK_SOURCES =
 if HAVESIMBAFEEDBACK
 SIMBA_FEEDBACK_SOURCES += feedback/SIMBA/feedback.c 
+endif
 
 # source files for GEAR RT
 GEAR_RT_SOURCES =
