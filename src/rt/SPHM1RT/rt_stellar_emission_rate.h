@@ -45,17 +45,10 @@ __attribute__((always_inline)) INLINE static void rt_set_stellar_emission_rate(
     const struct unit_system* internal_units) {
 
   if (rt_props->use_const_emission_rates) {
-    /* The read-in constant stellar emisison rates are in units of L_sol.
-     * But they have been read in assuming they are in cgs. Convert this
-     * only now to proper internal units to avoid float overflows. We only
-     * store the energy that is to be distributed from this spart to its
-     * neighbours in this step in internal units.*/
-    const double solar_luminosity = 3.826e33; /* erg/s */
     const double dt = (age_end - age_beg);
     for (int g = 0; g < RT_NGROUPS; g++) {
-      double emission_rate_internal_units =
-          rt_props->stellar_const_emission_rates[g] * solar_luminosity;
-      sp->rt_data.emission_this_step[g] = emission_rate_internal_units * dt;
+      sp->rt_data.emission_this_step[g] +=
+          rt_props->stellar_const_emission_rates[g] * dt;
     }
   } else {
     error("Unknown stellar emission rate model");

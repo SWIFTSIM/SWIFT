@@ -25,7 +25,6 @@
 # ----------------------------------------------------
 
 import sys
-import os
 import swiftsimio
 import gc
 import unyt
@@ -34,6 +33,7 @@ import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm
 from swiftsimio.visualisation.slice import slice_gas
+import stromgren_plotting_tools as spt
 
 # Parameters users should/may tweak
 
@@ -55,79 +55,9 @@ try:
     snapnr = int(sys.argv[1])
 except IndexError:
     plot_all = True
+    snapnr = -1
 
 mpl.rcParams["text.usetex"] = True
-
-
-def get_snapshot_list(snapshot_basename="output"):
-    """
-    Find the snapshot(s) that are to be plotted 
-    and return their names as list
-    """
-
-    snaplist = []
-
-    if plot_all:
-        dirlist = os.listdir()
-        for f in dirlist:
-            if f.startswith(snapshot_basename) and f.endswith("hdf5"):
-                snaplist.append(f)
-
-        snaplist = sorted(snaplist)
-
-    else:
-        fname = snapshot_basename + "_" + str(snapnr).zfill(4) + ".hdf5"
-        if not os.path.exists(fname):
-            print("Didn't find file", fname)
-            quit(1)
-        snaplist.append(fname)
-
-    if len(snaplist) == 0:
-        print("Didn't find any outputs with basename '", snapshot_basename, "'")
-        quit(1)
-
-    return snaplist
-
-
-def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
-    """
-    Determines the mean molecular weight for given 
-    mass fractions of
-        hydrogen:   XH0
-        H+:         XHp
-        He:         XHe0
-        He+:        XHep
-        He++:       XHepp
-
-    returns:
-        mu: mean molecular weight [in atomic mass units]
-        NOTE: to get the actual mean mass, you still need
-        to multiply it by m_u, as is tradition in the formulae
-    """
-
-    # 1/mu = sum_j X_j / A_j * (1 + E_j)
-    # A_H    = 1, E_H    = 0
-    # A_Hp   = 1, E_Hp   = 1
-    # A_He   = 4, E_He   = 0
-    # A_Hep  = 4, E_Hep  = 1
-    # A_Hepp = 4, E_Hepp = 2
-    one_over_mu = XH0 + 2 * XHp + 0.25 * XHe0 + 0.5 * XHep + 0.75 * XHepp
-
-    return 1.0 / one_over_mu
-
-
-def gas_temperature(u, mu, gamma):
-    """
-    Compute the gas temperature given the specific internal 
-    energy u and the mean molecular weight mu
-    """
-
-    # Using u = 1 / (gamma - 1) * p / rho
-    #   and p = N/V * kT = rho / (mu * m_u) * kT
-
-    T = u * (gamma - 1) * mu * unyt.atomic_mass_unit / unyt.boltzmann_constant
-
-    return T.to("K")
 
 
 def set_colorbar(ax, im):
@@ -149,6 +79,7 @@ def plot_result(filename):
 
     data = swiftsimio.load(filename)
     meta = data.metadata
+    scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
     global imshow_kwargs
     imshow_kwargs["extent"] = [
@@ -162,24 +93,25 @@ def plot_result(filename):
     mass_map = slice_gas(data, project="masses", **slice_kwargs)
     gamma = meta.hydro_scheme["Adiabatic index"][0]
 
-    data.gas.mXHI = data.gas.ion_mass_fractions.HI * data.gas.masses
-    data.gas.mXHII = data.gas.ion_mass_fractions.HII * data.gas.masses
+    imf = spt.get_imf(scheme, data)
+
+    data.gas.mXHI = imf.HI * data.gas.masses
+    data.gas.mXHII = imf.HII * data.gas.masses
     data.gas.mP = data.gas.pressures * data.gas.masses
     data.gas.mrho = data.gas.densities * data.gas.masses
 
-    imf = data.gas.ion_mass_fractions
-    mu = mean_molecular_weight(imf.HI, imf.HII, imf.HeI, imf.HeII, imf.HeIII)
+    mu = spt.mean_molecular_weight(imf.HI, imf.HII, imf.HeI, imf.HeII, imf.HeIII)
     data.gas.mT = (
-        gas_temperature(data.gas.internal_energies, mu, gamma) * data.gas.masses
+        spt.gas_temperature(data.gas.internal_energies, mu, gamma) * data.gas.masses
     )
 
-    mass_weighted_hydrogen_map = slice_gas(data, project="mXHI", **slice_kwargs)
+    mass_weighted_HI_map = slice_gas(data, project="mXHI", **slice_kwargs)
     mass_weighted_pressure_map = slice_gas(data, project="mP", **slice_kwargs)
     mass_weighted_density_map = slice_gas(data, project="mrho", **slice_kwargs)
     mass_weighted_temperature_map = slice_gas(data, project="mT", **slice_kwargs)
 
-    hydrogen_map = mass_weighted_hydrogen_map / mass_map
-    hydrogen_map = hydrogen_map[cutoff:-cutoff, cutoff:-cutoff]
+    HI_map = mass_weighted_HI_map / mass_map
+    HI_map = HI_map[cutoff:-cutoff, cutoff:-cutoff]
 
     pressure_map = mass_weighted_pressure_map / mass_map
     pressure_map = pressure_map[cutoff:-cutoff, cutoff:-cutoff]
@@ -223,21 +155,12 @@ def plot_result(filename):
 
     try:
         im2 = ax2.imshow(
-            hydrogen_map.T,
-            **imshow_kwargs,
-            norm=LogNorm(vmin=1e-3, vmax=1.0),
-            cmap="cividis",
+            HI_map.T, **imshow_kwargs, norm=LogNorm(vmin=1e-3, vmax=1.0), cmap="cividis"
         )
         set_colorbar(ax2, im2)
-        ax2.set_title("Hydrogen Mass Fraction [1]")
+        ax2.set_title("HI Mass Fraction [1]")
     except ValueError:
-        print(
-            filename,
-            "mass fraction wrong? min",
-            data.gas.ion_mass_fractions.HI.min(),
-            "max",
-            data.gas.ion_mass_fractions.HI.max(),
-        )
+        print(filename, "mass fraction wrong? min", imf.HI.min(), "max", imf.HI.max())
         return
 
     try:
@@ -296,9 +219,6 @@ def plot_result(filename):
 
 
 if __name__ == "__main__":
-
-    snaplist = get_snapshot_list(snapshot_base)
-    #  snaplist = snaplist[118:]
-
+    snaplist = spt.get_snapshot_list(snapshot_base, plot_all, snapnr)
     for f in snaplist:
         plot_result(f)
