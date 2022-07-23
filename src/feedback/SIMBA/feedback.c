@@ -209,7 +209,7 @@ INLINE static void compute_SNII_feedback(
         if (rand_kick < prob) number_of_SN_events++;
       }
     } else {
-      delta_u = f_E * E_SNe * N_SNe / ngb_gas_mass;
+      /*delta_u = f_E * E_SNe * N_SNe / ngb_gas_mass;*/
       number_of_SN_events = ngb_gas_N;
     }
 
