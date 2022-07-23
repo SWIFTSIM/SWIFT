@@ -845,6 +845,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
             units_cgs_conversion_factor(us, UNIT_CONV_MASS));
 
   bp->T_K_to_int = T_K_to_int;
+
+  if (engine_rank == 0) {
+    message("Black hole model is SIMBA");
+    message("eta_neighbours is %g", bp->eta_neighbours);
+    message("target_neighbours is %g", bp->target_neighbours);
+  }
 }
 
 /**
