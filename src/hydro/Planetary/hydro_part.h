@@ -79,10 +79,10 @@ struct xpart {
   /*! Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
-  /* Additional data used by the star formation */
+  /*! Additional data used by the star formation */
   struct star_formation_xpart_data sf_data;
 
-  /* Additional data used by the feedback */
+  /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;
 
   /*! Additional data used by the MHD scheme */

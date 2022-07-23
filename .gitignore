@@ -13,6 +13,10 @@ config.sub
 ltmain.sh
 libtool
 build
+swift
+swift_mpi
+fof
+fof_mpi
 LOG
 github_token
 
@@ -25,10 +29,6 @@ doc/latex/
 doc/man/
 doc/Doxyfile
 
-examples/swift
-examples/swift_mpi
-examples/fof
-examples/fof_mpi
 examples/*/*/*.xmf
 examples/*/*/*.dat
 examples/*/*/*.png
