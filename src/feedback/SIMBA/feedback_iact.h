@@ -403,15 +403,7 @@ runner_iact_nonsym_feedback_apply(
       /* Set delay time */
       pj->feedback_data.decoupling_delay_time = fb_props->wind_decouple_time_factor *
             cosmology_get_time_since_big_bang(cosmo, cosmo->a);
-
       pj->feedback_data.number_of_times_decoupled++;
-
-      /* Reset the acceleration. */
-      /*pj->a_hydro[0] = 0.0f;
-      pj->a_hydro[1] = 0.0f;
-      pj->a_hydro[2] = 0.0f;*/
-      /* Reset the time derivatives. */
-      //pj->u_dt = 0.0f;
 
       /* Update the signal velocity of the particle based on the velocity kick */
       hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, v_kick * cosmo->a_inv);

@@ -1042,13 +1042,6 @@ runner_iact_nonsym_bh_gas_feedback(
       }
     }
 
-    /* Reset the acceleration. */
-    pj->a_hydro[0] = 0.0f;
-    pj->a_hydro[1] = 0.0f;
-    pj->a_hydro[2] = 0.0f;
-    /* Reset the time derivatives. */
-    pj->u_dt = 0.0f;
-
     /* Impose maximal viscosity */
     hydro_diffusive_feedback_reset(pj);
     

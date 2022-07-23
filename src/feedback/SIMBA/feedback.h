@@ -47,6 +47,19 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     struct part* p, struct xpart* xp, const struct engine* e,
     const int with_cosmology) {
 
+  if (p->feedback_data.number_of_times_decoupled > 0) {
+    /**
+     * z pid x y z vx vy vz u rho v_sig decoupletime Ndecouple
+     */
+    /*printf("WIND_LOG %g  %lld %g  %g %g %g  %g %g %g  %g %g %g  %g %d",
+           e->cosmology->z,
+           p->id, p->h,
+           p->x[0], p->x[1], p->x[2],
+           p->gpart->v_full[0], p->gpart->v_full[1], p->gpart->v_full[2],
+           p->u, p->rho, p->viscosity.v_sig,
+           p->feedback_data.decoupling_delay_time, p->feedback_data.number_of_times_decoupled);*/
+  }
+
   /* No reason to do this is the decoupling time is zero */
   if (p->feedback_data.decoupling_delay_time > 0.f) {
     const integertime_t ti_step = get_integer_timestep(p->time_bin);
