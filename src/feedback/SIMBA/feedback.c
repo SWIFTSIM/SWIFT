@@ -209,7 +209,9 @@ INLINE static void compute_SNII_feedback(
         if (rand_kick < prob) number_of_SN_events++;
       }
     } else {
-      /*delta_u = f_E * E_SNe * N_SNe / ngb_gas_mass;*/
+      if (feedback_props->SNII_use_all_energy) {
+        delta_u = f_E * E_SNe * N_SNe / ngb_gas_mass;
+      }
       number_of_SN_events = ngb_gas_N;
     }
 
@@ -485,6 +487,9 @@ void feedback_props_init(struct feedback_props* fp,
         phys_const->const_year * 1e9;
   }
 
+  fp->SNII_use_all_energy = 
+      parser_get_opt_param_int(params, "SIMBAFeedback:SNII_use_all_energy", 1);
+      
   /* Read the temperature change to use in stochastic heating */
   fp->SNe_deltaT_desired =
       parser_get_param_float(params, "SIMBAFeedback:SNII_delta_T_K");

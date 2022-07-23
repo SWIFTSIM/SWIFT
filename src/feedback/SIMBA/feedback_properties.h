@@ -261,6 +261,9 @@ struct feedback_props {
   /*! Wind delay time for SNII when using a fixed delay */
   double SNII_wind_delay;
 
+  /*! Use all the energy available in the SNII feedback? */
+  int SNII_use_all_energy;
+  
   /*! Temperature increase induced by SNe feedback */
   float SNe_deltaT_desired;
 
