@@ -877,10 +877,10 @@ void cooling_cool_part(const struct phys_const *phys_const,
     /* Rapid-cooling regime. */
     /* Rennehan */
     if (isinf(u_final)) {
-      error("u_final isinf: delta_u %g u_0 %g u_start %g u_floor %g dt/t_cool %g "
+      error("u_final isinf: pid %lld delta_u %g u_0 %g u_start %g u_floor %g dt/t_cool %g "
             "LambdaNet_cgs %g u_final %g hydro_du_dt %g dt_therm %g n_H_cgs %g "
             "dt_cgs %g logZZsol %g XH %g",
-            delta_u, u_0, u_start, u_floor, dt_over_t_cool,
+            p->id, delta_u, u_0, u_start, u_floor, dt_over_t_cool,
             LambdaNet_cgs, u_final, hydro_du_dt, n_H_cgs,
             dt_cgs, logZZsol, XH);
     }
