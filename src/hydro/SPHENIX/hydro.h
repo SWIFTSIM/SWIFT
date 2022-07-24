@@ -395,6 +395,12 @@ hydro_set_drifted_physical_internal_energy(struct part *p,
   p->force.soundspeed = soundspeed;
   p->force.pressure = pressure_including_floor;
 
+  /* Rennehan */
+  if (isinf(soundspeed)) {
+    error("Infinite soundspeed: p->rho %g p->u %g pressure %g",
+          p->rho, p->u, pressure);
+  }
+
   p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
 
@@ -417,6 +423,12 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
 
   /* Sound speed */
   const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Rennehan */
+  if (isinf(soundspeed)) {
+    error("Infinite soundspeed: p->rho %g p->u %g",
+          p->rho, p->u);
+  }
 
   /* Update the signal velocity */
   p->viscosity.v_sig =
@@ -471,6 +483,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->viscosity.v_sig);
 
+  /* Rennehan */
   if (dt_cfl == 0.f) {
     message("p->h %g p->viscosity.v_sig %g", p->h, p->viscosity.v_sig);
   }
@@ -729,6 +742,12 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
 __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *restrict p) {
 
+  /* Rennehan */
+  if (isinf(p->force.soundspeed)) {
+    error("Infinite soundspeed: p->rho %g p->u %g",
+          p->rho, p->u);
+  }
+
   p->viscosity.v_sig = 2.f * p->force.soundspeed;
   p->force.alpha_visc_max_ngb = p->viscosity.alpha;
 }
@@ -982,6 +1001,12 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 
+  /* Rennehan */
+  if (isinf(soundspeed)) {
+    error("Infinite soundspeed: p->rho %g p->u %g pressure %g",
+          p->rho, p->u, pressure);
+  }
+
   /* Update the signal velocity, if we need to. */
   p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
@@ -1054,6 +1079,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
 
+  /* Rennehan */
+  if (isinf(soundspeed)) {
+    error("Infinite soundspeed: p->rho %g p->u %g pressure %g",
+          p->rho, p->u, pressure);
+  }
+  
   /* Update signal velocity if we need to */
   p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
