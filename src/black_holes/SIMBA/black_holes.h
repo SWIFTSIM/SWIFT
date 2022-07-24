@@ -627,7 +627,13 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   /* Limit to Eddington_rate, as well as the Eddington rate for a specified, custom Msun BH */
   const double Eddington_rate_custom_mass = 
       Eddington_rate * (props->bondi_rate_limiting_bh_mass / BH_mass);
-  Bondi_rate = min3(Bondi_rate, Eddington_rate, Eddington_rate_custom_mass);
+
+  /* Rennehan */
+  message("Eddington_rate=%g props->bondi_rate_limiting_bh_mass=%g BH_mass=%g "
+          "Eddington_rate_custom_mass=%g",
+          Eddington_rate, props->bondi_rate_limiting_bh_mass, BH_mass,
+          Eddington_rate_custom_mass);
+  accr_rate = min3(accr_rate, Eddington_rate, Eddington_rate_custom_mass);
 
   /* Let's compute the accretion rate from the torque limiter */
   float torque_accr_rate = 0.f;
@@ -771,14 +777,16 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
           " %g %g %g %g %g "
           " %2.10f %2.10f %2.10f "
           " %2.7f %2.7f %2.7f "
-          " %g %g %g  %g %g %g",
+          " %g %g %g  %g %g %g"
+          " %g",
           cosmo->a, bp->id,
           bp->mass, bp->subgrid_mass, disk_mass, bp->accretion_rate, Bondi_rate, torque_accr_rate, dt,
           bp->rho_gas * cosmo->a3_inv, bp->hot_gas_internal_energy, 0.f /*SFR*/, (bp->hot_gas_mass + bp->cold_gas_mass), 
           bp->hot_gas_mass, bp->stellar_mass, 0.f /*Mgas,bulge*/, bp->stellar_bulge_mass, r0,
           bp->x[0], bp->x[1], bp->x[2], bp->v[0], bp->v[1], bp->v[2],
           bp->angular_momentum_gas[0], bp->angular_momentum_gas[1], bp->angular_momentum_gas[2],
-          bp->specific_angular_momentum_stars[0], bp->specific_angular_momentum_stars[1], bp->specific_angular_momentum_stars[2]);
+          bp->specific_angular_momentum_stars[0], bp->specific_angular_momentum_stars[1], bp->specific_angular_momentum_stars[2],
+          bp->eddington_fraction);
 
 }
 
