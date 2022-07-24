@@ -877,7 +877,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
     /* Rapid-cooling regime. */
     /* Rennehan */
     if (isinf(u_final)) {
-      error("u_final isinf: delta_u %g u_0 %g dt/t_cool %d",
+      error("u_final isinf: delta_u %g u_0 %g dt/t_cool %g",
             delta_u, u_0, dt_over_t_cool);
     }
 
