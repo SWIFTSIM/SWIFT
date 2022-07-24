@@ -881,7 +881,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
             "LambdaNet_cgs %g u_final %g hydro_du_dt %g dt_therm %g n_H_cgs %g "
             "dt_cgs %g logZZsol %g XH %g",
             p->id, delta_u, u_0, u_start, u_floor, dt_over_t_cool,
-            LambdaNet_cgs, u_final, hydro_du_dt, n_H_cgs,
+            LambdaNet_cgs, u_final, hydro_du_dt, dt_therm, n_H_cgs,
             dt_cgs, logZZsol, XH);
     }
 
