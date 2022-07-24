@@ -875,6 +875,11 @@ void cooling_cool_part(const struct phys_const *phys_const,
       (dt_over_t_cool >= cooling->rapid_cooling_threshold)) {
 
     /* Rapid-cooling regime. */
+    /* Rennehan */
+    if (isinf(u_final)) {
+      error("u_final isinf: delta_u %g u_0 %g dt/t_cool %d",
+            delta_u, u_0, dt_over_t_cool);
+    }
 
     /* Update the particle's u and du/dt */
     hydro_set_physical_internal_energy(p, xp, cosmo, u_final);
@@ -1408,6 +1413,12 @@ void cooling_Hydrogen_reionization(const struct cooling_function_data *cooling,
     if (star_formation_get_SFR(p, xp) == 0.f) {
       const float old_u = hydro_get_physical_internal_energy(p, xp, cosmo);
       const float new_u = old_u + extra_heat;
+
+      /* Rennehan */
+      if (isinf(new_u)) {
+        error("new_u isinf: old_u %g extra_heat %g",
+              old_u, extra_heat);
+      }
 
       hydro_set_physical_internal_energy(p, xp, cosmo, new_u);
       hydro_set_drifted_physical_internal_energy(p, cosmo, new_u);
