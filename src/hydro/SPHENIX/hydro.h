@@ -472,7 +472,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
                        (cosmo->a_factor_sound_speed * p->viscosity.v_sig);
 
   if (dt_cfl == 0.f) {
-    message("p->h %g p->viscosity.v_sig %g", p->h p->viscosity.v_sig);
+    message("p->h %g p->viscosity.v_sig %g", p->h, p->viscosity.v_sig);
   }
 
   return dt_cfl;
