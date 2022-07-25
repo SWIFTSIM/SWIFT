@@ -398,11 +398,6 @@ runner_iact_nonsym_feedback_apply(
   /* Convert this to a specific thermal energy */
   const double u_new_enrich = new_thermal_energy * new_mass_inv;
 
-  /* Rennehan */
-  if (isinf(u_new_enrich)) {
-    error("u_new_enrich isinf");
-  }
-
   /* Do the energy injection. */
   hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new_enrich);
   hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new_enrich);
@@ -433,12 +428,6 @@ runner_iact_nonsym_feedback_apply(
       const float delta_u = si->feedback_data.to_distribute.SNII_delta_u;
       const double u_new =
           u_init + delta_u * (float)N_of_SNII_energy_inj_received_by_gas;
-
-      /* Rennehan */
-      if (isinf(u_new)) {
-        error("u_new isinf: delta_u %g u_init %g N_SNII %d",
-              delta_u, u_init, N_of_SNII_energy_inj_received_by_gas);
-      }
 
       /* Inject energy into the particle */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
