@@ -986,7 +986,9 @@ runner_iact_nonsym_bh_gas_feedback(
       bi->angular_momentum_gas[1] * bi->angular_momentum_gas[1] + 
       bi->angular_momentum_gas[2] * bi->angular_momentum_gas[2]);
 
+#ifdef SWIFT_DEBUG_CHECKS
     const float pj_vel_norm = sqrtf(pj->v[0] * pj->v[0] + pj->v[1] * pj->v[1] + pj->v[2] * pj->v[2]);
+#endif
 
     /* TODO: random_uniform() won't work here?? */
     /*const float dirsign = (random_uniform(-1.0, 1.0) > 0. ? 1.f : -1.f);*/
