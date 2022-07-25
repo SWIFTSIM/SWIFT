@@ -848,6 +848,7 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     message("Black hole model is SIMBA");
     message("eta_neighbours is %g", bp->eta_neighbours);
     message("target_neighbours is %g", bp->target_neighbours);
+    message("delta_neighbours is %g", bp->delta_neighbours);
   }
 }
 

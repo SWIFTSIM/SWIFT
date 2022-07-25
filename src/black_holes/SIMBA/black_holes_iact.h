@@ -835,7 +835,9 @@ runner_iact_nonsym_bh_bh_swallow(const float r2, const float dx[3],
           (bj->merger_data.swallow_mass == bi->subgrid_mass &&
            bj->merger_data.swallow_id < bi->id)) {
 
+#ifdef SWIFT_DEBUG_CHECKS
         message("BH %lld wants to swallow BH particle %lld", bi->id, bj->id);
+#endif
 
         bj->merger_data.swallow_id = bi->id;
         bj->merger_data.swallow_mass = bi->subgrid_mass;
@@ -965,8 +967,6 @@ runner_iact_nonsym_bh_gas_feedback(
 
         /* Update the signal velocity of the particle based on the velocity kick. */
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
-        message("BH_XRAY_KICK: dv_phys(km/s)=%g",
-                dv_phys / bh_props->kms_to_internal);
       }
 
       const double u_new = u_init + du_xray_phys;
@@ -999,8 +999,10 @@ runner_iact_nonsym_bh_gas_feedback(
     pj->v[1] += prefactor * bi->angular_momentum_gas[1];
     pj->v[2] += prefactor * bi->angular_momentum_gas[2];
 
+#ifdef SWIFT_DEBUG_CHECKS
     message("BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s, v_kick/v_part=%g",
        bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
+#endif
 
     /* Set delay time */
     pj->feedback_data.decoupling_delay_time = 
@@ -1013,8 +1015,10 @@ runner_iact_nonsym_bh_gas_feedback(
 
     /* If we have a jet, we heat! */
     if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
+#ifdef SWIFT_DEBUG_CHECKS
       message("BH_KICK_JET: bid=%lld kicking pid=%lld at v_kick=%g km/s, v_kick/v_part=%g",
         bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
+#endif
 
       float new_Tj = 0.f;
       /* Use the halo Tvir? */
@@ -1032,8 +1036,10 @@ runner_iact_nonsym_bh_gas_feedback(
       /* Treat the jet temperature as an upper limit, in case v_kick > v_jet */
       if (new_Tj > bh_props->jet_temperature) new_Tj = bh_props->jet_temperature;
 
+#ifdef SWIFT_DEBUG_CHECKS
       message("BH_KICK_JET_HEAT: bid=%lld heating pid=%lld to T=%g K",
         bi->id, pj->id, new_Tj);
+#endif
 
       /* Compute new energy per unit mass of this particle */
       const double u_init = hydro_get_physical_internal_energy(pj, xpj, cosmo);

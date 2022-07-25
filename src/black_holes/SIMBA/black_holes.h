@@ -628,11 +628,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double Eddington_rate_custom_mass = 
       Eddington_rate * (props->bondi_rate_limiting_bh_mass / BH_mass);
 
-  /* Rennehan */
-  message("Eddington_rate=%g props->bondi_rate_limiting_bh_mass=%g BH_mass=%g "
-          "Eddington_rate_custom_mass=%g",
-          Eddington_rate, props->bondi_rate_limiting_bh_mass, BH_mass,
-          Eddington_rate_custom_mass);
   accr_rate = min3(accr_rate, Eddington_rate, Eddington_rate_custom_mass);
 
   /* Let's compute the accretion rate from the torque limiter */
