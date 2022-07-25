@@ -180,8 +180,18 @@ runner_iact_nonsym_bh_gas_density(
   /* Account for hot and cold gas surrounding the SMBH */
   const float Tj = uj * cosmo->a_factor_internal_energy /
                        bh_props->temp_to_u_factor;
+  int is_near_entropy_floor = 0;
+  /* Check whether we are close to the entropy floor. If we are, we
+   * classify the gas as cold regardless of temperature */
+  const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
+                      bh_props->temp_to_u_factor;
+  const float u = hydro_get_drifted_comoving_internal_energy(pj);
+  if (u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
+      u > bh_props->fixed_u_for_soundspeed) {
+    is_near_entropy_floor = 1;
+  }
 
-  if (Tj > bh_props->environment_temperature_cut) {
+  if (Tj > bh_props->environment_temperature_cut && !is_near_entropy_floor) {
     bi->hot_gas_mass += mj;
     bi->hot_gas_internal_energy += mj * uj; /* Not kernel weighted */
   } else {
