@@ -194,7 +194,9 @@ def check_hydro_sanity(snapdata, rundata):
                 print("- MPI run: skipping hydro sanity interaction call count checks")
                 warning_printed = True
         else:
-            fishy = gas.RTCallsIactTransportInteraction < gas.RTCallsIactGradientInteraction
+            fishy = (
+                gas.RTCallsIactTransportInteraction < gas.RTCallsIactGradientInteraction
+            )
             check = fishy.any()
         if check:
             print("- checking hydro sanity pt2.5; snapshot", snap.snapnr)

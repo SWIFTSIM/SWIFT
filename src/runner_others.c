@@ -1056,8 +1056,8 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
           ti_current_subcycle + 1, p->rt_time_data.time_bin);
       const integertime_t ti_end = ti_begin + ti_step;
 
-      const double dt = rt_part_dt(ti_begin, ti_end, e->time_base,
-                                   with_cosmology, cosmo);
+      const double dt =
+          rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
 #ifdef SWIFT_DEBUG_CHECKS
       if (ti_begin != ti_current_subcycle)
         error(
