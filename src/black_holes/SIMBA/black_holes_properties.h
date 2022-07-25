@@ -556,14 +556,12 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->with_fixed_T_near_EoS =
       parser_get_param_int(params, "SIMBAAGN:with_fixed_T_near_EoS");
-  if (bp->with_fixed_T_near_EoS) {
-    bp->fixed_T_above_EoS_factor =
-        exp10(parser_get_param_float(params, "SIMBAAGN:fixed_T_above_EoS_dex"));
-    bp->fixed_u_for_soundspeed =
-        parser_get_param_float(params, "SIMBAAGN:fixed_T_near_EoS_K") /
-        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-    bp->fixed_u_for_soundspeed *= bp->temp_to_u_factor;
-  }
+  bp->fixed_T_above_EoS_factor =
+      exp10(parser_get_param_float(params, "SIMBAAGN:fixed_T_above_EoS_dex"));
+  bp->fixed_u_for_soundspeed =
+      parser_get_param_float(params, "SIMBAAGN:fixed_T_near_EoS_K") /
+      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  bp->fixed_u_for_soundspeed *= bp->temp_to_u_factor;
 
   /* Feedback parameters ---------------------------------- */
 
