@@ -2051,8 +2051,8 @@ void partition_initial_partition(struct partition *initial_partition,
       }
 
       /* Share the zoom_samplecells around all the nodes. */
-      res =
-          MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+      int res =
+        MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
       if (res != MPI_SUCCESS)
         mpi_error(res, "Failed to bcast the partition sample cells.");
 
@@ -2075,6 +2075,10 @@ void partition_initial_partition(struct partition *initial_partition,
       if (res != MPI_SUCCESS)
         mpi_error(res, "Failed to bcast the partition sample cells.");
     }
+    
+    /* And apply to our cells */
+    split_vector(s, s->cdim, nr_nodes, samplecells, 0);
+    free(samplecells);
 #else
 
     /* Vectorised selection, guaranteed to work for samples less than the
