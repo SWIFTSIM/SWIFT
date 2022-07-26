@@ -483,7 +483,7 @@ runner_iact_nonsym_feedback_apply(
             "v_kick=%g km/s",
             cosmo->z, si->id, pj->id, si->f_E, 
             si->feedback_data.dm_vel_disp_1d * cosmo->a_inv / fb_props->kms_to_internal,
-            pj->feedback_data.decoupling_delay_time, v_kick * cosmo->a_inv / fb_props->kms_to_internal);
+            pj->feedback_data.decoupling_delay_time, v_kick_abs / fb_props->kms_to_internal);
 
         } else {
 
