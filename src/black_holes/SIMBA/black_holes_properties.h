@@ -129,14 +129,11 @@ struct black_holes_props {
   /*! Minimum gas particle mass in nibbling mode */
   float min_gas_mass_for_nibbling;
 
-  /*! Switch to calculate the sound speed with a fixed T near the EoS */
-  int with_fixed_T_near_EoS;
-
   /*! Factor above EoS below which fixed T applies for sound speed */
   float fixed_T_above_EoS_factor;
 
   /*! Fixed T (expressed as internal energy) for sound speed near EoS */
-  float fixed_u_for_soundspeed;
+  float fixed_T_near_EoS_K;
 
   /*! Where do we distinguish between hot gas for Bondi? */
   float environment_temperature_cut;
@@ -554,14 +551,11 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     error("It is impossible to use SIMBA without nibbling.");
   }
 
-  bp->with_fixed_T_near_EoS =
-      parser_get_param_int(params, "SIMBAAGN:with_fixed_T_near_EoS");
   bp->fixed_T_above_EoS_factor =
       exp10(parser_get_param_float(params, "SIMBAAGN:fixed_T_above_EoS_dex"));
-  bp->fixed_u_for_soundspeed =
+  bp->fixed_T_near_EoS_K =
       parser_get_param_float(params, "SIMBAAGN:fixed_T_near_EoS_K") /
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-  bp->fixed_u_for_soundspeed *= bp->temp_to_u_factor;
 
   /* Feedback parameters ---------------------------------- */
 

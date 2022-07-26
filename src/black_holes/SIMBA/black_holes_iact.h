@@ -149,20 +149,7 @@ runner_iact_nonsym_bh_gas_density(
   bi->ngb_mass += mj;
 
   /* Contribution to the smoothed sound speed */
-  float cj = hydro_get_comoving_soundspeed(pj);
-  if (bh_props->with_fixed_T_near_EoS) {
-
-    /* Check whether we are close to the entropy floor. If we are, we
-     * re-calculate the sound speed using the fixed internal energy */
-    const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
-                        bh_props->temp_to_u_factor;
-    const float u = hydro_get_drifted_comoving_internal_energy(pj);
-    if (u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
-        u > bh_props->fixed_u_for_soundspeed) {
-      cj = gas_soundspeed_from_internal_energy(
-          pj->rho, bh_props->fixed_u_for_soundspeed);
-    }
-  }
+  const float cj = hydro_get_comoving_soundspeed(pj);
   bi->sound_speed_gas += mj * wi * cj;
 
   /* Neighbour internal energy */
@@ -180,18 +167,17 @@ runner_iact_nonsym_bh_gas_density(
   /* Account for hot and cold gas surrounding the SMBH */
   const float Tj = uj * cosmo->a_factor_internal_energy /
                        bh_props->temp_to_u_factor;
-  int is_near_entropy_floor = 0;
+  int is_hot_gas = 0;
   /* Check whether we are close to the entropy floor. If we are, we
    * classify the gas as cold regardless of temperature */
-  const float u_EoS = entropy_floor_temperature(pj, cosmo, floor_props) *
-                      bh_props->temp_to_u_factor;
-  const float u = hydro_get_drifted_comoving_internal_energy(pj);
-  if (u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
-      u > bh_props->fixed_u_for_soundspeed) {
-    is_near_entropy_floor = 1;
+  if (Tj > bh_props->environment_temperature_cut) {
+    const float T_EoS = entropy_floor_temperature(pj, cosmo, floor_props);
+    if (Tj > T_EoS * bh_props->fixed_T_above_EoS_factor) {
+      is_hot_gas = 1;
+    }
   }
 
-  if (Tj > bh_props->environment_temperature_cut && !is_near_entropy_floor) {
+  if (is_hot_gas) {
     bi->hot_gas_mass += mj;
     bi->hot_gas_internal_energy += mj * uj; /* Not kernel weighted */
   } else {
