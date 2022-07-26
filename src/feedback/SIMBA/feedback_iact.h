@@ -501,14 +501,12 @@ runner_iact_nonsym_feedback_apply(
       /* Synchronize the particle on the timeline */
       timestep_sync_part(pj);
 
-#ifdef SWIFT_DEBUG_CHECKS
       message(
           "V_KICK: z=%g  sp->id=%lld  pj->id=%lld f_E=%g  sigDM=%g km/s  tdelay=%g  "
           "v_kick=%g km/s",
           cosmo->z, si->id, pj->id, si->f_E, 
           si->feedback_data.dm_vel_disp_1d * cosmo->a_inv / fb_props->kms_to_internal,
           pj->feedback_data.decoupling_delay_time, v_kick * cosmo->a_inv / fb_props->kms_to_internal);
-#endif
 
     }
   }
