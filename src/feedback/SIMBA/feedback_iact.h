@@ -468,9 +468,9 @@ runner_iact_nonsym_feedback_apply(
 
       /* Direction of kick: a x v */
       const double dir[3] = {
-          pj->gpart->a_grav[1] * pj->v[2] - pj->gpart->a_grav[2] * pj->v[1],
-          pj->gpart->a_grav[2] * pj->v[0] - pj->gpart->a_grav[0] * pj->v[2],
-          pj->gpart->a_grav[0] * pj->v[1] - pj->gpart->a_grav[1] * pj->v[0]
+          pj->gpart->a_grav[1] * pj->gpart->v_full[2] - pj->gpart->a_grav[2] * pj->gpart->v_full[1],
+          pj->gpart->a_grav[2] * pj->gpart->v_full[0] - pj->gpart->a_grav[0] * pj->gpart->v_full[2],
+          pj->gpart->a_grav[0] * pj->gpart->v_full[1] - pj->gpart->a_grav[1] * pj->gpart->v_full[0]
       };
       const double norm = sqrtf(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
 
@@ -480,9 +480,9 @@ runner_iact_nonsym_feedback_apply(
       const int dirsign = rand_dir > 0.5 ? 1 : -1;
       const double prefactor = v_kick * dirsign / norm;
 
-      pj->v[0] += prefactor * dir[0];
-      pj->v[1] += prefactor * dir[1];
-      pj->v[2] += prefactor * dir[2];
+      xpj->v_full[0] += prefactor * dir[0];
+      xpj->v_full[1] += prefactor * dir[1];
+      xpj->v_full[2] += prefactor * dir[2];
 
       /* Impose maximal viscosity */
       hydro_diffusive_feedback_reset(pj);
