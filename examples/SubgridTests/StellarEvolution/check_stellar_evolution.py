@@ -1,6 +1,22 @@
-import matplotlib
+###############################################################################
+# This file is part of SWIFT.
+# Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+##############################################################################
 
-matplotlib.use("Agg")
 from pylab import *
 import h5py
 import os.path
@@ -13,28 +29,6 @@ n_snapshots = (
     int(newest_snap_name.replace("stellar_evolution_", "").replace(".hdf5", "")) + 1
 )
 n_elements = 9
-
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 9,
-    "legend.fontsize": 9,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (3.15, 3.15),
-    "figure.subplot.left": 0.3,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.18,
-    "figure.subplot.top": 0.92,
-    "figure.subplot.wspace": 0.21,
-    "figure.subplot.hspace": 0.19,
-    "lines.markersize": 6,
-    "lines.linewidth": 2.0,
-}
-
-rcParams.update(params)
 
 # Read the simulation data
 sim = h5py.File("stellar_evolution_0000.hdf5", "r")
@@ -94,16 +88,16 @@ for i in range(n_snapshots):
     sim = h5py.File("stellar_evolution_%04d.hdf5" % i, "r")
     print("reading snapshot " + str(i))
     abundances[:, :, i] = sim["/PartType0/ElementMassFractions"]
-    metallicity[:, i] = sim["/PartType0/Metallicities"]
+    metallicity[:, i] = sim["/PartType0/MetalMassFractions"]
     masses[:, i] = sim["/PartType0/Masses"]
     star_masses[:, i] = sim["/PartType4/Masses"]
-    mass_from_AGB[:, i] = sim["/PartType0/TotalMassFromAGB"]
-    metal_mass_frac_from_AGB[:, i] = sim["/PartType0/MetalMassFracFromAGB"]
-    mass_from_SNII[:, i] = sim["/PartType0/TotalMassFromSNII"]
-    metal_mass_frac_from_SNII[:, i] = sim["/PartType0/MetalMassFracFromSNII"]
-    mass_from_SNIa[:, i] = sim["/PartType0/TotalMassFromSNIa"]
-    metal_mass_frac_from_SNIa[:, i] = sim["/PartType0/MetalMassFracFromSNIa"]
-    iron_mass_frac_from_SNIa[:, i] = sim["/PartType0/IronMassFracFromSNIa"]
+    mass_from_AGB[:, i] = sim["/PartType0/MassesFromAGB"]
+    metal_mass_frac_from_AGB[:, i] = sim["/PartType0/MetalMassFractionsFromAGB"]
+    mass_from_SNII[:, i] = sim["/PartType0/MassesFromSNII"]
+    metal_mass_frac_from_SNII[:, i] = sim["/PartType0/MetalMassFractionsFromSNII"]
+    mass_from_SNIa[:, i] = sim["/PartType0/MassesFromSNIa"]
+    metal_mass_frac_from_SNIa[:, i] = sim["/PartType0/MetalMassFractionsFromSNIa"]
+    iron_mass_frac_from_SNIa[:, i] = sim["/PartType0/IronMassFractionsFromSNIa"]
     internal_energy[:, i] = sim["/PartType0/InternalEnergies"]
     velocity_parts[:, :, i] = sim["/PartType0/Velocities"]
     time[i] = sim["/Header"].attrs["Time"][0]
