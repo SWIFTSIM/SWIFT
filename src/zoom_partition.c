@@ -31,6 +31,7 @@
 #include "space.h"
 #include "zoom_region.h"
 
+/* Standard includes */
 #include <float.h>
 #include <math.h>
 
@@ -255,7 +256,7 @@ void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
         if (ii == 0 && jj == 0) {
           /* Handle the central cells. */
           s->cells_top[cid++].nodeID = 0;
-          continue 
+          continue;
         }
         else if (ii >= 0) {
           phi = asin(jj / r) + (M_pi / 2);
