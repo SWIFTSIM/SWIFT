@@ -194,26 +194,6 @@ void pick_vector_zoom(struct space *s, int nregions, int *samplecells) {
       }
     }
   }
-
-  step = (s->cdim[0] * s->cdim[1] * s->cdim[2]) / nregions;
-  n = 0;
-  l = 0;
-
-  /* Loop over natural grid */
-  for (int i = 0; i < s->cdim[0]; i++) {
-    for (int j = 0; j < s->cdim[1]; j++) {
-      for (int k = 0; k < s->cdim[2]; k++) {
-        if (n == 0 && l < nregions) {
-          samplecells[m++] = i;
-          samplecells[m++] = j;
-          samplecells[m++] = k;
-          l++;
-        }
-        n++;
-        if (n == step) n = 0;
-      }
-    }
-  }
 }
 #endif
 #endif

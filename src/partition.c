@@ -62,6 +62,7 @@
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
+#include "zoom_partition.h"
 #include "zoom_region.h"
 
 /* Simple descriptions of initial partition types for reports. */
@@ -2034,6 +2035,49 @@ void partition_initial_partition(struct partition *initial_partition,
   } else if (initial_partition->type == INITPART_VECTORIZE) {
 
 #if defined(WITH_MPI)
+#ifdef WITH_ZOOM_REGION
+
+    /* Do the zoom cells if we are running with them */
+    if (s->with_zoom_region) {
+
+      /* Vectorised selection, guaranteed to work for samples less than the
+     * number of cells, but not very clumpy in the selection of regions. */
+      int *zoom_samplecells = NULL;
+      if ((zoom_samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) ==
+          NULL)
+        error("Failed to allocate zoom_samplecells");
+
+      if (nodeID == 0) {
+        pick_vector_zoom(s, nr_nodes, zoom_samplecells);
+      }
+
+      /* Share the zoom_samplecells around all the nodes. */
+      res =
+          MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+      if (res != MPI_SUCCESS)
+        mpi_error(res, "Failed to bcast the partition sample cells.");
+
+      /* And apply to our zoom cells */
+      split_vector_zoom(s, nr_nodes, zoom_samplecells);
+      free(zoom_samplecells);
+    } else {
+      /* Vectorised selection, guaranteed to work for samples less than the
+       * number of cells, but not very clumpy in the selection of regions. */
+      int *samplecells = NULL;
+      if ((samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) == NULL)
+        error("Failed to allocate samplecells");
+
+      if (nodeID == 0) {
+        pick_vector(s, s->cdim, nr_nodes, samplecells);
+      }
+
+      /* Share the samplecells around all the nodes. */
+      int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
+      if (res != MPI_SUCCESS)
+        mpi_error(res, "Failed to bcast the partition sample cells.");
+    }
+#else
+
     /* Vectorised selection, guaranteed to work for samples less than the
      * number of cells, but not very clumpy in the selection of regions. */
     int *samplecells = NULL;
@@ -2048,41 +2092,7 @@ void partition_initial_partition(struct partition *initial_partition,
     int res = MPI_Bcast(samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS)
       mpi_error(res, "Failed to bcast the partition sample cells.");
-
-#ifdef WITH_ZOOM_REGION
-
-    /* Do the zoom cells if we are running with them */
-    if (s->with_zoom_region) {
-
-      /* With a zoom region we must apply the background offset */
-      split_vector(s, s->cdim, nr_nodes, samplecells,
-                   s->zoom_props->tl_cell_offset);
-      free(samplecells);
-
-      int *zoom_samplecells = NULL;
-      if ((zoom_samplecells = (int *)malloc(sizeof(int) * nr_nodes * 3)) ==
-          NULL)
-        error("Failed to allocate zoom_samplecells");
-
-      if (nodeID == 0) {
-        pick_vector(s, s->zoom_props->cdim, nr_nodes, zoom_samplecells);
-      }
-
-      /* Share the zoom_samplecells around all the nodes. */
-      res =
-          MPI_Bcast(zoom_samplecells, nr_nodes * 3, MPI_INT, 0, MPI_COMM_WORLD);
-      if (res != MPI_SUCCESS)
-        mpi_error(res, "Failed to bcast the partition sample cells.");
-
-      /* And apply to our zoom cells */
-      split_vector(s, s->zoom_props->cdim, nr_nodes, zoom_samplecells, 0);
-      free(zoom_samplecells);
-    } else {
-      /* And apply to our cells */
-      split_vector(s, s->cdim, nr_nodes, samplecells, 0);
-      free(samplecells);
-    }
-#else
+    
     /* And apply to our cells */
     split_vector(s, s->cdim, nr_nodes, samplecells, 0);
     free(samplecells);
