@@ -210,6 +210,18 @@ static INLINE void tracers_after_black_holes_feedback(
   xp->tracers_data.AGN_feedback_energy += delta_energy;
 }
 
+static INLINE void tracers_after_jet_feedback(
+    const struct part *p, struct xpart *xp, const int with_cosmology,
+    const float scale_factor, const double time, const double delta_energy) {
+
+  if (with_cosmology)
+    xp->tracers_data.last_AGN_jet_feedback_scale_factor = scale_factor;
+  else
+    xp->tracers_data.last_AGN_jet_feedback_time = time;
+  xp->tracers_data.hit_by_jet_feedback++;
+  xp->tracers_data.jet_feedback_energy += delta_energy;
+}
+
 /**
  * @brief Split the tracer content of a particle into n pieces
  *
