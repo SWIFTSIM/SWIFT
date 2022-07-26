@@ -261,11 +261,8 @@ struct feedback_props {
   /*! Wind delay time for SNII when using a fixed delay */
   double SNII_wind_delay;
 
-  /*! Use all the energy available in the SNII feedback? */
-  int SNII_use_all_energy;
-  
-  /*! Temperature increase induced by SNe feedback */
-  float SNe_deltaT_desired;
+  /*! Kick velocity in SNII feedback in internal units */
+  float SNII_delta_v;
 
   /*! Energy released by one supernova type II in cgs units */
   double E_SNII_cgs;
@@ -322,12 +319,6 @@ struct feedback_props {
   int stellar_evolution_sampling_rate;
 
   /* ------------ Kinetic feedback properties --------------- */
-
-  /*! Fraction of SNII energy used to heat gas particle */
-  float SNII_fthermal;
-
-  /*! Fraction of SNII energy used to kick gas particle */
-  float SNII_fkinetic;
 
   /*! v_kick = (this factor) * sigma_DM_1D, per SNII event */
   float SNII_vkick_factor;

@@ -29,6 +29,9 @@
  * @brief Feedback fields carried by each hydro particles
  */
 struct feedback_part_data {
+  /* The largest id of the star that wants to kick the gas particle */
+  long long SNII_star_largest_id;
+  
   /*! remaining time left for decoupling */
   float decoupling_delay_time;
 
@@ -118,17 +121,20 @@ struct feedback_spart_data {
       /*! Energy change due to thermal and kinetic energy of ejecta */
       float energy;
 
+      /*! Total kinetic energy to distribute in SNII feedback per time step */
+      float SNII_E_kinetic;
+
       /*! Number of SNII energy injections in kinetic form */
       int SNII_num_of_kinetic_energy_inj;
-
-      /*! Change in energy from SNII feedback energy injection */
-      float SNII_delta_u;
 
     } to_distribute;
   };
 
-   /* Instantiate ray structs for SNII isotropic feedback  */
-  struct ray_data SNII_rays[eagle_SNII_feedback_num_of_rays];
+  /* Instantiate ray structs for SNII kinetic feedback  */
+  struct ray_data SNII_rays_true[eagle_SNII_feedback_num_of_rays];
+  struct ray_data SNII_rays_mirr[eagle_SNII_feedback_num_of_rays];
+  struct ray_data_extra SNII_rays_ext_true[eagle_SNII_feedback_num_of_rays];
+  struct ray_data_extra SNII_rays_ext_mirr[eagle_SNII_feedback_num_of_rays];
 
   /*! Number of dark matter neighbours in the (gas) neighbourhood */
   int dm_ngb_N;

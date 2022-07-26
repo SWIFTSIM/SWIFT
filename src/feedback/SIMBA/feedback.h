@@ -110,7 +110,10 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
  * @param xp The extended data of the particle.
  */
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
-    struct part* p, struct xpart* xp) {}
+    struct part* p, struct xpart* xp) {
+
+  p->feedback_data.SNII_star_largest_id = -1;
+}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
@@ -152,7 +155,12 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   sp->feedback_data.to_collect.ngb_Z = 0.f;
 
   /* Reset all ray structs carried by this star particle */
-  ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
+  ray_init(sp->feedback_data.SNII_rays_true, eagle_SNII_feedback_num_of_rays);
+  ray_init(sp->feedback_data.SNII_rays_mirr, eagle_SNII_feedback_num_of_rays);
+  ray_extra_init(sp->feedback_data.SNII_rays_ext_true,
+                 eagle_SNII_feedback_num_of_rays);
+  ray_extra_init(sp->feedback_data.SNII_rays_ext_mirr,
+                 eagle_SNII_feedback_num_of_rays);
   
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 0;
@@ -196,7 +204,7 @@ INLINE static double feedback_get_enrichment_timestep(
     return cosmology_get_delta_time_from_scale_factors(
         cosmo, (double)sp->last_enrichment_time, cosmo->a);
   } else {
-    return time - sp->last_enrichment_time;
+    return time - (double)sp->last_enrichment_time;
   }
 }
 
@@ -230,7 +238,7 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   sp->feedback_data.to_distribute.energy = 0.f;
 
   /* Zero the SNII feedback energy */
-  sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
+  sp->feedback_data.to_distribute.SNII_E_kinetic = 0.f;
 
   /* Zero the SNII feedback properties */
   sp->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj = 0;
