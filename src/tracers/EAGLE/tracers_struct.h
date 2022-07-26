@@ -47,6 +47,15 @@ struct tracers_xpart_data {
     float last_AGN_injection_time;
   };
 
+  union {
+
+    /* Last scale factor this particle was kicked as part of jet feedback */
+    float last_AGN_jet_feedback_scale_factor;
+
+    /* Last time this particle was kicked as part of jet feedback */
+    float last_AGN_jet_feedback_time;
+  };
+
   /*! Density of the gas before the last AGN feedback event
    * (physical internal units) */
   float density_before_last_AGN_feedback_event;
@@ -66,6 +75,13 @@ struct tracers_xpart_data {
   /*! Total amount of AGN feedback energy received by this particle
    * (physical units) */
   float AGN_feedback_energy;
+
+  /*! Total jet feedback energy received by this particle */
+  float jet_feedback_energy;
+
+  /*! Counts how many times this particle has been kicked as part of
+     jet feedback */
+  char hit_by_jet_feedback;
 
   /*! Has this particle been hit by SNII feedback? */
   char hit_by_SNII_feedback;

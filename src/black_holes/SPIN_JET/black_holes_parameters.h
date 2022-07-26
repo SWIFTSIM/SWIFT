@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2022 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
+ * Copyright (c) 2020 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,21 +16,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_BLACK_HOLES_DEBUG_H
-#define SWIFT_BLACK_HOLES_DEBUG_H
+#ifndef SWIFT_SPIN_JET_BLACK_HOLES_PARAMETERS_H
+#define SWIFT_SPIN_JET_BLACK_HOLES_PARAMETERS_H
 
-/* Config parameters. */
-#include "../config.h"
+/* Configuration file */
+#include "config.h"
 
-/* Import the debug routines of the right black holes definition */
-#if defined(BLACK_HOLES_NONE)
-#include "./black_holes/Default/black_holes_debug.h"
-#elif defined(BLACK_HOLES_EAGLE)
-#include "./black_holes/EAGLE/black_holes_debug.h"
-#elif defined(BLACK_HOLES_SPIN_JET)
-#include "./black_holes/SPIN_JET/black_holes_debug.h"
-#else
-#error "Invalid choice of BH model"
-#endif
+/**
+ * @file EAGLE/black_holes_parameters.h
+ * @brief Parameters of the EAGLE black holes
+ *        model that need to be defined at compile time.
+ *
+ * @note In this branch, these properties are not used anywhere!
+ */
 
-#endif /* SWIFT_BLACK_HOLES_DEBUG_H */
+/*! Maximal distance for merging particles in units of the (spline not Plummer)
+ *  softening length. */
+#define const_max_merging_distance_ratio 3.f
+
+/*! Maximal distance for repositioning particles in units of the (spline not
+ * Plummer) softening length. */
+#define const_max_repositioning_distance_ratio 3.f
+
+#endif /* SWIFT_SPIN_JET_BLACK_HOLES_PARAMETERS_H */

@@ -17,3 +17,4 @@ be use as an empty canvas to be copied to create additional models.
    QuickLymanAlpha/index
    GEAR/index
    Basic/index	     
+   AGNSpinJets/index
