@@ -62,7 +62,6 @@
 #include "space.h"
 #include "threadpool.h"
 #include "tools.h"
-#include "zoom_partition.h"
 #include "zoom_region.h"
 
 /* Simple descriptions of initial partition types for reports. */
