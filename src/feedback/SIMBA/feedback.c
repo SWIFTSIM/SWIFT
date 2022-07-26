@@ -802,8 +802,6 @@ void feedback_props_init(struct feedback_props* fp,
 
   if (engine_rank == 0) {
     message("Feedback model is SIMBA (%s)", energy_fraction);
-    message("Feedback energy fraction thermal=%f, kinetic=%f",
-            fp->SNII_fthermal, fp->SNII_fkinetic);
     message(
         "Feedback wind parameters: v_kick= %f sigma_DM, t_decouple=%f t_hubble",
         fp->SNII_vkick_factor, fp->wind_decouple_time_factor);
