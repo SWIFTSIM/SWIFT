@@ -25,6 +25,7 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "rays.h"
 #include "units.h"
 
 #include <strings.h>
@@ -150,6 +151,9 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   sp->feedback_data.to_collect.ngb_rho = 0.f;
   sp->feedback_data.to_collect.ngb_Z = 0.f;
 
+  /* Reset all ray structs carried by this star particle */
+  ray_init(sp->feedback_data.SNII_rays, eagle_SNII_feedback_num_of_rays);
+  
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 0;
 #endif
@@ -229,7 +233,7 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   sp->feedback_data.to_distribute.SNII_delta_u = 0.f;
 
   /* Zero the SNII feedback properties */
-  sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj = 0;
+  sp->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj = 0;
 
   /* Zero the DM vel. disp. */
   sp->feedback_data.dm_vel_disp_1d = 0.f;
@@ -238,7 +242,6 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   sp->feedback_data.dm_vel_diff2[1] = 0.f;
   sp->feedback_data.dm_vel_diff2[2] = 0.f;
 
-  sp->feedback_data.kick_probability = 0.f;
 }
 
 /**

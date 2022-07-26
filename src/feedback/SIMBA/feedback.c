@@ -215,6 +215,18 @@ INLINE static void compute_SNII_feedback(
       number_of_SN_events = ngb_gas_N;
     }
 
+    /* If we have more heating events than the maximum number of
+     * rays (eagle_feedback_number_of_rays), then we cannot
+     * distribute all of the heating events (since 1 event = 1 ray), so we need
+     * to increase the energy per ray and make the number of events
+     * equal to the number of rays */
+    if (number_of_SN_events > eagle_SNII_feedback_num_of_rays) {
+      const double boost_factor =
+          (double)number_of_SN_events / (double)eagle_SNII_feedback_num_of_rays;
+      delta_u *= boost_factor;
+      number_of_SN_events = eagle_SNII_feedback_num_of_rays;
+    }
+    
     /* Current total f_E for this star */
     double star_f_E = sp->f_E * sp->number_of_SNII_events;
 
@@ -222,11 +234,10 @@ INLINE static void compute_SNII_feedback(
     star_f_E = (star_f_E + f_E) / (sp->number_of_SNII_events + 1.);
 
     /* Store all of this in the star for delivery onto the gas and recording */
-    sp->feedback_data.kick_probability = (float)number_of_SN_events / (float)ngb_gas_N;
     sp->f_E = star_f_E;
     sp->number_of_SNII_events++;
     sp->feedback_data.to_distribute.SNII_delta_u = delta_u;
-    sp->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj =
+    sp->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj =
         number_of_SN_events;
   }
 }
