@@ -32,6 +32,7 @@
 #include "zoom_region.h"
 
 #include <float.h>
+#include <math.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -252,23 +253,39 @@ void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
     }
   }
 
-  /* Loop over natural cells*/
+  /* Calculate the size of a radial slice. */
+  float slice_width = 2 * M_PI / nregions;
+
+  /* Loop over natural cells. Decomp these into radial slices. */
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
-        int select = -1;
-        float rsqmax = FLT_MAX;
-        int m = 0;
-        for (int l = 0; l < nregions; l++) {
-          float dx = samplecells[m++] - i;
-          float dy = samplecells[m++] - j;
-          float dz = samplecells[m++] - k;
-          float rsq = (dx * dx + dy * dy + dz * dz);
-          if (rsq < rsqmax) {
-            rsqmax = rsq;
-            select = l;
-          }
+
+        /* Center cell coordinates. */
+        int ii = i - (s->cdim[0] / 2);
+        int jj = j - (s->cdim[0] / 2);
+
+        /* Calculate the radius of this cell */
+        float r = sqrt(ii * ii + jj * jj);
+
+        /* Calculate the angle, handling all cases. Not using atan2
+         * here since integers allow the central cells to be
+         * easily identified without casting. */
+        float phi;
+        if (ii == 0 && jj == 0) {
+          /* Handle the central cells. */
+          s->cells_top[cid++].nodeID = 0;
+          continue 
         }
+        else if (ii >= 0) {
+          phi = asin(jj / r) + (M_pi / 2);
+        }
+        else {
+          phi = - asin(jj / r) + (3 * M_pi / 2);
+        }
+
+        /* Compute the nodeID. */
+        int select = phi / slice_width;
         s->cells_top[cid++].nodeID = select;
       }
     }
