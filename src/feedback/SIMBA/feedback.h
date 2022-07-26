@@ -264,7 +264,6 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
   sp->feedback_data.dm_vel_diff2[0] = 0.f;
   sp->feedback_data.dm_vel_diff2[1] = 0.f;
   sp->feedback_data.dm_vel_diff2[2] = 0.f;
-  sp->feedback_data.kick_probability = 0.f;
 }
 
 /**
