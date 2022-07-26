@@ -259,10 +259,10 @@ void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
           continue;
         }
         else if (ii >= 0) {
-          phi = asin(jj / r) + (M_pi / 2);
+          phi = asin(jj / r) + (M_PI / 2);
         }
         else {
-          phi = - asin(jj / r) + (3 * M_pi / 2);
+          phi = - asin(jj / r) + (3 * M_PI / 2);
         }
 
         /* Compute the nodeID. */
