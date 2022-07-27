@@ -1049,7 +1049,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
-  
+
   /* Update signal velocity if we need to */
   p->viscosity.v_sig = max(p->viscosity.v_sig, 2.f * soundspeed);
 }
@@ -1093,7 +1093,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     float dt_grav, float dt_hydro, float dt_kick_corr,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-  
+
   /* Integrate the internal energy forward in time */
   const float delta_u = p->u_dt * dt_therm;
 

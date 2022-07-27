@@ -116,10 +116,11 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
 #if COOLING_GRACKLE_MODE >= 1
   gr_float zero = 1.e-20;
 
-  /* primordial chemistry >= 1: Start with everything neutral (as in dark ages) */
+  /* primordial chemistry >= 1: Start with everything neutral (as in dark ages)
+   */
   xp->cooling_data.HI_frac = grackle_data->HydrogenFractionByMass;
   xp->cooling_data.HII_frac = zero;
-  xp->cooling_data.HeI_frac = 1.-grackle_data->HydrogenFractionByMass;
+  xp->cooling_data.HeI_frac = 1. - grackle_data->HydrogenFractionByMass;
   xp->cooling_data.HeII_frac = zero;
   xp->cooling_data.HeIII_frac = zero;
   xp->cooling_data.e_frac = xp->cooling_data.HII_frac +
@@ -141,7 +142,6 @@ void cooling_first_init_part(const struct phys_const* restrict phys_const,
   xp->cooling_data.DII_frac = zero;
   xp->cooling_data.HDI_frac = zero;
 #endif  // MODE >= 3
-
 }
 
 /**
@@ -397,10 +397,10 @@ void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
  * @param xp The #xpart.
  * @param rho The particle density.
  */
-void cooling_copy_to_grackle(grackle_field_data* data, 
-		             const struct cosmology* restrict cosmo,
-		             const struct part* p,
-                             struct xpart* xp, gr_float species_densities[12]) {
+void cooling_copy_to_grackle(grackle_field_data* data,
+                             const struct cosmology* restrict cosmo,
+                             const struct part* p, struct xpart* xp,
+                             gr_float species_densities[12]) {
 
   /* set values */
   /* grid */
@@ -489,8 +489,8 @@ gr_float cooling_grackle_driver(
     const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
     const struct cooling_function_data* restrict cooling,
-    const struct part* restrict p, struct xpart* restrict xp, 
-    double dt, int mode ) {
+    const struct part* restrict p, struct xpart* restrict xp, double dt,
+    int mode) {
 
   /* set current units for conversion to physical quantities */
   code_units units = cooling->units;
@@ -503,8 +503,8 @@ gr_float cooling_grackle_driver(
   cooling_copy_to_grackle(&data, cosmo, p, xp, species_densities);
 
   /* Run Grackle in desired mode */
-  gr_float return_value=0.f;
-  switch(mode) {
+  gr_float return_value = 0.f;
+  switch (mode) {
     case 0:
       /* solve chemistry, advance thermal energy by dt */
       if (solve_chemistry(&units, &data, dt) == 0) {
@@ -562,9 +562,11 @@ gr_float cooling_time(const struct phys_const* restrict phys_const,
                       const struct hydro_props* hydro_properties,
                       const struct cosmology* restrict cosmo,
                       const struct cooling_function_data* restrict cooling,
-                      const struct part* restrict p, struct xpart* restrict xp) {
+                      const struct part* restrict p,
+                      struct xpart* restrict xp) {
 
-  gr_float cooling_time = cooling_grackle_driver(phys_const, us, cosmo, hydro_properties, cooling, p, xp, 0., 1);
+  gr_float cooling_time = cooling_grackle_driver(
+      phys_const, us, cosmo, hydro_properties, cooling, p, xp, 0., 1);
   return cooling_time;
 }
 
@@ -588,7 +590,8 @@ float cooling_get_temperature(
     const struct part* restrict p, const struct xpart* restrict xp) {
 
   struct xpart xp_temp = *xp;  // gets rid of const in declaration
-  float temperature = cooling_grackle_driver(phys_const, us, cosmo, hydro_properties, cooling, p, &xp_temp, 0., 2);
+  float temperature = cooling_grackle_driver(
+      phys_const, us, cosmo, hydro_properties, cooling, p, &xp_temp, 0., 2);
   return temperature;
 }
 
@@ -619,7 +622,7 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
                        const double time) {
 
   /* Nothing to do here? */
-  //message("GRACKLE: z=%g  dt=%g  dt_therm=%g", cosmo->z, dt, dt_therm);
+  // message("GRACKLE: z=%g  dt=%g  dt_therm=%g", cosmo->z, dt, dt_therm);
   if (dt == 0.) return;
 
   /* Current energy */
@@ -632,8 +635,8 @@ void cooling_cool_part(const struct phys_const* restrict phys_const,
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     u_new = u_old;
   } else {
-    u_new = cooling_grackle_driver(phys_const, us, cosmo, hydro_props, cooling, p,
-                               xp, dt_therm, 0);
+    u_new = cooling_grackle_driver(phys_const, us, cosmo, hydro_props, cooling,
+                                   p, xp, dt_therm, 0);
   }
 
   /* We now need to check that we are not going to go below any of the limits */
@@ -765,59 +768,85 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
     error("Error in set_default_chemistry_parameters.");
   }
 
-    // Set parameter values for chemistry & cooling
+  // Set parameter values for chemistry & cooling
 
-    // Flag to activate the grackle machinery:
-    chemistry->use_grackle            = 1;                   // grackle on (duh)
-    // Flag to include radiative cooling and actually update the thermal energy during the
-    // chemistry solver. If off, the chemistry species will still be updated. The most
-    // common reason to set this to off is to iterate the chemistry network to an equilibrium state. Default: 1.
-    chemistry->with_radiative_cooling = 1;                   // cooling on
-    // Flag to control which primordial chemistry network is used (set by Config file)
-    chemistry->primordial_chemistry = COOLING_GRACKLE_MODE;
-    // Flag to enable H2 formation on dust grains, dust cooling, and dust-gas heat transfer follow Omukai (2000). This assumes that the dust to gas ratio scales with the metallicity. Default: 0.
-    chemistry->h2_on_dust             = 0;                   // dust cooling/chemistry on
-    // Flag to enable metal cooling using the Cloudy tables. If enabled, the cooling table to be used must be specified with the grackle_data_file parameter. Default: 0.
-    chemistry->metal_cooling          = 1;                   // metal cooling on
-    // Flag to enable an effective CMB temperature floor. This is implemented by subtracting the value of the cooling rate at TCMB from the total cooling rate. Default: 1.
-    chemistry->cmb_temperature_floor  = 1;
-    // Flag to enable a UV background. If enabled, the cooling table to be used must be specified with the grackle_data_file parameter. Default: 0.
-    chemistry->UVbackground           = 1;                  // UV background on
-    // Path to the data file containing the metal cooling and UV background tables:
-    chemistry->grackle_data_file      = cooling->cloudy_table; // data file
-    // The ratio of specific heats for an ideal gas. A direct calculation for the molecular component is used if primordial_chemistry > 1. Default: 5/3.
-    chemistry->Gamma                  = hydro_gamma;              // our eos set in Config.sh
-    // Flag to control which three-body H2 formation rate is used.
-    chemistry->three_body_rate        = 0;
-    // Flag to enable H2 collision-induced emission cooling from Ripamonti & Abel (2004). Default: 0.
-    chemistry->cie_cooling                      = 0;
-    // Flag to enable H2 cooling attenuation from Ripamonti & Abel (2004). Default: 0
-    chemistry->h2_optical_depth_approximation   = 0;
-    // Flag to enable a spatially uniform heating term approximating photo-electric heating from dust from Tasker & Bryan (2008). Default: 0.
-    chemistry->photoelectric_heating            = 0;         // photo-electric on [but not adjusted to local background, beware!]
-    chemistry->photoelectric_heating_rate       = 8.5e-26;
-    // Flag to enable Compton heating from an X-ray background following Madau & Efstathiou (1999). Default: 0.
-    chemistry->Compton_xray_heating   = 0;
-    // Intensity of a constant Lyman-Werner H2 photo-dissociating radiation field, in units of 10-21 erg s-1 cm-2 Hz-1 sr-1. Default: 0.
-    chemistry->LWbackground_intensity           = 0;
-    // Flag to enable suppression of Lyman-Werner flux due to Lyman-series absorption
-    //    (giving a sawtooth pattern), taken from Haiman & Abel, & Rees (2000). Default: 0.
-    chemistry->LWbackground_sawtooth_suppression = 0;
-    // volumetric heating rates is being provided in the volumetric_heating_rate field of grackle_field_data 
-    chemistry->use_volumetric_heating_rate	= 0;
-    // specific heating rates is being provided in the specific_heating_rate field of grackle_field_data 
-    chemistry->use_specific_heating_rate	= 1;
-    // arrays of ionization and heating rates from radiative transfer solutions are being provided
-    chemistry->use_radiative_transfer		= 0;
-    // must be enabled to couple the passed radiative transfer fields to the chemistry solver
-    chemistry->radiative_transfer_coupled_rate_solver	= 0;
-    // enable intermediate stepping in applying radiative transfer fields to chemistry solver. 
-    chemistry->radiative_transfer_intermediate_step	= 0;
-    // only use hydrogen ionization and heating rates from the radiative transfer solutions.
-    chemistry->radiative_transfer_hydrogen_only	= 0;
-    // Use Rahmati+13 self-shielding; 0=none, 1=HI only, 2=HI+HeI, 3=HI+HeI but set HeII rates to 0
-    chemistry->self_shielding_method	= 0;
-    chemistry->self_shielding_method	= cooling->self_shielding_method;
+  // Flag to activate the grackle machinery:
+  chemistry->use_grackle = 1;  // grackle on (duh)
+  // Flag to include radiative cooling and actually update the thermal energy
+  // during the chemistry solver. If off, the chemistry species will still be
+  // updated. The most common reason to set this to off is to iterate the
+  // chemistry network to an equilibrium state. Default: 1.
+  chemistry->with_radiative_cooling = 1;  // cooling on
+  // Flag to control which primordial chemistry network is used (set by Config
+  // file)
+  chemistry->primordial_chemistry = COOLING_GRACKLE_MODE;
+  // Flag to enable H2 formation on dust grains, dust cooling, and dust-gas heat
+  // transfer follow Omukai (2000). This assumes that the dust to gas ratio
+  // scales with the metallicity. Default: 0.
+  chemistry->h2_on_dust = 0;  // dust cooling/chemistry on
+  // Flag to enable metal cooling using the Cloudy tables. If enabled, the
+  // cooling table to be used must be specified with the grackle_data_file
+  // parameter. Default: 0.
+  chemistry->metal_cooling = 1;  // metal cooling on
+  // Flag to enable an effective CMB temperature floor. This is implemented by
+  // subtracting the value of the cooling rate at TCMB from the total cooling
+  // rate. Default: 1.
+  chemistry->cmb_temperature_floor = 1;
+  // Flag to enable a UV background. If enabled, the cooling table to be used
+  // must be specified with the grackle_data_file parameter. Default: 0.
+  chemistry->UVbackground = 1;  // UV background on
+  // Path to the data file containing the metal cooling and UV background
+  // tables:
+  chemistry->grackle_data_file = cooling->cloudy_table;  // data file
+  // The ratio of specific heats for an ideal gas. A direct calculation for the
+  // molecular component is used if primordial_chemistry > 1. Default: 5/3.
+  chemistry->Gamma = hydro_gamma;  // our eos set in Config.sh
+  // Flag to control which three-body H2 formation rate is used.
+  chemistry->three_body_rate = 0;
+  // Flag to enable H2 collision-induced emission cooling from Ripamonti & Abel
+  // (2004). Default: 0.
+  chemistry->cie_cooling = 0;
+  // Flag to enable H2 cooling attenuation from Ripamonti & Abel (2004).
+  // Default: 0
+  chemistry->h2_optical_depth_approximation = 0;
+  // Flag to enable a spatially uniform heating term approximating
+  // photo-electric heating from dust from Tasker & Bryan (2008). Default: 0.
+  chemistry->photoelectric_heating =
+      0;  // photo-electric on [but not adjusted to local background, beware!]
+  chemistry->photoelectric_heating_rate = 8.5e-26;
+  // Flag to enable Compton heating from an X-ray background following Madau &
+  // Efstathiou (1999). Default: 0.
+  chemistry->Compton_xray_heating = 0;
+  // Intensity of a constant Lyman-Werner H2 photo-dissociating radiation field,
+  // in units of 10-21 erg s-1 cm-2 Hz-1 sr-1. Default: 0.
+  chemistry->LWbackground_intensity = 0;
+  // Flag to enable suppression of Lyman-Werner flux due to Lyman-series
+  // absorption
+  //    (giving a sawtooth pattern), taken from Haiman & Abel, & Rees (2000).
+  //    Default: 0.
+  chemistry->LWbackground_sawtooth_suppression = 0;
+  // volumetric heating rates is being provided in the volumetric_heating_rate
+  // field of grackle_field_data
+  chemistry->use_volumetric_heating_rate = 0;
+  // specific heating rates is being provided in the specific_heating_rate field
+  // of grackle_field_data
+  chemistry->use_specific_heating_rate = 1;
+  // arrays of ionization and heating rates from radiative transfer solutions
+  // are being provided
+  chemistry->use_radiative_transfer = 0;
+  // must be enabled to couple the passed radiative transfer fields to the
+  // chemistry solver
+  chemistry->radiative_transfer_coupled_rate_solver = 0;
+  // enable intermediate stepping in applying radiative transfer fields to
+  // chemistry solver.
+  chemistry->radiative_transfer_intermediate_step = 0;
+  // only use hydrogen ionization and heating rates from the radiative transfer
+  // solutions.
+  chemistry->radiative_transfer_hydrogen_only = 0;
+  // Use Rahmati+13 self-shielding; 0=none, 1=HI only, 2=HI+HeI, 3=HI+HeI but
+  // set HeII rates to 0
+  chemistry->self_shielding_method = 0;
+  chemistry->self_shielding_method = cooling->self_shielding_method;
 
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {

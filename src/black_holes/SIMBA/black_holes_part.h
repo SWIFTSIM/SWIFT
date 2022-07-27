@@ -91,7 +91,7 @@ struct bpart {
 
   /*! The mass marked for accretion this timestep */
   float mass_accreted_this_step;
-  
+
   /*! Total accreted mass of the black hole (not including mass merged in
    * from other black holes) */
   float total_accreted_mass;
@@ -114,7 +114,8 @@ struct bpart {
   /*! The mass of cold gas surrounding the black hole */
   float cold_gas_mass;
 
-  /*! The mass-weighted internal energy surrounding the black hole (unsmoothed) */
+  /*! The mass-weighted internal energy surrounding the black hole (unsmoothed)
+   */
   float hot_gas_internal_energy;
 
   /*! Smoothed sound speed of the gas surrounding the black hole. */
@@ -209,7 +210,7 @@ struct bpart {
 
   /*! The radiative luminosity of the black hole */
   float radiative_luminosity;
-  
+
   /*! Integer (cumulative) number of energy injections in AGN feedback. At a
    * given time-step, an AGN-active BH may produce multiple energy injections.
    * The number of energy injections is equal to or more than the number of
@@ -229,7 +230,7 @@ struct bpart {
 
   /*! BH accretion-limited time-step */
   float dt_accr;
-  
+
   /*! How much energy has been given away in this timestep? */
   float delta_energy_this_timestep;
 

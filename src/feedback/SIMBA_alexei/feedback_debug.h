@@ -22,5 +22,4 @@
 __attribute__((always_inline)) INLINE static void feedback_debug_particle(
     const struct part* p, const struct xpart* xp) {}
 
-
 #endif /* SWIFT_FEEDBACK_SIMBA_DEBUG_H */

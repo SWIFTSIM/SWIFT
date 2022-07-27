@@ -172,7 +172,7 @@ void runner_do_cooling(struct runner *r, struct cell *c, int timer) {
           dt_cool = get_timestep(p->time_bin, time_base);
           dt_therm = get_timestep(p->time_bin, time_base);
         }
-        
+
         /* Let's cool ! */
         cooling_cool_part(constants, us, cosmo, hydro_props,
                           entropy_floor_props, cooling_func, p, xp, dt_cool,

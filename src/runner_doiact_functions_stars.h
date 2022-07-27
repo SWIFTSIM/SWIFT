@@ -117,7 +117,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
           float dx[3] = {six[0] - gjx[0], six[1] - gjx[1], six[2] - gjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_sum(si, gj, &dm_ngb_N, dm_mean_velocity);
+            runner_iact_nonsym_feedback_dm_vel_sum(si, gj, &dm_ngb_N,
+                                                   dm_mean_velocity);
           }
         }
       }
@@ -456,12 +457,14 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pix - gjx, piy - gjy, piz - gjz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N,
+                                                     dm_mean_velocity);
             }
           }
         }
-        
-        feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
+
+        feedback_intermediate_density_normalize(spi, dm_ngb_N,
+                                                dm_mean_velocity);
 
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
@@ -473,7 +476,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pix - gjx, piy - gjy, piz - gjz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj,
+                                                      dm_mean_velocity);
             }
           }
         }
@@ -655,12 +659,14 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pjx - gix, pjy - giy, pjz - giz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hjg2) {
-              runner_iact_nonsym_feedback_dm_vel_sum(spj, gi, &dm_ngb_N, dm_mean_velocity);
+              runner_iact_nonsym_feedback_dm_vel_sum(spj, gi, &dm_ngb_N,
+                                                     dm_mean_velocity);
             }
           }
         }
-        
-        feedback_intermediate_density_normalize(spj, dm_ngb_N, dm_mean_velocity);
+
+        feedback_intermediate_density_normalize(spj, dm_ngb_N,
+                                                dm_mean_velocity);
 
         for (int gid = 0; gid < gcount_i; gid++) {
           struct gpart *restrict gi = &gparts_i[gid];
@@ -672,7 +678,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
             float dx[3] = {pjx - gix, pjy - giy, pjz - giz};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hjg2) {
-              runner_iact_nonsym_feedback_dm_vel_disp(spj, gi, dm_mean_velocity);
+              runner_iact_nonsym_feedback_dm_vel_disp(spj, gi,
+                                                      dm_mean_velocity);
             }
           }
         }
@@ -841,7 +848,6 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
   /* Sparts are on the left? */
   if (!flipped) {
 
-    
     /* Loop over the sparts_i. */
     for (int pid = 0; pid < scount; pid++) {
 
@@ -871,15 +877,17 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
             /* Compute the pairwise distance. */
             float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
-                          (float)(piz - gjz)};
+                           (float)(piz - gjz)};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N,
+                                                     dm_mean_velocity);
             }
           }
         }
-        
-        feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
+
+        feedback_intermediate_density_normalize(spi, dm_ngb_N,
+                                                dm_mean_velocity);
 
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
@@ -891,10 +899,11 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
             /* Compute the pairwise distance. */
             float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
-                          (float)(piz - gjz)};
+                           (float)(piz - gjz)};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj,
+                                                      dm_mean_velocity);
             }
           }
         }
@@ -980,15 +989,17 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
             /* Compute the pairwise distance. */
             float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
-                          (float)(piz - gjz)};
+                           (float)(piz - gjz)};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
+              runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N,
+                                                     dm_mean_velocity);
             }
           }
         }
-        
-        feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
+
+        feedback_intermediate_density_normalize(spi, dm_ngb_N,
+                                                dm_mean_velocity);
 
         for (int gjd = 0; gjd < gcount_j; gjd++) {
           struct gpart *restrict gj = &gparts_j[gjd];
@@ -1000,10 +1011,11 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
 
             /* Compute the pairwise distance. */
             float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
-                          (float)(piz - gjz)};
+                           (float)(piz - gjz)};
             const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
             if (r2 < hig2) {
-              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
+              runner_iact_nonsym_feedback_dm_vel_disp(spi, gj,
+                                                      dm_mean_velocity);
             }
           }
         }
@@ -1132,14 +1144,15 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
           /* Compute the pairwise distance. */
           float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
-                        (float)(piz - gjz)};
+                         (float)(piz - gjz)};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
+            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N,
+                                                   dm_mean_velocity);
           }
         }
       }
-      
+
       feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
 
       for (int gjd = 0; gjd < gcount_j; gjd++) {
@@ -1152,7 +1165,7 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 
           /* Compute the pairwise distance. */
           float dx[3] = {(float)(pix - gjx), (float)(piy - gjy),
-                        (float)(piz - gjz)};
+                         (float)(piz - gjz)};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
             runner_iact_nonsym_feedback_dm_vel_disp(spi, gj, dm_mean_velocity);
@@ -1268,18 +1281,19 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
         struct gpart *restrict gj = &gparts_j[gjd];
         if (gj->type == swift_type_dark_matter) {
           /* Compute the pairwise distance. */
-           /* Compute the pairwise distance. */
+          /* Compute the pairwise distance. */
           const float gjx[3] = {(float)(gj->x[0] - ci->loc[0]),
                                 (float)(gj->x[1] - ci->loc[1]),
                                 (float)(gj->x[2] - ci->loc[2])};
           float dx[3] = {spix[0] - gjx[0], spix[1] - gjx[1], spix[2] - gjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 < hig2) {
-            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N, dm_mean_velocity);
+            runner_iact_nonsym_feedback_dm_vel_sum(spi, gj, &dm_ngb_N,
+                                                   dm_mean_velocity);
           }
         }
       }
-      
+
       feedback_intermediate_density_normalize(spi, dm_ngb_N, dm_mean_velocity);
 
       for (int gjd = 0; gjd < gcount_i; gjd++) {

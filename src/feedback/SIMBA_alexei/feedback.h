@@ -56,7 +56,9 @@ inline void compute_kick_speed(struct spart* sp,
       v_circ; */
 
   // ALEXEI: temporarily set to arbitrary number for testing.
-  sp->feedback_data.to_distribute.v_kick = feedback_props->scale_factor_norm * pow(sigma, feedback_props->galsf_firevel_slope);
+  sp->feedback_data.to_distribute.v_kick =
+      feedback_props->scale_factor_norm *
+      pow(sigma, feedback_props->galsf_firevel_slope);
 }
 
 /**

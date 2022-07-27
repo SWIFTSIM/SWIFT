@@ -48,7 +48,6 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     struct part* p, struct xpart* xp, const struct engine* e,
     const int with_cosmology) {
 
-
   /* No reason to do this is the decoupling time is zero */
   if (p->feedback_data.decoupling_delay_time > 0.f) {
     const integertime_t ti_step = get_integer_timestep(p->time_bin);
@@ -87,7 +86,7 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
  */
 __attribute__((always_inline)) INLINE static void feedback_update_part(
     struct part* p, struct xpart* xp, const struct engine* e,
-    const int with_cosmology) { }
+    const int with_cosmology) {}
 
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
@@ -150,7 +149,7 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
                  eagle_SNII_feedback_num_of_rays);
   ray_extra_init(sp->feedback_data.SNII_rays_ext_mirr,
                  eagle_SNII_feedback_num_of_rays);
-  
+
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 0;
 #endif
@@ -162,7 +161,8 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
  *
  * @param sp The #spart.
  * @param dm_ngb_N the integer number of neighbours from the previous loop
- * @param dm_mean_velocity the mass-weighted (unnormalized) three components of velocity
+ * @param dm_mean_velocity the mass-weighted (unnormalized) three components of
+ * velocity
  */
 INLINE static void feedback_intermediate_density_normalize(
     struct spart* sp, const int dm_ngb_N, float dm_mean_velocity[3]) {
@@ -238,7 +238,6 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   sp->feedback_data.dm_vel_diff2[0] = 0.f;
   sp->feedback_data.dm_vel_diff2[1] = 0.f;
   sp->feedback_data.dm_vel_diff2[2] = 0.f;
-
 }
 
 /**

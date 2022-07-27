@@ -31,7 +31,7 @@
 struct feedback_part_data {
   /* The largest id of the star that wants to kick the gas particle */
   long long SNII_star_largest_id;
-  
+
   /*! remaining time left for decoupling */
   float decoupling_delay_time;
 
@@ -144,7 +144,6 @@ struct feedback_spart_data {
 
   /*! DM 1D vel. disp. from Vogelsberger et al (2013) equation 14. */
   float dm_vel_disp_1d;
-
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_SIMBA_H */

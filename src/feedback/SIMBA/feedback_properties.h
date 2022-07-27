@@ -334,7 +334,6 @@ struct feedback_props {
 
   /*! Convert internal time to Myr */
   float time_to_Myr;
-
 };
 
 void feedback_props_init(struct feedback_props *fp,

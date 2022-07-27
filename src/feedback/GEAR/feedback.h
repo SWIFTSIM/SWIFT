@@ -42,8 +42,8 @@ void feedback_update_part(struct part* p, struct xpart* xp,
  */
 __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     struct part* p, struct xpart* xp, const struct engine* e,
-    const int with_cosmology) { } 
-    
+    const int with_cosmology) {}
+
 void feedback_reset_part(struct part* p, struct xpart* xp);
 
 void feedback_will_do_feedback(

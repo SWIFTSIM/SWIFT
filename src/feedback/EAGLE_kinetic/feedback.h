@@ -61,8 +61,8 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
  */
 __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     struct part* p, struct xpart* xp, const struct engine* e,
-    const int with_cosmology) { }
-    
+    const int with_cosmology) {}
+
 /**
  * @brief Reset the gas particle-carried fields related to feedback at the
  * start of a step.

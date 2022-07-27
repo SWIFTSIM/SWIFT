@@ -40,9 +40,9 @@ struct feedback_props {
 
   /* Delay time */
   float simba_delay_time;  // ALEXEI use this variable to read in value from yml
-                           // file, to be copied later to individual particles so
-                           // that feedback iact function can access it. Perhaps
-                           // move somewhere else
+                           // file, to be copied later to individual particles
+                           // so that feedback iact function can access it.
+                           // Perhaps move somewhere else
 };
 
 /**

@@ -70,7 +70,8 @@ runner_iact_nonsym_feedback_apply(
 
   /* Get the probability of doing feedback */
   // Compute mass loading which will determine probability
-  const float prob = sqrtf(pj->potential) / 50.;  // ALEXEI: just set to random constant for now
+  const float prob = sqrtf(pj->potential) /
+                     50.;  // ALEXEI: just set to random constant for now
 
   if (prob > 0) {
     /* Draw a random number (Note mixing both IDs) */

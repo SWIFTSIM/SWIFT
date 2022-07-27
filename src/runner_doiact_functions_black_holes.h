@@ -91,7 +91,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
           const float sjx[3] = {(float)(sj->x[0] - c->loc[0]),
                                 (float)(sj->x[1] - c->loc[1]),
                                 (float)(sj->x[2] - c->loc[2])};
-          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1], bix[2] - sjx[2]};
+          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1],
+                               bix[2] - sjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
           /* Star is within smoothing length of black hole */
@@ -99,11 +100,11 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
             runner_iact_nonsym_bh_stars_density(r2, dx, bi, sj);
           }
         }
-        /* TODO: One possible speed-up is just to flag the BH id 
-        * that each star is associated with in the previous loop,
-        * and then just use that to loop instead of doing the distance
-        * calculation everytime.
-        */
+        /* TODO: One possible speed-up is just to flag the BH id
+         * that each star is associated with in the previous loop,
+         * and then just use that to loop instead of doing the distance
+         * calculation everytime.
+         */
 
         /* Now that we have the angular momentum, find the bulge mass */
         for (int sjd = 0; sjd < scount; sjd++) {
@@ -113,7 +114,8 @@ void DOSELF1_BH(struct runner *r, struct cell *c, int timer) {
           const float sjx[3] = {(float)(sj->x[0] - c->loc[0]),
                                 (float)(sj->x[1] - c->loc[1]),
                                 (float)(sj->x[2] - c->loc[2])};
-          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1], bix[2] - sjx[2]};
+          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1],
+                               bix[2] - sjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
           /* Star is within smoothing length of black hole */
@@ -310,7 +312,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
           const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
                                 (float)(sj->x[1] - cj->loc[1]),
                                 (float)(sj->x[2] - cj->loc[2])};
-          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1], bix[2] - sjx[2]};
+          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1],
+                               bix[2] - sjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
           /* Star is within smoothing length of black hole */
@@ -318,11 +321,11 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
             runner_iact_nonsym_bh_stars_density(r2, dx, bi, sj);
           }
         }
-        /* TODO: One possible speed-up is just to flag the BH id 
-          * that each star is associated with in the previous loop,
-          * and then just use that to loop instead of doing the distance
-          * calculation everytime.
-          */
+        /* TODO: One possible speed-up is just to flag the BH id
+         * that each star is associated with in the previous loop,
+         * and then just use that to loop instead of doing the distance
+         * calculation everytime.
+         */
 
         /* Now that we have the angular momentum, find the bulge mass */
         for (int sjd = 0; sjd < scount_j; sjd++) {
@@ -332,7 +335,8 @@ void DO_NONSYM_PAIR1_BH_NAIVE(struct runner *r, struct cell *restrict ci,
           const float sjx[3] = {(float)(sj->x[0] - cj->loc[0]),
                                 (float)(sj->x[1] - cj->loc[1]),
                                 (float)(sj->x[2] - cj->loc[2])};
-          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1], bix[2] - sjx[2]};
+          const float dx[3] = {bix[0] - sjx[0], bix[1] - sjx[1],
+                               bix[2] - sjx[2]};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
           /* Star is within smoothing length of black hole */
@@ -546,7 +550,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
         /* Compute the pairwise distance. */
         const float dx[3] = {(float)(bix - sjx), (float)(biy - sjy),
-                            (float)(biz - sjz)};
+                             (float)(biz - sjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Star is within smoothing length of black hole */
@@ -555,11 +559,11 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
         }
       }
 
-      /* TODO: One possible speed-up is just to flag the BH id 
-        * that each star is associated with in the previous loop,
-        * and then just use that to loop instead of doing the distance
-        * calculation everytime.
-        */
+      /* TODO: One possible speed-up is just to flag the BH id
+       * that each star is associated with in the previous loop,
+       * and then just use that to loop instead of doing the distance
+       * calculation everytime.
+       */
 
       /* Now that we have the angular momentum, find the bulge mass */
       for (int sjd = 0; sjd < scount_j; sjd++) {
@@ -572,7 +576,7 @@ void DOPAIR1_SUBSET_BH_NAIVE(struct runner *r, struct cell *restrict ci,
 
         /* Compute the pairwise distance. */
         const float dx[3] = {(float)(bix - sjx), (float)(biy - sjy),
-                            (float)(biz - sjz)};
+                             (float)(biz - sjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
         /* Star is within smoothing length of black hole */
@@ -694,11 +698,11 @@ void DOSELF1_SUBSET_BH(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_bh_stars_density(r2, dx, bi, sj);
         }
       }
-      /* TODO: One possible speed-up is just to flag the BH id 
-        * that each star is associated with in the previous loop,
-        * and then just use that to loop instead of doing the distance
-        * calculation everytime.
-        */
+      /* TODO: One possible speed-up is just to flag the BH id
+       * that each star is associated with in the previous loop,
+       * and then just use that to loop instead of doing the distance
+       * calculation everytime.
+       */
 
       /* Now that we have the angular momentum, find the bulge mass */
       for (int sjd = 0; sjd < scount_i; sjd++) {

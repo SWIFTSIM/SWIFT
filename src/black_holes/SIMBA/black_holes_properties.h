@@ -82,7 +82,7 @@ struct black_holes_props {
 
   /*! Should we enforce positive subgrid masses initially? */
   int with_subgrid_mass_check;
-  
+
   /* ----- Properties of the accretion model ------ */
 
   /*! Calculate Bondi accretion rate for individual neighbours? */
@@ -138,7 +138,8 @@ struct black_holes_props {
   /*! Where do we distinguish between hot gas for Bondi? */
   float environment_temperature_cut;
 
-  /*! How much of Mdot,inflow should we accrete? The rest is an outflowing wind */
+  /*! How much of Mdot,inflow should we accrete? The rest is an outflowing wind
+   */
   float f_accretion;
 
   /*! Normalization of the torque accretion rate */
@@ -156,7 +157,8 @@ struct black_holes_props {
   /*! A factor to account for not being able to resolve sigma_crit */
   float sigma_crit_resolution_factor;
 
-  /*! The factor for exponentially limiting black hole growth in early stages. */
+  /*! The factor for exponentially limiting black hole growth in early stages.
+   */
   float bh_characteristic_suppression_mass;
 
   /*! Bondi rate cannot exceed the rate for BH of this mass. */
@@ -234,7 +236,7 @@ struct black_holes_props {
   /*! How much of the X-ray energy should go into velocity for dense gas? */
   float xray_kinetic_fraction;
 
-  /*! Above this density we should split X-ray energy into kinetic */ 
+  /*! Above this density we should split X-ray energy into kinetic */
   float xray_heating_n_H_threshold_cgs;
 
   /*! Below this temperature we should split X-ray energy into kinetic */
@@ -254,7 +256,7 @@ struct black_holes_props {
 
   /*! Should we scale the jet temperature with the BH mass? */
   int scale_jet_temperature_with_mass;
-  
+
   /*! What lower Mdot,BH/Mdot,Edd boundary does the jet activate? */
   float eddington_fraction_lower_boundary;
 
@@ -340,7 +342,8 @@ struct black_holes_props {
   /*! Conversion factor from internal mass to solar masses */
   float mass_to_solar_mass;
 
-  /*! Conversion factor from km/s to internal velocity units (without a-factor) */
+  /*! Conversion factor from km/s to internal velocity units (without a-factor)
+   */
   float kms_to_internal;
 
   /*! Conversion factor from internal length to parsec */
@@ -452,11 +455,10 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   /* Accretion parameters ---------------------------------- */
 
-  bp->environment_temperature_cut =
-      parser_get_opt_param_float(params, "SIMBAAGN:environment_temperature_cut", 1.0e5f);
+  bp->environment_temperature_cut = parser_get_opt_param_float(
+      params, "SIMBAAGN:environment_temperature_cut", 1.0e5f);
 
-  bp->f_accretion = 
-      parser_get_param_float(params, "SIMBAAGN:f_accretion");
+  bp->f_accretion = parser_get_param_float(params, "SIMBAAGN:f_accretion");
 
   bp->torque_accretion_norm =
       parser_get_param_float(params, "SIMBAAGN:torque_accretion_norm");
@@ -467,26 +469,25 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     error("SIMBAAGN:dt_accretion_factor must be between 0 and 1");
   }
 
-  bp->suppress_growth = 
+  bp->suppress_growth =
       parser_get_param_int(params, "SIMBAAGN:suppress_growth");
 
-  bp->sigma_crit_Msun_pc2 = 
+  bp->sigma_crit_Msun_pc2 =
       parser_get_param_float(params, "SIMBAAGN:sigma_crit_Msun_pc2");
 
   bp->sigma_crit_resolution_factor =
       parser_get_param_float(params, "SIMBAAGN:sigma_crit_resolution_factor");
 
-  bp->bh_characteristic_suppression_mass =
-      parser_get_param_float(params, "SIMBAAGN:bh_characteristic_suppression_mass");
-      
+  bp->bh_characteristic_suppression_mass = parser_get_param_float(
+      params, "SIMBAAGN:bh_characteristic_suppression_mass");
 
   /* Conversion factor for internal mass to M_solar */
   bp->mass_to_solar_mass = 1.f / phys_const->const_solar_mass;
 
-
   bp->bondi_rate_limiting_bh_mass =
       parser_get_param_float(params, "SIMBAAGN:bondi_rate_limiting_bh_mass");
-  bp->bondi_rate_limiting_bh_mass /= bp->mass_to_solar_mass;  /* Convert to internal units */
+  bp->bondi_rate_limiting_bh_mass /=
+      bp->mass_to_solar_mass; /* Convert to internal units */
 
   bp->use_multi_phase_bondi =
       parser_get_param_int(params, "SIMBAAGN:use_multi_phase_bondi");
@@ -533,7 +534,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     }
   }
 
-  bp->use_nibbling = parser_get_opt_param_int(params, "SIMBAAGN:use_nibbling", 1);
+  bp->use_nibbling =
+      parser_get_opt_param_int(params, "SIMBAAGN:use_nibbling", 1);
   if (bp->use_nibbling) {
     bp->min_gas_mass_for_nibbling = parser_get_param_float(
         params, "SIMBAAGN:min_gas_mass_for_nibbling_Msun");
@@ -635,68 +637,65 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->num_ngbs_to_heat =
       parser_get_param_float(params, "SIMBAAGN:AGN_num_ngb_to_heat");
 
-  bp->jet_heating_velocity_threshold = 
+  bp->jet_heating_velocity_threshold =
       parser_get_param_float(params, "SIMBAAGN:jet_heating_velocity_threshold");
 
   /* Convert to internal units */
-  const float jet_heating_velocity_threshold = 
+  const float jet_heating_velocity_threshold =
       bp->jet_heating_velocity_threshold * 1.0e5f;
   bp->jet_heating_velocity_threshold =
-      jet_heating_velocity_threshold / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+      jet_heating_velocity_threshold /
+      units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 
-  bp->xray_heating_velocity_threshold =
-      parser_get_param_float(params, "SIMBAAGN:xray_heating_velocity_threshold");
+  bp->xray_heating_velocity_threshold = parser_get_param_float(
+      params, "SIMBAAGN:xray_heating_velocity_threshold");
 
   /* Convert to internal units */
-  const float xray_heating_velocity_threshold = 
+  const float xray_heating_velocity_threshold =
       bp->xray_heating_velocity_threshold * 1.0e5f;
   bp->xray_heating_velocity_threshold =
-      xray_heating_velocity_threshold / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+      xray_heating_velocity_threshold /
+      units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 
-  bp->xray_maximum_heating_factor = 
-      parser_get_opt_param_float(params, "SIMBAAGN:xray_maximum_heating_factor",
-            1000.0f);
+  bp->xray_maximum_heating_factor = parser_get_opt_param_float(
+      params, "SIMBAAGN:xray_maximum_heating_factor", 1000.0f);
 
-  bp->xray_kinetic_fraction =
-      parser_get_opt_param_float(params, "SIMBAAGN:xray_kinetic_fraction",
-            0.5f);
+  bp->xray_kinetic_fraction = parser_get_opt_param_float(
+      params, "SIMBAAGN:xray_kinetic_fraction", 0.5f);
 
-  bp->xray_heating_n_H_threshold_cgs = 
-      parser_get_opt_param_float(params, "SIMBAAGN:xray_heating_n_H_threshold_cgs",
-        0.13f);
+  bp->xray_heating_n_H_threshold_cgs = parser_get_opt_param_float(
+      params, "SIMBAAGN:xray_heating_n_H_threshold_cgs", 0.13f);
 
-  bp->xray_heating_T_threshold_cgs =
-      parser_get_opt_param_float(params, "SIMBAAGN:xray_heating_T_threshold_cgs",
-        5.0e5f);
+  bp->xray_heating_T_threshold_cgs = parser_get_opt_param_float(
+      params, "SIMBAAGN:xray_heating_T_threshold_cgs", 5.0e5f);
 
   bp->xray_radiation_loss =
       parser_get_param_float(params, "SIMBAAGN:xray_radiation_loss");
 
-  bp->xray_f_gas_limit = 
+  bp->xray_f_gas_limit =
       parser_get_param_float(params, "SIMBAAGN:xray_f_gas_limit");
-      
-  bp->jet_velocity = 
-      parser_get_param_float(params, "SIMBAAGN:jet_velocity");
+
+  bp->jet_velocity = parser_get_param_float(params, "SIMBAAGN:jet_velocity");
 
   /* Convert to internal units */
   const float jet_velocity = bp->jet_velocity * 1.0e5f;
   bp->jet_velocity =
       jet_velocity / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 
-  bp->jet_temperature = 
+  bp->jet_temperature =
       parser_get_param_float(params, "SIMBAAGN:jet_temperature");
 
   bp->scale_jet_temperature_with_mass =
       parser_get_param_int(params, "SIMBAAGN:scale_jet_temperature_with_mass");
 
-  bp->eddington_fraction_lower_boundary = 
-      parser_get_param_float(params, "SIMBAAGN:eddington_fraction_lower_boundary");
+  bp->eddington_fraction_lower_boundary = parser_get_param_float(
+      params, "SIMBAAGN:eddington_fraction_lower_boundary");
 
-  bp->jet_mass_min_Msun = 
+  bp->jet_mass_min_Msun =
       parser_get_opt_param_float(params, "SIMBAAGN:jet_mass_min_Msun", 4.5e7f);
 
-  bp->jet_mass_max_Msun = 
-      parser_get_opt_param_float(params, "SIMBAAGN:jet_mass_max_Msun", 5.0e7f); 
+  bp->jet_mass_max_Msun =
+      parser_get_opt_param_float(params, "SIMBAAGN:jet_mass_max_Msun", 5.0e7f);
 
   bp->wind_momentum_flux =
       parser_get_param_float(params, "SIMBAAGN:wind_momentum_flux");
@@ -807,14 +806,15 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->rho_to_n_cgs =
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
-  bp->kms_to_internal = 1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+  bp->kms_to_internal =
+      1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 
   bp->length_to_parsec = 1.f / phys_const->const_parsec;
 
   bp->time_to_yr = 1.f / phys_const->const_year;
 
   bp->time_to_Myr = units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
-      (1.e6f * 365.25f * 24.f * 60.f * 60.f);
+                    (1.e6f * 365.25f * 24.f * 60.f * 60.f);
 
   /* Some useful conversion values */
   bp->conv_factor_density_to_cgs =
@@ -822,12 +822,10 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->conv_factor_energy_rate_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) /
       units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-  bp->conv_factor_length_to_cgs = 
+  bp->conv_factor_length_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-  bp->conv_factor_mass_to_cgs =
-      units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  bp->conv_factor_time_to_cgs = 
-      units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  bp->conv_factor_mass_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  bp->conv_factor_time_to_cgs = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
   bp->conv_factor_specific_energy_to_cgs =
       units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_PER_UNIT_MASS);
 
