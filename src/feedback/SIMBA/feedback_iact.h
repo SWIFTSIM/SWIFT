@@ -488,7 +488,7 @@ runner_iact_nonsym_feedback_apply(
               cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
 
           /**
-           * z pid dt Epair sigDM vkick vkx vky vkz h x y z vx vy vz u rho v_sig decoupletime Ndecouple
+           * z pid dt Epair sigDM vkick vkx vky vkz h x y z vx vy vz T rho v_sig decoupletime Ndecouple
            */
           const float length_convert = cosmo->a * fb_props->length_to_kpc;
           const float velocity_convert = cosmo->a_inv / fb_props->kms_to_internal;
@@ -499,7 +499,8 @@ runner_iact_nonsym_feedback_apply(
                   cosmo->z,
                   pj->id, 
                   dt_part * fb_props->time_to_Myr,
-                  energy_per_pair * fb_props->mass_to_cgs * fb_props->velocity_squared_to_cgs,
+                  (energy_per_pair / (2.f * hydro_get_mass(pj)) /
+                    (fb_props->kms_to_internal * fb_props->kms_to_internal),
                   si->feedback_data.dm_vel_disp_1d * velocity_convert,
                   v_kick_abs / fb_props->kms_to_internal,
                   v_kick[0] / fb_props->kms_to_internal,
