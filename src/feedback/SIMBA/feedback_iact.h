@@ -470,6 +470,13 @@ runner_iact_nonsym_feedback_apply(
           xpj->v_full[1] += v_kick[1] * cosmo->a;
           xpj->v_full[2] += v_kick[2] * cosmo->a;
 
+          /* Decouple the particles from the hydrodynamics */
+          pj->feedback_data.decoupling_delay_time = 
+              fb_props->wind_decouple_time_factor * 
+              cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+              
+          pj->feedback_data.number_of_times_decoupled += 1;
+
           /* Update the signal velocity of the particle based on the velocity
            * kick
            */
