@@ -484,11 +484,8 @@ runner_iact_nonsym_feedback_apply(
               get_integer_time_begin(ti_current - 1, pj->time_bin);
 
           /* Get particle time-step, only support cosmology right now */
-          double dt_part = 0.;
-          if (with_cosmology) {
-            dt_part =
-                cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-          }
+          const double dt_part = 
+              cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
 
           /**
            * z pid dt vkick vkx vky vkz h x y z vx vy vz u rho v_sig decoupletime Ndecouple
@@ -500,24 +497,24 @@ runner_iact_nonsym_feedback_apply(
               cosmo->a_factor_internal_energy / fb_props->temp_to_u_factor;
           printf("WIND_LOG %.3f %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d\n",
                   cosmo->z,
-                  p->id, 
+                  pj->id, 
                   dt_part * fb_props->time_to_Myr,
                   v_kick_abs / fb_props->kms_to_internal,
                   v_kick[0] / fb_props->kms_to_internal,
                   v_kick[1] / fb_props->kms_to_internal,
                   v_kick[2] / fb_props->kms_to_internal,
-                  p->h * cosmo->a * fb_props->length_to_kpc,
-                  p->x[0] * length_convert, 
-                  p->x[1] * length_convert, 
-                  p->x[2] * length_convert,
-                  p->gpart->v_full[0] * velocity_convert, 
-                  p->gpart->v_full[1] * velocity_convert, 
-                  p->gpart->v_full[2] * velocity_convert,
-                  p->u * u_convert, 
-                  p->rho * rho_convert, 
-                  p->viscosity.v_sig * velocity_convert,
-                  p->feedback_data.decoupling_delay_time * fb_props->time_to_Myr, 
-                  p->feedback_data.number_of_times_decoupled);
+                  pj->h * cosmo->a * fb_props->length_to_kpc,
+                  pj->x[0] * length_convert, 
+                  pj->x[1] * length_convert, 
+                  pj->x[2] * length_convert,
+                  pj->gpart->v_full[0] * velocity_convert, 
+                  pj->gpart->v_full[1] * velocity_convert, 
+                  pj->gpart->v_full[2] * velocity_convert,
+                  pj->u * u_convert, 
+                  pj->rho * rho_convert, 
+                  pj->viscosity.v_sig * velocity_convert,
+                  pj->feedback_data.decoupling_delay_time * fb_props->time_to_Myr, 
+                  pj->feedback_data.number_of_times_decoupled);
 
 
           /* END LOGGING */
