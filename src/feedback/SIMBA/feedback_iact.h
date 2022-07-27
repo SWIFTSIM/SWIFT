@@ -161,6 +161,9 @@ runner_iact_nonsym_feedback_prep1(const float r2, const float dx[3],
                                   const struct cosmology *cosmo,
                                   const integertime_t ti_current) {
 
+  /* Ignore wind in feedback computation */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+
   /* Get the the number of SNII kinetic energy injections per stellar
    * particle at this time-step */
   const int N_of_SNII_kinetic_events =
@@ -194,6 +197,9 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
                                   const struct cosmology *cosmo,
                                   const integertime_t ti_current) {
 
+  /* Ignore wind in feedback computation */
+  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+  
   /* Get the the number of SNII kinetic energy injections per stellar
    * particle at this time-step */
   const int N_of_SNII_kinetic_events =
@@ -474,7 +480,7 @@ runner_iact_nonsym_feedback_apply(
           pj->feedback_data.decoupling_delay_time = 
               fb_props->wind_decouple_time_factor * 
               cosmology_get_time_since_big_bang(cosmo, cosmo->a);
-              
+
           pj->feedback_data.number_of_times_decoupled += 1;
 
           /* Update the signal velocity of the particle based on the velocity
