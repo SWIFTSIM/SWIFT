@@ -478,12 +478,61 @@ runner_iact_nonsym_feedback_apply(
           /* Synchronize the particle on the timeline */
           timestep_sync_part(pj);
 
+          /* BEGIN LOGGING, REMOVE LATER? */
+          const integertime_t ti_step = get_integer_timestep(pj->time_bin);
+          const integertime_t ti_begin =
+              get_integer_time_begin(ti_current - 1, pj->time_bin);
+
+          /* Get particle time-step, only support cosmology right now */
+          double dt_part = 0.;
+          if (with_cosmology) {
+            dt_part =
+                cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+          }
+
+          /**
+           * z pid dt vkick vkx vky vkz h x y z vx vy vz u rho v_sig decoupletime Ndecouple
+           */
+          const float length_convert = cosmo->a * fb_props->length_to_kpc;
+          const float velocity_convert = cosmo->a_inv / fb_props->kms_to_internal;
+          const float rho_convert = cosmo->a3_inv * fb_props->rho_to_n_cgs;
+          const float u_convert = 
+              cosmo->a_factor_internal_energy / fb_props->temp_to_u_factor;
+          printf("WIND_LOG %.3f %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d\n",
+                  cosmo->z,
+                  p->id, 
+                  dt_part * fb_props->time_to_Myr,
+                  v_kick_abs / fb_props->kms_to_internal,
+                  v_kick[0] / fb_props->kms_to_internal,
+                  v_kick[1] / fb_props->kms_to_internal,
+                  v_kick[2] / fb_props->kms_to_internal,
+                  p->h * cosmo->a * fb_props->length_to_kpc,
+                  p->x[0] * length_convert, 
+                  p->x[1] * length_convert, 
+                  p->x[2] * length_convert,
+                  p->gpart->v_full[0] * velocity_convert, 
+                  p->gpart->v_full[1] * velocity_convert, 
+                  p->gpart->v_full[2] * velocity_convert,
+                  p->u * u_convert, 
+                  p->rho * rho_convert, 
+                  p->viscosity.v_sig * velocity_convert,
+                  p->feedback_data.decoupling_delay_time * fb_props->time_to_Myr, 
+                  p->feedback_data.number_of_times_decoupled);
+
+
+          /* END LOGGING */
+
+#ifdef SWIFT_DEBUG_CHECKS
           message(
             "V_KICK: z=%g  sp->id=%lld  pj->id=%lld f_E=%g  sigDM=%g km/s  tdelay=%g  "
             "v_kick=%g km/s",
             cosmo->z, si->id, pj->id, si->f_E, 
-            si->feedback_data.dm_vel_disp_1d * cosmo->a_inv / fb_props->kms_to_internal,
-            pj->feedback_data.decoupling_delay_time, v_kick_abs / fb_props->kms_to_internal);
+            si->feedback_data.dm_vel_disp_1d * 
+                cosmo->a_inv / fb_props->kms_to_internal,
+            pj->feedback_data.decoupling_delay_time, 
+            v_kick_abs / fb_props->kms_to_internal
+          );
+#endif
 
         } else {
 

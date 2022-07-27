@@ -328,6 +328,13 @@ struct feedback_props {
 
   /*! Factor to convert km/s to internal units */
   float kms_to_internal;
+
+  /*! Convert internal units to kpc */
+  float length_to_kpc;
+
+  /*! Convert internal time to Myr */
+  float time_to_Myr;
+
 };
 
 void feedback_props_init(struct feedback_props *fp,

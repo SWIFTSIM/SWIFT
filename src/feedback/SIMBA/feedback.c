@@ -757,6 +757,12 @@ void feedback_props_init(struct feedback_props* fp,
 
   fp->kms_to_internal = 1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
 
+  fp->time_to_Myr = units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+      (1.e6f * 365.25f * 24.f * 60.f * 60.f);
+
+  fp->length_to_kpc = 
+      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) / 3.08567758e21f;
+
   /* Initialise the IMF ------------------------------------------------- */
 
   init_imf(fp);
