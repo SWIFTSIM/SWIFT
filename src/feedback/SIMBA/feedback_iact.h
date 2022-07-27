@@ -495,7 +495,7 @@ runner_iact_nonsym_feedback_apply(
           const float rho_convert = cosmo->a3_inv * fb_props->rho_to_n_cgs;
           const float u_convert = 
               cosmo->a_factor_internal_energy / fb_props->temp_to_u_factor;
-          printf("WIND_LOG %.3f %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d\n",
+          printf("WIND_LOG %.3f %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d\n",
                   cosmo->z,
                   pj->id, 
                   dt_part * fb_props->time_to_Myr,
