@@ -499,7 +499,7 @@ runner_iact_nonsym_feedback_apply(
                   cosmo->z,
                   pj->id, 
                   dt_part * fb_props->time_to_Myr,
-                  (energy_per_pair / (2.f * hydro_get_mass(pj)) /
+                  (energy_per_pair / (2.f * hydro_get_mass(pj))) /
                     (fb_props->kms_to_internal * fb_props->kms_to_internal),
                   si->feedback_data.dm_vel_disp_1d * velocity_convert,
                   v_kick_abs / fb_props->kms_to_internal,
