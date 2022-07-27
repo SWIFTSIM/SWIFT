@@ -19,7 +19,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "SWIFT: SPH With Inter-dependent Fine-grained Tasking"
-copyright = "2014-2021, SWIFT Collaboration"
+copyright = "2014-2022, SWIFT Collaboration"
 author = "SWIFT Team"
 
 # The short X.Y version
@@ -27,6 +27,20 @@ version = "0.9"
 # The full version, including alpha/beta/rc tags
 release = "0.9.0"
 
+# -- Find additional scripts to run as part of the documentation build -------
+import glob
+import os
+import subprocess
+
+additional_scripts = glob.glob("**/*.py", recursive=True)
+# remove this script
+additional_scripts.remove("conf.py")
+for additional_script in additional_scripts:
+    wdir, script = os.path.split(additional_script)
+    print(f"Running {additional_script}...")
+    status = subprocess.run(f"python3 {script}", shell=True, cwd=wdir)
+    if not status.returncode == 0:
+        raise RuntimeError(f"Could not run script!")
 
 # -- General configuration ---------------------------------------------------
 

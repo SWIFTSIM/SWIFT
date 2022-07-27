@@ -1708,7 +1708,7 @@ AC_SUBST([SUNDIALS_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SIMBA default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE, SIMBA default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1804,6 +1804,19 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=SIMBA
 	with_subgrid_feedback=SIMBA
 	with_subgrid_black_holes=SIMBA
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
+   SPIN_JET_EAGLE)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=SPIN_JET
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
@@ -2487,6 +2500,10 @@ case "$with_black_holes" in
    ;;
    SIMBA)
       AC_DEFINE([BLACK_HOLES_SIMBA], [1], [SIMBA black hole model])
+   ;;
+   SPIN_JET)
+      AC_DEFINE([BLACK_HOLES_SPIN_JET], [1], [Spin and jet black hole model])
+      with_black_holes="SPIN_JETS (Husko+22)"
    ;;
    *)
       AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
