@@ -335,6 +335,12 @@ struct feedback_props {
   /*! Convert internal time to Myr */
   float time_to_Myr;
 
+  /*! Convert mass to cgs */
+  float mass_to_cgs;
+
+  /*! Convert velocity squared to cgs */
+  float velocity_squared_to_cgs;
+
 };
 
 void feedback_props_init(struct feedback_props *fp,
