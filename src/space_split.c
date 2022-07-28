@@ -889,7 +889,7 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
       int cid = cell_getid_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
 
       /* Get the zoom cell. */
-      struct zoom_cell = s->cells_top[cid];
+      struct cell *zoom_cell = s->cells_top[cid];
 
       /* Link this zoom cell into the void cell hierarchy. */
       c->progeny[k] = zoom_cell;
@@ -898,7 +898,6 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
       zoom_cell->void_parent = c;
       
     }
-    
   }
 }
 
