@@ -902,6 +902,130 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 }
 
 /**
+ * @brief Recursively populate the multipoles in the  void cell tree hierarchy.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to populate recursively.
+ */
+void void_mpole_tree_recursive(struct space *s, struct cell *c) {
+
+  /* Check we aren't at the depth of the zoom cells. */
+  if (pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
+
+    /* Recurse through progney. */
+    for (int k = 0; k < 8; k++) {
+      void_mpole_tree_recursive(s, c->progeny[k]);
+    }
+  }
+
+  /* Now we have recursed we can do this cell's multipole based on
+   * it's progeny. */
+
+  /* Reset everything */
+  gravity_reset(c->grav.multipole);
+
+  /* Compute CoM and bulk velocity from all progenies */
+  double CoM[3] = {0., 0., 0.};
+  double vel[3] = {0., 0., 0.};
+  float max_delta_vel[3] = {0.f, 0.f, 0.f};
+  float min_delta_vel[3] = {0.f, 0.f, 0.f};
+  double mass = 0.;
+
+  for (int k = 0; k < 8; ++k) {
+    if (c->progeny[k] != NULL) {
+      const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+
+      mass += m->m_pole.M_000;
+
+      CoM[0] += m->CoM[0] * m->m_pole.M_000;
+      CoM[1] += m->CoM[1] * m->m_pole.M_000;
+      CoM[2] += m->CoM[2] * m->m_pole.M_000;
+
+      vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+      vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+      vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+      max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+      max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+      max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+      min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+      min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+      min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
+    }
+  }
+
+  /* Final operation on the CoM and bulk velocity */
+  const double inv_mass = 1. / mass;
+  c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
+  c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
+  c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
+  c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
+  c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
+  c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
+
+  /* Min max velocity along each axis */
+  c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+  c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+  c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+  c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+  c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+  c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
+
+  /* Now shift progeny multipoles and add them up */
+  struct multipole temp;
+  double r_max = 0.;
+  for (int k = 0; k < 8; ++k) {
+    if (c->progeny[k] != NULL) {
+      const struct cell *cp = c->progeny[k];
+      const struct multipole *m = &cp->grav.multipole->m_pole;
+
+      /* Contribution to multipole */
+      gravity_M2M(&temp, m, c->grav.multipole->CoM,
+                  cp->grav.multipole->CoM);
+      gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
+      
+      /* Upper limit of max CoM<->gpart distance */
+      const double dx =
+        c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
+      const double dy =
+        c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
+      const double dz =
+        c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
+      const double r2 = dx * dx + dy * dy + dz * dz;
+      r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+    }
+  }
+
+  /* Alternative upper limit of max CoM<->gpart distance */
+  const double dx =
+    c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+    ? c->grav.multipole->CoM[0] - c->loc[0]
+    : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+  const double dy =
+    c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+    ? c->grav.multipole->CoM[1] - c->loc[1]
+    : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+  const double dz =
+    c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+    ? c->grav.multipole->CoM[2] - c->loc[2]
+    : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
+
+  /* Take minimum of both limits */
+  c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+  /* Store the value at rebuild time */
+  c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+  c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+  c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+  c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+
+  /* Compute the multipole power */
+  gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+  
+}
+
+/**
  * @brief Construct the fake cell tree for the void cell to enable multipole
  *        gravity computations to be done at lower cell resolution than
  *        the zoom cell grid.
@@ -922,6 +1046,11 @@ void void_tree_build(struct space *s, int verbose) {
 
   /* First lets build the fake cell hierarchy recursively. */
   void_tree_recursive(s, void_cell, /*thread_id=*/0);
+
+  /* Now populate the multipoles in hierarchy bottom up. */
+  if (s->with_self_gravity) {
+    void_mpole_tree_recursive(s, void_cell);
+  }
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
