@@ -2456,7 +2456,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
     if (ci == cj) return;
 
     /* Handle on the cell's gravity business. */
-    const struct gravity_tensors *multi_i = ci->grav.multipole;
+    struct gravity_tensors *multi_i = ci->grav.multipole;
     const struct gravity_tensors *multi_j = cj->grav.multipole;
 
     /* Skip empty cells */
@@ -2504,7 +2504,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   else {
 
     /* Handle on the cell's gravity business. */
-    const struct gravity_tensors *multi_i = ci->grav.multipole;
+    struct gravity_tensors *multi_i = ci->grav.multipole;
     const struct gravity_tensors *multi_j = cj->grav.multipole;
 
     /* Skip empty cells */
