@@ -21,7 +21,7 @@
  * @brief Cooling using the GRACKLE 3.1.1 library.
  */
 
-#include "../config.h"
+#include <config.h>
 
 /* Include header */
 #include "cooling.h"

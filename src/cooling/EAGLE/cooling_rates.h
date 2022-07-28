@@ -21,7 +21,7 @@
 #ifndef SWIFT_EAGLE_COOLING_RATES_H
 #define SWIFT_EAGLE_COOLING_RATES_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "cooling_tables.h"

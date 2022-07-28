@@ -20,7 +20,7 @@
 #define SWIFT_STAR_FORMATION_DEBUG_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the debug routines of the right star formation definition */
 #if defined(STAR_FORMATION_NONE)

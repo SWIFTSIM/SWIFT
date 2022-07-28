@@ -20,7 +20,7 @@
 #define SWIFT_EAGLE_FEEDBACK_PROPERTIES_THERMAL_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "chemistry.h"

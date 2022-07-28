@@ -20,7 +20,7 @@
 #ifndef SWIFT_CSDS_H
 #define SWIFT_CSDS_H
 
-#include "../config.h"
+#include <config.h>
 
 #ifdef WITH_CSDS
 

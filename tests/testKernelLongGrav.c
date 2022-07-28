@@ -17,7 +17,7 @@
  *
  ******************************************************************************/
 
-#include "../config.h"
+#include <config.h>
 #include "exp10.h"
 #include "swift.h"
 

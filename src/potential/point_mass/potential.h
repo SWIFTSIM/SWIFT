@@ -21,7 +21,7 @@
 #define SWIFT_POTENTIAL_POINT_MASS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>

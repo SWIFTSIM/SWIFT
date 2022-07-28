@@ -20,7 +20,7 @@
 #define SWIFT_VELOCIRAPTOR_INTERFACE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Forward declaration */
 struct engine;

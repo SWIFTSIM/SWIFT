@@ -20,7 +20,7 @@
 #define SWIFT_SINK_DEBUG_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the debug routines of the right sink definition */
 #if defined(SINK_NONE)

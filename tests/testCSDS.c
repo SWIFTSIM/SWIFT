@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_POSIX_FALLOCATE) && \
     defined(WITH_CSDS) /* Are we on a sensible platform? */

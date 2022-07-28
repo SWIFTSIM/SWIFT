@@ -20,7 +20,7 @@
 #define SWIFT_TIMELINE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "inline.h"

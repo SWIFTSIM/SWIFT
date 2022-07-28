@@ -21,7 +21,7 @@
 #define SWIFT_INLINE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /**
  * @brief Defines inline

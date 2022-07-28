@@ -20,7 +20,7 @@
 #define SWIFT_DEBUG_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include "cell.h"

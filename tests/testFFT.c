@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Some standard headers. */
-#include "../config.h"
+#include <config.h>
 
 // MATTHIEU fix this test
 #if 1 || !defined(HAVE_FFTW)

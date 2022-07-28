@@ -31,7 +31,7 @@
 #include <math.h>
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* HDF5 */
 #ifdef HAVE_HDF5

@@ -20,7 +20,7 @@
 #define SWIFT_MESH_GRAVITY_MPI_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Forward declarations */
 struct space;

@@ -20,7 +20,7 @@
 #define SWIFT_FEEDBACK_DEBUG_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the debug routines of the right feedback definition */
 #if defined(FEEDBACK_NONE)

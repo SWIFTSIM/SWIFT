@@ -19,7 +19,7 @@
 #ifndef SWIFT_BLACK_HOLES_IO_H
 #define SWIFT_BLACK_HOLES_IO_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "engine.h"
