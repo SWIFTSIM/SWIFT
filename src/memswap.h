@@ -22,6 +22,7 @@
 /* Config parameters. */
 #include <config.h>
 
+/* System includes. */
 #include <stdint.h>
 
 #ifdef HAVE_IMMINTRIN_H

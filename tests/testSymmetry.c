@@ -17,9 +17,12 @@
  *
  ******************************************************************************/
 #include <config.h>
+
+/* Local includes. */
 #include "swift.h"
 #include "timestep_limiter_iact.h"
 
+/* System includes. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>

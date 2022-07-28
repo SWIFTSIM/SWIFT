@@ -9,6 +9,7 @@
 
 #include <config.h>
 
+/* System includes */
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>

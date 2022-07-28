@@ -22,6 +22,7 @@
 /* Config parameters. */
 #include <config.h>
 
+/* System includes. */
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>

@@ -17,6 +17,8 @@
  *
  ******************************************************************************/
 #include <config.h>
+
+/* Local includes. */
 #include "timeline.h"
 #include "tools.h"
 

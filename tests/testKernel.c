@@ -18,10 +18,13 @@
  *
  ******************************************************************************/
 #include <config.h>
+
+/* Local includes. */
 #include "align.h"
 #include "kernel_hydro.h"
 #include "vector.h"
 
+/* System includes. */
 #include <fenv.h>
 #include <stdlib.h>
 #include <strings.h>
