@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 #include "chemistry_struct.h"
 
 /* Import the right chemistry definition */

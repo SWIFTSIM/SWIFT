@@ -20,7 +20,7 @@
 #define SWIFT_CLOCKS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* System includes. */
 #include <sys/times.h>

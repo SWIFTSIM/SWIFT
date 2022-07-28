@@ -17,7 +17,7 @@
  *
  ******************************************************************************/
 
-#include "../config.h"
+#include <config.h>
 #include "swift.h"
 
 /* Standard includes */

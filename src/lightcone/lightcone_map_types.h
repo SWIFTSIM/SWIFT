@@ -21,7 +21,7 @@
 #define SWIFT_LIGHTCONE_MAP_TYPES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers */
 #include "io_compression.h"

@@ -20,7 +20,7 @@
 #define SWIFT_BLACK_HOLES_PROPERTIES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct black_holes model */
 #if defined(BLACK_HOLES_NONE)

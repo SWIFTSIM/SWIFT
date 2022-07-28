@@ -20,7 +20,7 @@
 #define SWIFT_VELOCIRAPTOR_STRUCT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /**
  * @brief Data returned by VELOCIraptor for each #gpart.

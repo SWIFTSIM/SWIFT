@@ -20,7 +20,7 @@
 #define SWIFT_COLLECTGROUP_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers. */
 #include <stddef.h>

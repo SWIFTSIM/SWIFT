@@ -20,7 +20,7 @@
 #define SWIFT_MULTIPOLE_ACCEPT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "binomial.h"

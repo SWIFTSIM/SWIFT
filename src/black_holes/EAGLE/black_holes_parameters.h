@@ -20,7 +20,7 @@
 #define SWIFT_EAGLE_BLACK_HOLES_PARAMETERS_H
 
 /* Configuration file */
-#include "config.h"
+#include <config.h>
 
 /**
  * @file EAGLE/black_holes_parameters.h
