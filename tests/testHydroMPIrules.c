@@ -17,8 +17,11 @@
  *
  ******************************************************************************/
 #include <config.h>
+
+/* Local includes. */
 #include "swift.h"
 
+/* System includes. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -26,6 +26,8 @@
 
 /* Config parameters. */
 #include <config.h>
+
+/* Local includes. */
 #include "chemistry_struct.h"
 
 /* Import the right chemistry definition */

@@ -23,6 +23,8 @@
 
 /* Config parameters. */
 #include <config.h>
+
+/* Local includes. */
 #include "engine.h"
 #include "io_properties.h"
 

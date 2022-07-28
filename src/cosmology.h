@@ -21,6 +21,8 @@
 
 /* Config parameters. */
 #include <config.h>
+
+/* Local includes. */
 #include "parser.h"
 #include "physical_constants.h"
 #include "timeline.h"

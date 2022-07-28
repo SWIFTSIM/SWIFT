@@ -18,6 +18,8 @@
  ******************************************************************************/
 
 #include <config.h>
+
+/* Local includes. */
 #include "swift.h"
 
 /* Standard includes */
