@@ -778,3 +778,156 @@ void space_split(struct space *s, int verbose) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
+
+/**
+ * @brief Recursively build the void cell tree hierarchy.
+ *        This is populated with multipole later from the bottom up.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split recursively.
+ * @param thread_id The ID of the current thread for defining ownership.
+ */
+void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
+
+  /* Check we aren't at the depth of the zoom cells. */
+  if (pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
+
+    /* No longer just a leaf. */
+    c->split = 1;
+
+    /* Create the cell's fake progeny.
+     * NOTE: The majority of these properties will be left at their
+     * initialised value. Only the multipoles will be created at a later date.
+     */
+    space_getcells(s, 8, c->progeny, thread_id);
+    for (int k = 0; k < 8; k++) {
+      struct cell *cp = c->progeny[k];
+      cp->hydro.count = 0;
+      cp->grav.count = 0;
+      cp->stars.count = 0;
+      cp->sinks.count = 0;
+      cp->black_holes.count = 0;
+      cp->hydro.count_total = 0;
+      cp->grav.count_total = 0;
+      cp->sinks.count_total = 0;
+      cp->stars.count_total = 0;
+      cp->black_holes.count_total = 0;
+      cp->hydro.ti_old_part = c->hydro.ti_old_part;
+      cp->grav.ti_old_part = c->grav.ti_old_part;
+      cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
+      cp->stars.ti_old_part = c->stars.ti_old_part;
+      cp->sinks.ti_old_part = c->sinks.ti_old_part;
+      cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
+      cp->loc[0] = c->loc[0];
+      cp->loc[1] = c->loc[1];
+      cp->loc[2] = c->loc[2];
+      cp->width[0] = c->width[0] / 2;
+      cp->width[1] = c->width[1] / 2;
+      cp->width[2] = c->width[2] / 2;
+      cp->dmin = c->dmin / 2;
+      if (k & 4) cp->loc[0] += cp->width[0];
+      if (k & 2) cp->loc[1] += cp->width[1];
+      if (k & 1) cp->loc[2] += cp->width[2];
+      cp->depth = c->depth + 1;
+      cp->split = 0;
+      cp->hydro.h_max = 0.f;
+      cp->hydro.h_max_active = 0.f;
+      cp->hydro.dx_max_part = 0.f;
+      cp->hydro.dx_max_sort = 0.f;
+      cp->stars.h_max = 0.f;
+      cp->stars.h_max_active = 0.f;
+      cp->stars.dx_max_part = 0.f;
+      cp->stars.dx_max_sort = 0.f;
+      cp->sinks.r_cut_max = 0.f;
+      cp->sinks.r_cut_max_active = 0.f;
+      cp->sinks.dx_max_part = 0.f;
+      cp->black_holes.h_max = 0.f;
+      cp->black_holes.h_max_active = 0.f;
+      cp->black_holes.dx_max_part = 0.f;
+      cp->nodeID = c->nodeID;
+      cp->parent = c;
+      cp->top = c->top;
+      cp->super = NULL;
+      cp->hydro.super = NULL;
+      cp->grav.super = NULL;
+      cp->flags = 0;
+      star_formation_logger_init(&cp->stars.sfh);
+#ifdef WITH_MPI
+      cp->mpi.tag = -1;
+#endif  // WITH_MPI
+      cp->tl_cell_type = c->tl_cell_type;
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+      cell_assign_cell_index(cp, c);
+#endif
+
+      /* Recurse to the next level down. */
+      void_tree_recursive(s, cp, thread_id);
+      
+    }    
+  }
+  /* If we are at the depth of the zoom cells link in the zoom cells. */
+  else {
+
+    /* Set up some useful information. */
+    double zoom_loc[3];
+
+    /* No longer just a leaf. */
+    c->split = 1;
+
+    /* Loop over the 8 progeny cells which are now the zoom cells. */
+    for (int k = 0; k < 8; k++) {
+
+      /* Establish the location of the fake progeny cell. */
+      zoom_loc[0] = c->loc[0] + (s->zoom_props->width[0] / 2);
+      zoom_loc[1] = c->loc[1] + (s->zoom_props->width[1] / 2);
+      zoom_loc[2] = c->loc[2] + (s->zoom_props->width[2] / 2);
+      if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
+      if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
+      if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
+
+      /* Which zoom cell are we in? */
+      int cid = cell_getid_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
+
+      /* Get the zoom cell. */
+      struct zoom_cell = s->cells_top[cid];
+
+      /* Link this zoom cell into the void cell hierarchy. */
+      c->progeny[k] = zoom_cell;
+
+      /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
+      zoom_cell->void_parent = c;
+      
+    }
+    
+  }
+}
+
+/**
+ * @brief Construct the fake cell tree for the void cell to enable multipole
+ *        gravity computations to be done at lower cell resolution than
+ *        the zoom cell grid.
+ *
+ *        This tree demands the number zoom cells obey (2^n)^3 and terminates
+ *        at the level of the zoom grid.
+ *
+ * @param s The #space in which the cell lives.
+ * @param thread_id The ID of the current thread for defining ownership.
+ * @param verbose Are we talkative ?
+ */
+void void_tree_build(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Get a handle on the void cell. */
+  struct cell void_cell = s->cells_top[s->zoom_props->void_cell_index];
+
+  /* First lets build the fake cell hierarchy recursively. */
+  void_tree_recursive(s, void_cell, /*thread_id=*/0);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+  
+}
+

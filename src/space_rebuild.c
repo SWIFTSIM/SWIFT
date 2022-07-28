@@ -1060,6 +1060,10 @@ void space_rebuild(struct space *s, int repartitioned,
      cell to get the full AMR grid. */
   space_split(s, verbose);
 
+  /* If we are running a zoom construct the void cell hierarchy. */
+  if (s->with_zoom_region)
+    void_tree_build(s, verbose);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */
   if (s->with_self_gravity)
