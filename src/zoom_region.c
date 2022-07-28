@@ -76,6 +76,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                  space_max_top_level_cells_default);
 
+    /* Ensure we have been given a power of 2 for cdim. */
+    if (!((s->zoom_props->cdim[0] & (s->zoom_props->cdim[0] - 1)) == 0))
+      error("Scheduler:max_top_level_cells must be a a power of 2 "
+            "when running with a zoom region");
+
     /* Extract the zoom width boost factor (used to define the buffer around the
      * zoom region). */
     s->zoom_props->zoom_boost_factor =
