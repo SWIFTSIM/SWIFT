@@ -17,7 +17,7 @@
  *
  ******************************************************************************/
 
-#include "../config.h"
+#include <config.h>
 #include "approx_math.h"
 #include "vector.h"
 

@@ -20,7 +20,7 @@
 #define SWIFT_SINGLE_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_HDF5) && !defined(WITH_MPI)
 

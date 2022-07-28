@@ -20,7 +20,7 @@
 #define SWIFT_RIEMANN_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(RIEMANN_SOLVER_EXACT)
 

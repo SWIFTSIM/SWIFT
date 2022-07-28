@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>

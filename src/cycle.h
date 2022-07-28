@@ -42,7 +42,7 @@
 
    (In order to use some of the OS-dependent timer routines like
    Solaris' gethrtime, you need to paste the autoconf snippet below
-   into your configure.ac file and #include "config.h" before cycle.h,
+   into your configure.ac file and #include <config.h> before cycle.h,
    or define the relevant macros manually if you are not using autoconf.)
 */
 

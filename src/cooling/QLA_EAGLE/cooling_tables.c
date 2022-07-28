@@ -23,7 +23,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #include <hdf5.h>
 #include <math.h>
