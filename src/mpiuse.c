@@ -21,7 +21,7 @@
  *  @brief file of routines to report about MPI tasks used in SWIFT.
  */
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(SWIFT_MPIUSE_REPORTS) && defined(WITH_MPI)
 

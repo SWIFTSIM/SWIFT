@@ -22,7 +22,7 @@
 #define SWIFT_POTENTIAL_ISOTHERMAL_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <math.h>

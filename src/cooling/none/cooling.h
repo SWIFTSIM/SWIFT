@@ -23,7 +23,7 @@
  * @file src/cooling/none/cooling.h
  * @brief Empty infrastructure for the cases without cooling function
  */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>

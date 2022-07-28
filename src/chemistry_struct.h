@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right chemistry definition */
 #if defined(CHEMISTRY_NONE)

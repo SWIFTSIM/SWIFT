@@ -20,7 +20,7 @@
 #define SWIFT_FEEDBACK_PROPERTIES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct feedback model */
 #if defined(FEEDBACK_NONE)

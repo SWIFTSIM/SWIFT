@@ -20,7 +20,7 @@
 #define SWIFT_QLA_COOLING_RATES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "chemistry_struct.h"

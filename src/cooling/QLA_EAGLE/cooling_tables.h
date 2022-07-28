@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "config.h"
+#include <config.h>
 
 /*! Number of different bins along the redhsift axis of the tables */
 #define qla_eagle_cooling_N_redshifts 49

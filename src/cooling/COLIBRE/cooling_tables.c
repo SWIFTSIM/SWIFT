@@ -23,7 +23,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This file's header */
 #include "cooling_tables.h"

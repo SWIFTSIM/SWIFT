@@ -20,7 +20,7 @@
 #define SWIFT_EAGLE_FEEDBACK_KINETIC_PROPERTIES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "chemistry.h"

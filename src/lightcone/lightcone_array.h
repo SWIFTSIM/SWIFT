@@ -21,7 +21,7 @@
 #define SWIFT_LIGHTCONE_ARRAY_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers */
 #include "lightcone/lightcone.h"

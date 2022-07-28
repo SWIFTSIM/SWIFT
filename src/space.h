@@ -24,7 +24,7 @@
 #define SWIFT_SPACE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <stddef.h>

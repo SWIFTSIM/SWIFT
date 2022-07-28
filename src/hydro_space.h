@@ -19,7 +19,7 @@
 #ifndef SWIFT_HYDRO_SPACE_H
 #define SWIFT_HYDRO_SPACE_H
 
-#include "../config.h"
+#include <config.h>
 
 struct space;
 

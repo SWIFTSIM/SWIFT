@@ -21,7 +21,7 @@
 #define SWIFT_TRACERS_EAGLE_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "io_properties.h"

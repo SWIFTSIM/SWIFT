@@ -20,7 +20,7 @@
 #define SWIFT_HYDRO_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right functions */
 #if defined(NONE_SPH)

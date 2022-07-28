@@ -23,7 +23,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard includes. */
 #include <stdint.h>

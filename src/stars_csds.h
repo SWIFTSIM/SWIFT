@@ -20,7 +20,7 @@
 #define SWIFT_STARS_CSDS_H
 
 /* Include config */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "./const.h"

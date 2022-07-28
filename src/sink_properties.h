@@ -20,7 +20,7 @@
 #define SWIFT_SINK_PROPERTIES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct sink model */
 #if defined(SINK_NONE)

@@ -20,7 +20,7 @@
 #define SWIFT_COOLING_DEBUG_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the debug routines of the right cooling definition */
 #if defined(COOLING_NONE)

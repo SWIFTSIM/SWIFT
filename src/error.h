@@ -22,7 +22,7 @@
 #define SWIFT_ERROR_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <stdio.h>

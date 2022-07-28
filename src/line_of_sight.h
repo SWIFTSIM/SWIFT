@@ -22,7 +22,7 @@
 #define SWIFT_LOS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 #include "engine.h"
 #include "io_properties.h"
 

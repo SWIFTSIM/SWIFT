@@ -20,7 +20,7 @@
 #define SWIFT_NONE_HYDRO_PARAMETERS_H
 
 /* Configuration file */
-#include "config.h"
+#include <config.h>
 
 /* Global headers */
 #if defined(HAVE_HDF5)
