@@ -871,8 +871,9 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
     /* Set up some useful information. */
     double zoom_loc[3];
 
-    /* No longer just a leaf. */
-    c->split = 1;
+    /* We need to ensure this bottom level isn't treated like a
+     * normal split cell since it's linked into top level "progeny". */
+    c->split = 0;
 
     /* Loop over the 8 progeny cells which are now the zoom cells. */
     for (int k = 0; k < 8; k++) {
