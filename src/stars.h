@@ -20,7 +20,7 @@
 #define SWIFT_STARS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct star model */
 #if defined(STARS_NONE)

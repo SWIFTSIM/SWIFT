@@ -21,7 +21,7 @@
 #define SWIFT_RANDOM_H
 
 /* Code configuration */
-#include "../config.h"
+#include <config.h>
 
 /* Standard header */
 #include <stdint.h>

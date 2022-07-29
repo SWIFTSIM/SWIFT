@@ -21,7 +21,7 @@
 #define SWIFT_POTENTIAL_NFW_MN_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>

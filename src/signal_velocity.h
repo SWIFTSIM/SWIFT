@@ -20,7 +20,7 @@
 #define SWIFT_SIGNAL_VELOCITY_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #ifndef NONE_MHD
 

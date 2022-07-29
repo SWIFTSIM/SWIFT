@@ -16,10 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "swift.h"
 #include "timestep_limiter_iact.h"
 
+/* System includes. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -20,7 +20,9 @@
 #define SWIFT_COSMOLOGY_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "parser.h"
 #include "physical_constants.h"
 #include "timeline.h"
