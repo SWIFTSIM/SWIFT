@@ -1664,7 +1664,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     const int j = ((cid - bkg_cell_offset) / cdim[2]) % cdim[1];
     const int k = (cid - bkg_cell_offset) % cdim[2];
 
-    /* Get the cell */
+    /* Get the first cell */
     struct cell *ci = &cells[cid];
 
     /* Skip cells without gravity particles */
@@ -1681,20 +1681,27 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     }
 
     /* Loop over every other cell within (Manhattan) range delta */
-    for (int ii = -delta_m; ii <= delta_p; ii++) {
-      int iii = i + ii;
-      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -delta_m; jj <= delta_p; jj++) {
-        int jjj = j + jj;
-        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -delta_m; kk <= delta_p; kk++) {
-          int kkk = k + kk;
-          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
+    for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
-          /* Get the cell */
+      /* Escape if non-periodic and beyond range */
+      if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+
+      for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+	/* Escape if non-periodic and beyond range */
+        if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+
+        for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+          /* Escape if non-periodic and beyond range */
+          if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+          /* Apply periodic BC (not harmful if not using periodic BC) */
+	  const int iii = (ii + cdim[0]) % cdim[0];
+	  const int jjj = (jj + cdim[1]) % cdim[1];
+	  const int kkk = (kk + cdim[2]) % cdim[2];
+
+          /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
           struct cell *cj = &cells[cjd];
 
@@ -1703,20 +1710,16 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
+#ifdef WITH_MPI
           /* Recover the multipole information */
           const struct gravity_tensors *multi_i = ci->grav.multipole;
           const struct gravity_tensors *multi_j = cj->grav.multipole;
 
           if (multi_i == NULL && ci->nodeID != nodeID)
-            error(
-                "Multipole of ci was not exchanged properly via the proxies "
-                "(nodeID=%d, ci->nodeID=%d)",
-                nodeID, ci->nodeID);
+            error("Multipole of ci was not exchanged properly via the proxies");
           if (multi_j == NULL && cj->nodeID != nodeID)
-            error(
-                "Multipole of cj was not exchanged properly via the proxies "
-                "(nodeID=%d, cj->nodeID=%d)",
-                nodeID, cj->nodeID);
+            error("Multipole of cj was not exchanged properly via the proxies");
+#endif
 
           /* Minimal distance between any pair of particles */
           const double min_radius2 =
@@ -1843,7 +1846,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     const int j = (cid / cdim[2]) % cdim[1];
     const int k = cid % cdim[2];
 
-    /* Get the cell */
+    /* Get the first cell */
     struct cell *ci = &cells[cid];
 
     /* Skip cells without gravity particles */
@@ -1855,22 +1858,28 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
                         NULL);
     }
 
-    /* Loop over every other cell within (Manhattan) range delta
-     * NOTE: Zoom cells are never periodic */
-    for (int ii = -delta_m; ii <= delta_p; ii++) {
-      int iii = i + ii;
-      if (iii < 0 || iii >= cdim[0]) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -delta_m; jj <= delta_p; jj++) {
-        int jjj = j + jj;
-        if (jjj < 0 || jjj >= cdim[1]) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -delta_m; kk <= delta_p; kk++) {
-          int kkk = k + kk;
-          if (kkk < 0 || kkk >= cdim[2]) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
+    /* Loop over every other cell within (Manhattan) range delta */
+    for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
-          /* Get the cell */
+      /* Zoom cells are never periodic, exit if beyond zoom region */
+      if (ii < 0 || ii >= cdim[0]) continue;
+
+      for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+        /* Zoom cells are never periodic, exit if beyond zoom region */
+        if (jj < 0 || jj >= cdim[1]) continue;
+
+        for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+          /* Zoom cells are never periodic, exit if beyond zoom region */
+          if (kk < 0 || kk >= cdim[2]) continue;
+
+          /* Apply periodic BC (not harmful if not using periodic BC) */
+	  const int iii = (ii + cdim[0]) % cdim[0];
+	  const int jjj = (jj + cdim[1]) % cdim[1];
+	  const int kkk = (kk + cdim[2]) % cdim[2];
+          
+          /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
@@ -1879,20 +1888,16 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
+#ifdef WITH_MPI
           /* Recover the multipole information */
           const struct gravity_tensors *multi_i = ci->grav.multipole;
           const struct gravity_tensors *multi_j = cj->grav.multipole;
 
           if (multi_i == NULL && ci->nodeID != nodeID)
-            error(
-                "Multipole of ci was not exchanged properly via the proxies "
-                "(nodeID=%d, ci->nodeID=%d)",
-                nodeID, ci->nodeID);
+            error("Multipole of ci was not exchanged properly via the proxies");
           if (multi_j == NULL && cj->nodeID != nodeID)
-            error(
-                "Multipole of cj was not exchanged properly via the proxies "
-                "(nodeID=%d, cj->nodeID=%d)",
-                nodeID, cj->nodeID);
+            error("Multipole of cj was not exchanged properly via the proxies");
+#endif
 
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
