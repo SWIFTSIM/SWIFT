@@ -670,6 +670,7 @@ void find_neighbouring_cells(struct space *s,
                              struct gravity_props *gravity_properties,
                              const int verbose) {
 #ifdef WITH_ZOOM_REGION
+  const struct engine *e = s->e;
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
@@ -677,18 +678,35 @@ void find_neighbouring_cells(struct space *s,
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-  /* Get some info about the physics */
-  const double theta_crit_inv = 1. / gravity_properties->theta_crit;
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
 
-  /* Maximal distance from shifted CoM to any corner */
-  const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
+  /* Convert the maximal search distance to a number of cells
+   * Define a lower and upper delta in case things are not symmetric */
+  const int delta = (int)(sqrt(3) * distance
+                          / cells[bkg_cell_offset].width[0]) + 1;
+  int delta_m = delta;
+  int delta_p = delta;
 
-  /* Compute how many cells away we need to walk */
-  const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
-
-  /* Turn this into upper and lower bounds for loops */
-  const int delta_m = delta_cells;
-  const int delta_p = delta_cells;
+  /* Special case where every cell is in range of every other one */
+  if (periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
+    }
+  }
 
   /* Allocate the indices of neighbour background cells */
   if (swift_memalign("neighbour_cells_top",
@@ -710,52 +728,41 @@ void find_neighbouring_cells(struct space *s,
         "delta_p=%d)",
         delta_cells, delta_m, delta_p);
 
-  /* Loop over each cell in the space to find the neighbouring top level cells
-   * surrounding the zoom region. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
+  /* Get the void cell coordinates. */
+  int i = s->zoom_props->zoom_cell_ijk[0];
+  int j = s->zoom_props->zoom_cell_ijk[1];
+  int k = s->zoom_props->zoom_cell_ijk[2];
 
-        /* Get the cell ID. */
-        const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Ensure all background cells are actually background cells */
-        if (cells[cid].width[0] == s->zoom_props->width[0])
-          error("A zoom cell has been given a natural cell label!");
-#endif
+    /* Escape if non-periodic and beyond range */
+    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
 
-        /* Only interested in cells hosting zoom top level cells. */
-        if (cells[cid].tl_cell_type != void_tl_cell) continue;
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
-        void_count++;
+      /* Escape if non-periodic and beyond range */
+      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
-        /* Loop over all its direct neighbours. */
-        for (int ii = -delta_m; ii <= delta_p; ii++) {
-          int iii = i + ii;
-          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-          iii = (iii + cdim[0]) % cdim[0];
-          for (int jj = -delta_m; jj <= delta_p; jj++) {
-            int jjj = j + jj;
-            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-            jjj = (jjj + cdim[1]) % cdim[1];
-            for (int kk = -delta_m; kk <= delta_p; kk++) {
-              int kkk = k + kk;
-              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-              kkk = (kkk + cdim[2]) % cdim[2];
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
-              /* Get the cell ID of the neighbour. */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+        /* Escape if non-periodic and beyond range */
+        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
-              if (cells[cjd].tl_cell_type == tl_cell) {
+        /* Apply periodic BC (not harmful if not using periodic BC) */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
 
-                /* Record that we've found a neighbour. */
-                cells[cjd].tl_cell_type = tl_cell_neighbour;
-                s->zoom_props->neighbour_cells_top[neighbour_count] = cjd;
-                neighbour_count++;
-              }
-            }
-          }
+        /* Get the cell ID of the neighbour. */
+        const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+        
+        if (cells[cjd].tl_cell_type == tl_cell) {
+
+          /* Record that we've found a neighbour. */
+          cells[cjd].tl_cell_type = tl_cell_neighbour;
+          s->zoom_props->neighbour_cells_top[neighbour_count] = cjd;
+          neighbour_count++;
         }
       }
     }
@@ -764,10 +771,8 @@ void find_neighbouring_cells(struct space *s,
   /* Store the number of neighbour cells */
   s->zoom_props->nr_neighbour_cells = neighbour_count;
 
-  if (verbose) {
+  if (verbose)
     message("%i cells neighbouring the zoom region", neighbour_count);
-    message("%i void cells in the zoom region", void_count);
-  }
 #endif
 }
 
@@ -1629,27 +1634,38 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double theta_crit = e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-  /* Compute how many cells away we need to walk */
-  const double distance = 2.5 * cells[bkg_cell_offset].width[0] / theta_crit;
-  int delta = (int)(distance / cells[bkg_cell_offset].width[0]) + 1;
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
+
+  /* Convert the maximal search distance to a number of cells
+   * Define a lower and upper delta in case things are not symmetric */
+  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
   /* Special case where every cell is in range of every other one */
-  if (delta >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
+  if (periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
     }
   }
 
@@ -1813,25 +1829,40 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                        s->zoom_props->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double theta_crit = e->gravity_properties->theta_crit;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
 
-  /* Compute how many cells away we need to walk */
-  const double distance = 2.5 * cells[0].width[0] / theta_crit;
-  int delta = (int)(distance / cells[0].width[0]) + 1;
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, periodic);
+
+  /* Convert the maximal search distance to a number of cells
+   * Define a lower and upper delta in case things are not symmetric */
+  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
   /* Special case where every cell is in range of every other one */
-  if (delta >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
+  if (periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
     }
   }
 
@@ -1898,6 +1929,16 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
           if (multi_j == NULL && cj->nodeID != nodeID)
             error("Multipole of cj was not exchanged properly via the proxies");
 #endif
+          
+          /* Minimal distance between any pair of particles */
+          const double min_radius2 =
+              cell_min_dist2_same_size(ci, cj, periodic, dim);
+
+          /* Are we beyond the distance where the truncated forces are 0?
+          * NOTE: For large meshes this could mean cells in the zoom region
+          *       are handled by the mesh even though the zoom region is not
+          *       periodic. */
+          if (periodic && min_radius2 > max_distance2) continue;
 
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -2067,20 +2108,16 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
         continue;
       }
 
-      /* Recover the multipole information */
-      const struct gravity_tensors *multi_i = ci->grav.multipole;
-      const struct gravity_tensors *multi_j = cj->grav.multipole;
+#ifdef WITH_MPI
+          /* Recover the multipole information */
+          const struct gravity_tensors *multi_i = ci->grav.multipole;
+          const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-      if (multi_i == NULL && ci->nodeID != nodeID)
-        error(
-            "Multipole of ci was not exchanged properly via the proxies "
-            "(nodeID=%d, ci->nodeID=%d)",
-            nodeID, ci->nodeID);
-      if (multi_j == NULL && cj->nodeID != nodeID)
-        error(
-            "Multipole of cj was not exchanged properly via the proxies "
-            "(nodeID=%d, cj->nodeID=%d)",
-            nodeID, cj->nodeID);
+          if (multi_i == NULL && ci->nodeID != nodeID)
+            error("Multipole of ci was not exchanged properly via the proxies");
+          if (multi_j == NULL && cj->nodeID != nodeID)
+            error("Multipole of cj was not exchanged properly via the proxies");
+#endif
 
       /* Minimal distance between any pair of particles */
       const double min_radius2 =
