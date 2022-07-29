@@ -291,6 +291,15 @@ struct space {
   /*! Sum of the norm of the velocity of all the #bpart */
   float sum_bpart_vel_norm;
 
+  /*! Minimal gravity acceleration accross all particles */
+  float min_a_grav;
+
+  /*! Max gravity softening accross all particles */
+  float max_softening;
+
+  /*! Max multipole power accross all top-level cells */
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
+
   /* Initial mean mass of each particle type in the system. */
   double initial_mean_mass_particles[swift_type_count];
 

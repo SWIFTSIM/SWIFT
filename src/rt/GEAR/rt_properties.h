@@ -19,9 +19,11 @@
 #ifndef SWIFT_RT_PROPERTIES_GEAR_H
 #define SWIFT_RT_PROPERTIES_GEAR_H
 
+#include "hydro.h" /* Need hydro_gamma */
 #include "rt_parameters.h"
 
 #include <grackle.h>
+#include <string.h>
 
 /**
  * @file src/rt/GEAR/rt_properties.h
@@ -29,19 +31,7 @@
  * properties.
  */
 
-/**
- * @brief allocate and pre-compute the averaged cross sections
- * for each photon group and ionizing species.
- * Declare this here to avoid cyclical inclusions.
- *
- * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param us internal units struct
- **/
-static void rt_interaction_rates_init(struct rt_props* restrict rt_props,
-                                      const struct phys_const* restrict
-                                          phys_const,
-                                      const struct unit_system* restrict us);
+#define RT_IMPLEMENTATION "GEAR M1closure"
 
 /**
  * @brief Properties of the 'GEAR' radiative transfer model
@@ -137,6 +127,13 @@ struct rt_props {
   FILE* star_emitted_energy_filep;
 #endif
 };
+
+/* Declare this here to avoid cyclical inclusions.
+ * It needs to be after definition of rt_props, but
+ * before the call to rt_props_init.*/
+void rt_interaction_rates_init(struct rt_props* restrict rt_props,
+                               const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us);
 
 /**
  * @brief open up files to write some debugging check outputs.

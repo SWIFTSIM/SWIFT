@@ -921,6 +921,7 @@ void space_rebuild(struct space *s, int repartitioned,
     s->zoom_props->nr_local_bkg_cells_with_particles = 0;
   }
 #endif
+
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
@@ -1028,7 +1029,7 @@ void space_rebuild(struct space *s, int repartitioned,
 #endif
     }
   }
-  
+
   if (verbose) {
     message("Have %d local top-level cells with particles (total=%d)",
             s->nr_local_cells_with_particles, s->nr_cells);
