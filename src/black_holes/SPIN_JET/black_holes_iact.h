@@ -269,9 +269,9 @@ runner_iact_nonsym_bh_gas_density(
   /* Calculate relative velocity of particle and BH, to be used to see if
      this particle was recently kicked */
   const float relative_velocity =
-      sqrtf((bi->v[0] - xpj->v_full[0]) * (bi->v[0] - xpj->v_full[0]) +
-            (bi->v[1] - xpj->v_full[1]) * (bi->v[1] - xpj->v_full[1]) +
-            (bi->v[2] - xpj->v_full[2]) * (bi->v[2] - xpj->v_full[2])) *
+      sqrtf((bi->v[0] - pj->v[0]) * (bi->v[0] - pj->v[0]) +
+            (bi->v[1] - pj->v[1]) * (bi->v[1] - pj->v[1]) +
+            (bi->v[2] - pj->v[2]) * (bi->v[2] - pj->v[2])) *
       cosmo->a_inv;
 
   /* Choose AGN jet feedback model. Here we calculate the quantities to
