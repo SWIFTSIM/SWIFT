@@ -39,7 +39,6 @@ Below we give an example of parameter choices applicable for e.g. a 50 Mpc box. 
         set_reposition_speed:               0          # Should we reposition black holes with (at most) a prescribed speed towards the potential minimum?
         reposition_coefficient_upsilon:     0.001      # Repositioning speed normalisation [km/s/M_sun]. Only meaningful if set_reposition_speed is 1.
         reposition_exponent_xi:             1.0        # (Optional) Scaling of repositioning velocity with BH subgrid mass (default: 1.0, linear). Only meaningful if set_reposition_speed is 1.
-        with_potential_correction:          1          # Should the BH's own contribution to the potential be removed from the neighbour's potentials when looking for repositioning targets.
         threshold_major_merger:             0.333      # Mass ratio threshold to consider a BH merger as 'major'
         threshold_minor_merger:             0.1        # Mass ratio threshold to consider a BH merger as 'minor'
         merger_threshold_type:              DynamicalEscapeVelocity   # Type of velocity threshold for BH mergers (CircularVelocity as in EAGLE, EscapeVelocity, or DynamicalEscapeVelocity)
@@ -64,13 +63,13 @@ Below we give an example of parameter choices applicable for e.g. a 50 Mpc box. 
         jet_efficiency:                     0.1        # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
         fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
         radiative_efficiency:               0.1        # The constant jet efficiency used if 'fix_radiative_efficiency' is set to 1. Otherwise, this value is used to define the Eddington accretion rate.
-        TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used. 
+        TD_region:                          C          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used. 
         include_GRMHD_spindown:             1          # Whether to include high jet spindown rates from GRMHD simulations [1], or use an analytical formula that assumes extraction of energy from the rotational mass/energy of the BH.
-        include_ADIOS_suppression:          1          # Whether to suppress the accretion rate in the fully thick disc regime [1] (Eddington rate below 0.2alpha^2) by the amount expected to be taken away by isotropic kinetic disk winds.
+        include_ADIOS_suppression:          0          # Whether to suppress the accretion rate in the fully thick disc regime [1] (Eddington rate below 0.2alpha^2) by the amount expected to be taken away by isotropic kinetic disk winds.
         ADIOS_R_in:                         30.        # If include_ADIOS_accr_suppression is set to 1, this parameter controls the inner radius within which winds are not important.
         ADIOS_s:                            0.4        # Slope of the accretion rate - radius relationship if include_ADIOS_accr_suppression is set to 1.
         turn_off_secondary_feedback:        1          # If set to 1, there will be only radiative (thermal) feedback in the thin disk mode, and only jets in the thick disk mode.
-        jet_h_r_slope:                      1.         # The slope of the dependence of jet efficiency on aspect ratio of the subgrid accretion disk, H/R. Default value is 1, and another reasonable value is 0 (same jet efficiency for all disks). Reality could be anything in between. 
+        jet_h_r_slope:                      1.         # The slope of the dependence of jet efficiency on aspect ratio of the subgrid accretion disk, H/R. Default value is 1, and another reasonable value is 0 (same jet efficiency for all disks). Reality could be anything in between. This parameter is only used if turn_off_secondary_feedback is set to 0.
         delta_ADAF:                         0.2        # Electron heating parameter, which controls the strength of radiative feedback in thick disks. Should be between 0.1 and 0.5. This parameter is only used if turn_off_secondary_feedback is set to 0.
         include_slim_disk:                  0          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
         TD_SD_eps_r_threshold:              0.75       # Parameter controlling the transition from thin to slim disk. Accretion disk will be slim if radiative efficiency satisfies eps_slim < TD_SD_eps_r_threshold * eps_thin. This parameter is only used if include_slim_disk is set to 1.
