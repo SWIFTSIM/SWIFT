@@ -718,7 +718,6 @@ void find_neighbouring_cells(struct space *s,
         s->zoom_props->nr_bkg_cells * sizeof(int));
 
   int neighbour_count = 0;
-  int void_count = 0;
 
   /* Let's be verbose about this choice */
   if (verbose)
@@ -726,7 +725,7 @@ void find_neighbouring_cells(struct space *s,
         "Looking for neighbouring natural cells up to %d natural top-level "
         "cells away from the zoom region (delta_m=%d "
         "delta_p=%d)",
-        delta_cells, delta_m, delta_p);
+        delta, delta_m, delta_p);
 
   /* Get the void cell coordinates. */
   int i = s->zoom_props->zoom_cell_ijk[0];
