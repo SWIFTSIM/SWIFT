@@ -674,18 +674,14 @@ void find_neighbouring_cells(struct space *s,
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
+  const double max_mesh_dist = e->mesh->r_cut_max;
 
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
-      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
-
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance
+  const int delta = (int)(max_mesh_dist
                           / cells[bkg_cell_offset].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
