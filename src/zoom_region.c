@@ -679,12 +679,23 @@ void find_neighbouring_cells(struct space *s,
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(max_mesh_dist
-                          / cells[bkg_cell_offset].width[0]) + 1;
-  int delta_m = delta;
-  int delta_p = delta;
+  /* At this point we can only define neighbour cells by cell properties,
+   * leaving the fancy gravity distance criterion for task creation later.
+   * Here we just make sure all possible neighbour cells are flagged
+   * as such. */
+
+  /* Get some info about the physics */
+  const double theta_crit_inv = 1. / gravity_properties->theta_crit;
+
+  /* Maximal distance from shifted CoM to any corner */
+  const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
+
+  /* Compute how many cells away we need to walk */
+  const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
+
+  /* Turn this into upper and lower bounds for loops */
+  const int delta_m = delta_cells;
+  const int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
   if (periodic) {
