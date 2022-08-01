@@ -674,7 +674,6 @@ void find_neighbouring_cells(struct space *s,
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
-  const double max_mesh_dist = e->mesh->r_cut_max;
 
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
@@ -694,12 +693,12 @@ void find_neighbouring_cells(struct space *s,
   const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
 
   /* Turn this into upper and lower bounds for loops */
-  const int delta_m = delta_cells;
-  const int delta_p = delta_cells;
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
   if (periodic) {
-    if (delta >= cdim[0] / 2) {
+    if (delta_cells >= cdim[0] / 2) {
       if (cdim[0] % 2 == 0) {
         delta_m = cdim[0] / 2;
         delta_p = cdim[0] / 2 - 1;
@@ -709,7 +708,7 @@ void find_neighbouring_cells(struct space *s,
       }
     }
   } else {
-    if (delta > cdim[0]) {
+    if (delta_cells > cdim[0]) {
       delta_m = cdim[0];
       delta_p = cdim[0];
     }
@@ -732,7 +731,7 @@ void find_neighbouring_cells(struct space *s,
         "Looking for neighbouring natural cells up to %d natural top-level "
         "cells away from the zoom region (delta_m=%d "
         "delta_p=%d)",
-        delta, delta_m, delta_p);
+        delta_cells, delta_m, delta_p);
 
   /* Get the void cell coordinates. */
   int i = s->zoom_props->zoom_cell_ijk[0];
