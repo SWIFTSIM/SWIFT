@@ -282,6 +282,9 @@ struct feedback_props {
   /* The intensity of stellar feedback suppression at high-z */
   float early_wind_suppression_slope;
 
+  /* The minimum galaxy stellar mass in internal units */
+  float minimum_galaxy_stellar_mass;
+
   /* Added scatter to the wind velocities */
   float kick_velocity_scatter;
 

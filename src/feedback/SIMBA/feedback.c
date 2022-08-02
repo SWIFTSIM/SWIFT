@@ -403,6 +403,10 @@ void feedback_props_init(struct feedback_props* fp,
   fp->early_wind_suppression_slope =
       parser_get_param_double(params, "SIMBAFeedback:early_wind_suppression_slope");
 
+  fp->minimum_galaxy_stellar_mass =
+      parser_get_param_double(params, "SIMBAFeedback:minimum_galaxy_stellar_mass_Msun");
+  fp->minimum_galaxy_stellar_mass *= fp->solar_mass_to_mass;
+  
   fp->kick_velocity_scatter =
       parser_get_param_double(params, "SIMBAFeedback:kick_velocity_scatter");
 
@@ -467,7 +471,7 @@ void feedback_props_init(struct feedback_props* fp,
     message("Feedback early suppression scale factor: %g", 
             fp->early_wind_suppression_scale_factor);
     message("Feedback early suppression slope: %g", fp->early_wind_suppression_slope);
-    
+
   }
 }
 

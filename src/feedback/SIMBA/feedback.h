@@ -27,6 +27,7 @@
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
+#include "timestep_sync_part.h"
 
 #include <strings.h>
 
@@ -43,7 +44,7 @@ feedback_possibly_kick_and_decouple_part(
     const struct feedback_props* fb_props, 
     const integertime_t ti_current, const int with_cosmology) {
 
-  const double galaxy_stellar_mass = p->gpart->fof_data.galaxy_stellar_mass;
+  double galaxy_stellar_mass = p->gpart->fof_data.galaxy_stellar_mass;
   if (galaxy_stellar_mass <= 0.) return;
 
   /* Time-step size for this particle */

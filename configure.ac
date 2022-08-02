@@ -1743,6 +1743,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=no
+   enable_fof_galaxies=no
    ;;
    QLA)
 	with_subgrid_cooling=QLA
@@ -1756,6 +1757,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=no
+   enable_fof_galaxies=no
    ;;
    QLA-EAGLE)
 	with_subgrid_cooling=QLA-EAGLE
@@ -1768,6 +1770,7 @@ case "$with_subgrid" in
 	with_subgrid_black_holes=none
 	with_subgrid_sink=none
 	enable_fof=no
+   enable_fof_galaxies=no
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1781,6 +1784,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   enable_fof_galaxies=no
    ;;
    EAGLE-XL)
 	with_subgrid_cooling=COLIBRE
@@ -1794,6 +1798,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   enable_fof_galaxies=no
    ;;
    SIMBA)
 	with_subgrid_cooling=COLIBRE
@@ -1807,6 +1812,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   enable_fof_galaxies=yes
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -1823,6 +1829,18 @@ AC_ARG_ENABLE([fof],
 )
 if test "$enable_fof" = "yes"; then
    AC_DEFINE([WITH_FOF], 1, [Enable FoF])
+fi
+
+# Check if we are looking for galaxies.
+AC_ARG_ENABLE([fof-galaxies],
+   [AS_HELP_STRING([--enable-fof-galaxies],
+     [Activate the friends-of-friends (FoF) code with galaxy finding.],
+   )],
+   [enable_fof_galaxies="$enableval"],
+   [enable_fof_galaxies="no"]
+)
+if test "$enable_fof_galaxies" = "yes"; then
+   AC_DEFINE([FOF_GALAXIES], 1, [Enable FoF Galaxies])
 fi
 
 # Check if stand-alone FoF is on.

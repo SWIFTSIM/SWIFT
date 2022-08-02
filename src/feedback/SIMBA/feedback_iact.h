@@ -330,7 +330,8 @@ runner_iact_nonsym_feedback_apply(
    * in mass is relatively small and the velocity vectors between both the
    * gas particle and the star particle have a small angle. */
   double new_thermal_energy = current_kinetic_energy_gas +
-                              current_thermal_energy + injected_energy;
+                              current_thermal_energy + injected_energy -
+                              new_kinetic_energy_gas;
 
   /* In rare configurations the new thermal energy could become negative.
    * We must prevent that even if that implies a slight violation of the
