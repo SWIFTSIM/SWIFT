@@ -1617,9 +1617,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
-    const struct part *part = &parts[-gparts[i]->id_or_neg_offset];
+    const struct part *part = &parts[-gparts[i].id_or_neg_offset];
     const int is_grouppable = 
-        fof_particle_is_grouppable(gparts[i], part, cosmo, props);
+        fof_particle_is_grouppable(&gparts[i], part, cosmo, props);
     if (!is_grouppable) continue;
 #endif
 
@@ -1792,9 +1792,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
-    const struct part *part = &parts[-gparts[i]->id_or_neg_offset];
+    const struct part *part = &parts[-gparts[i].id_or_neg_offset];
     const int is_grouppable = 
-        fof_particle_is_grouppable(gparts[i], part, cosmo, props);
+        fof_particle_is_grouppable(&gparts[i], part, cosmo, props);
     if (!is_grouppable) continue;
 #endif
 
@@ -2032,9 +2032,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
-    const struct part *part = &parts[-gparts[i]->id_or_neg_offset];
+    const struct part *part = &parts[-gparts[i].id_or_neg_offset];
     const int is_grouppable = 
-        fof_particle_is_grouppable(gparts[i], part, cosmo, props);
+        fof_particle_is_grouppable(&gparts[i], part, cosmo, props);
     if (!is_grouppable) continue;
 #endif
 
@@ -3390,7 +3390,7 @@ void fof_search_tree(struct fof_props *props,
   free(first_on_node);
 #else
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
-                      NULL, props->group_mass
+                      NULL, props->group_mass,
 #ifdef FOF_GALAXIES
                       props->group_stellar_mass,
 #endif
