@@ -2126,6 +2126,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   const struct engine *e = s->e;
   struct fof_props *props = e->fof_properties;
   struct cell_pair_indices *cell_pairs = (struct cell_pair_indices *)map_data;
+  const struct cosmology *cosmo = e->cosmology;
 
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const double search_r2 = props->l_x2;
@@ -2151,7 +2152,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
     rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
                                 nr_gparts, local_cell, foreign_cell,
                                 &local_link_count, &local_group_links,
-                                &local_group_links_size);
+                                &local_group_links_size, cosmo);
   }
 
   /* Add links found by this thread to the global link list. */
