@@ -483,7 +483,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
             /* Here we are NOT converting a gas to star, but we could kick! */
             feedback_possibly_kick_and_decouple_part(p, xp, e, cosmo, 
-                                                     ti_current, with_cosmology);
+                                                     ti_current, 
+                                                     time_base,
+                                                     with_cosmology);
 
           }
 

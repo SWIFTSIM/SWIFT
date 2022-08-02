@@ -27,7 +27,6 @@
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
-#include "timestep_sync_part.h"
 
 #include <strings.h>
 
@@ -42,7 +41,9 @@ feedback_possibly_kick_and_decouple_part(
     struct part* p, struct xpart* xp, const struct engine* e, 
     const struct cosmology* cosmo,
     const struct feedback_props* fb_props, 
-    const integertime_t ti_current, const int with_cosmology) {
+    const integertime_t ti_current, 
+    const double time_base,
+    const int with_cosmology) {
 
   double galaxy_stellar_mass = p->gpart->fof_data.galaxy_stellar_mass;
   if (galaxy_stellar_mass <= 0.) return;
@@ -164,9 +165,6 @@ feedback_possibly_kick_and_decouple_part(
         cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
     p->feedback_data.number_of_times_decoupled += 1;
-
-    /* Sync the particle on the timeline */
-    timestep_sync_particle(p);
 
     /**
      * z pid dt M* Mb vkick vkx vky vkz h x y z vx vy vz T rho v_sig decoupletime Ndecouple
