@@ -102,8 +102,9 @@ void feedback_possibly_kick_and_decouple_part(
   const double v_circ_km_s = 
       pow(galaxy_gas_stellar_mass_Msun / 102.329, 0.26178) *
       pow(cosmo->H / cosmo->H0, 1. / 3.);
-  const double rand_for_scatter = random_unit_interval(p->id, ti_current,
-                                      random_number_stellar_feedback_1);
+  /*const double rand_for_scatter = random_unit_interval(p->id, ti_current,
+                                      random_number_stellar_feedback_1);*/
+  const double rand_for_scatter = 0.;
 
   /* physical km/s */
   const double wind_velocity =
