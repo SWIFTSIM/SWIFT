@@ -41,6 +41,20 @@ struct fof_props {
   /*! Whether we're doing periodic FoF calls to seed black holes. */
   int seed_black_holes_enabled;
 
+#ifdef FOF_GALAXIES
+  /*! Conversion between internal energy and temperature */
+  float u_to_temp_factor;
+
+  /*! Conversion between internal rho and n_H in H/cc units */
+  float rho_to_n_cgs;
+
+  /*! The temperature threshold for cold gas */
+  float cold_gas_temperature_threshold;
+
+  /*! The density threshold for cold gas in H/cc units */
+  float cold_gas_n_H_threshold_cgs;
+#endif
+
   /* ----------- Parameters of the FOF search ------- */
 
   /*! The linking length in units of the mean DM inter-particle separation. */
@@ -85,6 +99,11 @@ struct fof_props {
 
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
+
+#ifdef FOF_GALAXIES
+  /*! Stellar mass of the group a given gpart belongs to. */
+  double *group_stellar_mass;
+#endif
 
   /*! Centre of mass of the group a given gpart belongs to. */
   double *group_centre_of_mass;
@@ -147,6 +166,9 @@ struct fof_final_index {
 struct fof_final_mass {
   size_t global_root;
   double group_mass;
+#ifdef FOF_GALAXIES
+  double group_stellar_mass;
+#endif
   double first_position[3];
   double centre_of_mass[3];
   long long max_part_density_index;
@@ -169,7 +191,7 @@ struct cell_pair_indices {
 /* Function prototypes. */
 void fof_init(struct fof_props *props, struct swift_params *params,
               const struct phys_const *phys_const, const struct unit_system *us,
-              const int stand_alone_fof);
+              const int stand_alone_fof, const struct hydro_props *hydro_props);
 void fof_create_mpi_types(void);
 void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
                   struct fof_props *props);
@@ -182,13 +204,19 @@ void fof_search_tree(struct fof_props *props,
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,
-                         struct cell *c);
+                         struct cell *c,
+                         const struct cosmology *cosmo);
 void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const double search_r2, const int periodic,
                          const struct gpart *const space_gparts,
-                         struct cell *restrict ci, struct cell *restrict cj);
+                         struct cell *restrict ci, struct cell *restrict cj,
+                         const struct cosmology *cosmo);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
+void fof_particle_is_grouppable(const struct gpart* gpart, 
+                                const struct part* p,
+                                const struct cosmology *cosmo,
+                                const struct fof_props *props);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */

@@ -479,6 +479,12 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                  cell_convert_part_to_spart() */
               star_formation_no_spart_available(e, p, xp);
             }
+          } else {
+
+            /* Here we are NOT converting a gas to star, but we could kick! */
+            feedback_possibly_kick_and_decouple_part(p, xp, e, cosmo, 
+                                                     ti_current, with_cosmology);
+
           }
 
         } else { /* Are we not star-forming? */
@@ -963,8 +969,10 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
+  const struct cosmology *cosmo = e->cosmology;
 
-  rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
+  rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c,
+                      cosmo);
 
   if (timer) TIMER_TOC(timer_fof_self);
 
@@ -994,9 +1002,10 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
+  const struct cosmology *cosmo = e->cosmology;
 
   rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
-                      cj);
+                      cj, cosmo);
 
   if (timer) TIMER_TOC(timer_fof_pair);
 #else

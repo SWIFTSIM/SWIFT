@@ -26,24 +26,6 @@
 #include "chemistry.h"
 #include "hydro_properties.h"
 
-/**
- * @brief Modes of energy injection for SNII feedback
- */
-enum SNII_feedback_models {
-  SNII_random_ngb_model,       /*< Random neighbour model for SNII feedback */
-  SNII_isotropic_model,        /*< Isotropic model of SNII feedback */
-  SNII_minimum_distance_model, /*< Minimum-distance model of SNII feedback */
-  SNII_minimum_density_model   /*< Minimum-density model of SNII feedback */
-};
-
-/**
- * @brief Form of SNII energy scaling with density and metallicity
- */
-enum SNII_energy_scalings {
-  SNII_scaling_EAGLE,      /*< Energy scaling as in EAGLE-Ref */
-  SNII_scaling_separable,  /*< Separable Z and n dependence */
-  SNII_scaling_independent /*< Independent Z and n dependence */
-};
 
 /**
  * @brief Stores AGB and SNII yield tables
@@ -235,9 +217,6 @@ struct feedback_props {
 
   /* ------------ SNe feedback properties ------------ */
 
-  /*! SNII feedback model: random, isotropic or minimum distance */
-  enum SNII_feedback_models feedback_model;
-
   /*! Minimal stellar mass considered for SNII feedback (in solar masses) */
   double SNII_min_mass_msun;
 
@@ -255,59 +234,11 @@ struct feedback_props {
   /*! Number of type II supernovae per solar mass */
   float num_SNII_per_msun;
 
-  /*! Are we sampling the SNII life-times or using a fixed delay? */
-  int SNII_sampled_delay;
-
-  /*! Wind delay time for SNII when using a fixed delay */
-  double SNII_wind_delay;
-
-  /*! Kick velocity in SNII feedback in internal units */
-  float SNII_delta_v;
-
   /*! Energy released by one supernova type II in cgs units */
   double E_SNII_cgs;
 
   /*! Energy released by one supernova type II in internal units */
   float E_SNII;
-
-  /*! Which model are we using for the SNII energy scaling? */
-  enum SNII_energy_scalings SNII_energy_scaling;
-
-  /*! Minimal energy fraction for supernova type II feedback */
-  double f_E_min;
-
-  /*! Maximal energy fraction for supernova type II feedback */
-  double f_E_max;
-
-  /*! Pivot point for the metallicity dependance of the feedback energy fraction
-   * model */
-  double Z_0;
-
-  /*! Pivot point for the density dependance of the feedback energy fraction
-   * model */
-  double n_0_cgs;
-
-  /*! Slope of the density dependance of the feedback energy fraction model */
-  double n_n;
-
-  /*! Slope of the metallicity dependance of the feedback energy fraction model
-   */
-  double n_Z;
-
-  /*! Are we using the birth density to compute f_th or the properties at
-   * feedback time? */
-  int use_birth_density_for_f_th;
-
-  /*! Are we using the birth metallicity to compute f_th or the properties at
-   * feedback time? */
-  int use_birth_Z_for_f_th;
-
-  /*! Slope of the metallicity dependance of SNII energy */
-  double E_SNII_Z_scaling_power;  // 0.417694 in Simba (from models of Schaerer
-                                  // 2000)
-
-  /*! Amplitude of the metallicity dependance of SNII energy */
-  double E_SNII_Z_scaling_amplitude;  // -0.0029 in Simba
 
   /* ------------ Enrichment sampling properties ------------ */
 
@@ -320,11 +251,44 @@ struct feedback_props {
 
   /* ------------ Kinetic feedback properties --------------- */
 
-  /*! v_kick = (this factor) * sigma_DM_1D, per SNII event */
-  float SNII_vkick_factor;
+  /* Velocity normalization */
+  float FIRE_velocity_normalization;
+
+  /* FIRE velocity slope */
+  float FIRE_velocity_slope;
+
+  /* Normalization for the mass loading curve */
+  float FIRE_eta_normalization;
+
+  /* The location (in internal mass units) where the break in the 
+   * mass loading curve occurs */
+  float FIRE_eta_break;
+
+  /* The power-law slope of eta below FIRE_eta_break */
+  float FIRE_eta_lower_slope;
+
+  /* The power-law slope of eta above FIRE_eta_break */
+  float FIRE_eta_upper_slope;
+
+  /* Are we suppressing stellar feedback at high-z? */
+  int early_wind_suppression_enabled;
+
+  /* The minimum stellar mass normalization at high-z */
+  float early_stellar_mass_norm;
+
+  /* The scale factor when the suppression becomes negligible */
+  float early_wind_suppression_scale_factor;
+
+  /* The intensity of stellar feedback suppression at high-z */
+  float early_wind_suppression_slope;
+
+  /* Added scatter to the wind velocities */
+  float kick_velocity_scatter;
 
   /*! max decoupling time is (this factor) * current Hubble time */
   float wind_decouple_time_factor;
+
+  /* ------------ Common conversion factors --------------- */
 
   /*! Factor to convert km/s to internal units */
   float kms_to_internal;

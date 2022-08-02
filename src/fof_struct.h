@@ -34,6 +34,14 @@ struct fof_gpart_data {
 
   /*! Size of the FOF group of this particle */
   size_t group_size;
+
+#ifdef FOF_GALAXIES
+  /*! The gas+stellar mass of the host galaxy */
+  float galaxy_gas_stellar_mass;
+
+  /*! The stellar mass of the host galaxy */
+  float galaxy_stellar_mass;
+#endif
 };
 
 #else

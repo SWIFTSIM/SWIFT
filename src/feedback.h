@@ -44,7 +44,7 @@
 #include "./feedback/SIMBA/feedback.h"
 #include "./feedback/SIMBA/feedback_iact.h"
 #define feedback_use_newborn_stars 0
-#define EXTRA_STAR_LOOPS
+#define FOF_GALAXIES
 #else
 #error "Invalid choice of feedback model"
 #endif

@@ -28,254 +28,6 @@
 #include "random.h"
 #include "timers.h"
 
-/**
- * @brief Computes the fraction of the available super-novae energy to
- * inject for a given event.  This assumes each SNII has E_SNII_cgs
- * of energy output (typically 1.e51).  The actual value can be
- * higher e.g. at low-Z, or lower due to sub-resolution radiative losses.
- *
- * This function allows a choice of different f_th scaling functions.
- *
- * @param sp The #spart.
- * @param props The properties of the feedback model.
- * @param ngb_nH_cgs Hydrogen number density of the gas surrounding the star
- * (physical cgs units).
- * @param ngb_Z Metallicity (metal mass fraction) of the gas surrounding the
- * star.
- */
-double eagle_feedback_energy_fraction(const struct spart* sp,
-                                      const struct feedback_props* props,
-                                      const double ngb_nH_cgs,
-                                      const double ngb_Z) {
-
-  /* Model parameters */
-  const double f_E_max = props->f_E_max;
-  const double f_E_min = props->f_E_min;
-  const double Z_0 = props->Z_0;
-  const double n_0 = props->n_0_cgs;
-  const double n_Z = props->n_Z;
-  const double n_n = props->n_n;
-
-  /* Metallicity (metal mass fraction) at birth time of the star */
-  const double Z_birth =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-
-  /* Physical density of the gas at the star's birth time */
-  const double rho_birth = sp->birth_density;
-  const double n_birth_cgs = rho_birth * props->rho_to_n_cgs;
-
-  /* Choose either the birth properties or current properties */
-  const double nH =
-      props->use_birth_density_for_f_th ? n_birth_cgs : ngb_nH_cgs;
-  const double Z = props->use_birth_Z_for_f_th ? Z_birth : ngb_Z;
-
-  /* Calculate f_E */
-  const double Z_term = pow(max(Z, 1e-6) / Z_0, -n_Z);
-  const double n_term = pow(nH / n_0, n_n);
-
-  /* Different behaviour for different scaling functions ahead */
-  double f_th;
-  if (props->SNII_energy_scaling == SNII_scaling_separable) {
-    /* Separable scaling between fixed fE_min and fE_max */
-    f_th = f_E_max - (f_E_max - f_E_min) / ((1. + Z_term) * (1. + n_term));
-
-  } else if (props->SNII_energy_scaling == SNII_scaling_EAGLE) {
-    /* Mixed scaling as described in Schaye et al. (2015) for EAGLE */
-    f_th = f_E_max - (f_E_max - f_E_min) / (1. + Z_term * n_term);
-
-  } else {
-    error("Invalid SNII energy scaling model!");
-    f_th = -1.;
-  }
-
-  /* Adjust SNII energy for greater energy output at lower metallicity
-   * (Mufasa/Simba's GALAXY_HOTWIND_ZSCALE) */
-  f_th *= pow(10., props->E_SNII_Z_scaling_amplitude *
-                           pow(log10(max(Z, 1.e-9)) + 9, 2.5) +
-                       props->E_SNII_Z_scaling_power);
-
-  return f_th;
-}
-
-/**
- * @brief Calculates speed particles will be kicked from a *single*
- * SNII event.  Result returned in internal velocity units.
- * Note that the mass loading factor scales as 1/v_w^2, so this
- * effectively sets the mass loading factor also (for a given E_SNII).
- *
- * @param sp The sparticle doing the feedback
- * @param feedback_props The properties of the feedback model
- */
-double compute_kick_speed(struct spart* sp, const struct feedback_props* props,
-                          const struct unit_system* us) {
-
-  return props->SNII_vkick_factor * sp->feedback_data.dm_vel_disp_1d;
-}
-
-/**
- * @brief Compute the properties of the SNII stochastic feedback energy
- * injection.
- *
- * Only does something if the particle reached the SNII age during this time
- * step.
- *
- * @param sp The star particle.
- * @param us The internal unit system.
- * @param star_age Age of star at the beginning of the step in internal units.
- * @param dt Length of time-step in internal units.
- * @param ngb_gas_mass Total un-weighted mass in the star's kernel (internal
- * units)
- * @param num_gas_ngbs Total (integer) number of gas neighbours within the
- * star's kernel.
- * @param ngb_nH_cgs Hydrogen number density of the gas surrounding the star
- * (physical cgs units).
- * @param ngb_Z Metallicity (metal mass fraction) of the gas surrounding the
- * star.
- * @param feedback_props The properties of the feedback model.
- * @param min_dying_mass_Msun Minimal star mass dying this step (in solar
- * masses).
- * @param max_dying_mass_Msun Maximal star mass dying this step (in solar
- * masses).
- */
-INLINE static void compute_SNII_feedback(
-    struct spart* sp, const struct unit_system* us, const double star_age,
-    const double dt, const int ngb_gas_N, const float ngb_gas_mass,
-    const double ngb_nH_cgs, const double ngb_Z,
-    const struct feedback_props* feedback_props,
-    const double min_dying_mass_Msun, const double max_dying_mass_Msun,
-    const integertime_t ti_begin, const struct cosmology* cosmo) {
-
-  /* Are we sampling the delay function or using a fixed delay? */
-  const int SNII_sampled_delay = feedback_props->SNII_sampled_delay;
-
-  /* Time after birth considered for SNII feedback (internal units)
-   * when using a fixed delay */
-  const double SNII_wind_delay = feedback_props->SNII_wind_delay;
-
-  /* Are we doing feedback this step?
-   * Note that since the ages are calculated using an interpolation table we
-   * must allow some tolerance here*/
-  if ((SNII_sampled_delay) || (star_age <= SNII_wind_delay &&
-                               (star_age + 1.001 * dt) > SNII_wind_delay)) {
-
-    /* Make sure a star does not do feedback twice
-     * when using a fixed delay! */
-    if (!SNII_sampled_delay && sp->f_E != -1.f) {
-#ifdef SWIFT_DEBUG_CHECKS
-      message("Star has already done feedback! sp->id=%lld age=%e d=%e", sp->id,
-              star_age, dt);
-#endif
-      return;
-    }
-
-    /* Compute kick speed based on local DM velocity dispersion */
-
-    /* delta_v must be physical */
-    const double delta_v = 
-        cosmo->a2_inv * compute_kick_speed(sp, feedback_props, us);
-    const double E_SNe = feedback_props->E_SNII;
-    const double f_E =
-        eagle_feedback_energy_fraction(sp, feedback_props, ngb_nH_cgs, ngb_Z);
-
-    /* Number of SNe at this time-step */
-    double N_SNe;
-    if (SNII_sampled_delay) {
-      N_SNe = eagle_feedback_number_of_sampled_SNII(
-          sp, feedback_props, min_dying_mass_Msun, max_dying_mass_Msun);
-    } else {
-      N_SNe = eagle_feedback_number_of_SNII(sp, feedback_props);
-    }
-
-    /* Abort if there are no SNe exploding this step */
-    if (N_SNe <= 0.) return;
-
-    /* Total SN energy released by all detonated SNe in this star particle
-     * during this time-step */
-    const double E_SN_total = f_E * E_SNe * N_SNe;
-
-    /* The probability in SNII kinetic feedback */
-    double prob_kinetic;
-
-    /* If the velocity from the parameter file is larger than 0,
-     * we compute the probability to do a kick */
-    if (delta_v > 0.) {
-
-      /* Note that in the denominator we have ngb_gas_mass * delta_v * delta_v
-       * and not 0.5 ngb_gas_mass * delta_v * delta_v.
-       *
-       * That is because in our method, if we have a kick event then we kick
-       * two particles instead of one. This implies that we need twice as much
-       * energy and the probability must be lowered by a factor of 2.
-       *
-       * Furthermore, unlike in the thermal feedback here we do not take into
-       * account the ejecta mass because the kicks are done before the mass
-       * transfer. That is, we consider ngb_gas_mass and not ngb_gas_mass_new.
-       */
-      prob_kinetic = E_SN_total / (ngb_gas_mass * delta_v * delta_v);
-
-    } else {
-
-      /* If delta_v <= 0, this means that the code will compute the kick
-       * velocity based on the available SNII kinetic energy at this time-step
-       */
-      prob_kinetic = 1.;
-    }
-
-    /* Total kinetic energy that is going to be used to kick gas particles
-     * by the star particle during this time-step */
-    double E_kinetic = 0.;
-
-    /* Number of individual kick events done by this star particle during
-     * this time-step */
-    int number_of_kin_SN_events = 0;
-
-    /* If the kicking probability is less than 1, compute the number of heating
-     * events by drawing a random number ngb_gas_N times where ngb_gas_N
-     * is the number of gas particles within the star's kernel */
-    if (prob_kinetic < 1.) {
-
-      for (int i = 0; i < ngb_gas_N; i++) {
-        const double rand_kinetic = random_unit_interval_part_ID_and_index(
-            sp->id, i, ti_begin, random_number_stellar_feedback_2);
-
-        if (rand_kinetic < prob_kinetic) number_of_kin_SN_events++;
-      }
-
-      /* Total kinetic energy needed = Kinetic energy to kick one pair of two
-       * particles, each of mean mass ngb_gas_mass_new/ngb_gas_N, with the kick
-       * velocity delta_v, \times the number of kick events
-       * ( = the number of pairs) */
-      E_kinetic = ngb_gas_mass / ngb_gas_N * delta_v * delta_v *
-                  number_of_kin_SN_events;
-    } else {
-
-      /* Special case: we need to adjust the kinetic energy irrespective of
-       * the desired delta v to ensure we inject all the available SN energy. */
-      E_kinetic = E_SN_total;
-
-      /* Number of kick events is equal to the number of Ngbs */
-      number_of_kin_SN_events = ngb_gas_N;
-    }
-
-    /* The number of kick events cannot be greater than the number of rays.
-     *
-     * Note that the energy will be adjusted accordingly in the injection
-     * itself.*/
-    number_of_kin_SN_events =
-        min(number_of_kin_SN_events, eagle_SNII_feedback_num_of_rays);
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (f_E < feedback_props->f_E_min || f_E > feedback_props->f_E_max)
-      error("f_E is not in the valid range! f_E=%f sp->id=%lld", f_E, sp->id);
-#endif
-
-    /* Store all of this in the star for delivery onto the gas */
-    sp->f_E = f_E;
-    sp->feedback_data.to_distribute.SNII_E_kinetic = E_kinetic;
-    sp->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj =
-        number_of_kin_SN_events;
-  }
-}
 
 /**
  * @brief calculates stellar mass in spart that died over the timestep, calls
@@ -346,27 +98,11 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
     error("Negative inverse weight!");
 #endif
 
-  /* Compute DM vel. disp. */
-  float dm_vel_disp_1d = 0.f;
-  /* Make sure there are enough neighbors to sample */
-  if (sp->feedback_data.dm_ngb_N > 1) {
-    float dm_vel_disp2[3] = {0.f};
-    for (int i = 0; i < 3; i++) {
-      dm_vel_disp2[i] = sp->feedback_data.dm_vel_diff2[i];
-      /* We have to normalize the velocity differences */
-      dm_vel_disp2[i] /= (float)sp->feedback_data.dm_ngb_N;
-      dm_vel_disp_1d += dm_vel_disp2[i];
-    }
-    dm_vel_disp_1d /= 3.f;
-  }
-
   /* Now we start filling the data structure for information to apply to the
    * particles. Do _NOT_ read from the to_collect substructure any more. */
 
   /* Zero all the output fields */
   feedback_reset_feedback(sp, feedback_props);
-
-  sp->feedback_data.dm_vel_disp_1d = sqrtf(dm_vel_disp_1d);
 
   /* Update the weights used for distribution */
   const float enrichment_weight =
@@ -391,14 +127,6 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
   if (min_dying_mass_Msun > max_dying_mass_Msun)
     error("min dying mass is greater than max dying mass");
 #endif
-
-  /* Compute properties of the stochastic SNII feedback model. */
-  if (feedback_props->with_SNII_feedback) {
-    compute_SNII_feedback(sp, us, age, dt, ngb_Number, ngb_gas_mass,
-                          ngb_gas_phys_nH_cgs, ngb_gas_Z, feedback_props,
-                          min_dying_mass_Msun, max_dying_mass_Msun, ti_begin,
-                          cosmo);
-  }
 
   /* Integration interval is zero - this can happen if minimum and maximum
    * dying masses are above imf_max_mass_Msun. Return without doing any
@@ -466,6 +194,36 @@ void feedback_props_init(struct feedback_props* fp,
                          const struct hydro_props* hydro_props,
                          const struct cosmology* cosmo) {
 
+  /* Gather common conversion factors --------------------------------------- */
+
+  /* Calculate internal mass to solar mass conversion factor */
+  const double Msun_cgs = phys_const->const_solar_mass *
+                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  const double unit_mass_cgs = units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  fp->mass_to_solar_mass = unit_mass_cgs / Msun_cgs;
+  fp->solar_mass_to_mass = 1. / fp->mass_to_solar_mass;
+
+  /* Calculate temperature to internal energy conversion factor (all internal
+   * units) */
+  const double k_B = phys_const->const_boltzmann_k;
+  const double m_p = phys_const->const_proton_mass;
+  const double mu = hydro_props->mu_ionised;
+  fp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
+
+  /* Calculate conversion factor from rho to n_H
+   * Note this assumes primoridal abundance */
+  const double X_H = hydro_props->hydrogen_mass_fraction;
+  fp->rho_to_n_cgs =
+      (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+
+  fp->kms_to_internal = 1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
+  fp->time_to_Myr = units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
+      (1.e6f * 365.25f * 24.f * 60.f * 60.f);
+
+  fp->length_to_kpc = 
+      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) / 3.08567758e21f;
+
   /* Main operation modes ------------------------------------------------- */
 
   fp->with_SNII_feedback =
@@ -503,35 +261,8 @@ void feedback_props_init(struct feedback_props* fp,
   fp->log10_imf_max_mass_msun = log10(fp->imf_max_mass_msun);
   fp->log10_imf_min_mass_msun = log10(fp->imf_min_mass_msun);
 
-  /* Properties of the SNII energy feedback model ------------------------- */
 
-  char model[64];
-  parser_get_param_string(params, "SIMBAFeedback:SNII_feedback_model", model);
-  if (strcmp(model, "Random") == 0)
-    fp->feedback_model = SNII_random_ngb_model;
-  else if (strcmp(model, "Isotropic") == 0)
-    fp->feedback_model = SNII_isotropic_model;
-  else if (strcmp(model, "MinimumDistance") == 0)
-    fp->feedback_model = SNII_minimum_distance_model;
-  else if (strcmp(model, "MinimumDensity") == 0)
-    fp->feedback_model = SNII_minimum_density_model;
-  else
-    error(
-        "The SNII feedback model must be either 'Random', 'MinimumDistance', "
-        "'MinimumDensity' or 'Isotropic', not %s",
-        model);
-
-  /* Are we sampling the SNII lifetimes for feedback or using a fixed delay? */
-  fp->SNII_sampled_delay =
-      parser_get_param_int(params, "SIMBAFeedback:SNII_sampled_delay");
-
-  if (!fp->SNII_sampled_delay) {
-
-    /* Set the delay time before SNII occur */
-    fp->SNII_wind_delay =
-        parser_get_param_double(params, "SIMBAFeedback:SNII_wind_delay_Gyr") *
-        phys_const->const_year * 1e9;
-  }
+  /* Properties of the SNII model */
 
   /* Energy released by supernova type II */
   fp->E_SNII_cgs =
@@ -555,80 +286,6 @@ void feedback_props_init(struct feedback_props* fp,
   fp->log10_SNII_min_mass_msun = log10(SNII_min_mass_msun);
   fp->log10_SNII_max_mass_msun = log10(SNII_max_mass_msun);
 
-  /* Properties of the energy fraction model */
-  char energy_fraction[PARSER_MAX_LINE_SIZE];
-  parser_get_param_string(params, "SIMBAFeedback:SNII_energy_fraction_function",
-                          energy_fraction);
-
-  if (strcmp(energy_fraction, "EAGLE") == 0) {
-    fp->SNII_energy_scaling = SNII_scaling_EAGLE;
-  } else if (strcmp(energy_fraction, "Separable") == 0) {
-    fp->SNII_energy_scaling = SNII_scaling_separable;
-  } else {
-    error(
-        "Invalid value of "
-        "SIMBAFeedback:SNII_energy_fraction_function: '%s'",
-        energy_fraction);
-  }
-
-  fp->f_E_min =
-      parser_get_param_double(params, "SIMBAFeedback:SNII_energy_fraction_min");
-  fp->f_E_max =
-      parser_get_param_double(params, "SIMBAFeedback:SNII_energy_fraction_max");
-  fp->Z_0 =
-      parser_get_param_double(params, "SIMBAFeedback:SNII_energy_fraction_Z_0");
-  fp->n_0_cgs = parser_get_param_double(
-      params, "SIMBAFeedback:SNII_energy_fraction_n_0_H_p_cm3");
-
-  /* Indicies can either be included in the parameter file as powers,
-   * or as widths - but not both! The width and power are always related
-   * by the relation power = 1.0 / (ln(10) * width) */
-
-  int n_n_exists =
-      parser_does_param_exist(params, "SIMBAFeedback:SNII_energy_fraction_n_n");
-  int n_Z_exists =
-      parser_does_param_exist(params, "SIMBAFeedback:SNII_energy_fraction_n_Z");
-  int s_n_exists = parser_does_param_exist(
-      params, "SIMBAFeedback:SNII_energy_fraction_sigma_n");
-  int s_Z_exists = parser_does_param_exist(
-      params, "SIMBAFeedback:SNII_energy_fraction_sigma_Z");
-
-  if (n_n_exists && s_n_exists) {
-    error("Cannot specify both n_n and sigma_n in SNII energy fraction.");
-  }
-
-  if (n_Z_exists && s_Z_exists) {
-    error("Cannot specify both n_Z and sigma_Z in SNII energy fraction.");
-  }
-
-  if (n_n_exists) {
-    fp->n_n = parser_get_param_double(params,
-                                      "SIMBAFeedback:SNII_energy_fraction_n_n");
-  } else {
-    fp->n_n = 1.0 / (M_LN10 *
-                     parser_get_param_double(
-                         params, "SIMBAFeedback:SNII_energy_fraction_sigma_n"));
-  }
-
-  if (n_Z_exists) {
-    fp->n_Z = parser_get_param_double(params,
-                                      "SIMBAFeedback:SNII_energy_fraction_n_Z");
-  } else {
-    fp->n_Z = 1.0 / (M_LN10 *
-                     parser_get_param_double(
-                         params, "SIMBAFeedback:SNII_energy_fraction_sigma_Z"));
-  }
-
-  /* Check that it makes sense. */
-  if (fp->f_E_max < fp->f_E_min) {
-    error("Can't have the maximal energy fraction smaller than the minimal!");
-  }
-
-  /* Are we using the stars' birth properties or at feedback time? */
-  fp->use_birth_density_for_f_th = parser_get_param_int(
-      params, "SIMBAFeedback:SNII_energy_fraction_use_birth_density");
-  fp->use_birth_Z_for_f_th = parser_get_param_int(
-      params, "SIMBAFeedback:SNII_energy_fraction_use_birth_metallicity");
 
   /* Set power-law scaling for metallicity dependence of SNII energy */
   fp->E_SNII_Z_scaling_power =
@@ -719,49 +376,38 @@ void feedback_props_init(struct feedback_props* fp,
     error("Stellar evolution sampling rate too large. Must be >0 and <%d",
           (1 << (8 * sizeof(char) - 1)));
 
-  /* Check that we are not downsampling before reaching the SNII delay */
-  if (!fp->SNII_sampled_delay &&
-      fp->stellar_evolution_age_cut < fp->SNII_wind_delay)
-    error(
-        "Time at which the enrichment downsampling starts is lower than the "
-        "SNII wind delay!");
-
   /* Properties of Simba kinetic winds -------------------------------------- */
 
-  fp->SNII_vkick_factor =
-      parser_get_param_double(params, "SIMBAFeedback:SNII_vkick_factor");
+  fp->FIRE_velocity_normalization =
+      parser_get_param_double(params, "SIMBAFeedback:FIRE_velocity_normalization");
+  fp->FIRE_velocity_slope =
+      parser_get_param_double(params, "SIMBAFeedback:FIRE_velocity_slope");
+  fp->FIRE_eta_normalization =
+      parser_get_param_double(params, "SIMBAFeedback:FIRE_eta_normalization");
+  fp->FIRE_eta_break =
+      parser_get_param_double(params, "SIMBAFeedback:FIRE_eta_break_Msun");
+  fp->FIRE_eta_break *= fp->solar_mass_to_mass;
+  fp->FIRE_eta_lower_slope =
+      parser_get_param_double(params, "SIMBAFeedback:FIRE_eta_lower_slope");
+  fp->FIRE_eta_upper_slope =
+      parser_get_param_double(params, "SIMBAFeedback:FIRE_eta_upper_slope");
+
+  fp->early_stellar_mass_norm =
+      parser_get_param_double(params, "SIMBAFeedback:early_stellar_mass_norm_Msun");
+  fp->early_stellar_mass_norm *= fp->solar_mass_to_mass;
+  fp->early_wind_suppression_enabled = 
+      parser_get_param_int(params, "SIMBAFeedback:early_wind_suppression_enabled");
+  fp->early_wind_suppression_scale_factor =
+      parser_get_param_double(params, 
+          "SIMBAFeedback:early_wind_suppression_scale_factor");
+  fp->early_wind_suppression_slope =
+      parser_get_param_double(params, "SIMBAFeedback:early_wind_suppression_slope");
+
+  fp->kick_velocity_scatter =
+      parser_get_param_double(params, "SIMBAFeedback:kick_velocity_scatter");
+
   fp->wind_decouple_time_factor = parser_get_param_double(
       params, "SIMBAFeedback:wind_decouple_time_factor");
-
-  /* Gather common conversion factors --------------------------------------- */
-
-  /* Calculate internal mass to solar mass conversion factor */
-  const double Msun_cgs = phys_const->const_solar_mass *
-                          units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  const double unit_mass_cgs = units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  fp->mass_to_solar_mass = unit_mass_cgs / Msun_cgs;
-  fp->solar_mass_to_mass = 1. / fp->mass_to_solar_mass;
-
-  /* Calculate temperature to internal energy conversion factor (all internal
-   * units) */
-  const double k_B = phys_const->const_boltzmann_k;
-  const double m_p = phys_const->const_proton_mass;
-  const double mu = hydro_props->mu_ionised;
-  fp->temp_to_u_factor = k_B / (mu * hydro_gamma_minus_one * m_p);
-
-  /* Calculate conversion factor from rho to n_H
-   * Note this assumes primoridal abundance */
-  const double X_H = hydro_props->hydrogen_mass_fraction;
-  fp->rho_to_n_cgs =
-      (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
-
-  fp->kms_to_internal = 1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
-
-  fp->time_to_Myr = units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
-      (1.e6f * 365.25f * 24.f * 60.f * 60.f);
-
-  fp->length_to_kpc = 
-      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH) / 3.08567758e21f;
 
   /* Initialise the IMF ------------------------------------------------- */
 
@@ -803,18 +449,25 @@ void feedback_props_init(struct feedback_props* fp,
    * mass bins used in IMF  */
   compute_ejecta(fp);
 
-  // const double s_n = 1.0 / (M_LN10 * fp->n_n);
-  // const double s_Z = 1.0 / (M_LN10 * fp->n_Z);
-
   if (engine_rank == 0) {
-    message("Feedback model is SIMBA (%s)", energy_fraction);
-    message(
-        "Feedback wind parameters: v_kick= %f sigma_DM, t_decouple=%f t_hubble",
-        fp->SNII_vkick_factor, fp->wind_decouple_time_factor);
-    message("Feedback energy Z scaling: slope=%f, ampl=%f",
-            fp->E_SNII_Z_scaling_power, fp->E_SNII_Z_scaling_amplitude);
-    message("Feedback energy scaling (%d) min=%f, max=%f",
-            fp->SNII_energy_scaling, fp->f_E_min, fp->f_E_max);
+    message("Feedback model is SIMBA");
+    message("Feedback FIRE velocity normalization: %g", 
+            fp->FIRE_velocity_normalization);
+    message("Feedback FIRE velocity slope: %g", fp->FIRE_velocity_slope);
+    message("Feedback velocity scatter: %g", fp->kick_velocity_scatter);
+    message("Feedback FIRE eta normalization: %g", fp->FIRE_eta_normalization);
+    message("Feedback FIRE eta break: %g", fp->FIRE_eta_break);
+    message("Feedback FIRE eta upper slope: %g", fp->FIRE_eta_upper_slope);
+    message("Feedback FIRE eta lower slope: %g", fp->FIRE_eta_lower_slope);
+
+    message("Feedback early suppression enabled: %d", 
+            fp->early_wind_suppression_enabled);
+    message("Feedback early stellar mass norm: %g Msun", 
+            fp->early_stellar_mass_norm);
+    message("Feedback early suppression scale factor: %g", 
+            fp->early_wind_suppression_scale_factor);
+    message("Feedback early suppression slope: %g", fp->early_wind_suppression_slope);
+    
   }
 }
 
