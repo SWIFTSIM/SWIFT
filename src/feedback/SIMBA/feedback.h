@@ -19,7 +19,6 @@
 #ifndef SWIFT_FEEDBACK_SIMBA_H
 #define SWIFT_FEEDBACK_SIMBA_H
 
-#include "random.h"
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
