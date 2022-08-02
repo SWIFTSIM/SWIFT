@@ -29,8 +29,19 @@
 #include "timers.h"
 
 
-_attribute__((always_inline)) INLINE static void 
-feedback_possibly_kick_and_decouple_part(
+/**
+ * @brief Determine if the star forming gas should kick a particle,
+ *        and then kick it.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ * @param fb_props The feedback properties.
+ * @param ti_current The current timestep.
+ * @param time_base Which time base is the simulation using.
+ * @param with_cosmology Is this a cosmological simulation?
+ */
+void feedback_possibly_kick_and_decouple_part(
     struct part* p, struct xpart* xp, const struct engine* e, 
     const struct cosmology* cosmo,
     const struct feedback_props* fb_props, 
