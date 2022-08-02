@@ -297,7 +297,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const struct hydro_props *restrict hydro_props = e->hydro_properties;
-  const struct feedback_props *restrict feedback_props = e->feedback_properties;
+  const struct feedback_props *restrict feedback_props = e->feedback_props;
   const struct unit_system *restrict us = e->internal_units;
   struct cooling_function_data *restrict cooling = e->cooling_func;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
@@ -484,7 +484,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
             /* Here we are NOT converting a gas to star, but we could kick! */
             feedback_possibly_kick_and_decouple_part(p, xp, e, cosmo, 
-                                                     &feedback_props,
+                                                     feedback_props,
                                                      ti_current, 
                                                      time_base,
                                                      with_cosmology);
