@@ -25,6 +25,7 @@
 /* Local headers */
 #include "align.h"
 #include "parser.h"
+#include "hydro.h"
 
 /* Avoid cyclic inclusions */
 struct cell;
@@ -213,10 +214,10 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const struct cosmology *cosmo);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
-void fof_particle_is_grouppable(const struct gpart* gpart, 
-                                const struct part* p,
-                                const struct cosmology *cosmo,
-                                const struct fof_props *props);
+int fof_particle_is_grouppable(const struct gpart* gpart, 
+                               const struct part* p,
+                               const struct cosmology *cosmo,
+                               const struct fof_props *props);
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */

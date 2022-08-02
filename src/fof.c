@@ -841,9 +841,9 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     if (pi->time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+    const struct part *part_i = &parts[-pi->id_or_neg_offset];
     const int is_i_grouppable = 
-        fof_particle_is_grouppable(pi, &parts[-pi->id_or_neg_offset], 
-                                    cosmo, props);
+        fof_particle_is_grouppable(pi, part_i, cosmo, props);
     if (!is_i_grouppable) continue;
 #endif
 
@@ -870,9 +870,9 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       if (pj->time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+      const struct part *part_j = &parts[-pj->id_or_neg_offset];
       const int is_j_grouppable = 
-          fof_particle_is_grouppable(pj, &parts[-pj->id_or_neg_offset], 
-                                    cosmo, props);
+          fof_particle_is_grouppable(pj, part_j, cosmo, props);
       if (!is_j_grouppable) continue;
 #endif
 
@@ -977,9 +977,9 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     if (pi->time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+    const struct part *part_i = &parts_i[-pi->id_or_neg_offset];
     const int is_i_grouppable = 
-        fof_particle_is_grouppable(pi, &parts_i[-pi->id_or_neg_offset], 
-                                    cosmo, props);
+        fof_particle_is_grouppable(pi, part_i, cosmo, props);
     if (!is_i_grouppable) continue;
 #endif
 
@@ -1006,9 +1006,9 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       if (pj->time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+      const struct part *part_j = &parts_j[-pj->id_or_neg_offset];
       const int is_j_grouppable = 
-          fof_particle_is_grouppable(pj, &parts_j[-pj->id_or_neg_offset], 
-                                    cosmo, props);
+          fof_particle_is_grouppable(pj, part_j, cosmo, props);
       if (!is_j_grouppable) continue;
 #endif
 
@@ -1118,9 +1118,9 @@ void fof_search_pair_cells_foreign(
     if (pi->time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+    const struct part *part_i = &parts_i[-pi->id_or_neg_offset];
     const int is_i_grouppable = 
-        fof_particle_is_grouppable(pi, &parts_i[-pi->id_or_neg_offset], 
-                                    cosmo, props);
+        fof_particle_is_grouppable(pi, part_i, cosmo, props);
     if (!is_i_grouppable) continue;
 #endif
 
@@ -1148,9 +1148,9 @@ void fof_search_pair_cells_foreign(
       if (pj->time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+      const struct part *part_j = &parts_j[-pj->id_or_neg_offset];
       const int is_j_grouppable = 
-          fof_particle_is_grouppable(pj, &parts_j[-pj->id_or_neg_offset], 
-                                    cosmo, props);
+          fof_particle_is_grouppable(pj, part_j, cosmo, props);
       if (!is_j_grouppable) continue;
 #endif
 
@@ -1385,7 +1385,7 @@ void rec_fof_search_self(const struct fof_props *props, const double dim[3],
         for (int l = k + 1; l < 8; l++)
           if (c->progeny[l] != NULL)
             rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts,
-                                c->progeny[k], c->progeny[l]);
+                                c->progeny[k], c->progeny[l], cosmo);
       }
     }
   }
@@ -1617,10 +1617,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+    const struct part *part = &parts[-gparts[i]->id_or_neg_offset];
     const int is_grouppable = 
-        fof_particle_is_grouppable(&gparts[i], &parts[-gparts[i].id_or_neg_offset], 
-                                  cosmo, props);
-
+        fof_particle_is_grouppable(gparts[i], part, cosmo, props);
     if (!is_grouppable) continue;
 #endif
 
@@ -1793,10 +1792,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+    const struct part *part = &parts[-gparts[i]->id_or_neg_offset];
     const int is_grouppable = 
-        fof_particle_is_grouppable(&gparts[i], &parts[-gparts[i].id_or_neg_offset], 
-                                  cosmo, props);
-
+        fof_particle_is_grouppable(gparts[i], part, cosmo, props);
     if (!is_grouppable) continue;
 #endif
 
@@ -2034,10 +2032,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     if (gparts[i].time_bin >= time_bin_inhibited) continue;
 
 #ifdef FOF_GALAXIES
+    const struct part *part = &parts[-gparts[i]->id_or_neg_offset];
     const int is_grouppable = 
-        fof_particle_is_grouppable(&gparts[i], &parts[-gparts[i].id_or_neg_offset], 
-                                  cosmo, props);
-
+        fof_particle_is_grouppable(gparts[i], part, cosmo, props);
     if (!is_grouppable) continue;
 #endif
 
@@ -3383,10 +3380,11 @@ void fof_search_tree(struct fof_props *props,
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
                       num_groups_prev, num_on_node, first_on_node,
-                      props->group_mass
+                      props->group_mass,
 #ifdef FOF_GALAXIES
-                      , props->group_stellar_mass
+                      props->group_stellar_mass,
 #endif
+                      cosmo
                       );
   free(num_on_node);
   free(first_on_node);
@@ -3394,8 +3392,9 @@ void fof_search_tree(struct fof_props *props,
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
                       NULL, props->group_mass
 #ifdef FOF_GALAXIES
-                      , props->group_stellar_mass
+                      props->group_stellar_mass,
 #endif
+                      cosmo
                       );
 #endif
 
@@ -3515,7 +3514,8 @@ int fof_particle_is_grouppable(const struct gpart* gpart,
       const float u = hydro_get_drifted_comoving_internal_energy(p);
       const float T = u * cosmo->a_factor_internal_energy *
                           props->u_to_temp_factor;
-      const float rho_n_H_cgs = hydro_get_physical_density(p) *
+      const float rho_n_H_cgs = hydro_get_comoving_density(p) *
+                                cosmo->a3_inv *
                                 props->rho_to_n_cgs;
 
       if (T > props->cold_gas_temperature_threshold ||
