@@ -1878,9 +1878,6 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         gparts[local_root_index].fof_data.group_id - local_group_offset;
 
     double fragment_mass = fof_mass_recv[i].group_mass;
-#ifdef FOF_GALAXIES
-    double fragment_stellar_mass = fof_mass_recv[i].group_stellar_mass;
-#endif
     double fragment_centre_of_mass[3] = {
         fof_mass_recv[i].centre_of_mass[0] / fof_mass_recv[i].group_mass,
         fof_mass_recv[i].centre_of_mass[1] / fof_mass_recv[i].group_mass,
