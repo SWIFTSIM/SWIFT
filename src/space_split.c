@@ -1076,6 +1076,24 @@ void void_tree_build(struct space *s, int verbose) {
     void_mpole_tree_recursive(s, void_cell);
   }
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the number of particles in the void cell multipole
+   * is the same as the number in the zoom region. */
+  const struct gravity_tensors *m = &s->multipoles_top[s->zoom_props->void_cell_index];
+  const long long void_count = m->m_pole.num_gpart;
+  long long zoom_count = 0;
+
+  /* Total the number of particles in zoom cells. */
+  for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
+    zoom_count += &s->cells_top[i].grav.count;
+  }
+
+  if (void_count != zoom_count) {
+    error("Void multipole doesn't have the same number of particles "
+          "as the zoom cells! (void=%lld, zoom=%lld)", void_count, zoom_count);
+  }
+#endif
+
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
