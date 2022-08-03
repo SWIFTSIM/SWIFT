@@ -222,10 +222,11 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
   if (periodic) {
 
     /* Get the right cdim. */
+    const int *cdim;
     if (s->with_zoom_region) {
-      const int *cdim = s->zoom_props->cdim;
+      cdim = s->zoom_props->cdim;
     } else {
-      const int *cdim = s->cdim;
+      cdim = s->cdim;
     }
     
     int cid = 0;
