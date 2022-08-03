@@ -2595,7 +2595,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             if (kk < 0 || kk >= s->zoom_props->cdim[2]) continue;
 
             /* Get the cell */
-            const int cell_index = cell_getid(s->cdim, ii, jj, kk);
+            const int cell_index = cell_getid(s->zoom_props->cdim, ii, jj, kk);
 
             /* Handle on the top-level cell */
             struct cell *cj = &cells[cell_index];
@@ -2781,7 +2781,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
             /* Minimal distance between any pair of particles */
             const double min_radius2 =
-              cell_min_dist2_same_size(top, cj, periodic, dim);
+              cell_min_dist2(top, cj, periodic, dim);
 
             /* Are we beyond the distance where the truncated forces are 0 ?*/
             if (min_radius2 > max_distance2) {
