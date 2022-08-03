@@ -233,6 +233,22 @@ void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
       }
     }
   }
+}
+#endif
+#endif
+
+#ifdef WITH_MPI
+#ifdef WITH_ZOOM_REGION
+/**
+ * @brief Partition the space including the zoom cells.
+ *
+ * Using the sample positions as seeds pick cells that are geometrically
+ * closest and apply the partition to the space.
+ */
+void split_bkg(struct space *s, int nregions) {
+
+  /* Define variables for selection */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
   /* Calculate the size of a radial slice. */
   float slice_width = 2 * M_PI / nregions;
@@ -241,6 +257,9 @@ void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
         /* Center cell coordinates. */
         int ii = i - (s->cdim[0] / 2);
@@ -254,7 +273,7 @@ void split_vector_zoom(struct space *s, int nregions, int *samplecells) {
          * easily identified without casting. */
         float phi;
         if (ii == 0 && jj == 0) {
-          /* Handle the central cells. */
+          /* Handle the central cell. */
           s->cells_top[cid++].nodeID = 0;
           continue;
         }

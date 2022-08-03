@@ -53,6 +53,7 @@ int partition_space_to_space_zoom(double *oldh, double *oldcdim,
                                   int *oldnodeIDs, struct space *s);
 void pick_vector_zoom(struct space *s, int nregions, int *samplecells);
 void split_vector_zoom(struct space *s, int nregions, int *samplecells);
+void split_bkg(struct space *s, int nregions);
 
 /* Regrid prototypes */
 

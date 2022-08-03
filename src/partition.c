@@ -210,42 +210,52 @@ static void split_vector(struct space *s, int *cdim, int nregions,
  * @param xadj the METIS xadj array to fill, must be of size
  *             number of cells in space + 1. NULL for not used.
  * @param nxadj the number of xadj element used.
+ * @param nr_cells The number of cells being decomposed. In the zoom
+ *                 case this is less than s->nr_cells.
  */
 static void graph_init(struct space *s, int periodic, idx_t *weights_e,
-                       idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj) {
+                       idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj,
+                       int nr_cells) {
+
+  /* Get the right cdim. */
+  if (s->with_zoom_region) {
+    const int *cdim = s->zoom_props->cdim;
+  } else {
+    const int *cdim = s->cdim;
+  }
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
   if (periodic) {
     int cid = 0;
-    for (int l = 0; l < s->cdim[0]; l++) {
-      for (int m = 0; m < s->cdim[1]; m++) {
-        for (int n = 0; n < s->cdim[2]; n++) {
+    for (int l = 0; l < cdim[0]; l++) {
+      for (int m = 0; m < cdim[1]; m++) {
+        for (int n = 0; n < cdim[2]; n++) {
 
           /* Visit all neighbours of this cell, wrapping space at edges. */
           int p = 0;
           for (int i = -1; i <= 1; i++) {
             int ii = l + i;
             if (ii < 0)
-              ii += s->cdim[0];
-            else if (ii >= s->cdim[0])
-              ii -= s->cdim[0];
+              ii += cdim[0];
+            else if (ii >= cdim[0])
+              ii -= cdim[0];
             for (int j = -1; j <= 1; j++) {
               int jj = m + j;
               if (jj < 0)
-                jj += s->cdim[1];
-              else if (jj >= s->cdim[1])
-                jj -= s->cdim[1];
+                jj += cdim[1];
+              else if (jj >= cdim[1])
+                jj -= cdim[1];
               for (int k = -1; k <= 1; k++) {
                 int kk = n + k;
                 if (kk < 0)
-                  kk += s->cdim[2];
-                else if (kk >= s->cdim[2])
+                  kk += cdim[2];
+                else if (kk >= cdim[2])
                   kk -= s->cdim[2];
 
                 /* If not self, record id of neighbour. */
                 if (i || j || k) {
-                  adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk);
+                  adjncy[cid * 26 + p] = cell_getid(cdim, ii, jj, kk);
                   p++;
                 }
               }
@@ -262,8 +272,8 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     /* If given set METIS xadj. */
     if (xadj != NULL) {
       xadj[0] = 0;
-      for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
-      *nxadj = s->nr_cells;
+      for (int k = 0; k < nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+      *nxadj = nr_cells;
     }
 
   } else {
@@ -277,25 +287,25 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     int shuffle = 0;
     if (weights_e != NULL) shuffle = 1;
 
-    for (int l = 0; l < s->cdim[0]; l++) {
-      for (int m = 0; m < s->cdim[1]; m++) {
-        for (int n = 0; n < s->cdim[2]; n++) {
+    for (int l = 0; l < cdim[0]; l++) {
+      for (int m = 0; m < cdim[1]; m++) {
+        for (int n = 0; n < cdim[2]; n++) {
 
           /* Visit all neighbours of this cell. */
           int p = 0;
           for (int i = -1; i <= 1; i++) {
             int ii = l + i;
-            if (ii >= 0 && ii < s->cdim[0]) {
+            if (ii >= 0 && ii < cdim[0]) {
               for (int j = -1; j <= 1; j++) {
                 int jj = m + j;
-                if (jj >= 0 && jj < s->cdim[1]) {
+                if (jj >= 0 && jj < cdim[1]) {
                   for (int k = -1; k <= 1; k++) {
                     int kk = n + k;
-                    if (kk >= 0 && kk < s->cdim[2]) {
+                    if (kk >= 0 && kk < cdim[2]) {
 
                       /* If not self, record id of neighbour. */
                       if (i || j || k) {
-                        adjncy[ind] = cell_getid(s->cdim, ii, jj, kk);
+                        adjncy[ind] = cell_getid(cdim, ii, jj, kk);
 
                         if (shuffle) {
                           /* Keep this weight, need index for periodic
@@ -334,6 +344,7 @@ struct counts_mapper_data {
   double *counts;
   size_t size;
   struct space *s;
+  int nr_cells;
 };
 
 /* Generic function for accumulating sized counts for TYPE parts. Note uses
@@ -349,7 +360,7 @@ struct counts_mapper_data {
     struct space *s = mydata->s;                                               \
     double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
     double *lcounts = NULL;                                                    \
-    int lcid = mydata->s->nr_cells;                                            \
+    int lcid = mydata->nr_cells;                                               \
     int ucid = 0;                                                              \
     for (int k = 0; k < num_elements; k++) {                                   \
       for (int j = 0; j < 3; j++) {                                            \
@@ -414,13 +425,17 @@ static int ptrcmp(const void *p1, const void *p2) {
  * @param verbose whether to report any clipped cell counts.
  * @param counts the number of bytes in particles per cell. Should be
  *               allocated as size s->nr_cells.
+ * @param nr_cells The number of cells being decomposed. In the zoom
+ *                 case this is less than s->nr_cells.
  */
-static void accumulate_sizes(struct space *s, int verbose, double *counts) {
+static void accumulate_sizes(struct space *s, int verbose, double *counts,
+                             int nr_cells) {
 
-  bzero(counts, sizeof(double) * s->nr_cells);
+  bzero(counts, sizeof(double) * nr_cells);
 
   struct counts_mapper_data mapper_data;
   mapper_data.s = s;
+  mapper_data.nr_cells = nr_cells;
   double gsize = 0.0;
   double *gcounts = NULL;
   double hsize = 0.0;
@@ -432,9 +447,9 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
      * gparts, to suppress this we fix a upper weight limit based on a
      * percentile clip to on the numbers of cells. Should be relatively
      * harmless when not really needed. */
-    if ((gcounts = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+    if ((gcounts = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
       error("Failed to allocate gcounts buffer.");
-    bzero(gcounts, sizeof(double) * s->nr_cells);
+    bzero(gcounts, sizeof(double) * nr_cells);
     gsize = (double)sizeof(struct gpart);
 
     mapper_data.counts = gcounts;
@@ -444,29 +459,29 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
                    &mapper_data);
 
     /* Get all the counts from all the nodes. */
-    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+    if (MPI_Allreduce(MPI_IN_PLACE, gcounts, nr_cells, MPI_DOUBLE, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to allreduce particle cell gpart weights.");
 
     /* Now we need to sort... */
     double **ptrs = NULL;
-    if ((ptrs = (double **)malloc(sizeof(double *) * s->nr_cells)) == NULL)
+    if ((ptrs = (double **)malloc(sizeof(double *) * nr_cells)) == NULL)
       error("Failed to allocate pointers buffer.");
-    for (int k = 0; k < s->nr_cells; k++) {
+    for (int k = 0; k < nr_cells; k++) {
       ptrs[k] = &gcounts[k];
     }
 
     /* Sort pointers, not counts... */
-    qsort(ptrs, s->nr_cells, sizeof(double *), ptrcmp);
+    qsort(ptrs, nr_cells, sizeof(double *), ptrcmp);
 
     /* Percentile cut keeps 99.8% of cells and clips above. */
-    int cut = ceil(s->nr_cells * 0.998);
-    if (cut == s->nr_cells) cut = s->nr_cells - 1;
+    int cut = ceil(nr_cells * 0.998);
+    if (cut == nr_cells) cut = nr_cells - 1;
 
     /* And clip. */
     int nadj = 0;
     double clip = *ptrs[cut];
-    for (int k = cut + 1; k < s->nr_cells; k++) {
+    for (int k = cut + 1; k < nr_cells; k++) {
       *ptrs[k] = clip;
       nadj++;
     }
@@ -495,7 +510,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   /* Merge the counts arrays across all nodes, if needed. Doesn't include any
    * gparts. */
   if (s->nr_parts > 0 || s->nr_sparts > 0) {
-    if (MPI_Allreduce(MPI_IN_PLACE, counts, s->nr_cells, MPI_DOUBLE, MPI_SUM,
+    if (MPI_Allreduce(MPI_IN_PLACE, counts, nr_cells, MPI_DOUBLE, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
       error("Failed to allreduce particle cell weights.");
   }
@@ -503,13 +518,13 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   /* And merge with gravity counts. */
   double sum = 0.0;
   if (s->nr_gparts > 0) {
-    for (int k = 0; k < s->nr_cells; k++) {
+    for (int k = 0; k < nr_cells; k++) {
       counts[k] += gcounts[k];
       sum += counts[k];
     }
     free(gcounts);
   } else {
-    for (int k = 0; k < s->nr_cells; k++) {
+    for (int k = 0; k < nr_cells; k++) {
       sum += counts[k];
     }
   }
@@ -517,7 +532,7 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
   /* Keep the sum of particles across all ranks in the range of IDX_MAX. */
   if (sum > (double)(IDX_MAX - 10000)) {
     double vscale = (double)(IDX_MAX - 10000) / sum;
-    for (int k = 0; k < s->nr_cells; k++) counts[k] *= vscale;
+    for (int k = 0; k < nr_cells; k++) counts[k] *= vscale;
   }
 }
 
@@ -527,12 +542,15 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
  * @param s the space containing the cells.
  * @param counts the number of bytes in particles per cell.
  * @param edges weights for the edges of these regions. Should be 26 * counts.
+ * @param nr_cells The number of cells being decomposed. In the zoom
+ *                 case this is less than s->nr_cells.
  */
-static void sizes_to_edges(struct space *s, double *counts, double *edges) {
+static void sizes_to_edges(struct space *s, double *counts, double *edges,
+                           int nr_cells) {
 
-  bzero(edges, sizeof(double) * s->nr_cells * 26);
+  bzero(edges, sizeof(double) * nr_cells * 26);
 
-  for (int l = 0; l < s->nr_cells; l++) {
+  for (int l = 0; l < nr_cells; l++) {
     int p = 0;
     for (int i = -1; i <= 1; i++) {
       int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
@@ -562,10 +580,13 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
  * @param s the space containing the cells to split into regions.
  * @param nregions number of regions.
  * @param celllist list of regions for each cell.
+ * @param nr_cells The number of cells being decomposed. In the zoom
+ *                 case this is less than s->nr_cells.
  */
-static void split_metis(struct space *s, int nregions, int *celllist) {
+static void split_metis(struct space *s, int nregions, int *celllist,
+                        int nr_cells) {
 
-  for (int i = 0; i < s->nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
+  for (int i = 0; i < nr_cells; i++) s->cells_top[i].nodeID = celllist[i];
 
   /* To check or visualise the partition dump all the cells. */
   /*if (engine_rank == 0) dumpCellRanks("metis_partition", s->cells_top,
@@ -708,17 +729,17 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  * @param celllist on exit this contains the ids of the selected regions,
  *        size of number of cells. If refine is 1, then this should contain
  *        the old partition on entry.
+ * @param ncells The number of cells being decomposed. In the zoom
+ *                 case this is less than s->nr_cells.
  */
 static void pick_parmetis(int nodeID, struct space *s, int nregions,
                           double *vertexw, double *edgew, int refine,
-                          int adaptive, float itr, int *celllist) {
+                          int adaptive, float itr, int *celllist,
+                          int ncells) {
 
   int res;
   MPI_Comm comm;
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
-
-  /* Total number of cells. */
-  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
 
   /* Nothing much to do if only using a single MPI rank. */
   if (nregions == 1) {
@@ -881,7 +902,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     int nadjcny = 0;
     int nxadj = 0;
     graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
-               &nxadj);
+               &nxadj, ncells);
 
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -1143,7 +1164,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
       int nsum = 0;
-      for (int i = 0; i < s->nr_cells; i++) {
+      for (int i = 0; i < nr_cells; i++) {
         celllist[i] = s->cells_top[i].nodeID;
         nsum += celllist[i];
       }
@@ -1169,7 +1190,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   }
 
   /* And everyone gets a copy. */
-  res = MPI_Bcast(celllist, s->nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+  res = MPI_Bcast(celllist, nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
   /* Clean up. */
@@ -1204,12 +1225,12 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
  *        idx_t.
  * @param celllist on exit this contains the ids of the selected regions,
  *        sizeof number of cells.
+ * @param ncells The number of cells being decomposed. In the zoom
+ *                 case this is less than s->nr_cells.
  */
 static void pick_metis(int nodeID, struct space *s, int nregions,
-                       double *vertexw, double *edgew, int *celllist) {
-
-  /* Total number of cells. */
-  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+                       double *vertexw, double *edgew, int *celllist,
+                       int ncells) {
 
   /* Nothing much to do if only using a single partition. Also avoids METIS
    * bug that doesn't handle this case well. */
@@ -1536,15 +1557,16 @@ static void partition_gather_weights(void *map_data, int num_elements,
  * @param s the space of cells holding our local particles.
  * @param tasks the completed tasks from the last engine step for our node.
  * @param nr_tasks the number of tasks.
+ * @param nr_cells The number of cells being decomposed. In the zoom
+ *                 case this is less than s->nr_cells.
  */
 static void repart_edge_metis(int vweights, int eweights, int timebins,
                               struct repartition *repartition, int nodeID,
                               int nr_nodes, struct space *s, struct task *tasks,
-                              int nr_tasks) {
+                              int nr_tasks, int nr_cells) {
 
   /* Create weight arrays using task ticks for vertices and edges (edges
    * assume the same graph structure as used in the part_ calls). */
-  int nr_cells = s->nr_cells;
   struct cell *cells = s->cells_top;
 
   /* Allocate and fill the adjncy indexing array defining the graph of
@@ -1697,14 +1719,15 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e,
-               repartition->celllist);
+               repartition->celllist, nr_cells);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, refine,
                   repartition->adaptive, repartition->itr,
-                  repartition->celllist);
+                  repartition->celllist, nr_cells);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist);
+  pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist,
+             nr_cells);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
@@ -1738,7 +1761,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   /* And apply to our cells */
-  split_metis(s, nr_nodes, repartition->celllist);
+  split_metis(s, nr_nodes, repartition->celllist, nr_cells);
 
   /* Clean up. */
   free(inds);
@@ -1754,51 +1777,54 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
  * @param nodeID our nodeID.
  * @param nr_nodes the number of nodes.
  * @param s the space of cells holding our local particles.
+ * @param nr_cells The number of cells being decomposed. In the zoom
+ *                 case this is less than s->nr_cells.
  */
 static void repart_memory_metis(struct repartition *repartition, int nodeID,
-                                int nr_nodes, struct space *s) {
+                                int nr_nodes, struct space *s, int nr_cells) {
 
   /* Space for counts of particle memory use per cell. */
   double *weights = NULL;
-  if ((weights = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+  if ((weights = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
     error("Failed to allocate cell weights buffer.");
 
   /* Check each particle and accumulate the sizes per cell. */
-  accumulate_sizes(s, s->e->verbose, weights);
+  accumulate_sizes(s, s->e->verbose, weights, nr_cells);
 
   /* Allocate cell list for the partition. If not already done. */
 #ifdef HAVE_PARMETIS
   int refine = 1;
 #endif
-  if (repartition->ncelllist != s->nr_cells) {
+  if (repartition->ncelllist != nr_cells) {
 #ifdef HAVE_PARMETIS
     refine = 0;
 #endif
     free(repartition->celllist);
     repartition->ncelllist = 0;
-    if ((repartition->celllist = (int *)malloc(sizeof(int) * s->nr_cells)) ==
+    if ((repartition->celllist = (int *)malloc(sizeof(int) * nr_cells)) ==
         NULL)
       error("Failed to allocate celllist");
-    repartition->ncelllist = s->nr_cells;
+    repartition->ncelllist = nr_cells;
   }
 
   /* We need to rescale the sum of the weights so that the sum is
    * less than IDX_MAX, that is the range of idx_t. */
   double sum = 0.0;
-  for (int k = 0; k < s->nr_cells; k++) sum += weights[k];
+  for (int k = 0; k < nr_cells; k++) sum += weights[k];
   if (sum > (double)IDX_MAX) {
     double scale = (double)(IDX_MAX - 1000) / sum;
-    for (int k = 0; k < s->nr_cells; k++) weights[k] *= scale;
+    for (int k = 0; k < nr_cells; k++) weights[k] *= scale;
   }
 
   /* And repartition. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
-    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+    pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist,
+               nr_cells);
   } else {
     pick_parmetis(nodeID, s, nr_nodes, weights, NULL, refine,
                   repartition->adaptive, repartition->itr,
-                  repartition->celllist);
+                  repartition->celllist, nr_cells);
   }
 #else
   pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
@@ -1807,7 +1833,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
   if (nodeID == 0) {
-    for (int k = 0; k < s->nr_cells; k++)
+    for (int k = 0; k < nr_cells; k++)
       if (repartition->celllist[k] < 0 || repartition->celllist[k] >= nr_nodes)
         error("Got bad nodeID %d for cell %i.", repartition->celllist[k], k);
   }
@@ -1816,7 +1842,7 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
   int present[nr_nodes];
   int failed = 0;
   for (int i = 0; i < nr_nodes; i++) present[i] = 0;
-  for (int i = 0; i < s->nr_cells; i++) present[repartition->celllist[i]]++;
+  for (int i = 0; i < nr_cells; i++) present[repartition->celllist[i]]++;
   for (int i = 0; i < nr_nodes; i++) {
     if (!present[i]) {
       failed = 1;
@@ -1830,12 +1856,12 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
       message(
           "WARNING: repartition has failed, continuing with the current"
           " partition, load balance will not be optimal");
-    for (int k = 0; k < s->nr_cells; k++)
+    for (int k = 0; k < nr_cells; k++)
       repartition->celllist[k] = s->cells_top[k].nodeID;
   }
 
   /* And apply to our cells */
-  split_metis(s, nr_nodes, repartition->celllist);
+  split_metis(s, nr_nodes, repartition->celllist, nr_cells);
 }
 #endif /* WITH_MPI && (HAVE_METIS || HAVE_PARMETIS) */
 
@@ -1858,22 +1884,29 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
+  /* How many cells are we working with? */
+  if (s->with_zoom_region) {
+    int nr_cells = s->zoom_props->nr_zoom_cells;
+  } else {
+    int nr_cells = s->nr_cells;    
+  }
+
   ticks tic = getticks();
 
   if (reparttype->type == REPART_METIS_VERTEX_EDGE_COSTS) {
     repart_edge_metis(1, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                      nr_tasks);
+                      nr_tasks, nr_cells);
 
   } else if (reparttype->type == REPART_METIS_EDGE_COSTS) {
     repart_edge_metis(0, 1, 0, reparttype, nodeID, nr_nodes, s, tasks,
-                      nr_tasks);
+                      nr_tasks, nr_cells);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COSTS_TIMEBINS) {
     repart_edge_metis(1, 1, 1, reparttype, nodeID, nr_nodes, s, tasks,
-                      nr_tasks);
+                      nr_tasks, nr_cells);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
-    repart_memory_metis(reparttype, nodeID, nr_nodes, s);
+    repart_memory_metis(reparttype, nodeID, nr_nodes, nr_cells);
 
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
@@ -1972,48 +2005,63 @@ void partition_initial_partition(struct partition *initial_partition,
      */
     double *weights_v = NULL;
     double *weights_e = NULL;
+
+    /* If we have a zoom region we need to handles the background and
+     * only let metis consider the zoom region. */
+    if (s->with_zoom_region) {
+
+      /* Radially decomp the background particles. */
+      split_bkg(s, nr_nodes);
+      int nr_cells = s->zoom_props->nr_zoom_cells;
+      
+    } else {
+      
+      int nr_cells = s->nr_cells;
+      
+    }
+    
     if (initial_partition->type == INITPART_METIS_WEIGHT) {
       /* Particles sizes per cell, which will be used as weights. */
-      if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
-      accumulate_sizes(s, s->e->verbose, weights_v);
+      accumulate_sizes(s, s->e->verbose, weights_v, nr_cells);
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
       /* Particle sizes also counted towards the edges. */
 
-      if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
+      if ((weights_v = (double *)malloc(sizeof(double) * nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) ==
+      if ((weights_e = (double *)malloc(sizeof(double) * nr_cells * 26)) ==
           NULL)
         error("Failed to allocate weights_e buffer.");
 
       /* Check each particle and accumulate the sizes per cell. */
-      accumulate_sizes(s, s->e->verbose, weights_v);
+      accumulate_sizes(s, s->e->verbose, weights_v, nr_cells);
 
       /* Spread these into edge weights. */
-      sizes_to_edges(s, weights_v, weights_e);
+      sizes_to_edges(s, weights_v, weights_e, nr_cells);
     }
 
     /* Do the calculation. */
     int *celllist = NULL;
-    if ((celllist = (int *)malloc(sizeof(int) * s->nr_cells)) == NULL)
+    if ((celllist = (int *)malloc(sizeof(int) * nr_cells)) == NULL)
       error("Failed to allocate celllist");
 #ifdef HAVE_PARMETIS
     if (initial_partition->usemetis) {
-      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+      pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist, nr_cells);
     } else {
       pick_parmetis(nodeID, s, nr_nodes, weights_v, weights_e, 0, 0, 0.0f,
-                    celllist);
+                    celllist, nr_cells);
     }
 #else
-    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist);
+    pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist, nr_cells);
 #endif
 
     /* And apply to our cells */
-    split_metis(s, nr_nodes, celllist);
+    split_metis(s, nr_nodes, celllist, nr_cells);
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
@@ -2059,6 +2107,7 @@ void partition_initial_partition(struct partition *initial_partition,
       /* And apply to our zoom cells */
       split_vector_zoom(s, nr_nodes, zoom_samplecells);
       free(zoom_samplecells);
+      split_bkg(s, nr_nodes);
     } else {
       /* Vectorised selection, guaranteed to work for samples less than the
        * number of cells, but not very clumpy in the selection of regions. */
