@@ -150,7 +150,7 @@ AC_ARG_ENABLE([mpi],
 # so could change.
 good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
-    AX_MPI([CC="$MPICC $ac_cv_prog_cc_stdc" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
+    AX_MPI([CC="$MPICC $ac_cv_prog_cc_stdc" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ], [enable_mpi="no"])
     MPI_LIBRARY="Unknown MPI"
 
     # Various MPI implementations require additional libraries when also using
