@@ -672,6 +672,11 @@ void find_neighbouring_cells(struct space *s,
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
+  /* At this point we can only define neighbour cells by cell properties,
+   * leaving the fancy gravity distance criterion for task creation later.
+   * Here we just make sure all possible neighbour cells are flagged
+   * as such. */
+
   /* Get some info about the physics */
   const double theta_crit_inv = 1. / gravity_properties->theta_crit;
 
@@ -682,8 +687,26 @@ void find_neighbouring_cells(struct space *s,
   const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
 
   /* Turn this into upper and lower bounds for loops */
-  const int delta_m = delta_cells;
-  const int delta_p = delta_cells;
+  int delta_m = delta_cells;
+  int delta_p = delta_cells;
+
+  /* Special case where every cell is in range of every other one */
+  if (periodic) {
+    if (delta_cells >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta_cells > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
+    }
+  }
 
   /* Allocate the indices of neighbour background cells */
   if (swift_memalign("neighbour_cells_top",
@@ -695,7 +718,6 @@ void find_neighbouring_cells(struct space *s,
         s->zoom_props->nr_bkg_cells * sizeof(int));
 
   int neighbour_count = 0;
-  int void_count = 0;
 
   /* Let's be verbose about this choice */
   if (verbose)
@@ -705,65 +727,45 @@ void find_neighbouring_cells(struct space *s,
         "delta_p=%d)",
         delta_cells, delta_m, delta_p);
 
-  /* Loop over each cell in the space to find the neighbouring top level cells
-   * surrounding the zoom region. */
-  for (int i = 0; i < cdim[0]; i++) {
-    for (int j = 0; j < cdim[1]; j++) {
-      for (int k = 0; k < cdim[2]; k++) {
+  /* Get the void cell coordinates. */
+  int i = s->zoom_props->zoom_cell_ijk[0];
+  int j = s->zoom_props->zoom_cell_ijk[1];
+  int k = s->zoom_props->zoom_cell_ijk[2];
 
-        /* Get the cell ID. */
-        const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Ensure all background cells are actually background cells */
-        if (cells[cid].width[0] == s->zoom_props->width[0])
-          error("A zoom cell has been given a natural cell label!");
-#endif
+    /* Escape if non-periodic and beyond range */
+    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
 
-        /* Only interested in cells hosting zoom top level cells. */
-        if (cells[cid].tl_cell_type != void_tl_cell) continue;
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
-        void_count++;
+      /* Escape if non-periodic and beyond range */
+      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
-        /* Loop over all its direct neighbours. */
-        for (int ii = -delta_m; ii <= delta_p; ii++) {
-          int iii = i + ii;
-          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-          iii = (iii + cdim[0]) % cdim[0];
-          for (int jj = -delta_m; jj <= delta_p; jj++) {
-            int jjj = j + jj;
-            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-            jjj = (jjj + cdim[1]) % cdim[1];
-            for (int kk = -delta_m; kk <= delta_p; kk++) {
-              int kkk = k + kk;
-              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-              kkk = (kkk + cdim[2]) % cdim[2];
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
-              /* Get the cell ID of the neighbour. */
-              const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+        /* Escape if non-periodic and beyond range */
+        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
-              if (cells[cjd].tl_cell_type == tl_cell) {
+        /* Apply periodic BC (not harmful if not using periodic BC) */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
 
-                /* Record that we've found a neighbour. */
-                cells[cjd].tl_cell_type = tl_cell_neighbour;
-                s->zoom_props->neighbour_cells_top[neighbour_count] = cjd;
-                neighbour_count++;
-              }
-            }
-          }
+        /* Get the cell ID of the neighbour. */
+        const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+        
+        if (cells[cjd].tl_cell_type == tl_cell) {
+
+          /* Record that we've found a neighbour. */
+          cells[cjd].tl_cell_type = tl_cell_neighbour;
+          s->zoom_props->neighbour_cells_top[neighbour_count] = cjd;
+          neighbour_count++;
         }
       }
     }
   }
-
-  /* Store the number of neighbour cells */
-  s->zoom_props->nr_neighbour_cells = neighbour_count;
-
-  if (verbose) {
-    message("%i cells neighbouring the zoom region", neighbour_count);
-    message("%i void cells in the zoom region", void_count);
-  }
-#endif
 }
 
 /**
