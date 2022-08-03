@@ -2728,6 +2728,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct cell *cj = &cells[cells_with_particles[n]];
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
+      /* Explict skip of void cell just in case */
+      if (cj->tl_cell_type == 2) continue;
+
       /* Avoid self contributions */
       if (top == cj) continue;
 
