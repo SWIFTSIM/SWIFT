@@ -274,7 +274,7 @@ void split_bkg(struct space *s, int nregions) {
         float phi;
         if (ii == 0 && jj == 0) {
           /* Handle the central cell. */
-          s->cells_top[cid++].nodeID = 0;
+          s->cells_top[cid].nodeID = 0;
           continue;
         }
         else if (ii >= 0) {
