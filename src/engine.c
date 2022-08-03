@@ -1334,7 +1334,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     for (int i = 0; i < e->s->nr_cells; ++i) {
 
       /* In the zoom case we need to skip the void cell */
-      if (i == s->zoom_props->void_cell_index) continue;
+      if (i == e->s->zoom_props->void_cell_index) continue;
       
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
