@@ -2552,8 +2552,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-  //  const double theta_crit = e->gravity_properties->theta_crit;
-
+  
   TIMER_TIC;
 
   /* Recover the list of top-level cells */
@@ -2628,7 +2627,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Loop over the first level of the void cell hierarchy. */
     for (int k = 0; k < 8; k++) {
-        runner_do_grav_long_range_recurse(r, top, void_cell->progeny[k]);
+        runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
       }
     
   } else { /* Periodic background cells. */
@@ -2674,7 +2673,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           if (cj->tl_cell_type == 2) {
 
             /* Interact with the zoom cells recursively. */
-            runner_do_grav_long_range_recurse(r, top, cj);
+            runner_do_grav_long_range_recurse(r, ci, cj);
             
           } /* This neighbour is not the void cell. */
           else {
