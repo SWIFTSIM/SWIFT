@@ -1166,7 +1166,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       /* No old partition was given, so we need to construct the existing
        * partition from the cells, if one existed. */
       int nsum = 0;
-      for (int i = 0; i < nr_cells; i++) {
+      for (int i = 0; i < ncells; i++) {
         celllist[i] = s->cells_top[i].nodeID;
         nsum += celllist[i];
       }
@@ -1192,7 +1192,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   }
 
   /* And everyone gets a copy. */
-  res = MPI_Bcast(celllist, nr_cells, MPI_INT, 0, MPI_COMM_WORLD);
+  res = MPI_Bcast(celllist, ncells, MPI_INT, 0, MPI_COMM_WORLD);
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 
   /* Clean up. */
@@ -1322,7 +1322,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
+    graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj,
+               ncells);
 
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
@@ -1579,7 +1580,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   int nadjcny = 0;
   int nxadj = 0;
   graph_init(s, 1 /* periodic */, NULL /* no edge weights */, inds, &nadjcny,
-             NULL /* no xadj needed */, &nxadj);
+             NULL /* no xadj needed */, &nxadj, nr_cells);
 
   /* Allocate and init weights. */
   double *weights_v = NULL;
@@ -1887,10 +1888,9 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   /* How many cells are we working with? */
+  int nr_cells = s->nr_cells;    
   if (s->with_zoom_region) {
-    int nr_cells = s->zoom_props->nr_zoom_cells;
-  } else {
-    int nr_cells = s->nr_cells;    
+    nr_cells = s->zoom_props->nr_zoom_cells;
   }
 
   ticks tic = getticks();
@@ -2007,6 +2007,7 @@ void partition_initial_partition(struct partition *initial_partition,
      */
     double *weights_v = NULL;
     double *weights_e = NULL;
+    int nr_cells = s->nr_cells;
 
     /* If we have a zoom region we need to handles the background and
      * only let metis consider the zoom region. */
@@ -2014,11 +2015,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Radially decomp the background particles. */
       split_bkg(s, nr_nodes);
-      int nr_cells = s->zoom_props->nr_zoom_cells;
-      
-    } else {
-      
-      int nr_cells = s->nr_cells;
+      nr_cells = s->zoom_props->nr_zoom_cells;
       
     }
     
