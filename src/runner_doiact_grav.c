@@ -2599,12 +2599,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         continue;
 
       /* Avoid self contributions */
-      if (top == cj) continue;
+      if (ci == cj) continue;
 
       /* Skip empty cells */
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
-      if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+      if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
                                /*is_tree_walk=*/0)) {
 
         /* Call the PM interaction function on the active sub-cells of ci */
@@ -2616,7 +2616,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       } /* We are in charge of this pair */
     }   /* Loop over top-level cells */
-  } else if (top->tl_cell_type == zoom_tl_cell) { /* Zoom cell case */
+  } else if (ci->tl_cell_type == zoom_tl_cell) { /* Zoom cell case */
 
     /* Zoom cell case
      * We can loop over the void cell hierarchy and interact at depths
@@ -2638,9 +2638,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * Add some buffer for safety */
 
     /* Get the (i,j,k) location of the top-level cell in the grid. */
-    const int top_i = top->loc[0] * s->iwidth[0];
-    const int top_j = top->loc[1] * s->iwidth[1];
-    const int top_k = top->loc[2] * s->iwidth[2];
+    const int top_i = ci->loc[0] * s->iwidth[0];
+    const int top_j = ci->loc[1] * s->iwidth[1];
+    const int top_k = ci->loc[2] * s->iwidth[2];
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
@@ -2666,7 +2666,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           struct cell *cj = &cells[cell_index];
 
           /* Avoid self contributions  */
-          if (top == cj) continue;
+          if (ci == cj) continue;
 
           /* If this is the void cell we need to interact with the zoom cells.
            */
@@ -2686,7 +2686,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
             /* Minimal distance between any pair of particles */
             const double min_radius2 =
-              cell_min_dist2_same_size(top, cj, periodic, dim);
+              cell_min_dist2_same_size(ci, cj, periodic, dim);
 
             /* Are we beyond the distance where the truncated forces are 0 ?*/
             if (min_radius2 > max_distance2) {
@@ -2699,7 +2699,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             }
 
             /* Shall we interact with this cell? */
-            if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+            if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
                                      /*is_tree_walk=*/0)) {
 
               /* Call the PM interaction function on the active sub-cells of ci
