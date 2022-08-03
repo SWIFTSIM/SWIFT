@@ -259,7 +259,7 @@ void split_bkg(struct space *s, int nregions) {
       for (int k = 0; k < s->cdim[2]; k++) {
 
         /* Get cell ID. */
-        const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+        const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
 
         /* Center cell coordinates. */
         int ii = i - (s->cdim[0] / 2);
@@ -286,7 +286,7 @@ void split_bkg(struct space *s, int nregions) {
 
         /* Compute the nodeID. */
         int select = phi / slice_width;
-        s->cells_top[cid++].nodeID = select;
+        s->cells_top[cid].nodeID = select;
       }
     }
   }
