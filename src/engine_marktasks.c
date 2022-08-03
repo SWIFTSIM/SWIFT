@@ -672,7 +672,7 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                  (t_subtype == task_subtype_grav ||
                   t_subtype == task_subtype_grav_bkg ||
                   t_subtype == task_subtype_grav_zoombkg ||
-                  t_subtype == task_subtype_grav_bkgzoom) {
+                  t_subtype == task_subtype_grav_bkgzoom)) {
           error("Invalid task sub-type encountered");
         }
 #endif
