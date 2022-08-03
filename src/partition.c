@@ -1908,7 +1908,7 @@ void partition_repartition(struct repartition *reparttype, int nodeID,
                       nr_tasks, nr_cells);
 
   } else if (reparttype->type == REPART_METIS_VERTEX_COUNTS) {
-    repart_memory_metis(reparttype, nodeID, nr_nodes, nr_cells);
+    repart_memory_metis(reparttype, nodeID, nr_nodes, s, nr_cells);
 
   } else if (reparttype->type == REPART_NONE) {
     /* Doing nothing. */
