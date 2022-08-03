@@ -217,16 +217,17 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                        idx_t *adjncy, int *nadjcny, idx_t *xadj, int *nxadj,
                        int nr_cells) {
 
-  /* Get the right cdim. */
-  if (s->with_zoom_region) {
-    const int *cdim = s->zoom_props->cdim;
-  } else {
-    const int *cdim = s->cdim;
-  }
-
   /* Loop over all cells in the space. */
   *nadjcny = 0;
   if (periodic) {
+
+    /* Get the right cdim. */
+    if (s->with_zoom_region) {
+      const int *cdim = s->zoom_props->cdim;
+    } else {
+      const int *cdim = s->cdim;
+    }
+    
     int cid = 0;
     for (int l = 0; l < cdim[0]; l++) {
       for (int m = 0; m < cdim[1]; m++) {
