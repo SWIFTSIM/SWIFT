@@ -2867,7 +2867,47 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     }       /* Loop over relevant top-level cells (i) */
   }         /* periodic / non-periodic case */
 
-  // MATTHIEU TODO: Deal properly with the debugging checks
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+
+  if (periodic) {
+    /* Loop over all other cells and account for the mesh contribution. */
+    for (int n = 0; n < nr_cells_with_particles; ++n) {
+
+      /* Handle on the top-level cell and it's gravity business*/
+      struct cell *cj = &cells[cells_with_particles[n]];
+      struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+      /* Explict skip of void cell just in case */
+      if (cj->tl_cell_type == 2) continue;
+
+      /* Avoid self contributions */
+      if (top == cj) continue;
+
+      /* Skip empty cells */
+      if (multi_j->m_pole.M_000 == 0.f) continue;
+
+      /* Minimal distance between any pair of particles */
+      const double min_radius2 =
+        cell_min_dist2(top, cj, periodic, dim);
+
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
+      if (min_radius2 > max_distance2) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+              /* Need to account for the interactions we missed */
+              accumulate_add_ll(&multi_i->pot.num_interacted,
+                                multi_j->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+              /* Need to account for the interactions we missed */
+              accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                                multi_j->m_pole.num_gpart);
+#endif
+      }
+    }
+  }
+#endif
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }
