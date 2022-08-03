@@ -767,6 +767,7 @@ void find_neighbouring_cells(struct space *s,
     }
   }
 }
+#endif
 
 /**
  * @brief Minimum distance between two TL cells with different sizes.
