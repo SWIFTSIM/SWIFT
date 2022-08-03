@@ -2501,7 +2501,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 =
-      cell_min_dist2_diff_size(ci, cj, periodic, dim);
+      cell_min_dist2(ci, cj, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
@@ -2737,7 +2737,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Minimal distance between any pair of particles */
       const double min_radius2 =
-        cell_min_dist2_same_size(top, cj, periodic, dim);
+        cell_min_dist2(top, cj, periodic, dim);
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (min_radius2 > max_distance2) {
