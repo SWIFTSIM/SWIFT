@@ -25,8 +25,9 @@
  */
 
 /* Config parameters. */
-#include <config.h>
 #include "timeline.h"
+
+#include <config.h>
 
 /* Import the right RT struct definition */
 #if defined(RT_NONE)

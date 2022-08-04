@@ -1836,7 +1836,7 @@ void engine_run_rt_sub_cycles(struct engine *e) {
     time = e->ti_current_subcycle * e->time_base + e->time_begin;
 
     /* Do the actual work now. */
-    engine_unskip_sub_cycle(e);
+    engine_unskip_rt_sub_cycle(e);
     engine_launch(e, "cycles");
 
     /* Collect number of updates and print */

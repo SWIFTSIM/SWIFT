@@ -634,8 +634,7 @@ void engine_addtasks_recv_hydro(
 
       c->super->rt.rt_advance_cell_time = t_rt_advance_cell_time;
       /* Create the RT collect times task at the top level, if it hasn't
-       * already.
-       */
+       * already. */
       if (c->top->rt.rt_collect_times == NULL)
         c->top->rt.rt_collect_times =
             scheduler_addtask(s, task_type_rt_collect_times, task_subtype_none,

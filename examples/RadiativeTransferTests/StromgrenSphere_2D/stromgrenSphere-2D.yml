@@ -21,15 +21,12 @@ TimeIntegration:
 Snapshots:
   basename:            output # Common part of the name of output files
   time_first:          0.     # Time of the first output (in internal units)
-  delta_time:          0.1  # Time between snapshots
+  delta_time:          0.001  # Time between snapshots
 
 # Parameters governing the conserved quantities statistics
 Statistics:
   time_first:          0.
   delta_time:          1e-3 # Time between statistics output
-
-Scheduler:
-  dependency_graph_frequency: 0
 
 # Parameters for the hydrodynamics scheme
 SPH:

@@ -759,7 +759,6 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         /* Same for RT */
         if (with_rt) {
-          /* integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e); */
           /* Enforce RT time-step size <= hydro step size */
           ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
 

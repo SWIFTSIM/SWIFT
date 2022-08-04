@@ -63,10 +63,10 @@ void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
   if (c->nodeID == engine_rank) error("Updating a local cell!");
 #endif
 
-  if (clear_sorts == 2){
+  if (clear_sorts == 2) {
     /* This is a call for the first RT recv task. Check whether
-     * we need to clear the sorts now. In the case of a foreign 
-     * cell where no xv comms are done, but RT is active, we 
+     * we need to clear the sorts now. In the case of a foreign
+     * cell where no xv comms are done, but RT is active, we
      * need to force a sort after the gradient recv. */
     clear_sorts = !cell_get_flag(c, cell_flag_skip_rt_sort);
     cell_clear_flag(c, cell_flag_skip_rt_sort);

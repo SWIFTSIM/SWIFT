@@ -220,13 +220,13 @@ def check_hydro_sanity(snapdata, rundata):
 
         # -------------------------------------------------------------
         # Check that the subcycle counter isn't zero.
-        # We exect a particle to be radioactive at least each time it
+        # We expect a particle to be radioactive at least each time it
         # is hydro active, so the subcycle counter must never be zero.
         # -------------------------------------------------------------
 
         fishy = gas.nsubcycles <= 0
         if fishy.any():
-            print("- cehcking hydro sanity pt 2.6; snapshot", snap.snapnr)
+            print("- checking hydro sanity pt 2.6; snapshot", snap.snapnr)
             print("Found nsubcycles <= 0:", np.count_nonzero(fishy), "/", npart)
             if print_diffs:
                 print("nsubcycles:", gas.nsubcycles[fishy])

@@ -536,7 +536,7 @@ void engine_do_unskip_sub_cycle_mapper(void *map_data, int num_elements,
  *
  * @param e The #engine.
  */
-void engine_unskip_sub_cycle(struct engine *e) {
+void engine_unskip_rt_sub_cycle(struct engine *e) {
 
   const ticks tic = getticks();
   struct space *s = e->s;

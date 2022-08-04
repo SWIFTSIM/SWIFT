@@ -213,7 +213,7 @@ step at that time.
 
 Now suppose cell cells ``A`` and ``B`` are neighbouring cells that undergo hydro
 interactions, but are on different MPI ranks. For the hydro interactions in the
-normal SWIFT swep at ``t`` = 4, cell ``B`` will be sent over to the rank of 
+normal SWIFT step at ``t`` = 4, cell ``B`` will be sent over to the rank of 
 cell ``A``. Once it was received, it will be sorted, because after being 
 received, the ``recv_xv`` task resets the arrived cell's sort tasks, and a hydro 
 sort is activated. This is the default hydrodynamics workflow.

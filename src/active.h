@@ -154,7 +154,9 @@ __attribute__((always_inline)) INLINE static int cell_are_bpart_drifted(
  * @param e The #engine containing information about the current time.
  * @return 1 if the #cell has been drifted to the current time, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int cell_are_part_drifted_rt_sub_cycle(const struct cell *c, const struct engine *e) {
+__attribute__((always_inline)) INLINE static int
+cell_are_part_drifted_rt_sub_cycle(const struct cell *c,
+                                   const struct engine *e) {
 
   /* Note: we can't just use "cell_are_part_drifted" in the hydro_iact
    * functions, because an RT sub-cycle may be called during a main

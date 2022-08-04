@@ -275,7 +275,6 @@ __attribute__((always_inline)) INLINE static void rt_debug_sequence_check(
             function_name, p->id, p->rt_data.debug_kicked,
             p->rt_data.debug_nsubcycles);
     } else if (p->rt_data.debug_nsubcycles > 0) {
-      /* This covers case 1, 2, 3, 4, 5 */
       if (p->rt_data.debug_kicked != 2)
         error(
             "called %s on particle %lld with wrong kick count=%d (expected 2) "
