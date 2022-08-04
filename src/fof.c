@@ -3515,10 +3515,10 @@ void fof_mark_part_as_grouppable(const struct part *p,
                                  const struct xpart *xp, 
                                  const struct engine *e, 
                                  const struct cosmology *cosmo, 
-                                 const struct hydro_properties *hydro_props) {
+                                 const struct hydro_props *hydro_props) {
   const float u = hydro_get_drifted_comoving_internal_energy(p);
   const float T = u * cosmo->a_factor_internal_energy *
-                      props->u_to_temp_factor;
+                      hydro_props->u_to_temp_factor;
   const float rho_n_H_cgs = hydro_get_comoving_density(p) *
                             cosmo->a3_inv *
                             hydro_props->rho_to_n_cgs;
