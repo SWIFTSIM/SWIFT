@@ -214,10 +214,18 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const struct cosmology *cosmo);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
+#ifdef FOF_GALAXIES
+void fof_mark_part_as_grouppable(const struct part *p, 
+                                 const struct xpart *xp, 
+                                 const struct engine *e, 
+                                 const struct cosmology *cosmo,
+                                 const struct hydro_properties *hydro_props);
+void fof_mark_spart_as_grouppable(const struct spart *sp);
 int fof_particle_is_grouppable(const struct gpart* gpart, 
                                const struct part* p,
                                const struct cosmology *cosmo,
                                const struct fof_props *props);
+#endif
 
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
