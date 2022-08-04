@@ -37,7 +37,7 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./propagationTest-2D.hdf5     # The file to read
-  periodic:   1                             # peridioc ICs. Keep them periodic so we don't loose photon energy. TODO: CHANGE LATER WHEN YOU ACTUALLY DO GAS INTERACTIONS
+  periodic:   1                             # peridioc ICs. Keep them periodic so we don't loose photon energy.
 
 GEARRT:
   f_reduce_c: 1.        # reduce the speed of light for the RT solver by multiplying c with this factor
