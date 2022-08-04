@@ -36,6 +36,7 @@
 #include "fof.h"
 
 /* Local headers. */
+#include "cosmology.h"
 #include "black_holes.h"
 #include "common_io.h"
 #include "engine.h"
