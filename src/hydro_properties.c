@@ -212,7 +212,7 @@ void hydro_props_init(struct hydro_props *p,
   const double mu = p->mu_ionised;
   p->u_to_temp_factor = (mu * hydro_gamma_minus_one * m_p) / k_B;
 
-  const double X_H = hydro_props->hydrogen_mass_fraction;
+  const double X_H = p->hydrogen_mass_fraction;
   p->rho_to_n_cgs =
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 #endif
