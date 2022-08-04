@@ -49,7 +49,7 @@ void feedback_possibly_kick_and_decouple_part(
     const double time_base,
     const int with_cosmology) {
 
-  double galaxy_stellar_mass = p->gpart->fof_data.galaxy_stellar_mass;
+  double galaxy_stellar_mass = p->gpart->fof_data.group_stellar_mass;
   if (galaxy_stellar_mass <= 0.) return;
 
   /* Time-step size for this particle */
@@ -95,8 +95,7 @@ void feedback_possibly_kick_and_decouple_part(
   }
 
   const double galaxy_gas_stellar_mass_Msun = 
-      p->gpart->fof_data.galaxy_gas_stellar_mass *
-      fb_props->mass_to_solar_mass;
+      p->gpart->fof_data.group_mass * fb_props->mass_to_solar_mass;
 
   /* Physical circular velocity km/s */
   const double v_circ_km_s = 

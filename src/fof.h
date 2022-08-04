@@ -68,8 +68,8 @@ struct fof_props {
   /*! The square of the linking length. */
   double l_x2;
 
-  /*! The minimum halo mass for black hole seeding. */
-  double seed_halo_mass;
+  /*! The minimum host mass for black hole seeding. */
+  double seed_host_mass;
 
   /*! Minimal number of particles in a group */
   size_t min_group_size;

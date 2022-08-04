@@ -37,10 +37,10 @@ struct fof_gpart_data {
 
 #ifdef FOF_GALAXIES
   /*! The gas+stellar mass of the host galaxy */
-  float galaxy_gas_stellar_mass;
+  float group_mass;
 
   /*! The stellar mass of the host galaxy */
-  float galaxy_stellar_mass;
+  float group_stellar_mass;
 #endif
 };
 

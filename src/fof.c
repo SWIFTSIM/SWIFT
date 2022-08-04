@@ -151,11 +151,11 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   if (!stand_alone_fof && props->seed_black_holes_enabled) {
 
     /* Read the minimal halo mass for black hole seeding */
-    props->seed_halo_mass =
-        parser_get_param_double(params, "FOF:black_hole_seed_halo_mass_Msun");
+    props->seed_host_mass =
+        parser_get_param_double(params, "FOF:black_hole_seed_host_mass_Msun");
 
     /* Convert to internal units */
-    props->seed_halo_mass *= phys_const->const_solar_mass;
+    props->seed_host_mass *= phys_const->const_solar_mass;
   }
 
 #ifdef FOF_GALAXIES
@@ -1591,7 +1591,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   const struct part *parts = s->parts;
   const size_t group_id_offset = props->group_id_offset;
   const size_t group_id_default = props->group_id_default;
-  const double seed_halo_mass = props->seed_halo_mass;
+  const double seed_host_mass = props->seed_host_mass;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
@@ -1781,6 +1781,10 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     group_mass[index] += fof_mass_recv[i].group_mass;
 #ifdef FOF_GALAXIES
     group_stellar_mass[index] += fof_mass_recv[i].group_stellar_mass;
+
+    /* Assign the group masses to the root gpart */
+    gparts[local_root_index].fof_data.group_mass = group_mass[index];
+    gparts[local_root_index].fof_data.group_stellar_mass = group_stellar_mass[index];
 #endif
   }
 
@@ -1833,11 +1837,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         centre_of_mass[index * 3 + 1] += mass * x[1];
         centre_of_mass[index * 3 + 2] += mass * x[2];
 
-        /* Check haloes above the seeding threshold */
+        /* Check groups above the seeding threshold */
 #ifdef FOF_GALAXIES
-        if (group_stellar_mass[index] > seed_halo_mass) {
+        if (group_stellar_mass[index] > seed_host_mass) {
 #else
-        if (group_mass[index] > seed_halo_mass) {
+        if (group_mass[index] > seed_host_mass) {
 #endif
 
           /* Find the densest gas particle.
@@ -1901,9 +1905,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
     /* Only seed groups above the mass threshold. */
 #ifdef FOF_GALAXIES
-    if (group_stellar_mass[index] > seed_halo_mass) {
+    if (group_stellar_mass[index] > seed_host_mass) {
 #else
-    if (group_mass[index] > seed_halo_mass) {
+    if (group_mass[index] > seed_host_mass) {
 #endif
 
       /* Only check groups that don't already contain a black hole. */
@@ -2065,11 +2069,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
       centre_of_mass[index * 3 + 1] += mass * x[1];
       centre_of_mass[index * 3 + 2] += mass * x[2];
 
-      /* Check haloes above the seeding threshold */
+      /* Check groups above the seeding threshold */
 #ifdef FOF_GALAXIES
-      if (group_stellar_mass[index] > seed_halo_mass) {
+      if (group_stellar_mass[index] > seed_host_mass) {
 #else
-      if (group_mass[index] > seed_halo_mass) {
+      if (group_mass[index] > seed_host_mass) {
 #endif
 
         /* Find the densest gas particle.
@@ -2269,7 +2273,7 @@ void fof_finalise_group_data(struct fof_props *props,
 }
 
 /**
- * @brief Seed black holes from gas particles in the haloes on the local MPI
+ * @brief Seed black holes from gas particles in the groups on the local MPI
  * rank that passed the criteria.
  *
  * @param props The properties of the FOF scheme.
@@ -2978,7 +2982,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
  * @param dump_debug_results Are we writing txt-file debug catalogues including
  * BH-seeding info?
  * @param dump_results Do we want to write the group catalogue to a hdf5 file?
- * @param seed_black_holes Do we want to seed black holes in haloes?
+ * @param seed_black_holes Do we want to seed black holes in groups?
  */
 void fof_search_tree(struct fof_props *props,
                      const struct black_holes_props *bh_props,
@@ -3319,6 +3323,11 @@ void fof_search_tree(struct fof_props *props,
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, group_index);
     gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
+#ifdef FOF_GALAXIES
+    gparts[i].fof_data.group_mass = gparts[root].fof_data.group_mass;
+    gparts[i].fof_data.group_stellar_mass = 
+        gparts[root].fof_data.group_stellar_mass;
+#endif
   }
 
   if (verbose)
@@ -3368,7 +3377,7 @@ void fof_search_tree(struct fof_props *props,
   /* No densest particle found so far */
   bzero(props->max_part_density, num_groups_local * sizeof(float));
 
-  /* Start by assuming that the haloes have no gas */
+  /* Start by assuming that the groups have no gas */
   for (size_t i = 0; i < num_groups_local; i++) {
     props->max_part_density_index[i] = fof_halo_has_no_gas;
   }
