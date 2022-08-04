@@ -119,7 +119,7 @@ struct rt_props {
   double beta_cgs_H;
 
   /*! The cross section of ionizing photons for hydrogen (cgs) */
-  double sigma_cross_cgs_H[RT_NGROUPS];
+  double sigma_cross_cgs_H[3];
 
   /*** end of useparams = 1 ***/
 
