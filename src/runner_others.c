@@ -363,7 +363,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         feedback_recouple_part(p, xp, e, with_cosmology);
 
 #ifdef FOF_GALAXIES
-        fof_mark_particle_as_grouppable(p, xp, e, cosmo, hydro_props);
+        fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props);
 #endif
 
         /* Is this particle star forming? */

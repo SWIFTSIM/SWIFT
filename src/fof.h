@@ -35,6 +35,7 @@ struct engine;
 struct unit_system;
 struct phys_const;
 struct black_holes_props;
+struct hydro_props;
 struct cosmology;
 
 struct fof_props {
