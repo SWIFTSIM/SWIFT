@@ -14,7 +14,7 @@ fi
 # -m run with MPI
 # -mg run with MPI and gdb in individual xterm windows
 # -ml run with MPI and write individual output file per MPI rank
-cmd=../../swift
+cmd=../../../swift
 if [ $# -gt 0 ]; then
     case "$1" in 
     -g | g | gdb)

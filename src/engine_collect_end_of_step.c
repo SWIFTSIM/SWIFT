@@ -356,9 +356,6 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 /**
  * @brief Mapping function to collect the data from the end of the sub-cycle
  *
- * This function will call a recursive function on all the top-level cells
- * to collect the information we are after.
- *
  * @param map_data The list of cells with tasks on this node.
  * @param num_elements The number of elements in the list this thread will work
  * on.

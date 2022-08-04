@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @param p the particle to work on
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p){};
+    struct part* restrict p) {}
 
 /**
  * @brief First initialisation of the RT hydro particle data.

@@ -61,7 +61,7 @@ to the :ref:`subsequent section <rt_task_system>`.
 
 - ``Transport`` tasks are particle-particle interaction tasks, intended to 
   propagate the radiation. This is an interaction of "type 2", meaning that any 
-  particle will only interact with neighbours which are whithin its own compact 
+  particle will interact with any neighbours whithin either particles' compact 
   support radius.
 
 - ``thermochemistry`` tasks operate on individual particles, and are intended
@@ -155,7 +155,7 @@ effectively means that the particle time bins can only be changed in a normal
 step when the particle is also hydro-active. Furthermore, there are no MPI 
 communications after the tasks have finished executing to update any global 
 times etc. for the same reason. There are some functionalities of the
-``timestep`` and the ``collect`` tasks which are still necessary thought:
+``timestep`` and the ``collect`` tasks which are still necessary though:
 
 - The ``timestep`` task also updates the cell's next integer end time after it
   has been determined during the task. During a subcycle, the next end time is
@@ -174,7 +174,10 @@ Something special about the ``rt_advance_cell_time`` tasks is that they are
 also created and run on foreign cells. During a subcycle, the ``tend`` tasks
 don't run and don't update the cell time variables from the original cell, so
 during the subsequent unskipping, the data will be wrong, leading to all sorts
-of trouble.
+of trouble. We can do that on foreign cells during sub-cycles because all the
+cell's time step sizes stay fixed between two reguler SWIFT steps, and hence
+the number of sub-cycles all the sub-cycles' end times are predictable.
+
 
 
 

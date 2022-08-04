@@ -544,7 +544,6 @@ void engine_unskip_sub_cycle(struct engine *e) {
 
   if (!with_rt) error("Unskipping sub-cycles when running without RT!");
 
-  /* Move the active local cells to the top of the list. */
   int *local_cells = e->s->local_cells_with_tasks_top;
   int num_active_cells = 0;
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {

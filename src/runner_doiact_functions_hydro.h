@@ -26,23 +26,6 @@
 
 #include "runner_doiact_hydro.h"
 
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_RT_GRADIENT) || \
-    (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
-/* RT specific function calls */
-#define PART_IS_ACTIVE part_is_rt_active
-#define CELL_IS_ACTIVE cell_is_rt_active
-#define CELL_ARE_PART_DRIFTED cell_are_part_drifted_rt
-#else
-/* default hydro behaviour. */
-#define PART_IS_ACTIVE part_is_active
-#define CELL_IS_ACTIVE cell_is_active_hydro
-#define CELL_ARE_PART_DRIFTED cell_are_part_drifted
-/* when running with RT subcycling, we can have RT active
- * particles in a normal swift step that aren't drifted to
- * the current time, so we don't do those checks there. */
-#define DO_DRIFT_DEBUG_CHECKS 1
-#endif
-
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric case).
  *

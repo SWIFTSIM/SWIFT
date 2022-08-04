@@ -506,12 +506,7 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_gradient) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_rt_gradient) {
-            /* In the case of a foreign cell where no xv comms are
-             * done, but RT is active, we need to force a sort after
-             * the gradient recv. */
-            int clear_sorts = !cell_get_flag(ci, cell_flag_skip_rt_sort);
-            cell_clear_flag(ci, cell_flag_skip_rt_sort);
-            runner_do_recv_part(r, ci, clear_sorts, 1);
+            runner_do_recv_part(r, ci, 2, 1);
           } else if (t->subtype == task_subtype_rt_transport) {
             runner_do_recv_part(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_part_swallow) {

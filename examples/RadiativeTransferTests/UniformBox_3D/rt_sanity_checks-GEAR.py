@@ -248,7 +248,6 @@ def check_injection(snapdata, rundata):
     snaps_for_1bplot = []
 
     initial_time = snapdata[0].time
-    print("snapnr:", snapdata[0].snapnr)
 
     if snapdata[0].has_stars:
         emission_at_initial_time = snapdata[0].stars.InjectedPhotonEnergy.sum(axis=0)
