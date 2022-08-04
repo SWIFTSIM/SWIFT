@@ -1521,10 +1521,13 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
 
 #ifdef FOF_GALAXIES
       /* Update group stellar mass */
-      if (data != NULL && gparts[ind].type == swift_type_stars)
-        (*data).value_2_dbl += gparts[ind].mass;
-      else
+      if (data != NULL) {
+        if (gparts[ind].type == swift_type_stars) {
+          (*data).value_2_dbl += gparts[ind].mass;
+        }
+      } else {
         error("Couldn't find key (%zu) or create new one.", index);
+      }
 #endif
     }
   }
