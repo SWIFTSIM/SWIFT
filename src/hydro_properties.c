@@ -195,6 +195,28 @@ void hydro_props_init(struct hydro_props *p,
 
   p->minimal_internal_energy = u_min / mean_molecular_weight;
 
+  /* ------ Conversion factors & gas definitions ---------- */
+
+#ifdef FOF_GALAXIES
+  /* Read the temperature threshold for cold gas for galaxy finding */
+  props->cold_gas_temperature_threshold =
+      parser_get_opt_param_float(
+          params, "SPH:cold_gas_temperature_threshold", 1.e5f);
+
+  props->cold_gas_n_H_threshold_cgs =
+      parser_get_opt_param_float(
+          params, "SPH:cold_gas_n_H_threshold_cgs", 0.13);
+
+  const double k_B = phys_const->const_boltzmann_k;
+  const double m_p = phys_const->const_proton_mass;
+  const double mu = hydro_props->mu_ionised;
+  p->u_to_temp_factor = (mu * hydro_gamma_minus_one * m_p) / k_B;
+
+  const double X_H = hydro_props->hydrogen_mass_fraction;
+  p->rho_to_n_cgs =
+      (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
+#endif
+
   /* ------ Particle splitting parameters ---------- */
 
   /* Are we doing particle splitting? */

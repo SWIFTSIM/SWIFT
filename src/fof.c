@@ -3510,10 +3510,37 @@ void fof_struct_restore(struct fof_props *props, FILE *stream) {
                       "fof_props");
 }
 
+#ifdef FOF_GALAXIES
+void fof_mark_part_as_grouppable(const struct part *p, 
+                                 const struct xpart *xp, 
+                                 const struct engine *e, 
+                                 const struct cosmology *cosmo, 
+                                 const struct hydro_properties *hydro_props) {
+  const float u = hydro_get_drifted_comoving_internal_energy(p);
+  const float T = u * cosmo->a_factor_internal_energy *
+                      props->u_to_temp_factor;
+  const float rho_n_H_cgs = hydro_get_comoving_density(p) *
+                            cosmo->a3_inv *
+                            hydro_props->rho_to_n_cgs;
+
+  if (T < hydro_props->cold_gas_temperature_threshold &&
+      rho_n_H_cgs > hydro_props->cold_gas_n_H_threshold_cgs) {
+    p->gpart->is_grouppable = 1;
+  } else {
+    p->gpart->is_grouppable = 0;
+  }
+}
+
+void fof_mark_spart_as_grouppable(const struct spart *sp) {
+  sp->gpart->is_grouppable = 1;
+}
+
 int fof_particle_is_grouppable(const struct gpart* gpart, 
                                const struct part* p,
                                const struct cosmology *cosmo, 
                                const struct fof_props *props) {
+  return gpart->is_grouppable;
+
   if (gpart->type != swift_type_gas && gpart->type != swift_type_stars) {
     return 0;
   } else {
@@ -3534,5 +3561,6 @@ int fof_particle_is_grouppable(const struct gpart* gpart,
   return 1;
   
 }
+#endif /* FOF_GALAXIES */
 
 #endif /* WITH_FOF */
