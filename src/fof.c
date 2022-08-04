@@ -2441,10 +2441,18 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
               mode);
 
       if (my_rank == 0) {
+#ifdef FOF_GALAXIES
+        fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %12s %24s %24s \n",
+                "Group ID", "Group Size", "Group Mass", "Group Stellar Mass",
+                "CoM_x", "CoM_y",
+                "CoM_z", "Max Density", "Max Density Local Index",
+                "Particle ID");
+#else
         fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %24s %24s \n",
                 "Group ID", "Group Size", "Group Mass", "CoM_x", "CoM_y",
                 "CoM_z", "Max Density", "Max Density Local Index",
                 "Particle ID");
+#endif
         fprintf(file,
                 "#-------------------------------------------------------------"
                 "------"
