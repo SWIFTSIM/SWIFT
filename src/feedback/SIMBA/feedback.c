@@ -49,9 +49,9 @@ void feedback_possibly_kick_and_decouple_part(
     const double time_base,
     const int with_cosmology) {
 
-  printf("pid=%lld group_mass=%g group_stellar_mass=%g",
+  printf("pid=%lld group_mass=%g group_stellar_mass=%g\n",
          p->id, p->gpart->fof_data.group_mass, 
-         p->gpart->group_stellar_mass);
+         p->gpart->fof_data.group_stellar_mass);
   double galaxy_stellar_mass = p->gpart->fof_data.group_stellar_mass;
   if (galaxy_stellar_mass <= 0.) return;
 
