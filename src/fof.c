@@ -2051,6 +2051,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     /* Only check groups above the minimum mass threshold. */
     if (gparts[i].fof_data.group_id != group_id_default) {
 
+#ifdef FOF_GALAXIES
+      gparts[i].fof_data.group_mass = group_mass[index];
+      gparts[i].fof_data.group_stellar_mass = group_stellar_mass[index];
+#endif
+
       /* Compute the centre of mass */
       const double mass = gparts[i].mass;
       double x[3] = {gparts[i].x[0], gparts[i].x[1], gparts[i].x[2]};
