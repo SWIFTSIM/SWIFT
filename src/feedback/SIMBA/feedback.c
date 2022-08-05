@@ -116,12 +116,15 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
                                      const struct engine* e, 
                                      const struct cosmology* cosmo,
                                      const struct feedback_props* fb_props, 
-                                     const integertime_t ti_current) {
+                                     const integertime_t ti_current,
+                                     const double dt_part) {
 
+  const double galaxy_stellar_mass = 
+      p->gpart->fof_data.group_stellar_mass;
   const double galaxy_gas_stellar_mass_Msun = 
       p->gpart->fof_data.group_mass * fb_props->mass_to_solar_mass;
-  if (galaxy_gas_stellar_mass_Msun < 0.) return;
-  
+  if (galaxy_gas_stellar_mass_Msun <= 0. || galaxy_stellar_mass <= 0.) return;
+
   /* Physical circular velocity km/s */
   const double v_circ_km_s = 
       pow(galaxy_gas_stellar_mass_Msun / 102.329, 0.26178) *
