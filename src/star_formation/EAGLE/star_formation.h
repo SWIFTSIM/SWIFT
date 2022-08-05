@@ -494,16 +494,19 @@ INLINE static void star_formation_compute_SFR(
  * @param starform The properties of the star formation model.
  * @param e The #engine (for random numbers).
  * @param dt_star The time-step of this particle
+ * @param star_prob The probability of forming a star particle.
  * @return 1 if a conversion should be done, 0 otherwise.
  */
 INLINE static int star_formation_should_convert_to_star(
     const struct part* p, const struct xpart* xp,
     const struct star_formation* starform, const struct engine* e,
-    const double dt_star) {
+    const double dt_starm
+    double *star_prob) {
 
   /* Calculate the propability of forming a star */
   const double prob = xp->sf_data.SFR * dt_star / hydro_get_mass(p);
-
+  *star_prob = prob;
+  
   /* Get a unique random number between 0 and 1 for star formation */
   const double random_number =
       random_unit_interval(p->id, e->ti_current, random_number_star_formation);

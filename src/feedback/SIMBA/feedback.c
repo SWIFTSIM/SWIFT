@@ -38,36 +38,20 @@
  * @param e The #engine.
  * @param fb_props The feedback properties.
  * @param ti_current The current timestep.
- * @param time_base Which time base is the simulation using.
- * @param with_cosmology Is this a cosmological simulation?
  */
-void feedback_possibly_kick_and_decouple_part(
+double feedback_wind_probability(
     struct part* p, struct xpart* xp, const struct engine* e, 
     const struct cosmology* cosmo,
     const struct feedback_props* fb_props, 
     const integertime_t ti_current, 
-    const double time_base,
-    const int with_cosmology) {
+    const double dt_part,
+    double *rand_for_sf_wind) {
 
   double galaxy_stellar_mass = p->gpart->fof_data.group_stellar_mass;
   if (galaxy_stellar_mass <= 0.) return;
 
-  /* Time-step size for this particle */
-  double dt_part;
-  if (with_cosmology) {
-    const integertime_t ti_step = get_integer_timestep(p->time_bin);
-    const integertime_t ti_begin =
-        get_integer_time_begin(ti_current - 1, p->time_bin);
-
-    dt_part =
-        cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
-
-  } else {
-    dt_part = get_timestep(p->time_bin, time_base);
-  }
-
   const double stellar_mass_this_step = xp->sf_data.SFR * dt_part;
-  if (stellar_mass_this_step <= 0.) return;
+  if (stellar_mass_this_step <= 0.) return 0.;
 
   /* If M* is non-zero, make sure it is at least resolved in the
    * following calculations.
@@ -94,27 +78,6 @@ void feedback_possibly_kick_and_decouple_part(
     }
   }
 
-  const double galaxy_gas_stellar_mass_Msun = 
-      p->gpart->fof_data.group_mass * fb_props->mass_to_solar_mass;
-
-  /* Physical circular velocity km/s */
-  const double v_circ_km_s = 
-      pow(galaxy_gas_stellar_mass_Msun / 102.329, 0.26178) *
-      pow(cosmo->H / cosmo->H0, 1. / 3.);
-  const double rand_for_scatter = random_unit_interval(p->id, ti_current,
-                                      random_number_stellar_feedback_1);
-
-  /* physical km/s */
-  const double wind_velocity =
-      fb_props->FIRE_velocity_normalization *
-      pow(v_circ_km_s / 200., fb_props->FIRE_velocity_slope) *
-      (
-        1. - fb_props->kick_velocity_scatter + 
-        2. * fb_props->kick_velocity_scatter * rand_for_scatter
-      ) *
-      v_circ_km_s *
-      fb_props->kms_to_internal;
-
   double wind_mass = 
       fb_props->FIRE_eta_normalization * stellar_mass_this_step;
   if (galaxy_stellar_mass < fb_props->FIRE_eta_break) {
@@ -140,66 +103,99 @@ void feedback_possibly_kick_and_decouple_part(
     }
   }
 
+  /* Do this here */
+  *rand_for_sf_wind = random_unit_interval(p->id, ti_current,
+                                           random_number_stellar_feedback_1);
+
   const float probability_to_kick = 1. - exp(-wind_mass / hydro_get_mass(p));
-  const float rand = random_unit_interval(p->id, ti_current,
-                                          random_number_stellar_feedback_2);
+  return probability_to_kick;
 
-  if (rand < probability_to_kick) {
-    const double dir[3] = {
-      p->gpart->a_grav[1] * p->gpart->v_full[2] - 
-          p->gpart->a_grav[2] * p->gpart->v_full[1],
-      p->gpart->a_grav[2] * p->gpart->v_full[0] - 
-          p->gpart->a_grav[0] * p->gpart->v_full[2],
-      p->gpart->a_grav[0] * p->gpart->v_full[1] - 
-          p->gpart->a_grav[1] * p->gpart->v_full[0]
-    };
-    const double norm = sqrt(
-      dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]
-    );
-    const double prefactor = cosmo->a * wind_velocity / norm;
+}
 
-    xp->v_full[0] += prefactor * dir[0];
-    xp->v_full[1] += prefactor * dir[1];
-    xp->v_full[2] += prefactor * dir[2];
+void feedback_kick_and_decouple_part(
+    struct part* p, struct xpart* xp, const struct engine* e, 
+    const struct cosmology* cosmo,
+    const struct feedback_props* fb_props, 
+    const integertime_t ti_current) {
 
-    /* Decouple the particles from the hydrodynamics */
-    p->feedback_data.decoupling_delay_time = 
-        fb_props->wind_decouple_time_factor * 
-        cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+  const double galaxy_gas_stellar_mass_Msun = 
+      p->gpart->fof_data.group_mass * fb_props->mass_to_solar_mass;
 
-    p->feedback_data.number_of_times_decoupled += 1;
+  /* Physical circular velocity km/s */
+  const double v_circ_km_s = 
+      pow(galaxy_gas_stellar_mass_Msun / 102.329, 0.26178) *
+      pow(cosmo->H / cosmo->H0, 1. / 3.);
+  const double rand_for_scatter = random_unit_interval(p->id, ti_current,
+                                      random_number_stellar_feedback_2);
 
-    /**
-     * z pid dt M* Mb vkick vkx vky vkz h x y z vx vy vz T rho v_sig decoupletime Ndecouple
-     */
-    const float length_convert = cosmo->a * fb_props->length_to_kpc;
-    const float velocity_convert = cosmo->a_inv / fb_props->kms_to_internal;
-    const float rho_convert = cosmo->a3_inv * fb_props->rho_to_n_cgs;
-    const float u_convert = 
-        cosmo->a_factor_internal_energy / fb_props->temp_to_u_factor;
-    printf("WIND_LOG %.3f %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d\n",
-            cosmo->z,
-            p->id, 
-            dt_part * fb_props->time_to_Myr,
-            galaxy_stellar_mass * fb_props->mass_to_solar_mass,
-            galaxy_gas_stellar_mass_Msun,
-            wind_velocity / fb_props->kms_to_internal,
-            prefactor * dir[0] * velocity_convert,
-            prefactor * dir[1] * velocity_convert,
-            prefactor * dir[2] * velocity_convert,
-            p->h * cosmo->a * fb_props->length_to_kpc,
-            p->x[0] * length_convert, 
-            p->x[1] * length_convert, 
-            p->x[2] * length_convert,
-            p->gpart->v_full[0] * velocity_convert, 
-            p->gpart->v_full[1] * velocity_convert, 
-            p->gpart->v_full[2] * velocity_convert,
-            p->u * u_convert, 
-            p->rho * rho_convert, 
-            p->viscosity.v_sig * velocity_convert,
-            p->feedback_data.decoupling_delay_time * fb_props->time_to_Myr, 
-            p->feedback_data.number_of_times_decoupled);
-  } 
+  /* physical km/s */
+  const double wind_velocity =
+      fb_props->FIRE_velocity_normalization *
+      pow(v_circ_km_s / 200., fb_props->FIRE_velocity_slope) *
+      (
+        1. - fb_props->kick_velocity_scatter + 
+        2. * fb_props->kick_velocity_scatter * rand_for_scatter
+      ) *
+      v_circ_km_s *
+      fb_props->kms_to_internal;
+
+  const double dir[3] = {
+    p->gpart->a_grav[1] * p->gpart->v_full[2] - 
+        p->gpart->a_grav[2] * p->gpart->v_full[1],
+    p->gpart->a_grav[2] * p->gpart->v_full[0] - 
+        p->gpart->a_grav[0] * p->gpart->v_full[2],
+    p->gpart->a_grav[0] * p->gpart->v_full[1] - 
+        p->gpart->a_grav[1] * p->gpart->v_full[0]
+  };
+  const double norm = sqrt(
+    dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]
+  );
+  const double prefactor = cosmo->a * wind_velocity / norm;
+
+  xp->v_full[0] += prefactor * dir[0];
+  xp->v_full[1] += prefactor * dir[1];
+  xp->v_full[2] += prefactor * dir[2];
+
+  /* Decouple the particles from the hydrodynamics */
+  p->feedback_data.decoupling_delay_time = 
+      fb_props->wind_decouple_time_factor * 
+      cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+
+  p->feedback_data.number_of_times_decoupled += 1;
+
+  /* Wind cannot be star forming */
+  xp->sf_data.SFR = 0.f;
+
+  /**
+   * z pid dt M* Mb vkick vkx vky vkz h x y z vx vy vz T rho v_sig decoupletime Ndecouple
+   */
+  const float length_convert = cosmo->a * fb_props->length_to_kpc;
+  const float velocity_convert = cosmo->a_inv / fb_props->kms_to_internal;
+  const float rho_convert = cosmo->a3_inv * fb_props->rho_to_n_cgs;
+  const float u_convert = 
+      cosmo->a_factor_internal_energy / fb_props->temp_to_u_factor;
+  printf("WIND_LOG %.3f %lld %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %d\n",
+          cosmo->z,
+          p->id, 
+          dt_part * fb_props->time_to_Myr,
+          galaxy_stellar_mass * fb_props->mass_to_solar_mass,
+          galaxy_gas_stellar_mass_Msun,
+          wind_velocity / fb_props->kms_to_internal,
+          prefactor * dir[0] * velocity_convert,
+          prefactor * dir[1] * velocity_convert,
+          prefactor * dir[2] * velocity_convert,
+          p->h * cosmo->a * fb_props->length_to_kpc,
+          p->x[0] * length_convert, 
+          p->x[1] * length_convert, 
+          p->x[2] * length_convert,
+          p->gpart->v_full[0] * velocity_convert, 
+          p->gpart->v_full[1] * velocity_convert, 
+          p->gpart->v_full[2] * velocity_convert,
+          p->u * u_convert, 
+          p->rho * rho_convert, 
+          p->viscosity.v_sig * velocity_convert,
+          p->feedback_data.decoupling_delay_time * fb_props->time_to_Myr, 
+          p->feedback_data.number_of_times_decoupled);
 }
 
 /**

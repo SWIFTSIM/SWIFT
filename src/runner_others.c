@@ -369,8 +369,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         /* Is this particle star forming? */
         if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,
-                                           hydro_props, us, cooling,
-                                           entropy_floor)) {
+                                  hydro_props, us, cooling,
+                                  entropy_floor)) {
 
           /* Time-step size for this particle */
           double dt_star;
@@ -393,9 +393,39 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           /* Add the SFR and SFR*dt to the SFH struct of this cell */
           star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
 
+          double star_prob = 0.;
+          int should_convert_to_star = star_formation_should_convert_to_star(
+                                          p, xp, sf_props, e, dt_star,
+                                          &star_prob);
+
+          /* By default, do nothing */
+          double rand_for_sf_wind = FLT_MAX;
+          int should_kick_wind = 0;
+          double wind_prob = feedback_wind_probability(p, xp, e, cosmo, 
+                                    feedback_props, ti_current, dt_star,
+                                    &rand_for_sf_wind);
+
+          if (wind_prob + star_prob > 1.) {
+            const double prob_sum = wind_prob + star_prob;
+            wind_prob /= prob_sum;
+            star_prob /= prob_sum;
+          }
+
+          if (rand_for_sf_wind < star_prob) {
+            should_convert_to_star = 1;
+            should_kick_wind = 0;
+          }
+          else if ((star_prob <= rand_for_sf_wind) && 
+                   (rand_for_sf_wind < wind_prob)) {
+            should_convert_to_star = 0;
+            should_kick_wind = 1;
+          } else {
+            should_convert_to_star = 0;
+            should_kick_wind = 0;
+          }
+
           /* Are we forming a star particle from this SF rate? */
-          if (star_formation_should_convert_to_star(p, xp, sf_props, e,
-                                                    dt_star)) {
+          if (should_convert_to_star) {
 
             /* Convert the gas particle to a star particle */
             struct spart *sp = NULL;
@@ -490,16 +520,20 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                  cell_convert_part_to_spart() */
               star_formation_no_spart_available(e, p, xp);
             }
-          } else {
+          } 
+          else if (should_kick_wind) {
 
             /* Here we are NOT converting a gas to star, but we could kick! */
-            feedback_possibly_kick_and_decouple_part(p, xp, e, cosmo, 
-                                                     feedback_props,
-                                                     ti_current, 
-                                                     time_base,
-                                                     with_cosmology);
+            feedback_kick_and_decouple_part(p, xp, e, cosmo, 
+                                            feedback_props,
+                                            ti_current);
 
           }
+
+          /* D. Rennehan: Logging needs to go AFTER decoupling */
+
+          /* Add the SFR and SFR*dt to the SFH struct of this cell */
+          star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
 
         } else { /* Are we not star-forming? */
 
