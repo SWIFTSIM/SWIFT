@@ -47,6 +47,10 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
                                  const double dt_part,
                                  double *rand_for_sf_wind) {
 
+  /* First thing we will do is generate a random number */
+  *rand_for_sf_wind = random_unit_interval(p->id, ti_current,
+                                           random_number_stellar_feedback_1);
+
   double galaxy_stellar_mass = p->gpart->fof_data.group_stellar_mass;
   if (galaxy_stellar_mass <= 0.) return 0.;
 
@@ -102,10 +106,6 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
                        fb_props->early_wind_suppression_slope);
     }
   }
-
-  /* Do this here */
-  *rand_for_sf_wind = random_unit_interval(p->id, ti_current,
-                                           random_number_stellar_feedback_1);
 
   const float probability_to_kick = 1. - exp(-wind_mass / hydro_get_mass(p));
   return probability_to_kick;
