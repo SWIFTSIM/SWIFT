@@ -527,7 +527,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             feedback_kick_and_decouple_part(p, xp, e, cosmo, 
                                             feedback_props,
                                             ti_current,
-                                            dt_part);
+                                            dt_star);
 
           }
 
