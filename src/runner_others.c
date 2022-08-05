@@ -402,18 +402,19 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                     feedback_props, ti_current, dt_star,
                                     &rand_for_sf_wind);
 
-          if (wind_prob + star_prob > 1.) {
-            const double prob_sum = wind_prob + star_prob;
+          double prob_sum = wind_prob + star_prob;
+          if (prob_sum > 1.) {
             wind_prob /= prob_sum;
             star_prob /= prob_sum;
-          }
+            prob_sum = wind_prob + star_prob;
+          } 
 
           if (rand_for_sf_wind < star_prob) {
             should_convert_to_star = 1;
             should_kick_wind = 0;
           }
           else if ((star_prob <= rand_for_sf_wind) && 
-                   (rand_for_sf_wind < wind_prob)) {
+                   (rand_for_sf_wind < prob_sum)) {
             should_convert_to_star = 0;
             should_kick_wind = 1;
           } else {
