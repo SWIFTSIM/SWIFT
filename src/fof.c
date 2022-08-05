@@ -3513,6 +3513,13 @@ void fof_mark_part_as_grouppable(const struct part *p,
                                  const struct hydro_props *hydro_props,
                                  const struct entropy_floor_properties 
                                     *entropy_floor) {
+
+  /* No decoupled winds are grouppable */
+  if (p->feedback_data.decoupling_delay_time > 0.f) {
+    p->gpart->fof_data.is_grouppable = 0;
+    return;
+  }
+
   const float u = hydro_get_drifted_comoving_internal_energy(p);
   const float T = u * cosmo->a_factor_internal_energy *
                       hydro_props->u_to_temp_factor;
@@ -3522,12 +3529,13 @@ void fof_mark_part_as_grouppable(const struct part *p,
   const float T_EoS = entropy_floor_temperature(p, cosmo, entropy_floor);
 
   if ((T < hydro_props->cold_gas_temperature_threshold 
-        || T < T_EoS * 0.5) &&
+        || T < T_EoS * exp10(0.5)) &&
       rho_n_H_cgs > hydro_props->cold_gas_n_H_threshold_cgs) {
     p->gpart->fof_data.is_grouppable = 1;
   } else {
     p->gpart->fof_data.is_grouppable = 0;
   }
+
 }
 
 void fof_mark_spart_as_grouppable(const struct spart *sp) {
@@ -3537,7 +3545,9 @@ void fof_mark_spart_as_grouppable(const struct spart *sp) {
 int fof_gpart_is_grouppable(const struct gpart* gpart,
                             const struct cosmology *cosmo, 
                             const struct fof_props *props) {
+
   return gpart->fof_data.is_grouppable;
+
 }
 #endif /* WITH_FOF_GALAXIES */
 
