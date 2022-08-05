@@ -422,6 +422,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             should_kick_wind = 0;
           }
 
+          printf("SF_PROB %d %g %d %g %g %g\n",
+                 should_kick_wind, wind_prob,
+                 should_kick_star, star_prob,
+                 prob_sum, rand_for_sf_wind);
+
           /* Are we forming a star particle from this SF rate? */
           if (should_convert_to_star) {
 
