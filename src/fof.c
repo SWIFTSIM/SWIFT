@@ -285,14 +285,31 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
 
   /* Collect the mass of the first non-background gpart */
   double high_res_DM_mass = 0.;
+  int high_res_done_flag = 0;
   for (size_t i = 0; i < s->nr_gparts; ++i) {
     const struct gpart *gp = &s->gparts[i];
     if (gp->type == swift_type_dark_matter &&
         gp->time_bin != time_bin_inhibited &&
-        gp->time_bin != time_bin_not_created) {
+        gp->time_bin != time_bin_not_created &&
+        !high_res_done_flag) {
       high_res_DM_mass = gp->mass;
+#ifndef FOF_GALAXIES
+      /* D. Rennehan: We want to stop in the case of DM only,
+       * but when searching for galaxies this is a good spot
+       * to reset the group properties.
+       */
       break;
+#else
+      high_res_done_flag = 1;
+#endif
     }
+
+#ifdef FOF_GALAXIES
+    if (gp->type == swift_type_gas || gp->type == swift_type_stars) {
+      gp->fof_data.group_mass = 0.f;
+      gp->fof_data.group_stellar_mass = 0.f;
+    }
+#endif
   }
 
   /* Are we using the aboslute value or the one derived from the mean
