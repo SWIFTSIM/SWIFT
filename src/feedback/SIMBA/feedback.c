@@ -39,16 +39,16 @@
  * @param fb_props The feedback properties.
  * @param ti_current The current timestep.
  */
-double feedback_wind_probability(
-    struct part* p, struct xpart* xp, const struct engine* e, 
-    const struct cosmology* cosmo,
-    const struct feedback_props* fb_props, 
-    const integertime_t ti_current, 
-    const double dt_part,
-    double *rand_for_sf_wind) {
+double feedback_wind_probability(struct part* p, struct xpart* xp, 
+                                 const struct engine* e, 
+                                 const struct cosmology* cosmo,
+                                 const struct feedback_props* fb_props, 
+                                 const integertime_t ti_current, 
+                                 const double dt_part,
+                                 double *rand_for_sf_wind) {
 
   double galaxy_stellar_mass = p->gpart->fof_data.group_stellar_mass;
-  if (galaxy_stellar_mass <= 0.) return;
+  if (galaxy_stellar_mass <= 0.) return 0.;
 
   const double stellar_mass_this_step = xp->sf_data.SFR * dt_part;
   if (stellar_mass_this_step <= 0.) return 0.;
@@ -112,15 +112,16 @@ double feedback_wind_probability(
 
 }
 
-void feedback_kick_and_decouple_part(
-    struct part* p, struct xpart* xp, const struct engine* e, 
-    const struct cosmology* cosmo,
-    const struct feedback_props* fb_props, 
-    const integertime_t ti_current) {
+void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp, 
+                                     const struct engine* e, 
+                                     const struct cosmology* cosmo,
+                                     const struct feedback_props* fb_props, 
+                                     const integertime_t ti_current) {
 
   const double galaxy_gas_stellar_mass_Msun = 
       p->gpart->fof_data.group_mass * fb_props->mass_to_solar_mass;
-
+  if (galaxy_gas_stellar_mass_Msun < 0.) return;
+  
   /* Physical circular velocity km/s */
   const double v_circ_km_s = 
       pow(galaxy_gas_stellar_mass_Msun / 102.329, 0.26178) *

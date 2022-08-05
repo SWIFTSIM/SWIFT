@@ -30,8 +30,7 @@
 #include <strings.h>
 
 
-double feedback_wind_probability(const struct part* p, const struct xpart* xp, 
-                                 const struct engine* e, 
+double feedback_wind_probability(struct part* p, struct xpart* xp, const struct engine* e, 
                                  const struct cosmology* cosmo,
                                  const struct feedback_props* fb_props, 
                                  const integertime_t ti_current, 
