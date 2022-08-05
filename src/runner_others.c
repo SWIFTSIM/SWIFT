@@ -362,8 +362,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         /* Recouple before star formation, and after cooling */
         feedback_recouple_part(p, xp, e, with_cosmology);
 
-#ifdef FOF_GALAXIES
-        fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props);
+#ifdef WITH_FOF_GALAXIES
+        fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
+                                    entropy_floor);
 #endif
 
         /* Is this particle star forming? */
@@ -433,8 +434,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
               /* message("We formed a star id=%lld cellID=%lld", sp->id,
                * c->cellID); */
 
-#ifdef FOF_GALAXIES
-              /* Star particles are always grouppable into FOF_GALAXIES */
+#ifdef WITH_FOF_GALAXIES
+              /* Star particles are always grouppable with WITH_FOF_GALAXIES */
               fof_mark_spart_as_grouppable(sp);
 #endif
 

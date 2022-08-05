@@ -43,7 +43,7 @@ struct fof_props {
   /*! Whether we're doing periodic FoF calls to seed black holes. */
   int seed_black_holes_enabled;
 
-#ifdef FOF_GALAXIES
+#ifdef WITH_FOF_GALAXIES
   /*! Conversion between internal energy and temperature */
   float u_to_temp_factor;
 
@@ -102,7 +102,7 @@ struct fof_props {
   /*! Mass of the group a given gpart belongs to. */
   double *group_mass;
 
-#ifdef FOF_GALAXIES
+#ifdef WITH_FOF_GALAXIES
   /*! Stellar mass of the group a given gpart belongs to. */
   double *group_stellar_mass;
 #endif
@@ -168,7 +168,7 @@ struct fof_final_index {
 struct fof_final_mass {
   size_t global_root;
   double group_mass;
-#ifdef FOF_GALAXIES
+#ifdef WITH_FOF_GALAXIES
   double group_stellar_mass;
 #endif
   double first_position[3];
@@ -215,17 +215,18 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          const struct cosmology *cosmo);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
-#ifdef FOF_GALAXIES
+#ifdef WITH_FOF_GALAXIES
 void fof_mark_part_as_grouppable(const struct part *p, 
                                  const struct xpart *xp, 
                                  const struct engine *e, 
                                  const struct cosmology *cosmo,
-                                 const struct hydro_props *hydro_props);
+                                 const struct hydro_props *hydro_props,
+                                 const struct entropy_floor_properties 
+                                    *entropy_floor);
 void fof_mark_spart_as_grouppable(const struct spart *sp);
-int fof_particle_is_grouppable(const struct gpart* gpart, 
-                               const struct part* p,
-                               const struct cosmology *cosmo,
-                               const struct fof_props *props);
+int fof_gpart_is_grouppable(const struct gpart* gpart,
+                            const struct cosmology *cosmo,
+                            const struct fof_props *props);
 #endif
 
 #ifdef WITH_MPI

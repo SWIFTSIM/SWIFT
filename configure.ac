@@ -1840,7 +1840,7 @@ AC_ARG_ENABLE([fof-galaxies],
    [enable_fof_galaxies="no"]
 )
 if test "$enable_fof_galaxies" = "yes"; then
-   AC_DEFINE([FOF_GALAXIES], 1, [Enable FoF Galaxies])
+   AC_DEFINE([WITH_FOF_GALAXIES], 1, [Enable FoF Galaxies])
 fi
 
 # Check if stand-alone FoF is on.

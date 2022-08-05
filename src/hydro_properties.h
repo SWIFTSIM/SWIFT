@@ -114,7 +114,7 @@ struct hydro_props {
 
   /* ------ Gas definitions ------------------------ */
 
-#ifdef FOF_GALAXIES
+#ifdef WITH_FOF_GALAXIES
   /*! Conversion between internal energy and temperature */
   float u_to_temp_factor;
 

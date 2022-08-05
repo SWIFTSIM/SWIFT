@@ -197,7 +197,7 @@ void hydro_props_init(struct hydro_props *p,
 
   /* ------ Conversion factors & gas definitions ---------- */
 
-#ifdef FOF_GALAXIES
+#ifdef WITH_FOF_GALAXIES
   /* Read the temperature threshold for cold gas for galaxy finding */
   p->cold_gas_temperature_threshold =
       parser_get_opt_param_float(

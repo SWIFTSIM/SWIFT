@@ -35,12 +35,15 @@ struct fof_gpart_data {
   /*! Size of the FOF group of this particle */
   size_t group_size;
 
-#ifdef FOF_GALAXIES
+#ifdef WITH_FOF_GALAXIES
   /*! The gas+stellar mass of the host galaxy */
   float group_mass;
 
   /*! The stellar mass of the host galaxy */
   float group_stellar_mass;
+
+  /*! Is this particle able to form a group? */
+  int is_grouppable;
 #endif
 };
 
