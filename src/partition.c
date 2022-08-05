@@ -1830,7 +1830,8 @@ static void repart_memory_metis(struct repartition *repartition, int nodeID,
                   repartition->celllist, nr_cells);
   }
 #else
-  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist);
+  pick_metis(nodeID, s, nr_nodes, weights, NULL, repartition->celllist,
+             nr_cells);
 #endif
 
   /* Check that all cells have good values. All nodes have same copy, so just
