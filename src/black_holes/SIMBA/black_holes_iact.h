@@ -1061,9 +1061,9 @@ runner_iact_nonsym_bh_gas_feedback(
       /* Record the current time as an indicator of when this particle was last
         star-forming. */
       if (with_cosmology) {
-        xp->sf_data.SFR = -e->cosmology->a;
+        xp->sf_data.SFR = -cosmo->a;
       } else {
-        xp->sf_data.SFR = -e->time;
+        xp->sf_data.SFR = -time;
       }
 
     }
