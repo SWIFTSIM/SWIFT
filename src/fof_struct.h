@@ -41,6 +41,9 @@ struct fof_gpart_data {
 
   /*! The stellar mass of the host galaxy */
   float group_stellar_mass;
+
+  /*! Is this particle able to form a group? */
+  int is_grouppable;
 #endif
 };
 

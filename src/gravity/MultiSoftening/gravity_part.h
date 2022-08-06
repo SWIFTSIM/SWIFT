@@ -69,11 +69,6 @@ struct gpart {
   /*! Type of the #gpart (DM, gas, star, ...) */
   enum part_type type;
 
-#ifdef WITH_FOF_GALAXIES
-  /*! Is this particle able to form a group? */
-  int is_grouppable;
-#endif
-
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */
   struct csds_part_data csds_data;
