@@ -1050,6 +1050,24 @@ runner_iact_nonsym_bh_gas_feedback(
       }
     }
 
+#ifdef WITH_FOF_GALAXIES
+    /* Wind particles are never grouppable */
+    pj->gpart->fof_data.is_grouppable = 0;
+#endif
+
+    /* Wind cannot be star forming */
+    if (xp->sf_data.SFR > 0.f) {
+
+      /* Record the current time as an indicator of when this particle was last
+        star-forming. */
+      if (with_cosmology) {
+        xp->sf_data.SFR = -e->cosmology->a;
+      } else {
+        xp->sf_data.SFR = -e->time;
+      }
+
+    }
+
     /* Impose maximal viscosity */
     hydro_diffusive_feedback_reset(pj);
     

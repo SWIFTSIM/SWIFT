@@ -536,6 +536,14 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                             with_cosmology,
                                             dt_star);
 
+          } else {
+#ifdef WITH_FOF_GALAXIES
+            /* Mark (possibly) as grouppable AFTER we know its not wind
+             * or a star particle.
+             */
+            fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
+                                        entropy_floor);
+#endif
           }
 
           /* D. Rennehan: Logging needs to go AFTER decoupling */
@@ -549,13 +557,13 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_update_part_not_SFR(p, xp, e, sf_props,
                                              with_cosmology);
 
-        } /* Not Star-forming? */
-
 #ifdef WITH_FOF_GALAXIES
-        /* Mark (possibly) as grouppable AFTER we know the SFR */
-        fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
-                                    entropy_floor);
+          /* Mark (possibly) as grouppable AFTER we know the SFR */
+          fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
+                                      entropy_floor);
 #endif
+
+        } /* Not Star-forming? */
 
       } else { /* is active? */
 

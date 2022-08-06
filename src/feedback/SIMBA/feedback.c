@@ -27,6 +27,7 @@
 #include "inline.h"
 #include "random.h"
 #include "timers.h"
+#include "timestep_sync_part.h"
 
 
 /**
@@ -161,12 +162,26 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   xp->v_full[1] += prefactor * dir[1];
   xp->v_full[2] += prefactor * dir[2];
 
+  /* Update the signal velocity of the particle based on the velocity kick. */
+  hydro_set_v_sig_based_on_velocity_kick(p, cosmo, wind_velocity);
+
+  /* Impose maximal viscosity */
+  hydro_diffusive_feedback_reset(p);
+
+  /* Synchronize the particle on the timeline */
+  timestep_sync_part(p);
+
   /* Decouple the particles from the hydrodynamics */
   p->feedback_data.decoupling_delay_time = 
       fb_props->wind_decouple_time_factor * 
       cosmology_get_time_since_big_bang(cosmo, cosmo->a);
 
   p->feedback_data.number_of_times_decoupled += 1;
+
+#ifdef WITH_FOF_GALAXIES
+  /* Wind particles are never grouppable */
+  p->gpart->fof_data.is_grouppable = 0;
+#endif
 
   /* Wind cannot be star forming */
   if (xp->sf_data.SFR > 0.f) {

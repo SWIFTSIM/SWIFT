@@ -3516,7 +3516,7 @@ void fof_mark_part_as_grouppable(const struct part *p,
 
   /* No decoupled winds are grouppable */
   if (p->feedback_data.decoupling_delay_time > 0.f) {
-    p->gpart->is_grouppable = 0;
+    p->gpart->fof_data.is_grouppable = 0;
     return;
   }
 
@@ -3532,22 +3532,22 @@ void fof_mark_part_as_grouppable(const struct part *p,
   if (((T < hydro_props->cold_gas_temperature_threshold || T < T_EoS * exp10(0.5)) &&
         rho_n_H_cgs > hydro_props->cold_gas_n_H_threshold_cgs) ||
       xp->sf_data.SFR > 0.f) {
-    p->gpart->is_grouppable = 1;
+    p->gpart->fof_data.is_grouppable = 1;
   } else {
-    p->gpart->is_grouppable = 0;
+    p->gpart->fof_data.is_grouppable = 0;
   }
 
 }
 
 void fof_mark_spart_as_grouppable(const struct spart *sp) {
-  sp->gpart->is_grouppable = 1;
+  sp->gpart->fof_data.is_grouppable = 1;
 }
 
 int fof_gpart_is_grouppable(const struct gpart* gpart,
                             const struct cosmology *cosmo, 
                             const struct fof_props *props) {
 
-  return gpart->is_grouppable;
+  return gpart->fof_data.is_grouppable;
 
 }
 #endif /* WITH_FOF_GALAXIES */

@@ -358,7 +358,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
   gp->old_a_grav_norm = 0.f;
 #ifdef WITH_FOF_GALAXIES
   /* Nothing is grouppable but stars and cold gas */
-  gp->is_grouppable = 0;
+  gp->fof_data.is_grouppable = 0;
 #endif
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
   gp->has_been_most_bound = 0;
@@ -371,7 +371,7 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
     case swift_type_stars:
       gp->epsilon = grav_props->epsilon_baryon_cur;
 #ifdef WITH_FOF_GALAXIES
-      gp->is_grouppable = 1;
+      gp->fof_data.is_grouppable = 1;
 #endif
       break;
     case swift_type_sink:
