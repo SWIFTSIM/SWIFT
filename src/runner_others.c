@@ -385,19 +385,14 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_compute_SFR(p, xp, sf_props, phys_const, hydro_props,
                                      cosmo, dt_star);
 
-          /* star_prob comes from the function that determines the 
-           * probability. We save the output of the function as a
-           * dummy flag since we want to ensure that a star
-           * formation event and a kick event are mutually exclusive.
-           */
+          /* star_prob comes from the function that determines the probability.*/
           double star_prob = 0.;
-          int dummy = star_formation_should_convert_to_star(p, xp, sf_props, 
-                                                            e, dt_star,
-                                                            &star_prob);
+          int should_convert_to_star = star_formation_should_convert_to_star(
+                                          p, xp, sf_props, e, dt_star,
+                                          &star_prob);
 
           /* By default, do nothing */
           double rand_for_sf_wind = FLT_MAX;
-          int should_convert_to_star = 0;
           int should_kick_wind = 0;
 
           /* The random number for star formation, stellar feedback,
