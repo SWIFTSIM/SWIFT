@@ -538,11 +538,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
           }
 
-#ifdef WITH_FOF_GALAXIES
-          /* Mark as grouppable AFTER we know the SFR */
-          fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
-                                    entropy_floor);
-#endif
           /* D. Rennehan: Logging needs to go AFTER decoupling */
 
           /* Add the SFR and SFR*dt to the SFH struct of this cell */
@@ -555,6 +550,12 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                              with_cosmology);
 
         } /* Not Star-forming? */
+
+#ifdef WITH_FOF_GALAXIES
+        /* Mark (possibly) as grouppable AFTER we know the SFR */
+        fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
+                                    entropy_floor);
+#endif
 
       } else { /* is active? */
 
