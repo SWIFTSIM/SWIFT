@@ -1056,14 +1056,14 @@ runner_iact_nonsym_bh_gas_feedback(
 #endif
 
     /* Wind cannot be star forming */
-    if (xp->sf_data.SFR > 0.f) {
+    if (xpj->sf_data.SFR > 0.f) {
 
       /* Record the current time as an indicator of when this particle was last
         star-forming. */
       if (with_cosmology) {
-        xp->sf_data.SFR = -cosmo->a;
+        xpj->sf_data.SFR = -cosmo->a;
       } else {
-        xp->sf_data.SFR = -time;
+        xpj->sf_data.SFR = -time;
       }
 
     }
