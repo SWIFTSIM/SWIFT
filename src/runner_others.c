@@ -362,11 +362,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
         /* Recouple before star formation, and after cooling */
         feedback_recouple_part(p, xp, e, with_cosmology);
 
-#ifdef WITH_FOF_GALAXIES
-        fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
-                                    entropy_floor);
-#endif
-
         /* Is this particle star forming? */
         if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,
                                   hydro_props, us, cooling,
@@ -390,18 +385,31 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_compute_SFR(p, xp, sf_props, phys_const, hydro_props,
                                      cosmo, dt_star);
 
+          /* star_prob comes from the function that determines the 
+           * probability. We save the output of the function as a
+           * dummy flag since we want to ensure that a star
+           * formation event and a kick event are mutually exclusive.
+           */
           double star_prob = 0.;
-          int should_convert_to_star = star_formation_should_convert_to_star(
-                                          p, xp, sf_props, e, dt_star,
-                                          &star_prob);
+          int dummy = star_formation_should_convert_to_star(p, xp, sf_props, 
+                                                            e, dt_star,
+                                                            &star_prob);
 
           /* By default, do nothing */
           double rand_for_sf_wind = FLT_MAX;
+          int should_convert_to_star = 0;
           int should_kick_wind = 0;
+
+          /* The random number for star formation, stellar feedback,
+           * or nothing is drawn here.
+           */
           double wind_prob = feedback_wind_probability(p, xp, e, cosmo, 
                                     feedback_props, ti_current, dt_star,
                                     &rand_for_sf_wind);
 
+          /* If the sum of the probabilities is greater than unity,
+           * rescale so that we can throw the dice properly.
+           */
           double prob_sum = wind_prob + star_prob;
           if (prob_sum > 1.) {
             wind_prob /= prob_sum;
@@ -409,6 +417,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             prob_sum = wind_prob + star_prob;
           } 
 
+          /* We have three regions for the probability:
+           * 1. Form a star (random < star_prob)
+           * 2. Kick a wind (star_prob < random < star_prob + wind_prob)
+           * 3. Do nothing
+           */
           if (rand_for_sf_wind < star_prob) {
             should_convert_to_star = 1;
             should_kick_wind = 0;
@@ -525,10 +538,16 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
             feedback_kick_and_decouple_part(p, xp, e, cosmo, 
                                             feedback_props,
                                             ti_current,
+                                            with_cosmology,
                                             dt_star);
 
           }
 
+#ifdef WITH_FOF_GALAXIES
+          /* Mark as grouppable AFTER we know the SFR */
+          fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
+                                    entropy_floor);
+#endif
           /* D. Rennehan: Logging needs to go AFTER decoupling */
 
           /* Add the SFR and SFR*dt to the SFH struct of this cell */

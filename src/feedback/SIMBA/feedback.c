@@ -117,6 +117,7 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
                                      const struct cosmology* cosmo,
                                      const struct feedback_props* fb_props, 
                                      const integertime_t ti_current,
+                                     const int with_cosmology,
                                      const double dt_part) {
 
   const double galaxy_stellar_mass = 
@@ -168,10 +169,21 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   p->feedback_data.number_of_times_decoupled += 1;
 
   /* Wind cannot be star forming */
-  xp->sf_data.SFR = 0.f;
+  if (xp->sf_data.SFR > 0.f) {
+
+    /* Record the current time as an indicator of when this particle was last
+       star-forming. */
+    if (with_cosmology) {
+      xp->sf_data.SFR = -e->cosmology->a;
+    } else {
+      xp->sf_data.SFR = -e->time;
+    }
+
+  }
 
   /**
-   * z pid dt M* Mb vkick vkx vky vkz h x y z vx vy vz T rho v_sig decoupletime Ndecouple
+   * z pid dt M* Mb vkick vkx vky vkz h x y z vx vy vz T rho v_sig decoupletime 
+   * Ndecouple
    */
   const float length_convert = cosmo->a * fb_props->length_to_kpc;
   const float velocity_convert = cosmo->a_inv / fb_props->kms_to_internal;

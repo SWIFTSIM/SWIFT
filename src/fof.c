@@ -3528,9 +3528,10 @@ void fof_mark_part_as_grouppable(const struct part *p,
                             hydro_props->rho_to_n_cgs;
   const float T_EoS = entropy_floor_temperature(p, cosmo, entropy_floor);
 
-  if ((T < hydro_props->cold_gas_temperature_threshold 
-        || T < T_EoS * exp10(0.5)) &&
-      rho_n_H_cgs > hydro_props->cold_gas_n_H_threshold_cgs) {
+  /* ((Cold && dense || near the EoS && dense) || SFR>0) */
+  if (((T < hydro_props->cold_gas_temperature_threshold || T < T_EoS * exp10(0.5)) &&
+        rho_n_H_cgs > hydro_props->cold_gas_n_H_threshold_cgs) ||
+      xp->sf_data.SFR > 0.f) {
     p->gpart->fof_data.is_grouppable = 1;
   } else {
     p->gpart->fof_data.is_grouppable = 0;

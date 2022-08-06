@@ -41,6 +41,7 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
                                      const struct cosmology* cosmo,
                                      const struct feedback_props* fb_props, 
                                      const integertime_t ti_current,
+                                     const int with_cosmology,
                                      const double dt_part);
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const struct phys_const* phys_const,
