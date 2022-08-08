@@ -1036,8 +1036,10 @@ black_holes_compute_xray_feedback(
 
   double S1 = 4.1e-35 * (1.9e7 - T_gas_cgs) * zeta;
 
-  /* Don't allow cooling of hot gas */
-  if (T_gas_cgs > 1.9e7) S1 = 0.;
+  /* Don't allow cooling of hot gas. 
+   * D. Rennehan: Simba actually does not have this check.
+   */
+  /* if (T_gas_cgs > 1.9e7) S1 = 0.; */
 
   const double zeta0_term1 = 
       1. / (1.5 / sqrt(T_gas_cgs) + 1.5e12 / pow(T_gas_cgs, 2.5));

@@ -965,6 +965,18 @@ runner_iact_nonsym_bh_gas_feedback(
 
         /* Update the signal velocity of the particle based on the velocity kick. */
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+
+        /* Impose maximal viscosity */
+        hydro_diffusive_feedback_reset(pj);
+        
+        /* Synchronize the particle on the timeline */
+        timestep_sync_part(pj);
+
+        /* Set delay time */
+        pj->feedback_data.decoupling_delay_time = 
+            bh_props->wind_decouple_time_factor * cosmology_get_time_since_big_bang(cosmo, cosmo->a);
+
+        pj->feedback_data.number_of_times_decoupled += 1000000;
       }
 
       const double u_new = u_init + du_xray_phys;
