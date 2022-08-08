@@ -177,6 +177,9 @@ runner_iact_nonsym_bh_gas_density(
     }
   }
 
+  /* Star forming gas is never considered "hot" */
+  if (xpj->sf_data.SFR > 0.f) is_hot_gas = 0;
+
   if (is_hot_gas) {
     bi->hot_gas_mass += mj;
     bi->hot_gas_internal_energy += mj * uj; /* Not kernel weighted */
@@ -935,8 +938,17 @@ runner_iact_nonsym_bh_gas_feedback(
       bi->delta_energy_this_timestep += dE_this_step;
 
       /* Look for cold dense gas. Then push it. */
-      if (n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
-          T_gas_cgs < bh_props->xray_heating_T_threshold_cgs) {
+
+      /* Check whether we are close to the entropy floor. If we are, we
+       * classify the gas as cold regardless of temperature.
+       * All star forming gas is considered cold.
+       */
+      const float T_EoS_cgs = entropy_floor_temperature(pj, cosmo, floor_props)
+                                  / bh_props->T_K_to_int;
+      if ((n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
+            (T_gas_cgs < bh_props->xray_heating_T_threshold_cgs ||
+                T_gas_cgs < T_EoS_cgs * bh_props->fixed_T_above_EoS_factor)) ||
+            xpj->sf_data.SFR > 0.f) {
         const float dv_phys = 2.f * sqrtf(
                                   bh_props->xray_kinetic_fraction * 
                                   du_xray_phys
@@ -1074,12 +1086,12 @@ runner_iact_nonsym_bh_gas_feedback(
     /* Synchronize the particle on the timeline */
     timestep_sync_part(pj);
 
-      /* IMPORTANT: The particle MUST NOT be swallowed. 
-      * We are taking a f_accretion from each particle, and then
-      * kicking the rest. We used the swallow marker as a temporary
-      * passer in order to remember which particles have been "nibbled"
-      * so that we can kick them out.
-      */
+    /* IMPORTANT: The particle MUST NOT be swallowed. 
+     * We are taking a f_accretion from each particle, and then
+     * kicking the rest. We used the swallow marker as a temporary
+     * passer in order to remember which particles have been "nibbled"
+     * so that we can kick them out.
+     */
     black_holes_mark_part_as_not_swallowed(&pj->black_holes_data);
     
   }
