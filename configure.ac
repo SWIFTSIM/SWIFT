@@ -283,6 +283,18 @@ if test "$enable_timers" = "yes"; then
    AC_DEFINE([SWIFT_USE_TIMERS],1,[Enable individual timers])
 fi
 
+# Check if Simba expensive debugging is on.
+AC_ARG_ENABLE([simba-debugging-checks],
+   [AS_HELP_STRING([--enable-simba-debugging-checks],
+     [Activate expensive consistency checks @<:@yes/no@:>@]
+   )],
+   [simba_enable_debugging_checks="$enableval"],
+   [simba_enable_debugging_checks="no"]
+)
+if test "$enable_simba_debugging_checks" = "yes"; then
+   AC_DEFINE([SIMBA_DEBUG_CHECKS],1,[Enable Simba expensive debugging])
+fi
+
 # Check if expensive debugging is on.
 AC_ARG_ENABLE([debugging-checks],
    [AS_HELP_STRING([--enable-debugging-checks],

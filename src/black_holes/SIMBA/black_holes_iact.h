@@ -996,7 +996,7 @@ runner_iact_nonsym_bh_gas_feedback(
       bi->angular_momentum_gas[1] * bi->angular_momentum_gas[1] + 
       bi->angular_momentum_gas[2] * bi->angular_momentum_gas[2]);
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SIMBA_DEBUG_CHECKS
     const float pj_vel_norm = sqrtf(
         pj->gpart->v_full[0] * pj->gpart->v_full[0] + 
         pj->gpart->v_full[1] * pj->gpart->v_full[1] + 
@@ -1015,7 +1015,7 @@ runner_iact_nonsym_bh_gas_feedback(
     xpj->v_full[1] += prefactor * bi->angular_momentum_gas[1];
     xpj->v_full[2] += prefactor * bi->angular_momentum_gas[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SIMBA_DEBUG_CHECKS
     message("BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s, v_kick/v_part=%g",
        bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
 #endif
@@ -1031,7 +1031,7 @@ runner_iact_nonsym_bh_gas_feedback(
 
     /* If we have a jet, we heat! */
     if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SIMBA_DEBUG_CHECKS
       message("BH_KICK_JET: bid=%lld kicking pid=%lld at v_kick=%g km/s, v_kick/v_part=%g",
         bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
 #endif
@@ -1052,7 +1052,7 @@ runner_iact_nonsym_bh_gas_feedback(
       /* Treat the jet temperature as an upper limit, in case v_kick > v_jet */
       if (new_Tj > bh_props->jet_temperature) new_Tj = bh_props->jet_temperature;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#ifdef SIMBA_DEBUG_CHECKS
       message("BH_KICK_JET_HEAT: bid=%lld heating pid=%lld to T=%g K",
         bi->id, pj->id, new_Tj);
 #endif
