@@ -55,6 +55,7 @@ Below we give an example of parameter choices applicable for e.g. a 50 Mpc box. 
         v_jet_cs_ratio:                     10.        # This sets the jet velocity to v_jet_cs_ratio times the sound speed of the hot gas of the parent halo the black hole is in. This is used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
         v_jet_BH_mass_scaling_reference_mass_Msun: 3.4e3 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
         v_jet_BH_mass_scaling_slope:        0.65       # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
+        v_jet_min_km_p_s:                   500        # The minimal jet velocity. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
         opening_angle_in_degrees:           7.5        # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
         N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each 'side' of the BH, relative to the spin vector).
         AGN_jet_feedback_model:             SpinAxis   # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'

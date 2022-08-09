@@ -943,10 +943,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   bp->total_accreted_mass = bp->total_accreted_mass + delta_m_real;
 
   if (bp->subgrid_mass < 0.) {
-    error(
+    warning(
         "Black hole %lld has reached a negative mass (%f) due"
         " to jet spindown.",
         bp->id, bp->subgrid_mass);
+    bp->subgrid_mass = props->subgrid_seed_mass;
   }
 
   /* Update other quantities. */
