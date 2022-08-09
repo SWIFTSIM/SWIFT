@@ -76,6 +76,11 @@ void zoom_region_init(struct swift_params *params, struct space *s,
         parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
                                  space_max_top_level_cells_default);
 
+    /* Ensure we have been given a power of 2 for cdim. */
+    if (!((s->zoom_props->cdim[0] & (s->zoom_props->cdim[0] - 1)) == 0))
+      error("Scheduler:max_top_level_cells must be a a power of 2 "
+            "when running with a zoom region!");
+
     /* Extract the zoom width boost factor (used to define the buffer around the
      * zoom region). */
     s->zoom_props->zoom_boost_factor =
@@ -766,6 +771,13 @@ void find_neighbouring_cells(struct space *s,
       }
     }
   }
+
+  /* Store the number of neighbour cells */
+  s->zoom_props->nr_neighbour_cells = neighbour_count;
+
+  if (verbose)
+    message("%i cells neighbouring the zoom region", neighbour_count);
+#endif
 }
 #endif
 
@@ -1627,27 +1639,38 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double theta_crit = e->gravity_properties->theta_crit;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-  /* Compute how many cells away we need to walk */
-  const double distance = 2.5 * cells[bkg_cell_offset].width[0] / theta_crit;
-  int delta = (int)(distance / cells[bkg_cell_offset].width[0]) + 1;
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
+
+  /* Convert the maximal search distance to a number of cells
+   * Define a lower and upper delta in case things are not symmetric */
+  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
   /* Special case where every cell is in range of every other one */
-  if (delta >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
+  if (periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
     }
   }
 
@@ -1662,7 +1685,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     const int j = ((cid - bkg_cell_offset) / cdim[2]) % cdim[1];
     const int k = (cid - bkg_cell_offset) % cdim[2];
 
-    /* Get the cell */
+    /* Get the first cell */
     struct cell *ci = &cells[cid];
 
     /* Skip cells without gravity particles */
@@ -1679,20 +1702,27 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     }
 
     /* Loop over every other cell within (Manhattan) range delta */
-    for (int ii = -delta_m; ii <= delta_p; ii++) {
-      int iii = i + ii;
-      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -delta_m; jj <= delta_p; jj++) {
-        int jjj = j + jj;
-        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -delta_m; kk <= delta_p; kk++) {
-          int kkk = k + kk;
-          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
+    for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
-          /* Get the cell */
+      /* Escape if non-periodic and beyond range */
+      if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+
+      for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+	/* Escape if non-periodic and beyond range */
+        if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+
+        for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+          /* Escape if non-periodic and beyond range */
+          if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+          /* Apply periodic BC (not harmful if not using periodic BC) */
+	  const int iii = (ii + cdim[0]) % cdim[0];
+	  const int jjj = (jj + cdim[1]) % cdim[1];
+	  const int kkk = (kk + cdim[2]) % cdim[2];
+
+          /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
           struct cell *cj = &cells[cjd];
 
@@ -1701,20 +1731,16 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
+#ifdef WITH_MPI
           /* Recover the multipole information */
           const struct gravity_tensors *multi_i = ci->grav.multipole;
           const struct gravity_tensors *multi_j = cj->grav.multipole;
 
           if (multi_i == NULL && ci->nodeID != nodeID)
-            error(
-                "Multipole of ci was not exchanged properly via the proxies "
-                "(nodeID=%d, ci->nodeID=%d)",
-                nodeID, ci->nodeID);
+            error("Multipole of ci was not exchanged properly via the proxies");
           if (multi_j == NULL && cj->nodeID != nodeID)
-            error(
-                "Multipole of cj was not exchanged properly via the proxies "
-                "(nodeID=%d, cj->nodeID=%d)",
-                nodeID, cj->nodeID);
+            error("Multipole of cj was not exchanged properly via the proxies");
+#endif
 
           /* Minimal distance between any pair of particles */
           const double min_radius2 =
@@ -1808,25 +1834,40 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                        s->zoom_props->cdim[2]};
   struct cell *cells = s->cells_top;
-  const double theta_crit = e->gravity_properties->theta_crit;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
 
-  /* Compute how many cells away we need to walk */
-  const double distance = 2.5 * cells[0].width[0] / theta_crit;
-  int delta = (int)(distance / cells[0].width[0]) + 1;
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, periodic);
+
+  /* Convert the maximal search distance to a number of cells
+   * Define a lower and upper delta in case things are not symmetric */
+  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
   /* Special case where every cell is in range of every other one */
-  if (delta >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
+  if (periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
     }
   }
 
@@ -1841,7 +1882,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     const int j = (cid / cdim[2]) % cdim[1];
     const int k = cid % cdim[2];
 
-    /* Get the cell */
+    /* Get the first cell */
     struct cell *ci = &cells[cid];
 
     /* Skip cells without gravity particles */
@@ -1853,22 +1894,28 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
                         NULL);
     }
 
-    /* Loop over every other cell within (Manhattan) range delta
-     * NOTE: Zoom cells are never periodic */
-    for (int ii = -delta_m; ii <= delta_p; ii++) {
-      int iii = i + ii;
-      if (iii < 0 || iii >= cdim[0]) continue;
-      iii = (iii + cdim[0]) % cdim[0];
-      for (int jj = -delta_m; jj <= delta_p; jj++) {
-        int jjj = j + jj;
-        if (jjj < 0 || jjj >= cdim[1]) continue;
-        jjj = (jjj + cdim[1]) % cdim[1];
-        for (int kk = -delta_m; kk <= delta_p; kk++) {
-          int kkk = k + kk;
-          if (kkk < 0 || kkk >= cdim[2]) continue;
-          kkk = (kkk + cdim[2]) % cdim[2];
+    /* Loop over every other cell within (Manhattan) range delta */
+    for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
-          /* Get the cell */
+      /* Zoom cells are never periodic, exit if beyond zoom region */
+      if (ii < 0 || ii >= cdim[0]) continue;
+
+      for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+        /* Zoom cells are never periodic, exit if beyond zoom region */
+        if (jj < 0 || jj >= cdim[1]) continue;
+
+        for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+          /* Zoom cells are never periodic, exit if beyond zoom region */
+          if (kk < 0 || kk >= cdim[2]) continue;
+
+          /* Apply periodic BC (not harmful if not using periodic BC) */
+	  const int iii = (ii + cdim[0]) % cdim[0];
+	  const int jjj = (jj + cdim[1]) % cdim[1];
+	  const int kkk = (kk + cdim[2]) % cdim[2];
+          
+          /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
 
@@ -1877,20 +1924,26 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
+#ifdef WITH_MPI
           /* Recover the multipole information */
           const struct gravity_tensors *multi_i = ci->grav.multipole;
           const struct gravity_tensors *multi_j = cj->grav.multipole;
 
           if (multi_i == NULL && ci->nodeID != nodeID)
-            error(
-                "Multipole of ci was not exchanged properly via the proxies "
-                "(nodeID=%d, ci->nodeID=%d)",
-                nodeID, ci->nodeID);
+            error("Multipole of ci was not exchanged properly via the proxies");
           if (multi_j == NULL && cj->nodeID != nodeID)
-            error(
-                "Multipole of cj was not exchanged properly via the proxies "
-                "(nodeID=%d, cj->nodeID=%d)",
-                nodeID, cj->nodeID);
+            error("Multipole of cj was not exchanged properly via the proxies");
+#endif
+          
+          /* Minimal distance between any pair of particles */
+          const double min_radius2 =
+              cell_min_dist2_same_size(ci, cj, periodic, dim);
+
+          /* Are we beyond the distance where the truncated forces are 0?
+          * NOTE: For large meshes this could mean cells in the zoom region
+          *       are handled by the mesh even though the zoom region is not
+          *       periodic. */
+          if (periodic && min_radius2 > max_distance2) continue;
 
           /* Are the cells too close for a MM interaction ? */
           if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
@@ -2060,20 +2113,16 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
         continue;
       }
 
-      /* Recover the multipole information */
-      const struct gravity_tensors *multi_i = ci->grav.multipole;
-      const struct gravity_tensors *multi_j = cj->grav.multipole;
+#ifdef WITH_MPI
+          /* Recover the multipole information */
+          const struct gravity_tensors *multi_i = ci->grav.multipole;
+          const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-      if (multi_i == NULL && ci->nodeID != nodeID)
-        error(
-            "Multipole of ci was not exchanged properly via the proxies "
-            "(nodeID=%d, ci->nodeID=%d)",
-            nodeID, ci->nodeID);
-      if (multi_j == NULL && cj->nodeID != nodeID)
-        error(
-            "Multipole of cj was not exchanged properly via the proxies "
-            "(nodeID=%d, cj->nodeID=%d)",
-            nodeID, cj->nodeID);
+          if (multi_i == NULL && ci->nodeID != nodeID)
+            error("Multipole of ci was not exchanged properly via the proxies");
+          if (multi_j == NULL && cj->nodeID != nodeID)
+            error("Multipole of cj was not exchanged properly via the proxies");
+#endif
 
       /* Minimal distance between any pair of particles */
       const double min_radius2 =
