@@ -54,6 +54,20 @@
 #define UNION_BY_SIZE_OVER_MPI (1)
 #define FOF_COMPRESS_PATHS_MIN_LENGTH (2)
 
+/* The FoF policy we are running */
+int current_fof_policy;
+
+/* 
+ * @brief The different FOF policies the FOF can follow.
+ */
+enum fof_policy {
+  fof_policy_gas = (1 << 0),
+  fof_policy_dark_matter = (1 << 1),
+  fof_policy_dark_matter_background = (1 << 2),
+  fof_policy_stars = (1 << 4),
+  fof_policy_black_holes = (1 << 5),
+};
+
 /* Are we timing calculating group properties in the FOF? */
 //#define WITHOUT_GROUP_PROPS
 
@@ -145,6 +159,24 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
     /* Convert to internal units */
     props->seed_halo_mass *= phys_const->const_solar_mass;
+
+    int with_gas_fof = 0;
+    int with_dm_fof = 0;
+    int with_dm_background_fof = 0;
+    int with_stars_fof = 1;
+    int with_black_hole_fof = 1;
+
+    /* Initialize the fof mode */
+    current_fof_policy = 0;
+    if (with_gas_fof) current_fof_policy |= fof_policy_gas;
+    if (with_dm_fof) current_fof_policy |= fof_policy_dark_matter;
+    if (with_dm_background_fof) current_fof_policy |= fof_policy_dark_matter_background;
+    if (with_stars_fof) current_fof_policy |= fof_policy_stars;
+    if (with_black_hole_fof) current_fof_policy |= fof_policy_black_holes;
+    message("fof policy = %d", current_fof_policy); 
+
+    message("%d %d %d %d %d", !(current_fof_policy & (1<<0)), !(current_fof_policy & (1<<1)), !(current_fof_policy & (1<<2)), !(current_fof_policy & (1<<4)), !(current_fof_policy & (1<<5)));
+
   }
 
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
@@ -817,6 +849,10 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Ignore neutrinos */
     if (pi->type == swift_type_neutrino) continue;
 
+    /* Check if the particle if the particle is in the fof policy  */
+    if (!(current_fof_policy & (1<<pi->type))) continue;
+
+
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
       error("Running FOF on an un-drifted particle!");
@@ -933,6 +969,9 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
     /* Ignore neutrinos */
     if (pi->type == swift_type_neutrino) continue;
+
+    /* Ignore particles not being a star */
+    if (!(current_fof_policy & (1<<pi->type))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (pi->ti_drift != ti_current)
