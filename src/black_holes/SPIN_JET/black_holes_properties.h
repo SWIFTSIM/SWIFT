@@ -345,6 +345,7 @@ struct black_holes_props {
   /*! Parameters of the scaling between AGN jet velocity and BH mass */
   float v_jet_BH_mass_scaling_reference_mass;
   float v_jet_BH_mass_scaling_slope;
+  float v_jet_min;
 
   /*! Sets the launching velocity of the jet to v_jet_cs_ratio times the
       sound speed of the hot gas in the halo, assuming it is at virial
@@ -823,6 +824,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     bp->v_jet_BH_mass_scaling_reference_mass *= phys_const->const_solar_mass;
     bp->v_jet_BH_mass_scaling_slope = parser_get_param_float(
         params, "SPINJETAGN:v_jet_BH_mass_scaling_slope");
+
+    bp->v_jet_min =
+        parser_get_param_float(params, "SPINJETAGN:v_jet_min_km_p_s");
 
     bp->v_jet_cs_ratio =
         parser_get_param_float(params, "SPINJETAGN:v_jet_cs_ratio");
