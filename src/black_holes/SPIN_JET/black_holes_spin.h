@@ -809,7 +809,7 @@ __attribute__((always_inline)) INLINE static float da_dln_mbh_0(
     const struct black_holes_props* props) {
   const float a = bp->spin;
 
-  if ((a == 0.) || (a < -0.998) || (a > 0.998)) {
+  if ((a == 0.) || (a < -0.9981) || (a > 0.9981)) {
     error(
         "The da_dln_mbh_0 function was called and spin is %f. Spin should "
         " not be a = 0, a < -0.998 or a > 0.998.",
@@ -877,7 +877,8 @@ __attribute__((always_inline)) INLINE static float black_hole_feedback_dv_jet(
     const float sound_speed = sqrtf(5. / 3. * 0.5) * virial_velocity;
 
     /* Return the jet velocity as some factor times the sound speed */
-    v_jet = props->v_jet_cs_ratio * sound_speed;
+    v_jet = fmaxf(props->v_jet_min, props->v_jet_cs_ratio * sound_speed);
+
   } else if (props->AGN_jet_velocity_model == AGN_jet_velocity_constant) {
     v_jet = props->v_jet;
   } else {
