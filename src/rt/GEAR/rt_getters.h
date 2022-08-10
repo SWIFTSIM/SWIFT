@@ -29,6 +29,21 @@
  */
 
 /**
+ * @brief Get the radiation energy densities of a particle.
+ *
+ * @param p Particle.
+ * @param E (return) Pointer to the array in which the result needs to be stored
+ */
+__attribute__((always_inline)) INLINE static void
+rt_part_get_radiation_energy_density(const struct part *restrict p,
+                                     float E[RT_NGROUPS]) {
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    E[g] = p->rt_data.radiation[g].energy_density;
+  }
+}
+
+/**
  * @brief Get a 4-element state vector U containing the radiation energy
  * density and fluxes for a specific photon group.
  *

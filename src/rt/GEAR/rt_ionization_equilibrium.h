@@ -49,19 +49,22 @@ rt_ion_equil_mass_fractions_from_T(double T, float X, float Y, float* XHI,
                                    float* XHII, float* XHeI, float* XHeII,
                                    float* XHeIII) {
 
+  if (fabsf(X + Y - 1.f) > 1e-4)
+    error("mass fractions don't add up to one: X=%.3e, Y=%.3e", X, Y);
+
   /* Total number densities for all H and He species, respectively.
    * We don't really care about the actual number densities of the
    * species, but only want the mass fractions. So all quantities
    * will be per unit volume, specifically per rho_gas / m_proton. */
-  float nH, nHe;
+  double nH, nHe;
 
   /* TODO: this assumes no metals. */
-  if (X == 0.f) {
-    nH = 0.f;
-    nHe = 1.f;
+  if (X <= RT_GEAR_TINY_MASS_FRACTION) {
+    nH = RT_GEAR_TINY_MASS_FRACTION;
+    nHe = 1.;
   } else {
     nH = X;
-    nHe = 0.25f * Y;
+    nHe = 0.25 * Y;
   }
 
   /* Number densities of the actual species */
@@ -117,20 +120,25 @@ rt_ion_equil_mass_fractions_from_T(double T, float X, float Y, float* XHI,
 
   /* With the number densities per unit volume given,
    * let's compute the mass fractions now. */
-  const float mHI = nHI;
-  const float mHII = nHII;
-  const float mHeI = 4.0f * nHeI;
-  const float mHeII = 4.0f * nHeII;
-  const float mHeIII = 4.0f * nHeIII;
+  const double mHI = nHI;
+  const double mHII = nHII;
+  const double mHeI = 4.0f * nHeI;
+  const double mHeII = 4.0f * nHeII;
+  const double mHeIII = 4.0f * nHeIII;
   /* we ignore the electron mass fraction. */
 
-  const float mtot_inv = 1.f / (mHI + mHII + mHeI + mHeII + mHeIII);
+  const double mtot_inv = 1. / (mHI + mHII + mHeI + mHeII + mHeIII);
 
-  *XHI = mHI * mtot_inv;
-  *XHII = mHII * mtot_inv;
-  *XHeI = mHeI * mtot_inv;
-  *XHeII = mHeII * mtot_inv;
-  *XHeIII = mHeIII * mtot_inv;
+  *XHI = (float)(mHI * mtot_inv);
+  *XHI = max(*XHI, RT_GEAR_TINY_MASS_FRACTION);
+  *XHII = (float)(mHII * mtot_inv);
+  *XHII = max(*XHII, RT_GEAR_TINY_MASS_FRACTION);
+  *XHeI = (float)(mHeI * mtot_inv);
+  *XHeI = max(*XHeI, RT_GEAR_TINY_MASS_FRACTION);
+  *XHeII = (float)(mHeII * mtot_inv);
+  *XHeII = max(*XHeII, RT_GEAR_TINY_MASS_FRACTION);
+  *XHeIII = (float)(mHeIII * mtot_inv);
+  *XHeIII = max(*XHeIII, RT_GEAR_TINY_MASS_FRACTION);
 }
 
 /**

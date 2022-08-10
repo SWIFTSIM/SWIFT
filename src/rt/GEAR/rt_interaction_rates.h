@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2021 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
+ * Copyright (c) 2022 Mladen Ivkovic (mladen.ivkovic@hotmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,111 +16,162 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_RT_GEAR_INTERACION_RATES_H
-#define SWIFT_RT_GEAR_INTERACION_RATES_H
+#ifndef SWIFT_RT_GEAR_INTERACTION_RATES_H
+#define SWIFT_RT_GEAR_INTERACTION_RATES_H
 
-#include "inline.h"
-
-#include <math.h>
-
-#define RT_INTEGRAL_NPOINTS 1000
-
-/* HI, HeI, HeII */
-#define RT_NIONIZING_SPECIES 3
-
-/*! Struct containing the parametrized cross section parameters
- * for each photoionizing species.
- * Correct usage is to call rt_init_photoion_cs_params_cgs(),
- * which returns a fully initialized struct. */
-struct rt_photoion_cs_parameters {
-  double E_ion[RT_NIONIZING_SPECIES];
-  double E_zero[RT_NIONIZING_SPECIES];
-  double sigma_zero[RT_NIONIZING_SPECIES];
-  double P[RT_NIONIZING_SPECIES];
-  double ya[RT_NIONIZING_SPECIES];
-  double yw[RT_NIONIZING_SPECIES];
-  double y0[RT_NIONIZING_SPECIES];
-  double y1[RT_NIONIZING_SPECIES];
-};
-
-/*! Parameters needed to compute the stellar spectra integrals -
- * the data needs to be encapsulated in a single struct to be passed
- * as an argument for GSL integrators. */
-struct rt_spectrum_integration_params {
-  /* Which species are we dealing with? */
-  int species;
-  /* Which spectrum type are we dealing with? */
-  int spectrum_type;
-  /* Max frequency for const spectrum */
-  double const_stellar_spectrum_frequency_max;
-  /* Temperature of blackbody in correct units */
-  double T;
-  /* Boltzmann constant in correct units */
-  double kB;
-  /* Planck constant in correct units */
-  double h_planck;
-  /* speed of light in correct units */
-  double c;
-  /* Values for the cross section parametrization */
-  struct rt_photoion_cs_parameters *cs_params;
-};
+#include "rt_parameters.h"
+#include "rt_properties.h"
+#include "rt_species.h"
+#include "rt_thermochemistry_utils.h"
 
 /**
- * Initialize the parameters for the cross section computation in cgs,
- * and return a fully and correctly initialized struct.
- * The data is taken from Verner et al. 1996
- * (ui.adsabs.harvard.edu/abs/1996ApJ...465..487V) via Rosdahl et al. 2013
- * (ui.adsabs.harvard.edu/abs/2013MNRAS.436.2188R)
- */
-__attribute__((always_inline)) INLINE static struct rt_photoion_cs_parameters
-rt_init_photoion_cs_params_cgs(void) {
+ * @file src/rt/GEAR/rt_interaction_rates.h
+ * @brief header file concerning photoionization and photoheating rates
+ **/
 
-  struct rt_photoion_cs_parameters photoion_cs_params_cgs = {
-      /* E_ion =         {13.60,     24.59,     54.42}          eV */
-      /* E_zero =        {0.4298,    0.1361,    1.720},         eV */
-      /* E_ion =      */ {2.179e-11, 3.940e-11, 8.719e-11},  /* erg */
-      /* E_zero =     */ {6.886e-13, 2.181 - 13, 2.756e-12}, /* erg */
-      /* sigma_zero = */ {5.475e-14, 9.492e-16, 1.369e-14},  /* cm^-2 */
-      /* P =          */ {2.963, 3.188, 2.963},
-      /* ya =         */ {32.88, 1.469, 32.88},
-      /* yw =         */ {0., 2.039, 0.},
-      /* y0 =         */ {0., 0.4434, 0.},
-      /* y1 =         */ {0., 2.136, 0.}};
+/**
+ * @brief compute the heating, ionization, and dissassociation rates
+ * for the particle radiation field as needed by grackle.
+ *
+ * @param rates (return) Interaction rates for grackle. [0]: heating rate.
+ * [1]: HI ionization. [2]: HeI ionization. [3]: HeII ionization.
+ * [4]: H2 dissociation.
+ * @param energy_density energy densities of each photon group [internal units]
+ * @param species_densities physical densities of all species [internal units]
+ * @param average_photon_energy mean photon energy in group, in erg
+ * @param cse energy weighted photon interaction cross sections, in cm^2
+ * @param csn number weighted photon interaction cross sections, in cm^2
+ * @param phys_const physical constants struct
+ * @param us internal units struct
+ **/
+__attribute__((always_inline)) INLINE static void
+rt_get_interaction_rates_for_grackle(
+    gr_float rates[5], float energy_density[RT_NGROUPS],
+    gr_float species_densities[6],
+    const double average_photon_energy[RT_NGROUPS], double **cse, double **csn,
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us) {
 
-  return photoion_cs_params_cgs;
+  rates[0] = 0.; /* Needs to be in [erg / s / cm^3 / nHI] for grackle. */
+  rates[1] = 0.; /* [1 / time_units] */
+  rates[2] = 0.; /* [1 / time_units] */
+  rates[3] = 0.; /* [1 / time_units] */
+  rates[4] = 0.; /* [1 / time_units] */
+
+  double E_ion_cgs[rt_ionizing_species_count];
+  rt_species_get_ionizing_energy(E_ion_cgs);
+
+  /* Get some conversions and constants first. */
+  const double c_cgs = rt_params.reduced_speed_of_light *
+                       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+  const double to_energy_density_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_ENERGY_DENSITY);
+  const double inv_time_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
+
+  /* get species number densities in cgs */
+  double ns_cgs[rt_ionizing_species_count]; /* in cm^-3 */
+  rt_tchem_get_ionizing_species_number_densities(ns_cgs, species_densities,
+                                                 phys_const, us);
+
+  /* store photoionization rate for each species here */
+  double ionization_rates[rt_ionizing_species_count];
+  for (int s = 0; s < rt_ionizing_species_count; s++) {
+    ionization_rates[s] = 0.;
+  }
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+
+    /* Sum results for this group over all species */
+    double heating_rate_group_cgs = 0.;
+    const double Eg = energy_density[g] * to_energy_density_cgs;
+    const double Emean_g = average_photon_energy[g];
+    const double Ng = (Emean_g > 0.) ? Eg / Emean_g : 0.;
+
+    for (int s = 0; s < rt_ionizing_species_count; s++) {
+      /* All quantities here are in cgs. */
+      heating_rate_group_cgs +=
+          (cse[g][s] * Emean_g - E_ion_cgs[s] * csn[g][s]) * ns_cgs[s];
+      ionization_rates[s] += csn[g][s] * Ng * c_cgs;
+    }
+    rates[0] += heating_rate_group_cgs * Ng * c_cgs;
+  }
+
+  /* Convert into correct units. */
+  const double nHI = ns_cgs[rt_ionizing_species_HI];
+  if (nHI > 0.)
+    rates[0] /= nHI;
+  else
+    rates[0] = 0.;
+
+  for (int s = 0; s < rt_ionizing_species_count; s++) {
+    ionization_rates[s] /= inv_time_cgs; /* internal units T^-1 */
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    if (ionization_rates[s] < 0.)
+      error("unphysical ion rate spec %d - %.4g", s, ionization_rates[s]);
+#endif
+  }
+
+  /* We're done. Write the results in correct place */
+  rates[1] = ionization_rates[0];
+  rates[2] = ionization_rates[1];
+  rates[3] = ionization_rates[2];
+  /* rates[4] = skipped for now */
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  for (int i = 0; i < 5; i++) {
+    if (rates[i] < 0.) error("unphysical rate %d %.4g", i, rates[i]);
+  }
+#endif
 }
 
 /**
- * Compute the parametrized cross section for a given energy and species.
- * The parametrization is taken from Verner et al. 1996
- * (ui.adsabs.harvard.edu/abs/1996ApJ...465..487V) via Rosdahl et al. 2013
- * (ui.adsabs.harvard.edu/abs/2013MNRAS.436.2188R)
+ * @brief compute the rates at which the photons get absorbed/destroyed
+ * during interactions with gas.
  *
- * @param E energy for which to compute the cross section.
- * @param species index of species, 0 < species < RT_NIONIZING_SPECIES
- * @param params cross section parameters struct
- */
-__attribute__((always_inline)) INLINE static double
-photoionization_cross_section(const double E, const int species,
-                              const struct rt_photoion_cs_parameters *params) {
+ * @param absorption_rates (return) the energy absorption rates in
+ * internal units for each photon group.
+ * @param species_densities the physical densities of all traced species
+ *[internal units]
+ * @param average_photon_energy mean photon energy in group, in erg
+ * @param csn number weighted photon interaction cross sections, in cm^2
+ * @param phys_const physical constants struct
+ * @param us internal units struct
+ **/
+__attribute__((always_inline)) INLINE static void rt_get_absorption_rates(
+    double absorption_rates[RT_NGROUPS], gr_float species_densities[6],
+    const double average_photon_energy[RT_NGROUPS], double **csn,
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us) {
 
-  const double E0 = params->E_zero[species];
-  const double E_ion = params->E_ion[species];
-  const double y0 = params->y0[species];
-  const double y1 = params->y1[species];
-  const double yw = params->yw[species];
-  const double ya = params->ya[species];
-  const double P = params->P[species];
-  const double sigma_0 = params->sigma_zero[species];
+  for (int g = 0; g < RT_NGROUPS; g++) absorption_rates[g] = 0.;
 
-  if (E < E_ion) return 0.;
+  double E_ion_cgs[rt_ionizing_species_count];
+  rt_species_get_ionizing_energy(E_ion_cgs);
 
-  const double x = E / E0 - y0;
-  const double y = sqrt(x * x + y1 * y1);
-  const double temp1 = pow(y, 0.5 * P - 5.5);
-  const double temp2 = pow(1. + sqrt(y / ya), -P);
+  /* Get some conversions and constants first. */
+  const double c_cgs = rt_params.reduced_speed_of_light *
+                       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+  const double inv_time_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
 
-  return sigma_0 * ((x - 1.) * (x - 1.) + yw * yw) * temp1 * temp2;
+  double ns_cgs[rt_ionizing_species_count]; /* in cm^-3 */
+  rt_tchem_get_ionizing_species_number_densities(ns_cgs, species_densities,
+                                                 phys_const, us);
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    for (int s = 0; s < rt_ionizing_species_count; s++) {
+      absorption_rates[g] += c_cgs * csn[g][s] * ns_cgs[s];
+    }
+  }
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    absorption_rates[g] /= inv_time_cgs;
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    if (absorption_rates[g] < 0.)
+      error("unphysical rate %d - %.4g", g, absorption_rates[g]);
+#endif
+  }
 }
 
 #endif /* SWIFT_RT_GEAR_INTERACION_RATES_H */
