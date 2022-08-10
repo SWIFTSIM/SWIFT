@@ -1511,7 +1511,7 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
       /* Update group stellar mass */
       if (data != NULL) {
         /* Do NOT count the BH mass in the galaxy */
-        if (gparts[ind].type == swift_type_black_holes) {
+        if (gparts[ind].type == swift_type_black_hole) {
           (*data).value_dbl -= gparts[ind].mass;
         }
         if (gparts[ind].type == swift_type_stars) {
@@ -1635,7 +1635,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         group_mass[index] += gparts[i].mass;
 #ifdef WITH_FOF_GALAXIES
         /* Do NOT count BH mass in the galaxy */
-        if (gparts[i].type == swift_type_black_holes) {
+        if (gparts[i].type == swift_type_black_hole) {
           group_mass[index] -= gparts[i].mass;
         }
         if (gparts[i].type == swift_type_stars) {
@@ -1660,7 +1660,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
         data->value_dbl += mass;
 #ifdef WITH_FOF_GALAXIES
         /* Do NOT count BH mass in the galaxy */
-        if (gparts[i].type == swift_type_black_holes) data->value_dbl -= mass;
+        if (gparts[i].type == swift_type_black_hole) data->value_dbl -= mass;
         if (gparts[i].type == swift_type_stars) data->value_2_dbl += mass;
 #endif
 
