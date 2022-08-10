@@ -460,6 +460,12 @@ void units_get_base_unit_exponents_array(float baseUnitsExp[5],
       baseUnitsExp[UNIT_TIME] = -3.f;
       break;
 
+    case UNIT_CONV_ENERGY_DENSITY:
+      baseUnitsExp[UNIT_MASS] = 1.f;
+      baseUnitsExp[UNIT_LENGTH] = -1.f;
+      baseUnitsExp[UNIT_TIME] = -2.f;
+      break;
+
     case UNIT_CONV_INV_TIME:
       baseUnitsExp[UNIT_TIME] = -1.f;
       break;
