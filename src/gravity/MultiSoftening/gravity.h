@@ -382,6 +382,9 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
       break;
     case swift_type_black_hole:
       gp->epsilon = grav_props->epsilon_baryon_cur;
+#ifdef WITH_FOF_GALAXIES
+      gp->fof_data.is_grouppable = 1;
+#endif
       break;
     case swift_type_dark_matter_background:
       gp->epsilon = grav_props->epsilon_background_fac * cbrtf(gp->mass);

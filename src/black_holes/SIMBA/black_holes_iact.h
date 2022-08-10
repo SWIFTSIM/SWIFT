@@ -123,6 +123,9 @@ runner_iact_nonsym_bh_gas_density(
   /* Ignore decoupled winds in density computation */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
+  /* A black hole should never accrete/feedback if it is not in a galaxy */
+  if (bi->gpart->fof_data.group_mass <= 0.f) return;
+
   float wi, wi_dx;
 
   /* Compute the kernel function; note that r cannot be optimised
@@ -245,88 +248,6 @@ runner_iact_nonsym_bh_gas_density(
   ++si->num_ngb_density;
 #endif
 
-  /* Gas particle id */
-  const long long gas_id = pj->id;
-
-  /* Choose AGN feedback model */
-  switch (bh_props->feedback_model) {
-    case AGN_isotropic_model: {
-      /* Compute arc lengths in AGN isotropic feedback and collect
-       * relevant data for later use in the feedback_apply loop */
-
-      /* Loop over rays */
-      for (int i = 0; i < eagle_blackhole_number_of_rays; i++) {
-
-        /* We generate two random numbers that we use
-        to randomly select the direction of the ith ray */
-
-        /* Random number in [0, 1[ */
-        const double rand_theta = random_unit_interval_part_ID_and_index(
-            bi->id, i, ti_current,
-            random_number_isotropic_AGN_feedback_ray_theta);
-
-        /* Random number in [0, 1[ */
-        const double rand_phi = random_unit_interval_part_ID_and_index(
-            bi->id, i, ti_current,
-            random_number_isotropic_AGN_feedback_ray_phi);
-
-        /* Compute arc length */
-        ray_minimise_arclength(dx, r, bi->rays + i,
-                               /*ray_type=*/ray_feedback_thermal, gas_id,
-                               rand_theta, rand_phi, mj, /*ray_ext=*/NULL,
-                               /*v=*/NULL);
-      }
-      break;
-    }
-    case AGN_minimum_distance_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this BH),
-       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
-       * maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
-
-      /* Minimise separation between the gas particles and the BH. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the BH. */
-      ray_minimise_distance(r, bi->rays, arr_size, gas_id, mj);
-      break;
-    }
-    case AGN_minimum_density_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this BH),
-       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
-       * maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
-
-      /* Minimise separation between the gas particles and the BH. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the BH. */
-      ray_minimise_distance(pj->rho, bi->rays, arr_size, gas_id, mj);
-      break;
-    }
-    case AGN_random_ngb_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this BH),
-       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
-       * maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
-
-      /* To mimic a random draw among all the particles in the kernel, we
-       * draw random distances in [0,1) and then pick the particle(s) with
-       * the smallest of these 'fake' distances */
-      const float dist = random_unit_interval_two_IDs(
-          bi->id, pj->id, ti_current, random_number_BH_feedback);
-
-      /* Minimise separation between the gas particles and the BH. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller 'fake' distances to the BH. */
-      ray_minimise_distance(dist, bi->rays, arr_size, gas_id, mj);
-      break;
-    }
-  }
 }
 
 /**
@@ -488,6 +409,9 @@ runner_iact_nonsym_bh_gas_swallow(
   /* IMPORTANT: Do not even consider wind particles for accretion/feedback */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
+  /* A black hole should never accrete/feedback if it is not in a galaxy */
+  if (bi->gpart->fof_data.group_mass <= 0.f) return;
+  
   float wi;
 
   /* Compute the kernel function; note that r cannot be optimised
@@ -873,13 +797,18 @@ runner_iact_nonsym_bh_gas_feedback(
   /* This shouldn't happen, but just be sure anyway */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
+  /* A black hole should never accrete/feedback if it is not in a galaxy */
+  if (bi->gpart->fof_data.group_mass <= 0.f) return;
+
   /* Do X-ray feedback first */
   if (pj->black_holes_data.swallow_id != bi->id) {
         /* We were not lucky, but we are lucky to heat via X-rays */
     if (bi->v_kick > bh_props->xray_heating_velocity_threshold
         && bi->delta_energy_this_timestep < bi->energy_reservoir) {
-      const float f_gas = bi->cold_gas_mass / 
-                          (bi->hot_gas_mass + bi->cold_gas_mass + bi->stellar_mass);
+      const float group_gas_mass = bi->gpart->fof_data.group_mass -
+                                   bi->gpart->fof_data.group_stellar_mass;
+
+      const float f_gas = group_gas_mass / bi->gpart->fof_data.group_mass;
 
       float f_rad_loss = bh_props->xray_radiation_loss * 
                          (bh_props->xray_f_gas_limit - f_gas) / 
