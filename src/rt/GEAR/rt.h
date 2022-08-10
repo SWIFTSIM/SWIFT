@@ -385,9 +385,12 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
   float dt = psize * rt_params.reduced_speed_of_light_inverse *
              rt_props->CFL_condition;
 
-  /* TODO: Add cooling time? */
-  float dt_cool = rt_tchem_get_tchem_time(p, xp, rt_props, cosmo, hydro_props,
-                                          phys_const, us);
+  float dt_cool = FLT_MAX;
+  if (rt_props->f_limit_cooling_time > 0.f)
+    /* Note: cooling time may be negative if the gas is being heated */
+    dt_cool = rt_props->f_limit_cooling_time *
+              rt_tchem_get_tchem_time(p, xp, rt_props, cosmo, hydro_props,
+                                      phys_const, us);
 
   return min(dt, fabsf(dt_cool));
 }
@@ -693,11 +696,8 @@ __attribute__((always_inline)) INLINE static void rt_clean(
   /* If we were restarting, free-ing manually will lead to
    * segfaults since we didn't malloc the stuff */
   if (!restart) {
-    /* TODO: clean this up in a later MR once grackle is properly
-     * cleaned up and MPI issues are resolved. */
     /* Clean up grackle data. This is a call to a grackle function */
-    /* _free_chemistry_data(&grackle_chemistry_data, */
-    /*                      props->grackle_chemistry_rates); */
+    _free_chemistry_data(&props->grackle_chemistry_data, &grackle_rates);
 
     for (int g = 0; g < RT_NGROUPS; g++) {
       free(props->energy_weighted_cross_sections[g]);
