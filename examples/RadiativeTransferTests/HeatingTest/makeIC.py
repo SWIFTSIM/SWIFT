@@ -33,7 +33,7 @@ import h5py
 
 
 # number of particles in each dimension
-n_p = 20
+n_p = 10
 nparts = n_p ** 3
 
 # filename of ICs to be generated
@@ -155,23 +155,33 @@ parts.create_dataset("MassFractionHeIII", data=HeIIIdata)
 nPhotonGroups = 4
 
 # with this IC, the radiative cooling is negligible.
-photon_energy = u_part * pmass * 5.0
+#  photon_energy = u_part * pmass * 5.0
 # with this IC, you can observe the loss of radiative cooling very clearly.
 #  photon_energy = u_part * pmass * 0.025
+
+# Fluxes from the Iliev Test0 part3
+fluxes_iliev = (
+    np.array([0.0, 1.350e1, 2.779e1, 6.152e0]) * unyt.erg / unyt.s / unyt.cm ** 2
+)
+energy_density = fluxes_iliev / unyt.c
+photon_energy = energy_density * boxsize ** 3 / nparts
+photon_energy = photon_energy * 0.00001
+
 photon_energy.convert_to_units(cosmo_units["energy"])
 photon_fluxes = 0.333333 * unyt.c * photon_energy
 photon_fluxes.convert_to_units(
     cosmo_units["energy"] * cosmo_units["length"] / cosmo_units["time"]
 )
 
+
 for grp in range(nPhotonGroups):
     dsetname = "PhotonEnergiesGroup{0:d}".format(grp + 1)
-    energydata = np.ones((nparts), dtype=np.float32) * photon_energy * (grp + 1)
+    energydata = np.ones((nparts), dtype=np.float32) * photon_energy[grp]
     parts.create_dataset(dsetname, data=energydata)
 
     dsetname = "PhotonFluxesGroup{0:d}".format(grp + 1)
     fluxdata = np.ones((nparts, 3), dtype=np.float32)
-    fluxdata[:, 0] = photon_fluxes * (grp + 1)
+    fluxdata[:, 0] = photon_fluxes[grp]
     parts.create_dataset(dsetname, data=fluxdata)
 
 # close up, and we're done!

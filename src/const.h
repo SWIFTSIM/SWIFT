@@ -102,4 +102,8 @@
 #define SOURCETERMS_NONE
 //#define SOURCETERMS_SN_FEEDBACK
 
+/* GRACKLE doesn't really like exact zeroes, so use something
+ * comparatively small instead. */
+#define RT_GEAR_TINY_MASS_FRACTION 1.e-20
+
 #endif /* SWIFT_CONST_H */
