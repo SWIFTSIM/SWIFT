@@ -291,6 +291,18 @@ if test "$enable_timers" = "yes"; then
    AC_DEFINE([SWIFT_USE_TIMERS],1,[Enable individual timers])
 fi
 
+# Check if Simba expensive debugging is on.
+AC_ARG_ENABLE([simba-debugging-checks],
+   [AS_HELP_STRING([--enable-simba-debugging-checks],
+     [Activate expensive consistency checks @<:@yes/no@:>@]
+   )],
+   [simba_enable_debugging_checks="$enableval"],
+   [simba_enable_debugging_checks="no"]
+)
+if test "$enable_simba_debugging_checks" = "yes"; then
+   AC_DEFINE([SIMBA_DEBUG_CHECKS],1,[Enable Simba expensive debugging])
+fi
+
 # Check if expensive debugging is on.
 AC_ARG_ENABLE([debugging-checks],
    [AS_HELP_STRING([--enable-debugging-checks],
@@ -1777,6 +1789,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=no
+   enable_fof_galaxies=no
    ;;
    QLA)
 	with_subgrid_cooling=QLA
@@ -1790,6 +1803,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=no
+   enable_fof_galaxies=no
    ;;
    QLA-EAGLE)
 	with_subgrid_cooling=QLA-EAGLE
@@ -1802,6 +1816,7 @@ case "$with_subgrid" in
 	with_subgrid_black_holes=none
 	with_subgrid_sink=none
 	enable_fof=no
+   enable_fof_galaxies=no
    ;;
    EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1815,6 +1830,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   enable_fof_galaxies=no
    ;;
    EAGLE-XL)
 	with_subgrid_cooling=COLIBRE
@@ -1828,6 +1844,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   enable_fof_galaxies=no
    ;;
    SIMBA)
 	with_subgrid_cooling=COLIBRE
@@ -1841,6 +1858,7 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   enable_fof_galaxies=yes
    ;;
    SPIN_JET_EAGLE)
 	with_subgrid_cooling=EAGLE
@@ -1870,6 +1888,18 @@ AC_ARG_ENABLE([fof],
 )
 if test "$enable_fof" = "yes"; then
    AC_DEFINE([WITH_FOF], 1, [Enable FoF])
+fi
+
+# Check if we are looking for galaxies.
+AC_ARG_ENABLE([fof-galaxies],
+   [AS_HELP_STRING([--enable-fof-galaxies],
+     [Activate the friends-of-friends (FoF) code with galaxy finding.],
+   )],
+   [enable_fof_galaxies="$enableval"],
+   [enable_fof_galaxies="no"]
+)
+if test "$enable_fof_galaxies" = "yes"; then
+   AC_DEFINE([WITH_FOF_GALAXIES], 1, [Enable FoF Galaxies])
 fi
 
 # Check if stand-alone FoF is on.

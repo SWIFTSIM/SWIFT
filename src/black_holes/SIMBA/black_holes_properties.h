@@ -66,6 +66,12 @@ struct black_holes_props {
   /*! Tolerance on neighbour number  (for info only)*/
   float delta_neighbours;
 
+  /*! Maximum smoothing length */
+  float h_max;
+
+  /*! Minimum smoothing length */
+  float h_min;
+
   /*! Maximal number of iterations to converge h */
   int max_smoothing_iterations;
 
@@ -430,6 +436,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   bp->max_smoothing_iterations =
       parser_get_opt_param_int(params, "BlackHoles:max_ghost_iterations",
                                hydro_props->max_smoothing_iterations);
+
+  /* Maximal smoothing length */
+  bp->h_max = parser_get_opt_param_float(params, "BlackHoles:h_max",
+                                         hydro_props->h_max);
+
+  /* Maximal smoothing length */
+  bp->h_min = parser_get_opt_param_float(params, "BlackHoles:h_min",
+                                         hydro_props->h_min);
 
   /* Time integration properties */
   const float max_volume_change =
@@ -841,6 +855,8 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
     message("eta_neighbours is %g", bp->eta_neighbours);
     message("target_neighbours is %g", bp->target_neighbours);
     message("delta_neighbours is %g", bp->delta_neighbours);
+    message("h_max is %g", bp->h_max);
+    message("h_min is %g", bp->h_min);
   }
 }
 

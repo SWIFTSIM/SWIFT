@@ -25,11 +25,24 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "rays.h"
 #include "units.h"
 
 #include <strings.h>
 
+
+double feedback_wind_probability(struct part* p, struct xpart* xp, const struct engine* e, 
+                                 const struct cosmology* cosmo,
+                                 const struct feedback_props* fb_props, 
+                                 const integertime_t ti_current, 
+                                 const double dt_part,
+                                 double *rand_for_sf_wind);
+void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp, 
+                                     const struct engine* e, 
+                                     const struct cosmology* cosmo,
+                                     const struct feedback_props* fb_props, 
+                                     const integertime_t ti_current,
+                                     const int with_cosmology,
+                                     const double dt_part);
 void compute_stellar_evolution(const struct feedback_props* feedback_props,
                                const struct phys_const* phys_const,
                                const struct cosmology* cosmo, struct spart* sp,
@@ -100,7 +113,6 @@ __attribute__((always_inline)) INLINE static void feedback_update_part(
 __attribute__((always_inline)) INLINE static void feedback_reset_part(
     struct part* p, struct xpart* xp) {
 
-  p->feedback_data.SNII_star_largest_id = -1;
 }
 
 /**
@@ -125,7 +137,7 @@ __attribute__((always_inline)) INLINE static int feedback_is_active(
 __attribute__((always_inline)) INLINE static int stars_dm_loop_is_active(
     const struct spart* sp, const struct engine* e) {
   /* Active stars always do the DM loop for the SIMBA model */
-  return 1;
+  return 0;
 }
 
 /**
@@ -141,15 +153,6 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   sp->feedback_data.to_collect.ngb_mass = 0.f;
   sp->feedback_data.to_collect.ngb_rho = 0.f;
   sp->feedback_data.to_collect.ngb_Z = 0.f;
-
-  /* Reset all ray structs carried by this star particle */
-  ray_init(sp->feedback_data.SNII_rays_true, eagle_SNII_feedback_num_of_rays);
-  ray_init(sp->feedback_data.SNII_rays_mirr, eagle_SNII_feedback_num_of_rays);
-  ray_extra_init(sp->feedback_data.SNII_rays_ext_true,
-                 eagle_SNII_feedback_num_of_rays);
-  ray_extra_init(sp->feedback_data.SNII_rays_ext_mirr,
-                 eagle_SNII_feedback_num_of_rays);
-
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->has_done_feedback = 0;
 #endif
@@ -166,11 +169,7 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
  */
 INLINE static void feedback_intermediate_density_normalize(
     struct spart* sp, const int dm_ngb_N, float dm_mean_velocity[3]) {
-  if (dm_ngb_N <= 0) return;
-  sp->feedback_data.dm_ngb_N = dm_ngb_N;
-  dm_mean_velocity[0] /= (float)dm_ngb_N;
-  dm_mean_velocity[1] /= (float)dm_ngb_N;
-  dm_mean_velocity[2] /= (float)dm_ngb_N;
+
 }
 
 /**
@@ -226,18 +225,6 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   /* Zero the energy to inject */
   sp->feedback_data.to_distribute.energy = 0.f;
 
-  /* Zero the SNII feedback energy */
-  sp->feedback_data.to_distribute.SNII_E_kinetic = 0.f;
-
-  /* Zero the SNII feedback properties */
-  sp->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj = 0;
-
-  /* Zero the DM vel. disp. */
-  sp->feedback_data.dm_vel_disp_1d = 0.f;
-  sp->feedback_data.dm_ngb_N = 0;
-  sp->feedback_data.dm_vel_diff2[0] = 0.f;
-  sp->feedback_data.dm_vel_diff2[1] = 0.f;
-  sp->feedback_data.dm_vel_diff2[2] = 0.f;
 }
 
 /**
@@ -254,12 +241,6 @@ __attribute__((always_inline)) INLINE static void feedback_first_init_spart(
 
   feedback_init_spart(sp);
 
-  /* These will be reset in feedback_reset_feedback each timestep */
-  sp->feedback_data.dm_ngb_N = 0;
-  sp->feedback_data.dm_vel_disp_1d = 0.f;
-  sp->feedback_data.dm_vel_diff2[0] = 0.f;
-  sp->feedback_data.dm_vel_diff2[1] = 0.f;
-  sp->feedback_data.dm_vel_diff2[2] = 0.f;
 }
 
 /**

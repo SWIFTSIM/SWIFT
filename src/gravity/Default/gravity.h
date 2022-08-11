@@ -330,6 +330,12 @@ __attribute__((always_inline)) INLINE static void gravity_first_init_gpart(
 
   gp->time_bin = 0;
   gp->old_a_grav_norm = 0.f;
+#ifdef WITH_FOF_GALAXIES
+  gp->fof_data.is_grouppable = 0;
+  if(gp->type == swift_type_stars || gp->type == swift_type_black_hole) {
+    gp->fof_data.is_grouppable = 1;
+  }
+#endif
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS
   gp->has_been_most_bound = 0;
 #endif

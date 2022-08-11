@@ -297,6 +297,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
   const struct hydro_props *restrict hydro_props = e->hydro_properties;
+  const struct feedback_props *restrict feedback_props = e->feedback_props;
   const struct unit_system *restrict us = e->internal_units;
   struct cooling_function_data *restrict cooling = e->cooling_func;
   const struct entropy_floor_properties *entropy_floor = e->entropy_floor;
@@ -363,8 +364,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
         /* Is this particle star forming? */
         if (star_formation_is_star_forming(p, xp, sf_props, phys_const, cosmo,
-                                           hydro_props, us, cooling,
-                                           entropy_floor)) {
+                                  hydro_props, us, cooling,
+                                  entropy_floor)) {
 
           /* Time-step size for this particle */
           double dt_star;
@@ -384,12 +385,53 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
           star_formation_compute_SFR(p, xp, sf_props, phys_const, hydro_props,
                                      cosmo, dt_star);
 
-          /* Add the SFR and SFR*dt to the SFH struct of this cell */
-          star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
+          /* star_prob comes from the function that determines the probability.*/
+          double star_prob = 0.;
+          int should_convert_to_star = star_formation_should_convert_to_star(
+                                          p, xp, sf_props, e, dt_star,
+                                          &star_prob);
+
+          /* By default, do nothing */
+          double rand_for_sf_wind = FLT_MAX;
+          int should_kick_wind = 0;
+
+          /* The random number for star formation, stellar feedback,
+           * or nothing is drawn here.
+           */
+          double wind_prob = feedback_wind_probability(p, xp, e, cosmo, 
+                                    feedback_props, ti_current, dt_star,
+                                    &rand_for_sf_wind);
+
+          /* If the sum of the probabilities is greater than unity,
+           * rescale so that we can throw the dice properly.
+           */
+          double prob_sum = wind_prob + star_prob;
+          if (prob_sum > 1.) {
+            wind_prob /= prob_sum;
+            star_prob /= prob_sum;
+            prob_sum = wind_prob + star_prob;
+          } 
+
+          /* We have three regions for the probability:
+           * 1. Form a star (random < star_prob)
+           * 2. Kick a wind (star_prob < random < star_prob + wind_prob)
+           * 3. Do nothing
+           */
+          if (rand_for_sf_wind < star_prob) {
+            should_convert_to_star = 1;
+            should_kick_wind = 0;
+          }
+          else if ((star_prob <= rand_for_sf_wind) && 
+                   (rand_for_sf_wind < prob_sum)) {
+            should_convert_to_star = 0;
+            should_kick_wind = 1;
+          } else {
+            should_convert_to_star = 0;
+            should_kick_wind = 0;
+          }
 
           /* Are we forming a star particle from this SF rate? */
-          if (star_formation_should_convert_to_star(p, xp, sf_props, e,
-                                                    dt_star)) {
+          if (should_convert_to_star) {
 
             /* Convert the gas particle to a star particle */
             struct spart *sp = NULL;
@@ -427,6 +469,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
               /* message("We formed a star id=%lld cellID=%lld", sp->id,
                * c->cellID); */
+
+#ifdef WITH_FOF_GALAXIES
+              /* Star particles are always grouppable with WITH_FOF_GALAXIES */
+              fof_mark_spart_as_grouppable(sp);
+#endif
 
               /* Copy the properties of the gas particle to the star particle */
               star_formation_copy_properties(
@@ -479,13 +526,42 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                  cell_convert_part_to_spart() */
               star_formation_no_spart_available(e, p, xp);
             }
+          } 
+          else if (should_kick_wind) {
+
+            /* Here we are NOT converting a gas to star, but we could kick! */
+            feedback_kick_and_decouple_part(p, xp, e, cosmo, 
+                                            feedback_props,
+                                            ti_current,
+                                            with_cosmology,
+                                            dt_star);
+
+          } else {
+#ifdef WITH_FOF_GALAXIES
+            /* Mark (possibly) as grouppable AFTER we know its not wind
+             * or a star particle.
+             */
+            fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
+                                        entropy_floor);
+#endif
           }
+
+          /* D. Rennehan: Logging needs to go AFTER decoupling */
+
+          /* Add the SFR and SFR*dt to the SFH struct of this cell */
+          star_formation_logger_log_active_part(p, xp, &c->stars.sfh, dt_star);
 
         } else { /* Are we not star-forming? */
 
           /* Update the particle to flag it as not star-forming */
           star_formation_update_part_not_SFR(p, xp, e, sf_props,
                                              with_cosmology);
+
+#ifdef WITH_FOF_GALAXIES
+          /* Mark (possibly) as grouppable AFTER we know the SFR */
+          fof_mark_part_as_grouppable(p, xp, e, cosmo, hydro_props, 
+                                      entropy_floor);
+#endif
 
         } /* Not Star-forming? */
 
@@ -963,8 +1039,10 @@ void runner_do_fof_self(struct runner *r, struct cell *c, int timer) {
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
+  const struct cosmology *cosmo = e->cosmology;
 
-  rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c);
+  rec_fof_search_self(e->fof_properties, dim, search_r2, periodic, gparts, c,
+                      cosmo);
 
   if (timer) TIMER_TOC(timer_fof_self);
 
@@ -994,9 +1072,10 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
   const double search_r2 = e->fof_properties->l_x2;
+  const struct cosmology *cosmo = e->cosmology;
 
   rec_fof_search_pair(e->fof_properties, dim, search_r2, periodic, gparts, ci,
-                      cj);
+                      cj, cosmo);
 
   if (timer) TIMER_TOC(timer_fof_pair);
 #else

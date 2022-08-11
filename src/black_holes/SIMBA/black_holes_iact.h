@@ -119,6 +119,9 @@ runner_iact_nonsym_bh_gas_density(
   /* Ignore decoupled winds in density computation */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
+  /* A black hole should never accrete/feedback if it is not in a galaxy */
+  if (bi->gpart->fof_data.group_mass <= 0.f) return;
+
   float wi, wi_dx;
 
   /* Compute the kernel function; note that r cannot be optimised
@@ -172,6 +175,9 @@ runner_iact_nonsym_bh_gas_density(
       is_hot_gas = 1;
     }
   }
+
+  /* Star forming gas is never considered "hot" */
+  if (xpj->sf_data.SFR > 0.f) is_hot_gas = 0;
 
   if (is_hot_gas) {
     bi->hot_gas_mass += mj;
@@ -238,88 +244,6 @@ runner_iact_nonsym_bh_gas_density(
   ++si->num_ngb_density;
 #endif
 
-  /* Gas particle id */
-  const long long gas_id = pj->id;
-
-  /* Choose AGN feedback model */
-  switch (bh_props->feedback_model) {
-    case AGN_isotropic_model: {
-      /* Compute arc lengths in AGN isotropic feedback and collect
-       * relevant data for later use in the feedback_apply loop */
-
-      /* Loop over rays */
-      for (int i = 0; i < eagle_blackhole_number_of_rays; i++) {
-
-        /* We generate two random numbers that we use
-        to randomly select the direction of the ith ray */
-
-        /* Random number in [0, 1[ */
-        const double rand_theta = random_unit_interval_part_ID_and_index(
-            bi->id, i, ti_current,
-            random_number_isotropic_AGN_feedback_ray_theta);
-
-        /* Random number in [0, 1[ */
-        const double rand_phi = random_unit_interval_part_ID_and_index(
-            bi->id, i, ti_current,
-            random_number_isotropic_AGN_feedback_ray_phi);
-
-        /* Compute arc length */
-        ray_minimise_arclength(dx, r, bi->rays + i,
-                               /*ray_type=*/ray_feedback_thermal, gas_id,
-                               rand_theta, rand_phi, mj, /*ray_ext=*/NULL,
-                               /*v=*/NULL);
-      }
-      break;
-    }
-    case AGN_minimum_distance_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this BH),
-       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
-       * maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
-
-      /* Minimise separation between the gas particles and the BH. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the BH. */
-      ray_minimise_distance(r, bi->rays, arr_size, gas_id, mj);
-      break;
-    }
-    case AGN_minimum_density_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this BH),
-       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
-       * maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
-
-      /* Minimise separation between the gas particles and the BH. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller distances to the BH. */
-      ray_minimise_distance(pj->rho, bi->rays, arr_size, gas_id, mj);
-      break;
-    }
-    case AGN_random_ngb_model: {
-      /* Compute the size of the array that we want to sort. If the current
-       * function is called for the first time (at this time-step for this BH),
-       * then bi->num_ngbs = 1 and there is nothing to sort. Note that the
-       * maximum size of the sorted array cannot be larger then the maximum
-       * number of rays. */
-      const int arr_size = min(bi->num_ngbs, eagle_blackhole_number_of_rays);
-
-      /* To mimic a random draw among all the particles in the kernel, we
-       * draw random distances in [0,1) and then pick the particle(s) with
-       * the smallest of these 'fake' distances */
-      const float dist = random_unit_interval_two_IDs(
-          bi->id, pj->id, ti_current, random_number_BH_feedback);
-
-      /* Minimise separation between the gas particles and the BH. The rays
-       * structs with smaller ids in the ray array will refer to the particles
-       * with smaller 'fake' distances to the BH. */
-      ray_minimise_distance(dist, bi->rays, arr_size, gas_id, mj);
-      break;
-    }
-  }
 }
 
 /**
@@ -479,6 +403,9 @@ runner_iact_nonsym_bh_gas_swallow(
   /* IMPORTANT: Do not even consider wind particles for accretion/feedback */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
+  /* A black hole should never accrete/feedback if it is not in a galaxy */
+  if (bi->gpart->fof_data.group_mass <= 0.f) return;
+  
   float wi;
 
   /* Compute the kernel function; note that r cannot be optimised
@@ -858,17 +785,21 @@ runner_iact_nonsym_bh_gas_feedback(
   /* This shouldn't happen, but just be sure anyway */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
+  /* A black hole should never accrete/feedback if it is not in a galaxy */
+  if (bi->gpart->fof_data.group_mass <= 0.f) return;
+
   /* Do X-ray feedback first */
   if (pj->black_holes_data.swallow_id != bi->id) {
-    /* We were not lucky, but we are lucky to heat via X-rays */
-    if (bi->v_kick > bh_props->xray_heating_velocity_threshold &&
-        bi->delta_energy_this_timestep < bi->energy_reservoir) {
-      const float f_gas =
-          bi->cold_gas_mass /
-          (bi->hot_gas_mass + bi->cold_gas_mass + bi->stellar_mass);
+        /* We were not lucky, but we are lucky to heat via X-rays */
+    if (bi->v_kick > bh_props->xray_heating_velocity_threshold
+        && bi->delta_energy_this_timestep < bi->energy_reservoir) {
+      const float group_gas_mass = bi->gpart->fof_data.group_mass -
+                                   bi->gpart->fof_data.group_stellar_mass;
 
-      float f_rad_loss = bh_props->xray_radiation_loss *
-                         (bh_props->xray_f_gas_limit - f_gas) /
+      const float f_gas = group_gas_mass / bi->gpart->fof_data.group_mass;
+
+      float f_rad_loss = bh_props->xray_radiation_loss * 
+                         (bh_props->xray_f_gas_limit - f_gas) / 
                          bh_props->xray_f_gas_limit;
       if (f_rad_loss > bh_props->xray_radiation_loss) {
         f_rad_loss = bh_props->xray_radiation_loss;
@@ -921,10 +852,21 @@ runner_iact_nonsym_bh_gas_feedback(
       bi->delta_energy_this_timestep += dE_this_step;
 
       /* Look for cold dense gas. Then push it. */
-      if (n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
-          T_gas_cgs < bh_props->xray_heating_T_threshold_cgs) {
-        const float dv_phys =
-            2.f * sqrtf(bh_props->xray_kinetic_fraction * du_xray_phys);
+
+      /* Check whether we are close to the entropy floor. If we are, we
+       * classify the gas as cold regardless of temperature.
+       * All star forming gas is considered cold.
+       */
+      const float T_EoS_cgs = entropy_floor_temperature(pj, cosmo, floor_props)
+                                  / bh_props->T_K_to_int;
+      if ((n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
+            (T_gas_cgs < bh_props->xray_heating_T_threshold_cgs ||
+                T_gas_cgs < T_EoS_cgs * bh_props->fixed_T_above_EoS_factor)) ||
+            xpj->sf_data.SFR > 0.f) {
+        const float dv_phys = 2.f * sqrtf(
+                                  bh_props->xray_kinetic_fraction * 
+                                  du_xray_phys
+                              );
         const float dv_comoving = dv_phys * cosmo->a;
         const float prefactor = dv_comoving / r;
 
@@ -938,6 +880,10 @@ runner_iact_nonsym_bh_gas_feedback(
         /* Update the signal velocity of the particle based on the velocity
          * kick. */
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
+        
+        /* Synchronize the particle on the timeline */
+        timestep_sync_part(pj);
+
       }
 
       const double u_new = u_init + du_xray_phys;
@@ -957,11 +903,12 @@ runner_iact_nonsym_bh_gas_feedback(
               bi->angular_momentum_gas[1] * bi->angular_momentum_gas[1] +
               bi->angular_momentum_gas[2] * bi->angular_momentum_gas[2]);
 
-#ifdef SWIFT_DEBUG_CHECKS
-    const float pj_vel_norm =
-        sqrtf(pj->gpart->v_full[0] * pj->gpart->v_full[0] +
-              pj->gpart->v_full[1] * pj->gpart->v_full[1] +
-              pj->gpart->v_full[2] * pj->gpart->v_full[2]);
+#ifdef SIMBA_DEBUG_CHECKS
+    const float pj_vel_norm = sqrtf(
+        pj->gpart->v_full[0] * pj->gpart->v_full[0] + 
+        pj->gpart->v_full[1] * pj->gpart->v_full[1] + 
+        pj->gpart->v_full[2] * pj->gpart->v_full[2]
+    );
 #endif
 
     /* TODO: random_uniform() won't work here?? */
@@ -975,11 +922,9 @@ runner_iact_nonsym_bh_gas_feedback(
     xpj->v_full[1] += prefactor * bi->angular_momentum_gas[1];
     xpj->v_full[2] += prefactor * bi->angular_momentum_gas[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
-    message(
-        "BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s, v_kick/v_part=%g",
-        bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal,
-        bi->v_kick * cosmo->a / pj_vel_norm);
+#ifdef SIMBA_DEBUG_CHECKS
+    message("BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s, v_kick/v_part=%g",
+       bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
 #endif
 
     /* Set delay time */
@@ -994,12 +939,9 @@ runner_iact_nonsym_bh_gas_feedback(
 
     /* If we have a jet, we heat! */
     if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
-#ifdef SWIFT_DEBUG_CHECKS
-      message(
-          "BH_KICK_JET: bid=%lld kicking pid=%lld at v_kick=%g km/s, "
-          "v_kick/v_part=%g",
-          bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal,
-          bi->v_kick * cosmo->a / pj_vel_norm);
+#ifdef SIMBA_DEBUG_CHECKS
+      message("BH_KICK_JET: bid=%lld kicking pid=%lld at v_kick=%g km/s, v_kick/v_part=%g",
+        bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
 #endif
 
       float new_Tj = 0.f;
@@ -1020,9 +962,9 @@ runner_iact_nonsym_bh_gas_feedback(
       if (new_Tj > bh_props->jet_temperature)
         new_Tj = bh_props->jet_temperature;
 
-#ifdef SWIFT_DEBUG_CHECKS
-      message("BH_KICK_JET_HEAT: bid=%lld heating pid=%lld to T=%g K", bi->id,
-              pj->id, new_Tj);
+#ifdef SIMBA_DEBUG_CHECKS
+      message("BH_KICK_JET_HEAT: bid=%lld heating pid=%lld to T=%g K",
+        bi->id, pj->id, new_Tj);
 #endif
 
       /* Compute new energy per unit mass of this particle */
@@ -1042,13 +984,31 @@ runner_iact_nonsym_bh_gas_feedback(
       }
     }
 
+#ifdef WITH_FOF_GALAXIES
+    /* Wind particles are never grouppable */
+    pj->gpart->fof_data.is_grouppable = 0;
+#endif
+
+    /* Wind cannot be star forming */
+    if (xpj->sf_data.SFR > 0.f) {
+
+      /* Record the current time as an indicator of when this particle was last
+        star-forming. */
+      if (with_cosmology) {
+        xpj->sf_data.SFR = -cosmo->a;
+      } else {
+        xpj->sf_data.SFR = -time;
+      }
+
+    }
+
     /* Impose maximal viscosity */
     hydro_diffusive_feedback_reset(pj);
 
     /* Synchronize the particle on the timeline */
     timestep_sync_part(pj);
 
-    /* IMPORTANT: The particle MUST NOT be swallowed.
+    /* IMPORTANT: The particle MUST NOT be swallowed. 
      * We are taking a f_accretion from each particle, and then
      * kicking the rest. We used the swallow marker as a temporary
      * passer in order to remember which particles have been "nibbled"

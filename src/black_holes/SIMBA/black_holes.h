@@ -767,43 +767,49 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     bp->v_kick = 0.f;
   }
 
-  message(
-      "BH_DETAILS "
-      "%2.12f %lld "
-      " %g %g %g %g %g %g %g "
-      " %g %g %g %g "
-      " %g %g %g %g %g "
-      " %2.10f %2.10f %2.10f "
-      " %2.7f %2.7f %2.7f "
-      " %g %g %g  %g %g %g"
-      " %g %g",
-      cosmo->a, bp->id, bp->mass * props->mass_to_solar_mass,
-      bp->subgrid_mass * props->mass_to_solar_mass,
-      disk_mass * props->mass_to_solar_mass,
-      bp->accretion_rate * props->mass_to_solar_mass / props->time_to_yr,
-      Bondi_rate * props->mass_to_solar_mass / props->time_to_yr,
-      torque_accr_rate * props->mass_to_solar_mass / props->time_to_yr,
-      dt * props->time_to_Myr,
-      (bp->rho_gas * cosmo->a3_inv) * props->rho_to_n_cgs,
-      bp->hot_gas_internal_energy * cosmo->a_factor_internal_energy *
-          props->conv_factor_specific_energy_to_cgs,
-      0.f /* SFR */,
-      (bp->hot_gas_mass + bp->cold_gas_mass) * props->mass_to_solar_mass,
-      bp->hot_gas_mass * props->mass_to_solar_mass,
-      bp->stellar_mass * props->mass_to_solar_mass, 0.f /* Mgas,bulge */,
-      bp->stellar_bulge_mass * props->mass_to_solar_mass,
-      r0 * 100.0f /* to pc */,
-      bp->x[0] * cosmo->a * props->length_to_parsec / 1.0e3f,
-      bp->x[1] * cosmo->a * props->length_to_parsec / 1.0e3f,
-      bp->x[2] * cosmo->a * props->length_to_parsec / 1.0e3f,
-      bp->v[0] * cosmo->a_inv / props->kms_to_internal,
-      bp->v[1] * cosmo->a_inv / props->kms_to_internal,
-      bp->v[2] * cosmo->a_inv / props->kms_to_internal,
-      bp->angular_momentum_gas[0], bp->angular_momentum_gas[1],
-      bp->angular_momentum_gas[2], bp->specific_angular_momentum_stars[0],
-      bp->specific_angular_momentum_stars[1],
-      bp->specific_angular_momentum_stars[2], bp->eddington_fraction,
-      (gas_rho * cosmo->a3_inv) * props->rho_to_n_cgs);
+  printf("BH_DETAILS "
+         "%2.12f %lld "
+         " %g %g %g %g %g %g %g "
+         " %g %g %g %g " 
+         " %g %g %g %g %g "
+         " %2.10f %2.10f %2.10f "
+         " %2.7f %2.7f %2.7f "
+         " %g %g %g  %g %g %g"
+         " %g %g\n",
+         cosmo->a,
+         bp->id,
+         bp->mass * props->mass_to_solar_mass, 
+         bp->subgrid_mass * props->mass_to_solar_mass, 
+         disk_mass * props->mass_to_solar_mass, 
+         bp->accretion_rate * props->mass_to_solar_mass / props->time_to_yr, 
+         Bondi_rate * props->mass_to_solar_mass / props->time_to_yr, 
+         torque_accr_rate * props->mass_to_solar_mass / props->time_to_yr, 
+         dt * props->time_to_Myr,
+         (bp->rho_gas * cosmo->a3_inv) * props->rho_to_n_cgs, 
+         bp->hot_gas_internal_energy * cosmo->a_factor_internal_energy * 
+             props->conv_factor_specific_energy_to_cgs, 
+         0.f /* SFR */, 
+         (bp->hot_gas_mass + bp->cold_gas_mass) * props->mass_to_solar_mass, 
+         bp->hot_gas_mass * props->mass_to_solar_mass, 
+         bp->stellar_mass * props->mass_to_solar_mass, 
+         0.f /* Mgas,bulge */, 
+         bp->stellar_bulge_mass * props->mass_to_solar_mass, 
+         r0 * 100.0f /* to pc */,
+         bp->x[0] * cosmo->a * props->length_to_parsec / 1.0e3f, 
+         bp->x[1] * cosmo->a * props->length_to_parsec / 1.0e3f, 
+         bp->x[2] * cosmo->a * props->length_to_parsec / 1.0e3f, 
+         bp->v[0] * cosmo->a_inv / props->kms_to_internal, 
+         bp->v[1] * cosmo->a_inv / props->kms_to_internal, 
+         bp->v[2] * cosmo->a_inv / props->kms_to_internal,
+         bp->angular_momentum_gas[0], 
+         bp->angular_momentum_gas[1], 
+         bp->angular_momentum_gas[2],
+         bp->specific_angular_momentum_stars[0], 
+         bp->specific_angular_momentum_stars[1], 
+         bp->specific_angular_momentum_stars[2],
+         bp->eddington_fraction,
+         (gas_rho * cosmo->a3_inv) * props->rho_to_n_cgs);
+
 }
 
 /**
@@ -1029,8 +1035,10 @@ black_holes_compute_xray_feedback(struct bpart* bp, const struct part* p,
 
   double S1 = 4.1e-35 * (1.9e7 - T_gas_cgs) * zeta;
 
-  /* Don't allow cooling of hot gas */
-  if (T_gas_cgs > 1.9e7) S1 = 0.;
+  /* Don't allow cooling of hot gas. 
+   * D. Rennehan: Simba actually does not have this check.
+   */
+  /* if (T_gas_cgs > 1.9e7) S1 = 0.; */
 
   const double zeta0_term1 =
       1. / (1.5 / sqrt(T_gas_cgs) + 1.5e12 / pow(T_gas_cgs, 2.5));
