@@ -71,9 +71,9 @@ w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=3)
 
 w.gas.coordinates = xp
 w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
-w.gas.masses = np.ones(nparts, dtype=np.float64) * 1000 * unyt.g
+w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
 w.gas.internal_energy = (
-    np.logspace(np.log10(umin.v), np.log10(umax.v), n_p) * unyt.erg / unyt.g
+    np.logspace(np.log10(umin.v), np.log10(umax.v), nparts) * unyt.erg / unyt.g
 )
 
 # Generate initial guess for smoothing lengths based on MIPS

@@ -19,10 +19,10 @@
 #ifndef SWIFT_RT_PROPERTIES_GEAR_H
 #define SWIFT_RT_PROPERTIES_GEAR_H
 
-#include "hydro.h" /* Need hydro_gamma */
+#include "rt_grackle_utils.h"
+#include "rt_interaction_rates.h"
 #include "rt_parameters.h"
 
-#include <grackle.h>
 #include <string.h>
 
 /**
@@ -51,6 +51,9 @@ struct rt_props {
 
   /* CFL condition */
   float CFL_condition;
+
+  /* Factor to limit cooling time by */
+  float f_limit_cooling_time;
 
   /* do we set initial ionization mass fractions manually? */
   int set_initial_ionization_mass_fractions;
@@ -83,8 +86,11 @@ struct rt_props {
   double stellar_spectrum_blackbody_T;
 
   /* Storage for integrated photoionization cross sections */
+  /* Note: they are always in cgs. */
   double** energy_weighted_cross_sections;
   double** number_weighted_cross_sections;
+  /* Mean photon energy in frequency bin for user provided spectrum. In erg.*/
+  double average_photon_energy[RT_NGROUPS];
 
   /* Grackle Stuff */
   /* ------------- */
@@ -128,12 +134,25 @@ struct rt_props {
 #endif
 };
 
-/* Declare this here to avoid cyclical inclusions.
- * It needs to be after definition of rt_props, but
- * before the call to rt_props_init.*/
-void rt_interaction_rates_init(struct rt_props* restrict rt_props,
-                               const struct phys_const* restrict phys_const,
-                               const struct unit_system* restrict us);
+/* Some declarations to avoid cyclical inclusions. */
+/* ----------------------------------------------- */
+/* Keep the declarations for *after* the definition of rt_props struct */
+
+/**
+ * @brief allocate and pre-compute the averaged cross sections
+ * for each photon group and ionizing species.
+ * Declare this here to avoid cyclical inclusions.
+ *
+ * @param rt_props RT properties struct
+ * @param phys_const physical constants struct
+ * @param us internal units struct
+ **/
+void rt_cross_sections_init(struct rt_props* restrict rt_props,
+                            const struct phys_const* restrict phys_const,
+                            const struct unit_system* restrict us);
+
+/* Now for the good stuff                */
+/* ------------------------------------- */
 
 /**
  * @brief open up files to write some debugging check outputs.
@@ -173,85 +192,6 @@ static void rt_props_open_debugging_files(struct rt_props* rtp,
   }
 };
 #endif
-
-/**
- * @brief initialize grackle during rt_props_init
- *
- * @param rtp #rt_props struct
- * @param us #unit_system struct
- **/
-__attribute__((always_inline)) INLINE static void rt_props_init_grackle(
-    struct rt_props* rtp, const struct unit_system* us) {
-
-  /* TODO: cleanup later with all other grackle stuff */
-  /* #ifdef SWIFT_RT_DEBUG_CHECKS */
-  /*   grackle_verbose = 1; */
-  /* #endif */
-
-  /* Initialize units */
-  /* ---------------- */
-  /* we assume all quantities to be physical, not comoving */
-  rtp->grackle_units.a_units = 1.0;
-  rtp->grackle_units.a_value = 1.0;
-  rtp->grackle_units.comoving_coordinates = 0;
-  rtp->grackle_units.density_units =
-      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
-  rtp->grackle_units.length_units =
-      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH);
-  rtp->grackle_units.time_units =
-      units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-  rtp->grackle_units.velocity_units =
-      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
-
-  /* Chemistry Parameters */
-  /* -------------------- */
-  /* More details on https://grackle.readthedocs.io/en/latest/Parameters.html */
-
-  /* TODO: cleanup later with all other grackle stuff */
-  /* rtp->grackle_chemistry_data = _set_default_chemistry_parameters(); */
-  if (set_default_chemistry_parameters(&rtp->grackle_chemistry_data) == 0) {
-    error("Error in set_default_chemistry_parameters.");
-  }
-  /* chemistry on */
-  rtp->grackle_chemistry_data.use_grackle = 1;
-  /* cooling on */
-  /* NOTE: without cooling on, it also won't heat... */
-  rtp->grackle_chemistry_data.with_radiative_cooling = 1;
-  /* 6 species atomic H and He. */
-  rtp->grackle_chemistry_data.primordial_chemistry = 1;
-  /* dust processes */
-  rtp->grackle_chemistry_data.dust_chemistry = 0;
-  /* H2 formation on dust */
-  rtp->grackle_chemistry_data.h2_on_dust = 0;
-  /* metal cooling (uses Cloudy) off (for now) */
-  rtp->grackle_chemistry_data.metal_cooling = 0;
-  /* no cooling below CMB temperature */
-  rtp->grackle_chemistry_data.cmb_temperature_floor = 1;
-  /* UV background off */
-  rtp->grackle_chemistry_data.UVbackground = 0;
-  /* data file - currently not used. */
-  rtp->grackle_chemistry_data.grackle_data_file = "";
-  /* adiabatic index */
-  rtp->grackle_chemistry_data.Gamma = hydro_gamma;
-  /* we'll provide grackle with ionization and heating rates from RT */
-  rtp->grackle_chemistry_data.use_radiative_transfer = 1;
-  /* fraction by mass of Hydrogen in the metal-free portion of the gas */
-  rtp->grackle_chemistry_data.HydrogenFractionByMass =
-      rtp->hydrogen_mass_fraction;
-
-  /* TODO: cleanup later with all other grackle stuff */
-  /* Initialize the chemistry_data_storage object to be
-   * able to use local functions */
-  /* chemistry_data_storage* chem_data_storage = */
-  /*     malloc(sizeof(chemistry_data_storage)); */
-  /* rtp->grackle_chemistry_rates = chem_data_storage; */
-  /* if (!_initialize_chemistry_data(&rtp->grackle_chemistry_data, */
-  /*                                 rtp->grackle_chemistry_rates, */
-  /*                                 &rtp->grackle_units)) { */
-  if (initialize_chemistry_data(&rtp->grackle_units) == 0) {
-    error("Error in _initialize_chemistry_data");
-  }
-}
 
 /**
  * @brief Print the RT model.
@@ -332,6 +272,15 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
     rtp->photon_groups[0] = 0.f;
   }
 
+  /* Sanity check. */
+  for (int g = 0; g < RT_NGROUPS - 1; g++) {
+    if (rtp->photon_groups[g + 1] <= rtp->photon_groups[g])
+      error(
+          "Photon frequency bin edges need to be in increasing order. "
+          "Found index %d %.3g <= %.3g",
+          g + 1, rtp->photon_groups[g + 1], rtp->photon_groups[g]);
+  }
+
   /* Are we using constant emission rates? */
   /* ------------------------------------- */
   rtp->use_const_emission_rates = parser_get_opt_param_int(
@@ -354,6 +303,8 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   /* get reduced speed of light factor */
   /* --------------------------------- */
   const float f_r = parser_get_param_float(params, "GEARRT:f_reduce_c");
+  if (f_r <= 0.f)
+    error("Invalid speed of light reduction factor: %.3e <= 0.", f_r);
   rt_params.reduced_speed_of_light = phys_const->const_speed_light_c * f_r;
   rt_params.reduced_speed_of_light_inverse =
       1.f / rt_params.reduced_speed_of_light;
@@ -361,13 +312,25 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   /* get CFL condition */
   /* ----------------- */
   const float CFL = parser_get_param_float(params, "GEARRT:CFL_condition");
+  if (CFL <= 0.f) error("Invalid CFL number: %.3e <= 0.", CFL);
   rtp->CFL_condition = CFL;
+
+  const float f_limit_cooling_time = parser_get_opt_param_float(
+      params, "GEARRT:f_limit_cooling_time", /*default=*/0.9);
+  if (f_limit_cooling_time < 0.f)
+    error("Invalid cooling time reduction factor: %.3e < 0.",
+          f_limit_cooling_time);
+  else if (f_limit_cooling_time == 0.f)
+    message("Warning: Computation of cooling time will be skipped");
+  rtp->f_limit_cooling_time = f_limit_cooling_time;
 
   /* Get thermochemistry set-up */
   /* -------------------------- */
   rtp->hydrogen_mass_fraction =
       parser_get_param_float(params, "GEARRT:hydrogen_mass_fraction");
   rtp->helium_mass_fraction = 1.f - rtp->hydrogen_mass_fraction;
+  if (rtp->hydrogen_mass_fraction <= 0.f || rtp->hydrogen_mass_fraction > 1.f)
+    error("Invalid hydrogen mass fraction: %g", rtp->hydrogen_mass_fraction);
 
   /* Are we manually overwriting initial mass fractions of H and He? */
   rtp->set_initial_ionization_mass_fractions = parser_get_opt_param_int(
@@ -486,11 +449,15 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   /* Grackle setup */
   /* ------------- */
-  rt_props_init_grackle(rtp, us);
+  rt_init_grackle(&rtp->grackle_units, &rtp->grackle_chemistry_data,
+                  rtp->hydrogen_mass_fraction, us, params);
 
   /* Pre-compute interaction rates/cross sections */
   /* -------------------------------------------- */
-  rt_interaction_rates_init(rtp, phys_const, us);
+
+  rtp->energy_weighted_cross_sections = NULL;
+  rtp->number_weighted_cross_sections = NULL;
+  rt_cross_sections_init(rtp, phys_const, us);
 
   /* Finishers */
   /* --------- */
