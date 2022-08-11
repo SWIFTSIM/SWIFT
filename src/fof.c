@@ -160,20 +160,20 @@ void fof_init(struct fof_props *props, struct swift_params *params,
     /* Convert to internal units */
     props->seed_halo_mass *= phys_const->const_solar_mass;
 
-    int with_gas_fof = 0;
-    int with_dm_fof = 0;
-    int with_dm_background_fof = 0;
-    int with_stars_fof = 1;
-    int with_black_hole_fof = 1;
+    props->with_gas_fof = parser_get_param_int(params, "FOF:with_gas_fof");
+    props->with_dm_fof = parser_get_param_int(params, "FOF:with_dm_fof");
+    props->with_dm_background_fof = parser_get_param_int(params, "FOF:with_dm_background_fof");
+    props->with_stars_fof = parser_get_param_int(params, "FOF:with_stars_fof");
+    props->with_black_hole_fof = parser_get_param_int(params, "FOF:with_black_hole_fof");
 
-    /* Initialize the fof mode */
+    /* Initialize the FoF mode */
     current_fof_policy = 0;
-    if (with_gas_fof) current_fof_policy |= fof_policy_gas;
-    if (with_dm_fof) current_fof_policy |= fof_policy_dark_matter;
-    if (with_dm_background_fof) current_fof_policy |= fof_policy_dark_matter_background;
-    if (with_stars_fof) current_fof_policy |= fof_policy_stars;
-    if (with_black_hole_fof) current_fof_policy |= fof_policy_black_holes;
-    message("fof policy = %d", current_fof_policy); 
+    if (props->with_gas_fof) current_fof_policy |= fof_policy_gas;
+    if (props->with_dm_fof) current_fof_policy |= fof_policy_dark_matter;
+    if (props->with_dm_background_fof) current_fof_policy |= fof_policy_dark_matter_background;
+    if (props->with_stars_fof) current_fof_policy |= fof_policy_stars;
+    if (props->with_black_hole_fof) current_fof_policy |= fof_policy_black_holes;
+    message("FoF policy = %d", current_fof_policy); 
 
     message("%d %d %d %d %d", !(current_fof_policy & (1<<0)), !(current_fof_policy & (1<<1)), !(current_fof_policy & (1<<2)), !(current_fof_policy & (1<<4)), !(current_fof_policy & (1<<5)));
 
@@ -849,7 +849,7 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     /* Ignore neutrinos */
     if (pi->type == swift_type_neutrino) continue;
 
-    /* Check if the particle if the particle is in the fof policy  */
+    /* Check if the particle if the particle is in the FoF policy  */
     if (!(current_fof_policy & (1<<pi->type))) continue;
 
 
@@ -970,7 +970,7 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     /* Ignore neutrinos */
     if (pi->type == swift_type_neutrino) continue;
 
-    /* Ignore particles not being a star */
+    /* Ignore particles not being in the current FoF policy */
     if (!(current_fof_policy & (1<<pi->type))) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS

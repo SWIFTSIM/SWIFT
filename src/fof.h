@@ -110,6 +110,17 @@ struct fof_props {
   /*! The links between pairs of particles on this node and a foreign
    * node */
   struct fof_mpi *group_links;
+
+  /* ------- Particle types included in the FoF ------- */
+  int with_gas_fof;
+
+  int with_dm_fof;
+
+  int with_dm_background_fof;
+
+  int with_stars_fof;
+
+  int with_black_hole_fof;
 };
 
 /* Store group size and offset into array. */
