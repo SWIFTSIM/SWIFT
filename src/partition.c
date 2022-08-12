@@ -451,8 +451,6 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts,
   double *gcounts = NULL;
   double hsize = 0.0;
   double ssize = 0.0;
-  
-  message("Set up mapper data");
 
   if (s->nr_gparts > 0) {
     /* Self-gravity gets more efficient with density (see gitlab issue #640)
@@ -465,15 +463,11 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts,
     bzero(gcounts, sizeof(double) * nr_cells);
     gsize = (double)sizeof(struct gpart);
 
-    message("Completed counts allocation");
-
     mapper_data.counts = gcounts;
     mapper_data.size = gsize;
     threadpool_map(&s->e->threadpool, accumulate_sizes_mapper_gpart, s->gparts,
                    s->nr_gparts, sizeof(struct gpart), space_splitsize,
                    &mapper_data);
-
-    message("Applied gpart threadpool mapper in accumulate sizes");
 
     /* Get all the counts from all the nodes. */
     if (MPI_Allreduce(MPI_IN_PLACE, gcounts, nr_cells, MPI_DOUBLE, MPI_SUM,
@@ -920,6 +914,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     int nxadj = 0;
     graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
                &nxadj, ncells);
+
+    message("Completed graph init");
 
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
@@ -2050,8 +2046,6 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Check each particle and accumulate the sizes per cell. */
       accumulate_sizes(s, s->e->verbose, weights_v, nr_cells);
 
-      message("Completed accumulate sizes");
-
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
       /* Particle sizes also counted towards the edges. */
@@ -2064,8 +2058,6 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Check each particle and accumulate the sizes per cell. */
       accumulate_sizes(s, s->e->verbose, weights_v, nr_cells);
-
-      message("Completed accumulate sizes");
 
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e, nr_cells);
