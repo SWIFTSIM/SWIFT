@@ -259,6 +259,7 @@ if __name__ == "__main__":
             t, photon_energies[g, :], label=f"photon energies group {g+1}", **plotkwargs
         )
     ax4.plot(t, u, label=r"gas internal energy", **plotkwargs)
+
     ax4.set_yscale("log")
     ax4.set_xlabel("time [Myr]")
     ax4.set_ylabel(
@@ -268,6 +269,8 @@ if __name__ == "__main__":
     ax4.legend(prop=legendprops)
     ax4.grid()
 
+    for ax in fig.axes:
+        ax.set_xscale("log")
+
     plt.tight_layout()
-    #  plt.show()
     plt.savefig("heating_test.png")

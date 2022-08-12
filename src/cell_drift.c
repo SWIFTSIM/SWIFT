@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "cell.h"
@@ -358,6 +358,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       /* Get ready for a density calculation */
       if (part_is_active(p, e)) {
         hydro_init_part(p, &e->s->hs);
+        mhd_init_part(p);
         black_holes_init_potential(&p->black_holes_data);
         chemistry_init_part(p, e->chemistry);
         pressure_floor_init_part(p, xp);

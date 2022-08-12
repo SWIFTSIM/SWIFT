@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "space.h"
@@ -31,6 +31,7 @@
 #include "engine.h"
 #include "feedback.h"
 #include "gravity.h"
+#include "mhd.h"
 #include "neutrino.h"
 #include "particle_splitting.h"
 #include "pressure_floor.h"
@@ -110,6 +111,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
   for (int k = 0; k < count; k++) {
 
     hydro_first_init_part(&p[k], &xp[k]);
+    mhd_first_init_part(&p[k], &xp[k], &hydro_props->mhd, s->dim[0]);
     p[k].limiter_data.min_ngb_time_bin = num_time_bins + 1;
     p[k].limiter_data.wakeup = time_bin_not_awake;
     p[k].limiter_data.to_be_synchronized = 0;
@@ -146,7 +148,7 @@ void space_first_init_parts_mapper(void *restrict map_data, int count,
     particle_splitting_mark_part_as_not_split(&xp[k].split_data, p[k].id);
 
     /* And the radiative transfer */
-    rt_first_init_part(&p[k], rt_props);
+    rt_first_init_part(&p[k], cosmo, rt_props);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check part->gpart->part linkeage. */

@@ -21,7 +21,7 @@
 #define SWIFT_EXTRA_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the i/o routines the user asked for */
 #if defined(EXTRA_IO_EAGLE)

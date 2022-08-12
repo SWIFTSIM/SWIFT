@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #ifdef WITH_FOF
 
@@ -2213,7 +2213,8 @@ void fof_seed_black_holes(const struct fof_props *props,
 #endif
 
       /* Copy over all the gas properties that we want */
-      black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp);
+      black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp,
+                                  s->e->ti_current);
 
       /* Move to the next BH slot */
       k++;

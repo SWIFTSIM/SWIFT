@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -582,6 +582,7 @@ int main(int argc, char *argv[]) {
 
   struct phys_const prog_const;
   prog_const.const_newton_G = 1.f;
+  prog_const.const_vacuum_permeability = 1.0;
 
   struct hydro_props hp;
   hydro_props_init_no_hydro(&hp);

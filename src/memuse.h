@@ -20,7 +20,7 @@
 #define SWIFT_MEMUSE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include <stdlib.h>

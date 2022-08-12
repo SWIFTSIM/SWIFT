@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -486,6 +486,10 @@ int main(int argc, char *argv[]) {
   engine.max_active_bin = num_time_bins;
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
+
+  struct phys_const prog_const;
+  prog_const.const_vacuum_permeability = 1.0;
+  engine.physical_constants = &prog_const;
 
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);

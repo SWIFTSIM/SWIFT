@@ -89,6 +89,33 @@ to select between:
     - In this case, you need to provide also temperature of the blackbody via the 
       ``stellar_spectrum_blackbody_temperature_K`` parameter.
 
+.. warning::
+   The ``stellar_spectrum_type`` parameter also determines the averaged photon 
+   interaction cross sections, as they are being computed by integrating a 
+   parametrization of the cross section multiplied by the assumed spectrum. See
+   e.g. equations 9 - 11 in `Rosdahl et al. 2013. 
+   <https://ui.adsabs.harvard.edu/abs/2013MNRAS.436.2188R/abstract>`_
+
+
+
+
+Choice of Internal Units
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The choice of internal units requires a bit of special attention. Part of the 
+reason is that the exponents of the gas and radiation variables can quickly 
+change by several dozens and cause overflows and other errors. Furthermore, the 
+grackle library may have some other troubles with the units, e.g. when trying to
+find a converging solution. [#f2]_
+
+For this reason, I **strongly encourage** you to run the Internal Units check for 
+GEAR-RT which you can find in the 
+`swiftsim-rt-tools <https://github.com/SWIFTSIM/swiftsim-rt-tools/GEARRTUnitCheck>`_ 
+repository under ``/GEARRTUnitsCheck``. The test should take no more than a 
+minute to run, and requires only two yaml parameter files: the yaml parameter 
+file that you intend to run your simulation with, and one that a provided script 
+can extract automatically from the initial conditions hdf5 file. This test can 
+save you a lot of headaches down the line.
 
 
 
@@ -349,3 +376,16 @@ useful:
    The addition of the particle volume term for the radiation flux was made so
    that the initial conditions are compatible with the SPHM1RT conventions, and
    both methods can run on the exact same ICs.
+
+
+.. [#f2] For example, choosing cgs units as the interal units may lead to
+   trouble with grackle. (Trouble like a gas at 10^6K without any heating
+   sources heating up instead of cooling down.) The library is set up to work 
+   with units geared towards cosmology. According to Britton Smith (private comm), 
+   a decent rule of thumb is density_units ~ proton mass in g, time_units ~ 1 Myr 
+   to 1 Gyr in s, length_units ~ 1 kpc to 1 Mpc in cm. This should keep you in a 
+   relatively safe range.
+   This is the state of things at 08.2022, with grackle being at version 3.2 (commit
+   ``a089c837b8649c97b53ed3c51c84b1decf5073d8``)
+    
+

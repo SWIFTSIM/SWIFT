@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "runner.h"
@@ -385,7 +385,8 @@ void runner_do_bh_swallow(struct runner *r, struct cell *c, int timer) {
             /* Swallow the BH particle (i.e. update the swallowing BH
              * properties with the properties of cell_bp) */
             black_holes_swallow_bpart(bp, cell_bp, e->cosmology, e->time,
-                                      with_cosmology, props);
+                                      with_cosmology, props,
+                                      e->physical_constants);
 
             /* Release the space as we are done updating the bpart */
             if (lock_unlock(&s->lock) != 0)

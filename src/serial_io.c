@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
 
@@ -49,6 +49,7 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "memuse.h"
+#include "mhd_io.h"
 #include "output_list.h"
 #include "output_options.h"
 #include "part.h"
@@ -804,6 +805,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
             if (with_hydro) {
               Nparticles = *Ngas;
               hydro_read_particles(*parts, list, &num_fields);
+              num_fields += mhd_read_particles(*parts, list + num_fields);
               num_fields += chemistry_read_particles(*parts, list + num_fields);
               num_fields += rt_read_particles(*parts, list + num_fields);
             }

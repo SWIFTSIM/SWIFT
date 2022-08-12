@@ -13,7 +13,7 @@ then
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=16 vacuum.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=16 vacuum.yml 2>&1 | tee output.log
 
 # Get the reference solution if it is not present.
 if [ ! -e vacuumSpherical3D_exact.txt ]

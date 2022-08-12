@@ -20,12 +20,13 @@
 #define SWIFT_KICK_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "black_holes.h"
 #include "const.h"
 #include "debug.h"
+#include "mhd.h"
 #include "rt.h"
 #include "sink.h"
 #include "stars.h"
@@ -273,6 +274,8 @@ __attribute__((always_inline)) INLINE static void kick_part(
   hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_mesh_grav,
                    dt_kick_hydro, dt_kick_corr, cosmo, hydro_props,
                    floor_props);
+  mhd_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
+                 dt_kick_corr, cosmo, hydro_props, floor_props);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt_kick_grav);
 }
 

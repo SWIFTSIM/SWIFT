@@ -23,8 +23,9 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
+/* System includes. */
 #include <hdf5.h>
 #include <math.h>
 #include <stdlib.h>

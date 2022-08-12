@@ -23,7 +23,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <errno.h>
@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
   struct pm_mesh mesh;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
+  struct hydro_props hydro_properties;
   struct fof_props fof_properties;
   struct neutrino_props neutrino_properties;
   struct part *parts = NULL;
@@ -435,6 +436,12 @@ int main(int argc, char *argv[]) {
     cosmology_init_no_cosmo(&cosmo);
   if (myrank == 0 && with_cosmology) cosmology_print(&cosmo);
 
+  /* Initialise the hydro properties */
+  if (with_hydro)
+    hydro_props_init(&hydro_properties, &prog_const, &us, params);
+  else
+    bzero(&hydro_properties, sizeof(struct hydro_props));
+
   /* Initialise the equation of state */
   if (with_hydro)
     eos_init(&eos, &prog_const, &us, params);
@@ -646,8 +653,8 @@ int main(int argc, char *argv[]) {
       N_total[swift_type_count], N_total[swift_type_sink],
       N_total[swift_type_stars], N_total[swift_type_black_hole],
       N_total[swift_type_dark_matter_background], N_total[swift_type_neutrino],
-      engine_policies, talking, &us, &prog_const, &cosmo,
-      /*hydro_properties=*/NULL, /*entropy_floor=*/NULL, &gravity_properties,
+      engine_policies, talking, &us, &prog_const, &cosmo, &hydro_properties,
+      /*entropy_floor=*/NULL, &gravity_properties,
       /*stars_properties=*/NULL, /*black_holes_properties=*/NULL,
       /*sink_properties=*/NULL, &neutrino_properties,
       /*neutrino_response=*/NULL, /*feedback_properties=*/NULL,
@@ -657,7 +664,8 @@ int main(int argc, char *argv[]) {
       /*extra_io_props=*/NULL, &fof_properties, /*los_properties=*/NULL,
       /*lightcone_properties=*/NULL, &ics_metadata);
   engine_config(/*restart=*/0, /*fof=*/1, &e, params, nr_nodes, myrank,
-                nr_threads, nr_threads, with_aff, talking, NULL, &reparttype);
+                nr_threads, nr_threads, with_aff, talking, NULL, NULL,
+                &reparttype);
 
   /* Get some info to the user. */
   if (myrank == 0) {
@@ -698,6 +706,13 @@ int main(int argc, char *argv[]) {
   /* Perform the FOF search */
   engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0, /*seed_black_holes=*/0,
              /*buffers allocated=*/1);
+
+  /* Update the policies to make sure the particles are written
+   * if they exist */
+  if (with_hydro) e.policy |= engine_policy_hydro;
+  if (with_stars) e.policy |= engine_policy_stars;
+  if (with_black_holes) e.policy |= engine_policy_black_holes;
+  if (with_sinks) e.policy |= engine_policy_sinks;
 
   /* Write output. */
   engine_dump_snapshot(&e);

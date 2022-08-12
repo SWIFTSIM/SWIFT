@@ -24,6 +24,8 @@
  * @brief Main header file for the debug radiative transfer scheme properties.
  */
 
+#define RT_IMPLEMENTATION "debug"
+
 /**
  * @brief Properties of the debug radiative transfer model
  */

@@ -23,7 +23,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <errno.h>
@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
   int with_mpole_reconstruction = 0;
   int with_structure_finding = 0;
   int with_csds = 0;
-  int with_sink = 0;
+  int with_sinks = 0;
   int with_qla = 0;
   int with_eagle = 0;
   int with_gear = 0;
@@ -241,8 +241,8 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN('S', "stars", &with_stars, "Run with stars.", NULL, 0, 0),
       OPT_BOOLEAN('B', "black-holes", &with_black_holes,
                   "Run with black holes.", NULL, 0, 0),
-      OPT_BOOLEAN('k', "sinks", &with_sink, "Run with sink particles.", NULL, 0,
-                  0),
+      OPT_BOOLEAN('k', "sinks", &with_sinks, "Run with sink particles.", NULL,
+                  0, 0),
       OPT_BOOLEAN(
           'u', "fof", &with_fof,
           "Run Friends-of-Friends algorithm to perform black hole seeding.",
@@ -494,13 +494,13 @@ int main(int argc, char *argv[]) {
 #endif
 
 #ifdef WITH_MPI
-  if (with_sink) {
+  if (with_sinks) {
     printf("Error: sink particles are not available yet with MPI.\n");
     return 1;
   }
 #endif
 
-  if (with_sink && with_star_formation) {
+  if (with_sinks && with_star_formation) {
     printf(
         "Error: The sink particles are not supposed to be run with star "
         "formation.\n");
@@ -644,7 +644,7 @@ int main(int argc, char *argv[]) {
 #endif /* idfef RT_NONE */
 
 #ifdef SINK_NONE
-  if (with_sink) {
+  if (with_sinks) {
     error("Running with sink particles but compiled without them!");
   }
 #endif
@@ -886,25 +886,6 @@ int main(int argc, char *argv[]) {
   parser_get_opt_param_string(params, "Restarts:basename", restart_name,
                               "swift");
 
-  /* How often to check for the stop file and dump restarts and exit the
-   * application. */
-  const int restart_stop_steps =
-      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
-
-  /* Get the maximal wall-clock time of this run */
-  const float restart_max_hours_runtime =
-      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
-
-  /* Do we want to resubmit when we hit the limit? */
-  const int resubmit_after_max_hours =
-      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
-
-  /* What command should we run to resubmit at the end? */
-  char resubmit_command[PARSER_MAX_LINE_SIZE];
-  if (resubmit_after_max_hours)
-    parser_get_param_string(params, "Restarts:resubmit_command",
-                            resubmit_command);
-
   /* If restarting, look for the restart files. */
   if (restart) {
 
@@ -994,12 +975,18 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_file,
-                  &reparttype);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
+                  restart_file, &reparttype);
 
     /* Check if we are already done when given steps on the command-line. */
     if (e.step >= nsteps && nsteps > 0)
       error("Not restarting, already completed %d steps", e.step);
+
+    /* If we are restarting at the very end of a run, just build the tree and
+     * prepare to dump.
+     * The main simulation loop below (where rebuild normally happens) won't be
+     * executed. */
+    if (engine_is_done(&e)) space_rebuild(e.s, /*repartitioned=*/0, e.verbose);
 
   } else {
 
@@ -1135,7 +1122,7 @@ int main(int argc, char *argv[]) {
       bzero(&black_holes_properties, sizeof(struct black_holes_props));
 
     /* Initialise the sink properties */
-    if (with_sink) {
+    if (with_sinks) {
       sink_props_init(&sink_properties, &prog_const, &us, params, &cosmo);
     } else
       bzero(&sink_properties, sizeof(struct sink_props));
@@ -1223,7 +1210,7 @@ int main(int argc, char *argv[]) {
     read_ic_parallel(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                      &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
                      &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
-                     with_gravity, with_sink, with_stars, with_black_holes,
+                     with_gravity, with_sinks, with_stars, with_black_holes,
                      with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h,
                      cosmo.a, myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL,
                      nr_threads, dry_run, remap_ids, &ics_metadata);
@@ -1231,7 +1218,7 @@ int main(int argc, char *argv[]) {
     read_ic_serial(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
-                   with_gravity, with_sink, with_stars, with_black_holes,
+                   with_gravity, with_sinks, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    myrank, nr_nodes, MPI_COMM_WORLD, MPI_INFO_NULL, nr_threads,
                    dry_run, remap_ids, &ics_metadata);
@@ -1240,7 +1227,7 @@ int main(int argc, char *argv[]) {
     read_ic_single(ICfileName, &us, dim, &parts, &gparts, &sinks, &sparts,
                    &bparts, &Ngas, &Ngpart, &Ngpart_background, &Nnupart,
                    &Nsink, &Nspart, &Nbpart, &flag_entropy_ICs, (with_hydro || with_grid_hydro),
-                   with_gravity, with_sink, with_stars, with_black_holes,
+                   with_gravity, with_sinks, with_stars, with_black_holes,
                    with_cosmology, cleanup_h, cleanup_sqrt_a, cosmo.h, cosmo.a,
                    nr_threads, dry_run, remap_ids, &ics_metadata);
 #endif
@@ -1278,7 +1265,7 @@ int main(int argc, char *argv[]) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_gas) error("Linking problem");
     }
-    if (!with_sink && !dry_run) {
+    if (!with_sinks && !dry_run) {
       for (size_t k = 0; k < Ngpart; ++k)
         if (gparts[k].type == swift_type_sink) error("Linking problem");
     }
@@ -1353,7 +1340,7 @@ int main(int argc, char *argv[]) {
     space_init(&s, params, &cosmo, dim, &hydro_properties, parts, gparts, sinks,
                sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart, Nnupart,
                periodic, replicate, remap_ids, generate_gas_in_ics, (with_hydro || with_grid_hydro),
-               with_self_gravity, with_star_formation, with_sink,
+               with_self_gravity, with_star_formation, with_sinks,
                with_DM_particles, with_DM_background_particles, with_neutrinos,
                talking, dry_run, nr_nodes);
 
@@ -1503,7 +1490,7 @@ int main(int argc, char *argv[]) {
     if (with_fof) engine_policies |= engine_policy_fof;
     if (with_csds) engine_policies |= engine_policy_csds;
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
-    if (with_sink) engine_policies |= engine_policy_sinks;
+    if (with_sinks) engine_policies |= engine_policy_sinks;
     if (with_rt) engine_policies |= engine_policy_rt;
     if (with_power) engine_policies |= engine_policy_power_spectra;
     if (with_grid_hydro) engine_policies |= engine_policy_grid_hydro;
@@ -1523,8 +1510,8 @@ int main(int argc, char *argv[]) {
                 &chemistry, &extra_io_props, &fof_properties, &los_properties,
                 &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_file,
-                  &reparttype);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
+                  restart_file, &reparttype);
 
     /* Compute some stats for the star formation */
     if (with_star_formation) {
@@ -1617,7 +1604,7 @@ int main(int argc, char *argv[]) {
     if (!e.output_list_stats) engine_print_stats(&e);
 
     /* Is there a dump before the end of the first time-step? */
-    engine_check_for_dumps(&e);
+    engine_io(&e);
   }
 
   /* Legend */
@@ -1689,7 +1676,7 @@ int main(int argc, char *argv[]) {
 
   /* Main simulation loop */
   /* ==================== */
-  int force_stop = 0, resubmit = 0;
+  int force_stop = 0;
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps && !force_stop;
        j++) {
 
@@ -1697,30 +1684,15 @@ int main(int argc, char *argv[]) {
     timers_reset_all();
 
     /* Take a step. */
-    engine_step(&e);
+    force_stop = engine_step(&e);
 
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
 
-    /* Every so often allow the user to stop the application and dump the
-     * restart files. */
-    if (j % restart_stop_steps == 0) {
-      force_stop = restart_stop_now(restart_dir, 0);
-      if (myrank == 0 && force_stop)
-        message("Forcing application exit, dumping restart files...");
-    }
-
-    /* Did we exceed the maximal runtime? */
-    if (e.runtime > restart_max_hours_runtime) {
-      force_stop = 1;
-      message("Runtime limit reached, dumping restart files...");
-      if (resubmit_after_max_hours) resubmit = 1;
-    }
-
-    /* Also if using nsteps to exit, will not have saved any restarts on exit,
-     * make sure we do that (useful in testing only). */
-    if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
-      engine_dump_restarts(&e, 0, 1);
+    /* Shall we write some check-point files?
+     * Note that this was already done by engine_step() if force_stop is set */
+    if (e.restart_onexit && e.step - 1 == nsteps && !force_stop)
+      engine_dump_restarts(&e, /*drifted=*/0, /*force=*/1);
 
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
@@ -1764,7 +1736,7 @@ int main(int argc, char *argv[]) {
                j + 1);
       mpiuse_log_dump(dumpfile, e.tic_step);
     }
-#endif  // WITH_MPI
+#endif
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */
@@ -1780,7 +1752,7 @@ int main(int argc, char *argv[]) {
     } else {
       threadpool_reset_log(&e.threadpool);
     }
-#endif  // SWIFT_DEBUG_THREADPOOL
+#endif
   }
 
   /* Write final time information */
@@ -1898,9 +1870,9 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) force_stop = restart_stop_now(restart_dir, 1);
 
   /* Did we want to run a re-submission command just before dying? */
-  if (myrank == 0 && resubmit) {
+  if (myrank == 0 && e.resubmit) {
     message("Running the resubmission command:");
-    restart_resubmit(resubmit_command);
+    restart_resubmit(e.resubmit_command);
     fflush(stdout);
     fflush(stderr);
     message("resubmission command completed.");

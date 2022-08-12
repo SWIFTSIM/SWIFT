@@ -51,8 +51,8 @@ unit_velocity_cgs = float(params.attrs["InternalUnitSystem:UnitVelocity_in_cgs"]
 unit_time_cgs = unit_length_cgs / unit_velocity_cgs
 v_c = float(params.attrs["IsothermalPotential:vrot"])
 v_c_cgs = v_c * unit_velocity_cgs
-lambda_cgs = float(params.attrs["LambdaCooling:lambda_cgs"])
-X_H = float(params.attrs["LambdaCooling:hydrogen_mass_abundance"])
+lambda_cgs = float(params.attrs["LambdaCooling:lambda_nH2_cgs"])
+X_H = float(params.attrs["SPH:H_mass_fraction"])
 header = f["Header"]
 N = header.attrs["NumPart_Total"][0]
 box_centre = np.array(header.attrs["BoxSize"])
@@ -79,7 +79,7 @@ for i in range(n_snaps):
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
     # get the internal energies
-    u_dset = f["PartType0/InternalEnergy"]
+    u_dset = f["PartType0/InternalEnergies"]
     u = np.array(u_dset)
 
     # make dimensionless

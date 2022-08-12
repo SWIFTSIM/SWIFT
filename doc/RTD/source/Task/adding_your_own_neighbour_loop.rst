@@ -482,7 +482,7 @@ Then we also need a ``runner_doiact_my_suff.c`` file where the functions declare
 ``runner_doiact_my_suff.h`` are defined by including them with ``FUNCTION`` defined::
 
 
-    #include "../config.h"
+    #include <config.h>
     /* other includes too... */
 
     /* Import the new interaction loop functions. */

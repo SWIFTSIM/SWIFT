@@ -13,6 +13,6 @@ then
 fi
 
 # Run SWIFT
-../../swift --cosmology --hydro --threads=4 sodShock.yml 2>&1 | tee output.log
+../../../swift --cosmology --hydro --threads=4 sodShock.yml 2>&1 | tee output.log
 
 python3 plotSolution.py 1
