@@ -351,7 +351,11 @@ struct counts_mapper_data {
 
 /* Generic function for accumulating sized counts for TYPE parts. Note uses
  * local memory to reduce contention, the amount of memory required is
- * precalculated by an additional loop determining the range of cell IDs. */
+ * precalculated by an additional loop determining the range of cell IDs.
+ * For the zoom case need to only consider particles in the zoom region.
+ * This means in the extreme a thread can end up with no particles to count.
+ * This badly balances the work but is nonetheless handled.
+ */
 #define ACCUMULATE_SIZES_MAPPER(TYPE)                                          \
   accumulate_sizes_mapper_##TYPE(void *map_data, int num_elements,             \
                                  void *extra_data) {                           \
@@ -378,6 +382,7 @@ struct counts_mapper_data {
       if (cid > ucid) ucid = cid;                                              \
       if (cid < lcid) lcid = cid;                                              \
     }                                                                          \
+    if (lcid > ucid) return;                                                   \
     int nused = ucid - lcid + 1;                                               \
     if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
       error("Failed to allocate counts thread-specific buffer (allocating %d)",\
