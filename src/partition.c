@@ -1591,6 +1591,13 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
    * assume the same graph structure as used in the part_ calls). */
   struct cell *cells = s->cells_top;
 
+  if (s->e->verbose && s->with_zoom_region)
+    message("Performing repartition over %d cells (nbkg=%d, nzoom=%d)",
+            nr_cells,
+            s->cdim[0] * s->cdim[1] * s->cdim[2],
+            s->zoom_props->cdim[0] * s->zoom_props->cdim[1]
+            * s->zoom_props->cdim[2]);
+  
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
   idx_t *inds;
