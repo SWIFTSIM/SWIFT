@@ -1459,6 +1459,14 @@ static void partition_gather_weights(void *map_data, int num_elements,
     else
       cj = NULL;
 
+#ifdef WITH_ZOOM_REGION
+    /* Skip background cells. */
+    if (ci->tl_cell_type < 3) continue;
+    if (cj != NULL) {
+      if (cj->tl_cell_type < 3) continue; 
+    }
+#endif
+
     /* Get the cell IDs. */
     int cid = ci - cells;
 
@@ -2066,7 +2074,6 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e, nr_cells);
 
-      message("Completed size to edge");
     }
 
     /* Do the calculation. */
@@ -2084,12 +2091,8 @@ void partition_initial_partition(struct partition *initial_partition,
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist, nr_cells);
 #endif
 
-    message("Completed pick_metis/parmetis");
-
     /* And apply to our cells */
     split_metis(s, nr_nodes, celllist, nr_cells);
-
-    message("Completed split_metis/parmetis");
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
