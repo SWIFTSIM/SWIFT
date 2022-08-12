@@ -442,6 +442,8 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts,
   double *gcounts = NULL;
   double hsize = 0.0;
   double ssize = 0.0;
+  
+  message("Set up mapper data");
 
   if (s->nr_gparts > 0) {
     /* Self-gravity gets more efficient with density (see gitlab issue #640)
