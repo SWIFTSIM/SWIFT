@@ -2590,6 +2590,9 @@ case "$with_potential" in
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
    ;;
+   burkert)
+      AC_DEFINE([EXTERNAL_POTENTIAL_BURKERT], [1], [Burkert (1995) potential])
+   ;;
    *)
       AC_MSG_ERROR([Unknown external potential: $with_potential])
    ;;
