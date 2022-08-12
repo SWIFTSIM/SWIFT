@@ -1503,6 +1503,64 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; 
 fi
 AC_SUBST([NUMA_LIBS])
 
+
+
+# Check for Sundials (required for the SPHM1RT library).
+# There is a problems with the headers of this library 
+# as they do not pass the strict prototypes check when 
+# installed outside of the system directories. So we 
+# need to do this check in two phases. 
+have_sundials="no"
+SUNDIALS_LIBS=""
+SUNDIALS_INCS=""
+AC_ARG_WITH([sundials],
+    [AS_HELP_STRING([--with-sundials=PATH],
+       [root directory where sundials is installed @<:@yes/no@:>@]
+    )],
+    [with_sundials="$withval"],
+    [with_sundials="no"]
+)
+if test "x$with_sundials" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+      SUNDIALS_LIBS="-L$with_sundials/lib -lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+      SUNDIALS_INCS="-I$with_sundials/include"
+   else
+      SUNDIALS_LIBS="-lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+      SUNDIALS_INCS=""
+   fi
+
+   AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"],
+                [have_sundials="no"], $SUNDIALS_LIBS)
+
+   if test "$have_sundials" == "yes"; then
+      AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
+   else
+      if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+      	 # It might be that the libraries are in 
+      	 # /lib64 rather than /lib 
+      	 SUNDIALS_LIBS="-L$with_sundials/lib64 -lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+
+	 # unset cached result of previous AC_CHECK_LIB
+	 unset ac_cv_lib_sundials_cvode_CVode
+
+   	 AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"], [have_sundials="no"], $SUNDIALS_LIBS)      
+	 
+   	 if test "$have_sundials" == "yes"; then
+      	    AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
+	 else 
+	    AC_MSG_ERROR("Failed to find a SUNDIALS library")
+	 fi 
+
+      else 
+      	 AC_MSG_ERROR("Failed to find a SUNDIALS library")
+      fi
+   fi
+fi
+AC_SUBST([SUNDIALS_LIBS])
+
+
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h], [], [],
 [#ifdef HAVE_IMMINTRIN_H
@@ -1635,6 +1693,26 @@ if test "$have_numa" != "no"; then
    fi
 fi
 AC_SUBST([NUMA_INCS])
+
+
+# Second part of the Sundials library checks. 
+# We now decide if we need to use -isystem to 
+# get around the strict-prototypes problem. Assumes 
+# isystem is available when strict-prototypes is.
+if test "x$with_sundials" != "xno"; then
+   if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+        case "$CFLAGS" in
+            *strict-prototypes*)
+	        SUNDIALS_INCS="-isystem$with_sundials/include"
+            ;;
+            *)
+                SUNDIALS_INCS="-I$with_sundials/include"
+            ;;
+        esac
+   fi
+fi 
+AC_SUBST([SUNDIALS_INCS])
+
 
 # Various package configuration options.
 
@@ -2682,6 +2760,11 @@ case "$with_rt" in
           # only works with those.
           AC_MSG_ERROR([SPHM1RT: Cannot work with non-integer photon groups])
       fi
+      AC_MSG_CHECKING([for Sundials libraries])
+      AC_MSG_RESULT($have_sundials)
+      if test "$have_sundials" != "yes"; then 
+         AC_MSG_ERROR([The Sundials library is not present. Sundials is required for the SPHM1RT module.]) 
+      fi
    ;;
    *)
       AC_MSG_ERROR([Unknown radiative transfer scheme: $with_rt])
@@ -2748,6 +2831,15 @@ AM_CONDITIONAL([HAVE_STAR_FORMATION_GEAR], [test "$with_star_formation" = "GEAR"
 # check if using multi softening gravity
 AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-multi-softening"])
 
+# Check if using SPHM1RT radiative transfer
+AM_CONDITIONAL([HAVESPHM1RTRT], [test "${with_rt:0:7}" = "SPHM1RT"])
+
+# Check if using GEAR-RT radiative transfer
+AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
+
+
+
+
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
@@ -2805,6 +2897,7 @@ AC_MSG_RESULT([
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
+   Sundials enabled     : $have_sundials
    Special allocators   : $have_special_allocator
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
@@ -2837,7 +2930,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback_name
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
-   Radiative transfer   : $with_rt$rt_extra_msg
+   Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
    
    Atomic operations in tasks  : $enable_atomics_within_tasks

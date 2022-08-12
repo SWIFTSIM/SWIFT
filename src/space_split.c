@@ -693,10 +693,21 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tid);
+
+    min_a_grav = min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+    max_softening = max(max_softening, c->grav.multipole->m_pole.max_softening);
+    for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+      max_mpole_power[n] =
+          max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -707,6 +718,11 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data,
     if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
   }
 #endif
+
+  atomic_min_f(&s->min_a_grav, min_a_grav);
+  atomic_max_f(&s->max_softening, max_softening);
+  for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+    atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
 }
 
 #ifdef WITH_ZOOM_REGION
@@ -751,6 +767,13 @@ void zoom_space_split_mapper(void *map_data, int num_cells, void *extra_data,
 void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
+
+  /* Set up the gravity gubbins. */
+  s->min_a_grav = FLT_MAX;
+  s->max_softening = 0.f;
+  bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
+  
+
 #ifdef WITH_ZOOM_REGION
   if (s->with_zoom_region) {
     threadpool_map_with_tid(&s->e->threadpool, bkg_space_split_mapper,
@@ -778,3 +801,303 @@ void space_split(struct space *s, int verbose) {
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
 }
+
+/**
+ * @brief Recursively build the void cell tree hierarchy.
+ *        This is populated with multipole later from the bottom up.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to split recursively.
+ * @param thread_id The ID of the current thread for defining ownership.
+ */
+void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
+
+  /* Check we aren't at the depth of the zoom cells. */
+  if (pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
+
+    /* No longer just a leaf. */
+    c->split = 1;
+
+    /* Create the cell's fake progeny.
+     * NOTE: The majority of these properties will be left at their
+     * initialised value. Only the multipoles will be created at a later date.
+     */
+    space_getcells(s, 8, c->progeny, thread_id);
+    for (int k = 0; k < 8; k++) {
+      struct cell *cp = c->progeny[k];
+      cp->hydro.count = 0;
+      cp->grav.count = 0;
+      cp->stars.count = 0;
+      cp->sinks.count = 0;
+      cp->black_holes.count = 0;
+      cp->hydro.count_total = 0;
+      cp->grav.count_total = 0;
+      cp->sinks.count_total = 0;
+      cp->stars.count_total = 0;
+      cp->black_holes.count_total = 0;
+      cp->hydro.ti_old_part = c->hydro.ti_old_part;
+      cp->grav.ti_old_part = c->grav.ti_old_part;
+      cp->grav.ti_old_multipole = c->grav.ti_old_multipole;
+      cp->stars.ti_old_part = c->stars.ti_old_part;
+      cp->sinks.ti_old_part = c->sinks.ti_old_part;
+      cp->black_holes.ti_old_part = c->black_holes.ti_old_part;
+      cp->loc[0] = c->loc[0];
+      cp->loc[1] = c->loc[1];
+      cp->loc[2] = c->loc[2];
+      cp->width[0] = c->width[0] / 2;
+      cp->width[1] = c->width[1] / 2;
+      cp->width[2] = c->width[2] / 2;
+      cp->dmin = c->dmin / 2;
+      if (k & 4) cp->loc[0] += cp->width[0];
+      if (k & 2) cp->loc[1] += cp->width[1];
+      if (k & 1) cp->loc[2] += cp->width[2];
+      cp->depth = c->depth + 1;
+      cp->split = 0;
+      cp->hydro.h_max = 0.f;
+      cp->hydro.h_max_active = 0.f;
+      cp->hydro.dx_max_part = 0.f;
+      cp->hydro.dx_max_sort = 0.f;
+      cp->stars.h_max = 0.f;
+      cp->stars.h_max_active = 0.f;
+      cp->stars.dx_max_part = 0.f;
+      cp->stars.dx_max_sort = 0.f;
+      cp->sinks.r_cut_max = 0.f;
+      cp->sinks.r_cut_max_active = 0.f;
+      cp->sinks.dx_max_part = 0.f;
+      cp->black_holes.h_max = 0.f;
+      cp->black_holes.h_max_active = 0.f;
+      cp->black_holes.dx_max_part = 0.f;
+      cp->nodeID = c->nodeID;
+      cp->parent = c;
+      cp->top = c->top;
+      cp->super = NULL;
+      cp->hydro.super = NULL;
+      cp->grav.super = NULL;
+      cp->flags = 0;
+      star_formation_logger_init(&cp->stars.sfh);
+#ifdef WITH_MPI
+      cp->mpi.tag = -1;
+#endif  // WITH_MPI
+      cp->tl_cell_type = c->tl_cell_type;
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
+      cell_assign_cell_index(cp, c);
+#endif
+
+      /* Recurse to the next level down. */
+      void_tree_recursive(s, cp, thread_id);
+      
+    }    
+  }
+  /* If we are at the depth of the zoom cells link in the zoom cells. */
+  else {
+
+    /* Set up some useful information. */
+    double zoom_loc[3];
+
+    /* We need to ensure this bottom level isn't treated like a
+     * normal split cell since it's linked into top level "progeny". */
+    c->split = 0;
+
+    /* Loop over the 8 progeny cells which are now the zoom cells. */
+    for (int k = 0; k < 8; k++) {
+
+      /* Establish the location of the fake progeny cell. */
+      zoom_loc[0] = c->loc[0] + (s->zoom_props->width[0] / 2);
+      zoom_loc[1] = c->loc[1] + (s->zoom_props->width[1] / 2);
+      zoom_loc[2] = c->loc[2] + (s->zoom_props->width[2] / 2);
+      if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
+      if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
+      if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
+
+      /* Which zoom cell are we in? */
+      int cid = cell_getid_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
+
+      /* Get the zoom cell. */
+      struct cell *zoom_cell = &s->cells_top[cid];
+
+      /* Link this zoom cell into the void cell hierarchy. */
+      c->progeny[k] = zoom_cell;
+
+      /* Flag this void cell "progeny" as the zoom cell's void cell parent. */
+      zoom_cell->void_parent = c;
+      
+    }
+  }
+}
+
+/**
+ * @brief Recursively populate the multipoles in the  void cell tree hierarchy.
+ *
+ * @param s The #space in which the cell lives.
+ * @param c The #cell to populate recursively.
+ */
+void void_mpole_tree_recursive(struct space *s, struct cell *c) {
+
+  /* Check we aren't at the depth of the zoom cells. */
+  if (pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
+
+    /* Recurse through progney. */
+    for (int k = 0; k < 8; k++) {
+      void_mpole_tree_recursive(s, c->progeny[k]);
+    }
+  }
+
+  /* Now we have recursed we can do this cell's multipole based on
+   * it's progeny. */
+
+  /* Reset everything */
+  gravity_reset(c->grav.multipole);
+
+  /* Compute CoM and bulk velocity from all progenies */
+  double CoM[3] = {0., 0., 0.};
+  double vel[3] = {0., 0., 0.};
+  float max_delta_vel[3] = {0.f, 0.f, 0.f};
+  float min_delta_vel[3] = {0.f, 0.f, 0.f};
+  double mass = 0.;
+
+  for (int k = 0; k < 8; ++k) {
+    if (c->progeny[k] != NULL) {
+      const struct gravity_tensors *m = c->progeny[k]->grav.multipole;
+
+      mass += m->m_pole.M_000;
+
+      CoM[0] += m->CoM[0] * m->m_pole.M_000;
+      CoM[1] += m->CoM[1] * m->m_pole.M_000;
+      CoM[2] += m->CoM[2] * m->m_pole.M_000;
+
+      vel[0] += m->m_pole.vel[0] * m->m_pole.M_000;
+      vel[1] += m->m_pole.vel[1] * m->m_pole.M_000;
+      vel[2] += m->m_pole.vel[2] * m->m_pole.M_000;
+
+      max_delta_vel[0] = max(m->m_pole.max_delta_vel[0], max_delta_vel[0]);
+      max_delta_vel[1] = max(m->m_pole.max_delta_vel[1], max_delta_vel[1]);
+      max_delta_vel[2] = max(m->m_pole.max_delta_vel[2], max_delta_vel[2]);
+
+      min_delta_vel[0] = min(m->m_pole.min_delta_vel[0], min_delta_vel[0]);
+      min_delta_vel[1] = min(m->m_pole.min_delta_vel[1], min_delta_vel[1]);
+      min_delta_vel[2] = min(m->m_pole.min_delta_vel[2], min_delta_vel[2]);
+    }
+  }
+
+  /* Final operation on the CoM and bulk velocity */
+  const double inv_mass = 1. / mass;
+  c->grav.multipole->CoM[0] = CoM[0] * inv_mass;
+  c->grav.multipole->CoM[1] = CoM[1] * inv_mass;
+  c->grav.multipole->CoM[2] = CoM[2] * inv_mass;
+  c->grav.multipole->m_pole.vel[0] = vel[0] * inv_mass;
+  c->grav.multipole->m_pole.vel[1] = vel[1] * inv_mass;
+  c->grav.multipole->m_pole.vel[2] = vel[2] * inv_mass;
+
+  /* Min max velocity along each axis */
+  c->grav.multipole->m_pole.max_delta_vel[0] = max_delta_vel[0];
+  c->grav.multipole->m_pole.max_delta_vel[1] = max_delta_vel[1];
+  c->grav.multipole->m_pole.max_delta_vel[2] = max_delta_vel[2];
+  c->grav.multipole->m_pole.min_delta_vel[0] = min_delta_vel[0];
+  c->grav.multipole->m_pole.min_delta_vel[1] = min_delta_vel[1];
+  c->grav.multipole->m_pole.min_delta_vel[2] = min_delta_vel[2];
+
+  /* Now shift progeny multipoles and add them up */
+  struct multipole temp;
+  double r_max = 0.;
+  for (int k = 0; k < 8; ++k) {
+    if (c->progeny[k] != NULL) {
+      const struct cell *cp = c->progeny[k];
+      const struct multipole *m = &cp->grav.multipole->m_pole;
+
+      /* Contribution to multipole */
+      gravity_M2M(&temp, m, c->grav.multipole->CoM,
+                  cp->grav.multipole->CoM);
+      gravity_multipole_add(&c->grav.multipole->m_pole, &temp);
+      
+      /* Upper limit of max CoM<->gpart distance */
+      const double dx =
+        c->grav.multipole->CoM[0] - cp->grav.multipole->CoM[0];
+      const double dy =
+        c->grav.multipole->CoM[1] - cp->grav.multipole->CoM[1];
+      const double dz =
+        c->grav.multipole->CoM[2] - cp->grav.multipole->CoM[2];
+      const double r2 = dx * dx + dy * dy + dz * dz;
+      r_max = max(r_max, cp->grav.multipole->r_max + sqrt(r2));
+    }
+  }
+
+  /* Alternative upper limit of max CoM<->gpart distance */
+  const double dx =
+    c->grav.multipole->CoM[0] > c->loc[0] + c->width[0] / 2.
+    ? c->grav.multipole->CoM[0] - c->loc[0]
+    : c->loc[0] + c->width[0] - c->grav.multipole->CoM[0];
+  const double dy =
+    c->grav.multipole->CoM[1] > c->loc[1] + c->width[1] / 2.
+    ? c->grav.multipole->CoM[1] - c->loc[1]
+    : c->loc[1] + c->width[1] - c->grav.multipole->CoM[1];
+  const double dz =
+    c->grav.multipole->CoM[2] > c->loc[2] + c->width[2] / 2.
+    ? c->grav.multipole->CoM[2] - c->loc[2]
+    : c->loc[2] + c->width[2] - c->grav.multipole->CoM[2];
+
+  /* Take minimum of both limits */
+  c->grav.multipole->r_max = min(r_max, sqrt(dx * dx + dy * dy + dz * dz));
+
+  /* Store the value at rebuild time */
+  c->grav.multipole->r_max_rebuild = c->grav.multipole->r_max;
+  c->grav.multipole->CoM_rebuild[0] = c->grav.multipole->CoM[0];
+  c->grav.multipole->CoM_rebuild[1] = c->grav.multipole->CoM[1];
+  c->grav.multipole->CoM_rebuild[2] = c->grav.multipole->CoM[2];
+
+  /* Compute the multipole power */
+  gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+  
+}
+
+/**
+ * @brief Construct the fake cell tree for the void cell to enable multipole
+ *        gravity computations to be done at lower cell resolution than
+ *        the zoom cell grid.
+ *
+ *        This tree demands the number zoom cells obey (2^n)^3 and terminates
+ *        at the level of the zoom grid.
+ *
+ * @param s The #space in which the cell lives.
+ * @param thread_id The ID of the current thread for defining ownership.
+ * @param verbose Are we talkative ?
+ */
+void void_tree_build(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  /* Get a handle on the void cell. */
+  struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index];
+
+  /* First lets build the fake cell hierarchy recursively. */
+  void_tree_recursive(s, void_cell, /*thread_id=*/0);
+
+  /* Now populate the multipoles in hierarchy bottom up. */
+  if (s->with_self_gravity) {
+    void_mpole_tree_recursive(s, void_cell);
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the number of particles in the void cell multipole
+   * is the same as the number in the zoom region. */
+  const struct gravity_tensors *m = &s->multipoles_top[s->zoom_props->void_cell_index];
+  const long long void_count = m->m_pole.num_gpart;
+  long long zoom_count = 0;
+
+  /* Total the number of particles in zoom cells. */
+  for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
+    zoom_count += s->cells_top[i].grav.count;
+  }
+
+  if (void_count != zoom_count) {
+    error("Void multipole doesn't have the same number of particles "
+          "as the zoom cells! (void=%lld, zoom=%lld)", void_count, zoom_count);
+  }
+#endif
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+
+  
+}
+

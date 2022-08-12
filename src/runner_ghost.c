@@ -1272,7 +1272,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-            rt_reset_part(p);
+            rt_reset_part(p, cosmo);
 
             /* Ok, we are done with this particle */
             continue;
@@ -1441,7 +1441,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-        rt_reset_part(p);
+        rt_reset_part(p, cosmo);
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -1603,6 +1603,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   int count = c->hydro.count;
+  const struct cosmology *cosmo = e->cosmology;
 
   /* Anything to do here? */
   if (count == 0) return;
@@ -1628,7 +1629,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
       /* Skip inactive parts */
       if (!part_is_active(p, e)) continue;
 
-      rt_end_gradient(p);
+      rt_end_gradient(p, cosmo);
     }
   }
 

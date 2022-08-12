@@ -1284,6 +1284,16 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->total_nr_sinks = num_particles[3];
   e->total_nr_bparts = num_particles[4];
 
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->min_a_grav, 1, MPI_FLOAT, MPI_MIN,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_softening, 1, MPI_FLOAT, MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_mpole_power,
+                SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
+                MPI_COMM_WORLD);
+#endif
+
   /* Flag that there are no inhibited particles */
   e->nr_inhibited_parts = 0;
   e->nr_inhibited_gparts = 0;
@@ -1322,6 +1332,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     long long counter = 0;
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* In the zoom case we need to skip the void cell */
+      if (i == e->s->zoom_props->void_cell_index) continue;
+      
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
     }

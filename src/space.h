@@ -291,6 +291,15 @@ struct space {
   /*! Sum of the norm of the velocity of all the #bpart */
   float sum_bpart_vel_norm;
 
+  /*! Minimal gravity acceleration accross all particles */
+  float min_a_grav;
+
+  /*! Max gravity softening accross all particles */
+  float max_softening;
+
+  /*! Max multipole power accross all top-level cells */
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1];
+
   /* Initial mean mass of each particle type in the system. */
   double initial_mean_mass_particles[swift_type_count];
 
@@ -485,6 +494,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
+void void_tree_build(struct space *s, int verbose);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
