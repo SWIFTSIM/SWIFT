@@ -380,7 +380,8 @@ struct counts_mapper_data {
     }                                                                          \
     int nused = ucid - lcid + 1;                                               \
     if ((lcounts = (double *)calloc(sizeof(double), nused)) == NULL)           \
-      error("Failed to allocate counts thread-specific buffer");               \
+      error("Failed to allocate counts thread-specific buffer (allocating %d)",\
+            nused);                                                            \
     for (int k = 0; k < num_elements; k++) {                                   \
       const int cid =                                                          \
           cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
