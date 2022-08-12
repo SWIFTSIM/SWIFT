@@ -2017,6 +2017,13 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Radially decomp the background particles. */
       split_bkg(s, nr_nodes);
       nr_cells = s->zoom_props->nr_zoom_cells;
+
+      if (s->e->verbose)
+        message("Performing partition over %d cells (nbkg=%d, nzoom=%d)",
+                nr_cells,
+                s->cdim[0] * s->cdim[1] * s->cdim[2],
+                s->zoom_props->cdim[0] * s->zoom_props->cdim[1]
+                * s->zoom_props->cdim[2]);
       
     }
     
