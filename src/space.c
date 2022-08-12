@@ -1461,7 +1461,7 @@ void space_init(struct space *s, struct swift_params *params,
     bzero(s->xparts, Npart * sizeof(struct xpart));
   }
 
-  hydro_space_init(&s->hs, s);
+  hydro_space_init(&s->hs, s, params);
 
   /* Init the space lock. */
   if (lock_init(&s->lock) != 0) error("Failed to create space spin-lock.");

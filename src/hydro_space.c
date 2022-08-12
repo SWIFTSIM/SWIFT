@@ -28,8 +28,8 @@
  * @param s #space containing the hydro space.
  */
 #ifdef SHADOWFAX_SPH
-__attribute__((always_inline)) INLINE void hydro_space_init(
-    struct hydro_space *hs, const struct space *s) {
+void hydro_space_init(struct hydro_space *hs, const struct space *s,
+                      const struct swift_params *params) {
 
   if (s->periodic) {
     hs->anchor[0] = -0.5f * s->dim[0];
@@ -47,6 +47,18 @@ __attribute__((always_inline)) INLINE void hydro_space_init(
     hs->side[2] = s->dim[2];
   }
 }
+#elif defined(SHADOWSWIFT) && (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
+void hydro_space_init(struct hydro_space *hs, const struct space *s,
+                      struct swift_params *params) {
+
+  hs->density =
+      parser_get_param_float(params, "InitialConditions:inflow_density");
+  hs->velocity =
+      parser_get_param_float(params, "InitialConditions:inflow_velocity");
+  hs->pressure =
+      parser_get_param_float(params, "InitialConditions:inflow_pressure");
+}
 #else
-void hydro_space_init(struct hydro_space *hs, const struct space *s) {}
+void hydro_space_init(struct hydro_space* hs, const struct space* s,
+                      const struct swift_params* params) {}
 #endif

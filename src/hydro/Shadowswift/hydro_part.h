@@ -181,6 +181,13 @@ struct part {
     /* Fluid thermal energy (not per unit mass!). */
     float energy;
 
+#if SHADOWSWIFT_BC == LEFT_INFLOW_BC
+    /* Are these quantities considered valid? Wrapping a particle due to inflow
+     * BC invalidates the conserved quantities, and they can only be recomputed
+     * after the next volume calculation. */
+    int valid;
+#endif
+
   } conserved;
 
   /* Flux counter, should be conserved */

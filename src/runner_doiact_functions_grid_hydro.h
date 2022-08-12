@@ -221,7 +221,8 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
       p_boundary.gradients.P[i] = 0.;
     }
 #endif
-#elif (SHADOWSWIFT_BC == OPEN_BC)
+#elif (SHADOWSWIFT_BC == OPEN_BC) || (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
+    /* We Treat inflow BC the same as open BC */
     /* Here we just flip the gradients for the flipped axis to ensure that the
      * extrapolated quantities on both sides of the face are the same during
      * the flux exchange */

@@ -300,6 +300,23 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             }
           }
 #else
+#if SHADOWSWIFT_BC == LEFT_INFLOW_BC
+          /* Wrap the coordinates of only those particles that leave the
+           * right side of the simulation box. */
+          if (p->x[0] > dim[0]) {
+            p->x[0] -= dim[0];
+            struct hydro_space hs = e->s->hs;
+            p->rho = hs.density;
+            p->v[0] = hs.velocity;
+            p->P = hs.pressure;
+            /* Signal that the conserved quantities are now considered
+             * uninitialized. */
+            p->conserved.valid = 0;
+            /* Nothing left to do here since we do not want to delete this
+             * particle. */
+            continue;
+          }
+#endif
           lock_lock(&e->s->lock);
 
           /* Re-check that the particle has not been removed
@@ -535,6 +552,20 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
             }
           }
 #else
+#if SHADOWSWIFT_BC == LEFT_INFLOW_BC
+          /* Wrap the coordinates of only those particles that leave the
+           * right side of the simulation box. */
+          if (gp->x[0] > dim[0]) {
+            /* TODO Initialize the mass and velocity of the particle correctly.
+             * Currently this is only done at the end of the next timestep, so
+             * this gives a small error in the gravity calculation of that
+             * timestep. */
+            gp->x[0] -= dim[0];
+            /* Nothing left to do here since we do not want to delete this
+             * particle. */
+            continue;
+          }
+#endif
           lock_lock(&e->s->lock);
 
           /* Re-check that the particle has not been removed
