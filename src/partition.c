@@ -1729,6 +1729,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     }
   }
 
+  message("Made it to pick metis in repartion");
+
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
@@ -1743,6 +1745,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, repartition->celllist,
              nr_cells);
 #endif
+
+  message("Completed pick metis in repartion");
 
   /* Check that all cells have good values. All nodes have same copy, so just
    * check on one. */
