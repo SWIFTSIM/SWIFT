@@ -460,6 +460,8 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts,
                    s->nr_gparts, sizeof(struct gpart), space_splitsize,
                    &mapper_data);
 
+    message("Applied gpart threadpool mapper in accumulate sizes");
+
     /* Get all the counts from all the nodes. */
     if (MPI_Allreduce(MPI_IN_PLACE, gcounts, nr_cells, MPI_DOUBLE, MPI_SUM,
                       MPI_COMM_WORLD) != MPI_SUCCESS)
