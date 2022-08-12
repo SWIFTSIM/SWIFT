@@ -779,7 +779,6 @@ void find_neighbouring_cells(struct space *s,
     message("%i cells neighbouring the zoom region", neighbour_count);
 #endif
 }
-#endif
 
 /**
  * @brief Minimum distance between two TL cells with different sizes.
