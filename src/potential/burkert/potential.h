@@ -5,9 +5,21 @@
 #ifndef SWIFT_POTENTIAL_BURKERT_H
 #define SWIFT_POTENTIAL_BURKERT_H
 
+/* Config parameters. */
+#include <config.h>
+
 /* Some standard headers. */
 #include <float.h>
 #include <math.h>
+
+/* Local includes. */
+#include "error.h"
+#include "gravity.h"
+#include "parser.h"
+#include "part.h"
+#include "physical_constants.h"
+#include "space.h"
+#include "units.h"
 
 struct external_potential {
   /*! Position of the centre of potential */
@@ -114,6 +126,34 @@ __attribute__((always_inline)) INLINE static void external_gravity_acceleration(
   g->a_grav[1] += (float)(acc * dy);
   g->a_grav[2] += (float)(acc * dz);
   gravity_add_comoving_potential(g, pot);
+}
+
+/** @brief Computes the time-step due to the acceleration from the NFW potential
+ *        as a fraction (timestep_mult) of the circular orbital time of that
+ *        particle.
+ *
+ * @param time The current time.
+ * @param potential The #external_potential used in the run.
+ * @param phys_const The physical constants in internal units.
+ * @param g Pointer to the g-particle data.
+ */
+__attribute__((always_inline)) INLINE static float external_gravity_timestep(
+    double time, const struct external_potential* restrict potential,
+    const struct phys_const* restrict phys_const,
+    const struct gpart* restrict g) {
+
+  const double dx = g->x[0] - potential->x[0];
+  const double dy = g->x[1] - potential->x[1];
+  const double dz = g->x[2] - potential->x[2];
+  const double r = sqrt(dx * dx + dy * dy + dz * dz);
+
+  const double mr = enclosed_mass_burkert(potential, r * potential->one_over_r0);
+
+  const double period =
+      2. * M_PI * r * sqrt(r / (phys_const->const_newton_G * mr));
+
+  /* Time-step as a fraction of the circular period */
+  return (float)(potential->timestep_mult * period);
 }
 
 /**
