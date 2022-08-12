@@ -362,6 +362,7 @@ struct counts_mapper_data {
     struct space *s = mydata->s;                                               \
     double dim[3] = {mydata->s->dim[0], mydata->s->dim[1], mydata->s->dim[2]}; \
     double *lcounts = NULL;                                                    \
+    int bkg_cell_offset = mydata->s->zoom_props->nr_zoom_cells;                \
     int lcid = mydata->nr_cells;                                               \
     int ucid = 0;                                                              \
     for (int k = 0; k < num_elements; k++) {                                   \
@@ -373,6 +374,7 @@ struct counts_mapper_data {
       }                                                                        \
       const int cid =                                                          \
           cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
+      if (cid >= bkg_cell_offset) continue;                                    \
       if (cid > ucid) ucid = cid;                                              \
       if (cid < lcid) lcid = cid;                                              \
     }                                                                          \
@@ -382,6 +384,7 @@ struct counts_mapper_data {
     for (int k = 0; k < num_elements; k++) {                                   \
       const int cid =                                                          \
           cell_getid_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]);      \
+      if (cid >= bkg_cell_offset) continue;                                    \
       lcounts[cid - lcid] += size;                                             \
     }                                                                          \
     for (int k = 0; k < nused; k++)                                            \
@@ -455,6 +458,8 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts,
       error("Failed to allocate gcounts buffer.");
     bzero(gcounts, sizeof(double) * nr_cells);
     gsize = (double)sizeof(struct gpart);
+
+    message("Completed counts allocation");
 
     mapper_data.counts = gcounts;
     mapper_data.size = gsize;
