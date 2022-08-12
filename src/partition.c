@@ -2035,6 +2035,8 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Check each particle and accumulate the sizes per cell. */
       accumulate_sizes(s, s->e->verbose, weights_v, nr_cells);
 
+      message("Completed accumulate sizes");
+
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
       /* Particle sizes also counted towards the edges. */
@@ -2048,8 +2050,12 @@ void partition_initial_partition(struct partition *initial_partition,
       /* Check each particle and accumulate the sizes per cell. */
       accumulate_sizes(s, s->e->verbose, weights_v, nr_cells);
 
+      message("Completed accumulate sizes");
+
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e, nr_cells);
+
+      message("Completed size to edge");
     }
 
     /* Do the calculation. */
@@ -2067,8 +2073,12 @@ void partition_initial_partition(struct partition *initial_partition,
     pick_metis(nodeID, s, nr_nodes, weights_v, weights_e, celllist, nr_cells);
 #endif
 
+    message("Completed pick_metis/parmetis");
+
     /* And apply to our cells */
     split_metis(s, nr_nodes, celllist, nr_cells);
+
+    message("Completed split_metis/parmetis");
 
     /* It's not known if this can fail, but check for this before
      * proceeding. */
