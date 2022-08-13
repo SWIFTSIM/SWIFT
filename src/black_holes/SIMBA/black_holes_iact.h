@@ -119,9 +119,6 @@ runner_iact_nonsym_bh_gas_density(
   /* Ignore decoupled winds in density computation */
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
-  /* A black hole should never accrete/feedback if it is not in a galaxy */
-  if (bi->gpart->fof_data.group_mass <= 0.f) return;
-
   float wi, wi_dx;
 
   /* Compute the kernel function; note that r cannot be optimised

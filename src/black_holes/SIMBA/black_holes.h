@@ -547,6 +547,9 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   if (dt == 0. || bp->rho_gas == 0.) return;
 
+  /* A black hole should never accrete/feedback if it is not in a galaxy */
+  if (bp->gpart->fof_data.group_mass <= 0.f) return;
+
   /* Gather some physical constants (all in internal units) */
   const double G = constants->const_newton_G;
   const double c = constants->const_speed_light_c;
