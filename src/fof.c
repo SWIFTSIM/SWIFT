@@ -1780,10 +1780,10 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     group_mass[index] += fof_mass_recv[i].group_mass;
 #ifdef WITH_FOF_GALAXIES
     group_stellar_mass[index] += fof_mass_recv[i].group_stellar_mass;
-
-    /* Assign the group masses to the root gpart */
-    gparts[local_root_index].fof_data.group_mass = group_mass[index];
-    gparts[local_root_index].fof_data.group_stellar_mass = group_stellar_mass[index];
+    
+    /* Sum all of the group masses to the root gpart */
+    /*gparts[local_root_index].fof_data.group_mass += fof_mass_recv[i].group_mass;
+    gparts[local_root_index].fof_data.group_stellar_mass = fof_mass_recv[i].group_stellar_mass;*/
 #endif
   }
 
@@ -1810,6 +1810,12 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
         const size_t index =
             gparts[i].fof_data.group_id - group_id_offset - num_groups_prev;
+
+#ifdef WITH_FOF_GALAXIES
+        /* We have the total masses now, so fill them in */
+        gparts[i].fof_data.group_mass = group_mass[index];
+        gparts[i].fof_data.group_stellar_mass = group_stellar_mass[index];
+#endif
 
         /* Compute the centre of mass */
         const double mass = gparts[i].mass;
@@ -3333,10 +3339,11 @@ void fof_search_tree(struct fof_props *props,
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, group_index);
     gparts[i].fof_data.group_id = gparts[root].fof_data.group_id;
-#ifdef WITH_FOF_GALAXIES
-    gparts[i].fof_data.group_mass = gparts[root].fof_data.group_mass;
+#if defined(WITH_MPI) && defined(WITH_FOF_GALAXIES)
+    /* TODO: Remove */
+    /*gparts[i].fof_data.group_mass = gparts[root].fof_data.group_mass;
     gparts[i].fof_data.group_stellar_mass = 
-        gparts[root].fof_data.group_stellar_mass;
+        gparts[root].fof_data.group_stellar_mass;*/
 #endif
   }
 

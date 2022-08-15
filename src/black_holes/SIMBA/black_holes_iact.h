@@ -833,6 +833,9 @@ runner_iact_nonsym_bh_gas_feedback(
         du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
       }
 
+      /* If for some reason there is negative energy, don't do anything */
+      if (du_xray_phys <= 0.) continue;
+
       /* Account for X-rays lost due to radiation */
       du_xray_phys *= f_rad_loss;
 
