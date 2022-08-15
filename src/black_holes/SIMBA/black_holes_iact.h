@@ -892,7 +892,7 @@ runner_iact_nonsym_bh_gas_feedback(
 
 #ifdef SIMBA_DEBUG_CHECKS
       const double T_gas_final_cgs = 
-          du_xray_phys / (bh_props->temp_to_u_factor * bh_props->T_K_to_int)
+          du_xray_phys / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
       message("BH_XRAY_HEAT: bid=%lld, pid=%lld, T_init %g K, T_new %g K, T_new/T_init=%g",
               bi->id, pj->id,
               T_gas_cgs,
