@@ -834,7 +834,7 @@ runner_iact_nonsym_bh_gas_feedback(
       }
 
       /* If for some reason there is negative energy, don't do anything */
-      if (du_xray_phys <= 0.) continue;
+      if (du_xray_phys <= 0.) return;
 
       /* Account for X-rays lost due to radiation */
       du_xray_phys *= f_rad_loss;
