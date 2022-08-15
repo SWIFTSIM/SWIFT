@@ -881,10 +881,24 @@ runner_iact_nonsym_bh_gas_feedback(
         /* Synchronize the particle on the timeline */
         timestep_sync_part(pj);
 
+#ifdef SIMBA_DEBUG_CHECKS
+        message("BH_XRAY_KICK: bid=%lld, pid=%lld, %g km/s", 
+                bi->id, pj->id,
+                dv_phys / bh_props->kms_to_internal);
+#endif
       }
 
       const double u_new = u_init + du_xray_phys;
 
+#ifdef SIMBA_DEBUG_CHECKS
+      const double T_gas_final_cgs = 
+          du_xray_phys / (bh_props->temp_to_u_factor * bh_props->T_K_to_int)
+      message("BH_XRAY_HEAT: bid=%lld, pid=%lld, T_init %g K, T_new %g K, T_new/T_init=%g",
+              bi->id, pj->id,
+              T_gas_cgs,
+              T_gas_final_cgs,
+              T_gas_final_cgs / T_gas_cgs);
+#endif
       /* Do the energy injection. */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
