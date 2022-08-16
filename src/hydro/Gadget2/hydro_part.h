@@ -36,6 +36,9 @@
 #include "cooling_struct.h"
 #include "csds.h"
 #include "feedback_struct.h"
+#ifdef WITH_FOF_GALAXIES
+#include "fof_struct.h"
+#endif
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "pressure_floor_struct.h"
@@ -176,6 +179,11 @@ struct part {
 
   /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;
+
+#ifdef WITH_FOF_GALAXIES
+  /*! Additional data used by the FoF */
+  struct group_data group_data;
+#endif
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;

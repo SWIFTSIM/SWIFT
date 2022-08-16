@@ -24,6 +24,23 @@
 
 #ifdef WITH_FOF
 
+#ifdef WITH_FOF_GALAXIES
+
+/**
+ * @brief Particle-carried fields for the FoF galaxies scheme.
+ */
+struct group_data {
+
+  /*! The gas+stellar mass of the host galaxy */
+  float mass;
+
+  /*! The stellar mass of the host galaxy */
+  float stellar_mass;
+
+};
+
+#endif
+
 /**
  * @brief Particle-carried fields for the FoF scheme.
  */
@@ -53,6 +70,7 @@ struct fof_gpart_data {
  * @brief Particle-carried fields for the FoF scheme.
  */
 struct fof_gpart_data {};
+
 
 #endif
 

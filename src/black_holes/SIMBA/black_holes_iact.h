@@ -401,7 +401,7 @@ runner_iact_nonsym_bh_gas_swallow(
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* A black hole should never accrete/feedback if it is not in a galaxy */
-  if (bi->gpart->fof_data.group_mass <= 0.f) return;
+  if (bi->group_data.mass <= 0.f) return;
   
   float wi;
 
@@ -783,17 +783,17 @@ runner_iact_nonsym_bh_gas_feedback(
   if (pj->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* A black hole should never accrete/feedback if it is not in a galaxy */
-  if (bi->gpart->fof_data.group_mass <= 0.f) return;
+  if (bi->group_data.mass <= 0.f) return;
 
   /* Do X-ray feedback first */
   if (pj->black_holes_data.swallow_id != bi->id) {
         /* We were not lucky, but we are lucky to heat via X-rays */
     if (bi->v_kick > bh_props->xray_heating_velocity_threshold
         && bi->delta_energy_this_timestep < bi->energy_reservoir) {
-      const float group_gas_mass = bi->gpart->fof_data.group_mass -
-                                   bi->gpart->fof_data.group_stellar_mass;
+      const float group_gas_mass = bi->group_data.mass -
+                                   bi->group_data.stellar_mass;
 
-      const float f_gas = group_gas_mass / bi->gpart->fof_data.group_mass;
+      const float f_gas = group_gas_mass / bi->group_data.mass;
 
       float f_rad_loss = bh_props->xray_radiation_loss * 
                          (bh_props->xray_f_gas_limit - f_gas) / 
@@ -997,11 +997,6 @@ runner_iact_nonsym_bh_gas_feedback(
                                            time, delta_energy);
       }
     }
-
-#ifdef WITH_FOF_GALAXIES
-    /* Wind particles are never grouppable */
-    pj->gpart->fof_data.is_grouppable = 0;
-#endif
 
     /* Wind cannot be star forming */
     if (xpj->sf_data.SFR > 0.f) {

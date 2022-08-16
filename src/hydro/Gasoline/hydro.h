@@ -1068,6 +1068,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   hydro_init_part(p, NULL);
 
   p->feedback_data.decoupling_delay_time = 0.f;
+  p->feedback_data.number_of_times_decoupled = 0;
+  
+#ifdef WITH_FOF_GALAXIES
+  p->group_data.mass = 0.f;
+  p->group_data.stellar_mass = 0.f;
+#endif
 }
 
 /**

@@ -305,10 +305,27 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
     }
 
 #ifdef WITH_FOF_GALAXIES
-    if (gp->type == swift_type_gas || gp->type == swift_type_stars) {
+    if (gp->type == swift_type_gas || gp->type == swift_type_stars || gp->type == swift_type_black_hole) {
       gp->fof_data.group_mass = 0.f;
       gp->fof_data.group_stellar_mass = 0.f;
     }
+
+    const size_t offset = -gp->id_or_neg_offset;
+    if (gp->type == swift_type_gas) {
+      s->parts[offset].group_data.mass = 0.f;
+      s->parts[offset].group_data.stellar_mass = 0.f;
+    }
+
+    if (gp->type == swift_type_stars) {
+      s->sparts[offset].group_data.mass = 0.f;
+      s->sparts[offset].group_data.stellar_mass = 0.f;
+    }
+
+    if (gp->type == swift_type_black_hole) {
+      s->bparts[offset].group_data.mass = 0.f;
+      s->bparts[offset].group_data.stellar_mass = 0.f;
+    }
+
 #endif
   }
 
@@ -3570,6 +3587,36 @@ int fof_gpart_is_grouppable(const struct gpart* gpart,
 
   return gpart->fof_data.is_grouppable;
 
+}
+
+void fof_store_group_info_in_bpart(struct bpart* bp, const struct gpart* gp) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (bp->gpart != gp) error("Copying group properties to the wrong black hole!");
+#endif
+
+  bp->group_data.mass = gp->fof_data.group_mass;
+  bp->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
+}
+
+void fof_store_group_info_in_part(struct part* p, const struct gpart* gp) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (p->gpart != gp) error("Copying group properties to the wrong part!");
+#endif
+
+  p->group_data.mass = gp->fof_data.group_mass;
+  p->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
+}
+
+void fof_store_group_info_in_part(struct spart* sp, const struct gpart* gp) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (sp->gpart != gp) error("Copying group properties to the wrong star!");
+#endif
+
+  sp->group_data.mass = gp->fof_data.group_mass;
+  sp->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
 }
 #endif /* WITH_FOF_GALAXIES */
 

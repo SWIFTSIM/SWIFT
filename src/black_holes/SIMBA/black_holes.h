@@ -32,7 +32,6 @@
 #include "minmax.h"
 #include "physical_constants.h"
 #include "random.h"
-#include "rays.h"
 
 /* Standard includes */
 #include <float.h>
@@ -123,6 +122,11 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->AGN_number_of_AGN_events = 0;
   bp->AGN_number_of_energy_injections = 0;
 
+#ifdef WITH_FOF_GALAXIES
+  bp->group_data.mass = 0.f;
+  bp->group_data.stellar_mass = 0.f;
+#endif
+
   /* Set the initial targetted heating temperature, used for the
    * BH time step determination */
   bp->AGN_delta_T = props->AGN_delta_T_desired;
@@ -181,8 +185,6 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->accretion_boost_factor = -FLT_MAX;
   bp->mass_at_start_of_step = bp->mass; /* bp->mass may grow in nibbling mode */
 
-  /* Reset the rays carried by this BH */
-  ray_init(bp->rays, eagle_blackhole_number_of_rays);
 }
 
 /**
@@ -548,7 +550,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   if (dt == 0. || bp->rho_gas == 0.) return;
 
   /* A black hole should never accrete/feedback if it is not in a galaxy */
-  if (bp->gpart->fof_data.group_mass <= 0.f) return;
+  if (bp->group_data.mass <= 0.f) return;
 
   /* Gather some physical constants (all in internal units) */
   const double G = constants->const_newton_G;

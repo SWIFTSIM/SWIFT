@@ -25,6 +25,9 @@
 #include "chemistry_struct.h"
 #include "cooling_struct.h"
 #include "feedback_struct.h"
+#ifdef WITH_FOF_GALAXIES
+#include "fof_struct.h"
+#endif
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "sink_struct.h"
@@ -199,6 +202,14 @@ struct part {
 
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
+
+  /*! Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
+  
+#ifdef WITH_FOF_GALAXIES
+  /*! Additional data used by the FoF */
+  struct group_data group_data;
+#endif
 
   /*! Sink information (e.g. swallowing ID) */
   struct sink_part_data sink_data;

@@ -164,6 +164,11 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->AGN_number_of_jet_injections = 0;
   bp->group_mass = 0.f;
 
+#ifdef WITH_FOF_GALAXIES
+  bp->group_data.mass = 0.f;
+  bp->group_data.stellar_mass = 0.f;
+#endif
+
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 

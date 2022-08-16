@@ -52,6 +52,8 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
   *rand_for_sf_wind = random_unit_interval(p->id, ti_current,
                                            random_number_stellar_feedback_1);
 
+  /* This is done in the RUNNER files. Therefore, we have access
+   * to the gpart. */
   double galaxy_stellar_mass = p->gpart->fof_data.group_stellar_mass;
   if (galaxy_stellar_mass <= 0.) return 0.;
 
@@ -123,6 +125,8 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
 
   const double galaxy_stellar_mass = 
       p->gpart->fof_data.group_stellar_mass;
+  /* This is done in the RUNNER files. Therefore, we have
+   * access to the gpart */
   const double galaxy_gas_stellar_mass_Msun = 
       p->gpart->fof_data.group_mass * fb_props->mass_to_solar_mass;
   if (galaxy_gas_stellar_mass_Msun <= 0. || galaxy_stellar_mass <= 0.) return;
@@ -179,7 +183,8 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   p->feedback_data.number_of_times_decoupled += 1;
 
 #ifdef WITH_FOF_GALAXIES
-  /* Wind particles are never grouppable */
+  /* Wind particles are never grouppable. This is done in the
+   * RUNNER files. Therefore, we have access to the gpart. */
   p->gpart->fof_data.is_grouppable = 0;
 #endif
 

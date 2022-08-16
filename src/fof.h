@@ -227,6 +227,9 @@ void fof_mark_spart_as_grouppable(const struct spart *sp);
 int fof_gpart_is_grouppable(const struct gpart* gpart,
                             const struct cosmology *cosmo,
                             const struct fof_props *props);
+void fof_store_group_info_in_bpart(struct bpart* bp, const struct gpart* gp);
+void fof_store_group_info_in_spart(struct spart* sp, const struct gpart* gp);
+void fof_store_group_info_in_part(struct part* p, const struct gpart* gp);
 #endif
 
 #ifdef WITH_MPI

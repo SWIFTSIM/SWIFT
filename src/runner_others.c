@@ -900,6 +900,19 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           black_holes_store_potential_in_part(
               &s->parts[offset].black_holes_data, gp);
         }
+#ifdef WITH_FOF_GALAXIES
+        const size_t offset = -gp->id_or_neg_offset;
+        /* Deal with the need for group masses */
+        if (gp->type == swift_type_black_hole) {
+          fof_store_group_info_in_bpart(&s->bparts[offset], gp);
+        }
+        if (gp->type == swift_type_gas) {
+          fof_store_group_info_in_part(&s->parts[offset], gp);
+        }
+        if (gp->type == swift_type_stars) {
+          fof_store_group_info_in_spart(&s->sparts[offset], gp);
+        }
+#endif
       }
     }
   }
