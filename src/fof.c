@@ -3609,7 +3609,7 @@ void fof_store_group_info_in_part(struct part* p, const struct gpart* gp) {
   p->group_data.stellar_mass = gp->fof_data.group_stellar_mass;
 }
 
-void fof_store_group_info_in_part(struct spart* sp, const struct gpart* gp) {
+void fof_store_group_info_in_spart(struct spart* sp, const struct gpart* gp) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->gpart != gp) error("Copying group properties to the wrong star!");
