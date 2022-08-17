@@ -41,9 +41,7 @@ struct rt_props {
   /* Are we using constant stellar emission rates? */
   int use_const_emission_rates;
 
-  /* Frequency bin edges for photon groups
-   * Includes 0 as leftmost edge, doesn't include infinity as
-   * rightmost bin edge*/
+  /* (Lower) frequency bin edges for photon groups */
   float photon_groups[RT_NGROUPS];
 
   /* Global constant stellar emission rates */
@@ -205,10 +203,10 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
   if (engine_rank != 0) return;
 
   message("Radiative transfer scheme: '%s'", RT_IMPLEMENTATION);
-  char messagestring[200] = "Using photon frequency bins: [0.";
+  char messagestring[200] = "Using photon frequency bins: [ ";
   char freqstring[20];
-  for (int g = 1; g < RT_NGROUPS; g++) {
-    sprintf(freqstring, ", %.3g", rtp->photon_groups[g]);
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    sprintf(freqstring, "%.3g ", rtp->photon_groups[g]);
     strcat(messagestring, freqstring);
   }
   strcat(messagestring, "]");
@@ -259,20 +257,13 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
         "You need to run GEAR-RT with at least 1 photon group, "
         "you have %d",
         RT_NGROUPS);
-  } else if (RT_NGROUPS == 1) {
-    rtp->photon_groups[0] = 0.f;
   } else {
-    float frequencies[RT_NGROUPS - 1];
     /* !! Keep the frequencies in Hz for now. !! */
-    parser_get_param_float_array(params, "GEARRT:photon_groups_Hz",
-                                 RT_NGROUPS - 1, frequencies);
-    for (int g = 0; g < RT_NGROUPS - 1; g++) {
-      rtp->photon_groups[g + 1] = frequencies[g];
-    }
-    rtp->photon_groups[0] = 0.f;
+    parser_get_param_float_array(params, "GEARRT:photon_groups_Hz", RT_NGROUPS,
+                                 rtp->photon_groups);
   }
 
-  /* Sanity check. */
+  /* Sanity check: photon group edges must be in increasing order. */
   for (int g = 0; g < RT_NGROUPS - 1; g++) {
     if (rtp->photon_groups[g + 1] <= rtp->photon_groups[g])
       error(
