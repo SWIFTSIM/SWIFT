@@ -75,7 +75,8 @@ class RTSnapData(object):
         self.ncells = None
         self.boxsize = None
         self.time = None
-        self.has_stars = True
+        self.has_stars = False
+        self.has_star_debug_data = False
 
         self.nstars = None
         self.npart = None
@@ -95,6 +96,9 @@ class Rundata(object):
 
         self.use_const_emission_rate = False
         self.has_stars = False  # assume we don't have stars, check while reading in
+        self.has_stars_debug_data = (
+            False
+        )  # assume we don't have stars, check while reading in
 
         self.ngroups = 0  # photon frequency groups
         self.const_emission_rates = None
@@ -268,23 +272,40 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         newsnap.npart = Gas.IDs.shape[0]
 
         #  Get star data
+        Stars = RTStarData()
+        nstars = 0
+        has_stars = False
+        has_star_debug_data = False
         try:
-            Stars = RTStarData()
             Stars.IDs = data.stars.particle_ids
             Stars.coords = data.stars.coordinates
             Stars.h = data.stars.smoothing_lengths
-            inj = np.atleast_2d(data.stars.rtdebug_injected_photon_energy)
-            Stars.InjectedPhotonEnergy = np.reshape(inj, (Stars.IDs.shape[0], ngroups))
-            newsnap.stars = Stars
-            newsnap.nstars = Stars.IDs.shape[0]
+            nstars = Stars.IDs.shape[0]
+            has_stars = True
         except AttributeError:
-            newsnap.stars = RTStarData()
-            newsnap.has_stars = False
-            newsnap.nstars = 0
+            pass
+
+        if has_stars:
+            try:
+                inj = np.atleast_2d(data.stars.rtdebug_injected_photon_energy)
+                Stars.InjectedPhotonEnergy = np.reshape(
+                    inj, (Stars.IDs.shape[0], ngroups)
+                )
+                has_star_debug_data = True
+            except AttributeError:
+                pass
+
+        newsnap.stars = Stars
+        newsnap.nstars = nstars
+        newsnap.has_stars = has_stars
+        newsnap.has_star_debug_data = has_star_debug_data
 
         snapdata.append(newsnap)
 
     for snap in snapdata:
         rundata.has_stars = rundata.has_stars or snap.has_stars
+        rundata.has_star_debug_data = (
+            rundata.has_stars_debug_data or snap.has_star_debug_data
+        )
 
     return snapdata, rundata
