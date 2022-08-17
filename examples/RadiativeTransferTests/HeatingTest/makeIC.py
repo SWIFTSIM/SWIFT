@@ -152,7 +152,7 @@ parts.create_dataset("MassFractionHeIII", data=HeIIIdata)
 
 
 # Add photon groups
-nPhotonGroups = 4
+nPhotonGroups = 3
 
 # with this IC, the radiative cooling is negligible.
 #  photon_energy = u_part * pmass * 5.0
@@ -160,9 +160,7 @@ nPhotonGroups = 4
 #  photon_energy = u_part * pmass * 0.025
 
 # Fluxes from the Iliev Test0 part3
-fluxes_iliev = (
-    np.array([0.0, 1.350e1, 2.779e1, 6.152e0]) * unyt.erg / unyt.s / unyt.cm ** 2
-)
+fluxes_iliev = np.array([1.350e1, 2.779e1, 6.152e0]) * unyt.erg / unyt.s / unyt.cm ** 2
 energy_density = fluxes_iliev / unyt.c
 photon_energy = energy_density * boxsize ** 3 / nparts
 photon_energy = photon_energy * 0.00001

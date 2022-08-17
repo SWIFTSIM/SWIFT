@@ -50,7 +50,7 @@ You need to provide the following runtime parameters in the yaml file:
    GEARRT:
        photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]  # Photon frequency group bin edges in Hz
        use_const_emission_rates: 1 
-       star_emission_rates_LSol: [1., 1., 1., 1.]         # stellar emission rates for each photon 
+       star_emission_rates_LSol: [1., 1., 1.]             # stellar emission rates for each photon 
                                                           # frequency bin in units of solar luminosity
        f_reduce_c: 1e-3                                   # reduce the speed of light by this factor
        CFL_condition: 0.9                                 # CFL condition for time integration
@@ -59,19 +59,22 @@ You need to provide the following runtime parameters in the yaml file:
 
        stellar_spectrum_type: 0                           # Which radiation spectrum to use. 0: constant. 1: blackbody spectrum.
 
-The ``photon_groups`` need to be ``N - 1`` frequency edges (floats) to separate 
-the spectrum into ``N`` groups. The outer limits of zero and infinity are 
-assumed.
+The ``photon_groups_Hz`` need to be ``N`` frequency edges (floats) to separate 
+the spectrum into ``N`` groups, where ``N`` is the same number you configured
+with using ``--with_rt=GEAR_N``. The edges are **lower** edges of the bins, and
+need to be sorted in increasing order. The final upper edge is defined in a 
+different manner, and depends on the stellar spectrum type you assume (see below
+for more details).
 
 At the moment, the only way to define star emission rates is to use constant
 star emission rates that need to be provided in the parameter file. The star 
 emission rates need to be defined for each photon frequency group individually.
-The first entry of the array is for the photon group with frequency 
-``[0, <first entry of photon_groups_Hz>)``. Each star particle will then emit
-the given energies, independent of their other properties.
+Each star particle will then emit the given energies, independent of their other 
+properties, i.e. the spectrum is currently independent of stellar age, metallicity, 
+redshift, etc.
 
 Furthermore, even though the parameter ``use_const_emission_rates`` is 
-intended to be optional in the future, **for now it needs to be set to 1.**, and
+intended to be optional in the future, **for now it needs to be set to 1**., and
 it requires you to manually set the stellar emission rates via the
 ``star_emission_rates_LSol`` parameter.
 
@@ -81,13 +84,25 @@ rates. The parameter ``stellar_spectrum_type`` is hence required, and allows you
 to select between:
 
 - constant spectrum (``stellar_spectrum_type: 0``)
+    - Assume same energy density for any frequency.
     - This choice additionally requires you to provide a maximal frequency for
       the spectrum after which it'll be cut off via the 
       ``stellar_spectrum_const_max_frequency_Hz`` parameter
 
 - blackbody spectrum (``stellar_spectrum_type: 1``)
+    - Assume the spectrum is a blackbody spectrum
     - In this case, you need to provide also temperature of the blackbody via the 
       ``stellar_spectrum_blackbody_temperature_K`` parameter.
+    - The assumed maximal considered frequency :math:`\nu_{max}` for this spectrum 
+      is equal to 10 times :math:`\nu_{peak}`, the frequency at which the blackbody 
+      spectrum has its maximum, i.e.
+
+.. math::
+
+     \nu_{peak} = 2.82144 \times k_{B} \times T / h_{Planck}
+
+     \nu_{max} = 10 \times \nu_{peak}
+
 
 .. warning::
    The ``stellar_spectrum_type`` parameter also determines the averaged photon 
