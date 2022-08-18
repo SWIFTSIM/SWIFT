@@ -147,7 +147,8 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
   const double dz = g->x[2] - potential->x[2];
   const double r = sqrt(dx * dx + dy * dy + dz * dz);
 
-  const double mr = enclosed_mass_burkert(potential, r * potential->one_over_r0);
+  const double mr =
+      enclosed_mass_burkert(potential, r * potential->one_over_r0);
 
   const double period =
       2. * M_PI * r * sqrt(r / (phys_const->const_newton_G * mr));
@@ -193,12 +194,12 @@ static INLINE void potential_init_backend(
     struct external_potential* potential) {
 
   /* Read in the position of the centre of potential */
-  parser_get_param_double_array(parameter_file, "NFWPotential:position", 3,
+  parser_get_param_double_array(parameter_file, "BurkertPotential:position", 3,
                                 potential->x);
 
   /* Is the position absolute or relative to the centre of the box? */
   const int useabspos =
-      parser_get_param_int(parameter_file, "NFWPotential:useabspos");
+      parser_get_param_int(parameter_file, "BurkertPotential:useabspos");
 
   if (!useabspos) {
     potential->x[0] += s->dim[0] / 2.;
@@ -208,21 +209,24 @@ static INLINE void potential_init_backend(
 
   /* Read the other parameters of the model */
   potential->timestep_mult =
-      parser_get_param_double(parameter_file, "NFWPotential:timestep_mult");
+      parser_get_param_double(parameter_file, "BurkertPotential:timestep_mult");
   potential->core_mass =
-      parser_get_param_double(parameter_file, "NFWPotential:M0");
+      parser_get_param_double(parameter_file, "BurkertPotential:M0");
   const double rescaled_mass =
       potential->core_mass / (1e9 * phys_const->const_solar_mass);
 
   /* Compute the core radius and its powers (Mori and Burkert (2000) eq. 4) */
-  const double r0 = 3.09 * pow(rescaled_mass, 3. / 7.);
+  const double r0 = 3.09 * pow(rescaled_mass, 3. / 7.);  // kpc
   potential->r0 = r0;
   potential->r0_2 = r0 * r0;
   potential->r0_3 = r0 * r0 * r0;
   potential->one_over_r0 = 1. / r0;
 
-  /* Compute the central density of the halo (Mori and Burkert (2000) eq. 5) */
-  potential->central_density = 1.46e-24 * pow(rescaled_mass, -2. / 7.);
+  /* Compute the central density of the halo (Mori and Burkert (2000) eq. 5).
+   * This is in g / cm^3 however, so we need a conversion factor. */
+  const double units = us->UnitLength_in_cgs * us->UnitLength_in_cgs *
+                       us->UnitLength_in_cgs / us->UnitMass_in_cgs;
+  potential->central_density = 1.46e-24 * pow(rescaled_mass, -2. / 7.) * units;
 
   /* Compute the central potential (We do not multiply with G yet). */
   potential->central_potential =
