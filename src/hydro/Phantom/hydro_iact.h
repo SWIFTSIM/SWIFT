@@ -333,9 +333,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
-  /* Compute sound speeds and signal velocity */
-  const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
-                      const_viscosity_beta * mu_ij;
+  /* Compute the signal velocity */
+  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -389,7 +388,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term = alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
-                             (wi_dr * f_ij / pi->rho + wj_dr * f_ji / pi->rho);
+                             (wi_dr * f_ij / rhoi + wj_dr * f_ji / rhoj);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -400,8 +399,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * f_ij * r_inv / rhoj * wi_dr;
-  pj->force.h_dt -= mi * dvdr * f_ji * r_inv / rhoi * wj_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 }
 
 /**
@@ -466,9 +465,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
-  /* Compute sound speeds and signal velocity */
-  const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
-                      const_viscosity_beta * mu_ij;
+  /* Compute the signal velocity */
+  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -516,7 +514,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term = alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
-                             (wi_dr * f_ij / pi->rho + wj_dr * f_ji / pi->rho);
+                             (wi_dr * f_ij / rhoi + wj_dr * f_ji / rhoj);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -525,7 +523,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * f_ij * r_inv / rhoj * wi_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 }
 
 #endif /* SWIFT_PHANTOM_HYDRO_IACT_H */
