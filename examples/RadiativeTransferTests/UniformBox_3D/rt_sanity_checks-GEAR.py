@@ -175,7 +175,15 @@ def check_injection(snapdata, rundata):
     # ----------------------------------------------------------------
 
     if not rundata.has_stars:
-        print("Found no stars in run. Skipping injection tests")
+        print("Found no stars in run. Skipping injection tests.")
+        return
+
+    if not rundata.has_stars_debug_data:
+        print(
+            "Found no debug data in run.",
+            "Can't do injection tests without it.",
+            "Compile swift with debugging checks on.",
+        )
         return
 
     emission_rates = rundata.const_emission_rates
