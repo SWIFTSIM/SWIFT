@@ -1395,40 +1395,7 @@ void cell_grid_set_pair_completeness(struct cell *restrict ci,
   }
 }
 
-void cell_set_grid_construction_level(
-    struct cell *c, enum construction_level construction_level) {
-
-  enum construction_level next_construction_level = construction_level;
-  if (construction_level == above_construction_level) {
-    /* Check if we can split this cell (i.e. all sub-cells are complete) */
-    int splittable = c->split && c->hydro.count > space_grid_split_threshold;
-    for (int k = 0; splittable && k < 8; k++) {
-      if (c->progeny[k] != NULL) splittable &= c->progeny[k]->grid.complete;
-    }
-
-    if (!splittable) {
-      /* This is the first time we encounter an unsplittable cell, meaning that
-       * it has too few particles to be split further or one of its progenitors
-       * is not complete.
-       */
-      construction_level = on_construction_level;
-      next_construction_level = below_construction_level;
-    }
-  }
-
-  /* Set the construction level */
-  c->grid.construction_level = construction_level;
-
-  /* Recurse. */
-  if (c->split)
-    for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL)
-        cell_set_grid_construction_level(c->progeny[k],
-                                         next_construction_level);
-    }
-}
-
-void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
+void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
                                              void *extra_data) {
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
@@ -1456,8 +1423,9 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
     /* Anything to do here? */
     if (ci->hydro.count == 0) continue;
 
-    /* Set update completeness for all the pairs of sub cells of this cell */
     const int ci_local = ci->nodeID == nodeID;
+
+    /* Update completeness for all the pairs of sub cells of this cell */
     if (ci_local) cell_grid_set_pair_completeness(ci, NULL, 0, e);
 
     /* Now loop over all the neighbours of this cell to also update the
@@ -1497,14 +1465,71 @@ void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
         }
       }
     } /* Now loop over all the neighbours of this cell */
+  } /* Loop through the elements, which are just byte offsets from NULL. */
+}
+
+void cell_set_grid_construction_level(
+    struct cell *c, enum construction_level construction_level) {
+
+  enum construction_level next_construction_level = construction_level;
+  if (construction_level == above_construction_level) {
+    /* Check if we can split this cell (i.e. all sub-cells are complete) */
+    int splittable = c->split && c->hydro.count > space_grid_split_threshold;
+    for (int k = 0; splittable && k < 8; k++) {
+      if (c->progeny[k] != NULL) splittable &= c->progeny[k]->grid.complete;
+    }
+
+    if (!splittable) {
+      /* This is the first time we encounter an unsplittable cell, meaning that
+       * it has too few particles to be split further or one of its progenitors
+       * is not complete.
+       */
+      construction_level = on_construction_level;
+      next_construction_level = below_construction_level;
+    }
+  }
+
+  /* Set the construction level */
+  c->grid.construction_level = construction_level;
+
+  /* Recurse. */
+  if (c->split)
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        cell_set_grid_construction_level(c->progeny[k],
+                                         next_construction_level);
+    }
+}
+
+void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
+                                             void *extra_data) {
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+
+  struct space *s = e->s;
+  const int nodeID = e->nodeID;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL, to set
+   * the neighbour flags. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Anything to do here? */
+    if (ci->hydro.count == 0) continue;
+    const int ci_local = ci->nodeID == nodeID;
 
     /* This cell's completeness flags are now set all the way down the cell
      * hierarchy. We can now set the construction level. */
     if (ci_local) {
       cell_set_grid_construction_level(ci, above_construction_level);
     }
-
-  } /* Loop through the elements, which are just byte offsets from NULL. */
+  }
 }
 
 /**

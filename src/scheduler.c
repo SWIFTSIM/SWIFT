@@ -1529,7 +1529,7 @@ static void scheduler_splittask_grid(struct task *t, struct scheduler *s) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (!ci->split || (cj != NULL && !cj->split))
-        error("Trying to split task with unsplittable cell!");
+        error("Found unsplittable cell above construction level!");
 #endif
       /* Take a step back (we're going to recycle the current task)... */
       redo = 1;
