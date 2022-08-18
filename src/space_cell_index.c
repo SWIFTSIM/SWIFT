@@ -123,6 +123,19 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     if (pos_y == dim_y) pos_y = 0.0;
     if (pos_z == dim_z) pos_z = 0.0;
 
+#if SHADOWSWIFT_BC == LEFT_INFLOW_BC
+    if (pos_x != old_pos_x) {
+      /* Reset the primitive quantities */
+      struct hydro_space hs = s->hs;
+      p->rho = hs.density;
+      p->v[0] = hs.velocity;
+      p->P = hs.pressure;
+      /* Signal that the conserved quantities are now considered
+             * uninitialized. */
+      p->conserved.valid = 0;
+    }
+#endif
+
     /* Get its cell index */
     const int index =
         cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
