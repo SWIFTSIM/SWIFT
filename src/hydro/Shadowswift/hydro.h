@@ -543,18 +543,19 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #if (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
       /* Before updating the conserved variables: Are they still valid? */
       if (!p->conserved.valid) {
-        p->conserved.mass = p->rho * p->geometry.volume;
-        p->conserved.momentum[0] = p->conserved.mass * p->v[0];
-        p->conserved.momentum[1] = p->conserved.mass * p->v[1];
-        p->conserved.momentum[2] = p->conserved.mass * p->v[2];
-        p->conserved.energy =
-            p->conserved.mass * gas_internal_energy_from_pressure(p->rho, p->P);
+        float Q[5] = {p->rho * p->geometry.volume, p->conserved.mass * p->v[0],
+                      p->conserved.mass * p->v[1], p->conserved.mass * p->v[2],
+                      p->conserved.mass *
+                          gas_internal_energy_from_pressure(p->rho, p->P)};
+
 #ifdef SHADOWSWIFT_TOTAL_ENERGY
         /* add the kinetic energy; we want the total energy */
-        p->conserved.energy += 0.5f * (p->conserved.momentum[0] * p->v[0] +
-                                       p->conserved.momentum[1] * p->v[1] +
-                                       p->conserved.momentum[2] * p->v[2]);
+        Q[4] += 0.5f * (p->conserved.momentum[0] * p->v[0] +
+                        p->conserved.momentum[1] * p->v[1] +
+                        p->conserved.momentum[2] * p->v[2]);
 #endif
+        hydro_part_set_conserved_variables(p, Q);
+
         if (p->gpart) {
           p->gpart->mass = p->conserved.mass;
         }
