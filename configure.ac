@@ -1688,7 +1688,7 @@ if test "$enable_warn" != "no"; then
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
           intel | gnu | clang)
-             CFLAGS="$CFLAGS -Werror"
+             # CFLAGS="$CFLAGS -Werror"
           ;;
        esac
     fi

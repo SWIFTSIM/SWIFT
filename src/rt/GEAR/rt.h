@@ -518,6 +518,8 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
     float dt_kick_corr, const struct cosmology* cosmo,
     const struct hydro_props* hydro_props) {
 
+  dt_therm = 0.;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* Don't account for timestep_sync backward kicks */
   if (dt_therm >= 0.f && dt_grav >= 0.f && dt_hydro >= 0.f &&

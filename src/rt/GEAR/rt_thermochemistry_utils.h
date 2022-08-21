@@ -197,11 +197,11 @@ rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
 
   /* Set the values that you actually want. Needs to be in internal units.*/
   /* 1 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  float density = 2.471e+04;
+  /* float density = 2.471e+04; */
 
   /* Set the values that you actually want. Needs to be in internal units.*/
   /* 10^-3 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  /* float density = 2.471e+01; */
+  float density = 2.471e+01;
 
   float internal_energy = 1.23816;
 

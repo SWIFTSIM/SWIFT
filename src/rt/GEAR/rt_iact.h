@@ -23,6 +23,19 @@
 #include "rt_flux.h"
 #include "rt_gradients.h"
 
+
+
+#define FLUXINTERHALF 1
+/* #define NOFLUX 1 */
+
+#define WEIGHT_PSI 1
+/* #define WEIGHT_R3 1 */
+
+#define CORR 1
+/* #define NOCORR 1 */
+
+
+
 /**
  * @file src/rt/GEAR/rt_iact.h
  * @brief Main header file for the GEAR M1 closure radiative transfer scheme
@@ -70,16 +83,28 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
    * normalization anyway, and furthermore now that the injection prep is done
    * during the star density loop, si->density.wcount won't be computed at this
    * stage yet. */
+#ifdef WEIGHT_PSI
   const float psi = wi * hi_inv_dim;
+#endif
+#ifdef WEIGHT_R3
+  const float psi = 1.f / (r2 * r);
+#endif
 
   /* Now add that weight to the appropriate octant */
   int octant_index = 0;
 
+#ifdef CORR
   if (dx[0] > 0.f) octant_index += 1;
   if (dx[1] > 0.f) octant_index += 2;
   if (dx[2] > 0.f) octant_index += 4;
 
   si->rt_data.octant_weights[octant_index] += psi;
+#endif
+
+#ifdef NOCORR
+  si->rt_data.octant_weights[0] += psi;
+#endif
+
 }
 
 /**
@@ -130,9 +155,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   float wi;
   kernel_eval(xi, &wi);
   const float hi_inv_dim = pow_dimension(hi_inv);
+#ifdef WEIGHT_PSI
   /* psi(x_star - x_gas, h_star) */
   /* Skip the division by si->density.wcount to remain consistent */
   const float psi = wi * hi_inv_dim;
+#endif
+#ifdef WEIGHT_R3
+  const float psi = 1.f / (r2 * r);
+#endif
   const float u = xi * kernel_gamma_inv;
 
 #if defined(HYDRO_DIMENSION_3D)
@@ -144,6 +174,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
 #endif
 
   /* Get weight for particle, including isotropy correction */
+#ifdef CORR
   float nonempty_octants = 0.f;
 
   for (int i = 0; i < maxind; i++) {
@@ -158,6 +189,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   const float octw = si->rt_data.octant_weights[octant_index];
   /* We might end up in this scenario due to roundoff errors */
   if (psi == 0.f || octw == 0.f) return;
+#endif
+
+#ifdef NOCORR
+  float nonempty_octants = 1.f;
+  const float octw = si->rt_data.octant_weights[0];
+#endif
 
   const float weight = psi / (nonempty_octants * octw);
 
@@ -179,9 +216,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
      * So inject the optically thick case F = cE/3 for r/H < 0.5, and then
      * linearly increase to F = cE afterwards.
      * Same as 1/3 + 2/3 * (2 * (max(r/H, 0.5) - 0.5)) */
+#ifdef FLUXINTERHALF
     const float f = (1.f + 4.f * (max(0.5f, u) - 0.5f)) / 3.f;
     const float injected_flux =
         injected_energy_density * rt_params.reduced_speed_of_light * f;
+#endif
+#ifdef NOFLUX
+    const float injected_flux = 0.f;
+#endif
     pj->rt_data.radiation[g].flux[0] += injected_flux * n_unit[0];
     pj->rt_data.radiation[g].flux[1] += injected_flux * n_unit[1];
     pj->rt_data.radiation[g].flux[2] += injected_flux * n_unit[2];

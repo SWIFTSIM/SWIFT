@@ -105,7 +105,10 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
 
   /* Nothing to do here? */
   if (rt_props->skip_thermochemistry) return;
-  if (dt == 0.) return;
+  if (dt == 0.) {
+    rt_tchem_set_particle_quantities_for_test(p);
+    return;
+  }
 
   /* This is where the fun begins */
   /* ---------------------------- */
