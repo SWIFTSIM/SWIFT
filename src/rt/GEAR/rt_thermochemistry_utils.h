@@ -263,21 +263,20 @@ rt_tchem_set_particle_radiation_field_for_test(
  * @brief Modify a boundary particle.
  *
  * This function is only intended for use in very special case idealized
- * tests, like the Iliev+06 tests, to deal with boundary conditions in 
+ * tests, like the Iliev+06 tests, to deal with boundary conditions in
  * a simple manner.
  * */
 __attribute__((always_inline)) INLINE static void
 rt_tchem_set_boundary_particles_for_test(struct part* restrict p) {
 
   if (p->id >= 1000000000) {
-    for (int g = 0; g < RT_NGROUPS; g++){
+    for (int g = 0; g < RT_NGROUPS; g++) {
       p->rt_data.radiation[g].energy_density = 0.f;
       p->rt_data.radiation[g].flux[0] = 0.f;
       p->rt_data.radiation[g].flux[1] = 0.f;
       p->rt_data.radiation[g].flux[2] = 0.f;
     }
   }
-
 }
 
 #endif /* SWIFT_RT_GEAR_THERMOCHEMISTRY_UTILS_H */

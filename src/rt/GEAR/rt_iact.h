@@ -23,8 +23,6 @@
 #include "rt_flux.h"
 #include "rt_gradients.h"
 
-
-
 #define FLUXINTERHALF 1
 /* #define NOFLUX 1 */
 
@@ -33,8 +31,6 @@
 
 #define CORR 1
 /* #define NOCORR 1 */
-
-
 
 /**
  * @file src/rt/GEAR/rt_iact.h
@@ -104,7 +100,6 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
 #ifdef NOCORR
   si->rt_data.octant_weights[0] += psi;
 #endif
-
 }
 
 /**
