@@ -160,6 +160,8 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   const double norm = sqrt(
     dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]
   );
+  /* No norm, no wind */
+  if (norm <= 0.) return;
   const double prefactor = cosmo->a * wind_velocity / norm;
 
   xp->v_full[0] += prefactor * dir[0];

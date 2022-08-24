@@ -816,7 +816,9 @@ runner_iact_nonsym_bh_gas_feedback(
         dt = get_timestep(bi->time_bin, time_base);
       }
 
+      if (r2 <= 0.f) return;
       const float r = sqrtf(r2);
+  
       /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
       const float n_H_cgs =
           hydro_get_physical_density(pj, cosmo) * bh_props->rho_to_n_cgs;
@@ -833,7 +835,7 @@ runner_iact_nonsym_bh_gas_feedback(
         du_xray_phys = bh_props->xray_maximum_heating_factor * u_init;
       }
 
-      /* If for some reason there is negative energy, don't do anything */
+      /* Don't allow X-ray cooling */
       if (du_xray_phys <= 0.) return;
 
       /* Account for X-rays lost due to radiation */
@@ -895,7 +897,7 @@ runner_iact_nonsym_bh_gas_feedback(
 
 #ifdef SIMBA_DEBUG_CHECKS
       const double T_gas_final_cgs = 
-          du_xray_phys / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
+          u_new / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
       message("BH_XRAY_HEAT: bid=%lld, pid=%lld, T_init %g K, T_new %g K, T_new/T_init=%g",
               bi->id, pj->id,
               T_gas_cgs,
@@ -916,6 +918,9 @@ runner_iact_nonsym_bh_gas_feedback(
         sqrtf(bi->angular_momentum_gas[0] * bi->angular_momentum_gas[0] +
               bi->angular_momentum_gas[1] * bi->angular_momentum_gas[1] +
               bi->angular_momentum_gas[2] * bi->angular_momentum_gas[2]);
+
+    /* No norm, no wind */
+    if (norm <= 0.f) return;
 
 #ifdef SIMBA_DEBUG_CHECKS
     const float pj_vel_norm = sqrtf(
