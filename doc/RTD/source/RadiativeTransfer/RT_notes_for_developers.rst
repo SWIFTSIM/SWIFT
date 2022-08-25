@@ -451,16 +451,38 @@ sorts have been added:
 - ``cell_flag_do_rt_sub_sort``: tracks whether we need an RT sub sort, which is 
   equivalent to the ``cell_flag_do_sub_sort`` flag for hydro. We can't use the 
   hydro flag though because the hydro flag is also used to early-exit walking up 
-  the cell hierarchy when activating hydro subcell sorts. So we need an
-  independent flag here.
+  the cell hierarchy when activating hydro subcell sorts. In particular, this
+  condition in ``cell_unskip.c:cell_activate_hydro_sorts_up():``
+
+.. code:: 
+
+   void cell_activate_hydro_sorts_up(struct cell *c, struct scheduler *s) {
+       /* omitted lines */
+
+       for (struct cell *parent = c->parent;
+           parent != null && !cell_get_flag(parent, cell_flag_do_hydro_sub_sort); parent = parent->parent) {
+       /* !! this is the problem ---^ */
+   
+       /* omitted lines */
+     }
+   }
+
+The sort activation for RT and for hydro can run concurrently. So there is no
+guarantee that when the hydro sort activation sets the
+``cell_flag_do_hydro_sub_sort`` flag, the RT sorting tasks will be activated
+correctly, which occurs at the top of the cell hierarchy tree walk.
+So we need an independent flag for RT here to not abort the tree walk early
+and in error.
 
 - ``cell_flag_do_rt_sort``: tracks whether the call to the 
   ``runner_do_hydro_sort()`` function was requested by an RT sort. (Both the (hydro) 
-  ``sort`` and the ``rt_sort`` tasks call the same function.) It is used to allow 
-  the cell to be "undrifted to the current time" instead of crashing. (When an RT 
-  subcycle coincides with a main step, the particles won't necessarily be drifted 
-  to the current time as there is no need to drift them for RT only. So we allow
-  ``runner_do_hydro_sort()`` to skip this check in this case.)
+  ``sort`` and the ``rt_sort`` tasks call the same function.) This flag is used to 
+  discriminate during the actual sorting in the ``runner_do_hydro_sort()``
+  function if the internal check whether the cell is drifted to the current time
+  may be disregarded. When an RT subcycle coincides with a main step, the particles 
+  won't necessarily be drifted to the current time as there is no need to drift them 
+  for RT only. This is intended behaviour, so we allow ``runner_do_hydro_sort()`` to
+  skip this drift check in the case where the sorting was requested for RT purposes.
 
 - ``cell_flag_skip_rt_sort``: Tracks whether a regular hydro sort has been
   activated for this cell. If it has, then there is no need to run an RT sort as
