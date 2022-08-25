@@ -815,9 +815,6 @@ runner_iact_nonsym_bh_gas_feedback(
       } else {
         dt = get_timestep(bi->time_bin, time_base);
       }
-
-      if (r2 <= 0.f) return;
-      const float r = sqrtf(r2);
   
       /* Hydrogen number density (X_H * rho / m_p) [cm^-3] */
       const float n_H_cgs =
@@ -876,6 +873,8 @@ runner_iact_nonsym_bh_gas_feedback(
 #ifdef WITH_MPI
         error("Compiled WITH_MPI but accessing gpart when not available.");
 #else
+        if (r2 <= 0.f) return;
+        const float r = sqrtf(r2);
         const float prefactor = dv_comoving / r;
         pj->gpart->v_full[0] += prefactor * dx[0];
         pj->gpart->v_full[1] += prefactor * dx[1];
@@ -935,14 +934,14 @@ runner_iact_nonsym_bh_gas_feedback(
     );
 #endif
 
+#ifdef WITH_MPI
+    error("Compiled with WITH_MPI but accessing gpart when not available.");
+#else
     /* TODO: random_uniform() won't work here?? */
     /*const float dirsign = (random_uniform(-1.0, 1.0) > 0. ? 1.f : -1.f);*/
     const double random_number =
         random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
     const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
-#ifdef WITH_MPI
-    error("Compiled with WITH_MPI but accessing gpart when not available.");
-#else
     const float prefactor = bi->v_kick * cosmo->a * dirsign / norm;
     pj->gpart->v_full[0] += prefactor * bi->angular_momentum_gas[0];
     pj->gpart->v_full[1] += prefactor * bi->angular_momentum_gas[1];
