@@ -77,7 +77,7 @@ EAGLEEntropyFloor:
 
 #MHD part
 MHD:
- define_B_in_ics:       1e-13         #Comoving Bfield at Z 
+ define_B_in_ics:       1e-9         #Comoving Bfield at Z 
  parabolic_dedner:      2.0 #
  hyperbolic_dedner:     0.1
  diffusion_eta:         0.00

@@ -301,7 +301,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a);
 
   /* Grab balsara switches */
   const float balsara_i = pi->force.balsara;
@@ -432,7 +433,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Compute signal velocity */
-  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
+  const float v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta, a);
 
   /* Grab balsara switches */
   const float balsara_i = pi->force.balsara;

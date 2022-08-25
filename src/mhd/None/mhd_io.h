@@ -19,6 +19,7 @@
 #ifndef SWIFT_NONE_MHD_IO_H
 #define SWIFT_NONE_MHD_IO_H
 
+#include "io_properties.h"
 #include "statistics.h"
 
 /**

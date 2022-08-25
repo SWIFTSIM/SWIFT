@@ -16,37 +16,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DI_MHD_STRUCT_H
-#define SWIFT_DI_MHD_STRUCT_H
+#ifndef SWIFT_NONE_VECTOR_POTENTIAL_DEBUG_H
+#define SWIFT_NONE_VECTOR_POTENTIAL_DEBUG_H
 
 /**
- * @brief Particle-carried fields for the MHD scheme.
+ * @brief Print out the mhd fields of a particle.
+ *
+ * Function used for debugging purposes.
+ *
+ * @param p The particle to act upon
+ * @param xp The extended particle data to act upon
  */
-struct mhd_part_data {
-
-  /*! Predicted Bfield */
-  float BPred[3];
-  /*! Full step Divergence of B */
-  float divB;
-  /*! limiters Induction and force */
-  float Q1, Q0;
-  /*! dB Direct Induction */
-  float dBdt[3];
-  /* Predicted Dedner Cleaning Scalar */
-  float phi;
-  // float Test[3];
-  float Deta;
-};
-
-/**
- * @brief Particle-carried extra fields for the MHD scheme.
- */
-struct mhd_xpart_data {
-
-  /* Full step Dedner Cleaning Scalar */
-  float phi;
-  /*! Full Step Magnetic field */
-  float Bfld[3];
-};
-
-#endif /* SWIFT_DI_MHD_STRUCT_H */
+__attribute__((always_inline)) INLINE static void mhd_debug_particle(
+    const struct part *p, const struct xpart *xp) {
+  printf(
+      "Bpred=[%.3e,%.3e,%.3e], "
+      "Apred=[%.3e,%.3e,%.3e], "
+      "dAdt=[%.3e,%.3e,%.3e], \n"
+      "divB=%.3e, divA=%.3e, Q0=%.3e, Gau=%.3e\n",
+      p->mhd_data.BPred[0], p->mhd_data.BPred[1], p->mhd_data.BPred[2],
+      p->mhd_data.APred[0], p->mhd_data.APred[1], p->mhd_data.APred[2],
+      p->mhd_data.dAdt[0], p->mhd_data.dAdt[1], p->mhd_data.dAdt[2],
+      p->mhd_data.divB, p->mhd_data.divA, p->mhd_data.Q0, p->mhd_data.Gau);
+}
+#endif /* SWIFT_VECTOR_POTENTIAL_MHD_DEBUG_H */

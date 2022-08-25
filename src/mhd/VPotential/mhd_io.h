@@ -40,26 +40,16 @@ INLINE static int mhd_read_particles(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, mhd_data.APred);
   return 2;
 }
-/*TODO
+/* NOT TODO
  *
  * */
-INLINE static void convert_B(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
-  float a_fac = pow(e->cosmology->a, 3.f / 2.f * (hydro_gamma - 1.f) - 2.f);
-  ret[0] = p->mhd_data.BPred[0] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-  ret[1] = p->mhd_data.BPred[1] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-  ret[2] = p->mhd_data.BPred[2] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-}
-/*TODO
- *
- * */
-INLINE static void convert_A(const struct engine* e, const struct part* p,
-                             const struct xpart* xp, float* ret) {
-  float a_fac = pow(e->cosmology->a, 3.f / 2.f * (hydro_gamma - 1.f) - 1.f);
-  ret[0] = p->mhd_data.APred[0] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-  ret[1] = p->mhd_data.APred[1] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-  ret[2] = p->mhd_data.APred[2] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
-}
+// INLINE static void convert_B(const struct engine* e, const struct part* p,
+//                             const struct xpart* xp, float* ret) {
+//  float a_fac = pow(e->cosmology->a, 3.f / 2.f * (hydro_gamma - 1.f) - 2.f);
+//  ret[0] = p->mhd_data.BPred[0] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+//  ret[1] = p->mhd_data.BPred[1] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+//  ret[2] = p->mhd_data.BPred[2] * sqrt(e->hydro_properties->mhd.mu0) * a_fac;
+//}
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -67,34 +57,32 @@ INLINE static void convert_A(const struct engine* e, const struct part* p,
  * @param parts The particle array.
  * @param xparts The extended particle array.
  * @param list The list of i/o properties to write.
- *
  * @return num_fields The number of i/o fields to write.
  */
 INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
-
-  // list[0] = io_make_output_field("Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS,
-  // -2.f,
-  //                                parts, mhd_data.BPred,
-  //                                "Co-moving Magnetic field of the
-  //                                particles");
-  list[0] = io_make_output_field_convert_part(
-      "Bfield", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f, parts, xparts, convert_B,
-      "Co-moving Magnetic field of the particles");
+  // SET CORRECT UNITS
+  list[0] = io_make_output_field(
+      "Bfield", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,
+      parts, mhd_data.BPred, "Co-moving Magnetic field of the particles");
 
   list[1] =
-      io_make_output_field("divB", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f, parts,
+      io_make_output_field("divB", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+                           mhd_comoving_factor - 1.f, parts,
                            mhd_data.divB, "co-moving DivB of the particles");
-  list[2] = io_make_output_field_convert_part(
-      "Apot", FLOAT, 3, UNIT_CONV_NO_UNITS, -2.f, parts, xparts, convert_A,
-      "Co-moving Magnetic field Vector Potential");
+  // SET CORRECT UNITS
+  list[2] = io_make_output_field("VecPot", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD,
+                                 mhd_comoving_factor + 1.f, parts,
+                                 mhd_data.APred,
+                                 "Co-moving Magnetic field of the particles");
+  list[3] = io_make_output_field("Gau", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+                                 mhd_comoving_factor + 2.f, parts,
+                                 mhd_data.Gau, "Co-coving gauge scalar field");
 
-  list[3] = io_make_output_field("Gau", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
-                                 parts, mhd_data.Gau, "Gauge scalar field");
-
-  list[4] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_NO_UNITS, -0.f,
-                                 parts, mhd_data.divA, "divA");
+  list[4] = io_make_output_field("divA", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD,
+                                 mhd_comoving_factor, parts,
+                                 mhd_data.divA, "Co-moving divA");
 
   return 5;
 }

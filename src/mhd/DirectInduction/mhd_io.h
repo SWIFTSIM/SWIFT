@@ -28,9 +28,10 @@
  */
 INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
-                                     	
-  list[0] = io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
-                                UNIT_CONV_MAGNETIC_FIELD, parts, mhd_data.B_over_rho);                                  	
+
+  list[0] =
+      io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY,
+                          UNIT_CONV_MAGNETIC_FIELD, parts, mhd_data.B_over_rho);
 
   return 1;
 }
@@ -55,17 +56,18 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       const struct xpart* xparts,
                                       struct io_props* list) {
 
-  list[0] = io_make_output_field("MonopoleTerm", FLOAT, 1,
-                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, mhd_data.B_mon,
-                                  "Monopole term associated to particle");
+  list[0] = io_make_output_field(
+      "MonopoleTerm", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
+      mhd_data.B_mon, "Monopole term associated to particle");
 
-  list[1] = io_make_output_field("DednerScalar", FLOAT, 1,
-                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, mhd_data.psi,
-                                  "Dedner scalar associated to particle");
+  list[1] = io_make_output_field(
+      "DednerScalar", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
+      mhd_data.psi, "Dedner scalar associated to particle");
 
-  list[2] = io_make_output_field("DednerScalardt", FLOAT, 1,
-                                  UNIT_CONV_MAGNETIC_FIELD, 1.f, parts, mhd_data.psi_dt,
-                                  "Time derivative of Dedner scalar associated to particle");
+  list[2] = io_make_output_field(
+      "DednerScalardt", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
+      mhd_data.psi_dt,
+      "Time derivative of Dedner scalar associated to particle");
 
   list[3] = io_make_output_field_convert_part(
       "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
