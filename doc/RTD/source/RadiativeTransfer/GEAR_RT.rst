@@ -22,7 +22,7 @@ Compiling for GEAR RT
 -   You need to choose a Riemann solver for the RT equations. You can choose
     between the ``GLF`` and ``HLL`` solver. For the time being, I recommend 
     sticking to the ``GLF`` solver as the ``HLL`` solver is more expensive,
-    but seemingly offers no advantage, although this remains to be comfirmed
+    but seemingly offers no advantage, although this remains to be confirmed
     in further testing.
 
 -   GEAR RT is only compatible with the Meshless Finite Volume scheme. You'll
@@ -400,7 +400,7 @@ useful:
    both methods can run on the exact same ICs.
 
 
-.. [#f2] For example, choosing cgs units as the interal units may lead to
+.. [#f2] For example, choosing cgs units as the internal units may lead to
    trouble with grackle. (Trouble like a gas at 10^6K without any heating
    sources heating up instead of cooling down.) The library is set up to work 
    with units geared towards cosmology. According to Britton Smith (private comm), 

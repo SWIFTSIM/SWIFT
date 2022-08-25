@@ -53,7 +53,7 @@ to the :ref:`subsequent section <rt_task_system>`.
 - ``Gradient`` tasks are particle-particle interaction tasks, intended for 
   particles to gather data from its own neighbours, e.g. so we can estimate the 
   current local gradients.  This is an interaction of "type 1", meaning that any 
-  particle will only interact with neighbours which are whithin its own compact 
+  particle will only interact with neighbours which are within its own compact 
   support radius.
 
 - ``Ghost2`` tasks operate on individual particles, and are intended to finish 
@@ -61,7 +61,7 @@ to the :ref:`subsequent section <rt_task_system>`.
 
 - ``Transport`` tasks are particle-particle interaction tasks, intended to 
   propagate the radiation. This is an interaction of "type 2", meaning that any 
-  particle will interact with any neighbours whithin either particles' compact 
+  particle will interact with any neighbours within either particles' compact 
   support radius.
 
 - ``thermochemistry`` tasks operate on individual particles, and are intended
@@ -234,14 +234,220 @@ Complications however arise when several conditions coincide:
 If these conditions are met, the cell will undergo an interaction while
 unsorted. Obviously that's a no-no.
 
+
+To illustrate this problem, consider the following scenario. Say we have cells ``A``,
+``B``, and ``C``. Cell ``A`` is "home" on MPI rank 0, while cell ``B`` is on MPI rank 1. 
+In the current step in this scenario, cell ``A`` and ``B`` are both active for RT, and 
+interact with each other. ``C`` has an active star, which inject energy into particles of
+``B``.  Cell ``A`` and ``C`` do *not* interact with each other:
+
+
+.. code::
+
+   rank 0       | rank 1  
+                |
+      RT interaction        Star Feedback  
+   A <----------|---> B <------------------ C
+                |
+                |
+
+
+Since ``A`` and ``B`` interact, but are separated between different MPI ranks, both ``A``
+and ``B`` will have local copies of each other available on their local ranks, respectively.
+These cells are referred to as "foreign cells". Let's denote them with an additional ``f``:
+
+.. code::
+
+    rank 0                      | rank 1  
+                                |
+             RT interaction     |        RT interaction      Star Feedback  
+           A <-------------> Bf |   Af  <-------------> B <------------------ C
+                             ^  |   ^
+    (this is a foreign cell) |  |   | (this is a foreign cell)
+
+
+Now let's first have a look at the default workflow when hydrodynamics is involved. 
+Assume that all cells ``A``, ``B``, and ``C`` are hydro *and* RT active for this step.
+Once again cells ``A`` and ``B`` interact, and ``B`` and ``C`` interact, but ``A`` 
+and ``C`` *don't* interact. Cell ``C`` contains an active star particle.
+
+**Without** MPI, the order of operations for each cell would look like this: (operations 
+where two cells interact with each other are marked with an arrow)
+
+
+.. code::
+
+    A                   B                  C
+    ----------------------------------------------------
+    Drift               Drift               Drift
+    Sort                Sort                Sort
+    Density Loop <----> Density Loop <----> Density Loop
+    Ghost               Ghost               Ghost
+    Force Loop <------> Force Loop <------> Force Loop
+    End Force           End Force           End Force
+    Kick2               Kick2               Kick2
+
+                                            Star Drift
+                                            Star Sort
+                        (inactive) <------> Star Density
+                                            Star Ghost
+                        (inactive) <------> Star Feedback
+
+    RT Ghost1           RT Ghost1           RT Ghost1
+    RT Gradient <-----> RT Gradient <-----> RT Gradient
+    RT Ghost2           RT Ghost2           RT Ghost2
+    RT Transport <----> RT Transport <----> RT Transport
+    RT Tchem            RT Tchem            RT Tchem
+    Timestep            Timestep            Timestep
+    Kick1               Kick1               Kick1
+
+
+Now  **with** MPI communications, cells ``A`` and ``B`` need to send over the 
+up-to-date data to their foreign counterparts ``Af`` and ``Bf``, respectively, 
+*before* each interaction type task (the ones with arrows in the sketch above). 
+The order of operations should look like this:
+(The foreign cell ``Af`` on rank 1 is omitted for clarity, but follows the same
+principle as ``Bf`` on rank 0)
+
+.. code::
+
+    rank 0                                  |  rank 1
+    A                   Bf                  |  B                   C
+    ----------------------------------------|----------------------------------------
+    Drift                                   |  Drift               Drift
+                        Recv XV  <------------ Send XV
+    Sort                Sort                |  Sort                Sort
+    Density Loop <----> Density Loop        |  Density Loop <----> Density Loop
+    Ghost                                   |  Ghost               Ghost
+                        Recv Density <-------- Send Density
+    Force Loop <------> Force Loop          |  Force Loop <------> Force Loop
+    End Force                               |  End Force           End Force
+    Kick2                                   |  Kick2               Kick2
+                                            |
+                                            |                      Star Drift
+                                            |                      Star Sort
+                                            |  (inactive) <------> Star Density
+                                            |                      Star Ghost
+                                            |  (inactive) <------> Star Feedback
+                                            |
+    RT Ghost1                               |  RT Ghost1           RT Ghost1
+                        Recv RT Gradient <---- Send RT Gradient
+    RT Gradient <-----> RT Gradient         |  RT Gradient <-----> RT Gradient
+    RT Ghost2                               |  RT Ghost2           RT Ghost2
+                        Recv RT Transport <--- Send RT Transport
+    RT Transport <----> RT Transport        |  RT Transport <----> RT Transport
+    RT Tchem                                |  RT Tchem            RT Tchem
+    Timestep                                |  Timestep            Timestep
+                        Recv tend <----------- Send tend
+    Kick1                                   |  Kick1               Kick1
+
+
+Finally, let's look at the scenario which causes problems with the sort. This 
+is the case, as described above, when (a) cells ``A`` and ``B`` are RT active during
+a main step (like in the sketch above), (b) aren't hydro active during a main step 
+(unlike what is drawn above), (c) one of these cells is foreign (in this case, ``Bf``),
+while the "home" cell (cell ``B``) get drifted during a main step for some reason
+other than hydrodynamics, e.g. because a star interaction with cell ``C`` requested it.
+
+In this case, the workflow looks like this:
+
+.. code::
+
+    rank 0                                  |  rank 1
+    A                   Bf                  |  B                   C
+    ----------------------------------------|----------------------------------------
+                                            |  Drift               Drift
+                                            |  Sort                Sort
+                                            |                      Kick2
+                                            |
+                                            |                      Star Drift
+                                            |                      Star Sort
+                                            |  (inactive) <------> Star Density
+                                            |                      Star Ghost
+                                            |  (inactive) <------> Star Feedback
+                                            |
+    RT Ghost1                               |  RT Ghost1           RT Ghost1
+                        Recv RT Gradient <---- Send RT Gradient
+    RT Gradient <-----> RT Gradient         |  RT Gradient <-----> RT Gradient
+    RT Ghost2                               |  RT Ghost2           RT Ghost2
+                        Recv RT Transport <--- Send RT Transport
+    RT Transport <----> RT Transport        |  RT Transport <----> RT Transport
+    RT Tchem                                |  RT Tchem            RT Tchem
+    Timestep                                |  Timestep            Timestep
+                        Recv tend <----------- Send tend
+    Kick1                                   |  Kick1               Kick1
+
+The issue is that with the missing hydro communication tasks, the first communication
+between cell ``B`` and its foreign counterpart ``Bf`` is the ``recv_rt_gradient`` task.
+Recall that during a communication, we always send over all particle data of a cell.
+This includes all the particle positions, which may have been updated during a drift.
+However, the sorting information is not stored in particles, but in the cell itself.
+For this reason, a ``sort`` task is *always* run directly after a cell finishes the 
+``recv_xv`` task, which, until the sub-cycling was added, was always the first task any 
+foreign cell would run, with a subsequent ``sort``.
+
+The RT sub-cycling now however allows the ``recv_xv`` task to not run at all
+during a main step, since it's not always necessary, as shown in the example above.
+All the required data for the RT interactions can be sent over with
+``send/recv_rt_gradient`` tasks. An unintended consequence however is that in a
+scenario as sketched above, at the time of the ``A <---> Bf`` RT Gradient
+interaction, cell ``Bf`` will not be sorted. That's a problem.
+
 To solve this issue, a new task has been added, named ``rt_sorts``. It is only
-required for foreign cells, and only during normal steps (as we don't drift
-during subcycles, there won't be any reason to re-sort.) It's executed after the
-first RT related ``recv``, in this case the ``recv_rt_gradient``.
+required for foreign cells, like cell ``Bf``, and only during normal/main steps 
+(as we don't drift during subcycles, there won't be any reason to re-sort.) On
+local cells, each time a drift is activated for an interaction type task, the 
+sort task is also activated. So there is no need for ``rt_sorts`` tasks on local
+cells.
+An additional advantage to adding a new sort task like the ``rt_sorts`` is that
+it allows us to sidestep possible deadlocks. Suppose that as an alternative to
+the ``rt_sort`` tasks we instead use the regular hydro ``sort`` task. The default
+hydro ``sort`` task is set up to run before the other hydro tasks, and in 
+particular before the ``kick2`` task. However the RT and star tasks are executed 
+*after* the ``kick2``. This means that there are scenarios where a cell with a 
+foreign counterpart like cells ``B`` and ``Bf`` can deadlock when ``Bf`` is waiting
+for the ``recv_rt_gradient`` to arrive so it may sort the data, while ``B`` is
+waiting for ``Bf`` to finish the sorting and proceed past the ``kick2`` stage so
+it can run the ``send_rt_gradient`` data which would allow ``Bf`` to run the
+sorts.
+
+
+The ``rt_sorts`` tasks are executed after the first RT related ``recv``, in this 
+case the ``recv_rt_gradient``. The order of operations should now look like this:
+
+
+.. code::
+
+    rank 0                                  |  rank 1
+    A                   Bf                  |  B                   C
+    ----------------------------------------|----------------------------------------
+                                            |  Drift               Drift
+                                            |  Sort                Sort
+                                            |                      Kick2
+                                            |
+                                            |                      Star Drift
+                                            |                      Star Sort
+                                            |  (inactive) <------> Star Density
+                                            |                      Star Ghost
+                                            |  (inactive) <------> Star Feedback
+                                            |
+    RT Ghost1                               |  RT Ghost1           RT Ghost1
+                        Recv RT Gradient <---- Send RT Gradient
+                        rt_sort             |
+    RT Gradient <-----> RT Gradient         |  RT Gradient <-----> RT Gradient
+    RT Ghost2                               |  RT Ghost2           RT Ghost2
+                        Recv RT Transport <--- Send RT Transport
+    RT Transport <----> RT Transport        |  RT Transport <----> RT Transport
+    RT Tchem                                |  RT Tchem            RT Tchem
+    Timestep                                |  Timestep            Timestep
+                        Recv tend <----------- Send tend
+    Kick1                                   |  Kick1               Kick1
+
+
 
 In order to minimize unnecessary work, three new cell flags concerning the RT
 sorts have been added:
-
+ 
 - ``cell_flag_do_rt_sub_sort``: tracks whether we need an RT sub sort, which is 
   equivalent to the ``cell_flag_do_sub_sort`` flag for hydro. We can't use the 
   hydro flag though because the hydro flag is also used to early-exit walking up 
