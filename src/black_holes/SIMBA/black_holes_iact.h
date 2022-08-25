@@ -872,10 +872,15 @@ runner_iact_nonsym_bh_gas_feedback(
         const float dv_comoving = dv_phys * cosmo->a;
         const float prefactor = dv_comoving / r;
 
+        /* TODO: gpart is not available here in MPI */
         /* Push gas radially */
-        pj->v[0] += prefactor * dx[0];
-        pj->v[1] += prefactor * dx[1];
-        pj->v[2] += prefactor * dx[2];
+#ifdef WITH_MPI
+        error("Compiled WITH_MPI but accessing gpart when not available.");
+#else
+        pj->gpart->v_full[0] += prefactor * dx[0];
+        pj->gpart->v_full[1] += prefactor * dx[1];
+        pj->gpart->v_full[2] += prefactor * dx[2];
+#endif
 
         du_xray_phys *= (1. - bh_props->xray_kinetic_fraction);
 
@@ -937,9 +942,13 @@ runner_iact_nonsym_bh_gas_feedback(
     const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
     const float prefactor = bi->v_kick * cosmo->a * dirsign / norm;
 
-    pj->v[0] += prefactor * bi->angular_momentum_gas[0];
-    pj->v[1] += prefactor * bi->angular_momentum_gas[1];
-    pj->v[2] += prefactor * bi->angular_momentum_gas[2];
+#ifdef WITH_MPI
+    error("Compiled with WITH_MPI but accessing gpart when not available.");
+#else
+    pj->gpart->v_full[0] += prefactor * bi->angular_momentum_gas[0];
+    pj->gpart->v_full[1] += prefactor * bi->angular_momentum_gas[1];
+    pj->gpart->v_full[2] += prefactor * bi->angular_momentum_gas[2];
+#endif
 
 #ifdef SIMBA_DEBUG_CHECKS
     message("BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s, v_kick/v_part=%g",

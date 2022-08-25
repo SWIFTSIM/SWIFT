@@ -2255,8 +2255,7 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
             parts[k].limiter_data.wakeup);
 
     if (with_timestep_sync && parts[k].limiter_data.to_be_synchronized != 0)
-      /* TODO: D. Rennehan: Change back to error */
-      warning("Synchronized particle not treated! id=%lld synchronized=%d",
+      error("Synchronized particle not treated! id=%lld synchronized=%d",
             parts[k].id, parts[k].limiter_data.to_be_synchronized);
 
     if (parts[k].gpart != NULL) {

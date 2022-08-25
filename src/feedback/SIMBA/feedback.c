@@ -164,9 +164,9 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   if (norm <= 0.) return;
   const double prefactor = cosmo->a * wind_velocity / norm;
 
-  p->v[0] += prefactor * dir[0];
-  p->v[1] += prefactor * dir[1];
-  p->v[2] += prefactor * dir[2];
+  p->gpart->v_full[0] += prefactor * dir[0];
+  p->gpart->v_full[1] += prefactor * dir[1];
+  p->gpart->v_full[2] += prefactor * dir[2];
 
   /* Update the signal velocity of the particle based on the velocity kick. */
   hydro_set_v_sig_based_on_velocity_kick(p, cosmo, wind_velocity);
@@ -257,9 +257,19 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 
   TIMER_TIC;
 
+#ifdef SIMBA_DEBUG_CHECKS
+  if (sp->feedback_data.to_collect.ngb_rho <= 0) {
+    warning("Star %lld with mass %g has no neighbors!",
+            sp->id, sp->mass);
+    return;
+  }
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (age < 0.f) error("Negative age for a star.");
-
+  if (sp->feedback_data.to_collect.ngb_rho <= 0)
+    error("Star %lld with mass %g has no neighbors!",
+            sp->id, sp->mass);
   if (sp->count_since_last_enrichment != 0 && engine_current_step > 0)
     error("Computing feedback on a star that should not");
 #endif
