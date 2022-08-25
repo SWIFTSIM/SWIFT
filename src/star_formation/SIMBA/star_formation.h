@@ -365,7 +365,7 @@ INLINE static int star_formation_is_star_forming(
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR_schmidt_law(
-    const struct part* p, struct xpart* xp,
+    struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo,
     const double dt_star) {
@@ -399,7 +399,7 @@ INLINE static void star_formation_compute_SFR_schmidt_law(
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR_pressure_law(
-    const struct part* p, struct xpart* xp,
+    struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo,
     const double dt_star) {
@@ -446,7 +446,7 @@ INLINE static void star_formation_compute_SFR_pressure_law(
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR(
-    const struct part* p, struct xpart* xp,
+    struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo,
     const double dt_star) {
@@ -507,7 +507,7 @@ INLINE static int star_formation_should_convert_to_star(
     double *star_prob) {
 
   /* Calculate the propability of forming a star */
-  const double prob = xp->sf_data.SFR * dt_star / hydro_get_mass(p);
+  const double prob = p->sf_data.SFR * dt_star / hydro_get_mass(p);
   *star_prob = prob;
 
   /* Get a unique random number between 0 and 1 for star formation */

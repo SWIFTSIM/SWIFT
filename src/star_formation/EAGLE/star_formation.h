@@ -362,7 +362,7 @@ INLINE static int star_formation_is_star_forming(
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR_schmidt_law(
-    const struct part* p, struct xpart* xp,
+    struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo,
     const double dt_star) {
@@ -396,7 +396,7 @@ INLINE static void star_formation_compute_SFR_schmidt_law(
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR_pressure_law(
-    const struct part* p, struct xpart* xp,
+    struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo,
     const double dt_star) {
@@ -443,7 +443,7 @@ INLINE static void star_formation_compute_SFR_pressure_law(
  * @param dt_star The time-step of this particle.
  */
 INLINE static void star_formation_compute_SFR(
-    const struct part* p, struct xpart* xp,
+    struct part* p, struct xpart* xp,
     const struct star_formation* starform, const struct phys_const* phys_const,
     const struct hydro_props* hydro_props, const struct cosmology* cosmo,
     const double dt_star) {
