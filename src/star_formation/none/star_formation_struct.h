@@ -30,6 +30,11 @@
 struct star_formation_xpart_data {};
 
 /**
+ * @brief Star-formation-related properties stored in the particle data.
+ */
+struct star_formation_part_data {};
+
+/**
  * @brief Star-formation-related properties stored in the star particle
  * data.
  */

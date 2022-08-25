@@ -57,7 +57,7 @@ double feedback_wind_probability(struct part* p, struct xpart* xp,
   double galaxy_stellar_mass = p->gpart->fof_data.group_stellar_mass;
   if (galaxy_stellar_mass <= 0.) return 0.;
 
-  const double stellar_mass_this_step = xp->sf_data.SFR * dt_part;
+  const double stellar_mass_this_step = p->sf_data.SFR * dt_part;
   if (stellar_mass_this_step <= 0.) return 0.;
 
   /* If M* is non-zero, make sure it is at least resolved in the
@@ -191,14 +191,14 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
 #endif
 
   /* Wind cannot be star forming */
-  if (xp->sf_data.SFR > 0.f) {
+  if (p->sf_data.SFR > 0.f) {
 
     /* Record the current time as an indicator of when this particle was last
        star-forming. */
     if (with_cosmology) {
-      xp->sf_data.SFR = -e->cosmology->a;
+      p->sf_data.SFR = -e->cosmology->a;
     } else {
-      xp->sf_data.SFR = -e->time;
+      p->sf_data.SFR = -e->time;
     }
 
   }

@@ -27,7 +27,13 @@
  * @brief Star-formation-related properties stored in the extended particle
  * data.
  */
-struct star_formation_xpart_data {
+struct star_formation_xpart_data { };
+
+/**
+ * @brief Star-formation-related properties stored in the particle
+ * data.
+ */
+struct star_formation_part_data {
 
   /*! Star formation rate (internal units) or (if negative) time/scale-factor of
    * last SF episode */

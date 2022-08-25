@@ -174,7 +174,7 @@ runner_iact_nonsym_bh_gas_density(
   }
 
   /* Star forming gas is never considered "hot" */
-  if (xpj->sf_data.SFR > 0.f) is_hot_gas = 0;
+  if (pj->sf_data.SFR > 0.f) is_hot_gas = 0;
 
   if (is_hot_gas) {
     bi->hot_gas_mass += mj;
@@ -864,7 +864,7 @@ runner_iact_nonsym_bh_gas_feedback(
       if ((n_H_cgs > bh_props->xray_heating_n_H_threshold_cgs &&
             (T_gas_cgs < bh_props->xray_heating_T_threshold_cgs ||
                 T_gas_cgs < T_EoS_cgs * bh_props->fixed_T_above_EoS_factor)) ||
-            xpj->sf_data.SFR > 0.f) {
+            pj->sf_data.SFR > 0.f) {
         const float dv_phys = 2.f * sqrtf(
                                   bh_props->xray_kinetic_fraction * 
                                   du_xray_phys
@@ -1004,14 +1004,14 @@ runner_iact_nonsym_bh_gas_feedback(
     }
 
     /* Wind cannot be star forming */
-    if (xpj->sf_data.SFR > 0.f) {
+    if (pj->sf_data.SFR > 0.f) {
 
       /* Record the current time as an indicator of when this particle was last
         star-forming. */
       if (with_cosmology) {
-        xpj->sf_data.SFR = -cosmo->a;
+        pj->sf_data.SFR = -cosmo->a;
       } else {
-        xpj->sf_data.SFR = -time;
+        pj->sf_data.SFR = -time;
       }
 
     }

@@ -1446,6 +1446,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   const int with_feedback = e->policy & engine_policy_feedback;
   const int with_timestep_limiter =
       (e->policy & engine_policy_timestep_limiter);
+  const int with_timestep_sync = 
+      (e->policy & engine_policy_timestep_sync);
 
 #ifdef WITH_MPI
   const int with_star_formation = e->policy & engine_policy_star_formation;
@@ -1478,6 +1480,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
         if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
         if (ci_nodeID == nodeID && with_timestep_limiter)
           cell_activate_limiter(ci, s);
+        /* TODO: D. Rennehan: Is this always necessary? */
+        if (ci_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
       }
 
       /* Set the correct sorting flags and activate hydro drifts */
@@ -1497,6 +1502,12 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
           cell_activate_limiter(ci, s);
         if (cj_nodeID == nodeID && with_timestep_limiter)
           cell_activate_limiter(cj, s);
+
+        /* Activate the timestep sync tasks */
+        if (ci_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(ci, s);
+        if (cj_nodeID == nodeID && with_timestep_sync)
+          cell_activate_sync_part(cj, s);
 
         /* Check the sorts and activate them if needed. */
         cell_activate_hydro_sorts(ci, t->flags, s);

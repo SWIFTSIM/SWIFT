@@ -238,10 +238,10 @@ INLINE static void star_formation_logger_log_active_part(
   if (p->feedback_data.decoupling_delay_time > 0.f) return;
   
   /* Add the SFR to the logger file */
-  sf->SFR_active += xp->sf_data.SFR;
+  sf->SFR_active += p->sf_data.SFR;
 
   /* Update the active SFR*dt */
-  sf->SFRdt_active += xp->sf_data.SFR * dt_star;
+  sf->SFRdt_active += p->sf_data.SFR * dt_star;
 }
 
 /**
@@ -260,7 +260,7 @@ INLINE static void star_formation_logger_log_inactive_part(
   if (p->feedback_data.decoupling_delay_time > 0.f) return;
 
   /* Add the SFR to the logger file */
-  sf->SFR_inactive += max(xp->sf_data.SFR, 0.f);
+  sf->SFR_inactive += max(p->sf_data.SFR, 0.f);
 }
 
 #endif /* SWIFT_EAGLE_STARFORMATION_LOGGER_H */

@@ -24,7 +24,7 @@ __attribute__((always_inline)) INLINE static void star_formation_debug_particle(
 
   if (xp != NULL) {
     warning("[PID%lld] sf_data:", p->id);
-    warning("[PID%lld] SFR = %.3e", p->id, xp->sf_data.SFR);
+    warning("[PID%lld] SFR = %.3e", p->id, p->sf_data.SFR);
   }
 }
 

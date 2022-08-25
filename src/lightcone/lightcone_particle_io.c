@@ -435,7 +435,7 @@ int lightcone_store_gas(const struct engine *e, struct lightcone_props *props,
 #endif
 
 #ifdef STAR_FORMATION_EAGLE
-  data->sfr = xp->sf_data.SFR;
+  data->sfr = p->sf_data.SFR;
 #endif
 
   return 1;
