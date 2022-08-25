@@ -125,7 +125,7 @@ necessarily towards users.
 How it works
 `````````````````
 
-A subcycle is basically a SWFIT time step where only radiative transfer is being
+A subcycle is basically a SWIFT time step where only radiative transfer is being
 run.
 
 After a normal SWIFT time step (i.e. after a call to ``engine_launch()`` and the
@@ -168,14 +168,14 @@ times etc. for the same reason. There are some functionalities of the
   RT time step size from the super level to the top level. This functionality is
   replaced with the ``rt_collect_times`` tasks during subcycles. Note that the
   ``rt_collect_times`` tasks aren't being activated during normal steps, as the
-  ``collect`` tasks already to the job just fine.
+  ``collect`` tasks already do the job just fine.
 
 Something special about the ``rt_advance_cell_time`` tasks is that they are
 also created and run on foreign cells. During a subcycle, the ``tend`` tasks
 don't run and don't update the cell time variables from the original cell, so
 during the subsequent unskipping, the data will be wrong, leading to all sorts
 of trouble. We can do that on foreign cells during sub-cycles because all the
-cell's time step sizes stay fixed between two reguler SWIFT steps, and hence
+cell's time step sizes stay fixed between two regular SWIFT steps, and hence
 the number of sub-cycles all the sub-cycles' end times are predictable.
 
 
@@ -249,7 +249,7 @@ sorts have been added:
   independent flag here.
 
 - ``cell_flag_do_rt_sort``: tracks whether the call to the 
-  ``runner_do_hydro_sort()`` function requested by an RT sort. (Both the (hydro) 
+  ``runner_do_hydro_sort()`` function was requested by an RT sort. (Both the (hydro) 
   ``sort`` and the ``rt_sort`` tasks call the same function.) It is used to allow 
   the cell to be "undrifted to the current time" instead of crashing. (When an RT 
   subcycle coincides with a main step, the particles won't necessarily be drifted 

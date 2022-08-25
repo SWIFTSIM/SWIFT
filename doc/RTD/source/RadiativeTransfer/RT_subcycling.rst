@@ -30,7 +30,7 @@ step you want to allow. That is governed by the
 
 parameter, which is mandatory for any RT runs. To turn off subcycling and 
 couple the radiative transfer and the hydrodynamics time steps one-to-one,
-set this paramter to either 0 or 1.
+set this parameter to either 0 or 1.
 
 Due to the discretization of individual particle time steps in time bins
 with a factor of 2 difference in time step size from a lower to a higher
