@@ -866,15 +866,16 @@ runner_iact_nonsym_bh_gas_feedback(
                                   bh_props->xray_kinetic_fraction * 
                                   du_xray_phys
                               );
-        const float dv_comoving = dv_phys * cosmo->a;
 
         /* TODO: gpart is not available here in MPI */
         /* Push gas radially */
 #ifdef WITH_MPI
         error("Compiled WITH_MPI but accessing gpart when not available.");
 #else
+        /* No distance, no norm */
         if (r2 <= 0.f) return;
         const float r = sqrtf(r2);
+        const float dv_comoving = dv_phys * cosmo->a;
         const float prefactor = dv_comoving / r;
         pj->gpart->v_full[0] += prefactor * dx[0];
         pj->gpart->v_full[1] += prefactor * dx[1];
