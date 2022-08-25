@@ -164,9 +164,9 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   if (norm <= 0.) return;
   const double prefactor = cosmo->a * wind_velocity / norm;
 
-  xpj->v_full[0] += prefactor * dir[0];
-  xpj->v_full[1] += prefactor * dir[1];
-  xpj->v_full[2] += prefactor * dir[2];
+  xp->v_full[0] += prefactor * dir[0];
+  xp->v_full[1] += prefactor * dir[1];
+  xp->v_full[2] += prefactor * dir[2];
 
   /* Update the signal velocity of the particle based on the velocity kick. */
   hydro_set_v_sig_based_on_velocity_kick(p, cosmo, wind_velocity);
