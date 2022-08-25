@@ -22,6 +22,8 @@
 
 #define RT_LABELS_SIZE 10
 
+#include "rt.h"
+
 /**
  * @file src/rt/SPHM1RT/rt_io.h
  * @brief Main header file for no radiative transfer scheme IO routines.
@@ -57,6 +59,15 @@ INLINE static int rt_read_particles(const struct part* parts,
                                         UNIT_CONV_ENERGY_VELOCITY, parts,
                                         rt_data.conserved[phg].frad);
   }
+
+  /* Read quantities for thermo-chemistry */
+  list[count++] = io_make_input_field(
+      "RtElementMassFractions", FLOAT, rt_chemistry_element_count, OPTIONAL,
+      UNIT_CONV_NO_UNITS, parts, rt_data.tchem.metal_mass_fraction);
+
+  list[count++] = io_make_input_field(
+      "RtSpeciesAbundances", FLOAT, rt_species_count, OPTIONAL,
+      UNIT_CONV_NO_UNITS, parts, rt_data.tchem.abundances);
 
   return count;
 }
@@ -119,17 +130,28 @@ INLINE static int rt_write_particles(const struct part* parts,
    * then we convert these quantities from radiation energy per mass and flux
    * per mass
    * */
-  int num_elements = 2;
+  int num_elements = 4;
 
   list[0] = io_make_output_field_convert_part(
       "PhotonEnergies", FLOAT, RT_NGROUPS, UNIT_CONV_ENERGY, 0, parts,
       /*xparts=*/NULL, rt_convert_conserved_photon_energies,
       "Photon Energies (all groups)");
+
   list[1] = io_make_output_field_convert_part(
       "PhotonFluxes", FLOAT, 3 * RT_NGROUPS, UNIT_CONV_ENERGY_VELOCITY, 0,
       parts,
       /*xparts=*/NULL, rt_convert_conserved_photon_fluxes,
       "Photon Fluxes (all groups; x, y, and z coordinates)");
+
+  list[2] = io_make_output_field(
+      "RtElementMassFractions", FLOAT, rt_chemistry_element_count,
+      UNIT_CONV_NO_UNITS, 0.f, parts, rt_data.tchem.metal_mass_fraction,
+      "Fractions of the particles' masses that are in the given element");
+
+  list[3] = io_make_output_field(
+      "RtSpeciesAbundances", FLOAT, rt_species_count, UNIT_CONV_NO_UNITS, 0.f,
+      parts, rt_data.tchem.abundances,
+      "Species Abundances in unit of hydrogen number density");
 
   return num_elements;
 }
@@ -179,12 +201,14 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
 
   /* Note: photon frequency bin edges are kept in cgs. Convert them here to
    * internal units so we're still compatible with swiftsimio. */
-  const float Hz_internal =
-      units_cgs_conversion_factor(internal_units, UNIT_CONV_INV_TIME);
-  const float Hz_internal_inv = 1.f / Hz_internal;
+  /* TK comment: I think rtp->photon_groups is already in internal unit */
+  // const float Hz_internal =
+  //    units_cgs_conversion_factor(internal_units, UNIT_CONV_INV_TIME);
+  // const float Hz_internal_inv = 1.f / Hz_internal;
   float photon_groups_internal[RT_NGROUPS];
   for (int g = 0; g < RT_NGROUPS; g++)
-    photon_groups_internal[g] = rtp->photon_groups[g] * Hz_internal_inv;
+    photon_groups_internal[g] = rtp->photon_groups[g];
+  // photon_groups_internal[g] = rtp->photon_groups[g] * Hz_internal_inv;
 
   hid_t type_float = H5Tcopy(io_hdf5_type(FLOAT));
 
@@ -289,7 +313,8 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   hid_t dset_cred =
       H5Dcreate(h_grp, "ReducedLightspeed", type_float, space_cred, H5P_DEFAULT,
                 H5P_DEFAULT, H5P_DEFAULT);
-  H5Dwrite(dset_cred, type_float, H5S_ALL, H5S_ALL, H5P_DEFAULT, &rtp->cred);
+  H5Dwrite(dset_cred, type_float, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           &rtp->cred_phys);
 
   /* Write unit conversion factors for this data set */
   char buffer_cred[FIELD_BUFFER_SIZE] = {0};
@@ -332,6 +357,50 @@ INLINE static void rt_write_flavour(hid_t h_grp, hid_t h_grp_columns,
   /* Close up the types */
   H5Tclose(type_float);
   H5Tclose(type_string_label);
+
+  /* Create an array of element names */
+  const int rt_element_name_length = 32;
+  char rt_element_names[rt_chemistry_element_count][rt_element_name_length];
+  for (int elem = 0; elem < rt_chemistry_element_count; ++elem) {
+    sprintf(rt_element_names[elem], "%s",
+            rt_chemistry_get_element_name((enum rt_chemistry_element)elem));
+  }
+
+  /* Add to the named columns */
+  hsize_t rt_dims[1] = {rt_chemistry_element_count};
+  hid_t rt_type = H5Tcopy(H5T_C_S1);
+  H5Tset_size(rt_type, rt_element_name_length);
+  hid_t rt_space = H5Screate_simple(1, rt_dims, NULL);
+  hid_t rt_dset = H5Dcreate(h_grp_columns, "RtElementMassFractions", rt_type,
+                            rt_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(rt_dset, rt_type, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           rt_element_names[0]);
+  H5Dclose(rt_dset);
+
+  H5Tclose(rt_type);
+  H5Sclose(rt_space);
+
+  /* Add the species names to the named columns */
+  const int rt_species_name_length = 32;
+  char rt_species_names[rt_species_count][rt_species_name_length];
+  for (int spec = 0; spec < rt_species_count; ++spec) {
+    sprintf(rt_species_names[spec], "%s",
+            rt_get_species_name((enum rt_cooling_species)spec));
+  }
+
+  /* Add to the named columns */
+  hsize_t rts_dims[1] = {rt_species_count};
+  hid_t rts_type = H5Tcopy(H5T_C_S1);
+  H5Tset_size(rts_type, rt_species_name_length);
+  hid_t rts_space = H5Screate_simple(1, rts_dims, NULL);
+  hid_t rts_dset = H5Dcreate(h_grp_columns, "RtSpeciesAbundances", rts_type,
+                             rts_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(rts_dset, rts_type, H5S_ALL, H5S_ALL, H5P_DEFAULT,
+           rt_species_names[0]);
+  H5Dclose(rts_dset);
+
+  H5Tclose(rts_type);
+  H5Sclose(rts_space);
 
 #endif /* HAVE_HDF5 */
 }

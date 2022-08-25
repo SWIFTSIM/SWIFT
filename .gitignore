@@ -13,6 +13,10 @@ config.sub
 ltmain.sh
 libtool
 build
+swift
+swift_mpi
+fof
+fof_mpi
 
 src/version_string.h
 swift*.tar.gz

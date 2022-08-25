@@ -57,10 +57,12 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param pj Hydro particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {}
+    struct spart *restrict si, struct part *restrict pj, float a, float H,
+    const struct rt_props *rt_props) {}
 
 /**
  * @brief Flux calculation between particle i and particle j
