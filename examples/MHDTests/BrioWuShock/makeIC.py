@@ -98,8 +98,8 @@ for i in range(numPart):
         epa[i] = pos[i,2]
         epb[i] = -0.75*pos[i,1]+pos[i,0]
         vp[i,0] = 0.0
-        vp[i,1] = 0.0
-        vp[i,2] = - pos[i,0] + 0.75 * pos[i,1]
+        vp[i,1] = - 0.75 * pos[i,2]
+        vp[i,2] = - pos[i,0] 
     else:     #right
         u[i] = P_R / (rho_R * (gamma - 1.))
         m[i] = rho_R * vol_R / numPart_R
@@ -110,11 +110,13 @@ for i in range(numPart):
         epa[i] = pos[i,2]
         epb[i] = -0.75*pos[i,1]-pos[i,0]
         vp[i,0] = 0.0
-        vp[i,1] = 0.0
-        vp[i,2] =  pos[i,0] + 0.75 * pos[i,1]
+        vp[i,1] = - 0.75 * pos[i,2]
+        vp[i,2] =  pos[i,0] 
         
 # Shift particles
 pos[:,0] -= x_min
+b[:,:]  *= sqrt(4.0*3.14159265)
+vp[:,:] *= sqrt(4.0*3.14159265)
 
 #File
 file = h5py.File(fileName, 'w')

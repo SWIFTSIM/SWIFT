@@ -139,7 +139,7 @@ function exact_BW(time)
      #Bz     = 0.
      #Bxzero = 0.75
      npts   = 14
-     MU0_1  = 1.0/sqrt(4.0*pi)
+     MU0_1  = 1.0 #/sqrt(4.0*pi)
      #### 
      xpts = zeros(npts)
      rho  = zeros(npts)
@@ -147,7 +147,7 @@ function exact_BW(time)
      vx   = zeros(npts)
      vy   = zeros(npts)
      vz   = zeros(npts)
-     bx   = ones(npts).*0.75
+     bx   = ones(npts).*0.75*sqrt(4.0*pi)
      bz   = zeros(npts)
      by   = zeros(npts)
      ####
@@ -196,13 +196,13 @@ function exact_BW(time)
      vy[11:12]  .= -0.166
      vy[13:14]  .= 0.
  
-     by[1:2]   .= 1.0
+     by[1:2]   .= 1.0*sqrt(4.0*pi)
      by[3:4]   .= 2.1*MU0_1
      by[5]      = -1.2*MU0_1
      by[6]      = -1.3*MU0_1
      by[7:10]  .= -1.9*MU0_1
      by[11:12] .= -3.25*MU0_1
-     by[13:14] .= -1.0
+     by[13:14] .= -1.0*sqrt(4.0*pi)
     
      (Dict(:xpts=>xpts, :rho=>rho, :pr=>pr,
             :vx=> vx, :vy=>vy, :vz=>vz,
@@ -222,7 +222,7 @@ function do_6plot(gsnap)
     oplot(ex[:xpts],ex[:rho],"-r")
 ######## plot2
     subplot(2,3,2)
-    plot(a[:x],a[:Bx][:,1],ylim=(-1.1,1.1),xlabel="X",ylabel="Bx/By")
+    plot(a[:x],a[:Bx][:,1],ylim=(-4.1,4.1),xlabel="X",ylabel="Bx/By")
   #  plot(a[:x],a[:Bx][:,1],xlabel="X",ylabel="Bx/By")
     GRUtils.hold(true)
     errorbar(a[:x],a[:Bx][:,1],a[:Bx][:,2])

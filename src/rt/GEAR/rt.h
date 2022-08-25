@@ -93,10 +93,11 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * extra call to rt_reset_part is made in
  * space_convert_rt_quantities_after_zeroth_step().
  *
- * @param p the particle to work on
+ * @param p particle to work on
+ * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p) {
+    struct part* restrict p, const struct cosmology* cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
@@ -124,13 +125,16 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @brief First initialisation of the RT hydro particle data.
  *
  * @param p particle to work on
+ * @param cosmo #cosmology data structure.
+ * @param rt_props RT properties struct
  */
 __attribute__((always_inline)) INLINE static void rt_first_init_part(
-    struct part* restrict p, const struct rt_props* restrict rt_props) {
+    struct part* restrict p, const struct cosmology* cosmo,
+    const struct rt_props* restrict rt_props) {
 
   /* Don't reset conserved quantities here! ICs will be overwritten */
   rt_init_part(p);
-  rt_reset_part(p);
+  rt_reset_part(p, cosmo);
   rt_part_reset_mass_fluxes(p);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
@@ -145,17 +149,19 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
  *
  * @param p particle to work on
  * @param rt_props RT properties struct
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void
 rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props) {
+                               const struct rt_props* rt_props,
+                               const struct cosmology* restrict cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* If we're running with debugging checks on, reset debugging
    * counters and flags in particular after the zeroth step so
    * that the checks work as intended. */
   rt_init_part(p);
-  rt_reset_part(p);
+  rt_reset_part(p, cosmo);
   /* Since the inject_prep has been moved to the density loop, the
    * initialization at startup is messing with the total counters for stars
    * because the density is called, but not the force-and-kick tasks. So reset
@@ -456,9 +462,10 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
  * @brief finishes up the gradient computation
  *
  * @param p particle to work on
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
-    struct part* restrict p) {
+    struct part* restrict p, const struct cosmology* cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (p->rt_data.debug_kicked != 1)
@@ -488,9 +495,11 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  *
  * @param p particle to work on
  * @param dt the current time step of the particle
+ * @param cosmo #cosmology data structure.
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
-    struct part* restrict p, const double dt) {
+    struct part* restrict p, const double dt,
+    const struct cosmology* restrict cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   if (p->rt_data.debug_kicked != 1)

@@ -19,6 +19,8 @@
 #ifndef SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
 #define SWIFT_VECTOR_POTENTIAL_MHD_IACT_H
 
+#include "periodic.h"
+
 /**
  * @brief MHD-Density interaction between two particles.
  *
@@ -64,9 +66,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_density(
   double dA[3];
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
+
   const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
   pi->mhd_data.divA -= faci * dAdr;
   pj->mhd_data.divA -= facj * dAdr;
+  /////
+  // bi = dj ak - dk aj
+  // bj = dk ai - di ak
+  // bk = di aj - dj ai
+  //
   for (int i = 0; i < 3; ++i) {
     pi->mhd_data.BPred[i] += faci * (dA[(i + 1) % 3] * dx[(i + 2) % 3] -
                                      dA[(i + 2) % 3] * dx[(i + 1) % 3]);
@@ -114,6 +122,7 @@ runner_iact_nonsym_mhd_density(const float r2, const float dx[3],
   double dA[3];
   for (int i = 0; i < 3; ++i)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
+
   const double dAdr = dA[0] * dx[0] + dA[1] * dx[1] + dA[2] * dx[2];
   pi->mhd_data.divA -= faci * dAdr;
   for (int i = 0; i < 3; ++i)
@@ -243,10 +252,10 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
- * @param pi First part*icle.
- * @param pj Second part*icle.
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
  * @param mu_0 The vaccuum permeability constant in internal units.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
@@ -285,11 +294,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
   const float f_ji = 1.f - pj->force.f / mi;
-  /* Construct the full viscosity term */
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float a_fac = pow(a,2.f*mhd_comoving_factor+3.f*(hydro_gamma-1.f));
+
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1 * a_fac;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1 * a_fac;
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -323,24 +333,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   /////////////////////////// VP evolution
   const float mag_VPIndi = wi_dr * r_inv / rhoi;
   const float mag_VPIndj = wj_dr * r_inv / rhoj;
-  // ADVECTIVE GAUGE
-  // float dv[3];
-  // dv[0] = pi->v[0] - pj->v[0];
-  // dv[1] = pi->v[1] - pj->v[1];
-  // dv[2] = pi->v[2] - pj->v[2];
-  // const float SourceAi = dv[0]*pi->APred[0] + dv[1]*pi->APred[1] +
-  // dv[2]*pi->APred[2]; const float SourceAj = dv[0]*pj->APred[0] +
-  // dv[1]*pj->APred[1] + dv[2]*pj->APred[2];
   // Normal Gauge
-  float dA[3];
+  double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  const float SourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2])
-      - a* a* H * (dA[0] * pi->x[0] + dA[1] * pi->x[1] + dA[2] * pi->x[2]);
-  const float SourceAj =
-      -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2])
-      - a* a* H * (dA[0] * pj->x[0] + dA[1] * pj->x[1] + dA[2] * pj->x[2]);
+  /*float dv[3];
+  dv[0] = pi->v[0] - pj->v[0];
+  dv[1] = pi->v[1] - pj->v[1];
+  dv[2] = pi->v[2] - pj->v[2];
+  const float SourceAi = dv[0] * pi->mhd_data.APred[0] +
+                         dv[1] * pi->mhd_data.APred[1] +
+                         dv[2] * pi->mhd_data.APred[2];
+  const float SourceAj = dv[0] * pj->mhd_data.APred[0] +
+                         dv[1] * pj->mhd_data.APred[1] +
+                         dv[2] * pj->mhd_data.APred[2];
+  */
+  const float SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
+  const float SourceAj = -(dA[0] * pj->v[0] + dA[1] * pj->v[1] + dA[2] * pj->v[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   float SAj = SourceAj + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
 
@@ -416,8 +425,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float f_ji = 1.f - pj->force.f / mi;
   const float rho_ij = rhoi + rhoj;
 
-  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi);
-  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj);
+  const float a_fac = pow(a,2.f*mhd_comoving_factor+3.f*(hydro_gamma-1.f));
+  
+  const float mag_faci = f_ij * wi_dr * r_inv / (rhoi * rhoi) * MHD_MU0_1 * a_fac;
+  const float mag_facj = f_ji * wj_dr * r_inv / (rhoj * rhoj) * MHD_MU0_1 * a_fac;
   float Bi[3], Bj[3];
   float mm_i[3][3], mm_j[3][3];
 
@@ -446,20 +457,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
     }
   /////////////////////////// VP INDUCTION
   const float mag_VPIndi = wi_dr * r_inv / rhoi;
-  // ADVECTIVE GAUGE
-  // float dv[3];
-  // dv[0] = pi->v[0] - pj->v[0];
-  // dv[1] = pi->v[1] - pj->v[1];
-  // dv[2] = pi->v[2] - pj->v[2];
-  // const float SourceAi = dv[0]*pi->APred[0] + dv[1]*pi->APred[1] +
-  // dv[2]*pi->APred[2];
   // Normal Gauge
-  float dA[3];
+  double dA[3];
   for (int i = 0; i < 3; i++)
     dA[i] = pi->mhd_data.APred[i] - pj->mhd_data.APred[i];
-  const float SourceAi =
-      -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2])
-      - a* a* H * (dA[0] * pi->x[0] + dA[1] * pi->x[1] + dA[2] * pi->x[2]);
+  //float dv[3];
+  //dv[0] = pi->v[0] - pj->v[0];
+  //dv[1] = pi->v[1] - pj->v[1];
+  //dv[2] = pi->v[2] - pj->v[2];
+  //const float SourceAi = dv[0] * pi->mhd_data.APred[0] +
+  //                       dv[1] * pi->mhd_data.APred[1] +
+  //                       dv[2] * pi->mhd_data.APred[2];
+
+  const float SourceAi = -(dA[0] * pi->v[0] + dA[1] * pi->v[1] + dA[2] * pi->v[2]);
   float SAi = SourceAi + a * a * (pi->mhd_data.Gau - pj->mhd_data.Gau);
   for (int i = 0; i < 3; i++)
     pi->mhd_data.dAdt[i] += mj * mag_VPIndi * SAi * dx[i];

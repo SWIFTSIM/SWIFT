@@ -42,6 +42,16 @@
  *        as well as a number of compile-time parameters.
  */
 
+#define MHD_MU0 4.f * M_PI
+#define MHD_MU0_1 1.f / (4.f * M_PI)
+
+/* Freedom to choose the way the Comoving Bfield behaves
+ * the comoving conversion goes like:
+ * B_phi = a^MHD_COMOVING_FACTOR * B_co
+ */
+#define mhd_comoving_factor -2.f 
+//#define mhd_comoving_factor -3.f/2.f*(hydro_gamma-1.f) 
+
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
 /* if set to 0 NO dedner cleaning
@@ -84,5 +94,16 @@ static INLINE void mhd_init(struct swift_params* params,
  *                   hydro_properties
  **/
 static INLINE void mhd_print(const struct mhd_global_data* mhd) {}
+
+#if defined(HAVE_HDF5)
+/** 
+ * @brief Prints the MHD information to the snapshot when writing.
+ *
+ * @param h_grpsph: the SPH group in the ICs to write attributes to.
+ * @param mhd_data: pointer to the mhd_global_data struct.
+ **/
+ static INLINE void mhd_print_snapshot(
+    hid_t h_grpsph, const struct mhd_global_data* mhd_data) {}
+#endif
 
 #endif /* SWIFT_NONE_MHD_PARAMETERS_H */

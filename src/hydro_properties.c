@@ -341,6 +341,10 @@ void hydro_props_print_snapshot(hid_t h_grpsph, const struct hydro_props *p) {
 
   /* Same for the diffusion */
   diffusion_print_snapshot(h_grpsph, &(p->diffusion));
+  
+  /* Write out the implementation-dependent MHD parameters
+   * (see mhd/SCHEME/mhd_parameters.h for this implementation) */
+  mhd_print_snapshot(h_grpsph, &(p->mhd));
 }
 #endif
 

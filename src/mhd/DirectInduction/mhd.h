@@ -78,14 +78,14 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
     const float mu_ij, const float beta) {
-  
-  const float mu_0 = 1.0f;  
-  
-  /* Get r and 1/r. */  
+
+  const float mu_0 = 1.0f;
+
+  /* Get r and 1/r. */
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
   const float r = sqrtf(r2);
-  const float r_inv = r ? 1.0f / r : 0.0f;  
-  
+  const float r_inv = r ? 1.0f / r : 0.0f;
+
   /* Recover some data */
   const float rhoi = pi->rho;
   const float rhoj = pj->rho;
@@ -97,11 +97,11 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   Bj[0] = pj->mhd_data.B_over_rho[0] * rhoj;
   Bj[1] = pj->mhd_data.B_over_rho[1] * rhoj;
   Bj[2] = pj->mhd_data.B_over_rho[2] * rhoj;
-  
-	/* B squared */
+
+  /* B squared */
   const float B2i = Bi[0] * Bi[0] + Bi[1] * Bi[1] + Bi[2] * Bi[2];
-  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];  
-  
+  const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];
+
   /* B dot r. */
   const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
   const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
@@ -239,7 +239,7 @@ __attribute__((always_inline)) INLINE static void mhd_prepare_force(
 __attribute__((always_inline)) INLINE static void mhd_reset_acceleration(
     struct part *p) {
     
-	p->mhd_data.B_over_rho_dt[0] = 0.0f;
+   p->mhd_data.B_over_rho_dt[0] = 0.0f;
    p->mhd_data.B_over_rho_dt[1] = 0.0f;
    p->mhd_data.B_over_rho_dt[2] = 0.0f;
 
@@ -319,9 +319,9 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float div_B = p->mhd_data.B_mon;
   const float div_v = p->density.div_v;
   const float psi = p->mhd_data.psi;
-  p->mhd_data.psi_dt = 0.0f * (- v_sig2 * div_B - dedner_gamma * psi * div_v - psi * v_sig * h_inv); 
-    
-    }
+  p->mhd_data.psi_dt =
+      -v_sig2 * div_B - dedner_gamma * psi * div_v - psi * v_sig * h_inv;
+}
 
 /**
  * @brief Kick the additional variables
@@ -359,9 +359,8 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
 
   /* Integrate Dedner scalar in time */
-  p->mhd_data.psi = 0.0f * (p->mhd_data.psi + delta_psi);    
-    
-    }
+  p->mhd_data.psi = p->mhd_data.psi + delta_psi;
+}
 
 /**
  * @brief Converts MHD quantities of a particle at the start of a run

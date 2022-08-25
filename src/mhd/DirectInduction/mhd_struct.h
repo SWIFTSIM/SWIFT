@@ -24,15 +24,15 @@
  */
 struct mhd_part_data {
 
-	float B_over_rho[3];
-	
-	float B_over_rho_dt[3];
-	
-	float B_mon;
-	
-	float psi;
-	
-	float psi_dt;
+  float B_over_rho[3];
+
+  float B_over_rho_dt[3];
+
+  float B_mon;
+
+  float psi;
+
+  float psi_dt;
 };
 
 /**
@@ -40,8 +40,7 @@ struct mhd_part_data {
  */
 struct mhd_xpart_data {
 
-	float B_over_rho_full[3];
-
+  float B_over_rho_full[3];
 };
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_STRUCT_H */
