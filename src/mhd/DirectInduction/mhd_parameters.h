@@ -132,6 +132,18 @@ static INLINE void mhd_print(const struct mhd_global_data* mhd) {
 }
 
 #if defined(HAVE_HDF5)
+/** 
+ * @brief Prints the MHD information to the snapshot when writing.
+ *
+ * @param h_grpsph: the SPH group in the ICs to write attributes to.
+ * @param mhd_data: pointer to the mhd_global_data struct.
+ **/
+ static INLINE void mhd_print_snapshot(
+    hid_t h_grpsph, const struct mhd_global_data* mhd_data) {
+}
+#endif
+
+#if defined(HAVE_HDF5)
 /** XXX TO BE IMPLEMENTED
  * @brief Prints the viscosity information to the snapshot when writing.
  *
