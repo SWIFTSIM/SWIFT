@@ -19,6 +19,7 @@
 #ifndef SWIFT_DIRECT_INDUCTION_MHD_H
 #define SWIFT_DIRECT_INDUCTION_MHD_H
 #include <float.h>
+#include "minmax.h"
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp) {
@@ -102,8 +103,8 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float B2j = Bj[0] * Bj[0] + Bj[1] * Bj[1] + Bj[2] * Bj[2];  
   
   /* B dot r. */
-  const float Bri = (Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2]);
-  const float Brj = (Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2]);
+  const float Bri = Bi[0] * dx[0] + Bi[1] * dx[1] + Bi[2] * dx[2];
+  const float Brj = Bj[0] * dx[0] + Bj[1] * dx[1] + Bj[2] * dx[2];
   
   /* Compute sound speeds and signal velocity */
   const float ci = pi->force.soundspeed;
@@ -114,14 +115,14 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
   const float v_A2j = B2j / (rhoj * mu_0);
   const float c2effi = c2i + v_A2i;
   const float c2effj = c2j + v_A2j;
+  
+  const float termi = max(0.0f, c2effi * c2effi - 4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) / (mu_0 * rhoi));
+  const float termj = max(0.0f, c2effj * c2effj - 4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) / (mu_0 * rhoj));
+    
   const float v_sig2i =
-      0.5f * (c2effi + sqrtf(c2effi * c2effi -
-                             4.0f * c2i * (Bri * r_inv) * (Bri * r_inv) /
-                                 (mu_0 * rhoi)));
+      0.5f * (c2effi + sqrtf(termi));
   const float v_sig2j =
-      0.5f * (c2effj + sqrtf(c2effj * c2effj -
-                             4.0f * c2j * (Brj * r_inv) * (Brj * r_inv) /
-                                 (mu_0 * rhoj)));
+      0.5f * (c2effj + sqrtf(termj));
   const float v_sig =
       sqrtf(v_sig2i) + sqrtf(v_sig2j) - const_viscosity_beta * mu_ij;
 
@@ -318,7 +319,7 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float div_B = p->mhd_data.B_mon;
   const float div_v = p->density.div_v;
   const float psi = p->mhd_data.psi;
-  p->mhd_data.psi_dt = - v_sig2 * div_B - dedner_gamma * psi * div_v - psi * v_sig * h_inv; 
+  p->mhd_data.psi_dt = 0.0f * (- v_sig2 * div_B - dedner_gamma * psi * div_v - psi * v_sig * h_inv); 
     
     }
 
@@ -358,7 +359,7 @@ __attribute__((always_inline)) INLINE static void mhd_kick_extra(
   xp->mhd_data.B_over_rho_full[2] = xp->mhd_data.B_over_rho_full[2] + delta_Bz;
 
   /* Integrate Dedner scalar in time */
-  p->mhd_data.psi = p->mhd_data.psi + delta_psi;    
+  p->mhd_data.psi = 0.0f * (p->mhd_data.psi + delta_psi);    
     
     }
 

@@ -22,8 +22,7 @@ import h5py
 from numpy import *
 
 # Generates a swift IC file for the BrioWu in a periodic box
-times = 16 # Number pf Cubes smashed in each side
-times = 8 # Number pf Cubes smashed in each side
+times = 2 # Number pf Cubes smashed in each side
 
 # Parameters
 gamma = 2.          # Gas adiabatic index
