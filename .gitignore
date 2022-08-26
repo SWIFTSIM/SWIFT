@@ -27,16 +27,11 @@ doc/latex/
 doc/man/
 doc/Doxyfile
 
-swift
-swift_mpi
-examples/fof
-examples/fof_mpi
 examples/*/*/*.xmf
 examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.pdf
 examples/*/*/*.mp4
-examples/*/*/*.jpg
 examples/*/*/*.txt
 examples/*/*/*.rst
 examples/*/*/*.hdf5
@@ -78,9 +73,6 @@ examples/SmallCosmoVolume/SmallCosmoVolume_cooling/snapshots/
 examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
 examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012.h5
 examples/SmallCosmoVolume/SmallCosmoVolume_cooling/CloudyData_UVB=HM2012_shielded.h5
-examples/*/*/*.ipynb
-examples/*/*/.ipynb*
-examples/*/*/*.h5
 
 tests/testActivePair
 tests/testActivePair.sh
