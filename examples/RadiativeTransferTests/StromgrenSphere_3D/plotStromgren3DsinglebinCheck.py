@@ -46,8 +46,8 @@ params = {
 mpl.rcParams.update(params)
 
 scatterplot_kwargs = {
-    "alpha": 0.6,
-    "s": 4,
+    "alpha": 0.1,
+    "s": 2,
     "marker": ".",
     "linewidth": 0.0,
     "facecolor": "blue",

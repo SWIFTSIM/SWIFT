@@ -23,7 +23,7 @@
 #ifndef SWIFT_TASK_H
 #define SWIFT_TASK_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include "align.h"

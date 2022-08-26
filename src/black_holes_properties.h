@@ -20,13 +20,15 @@
 #define SWIFT_BLACK_HOLES_PROPERTIES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct black_holes model */
 #if defined(BLACK_HOLES_NONE)
 #include "./black_holes/Default/black_holes_properties.h"
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes_properties.h"
+#elif defined(BLACK_HOLES_SPIN_JET)
+#include "./black_holes/SPIN_JET/black_holes_properties.h"
 #else
 #error "Invalid choice of black hole model"
 #endif

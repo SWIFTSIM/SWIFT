@@ -20,7 +20,7 @@
 #define SWIFT_IO_COMPRESSION_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /**
  * @brief Compression levels for snapshot fields

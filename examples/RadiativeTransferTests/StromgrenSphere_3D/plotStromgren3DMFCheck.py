@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # ----------------------------------------------------
 # Stromgren 3D with multifrequency bins
 # The test is identical to the test in Section 5.2.2 of Pawlik & Schaye 2011 doi:10.1111/j.1365-2966.2010.18032.x
@@ -42,8 +43,8 @@ params = {
 mpl.rcParams.update(params)
 
 scatterplot_kwargs = {
-    "alpha": 0.6,
-    "s": 4,
+    "alpha": 0.1,
+    "s": 2,
     "marker": ".",
     "linewidth": 0.0,
     "facecolor": "blue",
@@ -94,7 +95,7 @@ def plot_compare(filename):
     meta = data.metadata
     boxsize = meta.boxsize
     scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
-    gamma = meta.hydro_scheme["Adiabatic index"][0]
+    gamma = meta.gas_gamma
 
     xstar = data.stars.coordinates
     xpart = data.gas.coordinates

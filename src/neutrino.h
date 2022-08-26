@@ -20,7 +20,7 @@
 #define SWIFT_NEUTRINO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct neutrino model */
 #include "./neutrino/Default/neutrino.h"

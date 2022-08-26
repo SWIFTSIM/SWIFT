@@ -23,7 +23,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -2113,8 +2113,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
  * @brief Let the #engine loose to compute the forces.
  *
  * @param e The #engine.
+ * @return Should the run stop after this step?
  */
-void engine_step(struct engine *e) {
+int engine_step(struct engine *e) {
 
   TIMER_TIC2;
 
@@ -2182,8 +2183,11 @@ void engine_step(struct engine *e) {
               clocks_from_ticks(getticks() - tic_files), clocks_getunit());
   }
 
-  /* We need some cells to exist but not the whole task stuff. */
+  /* When restarting, we may have had some i/o to do on the step
+   * where we decided to stop. We have to do this now.
+   * We need some cells to exist but not the whole task stuff. */
   if (e->restarting) space_rebuild(e->s, 0, e->verbose);
+  if (e->restarting) engine_io(e);
 
   /* Move forward in time */
   e->ti_old = e->ti_current;
@@ -2254,6 +2258,7 @@ void engine_step(struct engine *e) {
     }
   }
 
+  /* Trigger a rebuild if we reached a gravity mesh step? */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
       e->mesh->ti_end_mesh_next == e->ti_current)
     e->forcerebuild = 1;
@@ -2303,15 +2308,13 @@ void engine_step(struct engine *e) {
   /* Prepare the tasks to be launched, rebuild or repartition if needed. */
   const int drifted_all = engine_prepare(e);
 
+  /* Dump local cells and active particle counts. */
+  // dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Print the number of active tasks */
   if (e->verbose) engine_print_task_counts(e);
-#endif
 
-    /* Dump local cells and active particle counts. */
-    // dumpCells("cells", 1, 0, 0, 0, e->s, e->nodeID, e->step);
-
-#ifdef SWIFT_DEBUG_CHECKS
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
@@ -2360,7 +2363,7 @@ void engine_step(struct engine *e) {
   }
 #endif
 
-  /* Re-compute the mesh forces */
+  /* Re-compute the mesh forces? */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic &&
       e->mesh->ti_end_mesh_next == e->ti_current) {
 
@@ -2509,11 +2512,16 @@ void engine_step(struct engine *e) {
 #endif
 
   /* Create a restart file if needed. */
-  engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
+  const int force_stop =
+      engine_dump_restarts(e, 0, e->restart_onexit && engine_is_done(e));
 
-  engine_check_for_dumps(e);
+  /* Is there any form of i/o this step?
+   *
+   * Note that if the run was forced to stop, we do not dump,
+   * we will do so when the run is restarted*/
+  if (!force_stop) engine_io(e);
 
-#if defined(SWIFT_RT_DEBUG_CHECKS)
+#ifdef SWIFT_RT_DEBUG_CHECKS
   /* if we're running the debug RT scheme, do some checks after every step.
    * Do this after the output so we can safely reset debugging checks now. */
   if (e->policy & engine_policy_rt)
@@ -2527,6 +2535,8 @@ void engine_step(struct engine *e) {
 
   /* Time in ticks at the end of this step. */
   e->toc_step = getticks();
+
+  return force_stop;
 }
 
 /**

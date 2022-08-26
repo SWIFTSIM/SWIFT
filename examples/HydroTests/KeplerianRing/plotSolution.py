@@ -306,7 +306,7 @@ def plot_extra_info(ax, filename):
     ax.text(-0.49, 0.8, f"Compiler: {compiler_name} {compiler_version}", fontsize=10)
     ax.text(-0.49, 0.7, "Rotations are quoted at $r=1$", fontsize=10)
     ax.plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-    ax.text(-0.49, 0.5, f"$\\textsc{{Swift}}$ {git}", fontsize=10)
+    ax.text(-0.49, 0.5, f"$SWIFT$ {git}", fontsize=10)
     ax.text(-0.49, 0.4, scheme, fontsize=10)
     ax.text(-0.49, 0.3, kernel, fontsize=10)
     ax.text(

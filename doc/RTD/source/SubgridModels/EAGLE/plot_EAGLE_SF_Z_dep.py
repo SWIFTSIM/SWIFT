@@ -1,3 +1,9 @@
+import os
+
+if os.path.exists("EAGLE_SF_Z_dep.svg"):
+    # do not generate plot again
+    exit()
+
 import matplotlib
 
 matplotlib.use("Agg")
