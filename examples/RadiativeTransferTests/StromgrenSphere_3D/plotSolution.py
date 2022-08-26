@@ -33,6 +33,7 @@ import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm
 from swiftsimio.visualisation.slice import slice_gas
+import stromgren_plotting_tools as spt
 
 import stromgren_plotting_tools as spt
 
@@ -57,6 +58,7 @@ try:
     snapnr = int(sys.argv[1])
 except IndexError:
     plot_all = True
+    snapnr = -1
 
 mpl.rcParams["text.usetex"] = True
 
@@ -184,13 +186,7 @@ def plot_result(filename):
         set_colorbar(ax2, im2)
         ax2.set_title("Neutral Hydrogen Mass Fraction [1]")
     except ValueError:
-        print(
-            filename,
-            "mass fraction wrong? min",
-            data.gas.ion_mass_fractions.HI.min(),
-            "max",
-            data.gas.ion_mass_fractions.HI.max(),
-        )
+        print(filename, "mass fraction wrong? min", imf.HI.min(), "max", imf.HI.max())
         return
 
     try:
