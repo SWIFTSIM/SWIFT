@@ -1028,7 +1028,8 @@ black_holes_compute_xray_feedback(struct bpart* bp, const struct part* p,
 
   const float r2_phys =
       (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) * cosmo->a * cosmo->a;
-  const double r2_cgs = r2_phys * props->conv_factor_length_to_cgs;
+  const double r2_cgs = r2_phys * 
+      props->conv_factor_length_to_cgs * props->conv_factor_length_to_cgs;
 
   const double dt_cgs = dt * props->conv_factor_time_to_cgs;
   const double luminosity_cgs =
@@ -1037,12 +1038,14 @@ black_holes_compute_xray_feedback(struct bpart* bp, const struct part* p,
   /* Let's do everything in cgs. See Choi et al 2012/2015 */
   const double zeta = luminosity_cgs / (n_H_cgs * r2_cgs);
 
-  double S1 = 4.1e-35 * (1.9e7 - T_gas_cgs) * zeta;
-
   /* Don't allow Compton cooling of hot gas. 
    * D. Rennehan: Note, Simba in gizmo-mufasa actually does not have this check.
    */
-  if (T_gas_cgs > 1.9e7) S1 = 0.;
+  if (T_gas_cgs > 1.9e7) T_gas_cgs = 1.9e7;
+  /* zeta0_term2 has T_gas_cgs - 1.e4 in an exp */
+  if (T_gas_cgs < 1.e4) T_gas_cgs = 1.e4;
+
+  double S1 = 4.1e-35 * (1.9e7 - T_gas_cgs) * zeta;
 
   const double zeta0_term1 =
       1. / (1.5 / sqrt(T_gas_cgs) + 1.5e12 / pow(T_gas_cgs, 2.5));
