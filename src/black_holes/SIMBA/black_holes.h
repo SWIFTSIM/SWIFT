@@ -1024,7 +1024,7 @@ black_holes_compute_xray_feedback(struct bpart* bp, const struct part* p,
                                   const struct black_holes_props* props,
                                   const struct cosmology* cosmo,
                                   const float dx[3], double dt,
-                                  const float n_H_cgs, const float T_gas_cgs) {
+                                  const float n_H_cgs, float T_gas_cgs) {
 
   const float r2_phys =
       (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]) * cosmo->a * cosmo->a;
