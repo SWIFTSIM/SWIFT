@@ -23,7 +23,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <errno.h>
@@ -879,25 +879,6 @@ int main(int argc, char *argv[]) {
   parser_get_opt_param_string(params, "Restarts:basename", restart_name,
                               "swift");
 
-  /* How often to check for the stop file and dump restarts and exit the
-   * application. */
-  const int restart_stop_steps =
-      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
-
-  /* Get the maximal wall-clock time of this run */
-  const float restart_max_hours_runtime =
-      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
-
-  /* Do we want to resubmit when we hit the limit? */
-  const int resubmit_after_max_hours =
-      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
-
-  /* What command should we run to resubmit at the end? */
-  char resubmit_command[PARSER_MAX_LINE_SIZE];
-  if (resubmit_after_max_hours)
-    parser_get_param_string(params, "Restarts:resubmit_command",
-                            resubmit_command);
-
   /* If restarting, look for the restart files. */
   if (restart) {
 
@@ -987,12 +968,18 @@ int main(int argc, char *argv[]) {
 
     /* And initialize the engine with the space and policies. */
     engine_config(/*restart=*/1, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_file,
-                  &reparttype);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
+                  restart_file, &reparttype);
 
     /* Check if we are already done when given steps on the command-line. */
     if (e.step >= nsteps && nsteps > 0)
       error("Not restarting, already completed %d steps", e.step);
+
+    /* If we are restarting at the very end of a run, just build the tree and
+     * prepare to dump.
+     * The main simulation loop below (where rebuild normally happens) won't be
+     * executed. */
+    if (engine_is_done(&e)) space_rebuild(e.s, /*repartitioned=*/0, e.verbose);
 
   } else {
 
@@ -1509,8 +1496,8 @@ int main(int argc, char *argv[]) {
                 &chemistry, &extra_io_props, &fof_properties, &los_properties,
                 &lightcone_array_properties, &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
-                  nr_threads, nr_pool_threads, with_aff, talking, restart_file,
-                  &reparttype);
+                  nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
+                  restart_file, &reparttype);
 
     /* Compute some stats for the star formation */
     if (with_star_formation) {
@@ -1603,7 +1590,7 @@ int main(int argc, char *argv[]) {
     if (!e.output_list_stats) engine_print_stats(&e);
 
     /* Is there a dump before the end of the first time-step? */
-    engine_check_for_dumps(&e);
+    engine_io(&e);
   }
 
   /* Legend */
@@ -1675,7 +1662,7 @@ int main(int argc, char *argv[]) {
 
   /* Main simulation loop */
   /* ==================== */
-  int force_stop = 0, resubmit = 0;
+  int force_stop = 0;
   for (int j = 0; !engine_is_done(&e) && e.step - 1 != nsteps && !force_stop;
        j++) {
 
@@ -1683,30 +1670,15 @@ int main(int argc, char *argv[]) {
     timers_reset_all();
 
     /* Take a step. */
-    engine_step(&e);
+    force_stop = engine_step(&e);
 
     /* Print the timers. */
     if (with_verbose_timers) timers_print(e.step);
 
-    /* Every so often allow the user to stop the application and dump the
-     * restart files. */
-    if (j % restart_stop_steps == 0) {
-      force_stop = restart_stop_now(restart_dir, 0);
-      if (myrank == 0 && force_stop)
-        message("Forcing application exit, dumping restart files...");
-    }
-
-    /* Did we exceed the maximal runtime? */
-    if (e.runtime > restart_max_hours_runtime) {
-      force_stop = 1;
-      message("Runtime limit reached, dumping restart files...");
-      if (resubmit_after_max_hours) resubmit = 1;
-    }
-
-    /* Also if using nsteps to exit, will not have saved any restarts on exit,
-     * make sure we do that (useful in testing only). */
-    if (force_stop || (e.restart_onexit && e.step - 1 == nsteps))
-      engine_dump_restarts(&e, 0, 1);
+    /* Shall we write some check-point files?
+     * Note that this was already done by engine_step() if force_stop is set */
+    if (e.restart_onexit && e.step - 1 == nsteps && !force_stop)
+      engine_dump_restarts(&e, /*drifted=*/0, /*force=*/1);
 
     /* Dump the task data using the given frequency. */
     if (dump_tasks && (dump_tasks == 1 || j % dump_tasks == 1)) {
@@ -1750,7 +1722,7 @@ int main(int argc, char *argv[]) {
                j + 1);
       mpiuse_log_dump(dumpfile, e.tic_step);
     }
-#endif  // WITH_MPI
+#endif
 
 #ifdef SWIFT_DEBUG_THREADPOOL
     /* Dump the task data using the given frequency. */
@@ -1766,7 +1738,7 @@ int main(int argc, char *argv[]) {
     } else {
       threadpool_reset_log(&e.threadpool);
     }
-#endif  // SWIFT_DEBUG_THREADPOOL
+#endif
   }
 
   /* Write final time information */
@@ -1884,9 +1856,9 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) force_stop = restart_stop_now(restart_dir, 1);
 
   /* Did we want to run a re-submission command just before dying? */
-  if (myrank == 0 && resubmit) {
+  if (myrank == 0 && e.resubmit) {
     message("Running the resubmission command:");
-    restart_resubmit(resubmit_command);
+    restart_resubmit(e.resubmit_command);
     fflush(stdout);
     fflush(stderr);
     message("resubmission command completed.");

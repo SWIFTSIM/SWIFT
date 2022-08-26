@@ -24,7 +24,7 @@
 #define SWIFT_RUNNER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "cache.h"

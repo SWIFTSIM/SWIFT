@@ -20,8 +20,9 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
+/* System includes. */
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -162,8 +163,8 @@ static void engine_dumper_init(struct engine *e) {
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file,
-                   struct repartition *reparttype) {
+                   int verbose, const char *restart_dir,
+                   const char *restart_file, struct repartition *reparttype) {
 
   struct clocks_time tic, toc;
   if (nodeID == 0) clocks_gettime(&tic);
@@ -187,7 +188,9 @@ void engine_config(int restart, int fof, struct engine *e,
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
+  e->restart_dir = restart_dir;
   e->restart_file = restart_file;
+  e->resubmit = 0;
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
@@ -214,6 +217,21 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Welcome message */
   if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
+
+  /* Check-pointing properties */
+
+  e->restart_stop_steps =
+      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
+
+  e->restart_max_hours_runtime =
+      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
+
+  e->resubmit_after_max_hours =
+      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
+
+  if (e->resubmit_after_max_hours)
+    parser_get_param_string(params, "Restarts:resubmit_command",
+                            e->resubmit_command);
 
   /* Get the number of queues */
   int nr_queues =

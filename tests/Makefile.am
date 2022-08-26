@@ -32,7 +32,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-	testCbrt testCosmology testOutputList testFormat.sh \
+	testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
 	testLog testDistance testTimeline
@@ -42,7 +42,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths testRandom testExp \
                  testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-                 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson \
+                 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
                  testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
@@ -66,6 +66,8 @@ testRandom_SOURCES = testRandom.c
 testRandomPoisson_SOURCES = testRandomPoisson.c
 
 testRandomSpacing_SOURCES = testRandomSpacing.c
+
+testRandomCone_SOURCES = testRandomCone.c
 
 testReading_SOURCES = testReading.c
 

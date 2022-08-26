@@ -19,7 +19,7 @@
 #ifndef SWIFT_MHD_IO_H
 #define SWIFT_MHD_IO_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Load the correct MHD model */
 #if defined(NONE_MHD)

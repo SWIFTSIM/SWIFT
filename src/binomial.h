@@ -20,7 +20,7 @@
 #define SWIFT_BINOMIAL_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers */
 #include "error.h"

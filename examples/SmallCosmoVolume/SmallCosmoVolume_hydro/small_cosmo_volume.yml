@@ -41,9 +41,10 @@ SPH:
 
 # Parameters governing the snapshots
 Snapshots:
+  subdir:              snapshots
   basename:            snap
-  delta_time:          1.05
-  scale_factor_first:  0.05
+  delta_time:          1.02
+  scale_factor_first:  0.02
   compression:         4
   
 # Parameters governing the conserved quantities statistics
@@ -61,8 +62,8 @@ InitialConditions:
   periodic:                    1
   cleanup_h_factors:           1    
   cleanup_velocity_factors:    1  
-  generate_gas_in_ics:         1      # Generate gas particles from the DM-only ICs
-  cleanup_smoothing_lengths:   1      # Since we generate gas, make use of the (expensive) cleaning-up procedure.
+  generate_gas_in_ics:         1    # Generate gas particles from the DM-only ICs
+  cleanup_smoothing_lengths:   1    # Since we generate gas, make use of the (expensive) cleaning-up procedure.
 
 # Parameters for the EAGLE "equation of state"
 EAGLEEntropyFloor:
