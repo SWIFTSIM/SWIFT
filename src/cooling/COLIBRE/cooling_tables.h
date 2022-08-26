@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "config.h"
+#include <config.h>
 
 /*! Number of different bins along the temperature axis of the tables */
 #define colibre_cooling_N_temperature 86

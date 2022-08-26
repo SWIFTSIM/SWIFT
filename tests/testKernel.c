@@ -17,11 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "align.h"
 #include "kernel_hydro.h"
 #include "vector.h"
 
+/* System includes. */
 #include <fenv.h>
 #include <stdlib.h>
 #include <strings.h>

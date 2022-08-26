@@ -33,34 +33,14 @@ import numpy as np
 import glob
 import os.path
 
+style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Function to find index in array a for each element in array b
 def find_indices(a, b):
     result = np.zeros(len(b))
     for i in range(len(b)):
         result[i] = ((np.where(a == b[i]))[0])[0]
     return result
-
-
-# Plot parameters
-params = {
-    "axes.labelsize": 10,
-    "axes.titlesize": 10,
-    "font.size": 12,
-    "legend.fontsize": 12,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "text.usetex": True,
-    "figure.figsize": (9.90, 6.45),
-    "figure.subplot.left": 0.1,
-    "figure.subplot.right": 0.99,
-    "figure.subplot.bottom": 0.1,
-    "figure.subplot.top": 0.95,
-    "figure.subplot.wspace": 0.2,
-    "figure.subplot.hspace": 0.2,
-    "lines.markersize": 6,
-    "lines.linewidth": 3.0,
-}
-rcParams.update(params)
 
 
 # Number of snapshots and elements
@@ -143,7 +123,7 @@ for i in range(n_snapshots):
     P = sim["/PartType0/Pressures"][:]
     rho = sim["/PartType0/Densities"][:]
     mass = sim["/PartType0/Masses"][:]
-    metallicity = sim["/PartType0/Metallicities"][:]
+    metallicity = sim["/PartType0/MetalMassFractions"][:]
     internal_energy = sim["/PartType0/InternalEnergies"][:]
     IDs = sim["/PartType0/ParticleIDs"][:]
 
@@ -156,7 +136,7 @@ for i in range(n_snapshots):
 
 
 # Plot the interesting quantities
-figure()
+figure(figsize=(7, 7 / 1.6))
 
 # Radial velocity --------------------------------
 subplot(221)
@@ -217,5 +197,7 @@ for j in range(n_particles_to_plot):
 xlabel("Time (Myr)", labelpad=0)
 ylabel("Metallicity", labelpad=2)
 ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+
+tight_layout()
 
 savefig("particle_evolution.png", dpi=200)

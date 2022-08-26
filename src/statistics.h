@@ -20,7 +20,7 @@
 #define SWIFT_STATISTICS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "lock.h"

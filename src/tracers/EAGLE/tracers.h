@@ -21,7 +21,7 @@
 #define SWIFT_TRACERS_EAGLE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "cooling.h"
@@ -208,6 +208,18 @@ static INLINE void tracers_after_black_holes_feedback(
 
   xp->tracers_data.hit_by_AGN_feedback++;
   xp->tracers_data.AGN_feedback_energy += delta_energy;
+}
+
+static INLINE void tracers_after_jet_feedback(
+    const struct part *p, struct xpart *xp, const int with_cosmology,
+    const float scale_factor, const double time, const double delta_energy) {
+
+  if (with_cosmology)
+    xp->tracers_data.last_AGN_jet_feedback_scale_factor = scale_factor;
+  else
+    xp->tracers_data.last_AGN_jet_feedback_time = time;
+  xp->tracers_data.hit_by_jet_feedback++;
+  xp->tracers_data.jet_feedback_energy += delta_energy;
 }
 
 /**

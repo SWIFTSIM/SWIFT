@@ -24,3 +24,4 @@ schemes.
    requirements
    GEAR_RT
    SPHM1_RT
+   additional_tools

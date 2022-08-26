@@ -20,7 +20,7 @@
 #define SWIFT_UNITS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "parser.h"
@@ -115,6 +115,7 @@ enum unit_conversion_factor {
   UNIT_CONV_RADIATION_FLUX,
   UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
   UNIT_CONV_ENERGY_FLUX_DENSITY,
+  UNIT_CONV_ENERGY_DENSITY,
   UNIT_CONV_POWER_DENSITY,
   UNIT_CONV_GASOLINE_DIFF_RATE,
   UNIT_CONV_THERMAL_DIFFUSIVITY,

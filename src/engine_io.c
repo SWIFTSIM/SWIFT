@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -50,20 +50,33 @@
  * @param e the engine.
  * @param drifted_all true if a drift_all has just been performed.
  * @param force force a dump, if dumping is enabled.
+ * @return Do we want to stop the run altogether?
  */
-void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
+int engine_dump_restarts(struct engine *e, const int drifted_all,
+                         const int force) {
+
+  /* Are any of the conditions to fully stop a run met? */
+  const int end_run_time = e->runtime > e->restart_max_hours_runtime;
+  const int stop_file = (e->step % e->restart_stop_steps == 0 &&
+                         restart_stop_now(e->restart_dir, 0));
+
+  /* Exit run when told to */
+  const int exit_run = (end_run_time || stop_file);
 
   if (e->restart_dump) {
     ticks tic = getticks();
 
+    const int check_point_time = tic > e->restart_next;
+
     /* Dump when the time has arrived, or we are told to. */
-    int dump = ((tic > e->restart_next) || force);
+    int dump = (check_point_time || end_run_time || force || stop_file);
 
 #ifdef WITH_MPI
     /* Synchronize this action from rank 0 (ticks may differ between
      * machines). */
     MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
+
     if (dump) {
 
       if (e->nodeID == 0) {
@@ -123,6 +136,12 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       e->step_props |= engine_step_prop_restarts;
     }
   }
+
+  /* If we stopped by reaching the time limit, flag that we need to
+   * run the resubmission command */
+  if (end_run_time && e->resubmit_after_max_hours) e->resubmit = 1;
+
+  return exit_run;
 }
 
 /**
@@ -249,7 +268,7 @@ void engine_run_on_dump(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_check_for_dumps(struct engine *e) {
+void engine_io(struct engine *e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
   const int with_los = (e->policy & engine_policy_line_of_sight);

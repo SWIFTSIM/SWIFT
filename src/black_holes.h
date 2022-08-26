@@ -20,7 +20,7 @@
 #define SWIFT_BLACK_HOLES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct BH model */
 #if defined(BLACK_HOLES_NONE)
@@ -29,6 +29,9 @@
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes.h"
 #include "./black_holes/EAGLE/black_holes_iact.h"
+#elif defined(BLACK_HOLES_SPIN_JET)
+#include "./black_holes/SPIN_JET/black_holes.h"
+#include "./black_holes/SPIN_JET/black_holes_iact.h"
 #else
 #error "Invalid choice of black hole model"
 #endif
