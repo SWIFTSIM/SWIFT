@@ -471,6 +471,23 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   const float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
                        (cosmo->a_factor_sound_speed * p->viscosity.v_sig);
 
+#ifdef SIMBA_DEBUG_CHECKS
+  if (dt_cfl <= 0.f) {
+    error("Timestep is wrong. id=%lld, dt_cfl=%g, h=%g, v_sig=%g, "
+          "decoupling_delay_time=%g, rho=%g, u=%g, "
+          "mass=%g, v[0]=%g, v[1]=%g, v[2]=%g",
+          p->id, 
+          dt_cfl, 
+          p->h,
+          p->viscosity.v_sig,
+          p->feedback_data.decoupling_delay_time,
+          p->rho,
+          p->u,
+          p->mass,
+          xp->v_full[0], xp->v_full[1], xp->v_full[2]
+    );
+  }
+#endif
   return dt_cfl;
 }
 
