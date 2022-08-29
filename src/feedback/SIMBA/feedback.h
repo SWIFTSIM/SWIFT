@@ -26,6 +26,7 @@
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
+#include "timestep_sync.h"
 
 #include <strings.h>
 
@@ -79,6 +80,9 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
     p->feedback_data.decoupling_delay_time -= dt_part;
     if (p->feedback_data.decoupling_delay_time < 0.f) {
       p->feedback_data.decoupling_delay_time = 0.f;
+
+      /* Make sure to sync the newly coupled part on the timeline */
+      timestep_sync_part(p);
     }
   } else {
     /* Because we are using floats, always make sure to set exactly zero */
