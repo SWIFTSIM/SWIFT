@@ -22,7 +22,7 @@
 import h5py
 import numpy as np
 
-# Generates a swift IC file for the Kelvin-Helmholtz vortex in a periodic box
+# Generates a swift IC file for the OrzagTang vortex in a periodic box
 
 # Parameters
 gamma = 5./3.                  # Gas adiabatic index
