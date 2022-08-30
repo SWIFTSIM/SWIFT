@@ -283,6 +283,11 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
     const double dt, const double time, const integertime_t ti_begin,
     const int with_cosmology) {
 
+  if (sp->feedback_data.to_collect.ngb_rho <= 0.) {
+    warning("Star %lld has zero neighbor gas density.", sp->id);
+    return;
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (sp->birth_time == -1.) error("Evolving a star particle that should not!");
 #endif
@@ -293,6 +298,7 @@ __attribute__((always_inline)) INLINE static void feedback_prepare_feedback(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   sp->feedback_data.to_collect.ngb_rho *= h_inv_dim;
+
   const float rho_inv = 1.f / sp->feedback_data.to_collect.ngb_rho;
   sp->feedback_data.to_collect.ngb_Z *= h_inv_dim * rho_inv;
 
