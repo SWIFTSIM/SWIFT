@@ -149,6 +149,9 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
   sp->rt_data.debug_iact_hydro_inject_prep = 0;
   sp->rt_data.debug_iact_hydro_inject = 0;
   sp->rt_data.debug_emission_rate_set = 0;
+
+  sp->rt_data.debug_iact_star_density_count = 0;
+  sp->rt_data.debug_iact_star_feedback_count = 0;
 }
 
 /**

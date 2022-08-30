@@ -49,6 +49,8 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
                                      const struct rt_props *rt_props) {
 
   si->rt_data.debug_iact_hydro_inject_prep += 1;
+
+  si->rt_data.debug_iact_star_density_count += 1;
 }
 
 /**
@@ -85,6 +87,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
 
   pj->rt_data.debug_iact_stars_inject += 1;
   pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
+
+  si->rt_data.debug_iact_star_feedback_count += 1;
+  if (si->rt_data.debug_iact_star_feedback_count >
+      si->rt_data.debug_iact_star_density_count)
+    error("Star has more interactions in feedback loop vs density loop: %d, %d",
+          si->rt_data.debug_iact_star_feedback_count,
+          si->rt_data.debug_iact_star_density_count);
 }
 
 /**
