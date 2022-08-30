@@ -595,7 +595,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 #ifdef SWIFT_DEBUG_CHECKS
   /* Make sure that the denominator is strictly positive */
   if (denominator2 <= 0)
-    error(
+    warning(
         "Invalid denominator for black hole particle %lld in Bondi rate "
         "calculation.",
         bp->id);
