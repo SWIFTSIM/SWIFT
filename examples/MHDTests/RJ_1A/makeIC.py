@@ -109,8 +109,8 @@ for i in range(numPart):
         
 # Shift particles
 pos[:,0] -= x_min
-b[:,:]  *= 1.0/sqrt(4.0*3.14159265)
-vp[:,:] *= 1.0/sqrt(4.0*3.14159265)
+#b[:,:]  *= 1.0/sqrt(4.0*3.14159265)
+#vp[:,:] *= 1.0/sqrt(4.0*3.14159265)
 
 #File
 file = h5py.File(fileName, 'w')
@@ -143,8 +143,8 @@ grp.create_dataset('Masses', data=m, dtype='f')
 grp.create_dataset('SmoothingLength', data=h, dtype='f')
 grp.create_dataset('InternalEnergy', data=u, dtype='f')
 grp.create_dataset('ParticleIDs', data=ids, dtype='L')
-#grp.create_dataset("Bfield", data = b, dtype = 'f')
-grp.create_dataset("MagneticFluxDensity", data = b, dtype = 'f')
+grp.create_dataset("Bfield", data = b, dtype = 'f')
+#grp.create_dataset("MagneticFluxDensity", data = b, dtype = 'f')
 grp.create_dataset("VecPot", data = vp, dtype = 'f')
 grp.create_dataset("EPalpha", data = epa, dtype = 'f')
 grp.create_dataset("EPbeta" , data = epb, dtype = 'f')

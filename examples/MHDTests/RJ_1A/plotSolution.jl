@@ -79,7 +79,7 @@ function do_table(data,Nmax)
     zone=(round(xmax)-round(xmin))/2.
     println("Zones ",zone)
     x = x .- zone # move to 0
-    x = 2.0 .* x ./ zone #normalize -1 to 1 just one side of the tube
+    x = 6.0 .* x ./ zone #normalize -1 to 1 just one side of the tube
     #x = x ./ zone #normalize -1 to 1 just one side of the tube
     
     
@@ -149,7 +149,7 @@ function exact_1A(time)
      vx   = zeros(npts)
      vy   = zeros(npts)
      vz   = zeros(npts)
-     bx   = ones(npts).* 5.0 .*MU0_1
+     bx   = ones(npts).* 5.0 
      bz   = zeros(npts)
      by   = zeros(npts)
      ####
@@ -189,11 +189,13 @@ function exact_1A(time)
 
      vz[1:12]	.= 0.0
  
-     by[1:2]   .= 1.4105
-     by[3:4]   .= 3.8389
-     by[5:8]   .= 4.038
-     by[9:10]  .= 5.4271
-     by[11:12] .= 1.4105
+     cte = sqrt(4.0 * pi)
+
+     by[1:2]   .= 1.4105 .* cte
+     by[3:4]   .= 3.8389 .* cte
+     by[5:8]   .= 4.038  .* cte
+     by[9:10]  .= 5.4271 .* cte
+     by[11:12] .= 1.4105 .* cte
 
      bz[1:12]  .= 0.0
     
@@ -215,7 +217,7 @@ function do_6plot(gsnap)
     oplot(ex[:xpts],ex[:rho],"-r")
 ######## plot2
     subplot(2,3,2)
-    plot(a[:x],a[:Bx][:,1],ylim=(-1.1,6.1),xlabel="X",ylabel="Bx/By/Bz")
+    plot(a[:x],a[:Bx][:,1],ylim=(-1.1,20.1),xlabel="X",ylabel="Bx/By/Bz")
   #  plot(a[:x],a[:Bx][:,1],xlabel="X",ylabel="Bx/By")
     GRUtils.hold(true)
     errorbar(a[:x],a[:Bx][:,1],a[:Bx][:,2])
