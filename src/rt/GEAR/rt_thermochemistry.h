@@ -114,7 +114,7 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
   /* reset boundary particle data. */
   rt_tchem_set_boundary_particles_for_test(p);
 
-  p->rt_data.dt *= 1.01;
+  p->rt_data.dt *= 1.001;
 
   /* This is where the fun begins */
   /* ---------------------------- */
