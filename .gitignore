@@ -28,6 +28,7 @@ doc/man/
 doc/Doxyfile
 
 examples/*/*/*.xmf
+examples/*/*/*.jpg
 examples/*/*/*.dat
 examples/*/*/*.png
 examples/*/*/*.pdf

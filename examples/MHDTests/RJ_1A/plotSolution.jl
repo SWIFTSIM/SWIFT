@@ -31,8 +31,8 @@ using Statistics
 function read_snap(filename :: String)
     
     pos  = h5read(filename,"PartType0/Coordinates")
-#    Bfl  = h5read(filename,"PartType0/MagneticFluxDensities") 
-    Bfl  = h5read(filename,"PartType0/Bfield") 
+    Bfl  = h5read(filename,"PartType0/MagneticFluxDensity") 
+#    Bfl  = h5read(filename,"PartType0/Bfield") 
     Vel  = h5read(filename,"PartType0/Velocities")
 #    alp  = h5read(filename,"PartType0/EPalpha")
 #    bet  = h5read(filename,"PartType0/EPbeta")
