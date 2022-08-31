@@ -197,12 +197,13 @@ rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
 
   /* Set the values that you actually want. Needs to be in internal units.*/
   /* 1 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  /* float density = 2.471e+04; */
+  float density = 2.471e+04;
 
   /* Set the values that you actually want. Needs to be in internal units.*/
   /* 10^-3 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
-  float density = 2.471e+01;
+  /* float density = 2.471e+01; */
 
+  /* Specific internal energy corresponding to 100K */
   float internal_energy = 1.23816;
 
   /* Be vocal, just in case somebody forgets you exist. */
@@ -242,10 +243,9 @@ rt_tchem_set_particle_radiation_field_for_test(
     /* Be vocal, just in case somebody forgets you exist. */
     if (p->id == 1) message("Setting fixed radiation field.");
     /* Set fixed radiation fields, in cgs*/
-    fixed_fluxes[0] = 0.;
-    fixed_fluxes[1] = 1.350e01;
-    fixed_fluxes[2] = 2.779e01;
-    fixed_fluxes[3] = 6.152e00;
+    fixed_fluxes[0] = 1.350e01;
+    fixed_fluxes[1] = 2.779e01;
+    fixed_fluxes[2] = 6.152e00;
   }
 
   const double flux_to_cgs =

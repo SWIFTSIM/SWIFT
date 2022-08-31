@@ -79,6 +79,8 @@ struct rt_part_data {
     float HeIII; /* mass fraction taken by HeIII */
   } mass_flux;
 
+  double dt;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* debugging data to store during entire run */
 

@@ -143,6 +143,8 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   rt_part_reset_mass_fluxes(p);
   rt_reset_part_each_subcycle(p);
 
+  p->rt_data.dt = 1.597603e-10;
+
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 #endif
@@ -336,7 +338,7 @@ __attribute__((always_inline)) INLINE static float rt_compute_timestep(
               rt_tchem_get_tchem_time(p, xp, rt_props, cosmo, hydro_props,
                                       phys_const, us);
 
-  return min(dt, fabsf(dt_cool));
+  return min3(p->rt_data.dt, dt, fabsf(dt_cool));
 }
 
 /**
@@ -486,7 +488,7 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us, const double dt) {
+    const struct unit_system* restrict us, const double dt, const double time) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debug_sequence_check(p, 4, __func__);
@@ -497,7 +499,7 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
    * accessinging its properties there */
 
   rt_do_thermochemistry(p, xp, rt_props, cosmo, hydro_props, phys_const, us,
-                        dt);
+                        dt, time);
 }
 
 /**

@@ -99,7 +99,7 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
     const struct phys_const* restrict phys_const,
-    const struct unit_system* restrict us, const double dt) {
+    const struct unit_system* restrict us, const double dt, const double time) {
   /* Note: Can't pass rt_props as const struct because of grackle
    * accessinging its properties there */
 
@@ -110,8 +110,11 @@ __attribute__((always_inline)) INLINE static void rt_do_thermochemistry(
     return;
   }
 
+  rt_tchem_set_particle_radiation_field_for_test(p, time, us);
   /* reset boundary particle data. */
   rt_tchem_set_boundary_particles_for_test(p);
+
+  p->rt_data.dt *= 1.01;
 
   /* This is where the fun begins */
   /* ---------------------------- */
