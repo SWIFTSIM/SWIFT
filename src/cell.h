@@ -38,6 +38,7 @@
 #include "cell_hydro.h"
 #include "cell_sinks.h"
 #include "cell_stars.h"
+#include "ghost_stats.h"
 #include "kernel_hydro.h"
 #include "multipole_struct.h"
 #include "part.h"
@@ -462,6 +463,8 @@ struct cell {
   /*! The list of sub-tasks that have been executed on this cell */
   char subtasks_executed[task_type_count];
 #endif
+
+  struct ghost_stats ghost_statistics;
 
 } SWIFT_STRUCT_ALIGN;
 

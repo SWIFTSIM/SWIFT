@@ -2398,6 +2398,11 @@ int engine_step(struct engine *e) {
       e->step % e->sched.frequency_task_levels == 0)
     scheduler_write_task_level(&e->sched, e->step);
 
+  /* we have to reset the ghost histograms here and not in engine_launch,
+     because engine_launch is re-used for the limiter and sync (and we don't
+     want to lose the data from the tasks) */
+  space_reset_ghost_histograms(e->s);
+
   /* Start all the tasks. */
   TIMER_TIC;
   engine_launch(e, "tasks");
