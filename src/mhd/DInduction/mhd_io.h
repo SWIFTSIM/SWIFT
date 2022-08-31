@@ -33,7 +33,7 @@ INLINE static int mhd_read_particles(struct part* parts,
                                      struct io_props* list) {
 
   list[0] =
-      io_make_input_field("Bfield", FLOAT, 3, COMPULSORY, UNIT_CONV_NO_UNITS,
+      io_make_input_field("MagneticFluxDensity", FLOAT, 3, COMPULSORY, UNIT_CONV_NO_UNITS,
                           parts, mhd_data.BPred);  // CHECK XXX IF FULL STEP
   return 1;
 }
@@ -61,7 +61,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       struct io_props* list) {
   // SET CORRECT UNITS
   list[0] = io_make_output_field(
-      "Bfield", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,
+      "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, mhd_comoving_factor,
       parts, mhd_data.BPred, "Co-moving Magnetic field of the particles");
 
   list[1] =

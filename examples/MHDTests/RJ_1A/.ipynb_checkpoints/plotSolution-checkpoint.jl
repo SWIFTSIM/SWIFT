@@ -31,12 +31,10 @@ using Statistics
 function read_snap(filename :: String)
     
     pos  = h5read(filename,"PartType0/Coordinates")
-    Bfl  = h5read(filename,"PartType0/MagneticFluxDensity") 
-#    Bfl  = h5read(filename,"PartType0/Bfield") 
+    Bfl  = h5read(filename,"PartType0/Bfield") 
     Vel  = h5read(filename,"PartType0/Velocities")
 #    alp  = h5read(filename,"PartType0/EPalpha")
 #    bet  = h5read(filename,"PartType0/EPbeta")
-#    divB = h5read(filename,"PartType0/MonopoleTerm")
     divB = h5read(filename,"PartType0/divB")
     #Ids  = h5read(filename,"PartType0/ParticleIDs")
     h    = h5read(filename,"PartType0/SmoothingLengths")
@@ -79,7 +77,7 @@ function do_table(data,Nmax)
     zone=(round(xmax)-round(xmin))/2.
     println("Zones ",zone)
     x = x .- zone # move to 0
-    x = 6.0 .* x ./ zone #normalize -1 to 1 just one side of the tube
+    x = 2.0 .* x ./ zone #normalize -1 to 1 just one side of the tube
     #x = x ./ zone #normalize -1 to 1 just one side of the tube
     
     
@@ -132,7 +130,7 @@ function do_table(data,Nmax)
             :Pres=>Pre))
 end
 
-function exact_1A(time)
+function exact_BW(time)
      tfac = time/0.1
      xmin = -1.0
      xmax = 1.0
@@ -140,7 +138,7 @@ function exact_1A(time)
      #vz     = 0.
      #Bz     = 0.
      #Bxzero = 0.75
-     npts   = 12
+     npts   = 14
      MU0_1  = 1.0/sqrt(4.0*pi)
      #### 
      xpts = zeros(npts)
@@ -149,55 +147,62 @@ function exact_1A(time)
      vx   = zeros(npts)
      vy   = zeros(npts)
      vz   = zeros(npts)
-     bx   = ones(npts).* 5.0 
+     bx   = ones(npts).*0.75
      bz   = zeros(npts)
      by   = zeros(npts)
      ####
     
      xpts[1]      = xmin
-     xpts[2:3]   .= -0.386*tfac
-     xpts[4:5]   .= -0.01*tfac
-     xpts[6:7]   .= 0.0505*tfac
-     xpts[8:9]   .= 0.12*tfac
-     xpts[10:11] .= 0.37*tfac
-     xpts[12]     = xmax
+     xpts[2]      = -0.18*tfac
+     xpts[3]      = -0.08*tfac
+     xpts[4:6]   .= -0.03*tfac
+     xpts[7]      = -0.005*tfac
+     xpts[8:9]   .= 0.06*tfac
+     xpts[10:11] .= 0.147*tfac
+     xpts[12]     = 0.33*tfac
+     xpts[13]     = 0.36*tfac
+     xpts[14]     = xmax
 
      rho[1:2]   .= 1.0
-     rho[3:4]   .= 2.6793
-     rho[5:6]   .= 2.6713
-     rho[7:8]   .= 3.8508
-     rho[9:10]  .= 3.7481
-     rho[11:12] .= 1.0
+     rho[3:4]   .= 0.67623
+     rho[5]      = 0.827
+     rho[6]      = 0.775
+     rho[7:8]   .= 0.6962
+     rho[9:10]  .= 0.2352
+     rho[11:12] .= 0.117
+     rho[13:14] .= 0.125
 
-     pr[1:2]    .= 20.0
-     pr[3:4]    .= 150.98
-     pr[5:8]    .= 150.19
-     pr[9:10]   .= 143.57
-     pr[11:12]  .= 1.0
+     pr[1:2]    .= 1.0
+     pr[3:4]    .= 0.447
+     pr[5]       = 0.727219
+     pr[6]       = 0.6
+     pr[7:10]   .= 0.5160
+     pr[11:12]  .= 0.0876
+     pr[13:14]  .= 0.1
  
-     vx[1:2]    .= 10.0
-     vx[3:4]    .= 0.72113
-     vx[5:8]    .= 0.72376
-     vx[9:10]   .= 0.70505
-     vx[11:12]  .= -10.0
+     vx[1:2]    .= 0.0
+     vx[3:4]    .= 0.63721
+     vx[5]       = 0.48
+     vx[6]       = 0.52
+     vx[7:10]   .= 0.600
+     vx[11:12]  .= -0.24
+     vx[13:14]  .= 0.0
  
      vy[1:2]    .= 0.0
-     vy[3:4]    .= 0.23139
-     vy[5:8]    .= 0.35668
-     vy[9:10]   .= -0.3884
-     vy[11:12]  .= 0.0
-
-     vz[1:12]	.= 0.0
+     vy[3:4]    .= -0.23345
+     vy[5]       = -1.3
+     vy[6]       = -1.4
+     vy[7:10]   .= -1.584
+     vy[11:12]  .= -0.166
+     vy[13:14]  .= 0.
  
-     cte = sqrt(4.0 * pi)
-
-     by[1:2]   .= 1.4105 .* cte
-     by[3:4]   .= 3.8389 .* cte
-     by[5:8]   .= 4.038  .* cte
-     by[9:10]  .= 5.4271 .* cte
-     by[11:12] .= 1.4105 .* cte
-
-     bz[1:12]  .= 0.0
+     by[1:2]   .= 1.0
+     by[3:4]   .= 2.1*MU0_1
+     by[5]      = -1.2*MU0_1
+     by[6]      = -1.3*MU0_1
+     by[7:10]  .= -1.9*MU0_1
+     by[11:12] .= -3.25*MU0_1
+     by[13:14] .= -1.0
     
      (Dict(:xpts=>xpts, :rho=>rho, :pr=>pr,
             :vx=> vx, :vy=>vy, :vz=>vz,
@@ -206,18 +211,18 @@ end
 
 function do_6plot(gsnap)
     a=do_table(gsnap,256)
-    ex=exact_1A(0.2)
+    ex=exact_BW(0.2)
     GRUtils.hold(false)
     subplot(1,1,1)
 ########## plot1
     subplot(2,3,1)
-    plot(a[:x],a[:rho][:,1],ylim=(-0.1,4.1),xlabel="X",ylabel="Rho")
+    plot(a[:x],a[:rho][:,1],ylim=(0,1.1),xlabel="X",ylabel="Rho")
     GRUtils.hold(true)
     errorbar(a[:x],a[:rho][:,1],a[:rho][:,2])
     oplot(ex[:xpts],ex[:rho],"-r")
 ######## plot2
     subplot(2,3,2)
-    plot(a[:x],a[:Bx][:,1],ylim=(-1.1,20.1),xlabel="X",ylabel="Bx/By/Bz")
+    plot(a[:x],a[:Bx][:,1],ylim=(-1.1,1.1),xlabel="X",ylabel="Bx/By")
   #  plot(a[:x],a[:Bx][:,1],xlabel="X",ylabel="Bx/By")
     GRUtils.hold(true)
     errorbar(a[:x],a[:Bx][:,1],a[:Bx][:,2])
@@ -230,7 +235,7 @@ function do_6plot(gsnap)
     oplot(ex[:xpts],ex[:bz],"-b")
 ####### plot3
     subplot(2,3,3)
-    plot(a[:x],a[:Vx][:,1],ylim=(-11.1,11.1),xlabel="X",ylabel="Vx/Vz")
+    plot(a[:x],a[:Vx][:,1],ylim=(-0.4,0.7),xlabel="X",ylabel="Vx/Vz")
     GRUtils.hold(true)
     errorbar(a[:x],a[:Vx][:,1],a[:Vx][:,2])
     oplot(ex[:xpts],ex[:vx],"-r")
@@ -239,13 +244,13 @@ function do_6plot(gsnap)
     oplot(ex[:xpts],ex[:vz],"-g")
 ###### plot 4
     subplot(2,3,4)
-    plot(a[:x],a[:Vy][:,1],xlabel="X",ylabel="Vy",ylim=(-0.5,0.5))
+    plot(a[:x],a[:Vy][:,1],xlabel="X",ylabel="Vy",ylim=(-1.7,0.1))
     GRUtils.hold(true)
     errorbar(a[:x],a[:Vy][:,1],a[:Vy][:,2])
     oplot(ex[:xpts],ex[:vy],"-r")
 ###### plot 6    
     subplot(2,3,5)
-    plot(a[:x],a[:Pres][:,1],xlabel="X",ylabel="Pressure",ylim=(0,160.1))
+    plot(a[:x],a[:Pres][:,1],xlabel="X",ylabel="Pressure",ylim=(0,1.1))
     GRUtils.hold(true)
     errorbar(a[:x],a[:Pres][:,1],a[:Pres][:,2])
     oplot(ex[:xpts],ex[:pr],"-r")
