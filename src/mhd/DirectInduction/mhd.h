@@ -24,7 +24,11 @@
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  const float rho = p->rho;
+  const float b2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+                   p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+                   p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  return 0.5f * b2 * MHD_MU0_1 / rho / rho;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
@@ -36,13 +40,19 @@ __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
 __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  const float rho = p->rho;
+  return (p->v[0] * p->mhd_data.B_over_rho[0] + p->v[1] * p->mhd_data.B_over_rho[1] +
+          p->v[2] * p->mhd_data.B_over_rho[2])/rho;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
     const struct part *p, const struct xpart *xp) {
 
-  return 0.f;
+  const float rho = p->rho;
+  const float b2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
+                   p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
+                   p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
+  return fabs(p->mhd_data.divB * p->h / sqrt(b2/rho/rho + 1.e-18));
 }
 
 /**
@@ -79,7 +89,7 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
     const float mu_ij, const float beta, const float a) {
 
-  const float mu_0 = 1.0f;
+  const float mu_0 = MHD_MU0;
 
   /* Get r and 1/r. */
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -314,10 +324,10 @@ __attribute__((always_inline)) INLINE static void mhd_end_force(
   const float h_inv = 1.0f / h;    
     
   /* Dedner cleaning scalar time derivative */
-  const float v_sig = p->force.v_sig;
+  const float v_sig = hydro_get_signal_velocity(p);
   const float v_sig2 = v_sig * v_sig;
   const float div_B = p->mhd_data.B_mon;
-  const float div_v = p->density.div_v;
+  const float div_v = hydro_get_div_v(p);
   const float psi = p->mhd_data.psi;
   p->mhd_data.psi_dt =
       -v_sig2 * div_B - dedner_gamma * psi * div_v - psi * v_sig * h_inv;
