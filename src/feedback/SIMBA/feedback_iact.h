@@ -179,9 +179,15 @@ runner_iact_nonsym_feedback_apply(
     Omega_frac = 0.f;
   }
 
+  /* Never apply feedback if Omega_frac is bigger than or equal to unity */
+  if (Omega_frac > 1.0) {
+    warning("Problem with neighbors: Omega_frac=%g wi=%g rho_j=%g",
+            Omega_frac, wi, rho_j);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (Omega_frac < 0. || Omega_frac > 1.01)
-    error(
+    warning(
         "Invalid fraction of material to distribute for star ID=%lld "
         "Omega_frac=%e count since last enrich=%d",
         si->id, Omega_frac, si->count_since_last_enrichment);
