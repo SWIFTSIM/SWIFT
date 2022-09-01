@@ -898,8 +898,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, struct cell *restrict ci,
 
   /* Is it sorted, if not we use the naive interactions. */
   const int is_sorted =
-    (cj->hydro.sorted & (1 << sid)) &&
-    (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
+      (cj->hydro.sorted & (1 << sid)) &&
+      (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   int force_naive = 1;
