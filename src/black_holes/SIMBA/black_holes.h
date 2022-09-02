@@ -579,9 +579,12 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       bp->hot_gas_mass * (3. / (4. * M_PI)) * pow_dimension(h_inv);
   const double gas_rho_phys = gas_rho * cosmo->a3_inv;
 
-  double gas_c_phys = gas_soundspeed_from_internal_energy(
+  double gas_c_phys = 0.;
+  if (bp->hot_gas_internal_energy > 0.) {
+    gas_c_phys = gas_soundspeed_from_internal_energy(
                           gas_rho, bp->hot_gas_internal_energy) *
                       cosmo->a_factor_sound_speed;
+  }
   double gas_c_phys2 = gas_c_phys * gas_c_phys;
 
   /* We can now compute the Bondi accretion rate (internal units)
