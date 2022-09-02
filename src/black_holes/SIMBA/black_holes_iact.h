@@ -403,6 +403,9 @@ runner_iact_nonsym_bh_gas_swallow(
   /* A black hole should never accrete/feedback if it is not in a galaxy */
   if (bi->group_data.mass <= 0.f) return;
   
+  /* If there is no gas, skip */
+  if (bi->rho_gas <= 0.f) return;
+  
   float wi;
 
   /* Compute the kernel function; note that r cannot be optimised
