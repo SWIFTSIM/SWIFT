@@ -1049,7 +1049,6 @@ black_holes_compute_xray_feedback(struct bpart* bp, const struct part* p,
 
   const double zeta0_term1 =
       1. / (1.5 / sqrt(T_gas_cgs) + 1.5e12 / pow(T_gas_cgs, 2.5));
-  double zeta0_term2 = 0.;
 
   /* Avoid the underflow in the exponential. It doesn't do anything
    * above about 4.e4 K and quickly drops out of the double range. */
