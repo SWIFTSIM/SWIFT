@@ -110,9 +110,6 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->swallowed_angular_momentum[0] = 0.f;
   bp->swallowed_angular_momentum[1] = 0.f;
   bp->swallowed_angular_momentum[2] = 0.f;
-  bp->accreted_angular_momentum[0] = 0.f;
-  bp->accreted_angular_momentum[1] = 0.f;
-  bp->accreted_angular_momentum[2] = 0.f;
   bp->last_repos_vel = 0.f;
   bp->num_ngbs_to_heat = props->num_ngbs_to_heat; /* Filler value */
   bp->dt_heat = FLT_MAX;
@@ -156,9 +153,6 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->hot_gas_internal_energy = 0.f;
   bp->rho_subgrid_gas = -1.f;
   bp->sound_speed_subgrid_gas = -1.f;
-  bp->velocity_gas[0] = 0.f;
-  bp->velocity_gas[1] = 0.f;
-  bp->velocity_gas[2] = 0.f;
   bp->circular_velocity_gas[0] = 0.f;
   bp->circular_velocity_gas[1] = 0.f;
   bp->circular_velocity_gas[2] = 0.f;
@@ -182,7 +176,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->reposition.potential = FLT_MAX;
   bp->accretion_rate = 0.f; /* Optionally accumulated ngb-by-ngb */
   bp->mass_accreted_this_step = 0.f;
-  bp->accretion_boost_factor = -FLT_MAX;
+  bp->accretion_boost_factor = 0.f;
   bp->mass_at_start_of_step = bp->mass; /* bp->mass may grow in nibbling mode */
 
 }
@@ -286,14 +280,10 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   float m_hot_inv = 1.f;
   if (bp->hot_gas_mass > 0.f) m_hot_inv /= bp->hot_gas_mass;
 
-  /* For the following, we also have to undo the mass smoothing
-   * (N.B.: bp->velocity_gas is in BH frame, in internal units). */
+  /* For the following, we also have to undo the mass smoothing */
   bp->sound_speed_gas *= h_inv_dim * rho_inv;
   bp->internal_energy_gas *= h_inv_dim * rho_inv;
   bp->hot_gas_internal_energy *= m_hot_inv;
-  bp->velocity_gas[0] *= h_inv_dim * rho_inv; /* h_inv_dim * rho_inv;*/
-  bp->velocity_gas[1] *= h_inv_dim * rho_inv; /* h_inv_dim * rho_inv; */
-  bp->velocity_gas[2] *= h_inv_dim * rho_inv; /* h_inv_dim * rho_inv; */
   bp->circular_velocity_gas[0] *=
       h_inv_dim * rho_inv; /* h_inv_dim * rho_inv; */
   bp->circular_velocity_gas[1] *=
@@ -333,12 +323,8 @@ black_holes_bpart_has_no_neighbours(struct bpart* bp,
   bp->density.wcount = kernel_root * h_inv_dim;
   bp->density.wcount_dh = 0.f;
 
-  bp->velocity_gas[0] = FLT_MAX;
-  bp->velocity_gas[1] = FLT_MAX;
-  bp->velocity_gas[2] = FLT_MAX;
-
-  bp->internal_energy_gas = -FLT_MAX;
-  bp->hot_gas_internal_energy = -FLT_MAX;
+  bp->internal_energy_gas = 0.f;
+  bp->hot_gas_internal_energy = 0.f;
 }
 
 /**
@@ -513,11 +499,6 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
 
   /* Add up all the gas particles we swallowed */
   bpi->number_of_gas_swallows += bpj->number_of_gas_swallows;
-
-  /* Add the subgrid angular momentum that we swallowed */
-  bpi->accreted_angular_momentum[0] += bpj->accreted_angular_momentum[0];
-  bpi->accreted_angular_momentum[1] += bpj->accreted_angular_momentum[1];
-  bpi->accreted_angular_momentum[2] += bpj->accreted_angular_momentum[2];
 
   /* We had another merger */
   bpi->number_of_mergers++;
@@ -720,17 +701,6 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       error("Black hole %lld reached negative mass (%g). Trouble ahead...",
             bp->id, bp->mass);
   }
-
-  /* Increase the subgrid angular momentum according to what we accreted
-   * Note that this is already in physical units, a factors from velocity and
-   * radius cancel each other. Also, the circular velocity contains an extra
-   * smoothing length factor that we undo here. */
-  bp->accreted_angular_momentum[0] +=
-      bp->circular_velocity_gas[0] * mass_rate * dt / bp->h;
-  bp->accreted_angular_momentum[1] +=
-      bp->circular_velocity_gas[1] * mass_rate * dt / bp->h;
-  bp->accreted_angular_momentum[2] +=
-      bp->circular_velocity_gas[2] * mass_rate * dt / bp->h;
 
   /* Compute the properties that don't change over the timestep,
    * i.e. feedback v_kick, f_acc, etc.

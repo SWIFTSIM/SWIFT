@@ -123,15 +123,7 @@ INLINE static void convert_bpart_potential(const struct engine* e,
 }
 
 INLINE static void convert_bpart_gas_vel(const struct engine* e,
-                                         const struct bpart* bp, float* ret) {
-
-  const struct cosmology* cosmo = e->cosmology;
-
-  /* Convert relative velocities to physical units */
-  ret[0] = bp->velocity_gas[0] * cosmo->a_inv;
-  ret[1] = bp->velocity_gas[1] * cosmo->a_inv;
-  ret[2] = bp->velocity_gas[2] * cosmo->a_inv;
-}
+                                         const struct bpart* bp, float* ret) { }
 
 INLINE static void convert_bpart_gas_circular_vel(const struct engine* e,
                                                   const struct bpart* bp,
@@ -171,7 +163,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 43;
+  *num_fields = 41;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -290,13 +282,6 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "swallowing gas particles.");
 
   list[18] = io_make_output_field_convert_bpart(
-      "GasRelativeVelocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, bparts,
-      convert_bpart_gas_vel,
-      "Peculiar relative velocities of the gas particles around the black "
-      "holes. This is a * dx/dt where x is the co-moving position of the "
-      "particles.");
-
-  list[19] = io_make_output_field_convert_bpart(
       "GasCircularVelocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, bparts,
       convert_bpart_gas_circular_vel,
       "Circular velocities of the gas around the black hole at the "
@@ -304,32 +289,32 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "specific angular momentum of gas around the black holes, and h_BH is "
       "the smoothing length of each black hole.");
 
-  list[20] =
+  list[19] =
       io_make_output_field("TimeBins", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
                            time_bin, "Time-bins of the particles");
 
-  list[21] = io_make_output_field(
+  list[20] = io_make_output_field(
       "NumberOfSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       number_of_gas_swallows,
       "Number of gas particles the black holes have swallowed. "
       "This includes the particles swallowed by any of the black holes that "
       "merged into this one.");
 
-  list[22] = io_make_output_field(
+  list[21] = io_make_output_field(
       "NumberOfDirectSwallows", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       number_of_direct_gas_swallows,
       "Number of gas particles the black holes have swallowed. "
       "This does not include any particles swallowed by any of the black holes "
       "that merged into this one.");
 
-  list[23] = io_make_output_field(
+  list[22] = io_make_output_field(
       "NumberOfRepositions", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       number_of_repositions,
       "Number of repositioning events the black holes went through. This does "
       "not include the number of reposition events accumulated by any merged "
       "black holes.");
 
-  list[24] = io_make_output_field(
+  list[23] = io_make_output_field(
       "NumberOfRepositionAttempts", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       number_of_reposition_attempts,
       "Number of time steps in which the black holes had an eligible particle "
@@ -339,114 +324,108 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "not include attempted repositioning events accumulated by any merged "
       "black holes.");
 
-  list[25] = io_make_output_field(
+  list[24] = io_make_output_field(
       "NumberOfTimeSteps", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       number_of_time_steps,
       "Total number of time steps at which the black holes were active.");
 
-  list[26] = io_make_output_field(
+  list[25] = io_make_output_field(
       "SubgridDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, bparts,
       rho_subgrid_gas,
       "Physical subgrid densities used in the subgrid-Bondi model.");
 
-  list[27] = io_make_output_field(
+  list[26] = io_make_output_field(
       "SubgridSoundSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, bparts,
       sound_speed_subgrid_gas,
       "Physical subgrid sound-speeds used in the subgrid-Bondi model.");
 
-  list[28] = io_make_output_field(
+  list[27] = io_make_output_field(
       "BirthGasDensities", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, bparts,
       formation_gas_density,
       "Physical densities of the converted part at the time of birth. "
       "We store the physical density at the birth redshift, no conversion is "
       "needed.");
 
-  list[29] = io_make_output_field(
-      "AccretedAngularMomenta", FLOAT, 3, UNIT_CONV_ANGULAR_MOMENTUM, 0.f,
-      bparts, accreted_angular_momentum,
-      "Physical angular momenta that the black holes have accumulated through "
-      "subgrid accretion.");
-
-  list[30] = io_make_output_field(
+  list[28] = io_make_output_field(
       "NumberOfGasNeighbours", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       num_ngbs,
       "Integer number of gas neighbour particles within the black hole "
       "kernels.");
 
-  list[31] = io_make_output_field(
+  list[29] = io_make_output_field(
       "FeedbackDeltaT", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
       AGN_delta_T,
       "Temperature by which gas particles have been heated by the black hole "
       "particles in the most recent feedback event.");
 
-  list[32] = io_make_output_field(
+  list[30] = io_make_output_field(
       "LastRepositionVelocities", FLOAT, 1, UNIT_CONV_SPEED, 0.f, bparts,
       last_repos_vel,
       "Physical speeds at which the black holes repositioned most recently. "
       "This is 0 for black holes that have never repositioned, or if the "
       "simulation has been run without prescribed repositioning speed.");
 
-  list[33] = io_make_output_field(
+  list[31] = io_make_output_field(
       "NumberOfHeatingEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_energy_injections,
       "Integer number of (thermal) energy injections the black hole has had "
       "so far");
 
-  list[34] = io_make_output_field(
+  list[32] = io_make_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_AGN_events,
       "Integer number of AGN events the black hole has had so far"
       " (the number of times the BH did AGN feedback)");
 
   if (with_cosmology) {
-    list[35] = io_make_output_field(
+    list[33] = io_make_output_field(
         "LastAGNFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
         bparts, last_AGN_event_scale_factor,
         "Scale-factors at which the black holes last had an AGN event.");
   } else {
-    list[35] = io_make_output_field(
+    list[33] = io_make_output_field(
         "LastAGNFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_AGN_event_time,
         "Times at which the black holes last had an AGN event.");
   }
 
-  list[36] = io_make_output_field(
+  list[34] = io_make_output_field(
       "AccretionLimitedTimeSteps", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
       dt_heat, "Accretion-limited time-steps of black holes.");
 
-  list[37] = io_make_output_field(
+  list[35] = io_make_output_field(
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
       AGN_cumulative_energy,
       "Total (cumulative) physical energies injected into gas particles "
       "in AGN feedback.");
 
-  list[38] = io_make_output_field(
+  list[36] = io_make_output_field(
       "AccretionBoostFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       accretion_boost_factor,
       "Multiplicative factors by which the Bondi-Hoyle-Lyttleton accretion "
       "rates have been increased by the density-dependent Booth & Schaye "
       "(2009) accretion model.");
 
-  list[39] = io_make_output_field_convert_bpart(
+  list[37] = io_make_output_field_convert_bpart(
       "GasTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, bparts,
       convert_bpart_gas_temperatures,
       "Temperature of the gas surrounding the black holes.");
 
-  list[40] = io_make_output_field(
+  list[38] = io_make_output_field(
       "EnergyReservoirThresholds", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       num_ngbs_to_heat,
       "Minimum energy reservoir required for the black holes to do feedback, "
       "expressed in units of the (constant) target heating temperature "
       "increase.");
 
-  list[41] = io_make_output_field(
+  list[39] = io_make_output_field(
       "EddingtonFractions", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       eddington_fraction,
       "Accretion rates of black holes in units of their Eddington rates. "
       "This is based on the unlimited accretion rates, so these fractions "
       "can be above the limiting fEdd.");
 
-  list[42] = io_make_output_field_convert_bpart(
+  list[40] = io_make_output_field_convert_bpart(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
       convert_bpart_potential, "Gravitational potentials of the particles");
 

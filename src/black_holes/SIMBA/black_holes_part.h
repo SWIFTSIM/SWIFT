@@ -132,10 +132,6 @@ struct bpart {
    * Bondi model) */
   float sound_speed_subgrid_gas;
 
-  /*! Smoothed velocity of the gas surrounding the black hole,
-   * in the frame of the black hole (internal units) */
-  float velocity_gas[3];
-
   /*! Circular velocity of the gas around the black hole at the smoothing
    * radius (calculated as j_gas / h_BH, where j is specific ang. mom.) */
   float circular_velocity_gas[3];
@@ -180,9 +176,6 @@ struct bpart {
 
   /*! Accretion boost factor */
   float accretion_boost_factor;
-
-  /*! Total (physical) angular momentum accumulated from subgrid accretion */
-  float accreted_angular_momentum[3];
 
   /*! Instantaneous temperature increase for feedback */
   float AGN_delta_T;
