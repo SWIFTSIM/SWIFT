@@ -280,7 +280,8 @@ __attribute__((always_inline)) INLINE static void black_holes_end_density(
   bp->density.wcount *= h_inv_dim;
   bp->density.wcount_dh *= h_inv_dim_plus_one;
   bp->rho_gas *= h_inv_dim;
-  const float rho_inv = 1.f / bp->rho_gas;
+  float rho_inv = 1.f;
+  if (bp->rho_gas > 0.f) rho_inv = 1.f / bp->rho_gas;
   /* All mass-weighted quantities are for the hot & cold gas */
   float m_hot_inv = 1.f;
   if (bp->hot_gas_mass > 0.f) m_hot_inv /= bp->hot_gas_mass;
