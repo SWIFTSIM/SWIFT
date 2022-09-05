@@ -39,6 +39,7 @@
 #define gravity_props_default_r_cut_max 4.5f
 #define gravity_props_default_r_cut_min 0.1f
 #define gravity_props_default_rebuild_frequency 0.01f
+#define gravity_props_default_rebuild_active_fraction 1.01f  // > 1 means never
 #define gravity_props_default_distributed_mesh 0
 
 void gravity_props_init(struct gravity_props *p, struct swift_params *params,
@@ -54,6 +55,10 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   p->rebuild_frequency =
       parser_get_opt_param_float(params, "Gravity:rebuild_frequency",
                                  gravity_props_default_rebuild_frequency);
+
+  p->rebuild_active_fraction =
+      parser_get_opt_param_float(params, "Gravity:rebuild_active_fraction",
+                                 gravity_props_default_rebuild_active_fraction);
 
   if (p->rebuild_frequency < 0.f || p->rebuild_frequency > 1.f)
     error("Invalid tree rebuild frequency. Must be in [0., 1.]");
