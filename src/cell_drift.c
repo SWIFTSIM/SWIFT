@@ -308,6 +308,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             struct hydro_space hs = e->s->hs;
             p->rho = hs.density;
             p->v[0] = hs.velocity;
+            p->v[1] = 0.;
+            p->v[2] = 0.;
             p->P = hs.pressure;
             /* Signal that the conserved quantities are now considered
              * uninitialized. */
