@@ -327,4 +327,13 @@ INLINE static float HM80_density_from_pressure_and_temperature(
   return 0.f;
 }
 
+// gas_density_from_pressure_and_internal_energy
+INLINE static float HM80_density_from_pressure_and_internal_energy(
+    float P, float u, float rho_ref, const struct HM80_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
 #endif /* SWIFT_HUBBARD_MACFARLANE_EQUATION_OF_STATE_H */
