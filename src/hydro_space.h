@@ -20,6 +20,7 @@
 #define SWIFT_HYDRO_SPACE_H
 
 #include "parser.h"
+#include "const.h"
 
 #include <config.h>
 

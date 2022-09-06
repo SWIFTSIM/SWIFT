@@ -19,9 +19,6 @@
 
 #include "hydro_space.h"
 
-#include "space.h"
-#include "const.h"
-
 /**
  * @brief Initialize the extra space information needed for some hydro schemes.
  *
