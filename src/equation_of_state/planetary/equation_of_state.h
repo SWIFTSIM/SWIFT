@@ -2590,6 +2590,275 @@ gas_density_from_pressure_and_temperature(float P, float T,
   }
 }
 
+/**
+ * @brief Returns the density given pressure and internal energy
+ *
+ * @param P The pressure \f$P\f$
+ * @param T The temperature \f$T\f$
+ */
+__attribute__((always_inline)) INLINE static float
+gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
+                                 enum eos_planetary_material_id mat_id) {
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
+
+  /* Select the material base type */
+  switch (type) {
+          
+    /* Ideal gas EoS */
+    case eos_planetary_type_idg:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_idg_def:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.idg_def.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_idg_def: 1");
+#endif
+          return idg_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.idg_def);
+          break;
+
+        default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown material ID! mat_id = %d", mat_id);
+#endif
+          return -1.f;
+      };
+      break;
+
+    /* Tillotson EoS */
+    case eos_planetary_type_Til:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_Til_iron:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.Til_iron.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_Til_iron: 1");
+#endif
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_iron);
+          break;
+
+        case eos_planetary_id_Til_granite:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.Til_granite.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_Til_granite: 1");
+#endif
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_granite);
+          break;
+
+        case eos_planetary_id_Til_water:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.Til_water.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_Til_water: 1");
+#endif
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_water);
+          break;
+
+        case eos_planetary_id_Til_basalt:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.Til_basalt.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_Til_basalt: 1");
+#endif
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_basalt);
+          break;
+              
+        case eos_planetary_id_Til_ice:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.Til_ice.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_Til_ice: 1");
+#endif
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_ice);
+          break;
+
+        default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown material ID! mat_id = %d", mat_id);
+#endif
+          return -1.f;
+      };
+      break;
+
+    /* Hubbard & MacFarlane (1980) EoS */
+    case eos_planetary_type_HM80:
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_HM80_HHe:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.HM80_HHe.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_HM80_HHe: 1");
+#endif
+          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.HM80_HHe);
+          break;
+
+        case eos_planetary_id_HM80_ice:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.HM80_ice.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_HM80_ice: 1");
+#endif
+          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.HM80_ice);
+          break;
+
+        case eos_planetary_id_HM80_rock:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.HM80_rock.mat_id != mat_id)
+            error("EoS not enabled. Please set EoS:planetary_use_HM80_rock: 1");
+#endif
+          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.HM80_rock);
+          break;
+
+        default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown material ID! mat_id = %d", mat_id);
+#endif
+          return -1.f;
+      };
+      break;
+
+    /* SESAME EoS */
+    case eos_planetary_type_SESAME:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_SESAME_iron:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.SESAME_iron.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_SESAME_iron: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.SESAME_iron);
+          break;
+
+        case eos_planetary_id_SESAME_basalt:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.SESAME_basalt.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_SESAME_basalt: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.SESAME_basalt);
+          break;
+
+        case eos_planetary_id_SESAME_water:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.SESAME_water.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_SESAME_water: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.SESAME_water);
+          break;
+
+        case eos_planetary_id_SS08_water:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.SS08_water.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_SS08_water: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.SS08_water);
+          break;
+              
+        case eos_planetary_id_AQUA:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.AQUA.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_AQUA: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.AQUA);
+          break;
+              
+        case eos_planetary_id_CMS19_H:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.CMS19_H.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_CMS19_H: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.CMS19_H);
+          break;
+              
+        case eos_planetary_id_CMS19_He:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.CMS19_He.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_CMS19_He: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.CMS19_He);
+          break;
+              
+        case eos_planetary_id_CMS19_HHe:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.CMS19_HHe.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.CMS19_HHe);
+          break;
+
+        default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown material ID! mat_id = %d", mat_id);
+#endif
+          return -1.f;
+      };
+      break;
+
+    /* ANEOS -- using SESAME-style tables */
+    case eos_planetary_type_ANEOS:;
+
+      /* Select the material */
+      switch (mat_id) {
+        case eos_planetary_id_ANEOS_forsterite:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.ANEOS_forsterite.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_ANEOS_forsterite: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.ANEOS_forsterite);
+          break;
+
+        case eos_planetary_id_ANEOS_iron:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.ANEOS_iron.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_ANEOS_iron: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.ANEOS_iron);
+          break;
+
+        case eos_planetary_id_ANEOS_Fe85Si15:
+#ifdef SWIFT_DEBUG_CHECKS
+          if (eos.ANEOS_Fe85Si15.mat_id != mat_id)
+            error(
+                "EoS not enabled. Please set EoS:planetary_use_ANEOS_Fe85Si15: 1");
+#endif
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+                                                     &eos.ANEOS_Fe85Si15);
+          break;
+
+        default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown material ID! mat_id = %d", mat_id);
+#endif
+          return -1.f;
+      };
+      break;
+
+    default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown material ID! mat_id = %d", mat_id);
+#endif
+          return -1.f;
+  }
+}
 
 /**
  * @brief Initialize the eos parameters

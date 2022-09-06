@@ -543,4 +543,13 @@ INLINE static float Til_density_from_pressure_and_temperature(
     return rho_mid;
 }
 
+// gas_density_from_pressure_and_internal_energy
+INLINE static float Til_density_from_pressure_and_internal_energy(
+    float P, float u,  float rho_ref, const struct Til_params *mat) {
+
+  error("This EOS function is not yet implemented!");
+
+  return 0.f;
+}
+
 #endif /* SWIFT_TILLOTSON_EQUATION_OF_STATE_H */
