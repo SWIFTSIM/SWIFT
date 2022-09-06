@@ -125,10 +125,12 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 
 #if SHADOWSWIFT_BC == LEFT_INFLOW_BC
     if (pos_x != old_pos_x) {
-      /* Reset the primitive quantities */
+      /* Reset the primitive quantities for particles that re-enter along the x-direction */
       struct hydro_space hs = s->hs;
       p->rho = hs.density;
       p->v[0] = hs.velocity;
+      p->v[1] = 0.f;
+      p->v[2] = 0.f;
       p->P = hs.pressure;
       /* Signal that the conserved quantities are now considered
              * uninitialized. */
