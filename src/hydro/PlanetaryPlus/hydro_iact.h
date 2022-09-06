@@ -944,6 +944,8 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
    float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
    float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
 
+   pi->visc_du_dt += mj * Q_i_term * Q_dvdG_i;
+   pj->visc_du_dt += mi * Q_j_term * Q_dvdG_j;
     
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -1300,6 +1302,8 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
     
   /* Get the time derivative for u, including the viscosity */
    float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
+    
+   pi->visc_du_dt += mj * Q_i_term * Q_dvdG_i;
     
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
