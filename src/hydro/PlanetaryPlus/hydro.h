@@ -882,6 +882,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     /* Compute f_gdf normally*/
     p->f_gdf = p->weighted_wcount / (p->weighted_neighbour_wcount * p->rho);
   }
+   
+    const float h = p->h;
+  const float h_inv = 1.0f / h;                 /* 1/h */
+  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */  
 
 #ifdef PLANETARY_IMBALANCE
   /* Add self contribution to kernel averages*/
@@ -930,28 +934,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   /* compute minimum SPH quantities */
-  const float h = p->h;
-  const float h_inv = 1.0f / h;                 /* 1/h */
-  const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */    
   const float rho_min = p->mass * kernel_root * h_inv_dim;
     
   p->grad_drho_dh[0] *= h_inv_dim_plus_one;
   p->grad_drho_dh[1] *= h_inv_dim_plus_one;
   p->grad_drho_dh[2] *= h_inv_dim_plus_one;
-    
-           if(p->u == 0.f){
-           //  rho_mid = p->rho;
-          
-              printf("%d", p->mat_id);
-          printf("\n");
-              printf("%.50f", p->u);
-          printf("\n");
-          printf("%.50f", p->rho);
-          printf("\n");
-       //   exit(0);
-              
-          }
     
   float f_g = 0.5f * (1.f + tanhf(3.f - 3.f / (0.5f)));
     
@@ -1324,8 +1312,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-
-  if (!p->energy_correction_flag){  
+  
+#ifdef PLANETARY_SMOOTHING_CORRECTION
+  if (!p->energy_correction_flag){
+#endif      
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
@@ -1363,7 +1353,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.soundspeed = soundspeed;
 
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
+#ifdef PLANETARY_SMOOTHING_CORRECTION
   }    
+#endif    
 }
 
 /**
