@@ -698,10 +698,21 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
   struct cell *cells_top = s->cells_top;
   int *local_cells_with_particles = (int *)map_data;
 
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
   /* Loop over the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
+
+    min_a_grav = min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+    max_softening = max(max_softening, c->grav.multipole->m_pole.max_softening);
+    for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+      max_mpole_power[n] =
+          max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -712,6 +723,11 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
   }
 #endif
+
+  atomic_min_f(&s->min_a_grav, min_a_grav);
+  atomic_max_f(&s->max_softening, max_softening);
+  for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+    atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
 }
 
 /**
@@ -726,6 +742,10 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 void space_split(struct space *s, int verbose) {
 
   const ticks tic = getticks();
+
+  s->min_a_grav = FLT_MAX;
+  s->max_softening = 0.f;
+  bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
   threadpool_map(&s->e->threadpool, space_split_mapper,
                  s->local_cells_with_particles_top,
