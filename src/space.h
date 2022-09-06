@@ -52,7 +52,7 @@ struct hydro_props;
 #define space_splitsize_default 400
 #endif
 #define space_maxsize_default 8000000
-#define space_grid_split_threshold_default 200
+#define space_grid_split_threshold_default 400
 #define space_extra_parts_default 0
 #define space_extra_gparts_default 0
 #define space_extra_sparts_default 100
