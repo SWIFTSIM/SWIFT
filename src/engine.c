@@ -1279,6 +1279,16 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->total_nr_sinks = num_particles[3];
   e->total_nr_bparts = num_particles[4];
 
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->min_a_grav, 1, MPI_FLOAT, MPI_MIN,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_softening, 1, MPI_FLOAT, MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_mpole_power,
+                SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
+                MPI_COMM_WORLD);
+#endif
+
   /* Flag that there are no inhibited particles */
   e->nr_inhibited_parts = 0;
   e->nr_inhibited_gparts = 0;
