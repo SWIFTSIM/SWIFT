@@ -1706,9 +1706,9 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
 
-  /* Running value of the maximal smoothing length */
-  float h_max = c->hydro.h_max;
-  float h_max_active = c->hydro.h_max_active;
+  /* Running value of the maximal smoothing length. This is going to be
+   * recalculated here. */
+  float h_max_active = 0;
 
   TIMER_TIC;
 
@@ -1743,8 +1743,8 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* While there are particles that need to be updated and their search radius
    * remains smaller than the cell width... */
-  for (int num_reruns = 0;
-       count > 0 && num_reruns < max_smoothing_iter && h_max < c->width[0];
+  int num_reruns;
+  for (num_reruns = 0; count > 0 && num_reruns < max_smoothing_iter;
        num_reruns++) {
 
     /* Reset the redo-count. */
@@ -1776,13 +1776,15 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
         p->h = 1.1f * r_new;
       }
       /* Check if h_max has increased */
-      h_max = max(h_max, p->h);
       h_max_active = max(h_max_active, p->h);
     }
 
+    /* Check that h_max does not exceed the cell dimensions */
+    if (h_max_active > c->width[0])
+      error("Some search radii grew larger than cell dimensions!");
+
     /* We now need to treat the particles whose smoothing length had not
      * converged again */
-
     /* Re-set the counter for the next loop (potentially). */
     count = redo;
     if (count > 0) {
@@ -1840,6 +1842,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   free(search_radii);
 
   /* Update h_max */
+  float h_max = max(h_max_active, c->hydro.h_max);
   c->hydro.h_max = h_max;
   c->hydro.h_max_active = h_max_active;
 
