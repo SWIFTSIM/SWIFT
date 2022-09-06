@@ -708,11 +708,16 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
     struct cell *c = &cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL);
 
-    min_a_grav = min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
-    max_softening = max(max_softening, c->grav.multipole->m_pole.max_softening);
-    for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-      max_mpole_power[n] =
-          max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+    if (s->with_self_gravity) {
+      min_a_grav =
+          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      max_softening =
+          max(max_softening, c->grav.multipole->m_pole.max_softening);
+
+      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+        max_mpole_power[n] =
+            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+    }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
