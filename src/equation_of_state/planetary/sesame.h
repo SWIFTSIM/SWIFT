@@ -340,34 +340,6 @@ INLINE static void prepare_table_SESAME(struct SESAME_params *mat) {
       }
     }
   }
-    // Enforce that the 1D arrays of u (at each rho) are monotonic
-  // This is necessary because, for some high-density u slices at very low T,
-  // u decreases (very slightly) with T, which makes the interpolation fail
-  // Ensure partial u/partial T at fixed rho is >= 0
-  for (int i_rho = 0; i_rho < mat->num_rho; i_rho++) {
-    for (int i_T = mat->num_T - 1; i_T > 0; i_T--) {
-
-      // If the one-lower-T u is greater than this u
-      if (mat->table_log_u_rho_T[i_rho * mat->num_T + i_T] <
-          mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1]) {
-
-        mat->table_log_u_rho_T[i_rho * mat->num_T + i_T - 1] =
-              mat->table_log_u_rho_T[i_rho * mat->num_T + i_T];
-      }
-    }
-  }
-
-  // Ensure partial P/partial rho at fixed T >= 0
-  for (int i_rho = mat->num_rho - 1; i_rho > 0; i_rho--) {
-    for (int i_T = 0; i_T < mat->num_T; i_T++) {
-      if (mat->table_P_rho_T[i_rho * mat->num_T + i_T] <
-          mat->table_P_rho_T[(i_rho - 1) * mat->num_T + i_T]) {
-
-        mat->table_P_rho_T[(i_rho - 1) * mat->num_T + i_T] =
-              mat->table_P_rho_T[i_rho * mat->num_T + i_T];
-      }
-    }
-  }
 }
 
 // Convert to internal units
