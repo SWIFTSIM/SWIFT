@@ -20,6 +20,7 @@
 #include "hydro_space.h"
 
 #include "space.h"
+#include "const.h"
 
 /**
  * @brief Initialize the extra space information needed for some hydro schemes.
@@ -29,7 +30,7 @@
  */
 #ifdef SHADOWFAX_SPH
 void hydro_space_init(struct hydro_space *hs, const struct space *s,
-                      const struct swift_params *params) {
+                      struct swift_params *params) {
 
   if (s->periodic) {
     hs->anchor[0] = -0.5f * s->dim[0];
@@ -60,5 +61,5 @@ void hydro_space_init(struct hydro_space *hs, const struct space *s,
 }
 #else
 void hydro_space_init(struct hydro_space* hs, const struct space* s,
-                      const struct swift_params* params) {}
+                      struct swift_params* params) {}
 #endif
