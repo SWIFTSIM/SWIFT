@@ -10,7 +10,7 @@ wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/SS08_water.txt
 wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/AQUA_H20.txt
 wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/CMS19_H.txt
 wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/CMS19_He.txt
-wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/CMS19_HHe.txt
+wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/CD21_HHe.txt
 
 wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/ANEOS_forsterite_S19.txt
 wget http://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/ANEOS_iron_S20.txt
