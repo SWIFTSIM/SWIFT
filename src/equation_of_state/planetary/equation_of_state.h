@@ -150,8 +150,8 @@ enum eos_planetary_material_id {
   eos_planetary_id_CMS19_He =
       eos_planetary_type_SESAME * eos_planetary_type_factor + 6,
     
-  /*! CMS19 hydrogen-helium (Chabrier et al. 2019) SESAME-like H-He mixture (Y=0.245) */
-  eos_planetary_id_CMS19_HHe =
+  /*! CD21 hydrogen-helium (Chabrier & Debras 2021) SESAME-like H-He mixture (Y=0.245) */
+  eos_planetary_id_CD21_HHe =
       eos_planetary_type_SESAME * eos_planetary_type_factor + 7,
     
 
@@ -183,7 +183,7 @@ struct eos_parameters {
   struct idg_params idg_def;
   struct Til_params Til_iron, Til_granite, Til_water, Til_basalt, Til_ice;
   struct HM80_params HM80_HHe, HM80_ice, HM80_rock;
-  struct SESAME_params SESAME_iron, SESAME_basalt, SESAME_water, SS08_water, AQUA, CMS19_H, CMS19_He, CMS19_HHe;
+  struct SESAME_params SESAME_iron, SESAME_basalt, SESAME_water, SS08_water, AQUA, CMS19_H, CMS19_He, CD21_HHe;
   struct SESAME_params ANEOS_forsterite, ANEOS_iron, ANEOS_Fe85Si15;
   struct SESAME_params custom[10];
 };
@@ -340,14 +340,14 @@ gas_internal_energy_from_entropy(float density, float entropy,
                                                      &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_internal_energy_from_entropy(density, entropy,
-                                                     &eos.CMS19_HHe);
+                                                     &eos.CD21_HHe);
           break;
       
 
@@ -537,14 +537,14 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
                                               &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_pressure_from_entropy(density, entropy,
-                                              &eos.CMS19_HHe);
+                                              &eos.CD21_HHe);
           break;
 
         default:
@@ -726,13 +726,13 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
           return SESAME_entropy_from_pressure(density, P, &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
-          return SESAME_entropy_from_pressure(density, P, &eos.CMS19_HHe);
+          return SESAME_entropy_from_pressure(density, P, &eos.CD21_HHe);
           break;        
 
         default:
@@ -918,14 +918,14 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
                                                 &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_soundspeed_from_entropy(density, entropy,
-                                                &eos.CMS19_HHe);
+                                                &eos.CD21_HHe);
           break;
 
         default:
@@ -1113,14 +1113,14 @@ gas_entropy_from_internal_energy(float density, float u,
                                                      &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_entropy_from_internal_energy(density, u,
-                                                     &eos.CMS19_HHe);
+                                                     &eos.CD21_HHe);
           break;
 
         default:
@@ -1375,14 +1375,14 @@ gas_pressure_from_internal_energy(float density, float u,
                                                       &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_pressure_from_internal_energy(density, u,
-                                                      &eos.CMS19_HHe);
+                                                      &eos.CD21_HHe);
           break;
 
         default:
@@ -1606,14 +1606,14 @@ gas_internal_energy_from_pressure(float density, float P,
                                                       &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_internal_energy_from_pressure(density, P,
-                                                      &eos.CMS19_HHe);
+                                                      &eos.CD21_HHe);
           break;
 
         default:
@@ -1809,14 +1809,14 @@ gas_soundspeed_from_internal_energy(float density, float u,
                                                         &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_soundspeed_from_internal_energy(density, u,
-                                                        &eos.CMS19_HHe);
+                                                        &eos.CD21_HHe);
           break;
 
         default:
@@ -1999,13 +1999,13 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
           return SESAME_soundspeed_from_pressure(density, P, &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
-          return SESAME_soundspeed_from_pressure(density, P, &eos.CMS19_HHe);
+          return SESAME_soundspeed_from_pressure(density, P, &eos.CD21_HHe);
           break;
 
         default:
@@ -2251,14 +2251,14 @@ gas_temperature_from_internal_energy(float density, float u,
                                                      &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_temperature_from_internal_energy(density, u,
-                                                     &eos.CMS19_HHe);
+                                                     &eos.CD21_HHe);
           break;
 
         default:
@@ -2521,14 +2521,14 @@ gas_density_from_pressure_and_temperature(float P, float T,
                                                      &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_density_from_pressure_and_temperature(P, T,
-                                                     &eos.CMS19_HHe);
+                                                     &eos.CD21_HHe);
           break;
 
         default:
@@ -2791,14 +2791,14 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
                                                      &eos.CMS19_He);
           break;
               
-        case eos_planetary_id_CMS19_HHe:
+        case eos_planetary_id_CD21_HHe:
 #ifdef SWIFT_DEBUG_CHECKS
-          if (eos.CMS19_HHe.mat_id != mat_id)
+          if (eos.CD21_HHe.mat_id != mat_id)
             error(
-                "EoS not enabled. Please set EoS:planetary_use_CMS19_HHe: 1");
+                "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
           return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
-                                                     &eos.CMS19_HHe);
+                                                     &eos.CD21_HHe);
           break;
 
         default:
@@ -2998,14 +2998,14 @@ __attribute__((always_inline)) INLINE static void eos_init(
     prepare_table_SESAME(&e->CMS19_He);
     convert_units_SESAME(&e->CMS19_He, us);
   }        
-  if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_HHe", 0)) {
-    char CMS19_HHe_table_file[PARSER_MAX_LINE_SIZE];
-    set_CMS19_HHe(&e->CMS19_HHe, eos_planetary_id_CMS19_HHe);
-    parser_get_param_string(params, "EoS:planetary_CMS19_HHe_table_file",
-                            CMS19_HHe_table_file);
-    load_table_SESAME(&e->CMS19_HHe, CMS19_HHe_table_file);
-    prepare_table_SESAME(&e->CMS19_HHe);
-    convert_units_SESAME(&e->CMS19_HHe, us);
+  if (parser_get_opt_param_int(params, "EoS:planetary_use_CD21_HHe", 0)) {
+    char CD21_HHe_table_file[PARSER_MAX_LINE_SIZE];
+    set_CD21_HHe(&e->CD21_HHe, eos_planetary_id_CD21_HHe);
+    parser_get_param_string(params, "EoS:planetary_CD21_HHe_table_file",
+                            CD21_HHe_table_file);
+    load_table_SESAME(&e->CD21_HHe, CD21_HHe_table_file);
+    prepare_table_SESAME(&e->CD21_HHe);
+    convert_units_SESAME(&e->CD21_HHe, us);
   }    
 
   // ANEOS -- using SESAME-style tables
