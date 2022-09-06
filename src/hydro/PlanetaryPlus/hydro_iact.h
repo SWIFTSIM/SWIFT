@@ -923,47 +923,6 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
   pj->a_hydro[0] += mi * (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
   pj->a_hydro[1] += mi * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
   pj->a_hydro[2] += mi * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
-    
-    
-// Use standard SPH P, rho and gradients for adiabatic heating    
-#ifdef PLANETARY_SMOOTHING_CORRECTION   
-  for (i = 0; i < 3; i++) {
-    Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
-    Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
-  }
-    
-    #ifdef PLANETARY_GDF
-      /* In GDF we use average of Gi and Gj. */
-      kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
-      kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
-      kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
-
-      kernel_gradient_j[0] = 0.5f * (Gi[0] + Gj[0]);
-      kernel_gradient_j[1] = 0.5f * (Gi[1] + Gj[1]);
-      kernel_gradient_j[2] = 0.5f * (Gi[2] + Gj[2]);
-
-      P_i_term = pi->P_sph / (pi->rho_sph * pj->rho_sph);
-      P_j_term = pj->P_sph / (pi->rho_sph * pj->rho_sph);  
-
-    #else 
-
-      kernel_gradient_i[0] = Gi[0];
-      kernel_gradient_i[1] = Gi[1];
-      kernel_gradient_i[2] = Gi[2];
-
-      kernel_gradient_j[0] = Gj[0];
-      kernel_gradient_j[1] = Gj[1];
-      kernel_gradient_j[2] = Gj[2];
-
-
-      P_i_term = pi->P_sph / (pi->rho_sph * pi->rho_sph);
-      P_j_term = pj->P_sph / (pj->rho_sph * pj->rho_sph);
-
-    #endif    
-
-#endif     
-    
-  
         
       /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
    * equiv*/
@@ -1329,37 +1288,7 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
   pi->a_hydro[0] -= mj * (P_i_term * kernel_gradient_i[0] + P_j_term * kernel_gradient_j[0] + Q_i_term * Q_kernel_gradient_i[0] + Q_j_term * Q_kernel_gradient_j[0]);
   pi->a_hydro[1] -= mj * (P_i_term * kernel_gradient_i[1] + P_j_term * kernel_gradient_j[1] + Q_i_term * Q_kernel_gradient_i[1] + Q_j_term * Q_kernel_gradient_j[1]);
   pi->a_hydro[2] -= mj * (P_i_term * kernel_gradient_i[2] + P_j_term * kernel_gradient_j[2] + Q_i_term * Q_kernel_gradient_i[2] + Q_j_term * Q_kernel_gradient_j[2]);
-    
-
-
-// Use standard SPH P, rho and gradients for adiabatic heating    
-#ifdef PLANETARY_SMOOTHING_CORRECTION   
-  for (i = 0; i < 3; i++) {
-    Gi[i] = wi_dr * dx[i] * r_inv * pi->f_gdf;
-    Gj[i] = wj_dr * dx[i] * r_inv * pj->f_gdf;
-  }
-    
-    #ifdef PLANETARY_GDF
-      /* In GDF we use average of Gi and Gj. */
-      kernel_gradient_i[0] = 0.5f * (Gi[0] + Gj[0]);
-      kernel_gradient_i[1] = 0.5f * (Gi[1] + Gj[1]);
-      kernel_gradient_i[2] = 0.5f * (Gi[2] + Gj[2]);
-
-      P_i_term = pi->P_sph / (pi->rho_sph * pj->rho_sph);
-
-    #else 
-
-      kernel_gradient_i[0] = Gi[0];
-      kernel_gradient_i[1] = Gi[1];
-      kernel_gradient_i[2] = Gi[2];
-
-      P_i_term = pi->P_sph / (pi->rho_sph * pi->rho_sph);
-
-    #endif    
-
-#endif    
-    
-    
+        
       /* dx dot kernel gradient term needed for du/dt in e.g. eq 13 of Wadsley and
    * equiv*/
   const float dvdG_i = (pi->v[0] - pj->v[0]) * kernel_gradient_i[0] +
