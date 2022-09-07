@@ -1279,6 +1279,16 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->total_nr_sinks = num_particles[3];
   e->total_nr_bparts = num_particles[4];
 
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->min_a_grav, 1, MPI_FLOAT, MPI_MIN,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_softening, 1, MPI_FLOAT, MPI_MAX,
+                MPI_COMM_WORLD);
+  MPI_Allreduce(MPI_IN_PLACE, &e->s->max_mpole_power,
+                SELF_GRAVITY_MULTIPOLE_ORDER + 1, MPI_FLOAT, MPI_MAX,
+                MPI_COMM_WORLD);
+#endif
+
   /* Flag that there are no inhibited particles */
   e->nr_inhibited_parts = 0;
   e->nr_inhibited_gparts = 0;
@@ -2269,6 +2279,37 @@ int engine_step(struct engine *e) {
     if ((e->policy & engine_policy_fof) && e->snapshot_invoke_fof) {
       e->forcerebuild = 1;
     }
+  }
+
+  /* Trigger a tree-rebuild if the fraction of active gparts is large enough */
+  if ((e->policy & engine_policy_self_gravity) && !e->forcerebuild &&
+      e->gravity_properties->rebuild_active_fraction <= 1.0f) {
+
+    ticks tic = getticks();
+
+    /* Count the number of active particles */
+    size_t nr_gparts = e->s->nr_gparts;
+    size_t nr_active_gparts = 0;
+    for (size_t i = 0; i < nr_gparts; ++i) {
+      struct gpart *gp = &e->s->gparts[i];
+      if (gpart_is_active(gp, e)) nr_active_gparts++;
+    }
+
+    long long total_nr_active_gparts = nr_active_gparts;
+#ifdef WITH_MPI
+    MPI_Allreduce(MPI_IN_PLACE, &total_nr_active_gparts, 1, MPI_LONG_LONG_INT,
+                  MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+    if (e->verbose)
+      message("Counting active gparts took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+    /* Trigger the tree-rebuild? */
+    if (((double)total_nr_active_gparts >
+         ((double)e->total_nr_gparts) *
+             e->gravity_properties->rebuild_active_fraction))
+      e->forcerebuild = 1;
   }
 
 #ifdef WITH_CSDS
