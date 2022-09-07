@@ -374,7 +374,7 @@ static void debug_cell_type(struct space *s) {
           "c->tl_cell_type=%d, "
           "s->zoom_props->tl_cell_offset=%d)",
           cid, cells[cid].tl_cell_type, bkg_cell_offset);
-    if (cid >= bkg_cell_offset && cells[cid].tl_cell_type == 3)
+    if (cid >= bkg_cell_offset && cells[cid].tl_cell_type == zoom_tl_cell)
       error(
           "Cell has the wrong cell type for it's array position (cid=%d, "
           "c->tl_cell_type=%d, "
@@ -1812,7 +1812,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are background cells */
-            if (ci->tl_cell_type == 3 || cj->tl_cell_type == 3) {
+            if (ci->tl_cell_type == zoom_tl_cell ||
+                cj->tl_cell_type == zoom_tl_cell) {
               error(
                     "Cell %d and cell %d are not background cells! "
                     "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",

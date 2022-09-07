@@ -31,6 +31,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "cell.h"
 #include "engine.h"
 #include "feedback.h"
 #include "runner_doiact_sinks.h"
@@ -170,11 +171,11 @@ void *runner_main(void *data) {
       struct cell *cj = t->cj;
 
       if (ci != NULL) {
-        if (ci->tl_cell_type == 2)
+        if (ci->tl_cell_type == void_tl_cell)
           error("The void cell has been given a task!");
       }
       if (cj != NULL) {
-        if (cj->tl_cell_type == 2)
+        if (cj->tl_cell_type == void_tl_cell)
           error("The void cell is part of a pair task!");
       }
         

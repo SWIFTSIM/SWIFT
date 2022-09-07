@@ -2565,7 +2565,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   const double max_distance2 = max_distance * max_distance;
 
   /* Are we at the zoom cell level? */
-  if (cj->tl_cell_type == 3) {
+  if (cj->tl_cell_type == zoom_tl_cell) {
 
     /* Avoid self contributions */
     if (ci == cj) return;
@@ -2786,7 +2786,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
           /* If this is the void cell we need to interact with the zoom cells.
            */
-          if (cj->tl_cell_type == 2) {
+          if (cj->tl_cell_type == void_tl_cell) {
 
             /* Interact with the zoom cells recursively. */
             runner_do_grav_long_range_recurse(r, ci, cj);
@@ -2846,7 +2846,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
       /* Explict skip of void cell just in case */
-      if (cj->tl_cell_type == 2) continue;
+      if (cj->tl_cell_type == void_tl_cell) continue;
 
       /* Avoid self contributions */
       if (top == cj) continue;
