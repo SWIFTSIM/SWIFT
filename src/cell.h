@@ -329,7 +329,8 @@ enum cell_flags {
  * zoom region. 2 = An ignored background top level cell (as it contains the
  * zoom region). 3 = A top level zoom cell.
  */
-enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell, zoom_tl_cell };
+enum tl_cell_types { tl_cell, tl_cell_neighbour, void_tl_cell,  tl_cell_pool,
+                     zoom_tl_cell };
 
 /**
  * @brief Cell within the tree structure.

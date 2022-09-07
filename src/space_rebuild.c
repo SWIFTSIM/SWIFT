@@ -960,7 +960,7 @@ void space_rebuild(struct space *s, int repartitioned,
 #ifdef WITH_ZOOM_REGION
       if (s->with_zoom_region) {
         /* Add the number of particles to the cell counter */
-        if (c->tl_cell_type <= 2) {
+        if (c->tl_cell_type <= 3) {
           bkg_cell_particles +=
               (c->hydro.count + c->grav.count + c->stars.count +
                c->sinks.count + c->black_holes.count);

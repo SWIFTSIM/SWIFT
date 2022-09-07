@@ -395,6 +395,9 @@ struct zoom_region_properties {
   /*! The index of the zoom region's background cell. */
   int void_cell_index;
 
+  /*! The index of the background cell used for pooled tasks. */
+  int pool_cell_index;
+
   /*! The number of zoom cells along an axis in a natural top level cell,
    * used to define zoom_cdim */
   int nr_zoom_per_bkg_cells;

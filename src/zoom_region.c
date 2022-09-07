@@ -592,6 +592,7 @@ void construct_tl_cells_with_zoom_region(
       }
     }
   }
+  
   /* Loop over natural cells and set locations and initial values */
   for (int i = 0; i < cdim[0]; i++) {
     for (int j = 0; j < cdim[1]; j++) {
@@ -852,7 +853,7 @@ double cell_min_dist2(const struct cell *restrict ci,
   double dist2;
 
   /* Two natural TL cells. */
-  if (ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) {
+  if (ci->tl_cell_type <= 3 && cj->tl_cell_type <= 3) {
     dist2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
     /* Two zoom TL cells. */
   } else if (ci->tl_cell_type == zoom_tl_cell &&
@@ -1626,6 +1627,56 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
  * - All pairs within range according to the multipole acceptance
  *   criterion get a pair task.
  */
+void engine_make_self_gravity_bkg_pool(struct engine *e) {
+
+  /* Get some useful information. */
+  struct space *s = e->s;
+  const int nodeID = e->nodeID;
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
+  /* Loop over the background cells. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        const size_t cid = cell_getid(cdim, i, j, k);
+
+        /* Get the cell. */
+        c = &s->cells_top[cid + bkg_cell_offset];
+
+        /* Skip neighbour and void cells. */
+        if (c->tl_cell_type != tl_cell) continue;
+
+        /* Label and make the background task pooling cell. */
+        if (c->nodeID == nodeID){
+
+          /* Label the cell and store it's index. */
+          c->tl_cell_type = tl_cell_pool;
+          s->zoom_props->pool_cell_index = cid + bkg_cell_offset;
+
+          /* Create a self task over which we can pool. */
+          scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg_pool,
+                            0, 0, ci, NULL);
+          
+          /* Create a pair task to use for the pool. */
+          scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
+                            0, 0, ci, NULL);
+
+          /* We're done here */
+          break
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Constructs the top-level tasks for the short-range gravity
+ * and long-range gravity interactions for the natural/background cells.
+ *
+ * - All top-cells get a self task.
+ * - All pairs within range according to the multipole acceptance
+ *   criterion get a pair task.
+ */
 void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                                                          int num_elements,
                                                          void *extra_data) {
@@ -1744,76 +1795,75 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
             error("Multipole of cj was not exchanged properly via the proxies");
 #endif
 
-            /* Minimal distance between any pair of particles */
-            const double min_radius2 =
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
+          /* Minimal distance between any pair of particles */
+          const double min_radius2 =
+            cell_min_dist2_same_size(ci, cj, periodic, dim);
             
-            /* Are we beyond the distance where the truncated forces are 0 ?*/
-            if (periodic && min_radius2 > max_distance2) continue;
+          /* Are we beyond the distance where the truncated forces are 0 ?*/
+          if (periodic && min_radius2 > max_distance2) continue;
             
-            /* Are the cells too close for a MM interaction ? */
-            if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+          /* Are the cells too close for a MM interaction ? */
+          if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                       /*is_tree_walk=*/0)) {
 
-              /* Ok, we need to add a direct pair calculation */
-              scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0, 0,
+            /* Ok, we need to add a direct pair calculation */
+            scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg, 0, 0,
                                 ci, cj);
 
 #ifdef SWIFT_DEBUG_CHECKS
-              /* Ensure both cells are background cells */
-              if (ci->tl_cell_type == 3 || cj->tl_cell_type == 3) {
-                error(
-                      "Cell %d and cell %d are not background cells! "
-                      "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
-                      cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
-              }
+            /* Ensure both cells are background cells */
+            if (ci->tl_cell_type == 3 || cj->tl_cell_type == 3) {
+              error(
+                    "Cell %d and cell %d are not background cells! "
+                    "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
+                    cid, cjd, ci->tl_cell_type, cj->tl_cell_type);
+            }
 #ifdef WITH_MPI
 
-              /* Let's cross-check that we had a proxy for that cell */
-              if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+            /* Let's cross-check that we had a proxy for that cell */
+            if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
 
-                /* Find the proxy for this node */
-                const int proxy_id = e->proxy_ind[cj->nodeID];
-                if (proxy_id < 0)
-                  error("No proxy exists for that foreign node %d!", cj->nodeID);
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[cj->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", cj->nodeID);
 
-                const struct proxy *p = &e->proxies[proxy_id];
+              const struct proxy *p = &e->proxies[proxy_id];
 
-                /* Check whether the cell exists in the proxy */
-                int n = 0;
-                for (; n < p->nr_cells_in; n++)
-                  if (p->cells_in[n] == cj) {
-                    break;
-                  }
-                if (n == p->nr_cells_in)
-                  error(
-                        "Cell %d not found in the proxy but trying to construct "
-                        "grav task!",
-                        cjd);
-              } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+              /* Check whether the cell exists in the proxy */
+              int n = 0;
+              for (; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == cj) {
+                  break;
+                }
+              if (n == p->nr_cells_in)
+                error(
+                      "Cell %d not found in the proxy but trying to construct "
+                      "grav task!",
+                      cjd);
+            } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+              
+              /* Find the proxy for this node */
+              const int proxy_id = e->proxy_ind[ci->nodeID];
+              if (proxy_id < 0)
+                error("No proxy exists for that foreign node %d!", ci->nodeID);
                 
-                /* Find the proxy for this node */
-                const int proxy_id = e->proxy_ind[ci->nodeID];
-                if (proxy_id < 0)
-                  error("No proxy exists for that foreign node %d!", ci->nodeID);
-                
-                const struct proxy *p = &e->proxies[proxy_id];
-
-                /* Check whether the cell exists in the proxy */
-                int n = 0;
-                for (; n < p->nr_cells_in; n++)
-                  if (p->cells_in[n] == ci) {
-                    break;
-                  }
-                if (n == p->nr_cells_in)
-                  error(
-                        "Cell %d not found in the proxy but trying to construct "
-                        "grav task!",
-                        cid);
-              }
+              const struct proxy *p = &e->proxies[proxy_id];
+              
+              /* Check whether the cell exists in the proxy */
+              int n = 0;
+              for (; n < p->nr_cells_in; n++)
+                if (p->cells_in[n] == ci) {
+                  break;
+                }
+              if (n == p->nr_cells_in)
+                error(
+                      "Cell %d not found in the proxy but trying to construct "
+                      "grav task!",
+                      cid);
+            }
 #endif /* WITH_MPI */
 #endif /* SWIFT_DEBUG_CHECKS */
-            }
           }
         }
       }
@@ -1958,7 +2008,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
 #ifdef SWIFT_DEBUG_CHECKS
             /* Ensure both cells are zoom cells */
-            if (ci->tl_cell_type <= 2 || cj->tl_cell_type <= 2) {
+            if (ci->tl_cell_type <= 3 || cj->tl_cell_type <= 3) {
               error(
                   "Cell %d and cell %d are not zoom cells! "
                   "(ci->tl_cell_type=%d, cj->tl_cell_type=%d)",
@@ -2072,7 +2122,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
 
     /* If this cell is on this node and is a background cell
      * then we have to avoid duplicating tasks */
-    if (ci->nodeID == nodeID && ci->tl_cell_type <= 2) {
+    if (ci->nodeID == nodeID && ci->tl_cell_type <= 3) {
       continue;
     }
 
@@ -2081,7 +2131,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
 
     /* If the cell is a natural cell and not a neighbour cell
      * we don't need to do anything */
-    if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
+    if ((ci->tl_cell_type <= 3) && (ci->tl_cell_type != tl_cell_neighbour)) {
       continue;
     }
 
@@ -2102,7 +2152,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
 
       /* If the cell is a natural cell and not a neighbour cell
        * we don't need to do anything */
-      if ((cj->tl_cell_type <= 2) && (cj->tl_cell_type != tl_cell_neighbour)) {
+      if ((cj->tl_cell_type <= 3) && (cj->tl_cell_type != tl_cell_neighbour)) {
         continue;
       }
 
@@ -2149,7 +2199,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Ensure both cells are not in the same level */
-        if (((ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) ||
+        if (((ci->tl_cell_type <= 3 && cj->tl_cell_type <= 2) ||
              (ci->tl_cell_type == cj->tl_cell_type))) {
           error(
               "Cell %d and cell %d are the same cell type! "
