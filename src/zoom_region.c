@@ -1660,6 +1660,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
+    /* Skip non-neighbour background cells. */
+    if (ci->tl_cell_type == tl_cell) continue;
+
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
