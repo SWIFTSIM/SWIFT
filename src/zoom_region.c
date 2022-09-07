@@ -2136,7 +2136,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
     }
 
     /* Get the loop range for the neighbouring cells */
-    if (ci->tl_cell_type <= 2) {
+    if (ci->tl_cell_type <= 3) {
       cjd_low = 0;
       cjd_high = bkg_cell_offset;
     } else {
@@ -2187,7 +2187,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
       /* Are the cells too close for a MM interaction ? */
       if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                 /*is_tree_walk=*/0)) {
-        if (ci->tl_cell_type <= 2) {
+        if (ci->tl_cell_type <= 3) {
           /* Ok, we need to add a direct pair calculation */
           scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkgzoom,
                             0, 0, ci, cj);
@@ -2199,7 +2199,7 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Ensure both cells are not in the same level */
-        if (((ci->tl_cell_type <= 3 && cj->tl_cell_type <= 2) ||
+        if (((ci->tl_cell_type <= 3 && cj->tl_cell_type <= 3) ||
              (ci->tl_cell_type == cj->tl_cell_type))) {
           error(
               "Cell %d and cell %d are the same cell type! "
