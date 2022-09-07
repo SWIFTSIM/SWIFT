@@ -8,4 +8,4 @@ then
 fi
 
 # Run SWIFT
-../../swift -c -G --threads=8 neutrino_cosmo.yml 2>&1 | tee output.log
+../../../swift -c -G --threads=8 neutrino_cosmo.yml 2>&1 | tee output.log

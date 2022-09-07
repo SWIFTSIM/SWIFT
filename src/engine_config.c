@@ -196,7 +196,11 @@ void engine_config(int restart, int fof, struct engine *e,
    * already allocated and freed on exit, so we need to copy over. */
 #ifdef WITH_MPI
   if (restart) {
+    int *celllist = e->reparttype->celllist;
+    int ncelllist = e->reparttype->ncelllist;
     memcpy(e->reparttype, reparttype, sizeof(struct repartition));
+    e->reparttype->celllist = celllist;
+    e->reparttype->ncelllist = ncelllist;
   } else {
     e->reparttype = reparttype;
   }
@@ -218,11 +222,11 @@ void engine_config(int restart, int fof, struct engine *e,
   if (nr_queues != nr_task_threads)
     message("Number of task queues set to %d", nr_queues);
   e->s->nr_queues = nr_queues;
- e->s->cells_sub =
+
+  e->s->cells_sub =
       (struct cell **)calloc(nr_pool_threads, sizeof(struct cell *));
   e->s->multipoles_sub = (struct gravity_tensors **)calloc(
       nr_pool_threads, sizeof(struct gravity_tensors *));
-
 
   /* Get the frequency of the dependency graph dumping */
   e->sched.frequency_dependency = parser_get_opt_param_int(
@@ -230,6 +234,9 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->sched.frequency_dependency < 0) {
     error("Scheduler:dependency_graph_frequency should be >= 0");
   }
+  /* Get cellID for extra dependency graph dumps of specific cell */
+  e->sched.dependency_graph_cellID = parser_get_opt_param_longlong(
+      params, "Scheduler:dependency_graph_cell", 0LL);
 
   /* Get the frequency of the task level dumping */
   e->sched.frequency_task_levels = parser_get_opt_param_int(

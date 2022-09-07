@@ -8,7 +8,7 @@ then
 fi
 
 # Run SWIFT
-../../swift --cosmology --hydro --threads=1 sodShock.yml 2>&1 | tee output.log
+../../../swift --cosmology --hydro --threads=1 sodShock.yml 2>&1 | tee output.log
 
 # Plot the result
 python3 plotSolution.py 1

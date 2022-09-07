@@ -921,6 +921,7 @@ void space_rebuild(struct space *s, int repartitioned,
     s->zoom_props->nr_local_bkg_cells_with_particles = 0;
   }
 #endif
+
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
     c->hydro.ti_old_part = ti_current;
@@ -1029,15 +1030,6 @@ void space_rebuild(struct space *s, int repartitioned,
     }
   }
 
-  /* Populate the void cell multipole with the newly populated
-     zoom cells */
-  if (s->with_zoom_region) {
-    /* Compute void cell multipole */
-    cell_make_void_multipole(
-        s, &s->cells_top[s->zoom_props->void_cell_index],
-        ti_current, gravity_properties);
-  }
-  
   if (verbose) {
     message("Have %d local top-level cells with particles (total=%d)",
             s->nr_local_cells_with_particles, s->nr_cells);
@@ -1068,6 +1060,10 @@ void space_rebuild(struct space *s, int repartitioned,
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
   space_split(s, verbose);
+
+  /* If we are running a zoom construct the void cell hierarchy. */
+  if (s->with_zoom_region)
+    void_tree_build(s, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */

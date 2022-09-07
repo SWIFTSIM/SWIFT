@@ -68,6 +68,9 @@ __attribute__((always_inline)) INLINE static void rt_tchem_first_init_part(
   rt_check_unphysical_mass_fractions(p);
 }
 
+/**
+ * @brief copies data to the grackle_field struct.
+ */
 __attribute__((always_inline)) INLINE static void rt_tchem_copy_data_to_grackle(
     grackle_field_data* grackle_field, int grid_dimension[GRACKLE_RANK],
     int grid_start[GRACKLE_RANK], int grid_end[GRACKLE_RANK], gr_float* density,
@@ -106,6 +109,129 @@ __attribute__((always_inline)) INLINE static void rt_tchem_copy_data_to_grackle(
   grackle_field->RT_H2_dissociation_rate = &iact_rates[4];
 
   grackle_field->metal_density = NULL;
+}
+
+/**
+ * @brief compute the heating, ionization, and dissassociation rates
+ * for the particle radiation field as needed by grackle, and the
+ * net absorption/emission rates for each photon group
+ *
+ * @param rates (return) Interaction rates for grackle. [0]: heating rate.
+ * [1]: HI ionization. [2]: HeI ionization. [3]: HeII ionization.
+ * [4]: H2 dissociation.
+ * @param heating_rates_by_group (return) net absorption/emission rates of each
+ * photon frequency group in internal units.
+ * @param p particle to work on
+ * @param species_densities the physical densities of all traced species
+ * @param rt_props rt_properties struct
+ * @param phys_const physical constants struct
+ * @param us internal units struct
+ * @param cosmo cosmology struct
+ **/
+__attribute__((always_inline)) INLINE static void
+rt_tchem_get_interaction_rates(gr_float rates[5],
+                               float heating_rates_by_group[RT_NGROUPS],
+                               const struct part* restrict p,
+                               gr_float species_densities[6],
+                               const struct rt_props* restrict rt_props,
+                               const struct phys_const* restrict phys_const,
+                               const struct unit_system* restrict us,
+                               const struct cosmology* restrict cosmo) {
+
+  rates[0] = 0.; /* Needs to be in [erg / s / cm^3 / nHI] for grackle. */
+  rates[1] = 0.; /* [1 / time_units] */
+  rates[2] = 0.; /* [1 / time_units] */
+  rates[3] = 0.; /* [1 / time_units] */
+  rates[4] = 0.; /* [1 / time_units] */
+  for (int group = 0; group < RT_NGROUPS; group++) {
+    heating_rates_by_group[group] = 0.;
+  }
+
+  /* "copy" ionization energies from cross section parameters */
+  struct rt_photoion_cs_parameters cs_params_cgs =
+      rt_init_photoion_cs_params_cgs();
+  const double* E_ion_cgs = cs_params_cgs.E_ion;
+
+  /* Integrate energy spectra and cross sections assuming blackbody spectra
+   * to obtain estimate for effective cross sections, then use the actual
+   * energies present to get the rates */
+  /* TODO: check whether we shouldn't be using actual speed of light here */
+  const double c_cgs = rt_params.reduced_speed_of_light *
+                       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
+  const double to_erg = units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+
+  /* First, get species number densities and number densities
+   * in units of neutral hydrogen number density. */
+  double m_p = phys_const->const_proton_mass;
+  double species_number_densities_cgs[RT_NIONIZING_SPECIES]; /* in cm^-3 */
+  double species_number_densities_nHI[RT_NIONIZING_SPECIES]; /* in nHI^-1 */
+  const double to_inv_volume =
+      units_cgs_conversion_factor(us, UNIT_CONV_INV_VOLUME);
+  const double mass_to_number_density_cgs = to_inv_volume / m_p;
+  /* neutral hydrogen */
+  species_number_densities_cgs[0] =
+      species_densities[0] * mass_to_number_density_cgs;
+  species_number_densities_nHI[0] = 1.;
+  /* neutral helium */
+  species_number_densities_cgs[1] =
+      0.25 * species_densities[2] * mass_to_number_density_cgs;
+  species_number_densities_nHI[1] =
+      0.25 * species_densities[2] / species_densities[0];
+  /* singly ionized helium */
+  species_number_densities_cgs[2] =
+      0.25 * species_densities[3] * mass_to_number_density_cgs;
+  species_number_densities_nHI[2] =
+      0.25 * species_densities[3] / species_densities[0];
+
+  const double inv_time_cgs =
+      units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME);
+
+  /* For the grackle photoionization, we need to
+   * keep track of the rates for each species.
+   * For the heating rate, we need to sum up all species.
+   * To remove the correct amount of energy from the
+   * radiation fields, we additionally need to keep track
+   * of rates from each photon group. */
+
+  /* store photoionization rate for each species here */
+  double ionization_rates_by_species[RT_NIONIZING_SPECIES];
+  for (int spec = 0; spec < RT_NIONIZING_SPECIES; spec++)
+    ionization_rates_by_species[spec] = 0.;
+
+  for (int group = 0; group < RT_NGROUPS; group++) {
+
+    /* Sum results for this group over all species */
+    double heating_rate_group_nHI = 0.;
+    double heating_rate_group_cgs = 0.;
+    float energy_density_i_cgs =
+        p->rt_data.radiation[group].energy_density * to_erg * to_inv_volume;
+
+    for (int spec = 0; spec < RT_NIONIZING_SPECIES; spec++) {
+      /* Note: the cross sections are in cgs. */
+      const double cse = rt_props->energy_weighted_cross_sections[group][spec];
+      const double csn = rt_props->number_weighted_cross_sections[group][spec];
+
+      heating_rate_group_nHI +=
+          (cse - E_ion_cgs[spec] * csn) * species_number_densities_nHI[spec];
+      heating_rate_group_cgs +=
+          (cse - E_ion_cgs[spec] * csn) * species_number_densities_cgs[spec];
+      ionization_rates_by_species[spec] +=
+          energy_density_i_cgs * cse * species_number_densities_cgs[spec] *
+          c_cgs / inv_time_cgs; /* internal units T^-1 */
+    }
+
+    /* Store total heating rate for grackle */
+    rates[0] += heating_rate_group_nHI * c_cgs * energy_density_i_cgs;
+    /* Store rates for each group in internal units WITHOUT THE ENERGY DENSITY
+     * TERM */
+    heating_rates_by_group[group] +=
+        heating_rate_group_cgs * c_cgs / inv_time_cgs;
+  }
+
+  /* We're done. Write the results in correct place */
+  rates[1] = ionization_rates_by_species[0];
+  rates[2] = ionization_rates_by_species[1];
+  rates[3] = ionization_rates_by_species[2];
 }
 
 /**
@@ -230,7 +356,7 @@ static void rt_do_thermochemistry(struct part* restrict p,
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
  */
-static float rt_tchem_get_tchem_time(
+__attribute__((always_inline)) INLINE static float rt_tchem_get_tchem_time(
     const struct part* restrict p, const struct xpart* restrict xp,
     struct rt_props* rt_props, const struct cosmology* restrict cosmo,
     const struct hydro_props* hydro_props,
@@ -276,5 +402,4 @@ static float rt_tchem_get_tchem_time(
 
   return (float)tchem_time;
 }
-
 #endif /* SWIFT_RT_GEAR_THERMOCHEMISTRY_H */

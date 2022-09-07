@@ -49,6 +49,7 @@
 #include "gravity_properties.h"
 #include "kernel_hydro.h"
 #include "lock.h"
+#include "mhd.h"
 #include "minmax.h"
 #include "proxy.h"
 #include "restart.h"
@@ -839,13 +840,14 @@ void space_convert_rt_hydro_quantities_after_zeroth_step_mapper(
   struct part *restrict parts = (struct part *)map_data;
   const struct engine *restrict e = (struct engine *)extra_data;
   const struct rt_props *restrict rt_props = e->rt_props;
+  const struct cosmology *restrict cosmo = e->cosmology;
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
   for (int k = 0; k < count; k++) {
     struct part *restrict p = &parts[k];
     if (parts[k].time_bin <= num_time_bins)
-      rt_init_part_after_zeroth_step(p, rt_props);
+      rt_init_part_after_zeroth_step(p, rt_props, cosmo);
   }
 #endif
 }
@@ -900,8 +902,10 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
   for (int k = 0; k < count; k++) {
-    if (parts[k].time_bin <= num_time_bins)
+    if (parts[k].time_bin <= num_time_bins) {
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+    }
   }
 }
 
@@ -1105,6 +1109,8 @@ void space_collect_mean_masses(struct space *s, int verbose) {
    *
    * Note: the Intel compiler vectorizes this loop and creates FPEs from
    * the masked bit of the vector... Silly ICC... */
+  /* TK comment: the following also has problems with gnu_7.3.0 and optimization
+   */
 #if defined(__ICC)
 #pragma novector
 #endif

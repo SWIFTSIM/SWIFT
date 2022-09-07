@@ -362,6 +362,10 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
+  /*! Void parent cell in the fake void cell hierarchy
+   *  (Only used for zoom cells). */
+  struct cell *void_parent;
+
   /*! Cell flags bit-mask. */
   volatile uint32_t flags;
 
@@ -546,9 +550,6 @@ int cell_count_gparts_for_tasks(const struct cell *c);
 void cell_clean_links(struct cell *c, void *data);
 void cell_make_multipoles(struct cell *c, integertime_t ti_current,
                           const struct gravity_props *const grav_props);
-void cell_make_void_multipole(struct space *s, struct cell *c,
-                              integertime_t ti_current,
-                              const struct gravity_props *const grav_props);
 void cell_check_multipole(struct cell *c,
                           const struct gravity_props *const grav_props);
 void cell_check_foreign_multipole(const struct cell *c);

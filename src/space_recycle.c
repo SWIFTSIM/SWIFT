@@ -208,6 +208,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.rt_transport_out = NULL;
     c->hydro.rt_tchem = NULL;
     c->hydro.rt_out = NULL;
+    c->void_parent = NULL;
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;
@@ -230,8 +231,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
  *
  * @param s The #space.
  * @param c The #cell.
+ * @param lock Should we lock the space or is this thread-safe?
  */
-void space_recycle(struct space *s, struct cell *c) {
+void space_recycle(struct space *s, struct cell *c, const int lock) {
 
   /* Clear the cell. */
   if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
@@ -244,7 +246,7 @@ void space_recycle(struct space *s, struct cell *c) {
     error("Failed to destroy spinlocks.");
 
   /* Lock the space. */
-  lock_lock(&s->lock);
+  if (lock) lock_lock(&s->lock);
 
   /* Thread which allocated this cell */
   const int owner = c->owner;
@@ -258,10 +260,13 @@ void space_recycle(struct space *s, struct cell *c) {
   /* Hook this cell into the buffer. */
   c->next = s->cells_sub[owner];
   s->cells_sub[owner] = c;
-  atomic_dec(&s->tot_cells);
+  if (lock)
+    s->tot_cells -= 1;
+  else
+    atomic_dec(&s->tot_cells);
 
   /* Unlock the space. */
-  lock_unlock_blind(&s->lock);
+  if (lock) lock_unlock_blind(&s->lock);
 }
 
 /**
