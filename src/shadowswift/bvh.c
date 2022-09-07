@@ -1,7 +1,7 @@
 #include "bvh.h"
 
 #include <stdlib.h>
-#include <utils.h>
+#include <string.h>
 
 void bvh_populate_rec(struct BVH *bvh, const struct part *parts,
                       double **coords, int *restrict pid,
