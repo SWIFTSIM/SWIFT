@@ -117,6 +117,7 @@ enum task_types {
   task_type_rt_ghost2,
   task_type_rt_transport_out, /* Implicit */
   task_type_rt_tchem,
+  task_type_bkg_pool,
   task_type_count
 } __attribute__((packed));
 
@@ -131,7 +132,6 @@ enum task_subtypes {
   task_subtype_limiter,
   task_subtype_grav,
   task_subtype_grav_bkg,
-  task_subtype_grav_bkg_pool,
   task_subtype_grav_zoombkg,
   task_subtype_grav_bkgzoom,
   task_subtype_external_grav,
@@ -163,6 +163,17 @@ enum task_subtypes {
   task_subtype_sink_do_gas_swallow,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
+  task_subtype_init_grav_bkg_pool,
+  task_subtype_drift_gpart_bkg_pool,
+  task_subtype_grav_long_range_bkg_pool,
+  task_subtype_grav_self_bkg_pool,
+  task_subtype_grav_pair_bkg_pool,
+  task_subtype_grav_down_bkg_pool,
+  task_subtype_end_grav_force_bkg_pool,
+  task_subtype_kick1_bkg_pool,
+  task_subtype_kick2_bkg_pool,
+  task_subtype_timestep_bkg_pool,
+  task_subtype_collect_bkg_pool,
   task_subtype_count
 } __attribute__((packed));
 

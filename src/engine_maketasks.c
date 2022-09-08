@@ -1102,6 +1102,36 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
   const int with_csds = e->policy & engine_policy_csds;
 #endif
 
+  /* In the zoom case let's handle the pooling cell.
+  * NOTE: these cells will never have hydro tasks. */
+  if (c->tl_cell_type == tl_cell_pool) {
+    c->timestep_collect = scheduler_addtask(s, task_type_bkg_pool,
+                                            task_subtype_collect_bkg_pool,
+                                            0, 0, c, NULL);
+
+    /* Add the two half kicks */
+    c->kick1 = scheduler_addtask(s, task_type_bkg_pool,
+                                 task_subtype_kick1_bkg_pool, 0, 0,
+                                 c, NULL);
+
+    c->kick2 = scheduler_addtask(s, task_type_bkg_pool,
+                                 task_subtype_kick2_bkg_pool, 0, 0,
+                                 c, NULL);
+
+    /* TODO: no neutrinos in zooms as it stands. */
+
+    /* Add the time-step calculation task and its dependency */
+    c->timestep = scheduler_addtask(s, task_type_bkg_pool, task_subtype_none,
+                                      0, 0, c, NULL);
+
+    scheduler_addunlock(s, c->kick2s, c->timestep);
+    scheduler_addunlock(s, c->timestep, c->kick1);
+    scheduler_addunlock(s, c->timestep, c->timestep_collect);
+
+    /* We're done here. */
+    return
+  }
+
   /* Are we at the top-level? */
   if (c->top == c && c->nodeID == e->nodeID) {
 
@@ -1245,6 +1275,61 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
   const int is_self_gravity = (e->policy & engine_policy_self_gravity);
   const int stars_only_gravity =
       (e->policy & engine_policy_stars) && !(e->policy & engine_policy_hydro);
+
+  /* In the zoom case let's handle the pooling cell.
+  * NOTE: these cells will never have hydro tasks. */
+  if (c->tl_cell_type == tl_cell_pool) {
+
+    c->grav.drift = scheduler_addtask(s, task_type_bkg_pool,
+                                      task_subtype_drift_gpart_bkg_pool,
+                                      0, 0, c, NULL);
+
+    c->grav.end_force = scheduler_addtask(s, task_type_bkg_pool,
+                                          task_subtype_end_grav_force_bkg_pool,
+                                          0, 0, c, NULL);
+
+    scheduler_addunlock(s, c->grav.end_force, c->kick2);
+
+    if (is_self_gravity) {
+
+      /* Initialisation of the multipoles */
+      c->grav.init = scheduler_addtask(s, task_type_bkg_pool,
+                                       task_subtype_init_grav_bkg_pool,
+                                       0, 0, c, NULL);
+
+      /* Gravity non-neighbouring pm calculations */
+      c->grav.long_range =
+        scheduler_addtask(s, task_type_bkg_pool,
+                          task_subtype_grav_long_range_bkg_pool, 0, 0, c,
+                          NULL);
+
+      /* Gravity recursive down-pass */
+      c->grav.down = scheduler_addtask(s, task_type_bkg_pool,
+                                       task_subtype_grav_down_bkg_pool,
+                                       0, 0, c, NULL);
+
+      /* Implicit tasks for the up and down passes */
+      c->grav.drift_out = scheduler_addtask(s, task_type_drift_gpart_out,
+                                            task_subtype_none, 0, 1, c, NULL);
+      c->grav.init_out = scheduler_addtask(s, task_type_init_grav_out,
+                                           task_subtype_none, 0, 1, c, NULL);
+      c->grav.down_in = scheduler_addtask(s, task_type_grav_down_in,
+                                          task_subtype_none, 0, 1, c, NULL);
+
+      /* Long-range gravity forces (not the mesh ones!) */
+      scheduler_addunlock(s, c->grav.init, c->grav.long_range);
+      scheduler_addunlock(s, c->grav.long_range, c->grav.down);
+      scheduler_addunlock(s, c->grav.down, c->grav.super->grav.end_force);
+
+      /* Link in the implicit tasks */
+      scheduler_addunlock(s, c->grav.init, c->grav.init_out);
+      scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
+      scheduler_addunlock(s, c->grav.down_in, c->grav.down);
+    }
+    
+    /* We're done here. */
+    return
+  }
 
   /* Are we in a super-cell ? */
   if (c->grav.super == c) {
@@ -1742,6 +1827,9 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* Explict void cell skip */
     if (c->tl_cell_type == void_tl_cell)
       continue;
+
+    /* If running a zoom lets skip background cells. */
+    if (e->s->with_zoom_region && c->tl_cell_type == tl_cell) continue;
     
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
@@ -4419,15 +4507,24 @@ void engine_maketasks(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
 #ifdef WITH_ZOOM_REGION
     if (s->with_zoom_region) {
+      /* Make the zoom->zoom gravity tasks. */
       threadpool_map(
           &e->threadpool, engine_make_self_gravity_tasks_mapper_zoom_cells,
           NULL, s->zoom_props->nr_zoom_cells, 1, threadpool_auto_chunk_size, e);
+      
+      /* Make the bkg->bkg gravity tasks. */
       threadpool_map(
           &e->threadpool, engine_make_self_gravity_tasks_mapper_natural_cells,
           NULL, s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
+      
+      /* Make the zoom->bkg/bkg->zoom gravity tasks. */
       threadpool_map(&e->threadpool,
                      engine_make_self_gravity_tasks_mapper_with_zoom_diffsize,
                      NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+      /* Create the background pool cell and gravity tasks. */
+      engine_make_self_gravity_bkg_pool(e);
+      
     } else {
       threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper,
                      NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);

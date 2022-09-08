@@ -1620,12 +1620,11 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
 }
 
 /**
- * @brief Constructs the top-level tasks for the short-range gravity
- * and long-range gravity interactions for the natural/background cells.
+ * @brief Finds and labels the pool task for this rank. The self and pair
+ * gravity task for the pool are then creared in this cell. Later on this task
+ * will loop over all background cells. 
  *
- * - All top-cells get a self task.
- * - All pairs within range according to the multipole acceptance
- *   criterion get a pair task.
+ * @param e The #engine.
  */
 void engine_make_self_gravity_bkg_pool(struct engine *e) {
 
@@ -1654,11 +1653,13 @@ void engine_make_self_gravity_bkg_pool(struct engine *e) {
           s->zoom_props->pool_cell_index = cid + bkg_cell_offset;
 
           /* Create a self task over which we can pool. */
-          scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg_pool,
+          scheduler_addtask(sched, task_type_bkg_pool,
+                            task_subtype_grav_self_bkg_pool,
                             0, 0, ci, NULL);
           
           /* Create a pair task to use for the pool. */
-          scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
+          scheduler_addtask(sched, task_type_bkg_pool,
+                            task_subtype_grav_pair_bkg_pool,
                             0, 0, ci, NULL);
 
           /* We're done here */

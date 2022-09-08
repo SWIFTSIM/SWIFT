@@ -124,6 +124,7 @@ const char *taskID_names[task_type_count] = {
     "rt_ghost2",
     "rt_transport_out",
     "rt_tchem",
+    "bkg_pool",
 };
 
 /* Sub-task type names. */
@@ -135,7 +136,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",
     "grav",
     "grav_bkg",
-    "grav_bkg_pool",
     "grav_zoombkg",
     "grav_bkgzoom",
     "external_grav",
@@ -167,6 +167,17 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "init_grav",
+    "drift_gpart",
+    "long_range",
+    "self_grav",
+    "pair_grav",
+    "grav_down",
+    "end_grav_force",
+    "kick1",
+    "kick2",
+    "timestep",
+    "collect"
 };
 
 const char *task_category_names[task_category_count] = {
