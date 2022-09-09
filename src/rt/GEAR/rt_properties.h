@@ -128,10 +128,6 @@ struct rt_props {
   /* Total radiation energy in the gas. It's being reset every step. */
   float debug_total_radiation_conserved_energy[RT_NGROUPS];
   float debug_total_star_emitted_energy[RT_NGROUPS];
-
-  /* Files to write energy budget to after every step */
-  FILE* conserved_energy_filep;
-  FILE* star_emitted_energy_filep;
 #endif
 };
 
@@ -154,45 +150,6 @@ void rt_cross_sections_init(struct rt_props* restrict rt_props,
 
 /* Now for the good stuff                */
 /* ------------------------------------- */
-
-/**
- * @brief open up files to write some debugging check outputs.
- * This function is temporary for development, and shouldn't stay
- * long.
- *
- * @param rtp #rt_props struct
- * @param mode open files with this mode. "w" for new file, "a" for append.
- **/
-#ifdef SWIFT_RT_DEBUG_CHECKS
-static void rt_props_open_debugging_files(struct rt_props* rtp,
-                                          const char* mode) {
-#ifdef WITH_MPI
-  return;
-#endif
-
-  rtp->conserved_energy_filep = fopen("RT_conserved_energy_budget.txt", mode);
-  if (rtp->conserved_energy_filep == NULL)
-    error("Couldn't open RT conserved energy budget file to write in");
-  rtp->star_emitted_energy_filep = fopen("RT_star_injected_energy.txt", mode);
-  if (rtp->star_emitted_energy_filep == NULL)
-    error("Couldn't open RT star energy budget file to write in");
-
-  if (strcmp(mode, "w") == 0 && rtp->use_const_emission_rates) {
-    /* If we're starting a new file, dump the header first */
-    FILE* files[2] = {rtp->conserved_energy_filep,
-                      rtp->star_emitted_energy_filep};
-    for (int f = 0; f < 2; f++) {
-      fprintf(files[f], "# Emission rates: ");
-      const double solar_luminosity = 3.826e33; /* erg/s */
-      for (int g = 0; g < RT_NGROUPS; g++) {
-        fprintf(files[f], "%12.6e ",
-                rtp->stellar_const_emission_rates[g] * solar_luminosity);
-      }
-      fprintf(files[f], "\n");
-    }
-  }
-};
-#endif
 
 /**
  * @brief Print the RT model.
@@ -441,9 +398,6 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
 
   for (int g = 0; g < RT_NGROUPS; g++)
     rtp->debug_total_star_emitted_energy[g] = 0.f;
-
-  rt_props_open_debugging_files(rtp, "w");
-
 #endif
 
   /* Grackle setup */
@@ -496,10 +450,6 @@ __attribute__((always_inline)) INLINE static void rt_struct_restore(
    * not defined at compile time. So we need to write them down. */
   restart_read_blocks(&rt_params, sizeof(struct rt_parameters), 1, stream, NULL,
                       "RT global parameters struct");
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  /* Reset the file pointers for temporary stats */
-  rt_props_open_debugging_files(props, "a");
-#endif
 }
 
 #endif /* SWIFT_RT_PROPERTIES_GEAR_H */

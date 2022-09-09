@@ -638,13 +638,6 @@ __attribute__((always_inline)) INLINE static void rt_clean(
     free(props->energy_weighted_cross_sections);
     free(props->number_weighted_cross_sections);
   }
-
-#ifdef SWIFT_RT_DEBUG_CHECKS
-#ifndef WITH_MPI
-  fclose(props->conserved_energy_filep);
-  fclose(props->star_emitted_energy_filep);
-#endif
-#endif
 }
 
 #endif /* SWIFT_RT_GEAR_H */
