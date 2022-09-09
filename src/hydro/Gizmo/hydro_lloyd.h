@@ -119,12 +119,12 @@ __attribute__((always_inline)) INLINE static void hydro_gizmo_lloyd_kick(
   /* set the particle velocities to the Lloyd velocities */
   /* note that centroid is the relative position of the centroid w.r.t. the
      particle position (position - centroid) */
-  xp->v_full[0] = -p->geometry.centroid[0] / dt;
-  xp->v_full[1] = -p->geometry.centroid[1] / dt;
-  xp->v_full[2] = -p->geometry.centroid[2] / dt;
-  p->v[0] = xp->v_full[0];
-  p->v[1] = xp->v_full[1];
-  p->v[2] = xp->v_full[2];
+  p->v_full[0] = -p->geometry.centroid[0] / dt;
+  p->v_full[1] = -p->geometry.centroid[1] / dt;
+  p->v_full[2] = -p->geometry.centroid[2] / dt;
+  p->v[0] = p->v_full[0];
+  p->v[1] = p->v_full[1];
+  p->v[2] = p->v_full[2];
 }
 
 #else /* no GIZMO_LLOYD_ITERATION */

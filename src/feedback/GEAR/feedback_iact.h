@@ -147,7 +147,7 @@ runner_iact_nonsym_feedback_apply(
 
   /* Compute momentum received. */
   for (int i = 0; i < 3; i++) {
-    xpj->feedback_data.delta_p[i] += dm * (si->v[i] - xpj->v_full[i]);
+    xpj->feedback_data.delta_p[i] += dm * (si->v[i] - pj->v_full[i]);
   }
 
   /* Add the metals */

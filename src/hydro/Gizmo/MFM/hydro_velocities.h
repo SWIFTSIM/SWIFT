@@ -37,9 +37,9 @@
 __attribute__((always_inline)) INLINE static void hydro_velocities_init(
     struct part* restrict p, struct xpart* restrict xp) {
 
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  p->v_full[0] = p->v[0];
+  p->v_full[1] = p->v[1];
+  p->v_full[2] = p->v[2];
 }
 
 /**
@@ -83,21 +83,21 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     const float inverse_mass = 1.0f / p->conserved.mass;
 
     /* Normal case: set particle velocity to fluid velocity. */
-    xp->v_full[0] = p->conserved.momentum[0] * inverse_mass;
-    xp->v_full[1] = p->conserved.momentum[1] * inverse_mass;
-    xp->v_full[2] = p->conserved.momentum[2] * inverse_mass;
+    p->v_full[0] = p->conserved.momentum[0] * inverse_mass;
+    p->v_full[1] = p->conserved.momentum[1] * inverse_mass;
+    p->v_full[2] = p->conserved.momentum[2] * inverse_mass;
 
   } else {
     /* Vacuum particles have no fluid velocity. */
-    xp->v_full[0] = 0.0f;
-    xp->v_full[1] = 0.0f;
-    xp->v_full[2] = 0.0f;
+    p->v_full[0] = 0.0f;
+    p->v_full[1] = 0.0f;
+    p->v_full[2] = 0.0f;
   }
 
   if (p->gpart) {
-    p->gpart->v_full[0] = xp->v_full[0];
-    p->gpart->v_full[1] = xp->v_full[1];
-    p->gpart->v_full[2] = xp->v_full[2];
+    p->gpart->v_full[0] = p->v_full[0];
+    p->gpart->v_full[1] = p->v_full[1];
+    p->gpart->v_full[2] = p->v_full[2];
   }
 }
 

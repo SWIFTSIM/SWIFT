@@ -342,9 +342,9 @@ runner_iact_nonsym_feedback_apply(
       new_metal_mass_from_AGB * new_mass_inv;
 
   /* Compute the current kinetic energy */
-  const double current_v2 = xpj->v_full[0] * xpj->v_full[0] +
-                            xpj->v_full[1] * xpj->v_full[1] +
-                            xpj->v_full[2] * xpj->v_full[2];
+  const double current_v2 = pj->v_full[0] * pj->v_full[0] +
+                            pj->v_full[1] * pj->v_full[1] +
+                            pj->v_full[2] * pj->v_full[2];
   const double current_kinetic_energy_gas =
       0.5 * cosmo->a2_inv * current_mass * current_v2;
 
@@ -355,19 +355,19 @@ runner_iact_nonsym_feedback_apply(
   /* Apply conservation of momentum */
 
   /* Update velocity following change in gas mass */
-  xpj->v_full[0] *= current_mass * new_mass_inv;
-  xpj->v_full[1] *= current_mass * new_mass_inv;
-  xpj->v_full[2] *= current_mass * new_mass_inv;
+  pj->v_full[0] *= current_mass * new_mass_inv;
+  pj->v_full[1] *= current_mass * new_mass_inv;
+  pj->v_full[2] *= current_mass * new_mass_inv;
 
   /* Update velocity following addition of mass with different momentum */
-  xpj->v_full[0] += delta_mass * new_mass_inv * si->v[0];
-  xpj->v_full[1] += delta_mass * new_mass_inv * si->v[1];
-  xpj->v_full[2] += delta_mass * new_mass_inv * si->v[2];
+  pj->v_full[0] += delta_mass * new_mass_inv * si->v[0];
+  pj->v_full[1] += delta_mass * new_mass_inv * si->v[1];
+  pj->v_full[2] += delta_mass * new_mass_inv * si->v[2];
 
   /* Compute the new kinetic energy */
-  const double new_v2 = xpj->v_full[0] * xpj->v_full[0] +
-                        xpj->v_full[1] * xpj->v_full[1] +
-                        xpj->v_full[2] * xpj->v_full[2];
+  const double new_v2 = pj->v_full[0] * pj->v_full[0] +
+                        pj->v_full[1] * pj->v_full[1] +
+                        pj->v_full[2] * pj->v_full[2];
   const double new_kinetic_energy_gas = 0.5 * cosmo->a2_inv * new_mass * new_v2;
 
   /* Energy injected

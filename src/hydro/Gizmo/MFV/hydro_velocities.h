@@ -39,9 +39,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_init(
   p->v[2] = p->fluid_v[2];
 #endif
 
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  p->v_full[0] = p->v[0];
+  p->v_full[1] = p->v[1];
+  p->v_full[2] = p->v[2];
 }
 
 /**
@@ -141,9 +141,9 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 #endif  // GIZMO_FIX_PARTICLES
 
   /* Now make sure all velocity variables are up to date. */
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  p->v_full[0] = p->v[0];
+  p->v_full[1] = p->v[1];
+  p->v_full[2] = p->v[2];
 
   if (p->gpart) {
     p->gpart->v_full[0] = p->v[0];

@@ -113,6 +113,9 @@ struct part {
   /*! Particle predicted velocity. */
   float v[3];
 
+  /*! Particle velocity for drift */
+  float v_full[3];
+
   /*! Particle acceleration. */
   float a_hydro[3];
 

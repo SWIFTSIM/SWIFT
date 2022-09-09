@@ -265,13 +265,13 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
 #ifdef SWIFT_DEBUG_CHECKS
       /* Make sure the particle does not drift by more than a box length. */
-      if (fabs(xp->v_full[0] * dt_drift) > e->s->dim[0] ||
-          fabs(xp->v_full[1] * dt_drift) > e->s->dim[1] ||
-          fabs(xp->v_full[2] * dt_drift) > e->s->dim[2]) {
+      if (fabs(p->v_full[0] * dt_drift) > e->s->dim[0] ||
+          fabs(p->v_full[1] * dt_drift) > e->s->dim[1] ||
+          fabs(p->v_full[2] * dt_drift) > e->s->dim[2]) {
         error(
-            "Particle drifts by more than a box length! id %llu xp->v_full "
+            "Particle drifts by more than a box length! id %llu p->v_full "
             "%.5e %.5e %.5e p->v %.5e %.5e %.5e",
-            p->id, xp->v_full[0], xp->v_full[1], xp->v_full[2], p->v[0],
+            p->id, p->v_full[0], p->v_full[1], p->v_full[2], p->v[0],
             p->v[1], p->v[2]);
       }
 #endif

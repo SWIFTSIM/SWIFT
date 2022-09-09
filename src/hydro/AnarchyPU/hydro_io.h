@@ -127,9 +127,9 @@ INLINE static void convert_part_vel(const struct engine* e,
   }
 
   /* Extrapolate the velocites to the current time (hydro term)*/
-  ret[0] = xp->v_full[0] + p->a_hydro[0] * dt_kick_hydro;
-  ret[1] = xp->v_full[1] + p->a_hydro[1] * dt_kick_hydro;
-  ret[2] = xp->v_full[2] + p->a_hydro[2] * dt_kick_hydro;
+  ret[0] = p->v_full[0] + p->a_hydro[0] * dt_kick_hydro;
+  ret[1] = p->v_full[1] + p->a_hydro[1] * dt_kick_hydro;
+  ret[2] = p->v_full[2] + p->a_hydro[2] * dt_kick_hydro;
 
   /* Add the gravity term */
   if (p->gpart != NULL) {

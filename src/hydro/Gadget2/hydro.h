@@ -751,9 +751,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
     const struct cosmology *cosmo) {
 
   /* Re-set the predicted velocities */
-  p->v[0] = xp->v_full[0];
-  p->v[1] = xp->v_full[1];
-  p->v[2] = xp->v_full[2];
+  p->v[0] = p->v_full[0];
+  p->v[1] = p->v_full[1];
+  p->v[2] = p->v_full[2];
 
   /* Re-set the entropy */
   p->entropy = xp->entropy_full;
@@ -973,9 +973,9 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
     struct part *restrict p, struct xpart *restrict xp) {
 
   p->time_bin = 0;
-  xp->v_full[0] = p->v[0];
-  xp->v_full[1] = p->v[1];
-  xp->v_full[2] = p->v[2];
+  p->v_full[0] = p->v[0];
+  p->v_full[1] = p->v[1];
+  p->v_full[2] = p->v[2];
   xp->entropy_full = p->entropy;
 
   hydro_reset_acceleration(p);

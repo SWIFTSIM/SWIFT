@@ -865,20 +865,15 @@ runner_iact_nonsym_bh_gas_feedback(
                                   du_xray_phys
                               );
 
-        /* TODO: gpart is not available here in MPI */
         /* Push gas radially */
-#ifdef WITH_MPI
-        error("Compiled WITH_MPI but accessing gpart when not available.");
-#else
         /* No distance, no norm */
         if (r2 <= 0.f) return;
         const float r = sqrtf(r2);
         const float dv_comoving = dv_phys * cosmo->a;
         const float prefactor = dv_comoving / r;
-        xpj->v_full[0] += prefactor * dx[0];
-        xpj->v_full[1] += prefactor * dx[1];
-        xpj->v_full[2] += prefactor * dx[2];
-#endif
+        pj->v_full[0] += prefactor * dx[0];
+        pj->v_full[1] += prefactor * dx[1];
+        pj->v_full[2] += prefactor * dx[2];
 
         du_xray_phys *= (1. - bh_props->xray_kinetic_fraction);
 
@@ -925,31 +920,19 @@ runner_iact_nonsym_bh_gas_feedback(
     /* No norm, no wind */
     if (norm <= 0.f) return;
 
-#ifdef SIMBA_DEBUG_CHECKS
-    const float pj_vel_norm = sqrtf(
-        pj->gpart->v_full[0] * pj->gpart->v_full[0] + 
-        pj->gpart->v_full[1] * pj->gpart->v_full[1] + 
-        pj->gpart->v_full[2] * pj->gpart->v_full[2]
-    );
-#endif
-
-#ifdef WITH_MPI
-    error("Compiled with WITH_MPI but accessing gpart when not available.");
-#else
     /* TODO: random_uniform() won't work here?? */
     /*const float dirsign = (random_uniform(-1.0, 1.0) > 0. ? 1.f : -1.f);*/
     const double random_number =
         random_unit_interval(bi->id, ti_current, random_number_BH_feedback);
     const float dirsign = (random_number > 0.5) ? 1.f : -1.f;
     const float prefactor = bi->v_kick * cosmo->a * dirsign / norm;
-    xpj->v_full[0] += prefactor * bi->angular_momentum_gas[0];
-    xpj->v_full[1] += prefactor * bi->angular_momentum_gas[1];
-    xpj->v_full[2] += prefactor * bi->angular_momentum_gas[2];
-#endif
+    pj->v_full[0] += prefactor * bi->angular_momentum_gas[0];
+    pj->v_full[1] += prefactor * bi->angular_momentum_gas[1];
+    pj->v_full[2] += prefactor * bi->angular_momentum_gas[2];
 
 #ifdef SIMBA_DEBUG_CHECKS
-    message("BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s, v_kick/v_part=%g",
-       bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
+    message("BH_KICK: bid=%lld kicking pid=%lld, v_kick=%g km/s",
+       bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal);
 #endif
 
     /* Set delay time */

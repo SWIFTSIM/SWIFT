@@ -72,9 +72,9 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
      hydrodynamical velocity. The time step depends on the relative difference
      of the two. */
   float vrel[3];
-  vrel[0] = W[1] - xp->v_full[0];
-  vrel[1] = W[2] - xp->v_full[1];
-  vrel[2] = W[3] - xp->v_full[2];
+  vrel[0] = W[1] - p->v_full[0];
+  vrel[1] = W[2] - p->v_full[1];
+  vrel[2] = W[3] - p->v_full[2];
   float vmax =
       sqrtf(vrel[0] * vrel[0] + vrel[1] * vrel[1] + vrel[2] * vrel[2]) +
       sqrtf(hydro_gamma * W[4] / W[0]);
@@ -615,7 +615,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
 
   /* add the gravitational contribution to the fluid velocity drift */
   /* (MFV only) */
-  hydro_gizmo_mfv_extra_velocity_drift(&W[1], p->v, xp->v_full);
+  hydro_gizmo_mfv_extra_velocity_drift(&W[1], p->v, p->v_full);
 
   gizmo_check_physical_quantities("density", "pressure", W[0], W[1], W[2], W[3],
                                   W[4]);

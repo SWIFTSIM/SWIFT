@@ -80,7 +80,7 @@ void feedback_update_part(struct part* p, struct xpart* xp,
   for (int i = 0; i < 3; i++) {
     const float dv = xp->feedback_data.delta_p[i] / new_mass;
 
-    xp->v_full[i] += dv;
+    p->v_full[i] += dv;
     p->v[i] += dv;
 
     xp->feedback_data.delta_p[i] = 0;
