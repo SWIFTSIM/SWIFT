@@ -948,8 +948,8 @@ runner_iact_nonsym_bh_gas_feedback(
     /* If we have a jet, we heat! */
     if (bi->v_kick >= bh_props->jet_heating_velocity_threshold) {
 #ifdef SIMBA_DEBUG_CHECKS
-      message("BH_KICK_JET: bid=%lld kicking pid=%lld at v_kick=%g km/s, v_kick/v_part=%g",
-        bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal, bi->v_kick * cosmo->a / pj_vel_norm);
+      message("BH_KICK_JET: bid=%lld kicking pid=%lld at v_kick=%g km/s",
+        bi->id, pj->id, bi->v_kick / bh_props->kms_to_internal);
 #endif
 
       float new_Tj = 0.f;
