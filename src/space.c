@@ -576,7 +576,6 @@ void space_synchronize_part_positions_mapper(void *map_data, int nr_parts,
                                              void *extra_data) {
   /* Unpack the data */
   const struct part *parts = (struct part *)map_data;
-  struct space *s = (struct space *)extra_data;
 
   for (int k = 0; k < nr_parts; k++) {
 
