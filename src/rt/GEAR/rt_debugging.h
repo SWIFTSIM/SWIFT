@@ -304,30 +304,6 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
         e->rt_props->debug_radiation_emitted_tot,
         e->rt_props->debug_radiation_absorbed_tot);
 
-  /* Write down energy budget for this timestep. */
-  if (e->step > 1) {
-    fprintf(e->rt_props->conserved_energy_filep, "\n");
-  } else {
-    fprintf(e->rt_props->conserved_energy_filep, "# nstars: %lld\n",
-            e->total_nr_sparts);
-  }
-  fprintf(e->rt_props->conserved_energy_filep, "%6d %12.6e ", e->step, e->time);
-  for (int g = 0; g < RT_NGROUPS; g++)
-    fprintf(e->rt_props->conserved_energy_filep, "%12.6e ",
-            e->rt_props->debug_total_radiation_conserved_energy[g]);
-
-  if (e->step > 1) {
-    fprintf(e->rt_props->star_emitted_energy_filep, "\n");
-  } else {
-    fprintf(e->rt_props->star_emitted_energy_filep, "# nstars: %lld\n",
-            e->total_nr_sparts);
-  }
-  fprintf(e->rt_props->star_emitted_energy_filep, "%6d %12.6e ", e->step,
-          e->time);
-  for (int g = 0; g < RT_NGROUPS; g++)
-    fprintf(e->rt_props->star_emitted_energy_filep, "%12.6e ",
-            e->rt_props->debug_total_star_emitted_energy[g]);
-
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
