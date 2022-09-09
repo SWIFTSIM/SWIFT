@@ -203,7 +203,11 @@ rt_tchem_set_particle_quantities_for_test(struct part* restrict p) {
   /* 10^-3 hydrogen_atom_mass / cm^3 / (1.98848e18 g/IMU * 3.0857e15cm/ILU^3) */
   float density = 2.471e+01;
 
-  float internal_energy = 1.23816;
+  /* 100 K  */
+  float internal_energy = 1.23816f;
+
+  /* 10000 K with xHII = 1e-3 for Iliev Test 1 */
+  /* float internal_energy = 124.8416491f; */
 
   /* Be vocal, just in case somebody forgets you exist. */
   if (p->id == 1) message("Setting density from %.3e to %.3e", p->rho, density);
