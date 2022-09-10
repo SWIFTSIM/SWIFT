@@ -95,8 +95,11 @@ INLINE static int rt_write_particles(const struct part* parts,
       "RTDebugRadAbsorbedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_radiation_absorbed_tot,
       "Radiation absorbed by this part during its lifetime");
+  list[7] = io_make_output_field("RTDebugSubcycles", INT, 1, UNIT_CONV_NO_UNITS,
+                                 0, parts, rt_data.debug_nsubcycles,
+                                 "How many times this part was subcycled");
 
-  return 7;
+  return 8;
 }
 
 /**

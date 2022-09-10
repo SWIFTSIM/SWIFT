@@ -175,7 +175,7 @@ INLINE static int rt_write_particles(const struct part* parts,
       "Mass fractions of all constituent species");
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  num_elements += 7;
+  num_elements += 8;
   list[3] =
       io_make_output_field("RTDebugInjectionDone", INT, 1, UNIT_CONV_NO_UNITS,
                            0, parts, rt_data.debug_injection_done,
@@ -207,6 +207,9 @@ INLINE static int rt_write_particles(const struct part* parts,
       "RTDebugRadAbsorbedTot", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0, parts,
       rt_data.debug_radiation_absorbed_tot,
       "Radiation absorbed by this part during its lifetime");
+  list[10] = io_make_output_field(
+      "RTDebugSubcycles", INT, 1, UNIT_CONV_NO_UNITS, 0, parts,
+      rt_data.debug_nsubcycles, "How many times this part was subcycled");
 #endif
 
   return num_elements;

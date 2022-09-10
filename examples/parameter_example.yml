@@ -160,6 +160,7 @@ TimeIntegration:
   dt_max:              1e-2  # The maximal time-step size of the simulation (in internal units).
   max_dt_RMS_factor:   0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
   dt_RMS_use_gas_only: 0     # (Optional) When computing the max RMS dt, should only the gas particles be considered in the baryon component calculation?
+  max_nr_rt_subcycles: 0     # (Optional) Maximal number of radiative transfer sub-cycles per hydro step for any particle. Set = 0 to disable subcycling. Needs to be a power of 2.
   
 # Parameters governing the snapshots
 Snapshots:

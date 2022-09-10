@@ -18,7 +18,7 @@ fi
     --stars \
     --feedback \
     --external-gravity \
-    -e \
+    --fpe \
     ./rt_advection1D.yml 2>&1 | tee output.log
 
 python3 ./plotSolution.py

@@ -1128,11 +1128,12 @@ int engine_estimate_nr_tasks(const struct engine *e) {
     /* gradient: 1 self + 13 pairs                   |   14
      * transport: 1 self + 13 pairs                  | + 14
      * implicits: in + out, transport_out            | +  3
-     * others: ghost1, ghost2, thermochemistry       | +  3
+     * others: ghost1, ghost2, tchem, cell advance   | +  4
+     * sort, collect_times                           | +  2
      * 2 extra space                                 | +  2 */
-    n1 += 36;
+    n1 += 39;
 #ifdef WITH_MPI
-    n1 += 4; /* TODO: check this */
+    n1 += 2;
 #endif
   }
 
@@ -1622,6 +1623,7 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_bh_swallow_ghost3 || t->type == task_type_bh_in ||
         t->type == task_type_bh_out || t->type == task_type_rt_ghost1 ||
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
+        t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
@@ -1768,6 +1770,89 @@ void engine_get_max_ids(struct engine *e) {
   MPI_Allreduce(MPI_IN_PLACE, &e->max_parts_id, 1, MPI_LONG_LONG_INT, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
+}
+
+/**
+ * @brief Run the radiative transfer sub-cycles outside the
+ * regular time-steps.
+ *
+ * @param e The #engine
+ **/
+void engine_run_rt_sub_cycles(struct engine *e) {
+
+  /* Do we have work to do? */
+  if (!(e->policy & engine_policy_rt)) return;
+  if (e->max_nr_rt_subcycles <= 1) return;
+
+  /* Get the subcycling step */
+  const integertime_t rt_step_size = e->ti_rt_end_min - e->ti_current;
+  if (rt_step_size == 0) {
+    /* When we arrive at the final step, the rt_step_size can be == 0 */
+    if (!engine_is_done(e)) error("Got rt_step_size = 0");
+    return;
+  }
+
+  /* At this point, the non-RT ti_end_min is up-to-date. Use that and
+   * the time of the previous regular step to get how many subcycles
+   * we need. */
+  const int nr_rt_cycles = (e->ti_end_min - e->ti_current) / rt_step_size;
+  /* You can't check here that the number of cycles is exactly the number
+   * you fixed it to be. E.g. stars or gravity may reduce the time step
+   * sizes for some main steps such that they coincide with the RT bins,
+   * yielding effectively no subcycles. (At least for low numbers.) */
+
+  /* Get some time variables for printouts. Don't update the ones in the
+   * engine like in the regular step, or the outputs in the regular steps
+   * will be wrong. */
+  /* think cosmology one day: needs adapting here */
+  if (e->policy & engine_policy_cosmology)
+    error("Can't run RT subcycling with cosmology yet");
+  const double dt_subcycle = rt_step_size * e->time_base;
+  double time = e->ti_current_subcycle * e->time_base + e->time_begin;
+
+  /* Collect and print info before it's gone */
+  engine_collect_end_of_sub_cycle(e);
+  if (e->nodeID == 0) {
+    printf(
+        "  %6d cycle   0 (during regular tasks) dt=%14e "
+        "min/max active bin=%2d/%2d rt_updates=%18lld\n",
+        e->step, dt_subcycle, e->min_active_bin_subcycle,
+        e->max_active_bin_subcycle, e->rt_updates);
+  }
+
+  /* Note: zeroth sub-cycle already happened during the regular tasks,
+   * so we need to do one less than that. */
+  for (int sub_cycle = 1; sub_cycle < nr_rt_cycles; ++sub_cycle) {
+
+    e->rt_updates = 0ll;
+    integertime_t ti_subcycle_old = e->ti_current_subcycle;
+    e->ti_current_subcycle = e->ti_current + sub_cycle * rt_step_size;
+    e->max_active_bin_subcycle = get_max_active_bin(e->ti_current_subcycle);
+    e->min_active_bin_subcycle =
+        get_min_active_bin(e->ti_current_subcycle, ti_subcycle_old);
+    /* think cosmology one day: needs adapting here */
+    if (e->policy & engine_policy_cosmology)
+      error("Can't run RT subcycling with cosmology yet");
+    time = e->ti_current_subcycle * e->time_base + e->time_begin;
+
+    /* Do the actual work now. */
+    engine_unskip_rt_sub_cycle(e);
+    engine_launch(e, "cycles");
+
+    /* Collect number of updates and print */
+    engine_collect_end_of_sub_cycle(e);
+
+    if (e->nodeID == 0) {
+      printf(
+          "  %6d cycle %3d time=%13.6e     dt=%14e "
+          "min/max active bin=%2d/%2d rt_updates=%18lld\n",
+          e->step, sub_cycle, time, dt_subcycle, e->min_active_bin_subcycle,
+          e->max_active_bin_subcycle, e->rt_updates);
+    }
+  }
+
+  /* Once we're done, clean up after ourselves */
+  e->rt_updates = 0ll;
 }
 
 /**
@@ -1947,12 +2032,6 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
 
-  /* Initialise additional RT data now that time bins are set */
-#ifdef SWIFT_RT_DEBUG_CHECKS
-  if (e->policy & engine_policy_rt)
-    space_convert_rt_quantities_after_zeroth_step(e->s, e->verbose);
-#endif
-
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   /* Run the brute-force hydro calculation for some parts */
   if (e->policy & engine_policy_hydro)
@@ -2094,6 +2173,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     }
   }
 
+  /* Run the RT sub-cycles now. */
+  engine_run_rt_sub_cycles(e);
+
   clocks_gettime(&time2);
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2114,6 +2196,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   e->force_checks_snapshot_flag = 0;
+#endif
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* if we're running the debug RT scheme, do some checks after every step,
+   * and reset debugging flags now. */
+  if (e->policy & engine_policy_rt) {
+    rt_debugging_checks_end_of_step(e, e->verbose);
+  }
 #endif
 
   if (e->verbose) message("took %.3f %s.", e->wallclock_time, clocks_getunit());
@@ -2207,6 +2297,12 @@ int engine_step(struct engine *e) {
   e->step += 1;
   engine_current_step = e->step;
   e->step_props = engine_step_prop_none;
+
+  /* RT sub-cycling related time updates */
+  e->max_active_bin_subcycle = get_max_active_bin(e->ti_end_min);
+  e->min_active_bin_subcycle =
+      get_min_active_bin(e->ti_end_min, e->ti_current_subcycle);
+  e->ti_current_subcycle = e->ti_end_min;
 
   /* When restarting, move everyone to the current time. */
   if (e->restarting) engine_drift_all(e, /*drift_mpole=*/1);
@@ -2538,6 +2634,9 @@ int engine_step(struct engine *e) {
     error("Obtained a time-step of size 0");
 #endif
 
+  /* Run the RT sub-cycling now. */
+  engine_run_rt_sub_cycles(e);
+
 #ifdef WITH_CSDS
   if (e->policy & engine_policy_csds && e->verbose)
     message("The CSDS currently uses %f GB of storage",
@@ -2572,6 +2671,14 @@ int engine_step(struct engine *e) {
    * Do this after the output so we can safely reset debugging checks now. */
   if (e->policy & engine_policy_rt)
     rt_debugging_checks_end_of_step(e, e->verbose);
+#endif
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  /* if we're running the debug RT scheme, do some checks after every step.
+   * Do this after the output so we can safely reset debugging flags now. */
+  if (e->policy & engine_policy_rt) {
+    rt_debugging_checks_end_of_step(e, e->verbose);
+  }
 #endif
 
   TIMER_TOC2(timer_step);
@@ -2953,6 +3060,9 @@ void engine_init(
   e->time_end = 0.;
   e->max_active_bin = num_time_bins;
   e->min_active_bin = 1;
+  e->ti_current_subcycle = 0;
+  e->max_active_bin_subcycle = num_time_bins;
+  e->min_active_bin_subcycle = 1;
   e->internal_units = internal_units;
   e->output_list_snapshots = NULL;
   e->a_first_snapshot =
@@ -3008,6 +3118,8 @@ void engine_init(
   e->ps_output_count = 0;
   e->dt_min = parser_get_param_double(params, "TimeIntegration:dt_min");
   e->dt_max = parser_get_param_double(params, "TimeIntegration:dt_max");
+  e->max_nr_rt_subcycles = parser_get_opt_param_int(
+      params, "TimeIntegration:max_nr_rt_subcycles", /*default=*/0);
   e->dt_max_RMS_displacement = FLT_MAX;
   e->max_RMS_displacement_factor = parser_get_opt_param_double(
       params, "TimeIntegration:max_dt_RMS_factor", 0.25);

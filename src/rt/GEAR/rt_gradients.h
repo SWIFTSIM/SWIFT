@@ -147,29 +147,8 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     struct part *restrict pj) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (pi->rt_data.debug_kicked != 1)
-    error(
-        "Trying to do symmetric iact gradient unkicked particle %lld "
-        "(count=%d)",
-        pi->id, pi->rt_data.debug_kicked);
-
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do symmetric iact gradient when finalise injection count is "
-        "%d ID %lld",
-        pi->rt_data.debug_injection_done, pi->id);
-
-  if (pj->rt_data.debug_kicked != 1)
-    error(
-        "Trying to do symmetric iact gradient unkicked particle %lld "
-        "(count=%d)",
-        pj->id, pj->rt_data.debug_kicked);
-
-  if (pj->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do symmetric iact gradient when finalise injection count is "
-        "%d ID %lld",
-        pj->rt_data.debug_injection_done, pj->id);
+  rt_debug_sequence_check(pi, 2, __func__);
+  rt_debug_sequence_check(pj, 2, __func__);
 
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;
   pj->rt_data.debug_calls_iact_gradient_interaction += 1;
@@ -307,18 +286,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     struct part *restrict pj) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (pi->rt_data.debug_kicked != 1)
-    error(
-        "Trying to do nonsym iact gradient on unkicked particle %lld "
-        "(count=%d)",
-        pi->id, pi->rt_data.debug_kicked);
-
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do nonsym iact gradients when finalise injection count is "
-        "%d ID %lld",
-        pi->rt_data.debug_injection_done, pi->id);
-
+  rt_debug_sequence_check(pi, 2, __func__);
   pi->rt_data.debug_calls_iact_gradient_interaction += 1;
 #endif
 
