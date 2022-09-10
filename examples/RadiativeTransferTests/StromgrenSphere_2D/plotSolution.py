@@ -308,3 +308,4 @@ if __name__ == "__main__":
 
     for f in snaplist:
         plot_result(f)
+        gc.collect()

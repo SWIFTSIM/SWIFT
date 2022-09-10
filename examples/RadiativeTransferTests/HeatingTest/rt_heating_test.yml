@@ -12,6 +12,7 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
+  max_nr_rt_subcycles: 1
   time_begin: 0.     # The starting time of the simulation (in internal units).
   dt_min:     1.0208453377e-08  # 0.01 yr
   dt_max:     0.0010208453      # 1 kyr

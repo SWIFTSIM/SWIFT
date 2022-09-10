@@ -11,9 +11,10 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
+  max_nr_rt_subcycles: 4
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   0.1   # The end time of the simulation (in internal units).
-  dt_min:     1.e-8 # The minimal time-step size of the simulation (in internal units).
+  dt_min:     1.e-6 # The minimal time-step size of the simulation (in internal units).
   dt_max:     1.e-3 # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
@@ -49,7 +50,7 @@ Scheduler:
 Restarts:
   delta_hours:        72        # (Optional) decimal hours between dumps of restart files.
   enable:             1          # (Optional) whether to enable dumping restarts at fixed intervals.
-  stop_steps:         500        # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
+  stop_steps:         128        # (Optional) how many steps to process before checking if the <subdir>/stop file exists. When present the application will attempt to exit early, dumping restart files first.
 
 # Parameters for the self-gravity scheme
 Gravity:

@@ -46,7 +46,8 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
   float ratio = 2.;
   if (e_old != 0.f) ratio = fabsf(*energy_density / e_old);
   /* callloc = 1 is gradient extrapolation. Don't print out those. */
-  if (*energy_density < -1e-2f && fabsf(ratio - 1.f) > 1.e-3f && callloc != 1)
+  if (*energy_density < -1e-3f * fabsf(e_old) && fabsf(ratio - 1.f) > 1.e-3f &&
+      callloc != 1)
     message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e | %.6e",
             callloc, *energy_density, flux[0], flux[1], flux[2], ratio);
 #endif
