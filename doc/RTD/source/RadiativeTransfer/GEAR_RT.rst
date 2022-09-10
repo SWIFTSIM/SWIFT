@@ -22,7 +22,7 @@ Compiling for GEAR RT
 -   You need to choose a Riemann solver for the RT equations. You can choose
     between the ``GLF`` and ``HLL`` solver. For the time being, I recommend 
     sticking to the ``GLF`` solver as the ``HLL`` solver is more expensive,
-    but seemingly offers no advantage, although this remains to be comfirmed
+    but seemingly offers no advantage, although this remains to be confirmed
     in further testing.
 
 -   GEAR RT is only compatible with the Meshless Finite Volume scheme. You'll
@@ -58,6 +58,10 @@ You need to provide the following runtime parameters in the yaml file:
                                                           # metal-free portion of the gas
 
        stellar_spectrum_type: 0                           # Which radiation spectrum to use. 0: constant. 1: blackbody spectrum.
+
+   TimeIntegration:
+       max_nr_rt_subcycles: 128         # maximal number of RT subcycles per hydro step
+
 
 The ``photon_groups_Hz`` need to be ``N`` frequency edges (floats) to separate 
 the spectrum into ``N`` groups, where ``N`` is the same number you configured
@@ -111,6 +115,9 @@ to select between:
    e.g. equations 9 - 11 in `Rosdahl et al. 2013. 
    <https://ui.adsabs.harvard.edu/abs/2013MNRAS.436.2188R/abstract>`_
 
+Finally, you will also need to provide an upper threshold for the number of 
+RT-subcycles w.r.t. a single hydro step via ``TimeIntegration:max_nr_rt_subcycles``.
+For more details, refer to :ref:`the subcycling documentation <rt_subcycling>`.
 
 
 
@@ -393,7 +400,7 @@ useful:
    both methods can run on the exact same ICs.
 
 
-.. [#f2] For example, choosing cgs units as the interal units may lead to
+.. [#f2] For example, choosing cgs units as the internal units may lead to
    trouble with grackle. (Trouble like a gas at 10^6K without any heating
    sources heating up instead of cooling down.) The library is set up to work 
    with units geared towards cosmology. According to Britton Smith (private comm), 
