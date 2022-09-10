@@ -11,6 +11,7 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
+  max_nr_rt_subcycles: 1
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   0.001 # end time: radiation reaches edge of box
   dt_min:     1.e-12 # The minimal time-step size of the simulation (in internal units).
@@ -36,7 +37,7 @@ SPH:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:  ./propagationTest-2D.hdf5     # The file to read
-  periodic:   1                             # peridioc ICs. Keep them periodic so we don't loose photon energy. TODO: CHANGE LATER WHEN YOU ACTUALLY DO GAS INTERACTIONS
+  periodic:   1                             # peridioc ICs. Keep them periodic so we don't loose photon energy.
 
 GEARRT:
   f_reduce_c: 1.        # reduce the speed of light for the RT solver by multiplying c with this factor
