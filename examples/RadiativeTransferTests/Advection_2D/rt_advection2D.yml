@@ -41,6 +41,7 @@ InitialConditions:
 
 GEARRT:
   f_reduce_c: 1.                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  f_limit_cooling_time: 0.0       # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
   CFL_condition: 0.99             # CFL condition for RT, independent of hydro
   photon_groups_Hz: [1., 2., 3.]  # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   use_const_emission_rates: 1     # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_LSol parameter
