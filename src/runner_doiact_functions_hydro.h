@@ -49,7 +49,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
 
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
@@ -79,7 +79,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-    const int pi_active = part_is_active(pi, e);
+    const int pi_active = PART_IS_ACTIVE(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -97,7 +97,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
-      const int pj_active = part_is_active(pj, e);
+      const int pj_active = PART_IS_ACTIVE(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
@@ -106,7 +106,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -182,7 +182,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
 
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
@@ -212,7 +212,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-    const int pi_active = part_is_active(pi, e);
+    const int pi_active = PART_IS_ACTIVE(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
@@ -228,7 +228,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Skip inhibited particles. */
       if (part_is_inhibited(pj, e)) continue;
 
-      const int pj_active = part_is_active(pj, e);
+      const int pj_active = PART_IS_ACTIVE(pj, e);
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
 
@@ -239,7 +239,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -329,7 +329,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!CELL_IS_ACTIVE(c, e)) return;
 
   /* Cosmological terms and physical constants */
   const float a = cosmo->a;
@@ -348,7 +348,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-    const int pi_active = part_is_active(pi, e);
+    const int pi_active = PART_IS_ACTIVE(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -366,7 +366,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
-      const int pj_active = part_is_active(pj, e);
+      const int pj_active = PART_IS_ACTIVE(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -378,7 +378,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       const int doi = pi_active && (r2 < hig2);
       const int doj = pj_active && (r2 < hjg2);
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -465,7 +465,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   TIMER_TIC;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!CELL_IS_ACTIVE(c, e)) return;
 
   /* Cosmological terms and physical constants */
   const float a = cosmo->a;
@@ -484,7 +484,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
     /* Skip inhibited particles. */
     if (part_is_inhibited(pi, e)) continue;
 
-    const int pi_active = part_is_active(pi, e);
+    const int pi_active = PART_IS_ACTIVE(pi, e);
     const float hi = pi->h;
     const float hig2 = hi * hi * kernel_gamma2;
     const float pix[3] = {(float)(pi->x[0] - c->loc[0]),
@@ -502,7 +502,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 
       const float hj = pj->h;
       const float hjg2 = hj * hj * kernel_gamma2;
-      const int pj_active = part_is_active(pj, e);
+      const int pj_active = PART_IS_ACTIVE(pj, e);
 
       /* Compute the pairwise distance. */
       const float pjx[3] = {(float)(pj->x[0] - c->loc[0]),
@@ -514,7 +514,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       const int doi = pi_active && ((r2 < hig2) || (r2 < hjg2));
       const int doj = pj_active && ((r2 < hig2) || (r2 < hjg2));
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -650,7 +650,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
         r2 += dx[k] * dx[k];
       }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -758,7 +758,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                        (float)(piz - pjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -823,7 +823,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
                        (float)(piz - pjz)};
         const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -990,7 +990,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time */
       if (pi->ti_drift != e->ti_current)
         error("Particle pi not drifted to current time");
@@ -1075,15 +1075,16 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
+  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   const float shift_threshold_x =
-      2. * ci->width[0] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[0] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[1] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[2] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
@@ -1102,7 +1103,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const float H = cosmo->H;
   GET_MU0();
 
-  if (cell_is_active_hydro(ci, e)) {
+  if (CELL_IS_ACTIVE(ci, e)) {
 
     /* Loop over the parts in ci. */
     for (int pid = count_i - 1;
@@ -1113,7 +1114,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       const float hi = pi->h;
 
       /* Skip inactive particles */
-      if (!part_is_active(pi, e)) continue;
+      if (!PART_IS_ACTIVE(pi, e)) continue;
 
       /* Is there anything we need to interact with ? */
       const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
@@ -1170,11 +1171,13 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss? */
@@ -1199,7 +1202,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     }   /* loop over the parts in ci. */
   }     /* Cell ci is active */
 
-  if (cell_is_active_hydro(cj, e)) {
+  if (CELL_IS_ACTIVE(cj, e)) {
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j && sort_j[pjd].d - hj_max - dx_max < di_max;
@@ -1210,7 +1213,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
       const float hj = pj->h;
 
       /* Skip inactive particles */
-      if (!part_is_active(pj, e)) continue;
+      if (!PART_IS_ACTIVE(pj, e)) continue;
 
       /* Is there anything we need to interact with ? */
       const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
@@ -1267,11 +1270,13 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss? */
@@ -1316,10 +1321,10 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
 
   /* Check that cells are drifted. */
-  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+  if (!CELL_ARE_PART_DRIFTED(ci, e) || !CELL_ARE_PART_DRIFTED(cj, e))
     error("Interacting undrifted cells.");
 
   /* Get the sort ID. */
@@ -1424,15 +1429,16 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
+  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   const float shift_threshold_x =
-      2. * ci->width[0] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[0] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_y =
-      2. * ci->width[1] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[1] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
   const float shift_threshold_z =
-      2. * ci->width[2] +
-      2. * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
+      2.02 * ci->width[2] +
+      2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
 #endif /* SWIFT_DEBUG_CHECKS */
 
   /* Get some other useful values. */
@@ -1469,14 +1475,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     /* If everybody is active don't bother copying */
     sort_active_i = sort_i;
     count_active_i = count_i;
-  } else if (cell_is_active_hydro(ci, e)) {
+  } else if (CELL_IS_ACTIVE(ci, e)) {
     if (posix_memalign((void **)&sort_active_i, SWIFT_CACHE_ALIGNMENT,
                        sizeof(struct sort_entry) * count_i) != 0)
       error("Failed to allocate active sortlists.");
 
     /* Collect the active particles in ci */
     for (int k = 0; k < count_i; k++) {
-      if (part_is_active(&parts_i[sort_i[k].i], e)) {
+      if (PART_IS_ACTIVE(&parts_i[sort_i[k].i], e)) {
         sort_active_i[count_active_i] = sort_i[k];
         count_active_i++;
       }
@@ -1488,14 +1494,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     /* If everybody is active don't bother copying */
     sort_active_j = sort_j;
     count_active_j = count_j;
-  } else if (cell_is_active_hydro(cj, e)) {
+  } else if (CELL_IS_ACTIVE(cj, e)) {
     if (posix_memalign((void **)&sort_active_j, SWIFT_CACHE_ALIGNMENT,
                        sizeof(struct sort_entry) * count_j) != 0)
       error("Failed to allocate active sortlists.");
 
     /* Collect the active particles in cj */
     for (int k = 0; k < count_j; k++) {
-      if (part_is_active(&parts_j[sort_j[k].i], e)) {
+      if (PART_IS_ACTIVE(&parts_j[sort_j[k].i], e)) {
         sort_active_j[count_active_j] = sort_j[k];
         count_active_j++;
       }
@@ -1529,7 +1535,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
     /* Do we need to only check active parts in cj
        (i.e. pi does not need updating) ? */
-    if (!part_is_active(pi, e)) {
+    if (!PART_IS_ACTIVE(pi, e)) {
 
       /* Loop over the *active* parts in cj within range of pi */
       for (int pjd = 0; pjd < count_active_j && sort_active_j[pjd].d < di;
@@ -1583,12 +1589,14 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
 
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss?
@@ -1661,6 +1669,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -1668,12 +1677,13 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
 #endif
+#endif
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
 
           /* Does pj need to be updated too? */
-          if (part_is_active(pj, e)) {
+          if (PART_IS_ACTIVE(pj, e)) {
             IACT(r2, dx, hi, hj, pi, pj, a, H);
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1735,7 +1745,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
     /* Do we need to only check active parts in ci
        (i.e. pj does not need updating) ? */
-    if (!part_is_active(pj, e)) {
+    if (!PART_IS_ACTIVE(pj, e)) {
 
       /* Loop over the *active* parts in ci. */
       for (int pid = count_active_i - 1;
@@ -1790,11 +1800,13 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss?
@@ -1869,11 +1881,13 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
               "Invalid particle position in Z for pj (pjz=%e ci->width[2]=%e)",
               pjz, ci->width[2]);
 
+#if defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
         if (pj->ti_drift != e->ti_current)
           error("Particle pj not drifted to current time");
+#endif
 #endif
 
         /* Hit or miss?
@@ -1881,7 +1895,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         if (r2 < hjg2 && r2 >= hig2) {
 
           /* Does pi need to be updated too? */
-          if (part_is_active(pi, e)) {
+          if (PART_IS_ACTIVE(pi, e)) {
             IACT(r2, dx, hj, hi, pj, pi, a, H);
             IACT_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -1917,9 +1931,9 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   }     /* Loop over all cj */
 
   /* Clean-up if necessary */  // MATTHIEU: temporary disable this optimization
-  if (cell_is_active_hydro(ci, e))  // && !cell_is_all_active_hydro(ci, e))
+  if (CELL_IS_ACTIVE(ci, e))   // && !cell_is_all_active_hydro(ci, e))
     free(sort_active_i);
-  if (cell_is_active_hydro(cj, e))  // && !cell_is_all_active_hydro(cj, e))
+  if (CELL_IS_ACTIVE(cj, e))  // && !cell_is_all_active_hydro(cj, e))
     free(sort_active_j);
 
   TIMER_TOC(TIMER_DOPAIR);
@@ -1942,10 +1956,10 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj) {
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
 
   /* Check that cells are drifted. */
-  if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+  if (!CELL_ARE_PART_DRIFTED(ci, e) || !CELL_ARE_PART_DRIFTED(cj, e))
     error("Interacting undrifted cells.");
 
   /* Get the sort ID. */
@@ -2046,7 +2060,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
                      count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
-    if (part_is_active(&parts[k], e)) {
+    if (PART_IS_ACTIVE(&parts[k], e)) {
       indt[countdt] = k;
       countdt += 1;
     }
@@ -2072,7 +2086,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle inactive? */
-    if (!part_is_active(pi, e)) {
+    if (!PART_IS_ACTIVE(pi, e)) {
 
       /* Loop over the other particles .*/
       for (int pjd = firstdt; pjd < countdt; pjd++) {
@@ -2081,7 +2095,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         struct part *restrict pj = &parts[indt[pjd]];
         const float hj = pj->h;
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -2143,11 +2157,11 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
         const int doj =
-            (part_is_active(pj, e)) && (r2 < hj * hj * kernel_gamma2);
+            (PART_IS_ACTIVE(pj, e)) && (r2 < hj * hj * kernel_gamma2);
 
         const int doi = (r2 < hig2);
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -2237,14 +2251,14 @@ void DOSELF1_BRANCH(struct runner *r, struct cell *c) {
   if (c->hydro.count == 0) return;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!CELL_IS_ACTIVE(c, e)) return;
 
   /* Did we mess up the recursion? */
   if (c->hydro.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
-  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
+  if (!CELL_ARE_PART_DRIFTED(c, e)) error("Interacting undrifted cell.");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF1_NAIVE(r, c);
@@ -2284,7 +2298,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                      count * sizeof(int)) != 0)
     error("Failed to allocate indt.");
   for (int k = 0; k < count; k++)
-    if (part_is_active(&parts[k], e)) {
+    if (PART_IS_ACTIVE(&parts[k], e)) {
       indt[countdt] = k;
       countdt += 1;
     }
@@ -2310,7 +2324,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     const float hig2 = hi * hi * kernel_gamma2;
 
     /* Is the ith particle not active? */
-    if (!part_is_active(pi, e)) {
+    if (!PART_IS_ACTIVE(pi, e)) {
 
       /* Loop over the other particles .*/
       for (int pjd = firstdt; pjd < countdt; pjd++) {
@@ -2327,7 +2341,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -2381,7 +2395,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
           r2 += dx[k] * dx[k];
         }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
         if (pi->ti_drift != e->ti_current)
           error("Particle pi not drifted to current time");
@@ -2393,7 +2407,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
           /* Does pj need to be updated too? */
-          if (part_is_active(pj, e)) {
+          if (PART_IS_ACTIVE(pj, e)) {
             IACT(r2, dx, hi, hj, pi, pj, a, H);
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -2449,14 +2463,14 @@ void DOSELF2_BRANCH(struct runner *r, struct cell *c) {
   if (c->hydro.count == 0) return;
 
   /* Anything to do here? */
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!CELL_IS_ACTIVE(c, e)) return;
 
   /* Did we mess up the recursion? */
   if (c->hydro.h_max_old * kernel_gamma > c->dmin)
     error("Cell smaller than smoothing length");
 
   /* Check that cells are drifted. */
-  if (!cell_are_part_drifted(c, e)) error("Interacting undrifted cell.");
+  if (!CELL_ARE_PART_DRIFTED(c, e)) error("Interacting undrifted cell.");
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF2_NAIVE(r, c);
@@ -2488,7 +2502,7 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -2508,10 +2522,10 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
+  else if (CELL_IS_ACTIVE(ci, e) || CELL_IS_ACTIVE(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
-    if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+    if (!CELL_ARE_PART_DRIFTED(ci, e) || !CELL_ARE_PART_DRIFTED(cj, e))
       error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
@@ -2547,7 +2561,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (ci->hydro.count == 0 || !CELL_IS_ACTIVE(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_hydro_task(ci)) {
@@ -2566,7 +2580,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *ci, int gettimer) {
   else {
 
     /* Drift the cell to the current timestep if needed. */
-    if (!cell_are_part_drifted(ci, r->e)) error("Interacting undrifted cell.");
+    if (!CELL_ARE_PART_DRIFTED(ci, r->e)) error("Interacting undrifted cell.");
 
     DOSELF1_BRANCH(r, ci);
   }
@@ -2594,7 +2608,7 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (!cell_is_active_hydro(ci, e) && !cell_is_active_hydro(cj, e)) return;
+  if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
   /* Get the type of pair and flip ci/cj if needed. */
@@ -2614,10 +2628,10 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
   }
 
   /* Otherwise, compute the pair directly. */
-  else if (cell_is_active_hydro(ci, e) || cell_is_active_hydro(cj, e)) {
+  else if (CELL_IS_ACTIVE(ci, e) || CELL_IS_ACTIVE(cj, e)) {
 
     /* Make sure both cells are drifted to the current timestep. */
-    if (!cell_are_part_drifted(ci, e) || !cell_are_part_drifted(cj, e))
+    if (!CELL_ARE_PART_DRIFTED(ci, e) || !CELL_ARE_PART_DRIFTED(cj, e))
       error("Interacting undrifted cells.");
 
     /* Do any of the cells need to be sorted first? */
@@ -2653,7 +2667,7 @@ void DOSUB_SELF2(struct runner *r, struct cell *ci, int gettimer) {
   TIMER_TIC;
 
   /* Should we even bother? */
-  if (ci->hydro.count == 0 || !cell_is_active_hydro(ci, r->e)) return;
+  if (ci->hydro.count == 0 || !CELL_IS_ACTIVE(ci, r->e)) return;
 
   /* Recurse? */
   if (cell_can_recurse_in_self_hydro_task(ci)) {

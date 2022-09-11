@@ -115,6 +115,11 @@ struct rt_part_data {
   /*! thermochemistry done? */
   int debug_thermochem_done;
 
+  /* Subcycling flags */
+
+  /*! Current subcycle wrt (last) hydro step */
+  int debug_nsubcycles;
+
 #endif
 };
 

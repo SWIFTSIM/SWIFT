@@ -1060,6 +1060,8 @@ void write_output_single(struct engine* e,
                      swift_type_count);
   io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                      numParticlesHighWord, swift_type_count);
+  io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
+                     swift_type_count);
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1133,7 +1135,8 @@ void write_output_single(struct engine* e,
     if (h_err < 0) error("Error while creating alias for particle group.\n");
 
     /* Write the number of particles and fields as an attribute */
-    io_write_attribute_l(h_grp, "NumberOfParticles", numParticles[ptype]);
+    io_write_attribute_ll(h_grp, "NumberOfParticles", N_total[ptype]);
+    io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
     int num_fields = 0;
     struct io_props list[100];

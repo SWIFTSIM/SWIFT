@@ -1091,6 +1091,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
   const struct hydro_props *hydro_props = e->hydro_properties;
 
   const int with_cosmology = (e->policy & engine_policy_cosmology);
+  const int with_rt = (e->policy & engine_policy_rt);
 
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
@@ -1294,7 +1295,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-            rt_reset_part(p, cosmo);
+            if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+              rt_debugging_check_nr_subcycles(p, e->rt_props);
+#endif
+              rt_reset_part(p, cosmo);
+            }
 
             /* Ok, we are done with this particle */
             continue;
@@ -1466,7 +1472,12 @@ void runner_do_ghost(struct runner *r, struct cell *c, int timer) {
 
 #endif /* EXTRA_HYDRO_LOOP */
 
-        rt_reset_part(p, cosmo);
+        if (with_rt) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+          rt_debugging_check_nr_subcycles(p, e->rt_props);
+#endif
+          rt_reset_part(p, cosmo);
+        }
       }
 
       /* We now need to treat the particles whose smoothing length had not
@@ -1587,7 +1598,7 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
@@ -1607,8 +1618,13 @@ void runner_do_rt_ghost1(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
+      /* First reset everything that needs to be reset for the following
+       * subcycle */
+      rt_reset_part_each_subcycle(p);
+
+      /* Now finish up injection */
       rt_finalise_injection(p, e->rt_props);
     }
   }
@@ -1632,7 +1648,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
@@ -1652,7 +1668,7 @@ void runner_do_rt_ghost2(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
       rt_end_gradient(p, cosmo);
     }
