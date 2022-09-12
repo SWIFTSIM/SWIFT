@@ -358,6 +358,27 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
     }
 
+    /* Background gravity pool? */
+    else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
+
+      /* Local pointers. */
+      struct cell *ci = t->ci;
+#ifdef WITH_MPI
+      const int ci_nodeID = ci->nodeID;
+#else
+      const int ci_nodeID = nodeID;
+#endif
+
+      const int ci_active_gravity = cell_is_active_gravity(ci, e);
+
+      if (ci_active_gravity && ci_nodeID == nodeID) {
+        scheduler_activate(s, t);
+             
+        /* Activate the gravity drift */
+        cell_activate_subcell_grav_tasks(t->ci, NULL, s); 
+      }
+    }
+
     /* Pair? */
     else if (t_type == task_type_pair || t_type == task_type_sub_pair) {
 
@@ -647,16 +668,6 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
           if (cj_nodeID == nodeID)
             scheduler_activate(s, cj->hydro.super->black_holes.black_holes_in);
         }
-      }
-
-      /* Background gravity pools. */
-      else if (t_type == task_type_pair && t_subtype == task_subtype_grav &&
-               (ci_active_gravity && ci_nodeID == nodeID)) {
-        
-        scheduler_activate(s, t);
-        
-        /* Activate the gravity drift */
-        cell_activate_subcell_grav_tasks(t->ci, NULL, s);
       }
 
       /* Gravity */
