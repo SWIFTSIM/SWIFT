@@ -1628,6 +1628,9 @@ void engine_makeproxies_with_zoom_region(struct engine *e) {
  */
 void engine_make_self_gravity_bkg_pool(struct engine *e) {
 
+  /* Let's time this */
+  const ticks tic = getticks();
+
   /* Get some useful information. */
   struct space *s = e->s;
   const int nodeID = e->nodeID;
@@ -1691,6 +1694,15 @@ void engine_make_self_gravity_bkg_pool(struct engine *e) {
       }
     }
   }
+
+  if (e->verbose)
+    message("These are %zu background particles in the pool",
+            s->zoom_props->nr_bkg_pool);
+
+  /* Be clear about the time */
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
 }
 
 /**
