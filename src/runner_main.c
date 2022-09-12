@@ -188,7 +188,11 @@ void *runner_main(void *data) {
         struct cell *ci_temp = ci;
         struct cell *cj_temp = cj;
         double shift[3];
-        t->sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
+        if (cj != NULL) {
+          t->sid = space_getsid(e->s, &ci_temp, &cj_temp, shift);
+        } else {
+          t->sid = -1;
+        }
       } else {
         t->sid = -1;
       }
