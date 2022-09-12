@@ -2236,9 +2236,6 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_grav_long_range_bkg:
         cost = wscale * gcount_i;
         break;
-      case task_type_grav_bkg_pair:
-        cost = wscale * gcount_i * 26;
-        break;
       case task_type_grav_mm:
         cost = wscale * (gcount_i + gcount_j);
         break;
@@ -2303,6 +2300,16 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         else
           cost = 1e9;
         break;
+
+      case task_type_bkg_pool:
+        size_t nr_bkg_pool = s->space->zoom_props->nr_bkg_pool;
+        if (t->subtype == task_subtype_grav_self_bkg_pool)
+          cost = 1.f * (wscale * nr_bkg_pool) * nr_bkg_pool;
+        else if (t->subtype == task_subtype_grav_pair_bkg_pool)
+          cost = 3.f * (wscale * nr_bkg_pool) * nr_bkg_pool;
+        else
+          cost = wscale * nr_bkg_pool;
+        break
       default:
         cost = 0;
         break;
@@ -2482,6 +2489,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_neutrino_weight:
       case task_type_pack:
       case task_type_unpack:
+      case task_type_bkg_pool:
         qid = t->ci->grav.super->owner;
         break;
       case task_type_kick1:
