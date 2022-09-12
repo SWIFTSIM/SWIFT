@@ -820,12 +820,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
     
 #endif
 
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
-  p->sum_w_V = 0.f;
-  p->sum_r_w_V[0] = 0.f;
-  p->sum_r_w_V[1] = 0.f;
-  p->sum_r_w_V[2] = 0.f;     
-    
+#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC  
  int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -999,29 +994,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
   p->last_corrected_rho = p->rho;
   p->last_f_S = f_S;
-#endif
-    
-    
-#if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC    
-      p->sum_r_w_V[0] *= h_inv_dim; 
-  p->sum_r_w_V[1] *= h_inv_dim;
-  p->sum_r_w_V[2] *= h_inv_dim;
-    
-  p->sum_w_V += kernel_root * (p->mass / p->rho);
-  p->sum_w_V *= h_inv_dim; 
-    
-  float centre_of_volume = sqrtf(p->sum_r_w_V[0] * p->sum_r_w_V[0] + p->sum_r_w_V[1] * p->sum_r_w_V[1] + p->sum_r_w_V[2] * p->sum_r_w_V[2]) / (p->sum_w_V * p->h);  
-    
-  if (centre_of_volume > 0.05f){
-      p->is_vacuum_boundary = 1;
-  }else{
-      p->is_vacuum_boundary = 0;
-  }
-    
-  p->is_vacuum_boundary = 0;  
 #endif    
-    
-    
 }
 
 /**
@@ -1133,7 +1106,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* If h=h_max don't do anything fancy. Things like using m/rho to calculate
    * the volume stops working */
 
-  if (!p->is_h_max && !p->is_vacuum_boundary) {
+  if (!p->is_h_max) {
       
       
       
@@ -1327,8 +1300,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   else
     p->rho *= expf(w2);
     
- // const float floor_u = FLT_MIN;//1e-30;//1e-12; 
- // p->u = max(p->u, floor_u);
+  const float floor_u = FLT_MIN;
+  p->u = max(p->u, floor_u);
 
   /* Compute the new pressure */
   const float pressure =
@@ -1392,10 +1365,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
 
     
-//  const float floor_u = FLT_MIN;//1e-30;//1e-12;
+  const float floor_u = FLT_MIN;
 
   /* Take highest of both limits */
-//  const float energy_min = max(min_u, floor_u);
+  const float energy_min = max(min_u, floor_u);
 
   if (xp->u_full < energy_min) {
     xp->u_full = energy_min;
