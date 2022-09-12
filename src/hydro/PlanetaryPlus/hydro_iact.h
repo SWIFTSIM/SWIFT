@@ -414,20 +414,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
         volume_j = pj->mass / (pj->last_f_S * pj->rho + (1.f - pj->last_f_S) * pj->last_corrected_rho);
       }   
   #endif  
-    
-    
-  pi->sum_w_V += wi * volume_j;// * pj->mass / pj->rho;// 
-  pj->sum_w_V += wj * volume_i;// * pi->mass / pi->rho;//
-    
-  pi->sum_r_w_V[0] += -dx[0] * wi * volume_j;// * pj->mass / pj->rho;//
-  pi->sum_r_w_V[1] += -dx[1] * wi * volume_j;// * pj->mass / pj->rho;// * volume_j;//
-  pi->sum_r_w_V[2] += -dx[2] * wi * volume_j;// * pj->mass / pj->rho;// * volume_j;//
-    
-  pj->sum_r_w_V[0] += dx[0] * wj * volume_i;// * pi->mass / pi->rho;// * volume_i;//
-  pj->sum_r_w_V[1] += dx[1] * wj * volume_i;// * pi->mass / pi->rho;// * volume_i;//
-  pj->sum_r_w_V[2] += dx[2] * wj * volume_i;// * pi->mass / pi->rho;// * volume_i;//    
-    
-    
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -549,14 +535,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
         volume_j = pj->mass / (pj->last_f_S * pj->rho + (1.f - pj->last_f_S) * pj->last_corrected_rho);
       }   
   #endif    
-    
-  pi->sum_w_V += wi * volume_j;// * pj->mass / pj->rho;// 
-    
-  pi->sum_r_w_V[0] += -dx[0] * wi * volume_j;// * pj->mass / pj->rho;//
-  pi->sum_r_w_V[1] += -dx[1] * wi * volume_j;// * pj->mass / pj->rho;// * volume_j;//
-  pi->sum_r_w_V[2] += -dx[2] * wi * volume_j;// * pj->mass / pj->rho;// * volume_j;//
- 
-    
   int i, j;
   for (i = 0; i < 3; ++i) {
     for (j = 0; j < 3; ++j) {
@@ -674,7 +652,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
 #ifdef PLANETARY_MATRIX_INVERSION
-  if (!pi->is_h_max && !pj->is_h_max && !pi->is_vacuum_boundary && !pj->is_vacuum_boundary) {
+  if (!pi->is_h_max && !pj->is_h_max) {
     for (i = 0; i < 3; ++i) {
        /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
       Gi[i] =
@@ -1040,7 +1018,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute the G and Q gradient and viscosity factors, either using matrix
    * inversions or standard GDF SPH */
 #ifdef PLANETARY_MATRIX_INVERSION
-  if (!pi->is_h_max && !pj->is_h_max && !pi->is_vacuum_boundary && !pj->is_vacuum_boundary) {
+  if (!pi->is_h_max && !pj->is_h_max) {
     for (i = 0; i < 3; ++i) {
        /* eq 4 and 5 in Rosswog 2020. These replace the gradient of the kernel */
       Gi[i] =
