@@ -359,7 +359,8 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
     }
 
     /* Background gravity pool? */
-    else if (t_type == task_type_pair && t_subtype == task_subtype_grav) {
+    else if (t_type == task_type_pair &&
+             t_subtype == task_subtype_grav_bkg_pool) {
 
       /* Local pointers. */
       struct cell *ci = t->ci;
