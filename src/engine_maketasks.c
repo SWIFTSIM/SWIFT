@@ -2031,6 +2031,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
                  t_subtype == task_subtype_grav_bkgzoom) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
+      } else if (t_subtype == task_subtype_grav_bkg_pool) {
+        engine_addlink(e, &ci->grav.grav, t);
       }
 #ifdef SWIFT_DEBUG_CHECKS
       else if (t_subtype == task_subtype_external_grav) {
@@ -2082,6 +2084,120 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
     }
   }
 }
+
+/**
+ * @brief Creates links for all pooled pairs.
+ *
+ * @param e The #engine
+ * @param ci The background cell.
+ * @param t The pooled pair task.
+ */
+void engine_link_gravity_pooled_pairs(struct engine *e, stuct cell *ci,
+                                      struct task *t) {
+
+  /* Get some useful information. */
+  struct space *s = e->s;
+  const int periodic = s->periodic;
+  const int nodeID = e->nodeID;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                       s->zoom_props->cdim[2]};
+  struct cell *cells = s->cells_top;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, periodic);
+
+  /* Convert the maximal search distance to a number of cells
+   * Define a lower and upper delta in case things are not symmetric */
+  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one */
+  if (periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
+    }
+  }
+
+  /* Get the (i,j,k) location of the top-level cell in the grid. */
+  const int i = ci->loc[0] * s->iwidth[0];
+  const int j = ci->loc[1] * s->iwidth[1];
+  const int k = ci->loc[2] * s->iwidth[2];
+  const int cid = cell_getid(cdim, i, j, k);
+
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+
+    /* Zoom cells are never periodic, exit if beyond zoom region */
+    if (ii < 0 || ii >= cdim[0]) continue;
+
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+      
+      /* Zoom cells are never periodic, exit if beyond zoom region */
+      if (jj < 0 || jj >= cdim[1]) continue;
+
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+        /* Zoom cells are never periodic, exit if beyond zoom region */
+        if (kk < 0 || kk >= cdim[2]) continue;
+
+        /* Apply periodic BC (not harmful if not using periodic BC) */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
+        
+        /* Get the second cell */
+        const int cjd = cell_getid(cdim, iii, jjj, kkk);
+        struct cell *cj = &cells[cjd];
+
+        /* Avoid duplicates and empty cells. */
+        if (cid >= cjd || cj->grav.count == 0)
+          continue;
+
+        /* Minimal distance between any pair of particles */
+        const double min_radius2 =
+          cell_min_dist2_same_size(ci, cj, periodic, dim);
+
+        /* Are we beyond the distance where the truncated forces are 0? */
+        if (periodic && min_radius2 > max_distance2) continue;
+
+        /* Are the cells too close for a MM interaction ? */
+        if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                    /*is_tree_walk=*/0)) {
+
+          if (cj->nodeID == nodeID) {
+
+            /* drift ---+-> gravity --> grav_down */
+            /* init  --/    */
+            if (ci_parent != cj_parent) { /* Avoid double unlock */
+              scheduler_addunlock(sched, cj->grav.drift_out, t);
+              scheduler_addunlock(sched, cj->grav.init_out, t);
+              scheduler_addunlock(sched, t, cj->grav.down_in);
+            }
+          }
+        } 
+      } /* Loop over kkks */
+    } /* Loop over jjjs */
+  } /* Loop over iiis */
+
+}
+
 
 /**
  * @brief Creates all the task dependencies for the gravity
@@ -2158,10 +2274,11 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Otherwise, pair interaction? */
-    else if (t_type == task_type_pair && (t_subtype == task_subtype_grav ||
-                                          t_subtype == task_subtype_grav_bkg ||
-                                          t_subtype == task_subtype_grav_zoombkg ||
-                                          t_subtype == task_subtype_grav_bkgzoom)) {
+    else if (t_type == task_type_pair &&
+             (t_subtype == task_subtype_grav ||
+              t_subtype == task_subtype_grav_bkg ||
+              t_subtype == task_subtype_grav_zoombkg ||
+              t_subtype == task_subtype_grav_bkgzoom)) {
 
       if (ci_nodeID == nodeID) {
 
@@ -2183,9 +2300,24 @@ void engine_link_gravity_tasks(struct engine *e) {
       }
     }
 
+    /* Otherwise, background pool of pair interactions? */
+    else if (t_type == task_type_pair &&
+             t_subtype == task_subtype_grav_bkg_pool) {
+
+      /* drift ---+-> gravity --> grav_down */
+      /* init  --/    */
+      scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+      scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+      scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+      
+      /* Handle the possible neighbours */
+      engine_link_gravity_pooled_pairs(e, ci, t);
+    }
+
     /* Otherwise, sub-self interaction? */
-    else if (t_type == task_type_sub_self && (t_subtype == task_subtype_grav ||
-                                              t_subtype == task_subtype_grav_bkg)) {
+    else if (t_type == task_type_sub_self &&
+             (t_subtype == task_subtype_grav ||
+              t_subtype == task_subtype_grav_bkg)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (ci_nodeID != nodeID) error("Non-local sub-self task");
@@ -2211,10 +2343,11 @@ void engine_link_gravity_tasks(struct engine *e) {
     }
 
     /* Otherwise, sub-pair interaction? */
-    else if (t_type == task_type_sub_pair && (t_subtype == task_subtype_grav ||
-                                              t_subtype == task_subtype_grav_bkg ||
-                                              t_subtype == task_subtype_grav_zoombkg ||
-                                              t_subtype == task_subtype_grav_bkgzoom)) {
+    else if (t_type == task_type_sub_pair &&
+             (t_subtype == task_subtype_grav ||
+              t_subtype == task_subtype_grav_bkg ||
+              t_subtype == task_subtype_grav_zoombkg ||
+              t_subtype == task_subtype_grav_bkgzoom)) {
 
       if (ci_nodeID == nodeID) {
 
