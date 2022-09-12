@@ -447,6 +447,9 @@ struct zoom_region_properties {
   /*! Number of particles that have left the zoom region and been converted to
    * dark matter */
   size_t nr_wanderers;
+
+  /* The number of particles in pooled background cells. */
+  size_t nr_bkg_pool;
 };
 
 /* Function prototypes. */

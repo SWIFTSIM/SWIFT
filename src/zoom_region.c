@@ -1668,6 +1668,29 @@ void engine_make_self_gravity_bkg_pool(struct engine *e) {
       }
     }
   }
+
+  /* Loop over background cells in the pool and count particles for weights. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        const size_t cid = cell_getid(cdim, i, j, k);
+
+        /* Get the cell. */
+        c = &s->cells_top[cid + bkg_cell_offset];
+
+        /* Skip neighbour and void cells. */
+        if (c->tl_cell_type == void_tl_cell ||
+            c->tl_cell_type == tl_cell_neighbour)
+          continue;
+
+        /* Label and make the background task pooling cell. */
+        if (c->nodeID != nodeID) continue;
+
+        /* Add the particles in this cell to weight */
+        s->zoom_props->nr_bkg_pool += c->grav.count;
+      }
+    }
+  }
 }
 
 /**
