@@ -179,7 +179,6 @@ void *runner_main(void *data) {
           error("The void cell is part of a pair task!");
       }
         
-
 #ifdef SWIFT_DEBUG_TASKS
       /* Mark the thread we run on */
       t->rid = r->cpuid;
@@ -598,6 +597,230 @@ void *runner_main(void *data) {
         case task_type_rt_tchem:
           runner_do_rt_tchem(r, t->ci, 1);
           break;
+
+        case task_type_bkg_pool:
+          
+          /* Define useful information. */
+          const int nr_bkg_cells =
+            s->zoom_props->nr_local_bkg_cells_with_particles;
+          const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+          struct cell *cells = e->s->cells_top;
+          const int local_bkg_cells_with_parts =
+            s->zoom_props->local_bkg_cells_with_particles_top;
+          
+          if (t->subtype == task_subtype_init_grav_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_do_init_grav(r, pool_c, 1);
+              
+            }
+          } else if (t->subtype == task_subtype_drift_gpart_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+              
+              /* Run task */
+              runner_do_drift_gpart(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_grav_long_range_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_do_grav_long_range(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_grav_self_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_doself_recursive_grav(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_grav_pair_bkg_pool) {
+
+            /* Get some variables we need. */
+            int cdim[3] = {e->s->cdim[0], e->s->cdim[1], e->s->cdim[2]};
+            const int periodic = s->periodic;
+            const int nodeID = e->nodeID;
+            const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+            const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                                 s->zoom_props->cdim[2]};
+            const double max_distance = e->mesh->r_cut_max;
+            const double max_distance2 = max_distance * max_distance;
+            
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Remove bkg cell offset from cid. */
+              cid -= bkg_cell_offset;
+
+              /* Integer indices of the cell in the top-level grid */
+              const int i = cid / (cdim[1] * cdim[2]);
+              const int j = (cid / cdim[2]) % cdim[1];
+              const int k = cid % cdim[2];
+
+              /* TODO: do pair walk. */
+
+              /* Run task */
+              runner_do_drift_gpart(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_grav_down_bkg_pool) {
+            
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_do_grav_down(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_end_grav_force_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_do_end_grav_force(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_kick1_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_do_kick1(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_kick2_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_do_kick2(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_timestep_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_do_timestep(r, pool_c, 1);
+              
+            }
+            
+          } else if (t->subtype == task_subtype_collect_bkg_pool) {
+            for (int k = 0; k < nr_bkg_cells; k++) {
+
+              /* Get this background cell. */
+              int cid = local_bkg_cells_with_parts[k];
+              struct cell *pool_c = &cells[cid];
+
+              /* Skip if it is not a normal background cell. */
+              if (pool_c->tl_cell_type == tl_cell_neighbour ||
+                  pool_c->tl_cell_type == void_tl_cell)
+                continue;
+
+              /* Run task */
+              runner_do_timestep_collect(r, pool_c, 1);
+              
+            }
+
+          } else {
+            error("Unknown/invalid task subtype (%d).", t->subtype);
+          }
+          break;
+          
         default:
           error("Unknown/invalid task type (%d).", t->type);
       }
