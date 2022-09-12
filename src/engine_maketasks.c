@@ -2096,6 +2096,7 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
                                       struct task *t) {
 
   /* Get some useful information. */
+  struct scheduler *sched = &e->sched;
   struct space *s = e->s;
   const int periodic = s->periodic;
   const int nodeID = e->nodeID;
@@ -2185,11 +2186,9 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
 
             /* drift ---+-> gravity --> grav_down */
             /* init  --/    */
-            if (ci_parent != cj_parent) { /* Avoid double unlock */
-              scheduler_addunlock(sched, cj->grav.drift_out, t);
-              scheduler_addunlock(sched, cj->grav.init_out, t);
-              scheduler_addunlock(sched, t, cj->grav.down_in);
-            }
+            scheduler_addunlock(sched, cj->grav.drift_out, t);
+            scheduler_addunlock(sched, cj->grav.init_out, t);
+            scheduler_addunlock(sched, t, cj->grav.down_in);
           }
         } 
       } /* Loop over kkks */
