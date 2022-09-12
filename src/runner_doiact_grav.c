@@ -2764,3 +2764,113 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   if (timer) TIMER_TOC(timer_dograv_long_range);
 }
+
+/**
+ * @brief This function loops over all cells in range calling the main pair
+ *        recursive gravity function.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param gettimer Are we timing this ?
+ */
+void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
+                                          const int timer) {
+
+  /* Get some useful information. */
+  const struct engine *e = r->e;
+  struct space *s = e->s;
+  const int nodeID = e->nodeID;
+  const int periodic = s->periodic;
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                       s->zoom_props->cdim[2]};
+  struct cell *cells = s->cells_top;
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  TIMER_TIC;
+
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
+      s->min_a_grav, s->max_mpole_power, periodic);
+
+  /* Convert the maximal search distance to a number of cells
+   * Define a lower and upper delta in case things are not symmetric */
+  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
+  int delta_m = delta;
+  int delta_p = delta;
+
+  /* Special case where every cell is in range of every other one */
+  if (periodic) {
+    if (delta >= cdim[0] / 2) {
+      if (cdim[0] % 2 == 0) {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2 - 1;
+      } else {
+        delta_m = cdim[0] / 2;
+        delta_p = cdim[0] / 2;
+      }
+    }
+  } else {
+    if (delta > cdim[0]) {
+      delta_m = cdim[0];
+      delta_p = cdim[0];
+    }
+  }
+
+  /* Get the (i,j,k) location of the top-level cell in the grid. */
+  const int i = ci->loc[0] * s->iwidth[0];
+  const int j = ci->loc[1] * s->iwidth[1];
+  const int k = ci->loc[2] * s->iwidth[2];
+  const int cid = cell_getid(cdim, i, j, k);
+
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+
+    /* Zoom cells are never periodic, exit if beyond zoom region */
+    if (ii < 0 || ii >= cdim[0]) continue;
+
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+      
+      /* Zoom cells are never periodic, exit if beyond zoom region */
+      if (jj < 0 || jj >= cdim[1]) continue;
+
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
+        /* Zoom cells are never periodic, exit if beyond zoom region */
+        if (kk < 0 || kk >= cdim[2]) continue;
+
+        /* Apply periodic BC (not harmful if not using periodic BC) */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
+        
+        /* Get the second cell */
+        const int cjd = cell_getid(cdim, iii, jjj, kkk);
+        struct cell *cj = &cells[cjd];
+
+        /* Avoid duplicates and empty cells. */
+        if (cid >= cjd || cj->grav.count == 0)
+          continue;
+
+        /* Minimal distance between any pair of particles */
+        const double min_radius2 =
+          cell_min_dist2_same_size(ci, cj, periodic, dim);
+
+        /* Are we beyond the distance where the truncated forces are 0? */
+        if (periodic && min_radius2 > max_distance2) continue;
+
+        /* Are the cells too close for a MM interaction ? */
+        if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                    /*is_tree_walk=*/0)) {
+
+          /* Compute the forces between these cells. */
+          runner_dopair_recursive_grav(r, ci, cj, 0);
+        } 
+      } /* Loop over kkks */
+    } /* Loop over jjjs */
+  } /* Loop over iiis */
+  
+  if (timer) TIMER_TOC(timer_dograv_long_range);
+}

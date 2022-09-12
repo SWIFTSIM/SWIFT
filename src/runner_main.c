@@ -275,6 +275,8 @@ void *runner_main(void *data) {
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_grav_bkgzoom)
             runner_dopair_recursive_grav(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_grav_bkg_pool)
+            runner_dopair_recursive_grav_bkgpool(r, ci, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dopair_branch_stars_density(r, ci, cj);
 #ifdef EXTRA_STAR_LOOPS

@@ -36,6 +36,9 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
                                   struct cell *cj, int gettimer);
 
+void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
+                                          int gettimer);
+
 void runner_dopair_grav_mm_progenies(struct runner *r, const long long flags,
                                      struct cell *restrict ci,
                                      struct cell *restrict cj);
