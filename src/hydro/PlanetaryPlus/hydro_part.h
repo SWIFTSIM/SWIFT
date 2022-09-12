@@ -302,13 +302,7 @@ struct part {
     
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
   /*! Particle C matrix. */
-  float C[3][3], Cinv[3][3];
-   
-  /*! Sum of W * volume should be approx 1 */    
-  float sum_w_V;
-    
-  /*! Sum of vector r * W * volume should be approx vector 0 */    
-  float sum_r_w_V[3];  
+  float C[3][3], Cinv[3][3]; 
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
