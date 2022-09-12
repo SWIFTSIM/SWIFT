@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "runner.h"
@@ -636,12 +636,14 @@ void runner_do_kick2(struct runner *r, struct cell *c, const int timer) {
 void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   const struct engine *e = r->e;
   const integertime_t ti_current = e->ti_current;
+  const integertime_t ti_current_subcycle = e->ti_current_subcycle;
   const struct cosmology *cosmo = e->cosmology;
   const struct feedback_props *feedback_props = e->feedback_props;
   const struct unit_system *us = e->internal_units;
   const struct phys_const *phys_const = e->physical_constants;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_rt = (e->policy & engine_policy_rt);
   const int count = c->hydro.count;
   const int gcount = c->grav.count;
   const int scount = c->stars.count;
@@ -660,11 +662,14 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   if (!cell_is_active_hydro(c, e) && !cell_is_active_gravity(c, e) &&
       !cell_is_active_stars(c, e) && !cell_is_active_sinks(c, e) &&
       !cell_is_active_black_holes(c, e)) {
+    /* Note: cell_is_rt_active is deliberately skipped. We only change
+     * the RT subcycling time steps when particles are hydro active. */
     c->hydro.updated = 0;
     c->grav.updated = 0;
     c->stars.updated = 0;
     c->sinks.updated = 0;
     c->black_holes.updated = 0;
+    c->rt.updated = 0;
     return;
   }
 
@@ -672,6 +677,8 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
       b_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_end_max = 0,
                 ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+  integertime_t ti_rt_min_step_size = max_nr_timesteps;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_end_max = 0,
                 ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_end_max = 0,
@@ -701,13 +708,25 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
         if (ti_end != ti_current)
           error("Computing time-step of rogue particle.");
+
+        if (with_rt) {
+          const integertime_t ti_rt_end = get_integer_time_end(
+              ti_current_subcycle, p->rt_time_data.time_bin);
+          if (ti_rt_end != ti_current_subcycle)
+            error("Computing RT time-step of rogue particle");
+        }
 #endif
 
         /* Get new time-step */
         const integertime_t ti_new_step = get_part_timestep(p, xp, e);
+        /* ToDo: For now, this needs to be done before we update the particle's
+         * time bins. When we aren't using a fixed number of sub-cycles, we
+         * can move this down with the rest of the RT block. */
+        integertime_t ti_rt_new_step = get_part_rt_timestep(p, xp, e);
 
         /* Update particle */
         p->time_bin = get_time_bin(ti_new_step);
+
         if (p->gpart != NULL) p->gpart->time_bin = p->time_bin;
 
         /* Update the tracers properties */
@@ -737,6 +756,20 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
           /* What is the next starting point for this cell ? */
           ti_gravity_beg_max = max(ti_current, ti_gravity_beg_max);
         }
+
+        /* Same for RT */
+        if (with_rt) {
+          /* Enforce RT time-step size <= hydro step size */
+          ti_rt_new_step = min(ti_new_step, ti_rt_new_step);
+
+          p->rt_time_data.time_bin = get_time_bin(ti_rt_new_step);
+
+          ti_rt_end_min =
+              min(ti_current_subcycle + ti_rt_new_step, ti_rt_end_min);
+          ti_rt_beg_max =
+              max(ti_current_subcycle + ti_rt_new_step, ti_rt_beg_max);
+          ti_rt_min_step_size = min(ti_rt_min_step_size, ti_rt_new_step);
+        }
       }
 
       else { /* part is inactive */
@@ -755,6 +788,28 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
           /* What is the next starting point for this cell ? */
           ti_hydro_beg_max = max(ti_beg, ti_hydro_beg_max);
+
+          /* Same for RT. */
+          if (with_rt) {
+            /* Here we assume that the particle is inactive, which is true for
+             * hydro, but not necessarily for a RT subcycle. RT time steps are
+             * only changed while the particle is hydro active. This allows to
+             * end up with results ti_rt_end == ti_current_subcyle, so we need
+             * to pretend we're past ti_current_subcycle already. */
+            integertime_t ti_rt_end = get_integer_time_end(
+                ti_current_subcycle + 1, p->rt_time_data.time_bin);
+
+            const integertime_t ti_rt_beg = get_integer_time_begin(
+                ti_current_subcycle + 1, p->rt_time_data.time_bin);
+
+            ti_rt_end_min = min(ti_rt_end, ti_rt_end_min);
+            ti_rt_beg_max = max(ti_rt_beg, ti_rt_beg_max);
+            /* We mustn't update ti_rt_min_step_size here, since the RT time
+             * step sizes don't change for particles when they are inactive.
+             * Leaving them here effectively prohibits them from ever increasing
+             * again. Instead, if we're working on a cell where each particle
+             * is inactive, do an appropriate check at the end. */
+          }
 
           if (p->gpart != NULL) {
 
@@ -1041,6 +1096,11 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         ti_hydro_end_min = min(cp->hydro.ti_end_min, ti_hydro_end_min);
         ti_hydro_beg_max = max(cp->hydro.ti_beg_max, ti_hydro_beg_max);
 
+        ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+        ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
+        ti_rt_min_step_size =
+            min(cp->rt.ti_rt_min_step_size, ti_rt_min_step_size);
+
         ti_gravity_end_min = min(cp->grav.ti_end_min, ti_gravity_end_min);
         ti_gravity_beg_max = max(cp->grav.ti_beg_max, ti_gravity_beg_max);
 
@@ -1064,9 +1124,19 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   c->stars.updated = s_updated;
   c->sinks.updated = sink_updated;
   c->black_holes.updated = b_updated;
+  /* We don't count the RT updates here because the
+   * timestep tasks aren't active during sub-cycles.
+   * We do that in rt_advanced_cell_time instead. */
 
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+  if (cell_is_starting_hydro(c, e)) {
+    /* We only change the RT time steps when the cell is also hydro active.
+     * Without this check here, ti_rt_min_step_size = max_nr_steps... */
+    c->rt.ti_rt_min_step_size = ti_rt_min_step_size;
+  }
   c->grav.ti_end_min = ti_gravity_end_min;
   c->grav.ti_beg_max = ti_gravity_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
@@ -1092,6 +1162,12 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
   if (c->black_holes.ti_end_min == e->ti_current &&
       c->black_holes.ti_end_min < max_nr_timesteps)
     error("End of next black holes step is current time!");
+  /* Contrary to sinks, stars, bhs etc, we may have "rt particles"
+   * without running with RT. So additional if (with_rt) check is
+   * needed here. */
+  if (with_rt && (c->rt.ti_rt_end_min == e->ti_current &&
+                  c->rt.ti_rt_end_min < max_nr_timesteps))
+    error("Cell %lld End of next RT step is current time!", c->cellID);
 #endif
 
   if (timer) TIMER_TOC(timer_timestep);
@@ -1118,7 +1194,10 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   size_t s_updated = 0;
   size_t b_updated = 0;
   size_t si_updated = 0;
+  size_t rt_updated = 0;
+
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
   integertime_t ti_black_holes_end_min = max_nr_timesteps,
@@ -1136,6 +1215,8 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
       ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
+      ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
       ti_grav_end_min = min(ti_grav_end_min, cp->grav.ti_end_min);
       ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
       ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
@@ -1152,6 +1233,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
       s_updated += cp->stars.updated;
       b_updated += cp->black_holes.updated;
       si_updated += cp->sinks.updated;
+      rt_updated += cp->rt.updated;
 
       /* Collected, so clear for next time. */
       cp->hydro.updated = 0;
@@ -1159,12 +1241,15 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
       cp->stars.updated = 0;
       cp->black_holes.updated = 0;
       cp->sinks.updated = 0;
+      cp->rt.updated = 0;
     }
   }
 
   /* Store the collected values in the cell. */
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
   c->grav.ti_end_min = ti_grav_end_min;
   c->grav.ti_beg_max = ti_grav_beg_max;
   c->stars.ti_end_min = ti_stars_end_min;
@@ -1179,6 +1264,7 @@ void runner_do_timestep_collect(struct runner *r, struct cell *c,
   c->stars.updated = s_updated;
   c->black_holes.updated = b_updated;
   c->sinks.updated = si_updated;
+  c->rt.updated = rt_updated;
 }
 
 /**
@@ -1491,4 +1577,158 @@ void runner_do_sync(struct runner *r, struct cell *c, int force,
   cell_clear_flag(c, cell_flag_do_hydro_sync | cell_flag_do_hydro_sub_sync);
 
   if (timer) TIMER_TOC(timer_do_sync);
+}
+
+/**
+ * @brief Update the cell's t_rt_end_min so that the sub-cycling can proceed
+ * with correct cell times. (During sub-cycles, the regular timestep and
+ * timestep_collect tasks do not run. This replaces the collection of cell
+ * times of timestep tasks during sub-cycles. )
+ *
+ * @param r The #runner thread.
+ * @param c The #cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
+                                    int timer) {
+
+  struct engine *e = r->e;
+  const int count = c->hydro.count;
+  /* Reset update count regardless whether cell is active or not */
+  c->rt.updated = 0;
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+  if (c->super == c) c->rt.advanced_time = 1;
+#endif
+
+  /* Anything to do here? */
+  if (count == 0) return;
+  if (!cell_is_rt_active(c, e)) return;
+
+  TIMER_TIC;
+
+  int rt_updated = 0;
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      struct cell *cp = c->progeny[k];
+      if (cp != NULL) {
+        runner_do_rt_advance_cell_time(r, cp, 0);
+        rt_updated += cp->rt.updated;
+      }
+    }
+  } else {
+    /* Do some debugging stuff on active particles before setting the cell time.
+     * This test is not reliable on foreign cells. After a rebuild, we may end
+     * up with an active foreign cell which was not updated in this step because
+     * it had no active neighbouring cells, and its particle data may be random
+     * junk. */
+
+    if (c->nodeID == engine_rank) {
+      struct part *restrict parts = c->hydro.parts;
+
+      /* Loop over the gas particles in this cell. */
+      for (int i = 0; i < count; i++) {
+
+        /* Get a handle on the part. */
+        struct part *restrict p = &parts[i];
+
+        /* Skip inhibited parts */
+        if (part_is_inhibited(p, e)) continue;
+
+        /* Skip inactive parts */
+        if (!part_is_rt_active(p, e)) continue;
+
+#ifdef SWIFT_RT_DEBUG_CHECKS
+        /* Run checks. */
+        rt_debug_sequence_check(p, 5, __func__);
+        /* Mark that the subcycling has happened */
+        rt_debugging_count_subcycle(p);
+#endif
+        rt_updated++;
+      }
+    }
+  }
+
+  c->rt.updated = rt_updated;
+
+  /* Note: c->rt.ti_rt_min_step_size may be greater than
+   * c->super->rt.ti_rt_min_step_size. This is expected behaviour.
+   * We only update the cell's own time after it's been active. */
+  c->rt.ti_rt_end_min += c->rt.ti_rt_min_step_size;
+
+  if (timer) TIMER_TOC(timer_do_rt_advance_cell_time);
+}
+
+/**
+ * @brief Recursively collect the end-of-timestep information from the top-level
+ * to the super level for the RT sub-cycling. (During sub-cycles, the regular
+ * timestep and timestep_collect tasks do not run. This replaces the
+ * timestep_collect task.)
+ *
+ * @param r The runner thread.
+ * @param c The cell.
+ * @param timer Are we timing this ?
+ */
+void runner_do_collect_rt_times(struct runner *r, struct cell *c,
+                                const int timer) {
+
+  const struct engine *e = r->e;
+  size_t rt_updated = 0;
+
+  if (e->ti_current == e->ti_current_subcycle)
+    error("called collect_rt_times during a main step");
+
+  /* Early stop if we are at the super level.
+   * The time-step/rt_advance_cell_time tasks would have set things at
+   * this level already. */
+
+  if (c->super == c) {
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    /* Do a check before the early exit.
+     * rt_advanced_cell_time should be called exactly once before
+     * collect times. Except on the first subcycle, because the
+     * collect_rt_times task shouldn't be called in the main steps.
+     * In that case, it should be exactly 2. */
+    if (e->ti_current_subcycle - c->rt.ti_rt_end_min == e->ti_current) {
+      /* This is the first subcycle */
+      if (c->rt.advanced_time != 2)
+        error("Called cell with wrong advanced_time counter. Expect=2, got=%d",
+              c->rt.advanced_time);
+    } else {
+      if (c->rt.advanced_time != 1)
+        error("Called cell with wrong advanced_time counter. Expect=1, got=%d",
+              c->rt.advanced_time);
+    }
+    c->rt.advanced_time = 0;
+#endif
+    return;
+  }
+
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
+
+  /* Collect the values from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp != NULL) {
+
+      /* Recurse */
+      runner_do_collect_rt_times(r, cp, 0);
+
+      /* And update */
+      ti_rt_end_min = min(cp->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(cp->rt.ti_rt_beg_max, ti_rt_beg_max);
+
+      /* Collected, so clear for next time. */
+      rt_updated += cp->rt.updated;
+      cp->rt.updated = 0;
+    }
+  }
+
+  /* Store the collected values in the cell. */
+  c->rt.ti_rt_end_min = ti_rt_end_min;
+  c->rt.ti_rt_beg_max = ti_rt_beg_max;
+  c->rt.updated = rt_updated;
+
+  if (timer) TIMER_TOC(timer_do_rt_collect_times);
 }

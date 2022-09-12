@@ -20,7 +20,7 @@
 #define SWIFT_COLLECTGROUP_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers. */
 #include <stddef.h>
@@ -46,6 +46,7 @@ struct collectgroup1 {
 
   /* Times for the time-step */
   integertime_t ti_hydro_end_min, ti_hydro_beg_max;
+  integertime_t ti_rt_end_min, ti_rt_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_beg_max;
   integertime_t ti_black_holes_end_min, ti_black_holes_beg_max;
@@ -83,7 +84,8 @@ void collectgroup1_init(
     size_t s_updated, size_t b_updated, size_t sink_updated, size_t inhibited,
     size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
     size_t b_inhibited, integertime_t ti_hydro_end_min,
-    integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
+    integertime_t ti_hydro_beg_max, integertime_t ti_rt_end_min,
+    integertime_t ti_rt_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_beg_max, integertime_t ti_stars_end_min,
     integertime_t ti_stars_beg_max, integertime_t ti_sinks_end_min,
     integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,

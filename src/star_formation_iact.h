@@ -26,7 +26,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right star formation law definition */
 #if defined(STAR_FORMATION_NONE)

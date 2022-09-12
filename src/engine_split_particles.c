@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "engine.h"
@@ -283,7 +283,7 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Abort if we are not doing any splitting */
   if (!e->hydro_properties->particle_splitting) return;
-  if (e->s->nr_parts == 0) return;
+  if (e->total_nr_parts == 0) return;
 
   /* Time this */
   const ticks tic = getticks();

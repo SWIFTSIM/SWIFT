@@ -16,15 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "swift.h"
 
+/* System includes. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-void compute_interaction(struct part *pi, struct part *pj, float a, float H) {
+void compute_interaction(struct part *pi, struct part *pj, float mu_0, float a,
+                         float H) {
 
   /* Compute the distance between the two particles */
   const float dx[3] = {pi->x[0] - pj->x[0], pi->x[1] - pj->x[1],
@@ -35,6 +39,7 @@ void compute_interaction(struct part *pi, struct part *pj, float a, float H) {
 
     /* And interact them (density) */
     runner_iact_density(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_mhd_density(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
     runner_iact_chemistry(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_pressure_floor(r2, dx, pi->h, pj->h, pi, pj, a, H);
     runner_iact_star_formation(r2, dx, pi->h, pj->h, pi, pj, a, H);
@@ -43,10 +48,12 @@ void compute_interaction(struct part *pi, struct part *pj, float a, float H) {
 
     /* And interact them (gradient) */
     runner_iact_gradient(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_mhd_gradient(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
 #endif
 
     /* And interact them (force) */
     runner_iact_force(r2, dx, pi->h, pj->h, pi, pj, a, H);
+    runner_iact_mhd_force(r2, dx, pi->h, pj->h, pi, pj, mu_0, a, H);
   }
 }
 
@@ -55,6 +62,7 @@ void test(void) {
   /* Start with some values for the cosmological parameters */
   const float a = (float)random_uniform(0.8, 1.);
   const float H = 1.f;
+  const float mu_0 = 4. * M_PI;
 
   /* Create two random particles (don't do this at home !) */
   struct part pi, pj;
@@ -83,7 +91,7 @@ void test(void) {
     pj.x[1] = pi.x[1] + random_uniform(0., dist * pi.h);
     pj.x[2] = pi.x[2] + random_uniform(0., dist * pi.h);
 
-    compute_interaction(&pi, &pj, a, H);
+    compute_interaction(&pi, &pj, mu_0, a, H);
   }
 
   /* Also test 0 distance */
@@ -91,7 +99,7 @@ void test(void) {
   pj.x[1] = pi.x[1];
   pj.x[2] = pi.x[2];
 
-  compute_interaction(&pi, &pj, a, H);
+  compute_interaction(&pi, &pj, mu_0, a, H);
 }
 
 int main(int argc, char *argv[]) {

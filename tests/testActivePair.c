@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -345,8 +345,8 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
                             interaction_func vec_interaction, init_func init,
                             finalise_func finalise) {
 
-  runner_do_hydro_sort(runner, *ci, 0x1FFF, 0, 0);
-  runner_do_hydro_sort(runner, *cj, 0x1FFF, 0, 0);
+  runner_do_hydro_sort(runner, *ci, 0x1FFF, 0, 0, 0);
+  runner_do_hydro_sort(runner, *cj, 0x1FFF, 0, 0, 0);
 
   /* Zero the fields */
   init(*ci, runner->e->cosmology, runner->e->hydro_properties);
@@ -538,6 +538,7 @@ int main(int argc, char *argv[]) {
   struct engine engine;
   struct cosmology cosmo;
   struct hydro_props hydro_props;
+  struct phys_const prog_const;
   struct runner *runner;
   static long long partId = 0;
   char outputFileNameExtension[100] = "";
@@ -619,6 +620,9 @@ int main(int argc, char *argv[]) {
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
   engine.nodeID = NODE_ID;
+
+  prog_const.const_vacuum_permeability = 1.0;
+  engine.physical_constants = &prog_const;
 
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;

@@ -194,7 +194,7 @@ def plot_result(filename):
     density_map = mass_weighted_density_map / mass_map
     density_map = density_map[cutoff:-cutoff, cutoff:-cutoff]
     density_map = density_map.to("kg/cm**3")
-    density_map = density_map / unyt.proton_mass
+    number_density_map = density_map / unyt.proton_mass
 
     temperature_map = mass_weighted_temperature_map / mass_map
     temperature_map = temperature_map[cutoff:-cutoff, cutoff:-cutoff]
@@ -210,13 +210,13 @@ def plot_result(filename):
 
     try:
         im1 = ax1.imshow(
-            density_map.T,
+            number_density_map.T,
             **imshow_kwargs,
             norm=LogNorm(vmin=1e-4, vmax=1e-1),
             cmap="bone",
         )
         set_colorbar(ax1, im1)
-        ax1.set_title(r"Hydrogen Number Density [cm$^{-3}$]")
+        ax1.set_title(r"Gas Number Density [cm$^{-3}$]")
     except ValueError:
         print(
             filename,
@@ -235,7 +235,7 @@ def plot_result(filename):
             cmap="cividis",
         )
         set_colorbar(ax2, im2)
-        ax2.set_title("Hydrogen Mass Fraction [1]")
+        ax2.set_title("Neutral Hydrogen Mass Fraction [1]")
     except ValueError:
         print(
             filename,
@@ -290,8 +290,8 @@ def plot_result(filename):
 
     title = filename.replace("_", "\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
-        title += ", $z$ = {0:.2e}".format(meta.z)
-    title += ", $t$ = {0:.2e}".format(meta.time.to("Myr"))
+        title += ", $z$ = {0:.2f}".format(meta.z)
+    title += ", $t$ = {0:.2f}".format(meta.time.to("Myr"))
     fig.suptitle(title)
 
     plt.tight_layout()
@@ -308,3 +308,4 @@ if __name__ == "__main__":
 
     for f in snaplist:
         plot_result(f)
+        gc.collect()

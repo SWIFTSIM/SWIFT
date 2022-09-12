@@ -26,4 +26,4 @@ echo "Converting the initial conditions into a SWIFT compatible format"
 python3 convert_ic.py
 
 echo "Running SWIFT"
-../../swift --cooling --feedback --cosmology  --limiter --sync --self-gravity --hydro --stars --star-formation --threads=24 agora_cosmo.yml 2>&1 | tee output.log
+../../../swift --cooling --feedback --cosmology  --limiter --sync --self-gravity --hydro --stars --star-formation --threads=24 agora_cosmo.yml 2>&1 | tee output.log

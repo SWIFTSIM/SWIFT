@@ -31,10 +31,13 @@ AC_CONFIG_MACRO_DIR([m4])
 : ${CFLAGS=""}
 
 # Generate header file.
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
+
 
 # Find and test the compiler.
 AX_CHECK_ENABLE_DEBUG
+# Enable POSIX and platform extension preprocessor macros.
+AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_OPENMP
@@ -143,9 +146,11 @@ AC_ARG_ENABLE([mpi],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
+# Use extra flags set by AC_PROG_CC as part of $CC. Currently undocumented as ac_cv_prog_cc_stdc, 
+# so could change.
 good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
-    AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
+    AX_MPI([CC="$MPICC $ac_cv_prog_cc_stdc" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ], [enable_mpi="no"])
     MPI_LIBRARY="Unknown MPI"
 
     # Various MPI implementations require additional libraries when also using
@@ -207,12 +212,15 @@ AM_CONDITIONAL([HAVEMPI],[test $enable_mpi = "yes"])
 # Indicate that MPIRUN can be modified by an environment variable
 AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 
-# Add libtool support (now that CC is defined).
-LT_INIT
+# Add libtool support (now that CC is defined). Disable shared libraries by default.
+LT_INIT([disable-shared])
 
-# Need C99 and inline support.
-AC_PROG_CC_C99
+# Need C99 and inline support. Only for autoconfs to version 2.69.
+m4_version_prereq([2.71], [], [AC_PROG_CC_C99])
+
+# Need inline support.
 AC_C_INLINE
+
 
 # If debugging try to show inlined functions.
 if test "x$enable_debug" = "xyes"; then
@@ -395,6 +403,20 @@ if test "$stars_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-stars-density-checks!)
 elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
+fi
+
+# Check if ghost statistics are enabled
+AC_ARG_ENABLE([ghost-statistics],
+   [AS_HELP_STRING([--enable-ghost-statistics],
+     [Gather statistics about the ghost iterations for hydro, stars and black holes in N bins @<:@N@:>@]
+   )],
+   [ghost_stats="$enableval"],
+   [ghost_stats="no"]
+)
+if test "$ghost_stats" == "yes"; then
+   AC_MSG_ERROR(Need to specify the number of bins when using --enable-ghost-statistics!)
+elif test "$ghost_stats" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_GHOST_STATS], [$enableval] ,[Enable ghost statistics for hydro, stars and black holes])
 fi
 
 # Check whether we want to switch on glass making
@@ -682,7 +704,8 @@ AC_ARG_ENABLE([mpi-mesh-gravity],
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
-AC_HEADER_STDC
+AC_PROG_EGREP
+
 
 # Check for the libraries we will need.
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
@@ -1489,6 +1512,64 @@ if test "$ac_cv_func_pthread_setaffinity_np" = "yes" -a "x$with_numa" != "xno"; 
 fi
 AC_SUBST([NUMA_LIBS])
 
+
+
+# Check for Sundials (required for the SPHM1RT library).
+# There is a problems with the headers of this library 
+# as they do not pass the strict prototypes check when 
+# installed outside of the system directories. So we 
+# need to do this check in two phases. 
+have_sundials="no"
+SUNDIALS_LIBS=""
+SUNDIALS_INCS=""
+AC_ARG_WITH([sundials],
+    [AS_HELP_STRING([--with-sundials=PATH],
+       [root directory where sundials is installed @<:@yes/no@:>@]
+    )],
+    [with_sundials="$withval"],
+    [with_sundials="no"]
+)
+if test "x$with_sundials" != "xno"; then
+   AC_PROG_FC
+   AC_FC_LIBRARY_LDFLAGS
+   if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+      SUNDIALS_LIBS="-L$with_sundials/lib -lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+      SUNDIALS_INCS="-I$with_sundials/include"
+   else
+      SUNDIALS_LIBS="-lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+      SUNDIALS_INCS=""
+   fi
+
+   AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"],
+                [have_sundials="no"], $SUNDIALS_LIBS)
+
+   if test "$have_sundials" == "yes"; then
+      AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
+   else
+      if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+      	 # It might be that the libraries are in 
+      	 # /lib64 rather than /lib 
+      	 SUNDIALS_LIBS="-L$with_sundials/lib64 -lsundials_cvode -lsundials_nvecserial -lsundials_sunlinsoldense -lsundials_sunmatrixdense"
+
+	 # unset cached result of previous AC_CHECK_LIB
+	 unset ac_cv_lib_sundials_cvode_CVode
+
+   	 AC_CHECK_LIB([sundials_cvode], [CVode], [have_sundials="yes"], [have_sundials="no"], $SUNDIALS_LIBS)      
+	 
+   	 if test "$have_sundials" == "yes"; then
+      	    AC_DEFINE([HAVE_SUNDIALS],1,[The SUNDIALS library is present.])
+	 else 
+	    AC_MSG_ERROR("Failed to find a SUNDIALS library")
+	 fi 
+
+      else 
+      	 AC_MSG_ERROR("Failed to find a SUNDIALS library")
+      fi
+   fi
+fi
+AC_SUBST([SUNDIALS_LIBS])
+
+
 # Check for Intel and PowerPC intrinsics header optionally used by vector.h.
 AC_CHECK_HEADERS([immintrin.h], [], [],
 [#ifdef HAVE_IMMINTRIN_H
@@ -1502,8 +1583,33 @@ AC_CHECK_HEADERS([altivec.h], [], [],
 ])
 
 # Check for timing functions needed by cycle.h.
-AC_HEADER_TIME
-AC_CHECK_HEADERS([sys/time.h c_asm.h intrinsics.h mach/mach_time.h])
+AC_CHECK_HEADERS_ONCE([sys/time.h])
+if test $ac_cv_header_sys_time_h = yes; then
+  AC_DEFINE([TIME_WITH_SYS_TIME],[1],[Define to 1 if you can safely include both <sys/time.h>
+	     and <time.h>.  This macro is obsolete.])
+fi
+
+AC_CHECK_HEADERS([sys/time.h], [], [],
+[#ifdef HAVE_SYS_TIME_H
+# include <sys/time.h>
+#endif
+])
+AC_CHECK_HEADERS([c_asm.h], [], [],
+[#ifdef HAVE_C_ASM_H
+# include <c_asm.h>
+#endif
+])
+AC_CHECK_HEADERS([intrinsics.h], [], [],
+[#ifdef HAVE_INTRINSICS_H
+# include <intrinsics.h>
+#endif
+])
+AC_CHECK_HEADERS([mach/mach_time.h], [], [],
+[#ifdef HAVE_MACH_MACH_TIME_H
+# include <mach/mach_time.h>
+#endif
+])
+
 AC_CHECK_TYPE([hrtime_t],[AC_DEFINE(HAVE_HRTIME_T, 1, [Define to 1 if hrtime_t
 is defined in <sys/time.h>])],,
 [#if HAVE_SYS_TIME_H
@@ -1521,12 +1627,12 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 AC_MSG_RESULT($rtc_ok)
 
 # Special timers for the ARM v7 platforms (taken from FFTW-3 to match their cycle.h)
-AC_ARG_ENABLE(armv7a-cntvct, [AC_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
+AC_ARG_ENABLE(armv7a-cntvct, [AS_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
 if test "$have_armv7acntvct"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
 fi
 
-AC_ARG_ENABLE(armv7a-pmccntr, [AC_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
+AC_ARG_ENABLE(armv7a-pmccntr, [AS_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
 if test "$have_armv7apmccntr"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
@@ -1622,6 +1728,26 @@ if test "$have_numa" != "no"; then
 fi
 AC_SUBST([NUMA_INCS])
 
+
+# Second part of the Sundials library checks. 
+# We now decide if we need to use -isystem to 
+# get around the strict-prototypes problem. Assumes 
+# isystem is available when strict-prototypes is.
+if test "x$with_sundials" != "xno"; then
+   if test "x$with_sundials" != "xyes" -a "x$with_sundials" != "x"; then
+        case "$CFLAGS" in
+            *strict-prototypes*)
+	        SUNDIALS_INCS="-isystem$with_sundials/include"
+            ;;
+            *)
+                SUNDIALS_INCS="-I$with_sundials/include"
+            ;;
+        esac
+   fi
+fi 
+AC_SUBST([SUNDIALS_INCS])
+
+
 # Various package configuration options.
 
 # Master subgrid options
@@ -1630,7 +1756,7 @@ AC_SUBST([NUMA_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1713,6 +1839,19 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
+   SPIN_JET_EAGLE)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=SPIN_JET
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
@@ -1843,11 +1982,38 @@ case "$with_hydro" in
       AC_DEFINE([ANARCHY_PU_SPH], [1], [ANARCHY (PU) SPH])
    ;;
 
-
    *)
       AC_MSG_ERROR([Unknown hydrodynamics scheme: $with_hydro])
    ;;
 esac
+
+# SPMHD scheme.
+AC_ARG_WITH([spmhd],
+   [AS_HELP_STRING([--with-spmhd=<scheme>],
+      [Magneto Hydro Dynamics SPH scheme to use @<:@none, direct-induction, direct-induction-fede, vector-potential default:none@:>@]
+   )],
+   [with_spmhd="$withval"],
+   [with_spmhd="none"]
+)
+
+case "$with_spmhd" in
+   none)
+      AC_DEFINE([NONE_MHD], [1], [No mhd])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
+   ;;
+esac
+
+if test "$with_hydro" = "gizmo-mfm" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "gizmo-mfv" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
+if test "$with_hydro" = "shadowfax" -a "$with_spmhd" != "none"; then
+  AC_MSG_ERROR([Cannot use an SPMHD scheme alongside a gizmo hydro solver!"])
+fi
 
 # Check if debugging interactions stars is switched on.
 AC_ARG_ENABLE([debug-interactions-stars],
@@ -2358,6 +2524,10 @@ case "$with_black_holes" in
    EAGLE)
       AC_DEFINE([BLACK_HOLES_EAGLE], [1], [EAGLE black hole model])
    ;;
+   SPIN_JET)
+      AC_DEFINE([BLACK_HOLES_SPIN_JET], [1], [Spin and jet black hole model])
+      with_black_holes="SPIN_JETS (Husko+22)"
+   ;;
    *)
       AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
    ;;
@@ -2641,6 +2811,11 @@ case "$with_rt" in
           # only works with those.
           AC_MSG_ERROR([SPHM1RT: Cannot work with non-integer photon groups])
       fi
+      AC_MSG_CHECKING([for Sundials libraries])
+      AC_MSG_RESULT($have_sundials)
+      if test "$have_sundials" != "yes"; then 
+         AC_MSG_ERROR([The Sundials library is not present. Sundials is required for the SPHM1RT module.]) 
+      fi
    ;;
    *)
       AC_MSG_ERROR([Unknown radiative transfer scheme: $with_rt])
@@ -2707,6 +2882,15 @@ AM_CONDITIONAL([HAVE_STAR_FORMATION_GEAR], [test "$with_star_formation" = "GEAR"
 # check if using multi softening gravity
 AM_CONDITIONAL([HAVE_GRAVITY_MULTISOFTENING], [test "$with_gravity" = "with-multi-softening"])
 
+# Check if using SPHM1RT radiative transfer
+AM_CONDITIONAL([HAVESPHM1RTRT], [test "${with_rt:0:7}" = "SPHM1RT"])
+
+# Check if using GEAR-RT radiative transfer
+AM_CONDITIONAL([HAVEGEARRT], [test "${with_rt:0:4}" = "GEAR"])
+
+
+
+
 # Handle .in files.
 AC_CONFIG_FILES([Makefile src/Makefile examples/Makefile examples/Cooling/CoolingRates/Makefile doc/Makefile doc/Doxyfile tests/Makefile])
 AC_CONFIG_FILES([argparse/Makefile tools/Makefile])
@@ -2764,6 +2948,7 @@ AC_MSG_RESULT([
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
+   Sundials enabled     : $have_sundials
    Special allocators   : $have_special_allocator
    CPU profiler         : $have_profiler
    Pthread barriers     : $have_pthread_barrier
@@ -2777,6 +2962,7 @@ AC_MSG_RESULT([
    Equation of state  : $with_eos
    Adiabatic index    : $with_gamma
    Riemann solver     : $with_riemann
+   SPMHD scheme       : $with_spmhd
 
    Gravity scheme      : $with_gravity
    Multipole order     : $with_multipole_order
@@ -2795,7 +2981,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback_name
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
-   Radiative transfer   : $with_rt$rt_extra_msg
+   Radiative transfer   : $with_rt
    Extra i/o            : $with_extra_io
    
    Atomic operations in tasks  : $enable_atomics_within_tasks
@@ -2812,6 +2998,7 @@ AC_MSG_RESULT([
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
+   Ghost statistics            : $ghost_stats
 
    Continuous Sim. Data Stream : $with_csds
 

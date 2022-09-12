@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -440,6 +440,7 @@ void test_force_interactions(struct part test_part, struct part *parts,
 
   const float a = 1.f;
   const float H = 0.f;
+  const float mu_0 = 4. * M_PI;
 
   strcpy(serial_filename, filePrefix);
   strcpy(vec_filename, filePrefix);
@@ -520,6 +521,9 @@ void test_force_interactions(struct part test_part, struct part *parts,
     for (size_t i = 0; i < count; i++) {
       runner_iact_nonsym_force(r2[i], &(dx[3 * i]), pi_serial.h, pj_serial[i].h,
                                &pi_serial, &pj_serial[i], a, H);
+      runner_iact_nonsym_mhd_force(r2[i], &(dx[3 * i]), pi_serial.h,
+                                   pj_serial[i].h, &pi_serial, &pj_serial[i],
+                                   mu_0, a, H);
     }
     serial_time += getticks() - tic;
   }

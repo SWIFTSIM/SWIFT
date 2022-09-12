@@ -26,7 +26,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "parser.h"
@@ -60,6 +60,12 @@
 #include "./hydro/AnarchyPU/hydro_parameters.h"
 #else
 #error "Invalid choice of SPH variant"
+#endif
+
+#if defined(NONE_MHD)
+#include "./mhd/None/mhd_parameters.h"
+#else
+#error "Invalid choice of MHD variant"
 #endif
 
 #endif /* SWIFT_HYDRO_PARAMETERS_H */

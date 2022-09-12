@@ -275,19 +275,32 @@ The time-step of a given particle is given by :math:`\Delta t =
 <http://adsabs.harvard.edu/abs/2003MNRAS.338...14P>`_ recommend using
 :math:`\eta=0.025`.
 
-The last tree-related parameters are:
+Two further parameters determine when the gravity tree is reconstructed:
 
 * The tree rebuild frequency: ``rebuild_frequency``.
+* The fraction of active particles to trigger a rebuild:
+  ``rebuild_active_fraction``.
+
+The tree rebuild frequency is an optional parameter defaulting to
+:math:`0.01`. It is used to trigger the re-construction of the tree every
+time a fraction of the particles have been integrated (kicked) forward in
+time. The second parameter is also optional and determines a separate rebuild
+criterion, based on the fraction of particles that is active at the
+beginning of a step. This can be seen as a forward-looking version of the
+first criterion, which can be useful for runs with very fast particles.
+The second criterion is not used for values :math:`>1`, which is the default
+assumption.
+
+
+The last tree-related parameters are:
+
 * Whether or not to use the approximate gravity from the FMM tree below the
   softening scale: ``use_tree_below_softening`` (default: 0)
 * Whether or not the truncated force estimator in the adaptive tree-walk
   considers the exponential mesh-related cut-off:
   ``allow_truncation_in_MAC`` (default: 0)
 
-The tree rebuild frequency is an optional parameter defaulting to
-:math:`0.01`. It is used to trigger the re-construction of the tree every
-time a fraction of the particles have been integrated (kicked) forward in
-time.  The other two parameters default to good all-around choices. See the
+These parameters default to good all-around choices. See the
 theory documentation about their exact effects.
 
 Simulations using periodic boundary conditions use additional parameters for the
@@ -716,20 +729,21 @@ be:
 Physical Constants
 ------------------
 
-For some idealised test it can be useful to overwrite the value of
-some physical constants; in particular the value of the gravitational
-constant. SWIFT offers an optional parameter to overwrite the value of
-:math:`G_N`.
+For some idealised test it can be useful to overwrite the value of some physical
+constants; in particular the value of the gravitational constant and vacuum
+permeability. SWIFT offers an optional parameter to overwrite the value of
+:math:`G_N` and :math:`\mu_0`.
 
 .. code:: YAML
 
    PhysicalConstants:
-     G:   1
+     G:    1
+     mu_0: 1
 
 Note that this set :math:`G` to the specified value in the internal system
 of units. Setting a value of `1` when using the system of units (10^10 Msun,
 Mpc, km/s) will mean that :math:`G_N=1` in these units [#f2]_ instead of the
-normal value :math:`G_N=43.00927`.
+normal value :math:`G_N=43.00927`. The same applies to :math:`\mu_0`.
 
 This option is only used for specific tests and debugging. This entire
 section of the YAML file can typically be left out. More constants may

@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_GEAR_H
 #define SWIFT_RT_IACT_GEAR_H
 
+#include "rt_debugging.h"
 #include "rt_flux.h"
 #include "rt_gradients.h"
 
@@ -92,10 +93,12 @@ runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
  * @param pj Hydro particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+    struct spart *restrict si, struct part *restrict pj, float a, float H,
+    const struct rt_props *rt_props) {
 
   /* If the star doesn't have any neighbours, we
    * have nothing to do here. */
@@ -130,6 +133,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   /* psi(x_star - x_gas, h_star) */
   /* Skip the division by si->density.wcount to remain consistent */
   const float psi = wi * hi_inv_dim;
+  const float u = xi * kernel_gamma_inv;
 
 #if defined(HYDRO_DIMENSION_3D)
   const int maxind = 8;
@@ -170,9 +174,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     pj->rt_data.radiation[g].energy_density += injected_energy_density;
 
     /* Inject flux. */
-    /* We assume the path from the star to the gas is optically thin */
+    /* If we inject F = cE, then if no radiation was already present close
+     * to the star, it will be advected before the thermochemistry can run.
+     * So inject the optically thick case F = cE/3 for r/H < 0.5, and then
+     * linearly increase to F = cE afterwards.
+     * Same as 1/3 + 2/3 * (2 * (max(r/H, 0.5) - 0.5)) */
+    const float f = (1.f + 4.f * (max(0.5f, u) - 0.5f)) / 3.f;
     const float injected_flux =
-        injected_energy_density * rt_params.reduced_speed_of_light;
+        injected_energy_density * rt_params.reduced_speed_of_light * f;
     pj->rt_data.radiation[g].flux[0] += injected_flux * n_unit[0];
     pj->rt_data.radiation[g].flux[1] += injected_flux * n_unit[1];
     pj->rt_data.radiation[g].flux[2] += injected_flux * n_unit[2];
@@ -217,42 +226,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     struct part *restrict pj, float a, float H, int mode) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
-  if (pi->rt_data.debug_kicked != 1)
-    error("Trying to iact transport with unkicked particle %lld (count=%d)",
-          pi->id, pi->rt_data.debug_kicked);
-
-  if (pi->rt_data.debug_injection_done != 1)
-    error(
-        "Part %lld trying to do iact transport when "
-        "injection_done count is %d",
-        pi->id, pi->rt_data.debug_injection_done);
-
-  if (pi->rt_data.debug_gradients_done != 1)
-    error(
-        "Part %lld trying to do iact transport when "
-        "gradients_done count is %d",
-        pi->id, pi->rt_data.debug_gradients_done);
-
+  const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
+  rt_debug_sequence_check(pi, 3, func_name);
   pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
-
-    if (pj->rt_data.debug_kicked != 1)
-      error("Trying to iact transport with unkicked particle %lld (count=%d)",
-            pj->id, pj->rt_data.debug_kicked);
-
-    if (pj->rt_data.debug_injection_done != 1)
-      error(
-          "Part %lld Trying to do iact transport when "
-          "injection_done count is %d",
-          pj->id, pj->rt_data.debug_injection_done);
-
-    if (pj->rt_data.debug_gradients_done != 1)
-      error(
-          "Part %lld Trying to do iact transport when "
-          "gradients_done count is %d",
-          pj->id, pj->rt_data.debug_gradients_done);
-
+    rt_debug_sequence_check(pj, 3, func_name);
     pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 #endif

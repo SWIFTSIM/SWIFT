@@ -20,7 +20,7 @@
 #define SWIFT_MULTIPOLE_ACCEPT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "binomial.h"
@@ -189,6 +189,75 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
 
   return gravity_M2L_accept(props, A, B, r2, use_rebuild_sizes, periodic) &&
          gravity_M2L_accept(props, B, A, r2, use_rebuild_sizes, periodic);
+}
+
+/**
+ * Compute the distance above which an M2L kernel is allowed to be used.
+ *
+ * This uses conservative assumptions to guarantee that all the possible cell
+ * pair interactions that need a direct interaction are below this distance.
+ *
+ * @param props The properties of the gravity scheme.
+ * @param size The size of the multipoles (here the cell size).
+ * @param max_softening The maximal softening accross all particles.
+ * @param min_a_grav The minimal acceleration accross all particles.
+ * @param max_mpole_power The maximum multipole power accross all the
+ * multipoles.
+ * @param periodic Are we using periodic BCs?
+ */
+__attribute__((nonnull, pure)) INLINE static float
+gravity_M2L_min_accept_distance(
+    const struct gravity_props *props, const float size,
+    const float max_softening, const float min_a_grav,
+    const float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1],
+    const int periodic) {
+
+  /* Order of the expansion */
+  const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
+
+  float E_BA_term = 0.f;
+  for (int n = 0; n <= p; ++n) {
+    E_BA_term +=
+        binomial(p, n) * max_mpole_power[n] * integer_powf(size, p - n);
+  }
+  E_BA_term *= 4.f;
+
+  /* Get the basic geometric critical angle */
+  const float theta_crit = props->theta_crit;
+  const float theta_crit2 = theta_crit * theta_crit;
+
+  /* Get the sum of the multipole sizes */
+  const float size_sum = 2. * size;
+
+  /* Get the relative tolerance */
+  const float eps = props->adaptive_tolerance;
+
+  if (props->use_advanced_MAC) {
+
+    /* Distance obtained by solving for the geometric criterion with theta = 1
+     */
+    const float dist_tree = size_sum;
+
+    const float dist_adapt =
+        powf(E_BA_term / (eps * min_a_grav), 1.f / (p + 2.f));
+
+    /* Distance obtained by demanding > softening */
+    const float dist_soft =
+        props->use_tree_below_softening ? 0.f : max_softening;
+
+    return max3(dist_tree, dist_adapt, dist_soft);
+
+  } else {
+
+    /* Distance obtained by solving for the geometric criterion */
+    const float dist_tree = sqrtf(size_sum * size_sum / theta_crit2);
+
+    /* Distance obtained by demanding > softening */
+    const float dist_soft =
+        props->use_tree_below_softening ? 0.f : max_softening;
+
+    return max(dist_tree, dist_soft);
+  }
 }
 
 /**

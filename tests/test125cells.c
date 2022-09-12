@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -582,6 +582,7 @@ int main(int argc, char *argv[]) {
 
   struct phys_const prog_const;
   prog_const.const_newton_G = 1.f;
+  prog_const.const_vacuum_permeability = 1.0;
 
   struct hydro_props hp;
   hydro_props_init_no_hydro(&hp);
@@ -668,7 +669,7 @@ int main(int argc, char *argv[]) {
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j)
-      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0);
+      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
 
       /* Do the density calculation */
 

@@ -38,6 +38,7 @@
 #include "cooling_struct.h"
 #include "equation_of_state.h"  // For enum material_id
 #include "feedback_struct.h"
+#include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "sink_struct.h"
@@ -78,11 +79,14 @@ struct xpart {
   /*! Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
-  /* Additional data used by the star formation */
+  /*! Additional data used by the star formation */
   struct star_formation_xpart_data sf_data;
 
-  /* Additional data used by the feedback */
+  /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;
+
+  /*! Additional data used by the MHD scheme */
+  struct mhd_xpart_data mhd_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -184,6 +188,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used by the MHD scheme */
+  struct mhd_part_data mhd_data;
+
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
@@ -201,6 +208,9 @@ struct part {
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
+
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
 
   /*! Time-step length */
   timebin_t time_bin;

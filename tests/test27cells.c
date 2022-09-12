@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -487,6 +487,10 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
+  struct phys_const prog_const;
+  prog_const.const_vacuum_permeability = 1.0;
+  engine.physical_constants = &prog_const;
+
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;
@@ -512,7 +516,8 @@ int main(int argc, char *argv[]) {
 
         runner_do_drift_part(&runner, cells[i * 9 + j * 3 + k], 0);
 
-        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0);
+        runner_do_hydro_sort(&runner, cells[i * 9 + j * 3 + k], 0x1FFF, 0, 0,
+                             0);
       }
     }
   }

@@ -20,13 +20,14 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "active.h"
 #include "cell.h"
 #include "chemistry.h"
 #include "engine.h"
+#include "mhd.h"
 #include "pressure_floor_iact.h"
 #include "rt.h"
 #include "runner.h"
@@ -41,35 +42,30 @@
 #define FUNCTION density
 #define FUNCTION_TASK_LOOP TASK_LOOP_DENSITY
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the gradient loop functions (if required). */
 #ifdef EXTRA_HYDRO_LOOP
 #define FUNCTION gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_GRADIENT
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 #endif
 
 /* Import the force loop functions. */
 #define FUNCTION force
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"
 
 /* Import the RT transport (force) loop functions. */
 #define FUNCTION rt_transport
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_TRANSPORT
 #include "runner_doiact_functions_hydro.h"
-#undef FUNCTION
-#undef FUNCTION_TASK_LOOP
+#include "runner_doiact_undef.h"

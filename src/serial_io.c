@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_HDF5) && defined(WITH_MPI) && !defined(HAVE_PARALLEL_HDF5)
 
@@ -49,6 +49,7 @@
 #include "hydro_properties.h"
 #include "io_properties.h"
 #include "memuse.h"
+#include "mhd_io.h"
 #include "output_list.h"
 #include "output_options.h"
 #include "part.h"
@@ -804,6 +805,7 @@ void read_ic_serial(char* fileName, const struct unit_system* internal_units,
             if (with_hydro) {
               Nparticles = *Ngas;
               hydro_read_particles(*parts, list, &num_fields);
+              num_fields += mhd_read_particles(*parts, list + num_fields);
               num_fields += chemistry_read_particles(*parts, list + num_fields);
               num_fields += rt_read_particles(*parts, list + num_fields);
             }
@@ -1229,6 +1231,8 @@ void write_output_serial(struct engine* e,
                        swift_type_count);
     io_write_attribute(h_grp, "NumPart_Total_HighWord", UINT,
                        numParticlesHighWord, swift_type_count);
+    io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
+                       swift_type_count);
     double MassTable[swift_type_count] = {0};
     io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
     io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1285,7 +1289,8 @@ void write_output_serial(struct engine* e,
       if (h_err < 0) error("Error while creating alias for particle group.\n");
 
       /* Write the number of particles as an attribute */
-      io_write_attribute_l(h_grp, "NumberOfParticles", N_total[ptype]);
+      io_write_attribute_ll(h_grp, "NumberOfParticles", N_total[ptype]);
+      io_write_attribute_ll(h_grp, "TotalNumberOfParticles", N_total[ptype]);
 
       /* Close particle group */
       H5Gclose(h_grp);
