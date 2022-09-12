@@ -2092,7 +2092,7 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
  * @param ci The background cell.
  * @param t The pooled pair task.
  */
-void engine_link_gravity_pooled_pairs(struct engine *e, stuct cell *ci,
+void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
                                       struct task *t) {
 
   /* Get some useful information. */
