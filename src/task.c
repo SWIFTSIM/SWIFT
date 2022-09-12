@@ -134,6 +134,7 @@ const char *subtaskID_names[task_subtype_count] = {
     "limiter",
     "grav",
     "grav_bkg",
+    "grav_bkg_pooled",
     "grav_zoombkg",
     "grav_bkgzoom",
     "external_grav",
@@ -304,6 +305,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
+        case task_subtype_grav_bkg_pool:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:
@@ -620,6 +622,11 @@ void task_unlock(struct task *t) {
         cell_munlocktree(ci);
         cell_munlocktree(cj);
 #endif
+      } else if (subtype == task_subtype_grav_bkg_pool) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        cell_gunlocktree(ci);
+        cell_munlocktree(ci);
+#endif
       } else if (subtype == task_subtype_sink_swallow) {
         cell_sink_unlocktree(ci);
         cell_sink_unlocktree(cj);
@@ -897,6 +904,17 @@ int task_lock(struct task *t) {
           cell_gunlocktree(ci);
           cell_gunlocktree(cj);
           cell_munlocktree(ci);
+          return 0;
+        }
+#endif
+      } else if (subtype == task_subtype_grav_bkg_pool) {
+#ifdef SWIFT_TASKS_WITHOUT_ATOMICS
+        /* Lock the gparts and the m-pole */
+        if (ci->grav.phold || ci->grav.mhold) return 0;
+        if (cell_glocktree(ci) != 0)
+          return 0;
+        else if (cell_mlocktree(ci) != 0) {
+          cell_gunlocktree(ci);
           return 0;
         }
 #endif
@@ -1200,6 +1218,7 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_grav:
     case task_subtype_grav_bkg:
+    case task_subtype_grav_bkg_pool:
     case task_subtype_grav_zoombkg:
     case task_subtype_grav_bkgzoom:
       strcpy(cluster, "Gravity");
@@ -1823,6 +1842,7 @@ enum task_categories task_get_category(const struct task *t) {
 
         case task_subtype_grav:
         case task_subtype_grav_bkg:
+        case task_subtype_grav_bkg_pool:
         case task_subtype_grav_zoombkg:
         case task_subtype_grav_bkgzoom:
         case task_subtype_external_grav:

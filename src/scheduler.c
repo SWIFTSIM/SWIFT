@@ -2011,7 +2011,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
             cost = 3.f * (wscale * gcount_i) * gcount_j;
           else
             cost = 2.f * (wscale * gcount_i) * gcount_j;
-
+        } else if (t->subtype == task_subtype_grav_bkg_pool) { 
+          cost = 2.f  * (wscale * gcount_i) * gcount_i * 26;
         } else if (t->subtype == task_subtype_stars_density ||
                    t->subtype == task_subtype_stars_prep1 ||
                    t->subtype == task_subtype_stars_prep2 ||
@@ -2493,6 +2494,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_grav_zoombkg ||
             t->subtype == task_subtype_grav_bkg ||
+            t->subtype == task_subtype_grav_bkg_pool ||
             t->subtype == task_subtype_grav_bkgzoom ||
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
