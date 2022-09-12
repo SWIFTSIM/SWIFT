@@ -997,15 +997,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     
      p->smoothing_error = S;
     
-    p->energy_correction_flag = 0;
-    
-    if(p->last_corrected_rho){ 
-        if(f_S < 0.95f || p->last_f_S < 0.95f){
-            p->energy_correction_flag = 1;
-            p->correction_delta_u = (p->rho - p->last_corrected_rho) * p->P  / (p->rho * p->rho);
-        }
-    }
-    
   p->last_corrected_rho = p->rho;
   p->last_f_S = f_S;
 #endif
@@ -1026,6 +1017,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   }else{
       p->is_vacuum_boundary = 0;
   }
+    
+  p->is_vacuum_boundary = 0;  
 #endif    
     
     
@@ -1249,11 +1242,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_acceleration(
   /* Reset the time derivatives. */
   p->u_dt = 0.0f;
   p->force.h_dt = 0.0f;
-  p->force.v_sig = p->force.soundspeed;
-    
-  #ifdef PLANETARY_SMOOTHING_CORRECTION 
-    p->visc_du_dt = 0.0f;
-  #endif      
+  p->force.v_sig = p->force.soundspeed;  
 }
 
 /**
@@ -1312,10 +1301,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     float dt_therm, const struct cosmology *cosmo,
     const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
-  
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  if (!p->energy_correction_flag){
-#endif      
+      
   /* Predict the internal energy */
   p->u += p->u_dt * dt_therm;
 
@@ -1340,6 +1326,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= approx_expf(w2); /* 4th order expansion of exp(w) */
   else
     p->rho *= expf(w2);
+    
+ // const float floor_u = FLT_MIN;//1e-30;//1e-12; 
+ // p->u = max(p->u, floor_u);
 
   /* Compute the new pressure */
   const float pressure =
@@ -1352,10 +1341,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  }    
-#endif    
+  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);  
 }
 
 /**
@@ -1397,12 +1383,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* Integrate the internal energy forward in time */
   float delta_u = p->u_dt * dt_therm;
-  #ifdef PLANETARY_SMOOTHING_CORRECTION
-    if(p->energy_correction_flag){
-        delta_u = p->visc_du_dt * dt_therm;
-        delta_u += 0.5f * p->correction_delta_u;
-    }
-  #endif
 
   /* Do not decrease the energy by more than a factor of 2*/
   xp->u_full = max(xp->u_full + delta_u, 0.5f * xp->u_full);
@@ -1411,10 +1391,17 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   const float min_u =
       hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy;
 
-  if (xp->u_full < min_u) {
-    xp->u_full = min_u;
+    
+//  const float floor_u = FLT_MIN;//1e-30;//1e-12;
+
+  /* Take highest of both limits */
+//  const float energy_min = max(min_u, floor_u);
+
+  if (xp->u_full < energy_min) {
+    xp->u_full = energy_min;
     p->u_dt = 0.f;
   }
+
 }
 
 /**
