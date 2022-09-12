@@ -298,16 +298,6 @@ struct part {
     
   /*! Good or bad last time-step? Used for energy_correction_flag and matrix method and quad visc volume elements */     
   float last_f_S; 
-  
-  /*! Only viscous du_dt */  
-  float visc_du_dt;
-  
-  /*! Do we use alternate energy calculation? */   
-  int energy_correction_flag;  
-  
-  /*! Alternate delta_u */  
-  float correction_delta_u;  
-
 #endif
     
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC
@@ -319,9 +309,6 @@ struct part {
     
   /*! Sum of vector r * W * volume should be approx vector 0 */    
   float sum_r_w_V[3];  
-  
-  /*! Are we close to a vacuum boundary */    
-  int is_vacuum_boundary;  
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
