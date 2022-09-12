@@ -943,10 +943,7 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
     
    float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
    float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-   pi->visc_du_dt += mj * Q_i_term * Q_dvdG_i;
-   pj->visc_du_dt += mi * Q_j_term * Q_dvdG_j;
-#endif    
+
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
   pj->u_dt += du_dt_j * mi;
@@ -1302,9 +1299,7 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
     
   /* Get the time derivative for u, including the viscosity */
    float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
-#ifdef PLANETARY_SMOOTHING_CORRECTION    
-   pi->visc_du_dt += mj * Q_i_term * Q_dvdG_i;
-#endif    
+
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
 
