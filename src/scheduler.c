@@ -2494,13 +2494,14 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
         if (t->subtype == task_subtype_grav ||
             t->subtype == task_subtype_grav_zoombkg ||
             t->subtype == task_subtype_grav_bkg ||
-            t->subtype == task_subtype_grav_bkg_pool ||
             t->subtype == task_subtype_grav_bkgzoom ||
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
           if (qid < 0 ||
               s->queues[qid].count > s->queues[t->cj->grav.super->owner].count)
             qid = t->cj->grav.super->owner;
+        } else if (t->subtype == task_subtype_grav_bkg_pool) {
+          qid = t->ci->grav.super->owner;
         } else {
           qid = t->ci->hydro.super->owner;
           if (qid < 0 ||
