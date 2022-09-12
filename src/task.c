@@ -373,6 +373,32 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_gpart;
       break;
 
+    case task_type_bkg_pool:
+      switch (t->subtype) {
+        case task_subtype_drift_gpart_bkg_pool:
+        case task_subtype_grav_self_bkg_pool:
+        case task_subtype_grav_pair_bkg_pool:
+        case task_subtype_grav_down_bkg_pool:
+        case task_subtype_end_grav_force_bkg_pool:
+        case task_subtype_kick1_bkg_pool:
+        case task_subtype_kick2_bkg_pool:
+          return task_action_gpart;
+          break;
+        case task_subtype_timestep_bkg_pool:
+        case task_subtype_init_grav_bkg_pool:
+        case task_subtype_grav_long_range_bkg_pool:
+          return task_action_multipole;
+          break;
+
+        default:
+#ifdef SWIFT_DEBUG_CHECKS
+          error("Unknown task_action for task %s/%s", taskID_names[t->type],
+                subtaskID_names[t->subtype]);
+#endif
+          return task_action_none;
+          break;
+      }
+      break;
     default:
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unknown task_action for task %s/%s", taskID_names[t->type],
@@ -1892,6 +1918,29 @@ enum task_categories task_get_category(const struct task *t) {
           return task_category_others;
       }
     }
+
+    case task_type_bkg_pool:
+      switch (t->subtype) {
+        case task_subtype_drift_gpart_bkg_pool:
+          return task_category_drift;
+          
+        case task_subtype_init_grav_bkg_pool:
+        case task_subtype_grav_long_range_bkg_pool:
+        case task_subtype_grav_self_bkg_pool:
+        case task_subtype_grav_pair_bkg_pool:
+        case task_subtype_grav_down_bkg_pool:
+        case task_subtype_end_grav_force_bkg_pool:
+          return task_category_gravity;
+
+        case task_subtype_kick1_bkg_pool:
+        case task_subtype_kick2_bkg_pool:
+        case task_subtype_timestep_bkg_pool:
+        case task_subtype_collect_bkg_pool
+          return task_category_time_integration;
+        
+        default:
+          return task_category_others;
+      }
 
     default:
       return task_category_others;

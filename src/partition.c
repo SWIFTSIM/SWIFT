@@ -1381,6 +1381,8 @@ static void check_weights(struct task *tasks, int nr_tasks,
 static void partition_gather_weights(void *map_data, int num_elements,
                                      void *extra_data) {
 
+  /* TODO: handle pool weights */
+
   struct task *tasks = (struct task *)map_data;
   struct weights_mapper_data *mydata = (struct weights_mapper_data *)extra_data;
 
