@@ -392,3 +392,4 @@ black_formatting_env
 
 # vscode
 *.json
+doconfig.sh
