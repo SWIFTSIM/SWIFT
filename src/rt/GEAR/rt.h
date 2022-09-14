@@ -24,7 +24,7 @@
 #include "rt_gradients.h"
 #include "rt_properties.h"
 /* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
-#include "rt_stellar_emission_rate.h"
+#include "rt_stellar_emission_model.h"
 #include "rt_thermochemistry.h"
 
 #include <float.h>
@@ -66,14 +66,35 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
   if (time == 0.l) {
     /* if function is called before the first actual step, time is still
      * at zero unless specified otherwise in parameter file.*/
-    star_age = dt;
+    /* We're going to need the star age later for more sophistiscated models,
+     * but for now the compiler won't let me get away with keeping this here,
+     * so keep it as a comment. */
+    /* star_age = dt; */
   }
 
+  /* TODO: this is for later, when we use more sophisticated models. */
   /* now get the emission rates */
-  double star_age_begin_of_step = star_age - dt;
-  star_age_begin_of_step = max(0.l, star_age_begin_of_step);
-  rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age, rt_props,
-                               phys_const, internal_units);
+  /* double star_age_begin_of_step = star_age - dt; */
+  /* star_age_begin_of_step = max(0.l, star_age_begin_of_step); */
+
+  double emission_this_step[RT_NGROUPS];
+  for (int g = 0; g < RT_NGROUPS; g++) emission_this_step[g] = 0.;
+
+  if (rt_props->stellar_emission_model == rt_stellar_emission_model_const) {
+    rt_get_emission_this_step_const(emission_this_step,
+                                    rt_props->stellar_const_emission_rates, dt);
+  } else if (rt_props->stellar_emission_model ==
+             rt_stellar_emission_model_IlievTest) {
+    rt_get_emission_this_step_IlievTest(
+        emission_this_step, sp->mass, dt, rt_props->photon_number_integral,
+        rt_props->average_photon_energy, phys_const, internal_units);
+  } else {
+    error("Unknown stellar emission rate model %d",
+          rt_props->stellar_emission_model);
+  }
+
+  for (int g = 0; g < RT_NGROUPS; g++)
+    sp->rt_data.emission_this_step[g] = emission_this_step[g];
 }
 
 /**

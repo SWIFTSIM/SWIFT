@@ -22,6 +22,7 @@
 #include "rt_grackle_utils.h"
 #include "rt_interaction_rates.h"
 #include "rt_parameters.h"
+#include "rt_stellar_emission_model.h"
 
 #include <string.h>
 
@@ -38,8 +39,8 @@
  */
 struct rt_props {
 
-  /* Are we using constant stellar emission rates? */
-  int use_const_emission_rates;
+  /* Which stellar emission model to use */
+  enum rt_stellar_emission_models stellar_emission_model;
 
   /* (Lower) frequency bin edges for photon groups */
   float photon_groups[RT_NGROUPS];
@@ -89,6 +90,8 @@ struct rt_props {
   double** number_weighted_cross_sections;
   /* Mean photon energy in frequency bin for user provided spectrum. In erg.*/
   double average_photon_energy[RT_NGROUPS];
+  /* Integral over photon numbers of user providd spectrum. */
+  double photon_number_integral[RT_NGROUPS];
 
   /* Grackle Stuff */
   /* ------------- */
@@ -172,7 +175,7 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
   strcat(messagestring, "]");
   message("%s", messagestring);
 
-  if (rtp->use_const_emission_rates) {
+  if (rtp->stellar_emission_model == rt_stellar_emission_model_const) {
     strcpy(messagestring, "Using constant stellar emission rates: [ ");
     for (int g = 0; g < RT_NGROUPS; g++) {
       sprintf(freqstring, "%.3g ", rtp->stellar_const_emission_rates[g]);
@@ -180,6 +183,11 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
     }
     strcat(messagestring, "]");
     message("%s", messagestring);
+  } else if (rtp->stellar_emission_model ==
+             rt_stellar_emission_model_IlievTest) {
+    message("Using Iliev+06 Test 4 stellar emission model.");
+  } else {
+    error("Unknown stellar emission model %d", rtp->stellar_emission_model);
   }
 
   if (rtp->set_equilibrium_initial_ionization_mass_fractions)
@@ -232,23 +240,44 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
           g + 1, rtp->photon_groups[g + 1], rtp->photon_groups[g]);
   }
 
-  /* Are we using constant emission rates? */
-  /* ------------------------------------- */
-  rtp->use_const_emission_rates = parser_get_opt_param_int(
-      params, "GEARRT:use_const_emission_rates", /* default = */ 0);
+  /* Get stellar emission rate model related parameters */
+  /* -------------------------------------------------- */
 
-  if (rtp->use_const_emission_rates) {
+  /* First initialize everything */
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rtp->stellar_const_emission_rates[g] = 0.;
+  }
+
+  rtp->stellar_emission_model = rt_stellar_emission_model_none;
+
+  char stellar_model_str[80];
+  parser_get_param_string(params, "GEARRT:stellar_luminosity_model",
+                          stellar_model_str);
+
+  if (strcmp(stellar_model_str, "const") == 0) {
+    rtp->stellar_emission_model = rt_stellar_emission_model_const;
+  } else if (strcmp(stellar_model_str, "IlievTest4") == 0) {
+    rtp->stellar_emission_model = rt_stellar_emission_model_IlievTest;
+  } else {
+    error("Unknown stellar luminosity model '%s'", stellar_model_str);
+  }
+
+  if (rtp->stellar_emission_model == rt_stellar_emission_model_const) {
+    /* Read the luminosities from the parameter file */
     double emission_rates[RT_NGROUPS];
-    parser_get_param_double_array(params, "GEARRT:star_emission_rates_LSol",
+    parser_get_param_double_array(params,
+                                  "GEARRT:const_stellar_luminosities_LSol",
                                   RT_NGROUPS, emission_rates);
     const double unit_power = units_cgs_conversion_factor(us, UNIT_CONV_POWER);
     const double unit_power_inv = 1. / unit_power;
     for (int g = 0; g < RT_NGROUPS; g++) {
       rtp->stellar_const_emission_rates[g] = emission_rates[g] * unit_power_inv;
     }
+  } else if (rtp->stellar_emission_model ==
+             rt_stellar_emission_model_IlievTest) {
+    /* Nothing to do here */
   } else {
-    /* kill the run for now */
-    error("GEAR-RT can't run without constant stellar emission rates for now.");
+    error("Unknown stellar emission model %d", rtp->stellar_emission_model);
   }
 
   /* get reduced speed of light factor */
