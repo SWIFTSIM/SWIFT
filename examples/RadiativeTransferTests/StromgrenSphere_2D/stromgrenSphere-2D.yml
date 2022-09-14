@@ -46,8 +46,8 @@ GEARRT:
   f_reduce_c: 0.01                                  # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.9
   photon_groups_Hz: [3.288e15]                      # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
-  use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_LSol parameter
-  star_emission_rates_LSol: [6.198024e+04]          # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set, in units of Solar Luminosity.
+  stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [6.198024e+04]   # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
   hydrogen_mass_fraction:  1.00                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
   set_equilibrium_initial_ionization_mass_fractions: 0   # (Optional) set the initial ionization fractions depending on gas temperature assuming ionization equilibrium.
   set_initial_ionization_mass_fractions: 1          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
