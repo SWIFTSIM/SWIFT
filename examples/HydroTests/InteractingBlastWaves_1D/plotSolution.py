@@ -51,7 +51,7 @@ if gamma != 1.4:
         "Error: SWIFT was run with the wrong adiabatic index. Should have been 1.4",
         gamma,
     )
-    exit()
+    exit(1)
 
 ref = np.loadtxt("interactingBlastWaves1D_exact.txt")
 
