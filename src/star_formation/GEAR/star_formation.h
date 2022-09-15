@@ -407,6 +407,10 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
   /* Copy the velocity divergence */
   xp->sf_data.div_v = p->viscosity.div_v;
   /* SPHENIX is already including the Hubble flow */
+#elif MAGMA_SPH
+  /* Copy the velocity divergence */
+  xp->sf_data.div_v = p->viscosity.div_v;
+  /* MAGMA is already including the Hubble flow */
 #elif GADGET2_SPH
   /* Copy the velocity divergence */
   xp->sf_data.div_v = p->density.div_v;

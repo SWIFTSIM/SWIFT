@@ -381,6 +381,14 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                 pi->n_gradient_exact);
         wrong_gradient++;
       }
+#elif defined(MAGMA_SPH)
+      if (check_force && !found_inhibited &&
+          (fabsf(pi->n_gradient / pi->n_gradient_exact - 1.f) > rel_tol ||
+           fabsf(pi->n_gradient_exact / pi->n_gradient - 1.f) > rel_tol)) {
+        message("GRADIENT: id=%lld swift=%e exact=%e", id, pi->n_gradient,
+                pi->n_gradient_exact);
+        wrong_gradient++;
+      }
 #endif
       if (check_force && !found_inhibited &&
           (fabsf(pi->n_force / pi->n_force_exact - 1.f) > 10. * rel_tol ||
