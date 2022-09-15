@@ -138,12 +138,14 @@ def check_essentials(snapdata, rundata):
             max_fluxes = (
                 cred * photon_energy_densities * (1.0 + float_comparison_tolerance)
             )
-            groupfluxes = photon_fluxes[mask]
+            #  groupfluxes = photon_fluxes[mask]
+            groupfluxes = photon_fluxes
             groupfluxnorm = np.sqrt(
                 groupfluxes[:, 0] ** 2 + groupfluxes[:, 1] ** 2 + groupfluxes[:, 2] ** 2
             )
+            flux_units = groupfluxes.units
 
-            fishy = groupfluxnorm > max_fluxes
+            fishy = groupfluxnorm.to(flux_units).v > max_fluxes.to(flux_units).v
 
             if fishy.any():
                 print("In snapshot", snap.snapnr, ", group", g + 1, ":")
@@ -178,7 +180,7 @@ def check_injection(snapdata, rundata):
         print("Found no stars in run. Skipping injection tests.")
         return
 
-    if not rundata.has_stars_debug_data:
+    if not rundata.has_star_debug_data:
         print(
             "Found no debug data in run.",
             "Can't do injection tests without it.",
