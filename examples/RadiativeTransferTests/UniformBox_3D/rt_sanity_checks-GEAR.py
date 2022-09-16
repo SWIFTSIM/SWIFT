@@ -138,8 +138,7 @@ def check_essentials(snapdata, rundata):
             max_fluxes = (
                 cred * photon_energy_densities * (1.0 + float_comparison_tolerance)
             )
-            #  groupfluxes = photon_fluxes[mask]
-            groupfluxes = photon_fluxes
+            groupfluxes = photon_fluxes[mask]
             groupfluxnorm = np.sqrt(
                 groupfluxes[:, 0] ** 2 + groupfluxes[:, 1] ** 2 + groupfluxes[:, 2] ** 2
             )

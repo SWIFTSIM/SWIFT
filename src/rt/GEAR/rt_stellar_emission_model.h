@@ -42,7 +42,6 @@ enum rt_stellar_emission_models {
  * run
  * @param dt time step size (in internal units)
  */
-
 __attribute__((always_inline)) INLINE static void
 rt_get_emission_this_step_const(
     double emission_this_step[RT_NGROUPS],
@@ -76,7 +75,6 @@ rt_get_emission_this_step_const(
  * @param phys_const struct holding physical constants
  * @param internal_units units struct containing internal units
  */
-
 __attribute__((always_inline)) INLINE static void
 rt_get_emission_this_step_IlievTest(
     double emission_this_step[RT_NGROUPS], float M, const double dt,

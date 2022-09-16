@@ -52,7 +52,7 @@ You need to provide the following runtime parameters in the yaml file:
        stellar_spectrum_type: 0                           # Which radiation spectrum to use. 
                                                           #   0: constant. 
                                                           #   1: blackbody spectrum.
-       stellar_luminosity_model: const                    # Which Luminosity model to use.
+       stellar_luminosity_model: const                    # Which luminosity model to use.
        const_stellar_luminosities_LSol: [1., 1., 1.]      # stellar emission rates for each photon 
                                                           #   frequency bin in units of solar luminosity
                                                           #   for the 'const' luminosity model
@@ -83,8 +83,8 @@ The constant star emission rates need to be provided in the parameter file and
 to be defined for each photon frequency group individually using the 
 ``const_stellar_luminosities_LSol`` parameter. The luminosities are expected to
 be in units of solar luminosities. Each star particle will then emit the given 
-luminosities, independent of their other properties, i.e. the spectrum is 
-currently independent of stellar age, metallicity, redshift, etc.
+luminosities, independent of their other properties, e.g. the stellar age, 
+metallicity, redshift, etc.
 
 When solving the thermochemistry, we need to assume some form of stellar
 spectrum so we may integrate over frequency bins to obtain average interaction

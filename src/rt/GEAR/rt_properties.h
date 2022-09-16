@@ -90,7 +90,7 @@ struct rt_props {
   double** number_weighted_cross_sections;
   /* Mean photon energy in frequency bin for user provided spectrum. In erg.*/
   double average_photon_energy[RT_NGROUPS];
-  /* Integral over photon numbers of user providd spectrum. */
+  /* Integral over photon numbers of user provided spectrum. */
   double photon_number_integral[RT_NGROUPS];
 
   /* Grackle Stuff */
@@ -127,10 +127,6 @@ struct rt_props {
 
   /* Max number of subcycles per hydro step */
   int debug_max_nr_subcycles;
-
-  /* Total radiation energy in the gas. It's being reset every step. */
-  float debug_total_radiation_conserved_energy[RT_NGROUPS];
-  float debug_total_star_emitted_energy[RT_NGROUPS];
 #endif
 };
 
@@ -424,9 +420,6 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
    * if I forgot to provide it */
   rtp->debug_max_nr_subcycles =
       parser_get_param_int(params, "TimeIntegration:max_nr_rt_subcycles");
-
-  for (int g = 0; g < RT_NGROUPS; g++)
-    rtp->debug_total_star_emitted_energy[g] = 0.f;
 #endif
 
   /* Grackle setup */
