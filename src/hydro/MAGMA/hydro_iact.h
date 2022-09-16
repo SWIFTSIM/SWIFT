@@ -27,9 +27,9 @@
  */
 
 #include "adiabatic_index.h"
+#include "exp.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
-#include "exp.h"
 #include "signal_velocity.h"
 
 /**
@@ -114,15 +114,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
 
   /* Compute the D correction matrix */
 
-  for(int i=0;i<3;i++){
-  	pi->aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
-	pj->aux_u[i] += pi->mass * (pj->u - pi->u) * wj_dr * dx[i] * r_inv;
-  	for(int j=0;j<3;j++){
-  		pi->d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
-  		pj->d_matrix[i][j] -= pi->mass * dx[i] * wj_dr * dx[j] * r_inv;
-		pi->aux_v[i][j] += pj->mass * (pj->v[i] - pi->v[i]) * wi_dr * dx[j] * r_inv;
-		pj->aux_v[i][j] += pi->mass * (pj->v[i] - pi->v[i]) * wj_dr * dx[j] * r_inv;
-  }
+  for (int i = 0; i < 3; i++) {
+    pi->aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
+    pj->aux_u[i] += pi->mass * (pj->u - pi->u) * wj_dr * dx[i] * r_inv;
+    for (int j = 0; j < 3; j++) {
+      pi->d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
+      pj->d_matrix[i][j] -= pi->mass * dx[i] * wj_dr * dx[j] * r_inv;
+      pi->aux_v[i][j] +=
+          pj->mass * (pj->v[i] - pi->v[i]) * wi_dr * dx[j] * r_inv;
+      pj->aux_v[i][j] +=
+          pi->mass * (pj->v[i] - pi->v[i]) * wj_dr * dx[j] * r_inv;
+    }
   }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -192,12 +194,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.rot_v[2] += faci * curlvr[2];
 
   /* Compute the D correction matrix. */
-  for(int i=0;i<3;i++){
-  	pi->aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
-  	for(int j=0;j<3;j++){
-		pi->d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
-		pi->aux_v[i][j] += pj->mass * (pj->v[i] - pi->v[i]) * wi_dr * dx[j] * r_inv;
-  }
+  for (int i = 0; i < 3; i++) {
+    pi->aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
+    for (int j = 0; j < 3; j++) {
+      pi->d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
+      pi->aux_v[i][j] +=
+          pj->mass * (pj->v[i] - pi->v[i]) * wi_dr * dx[j] * r_inv;
+    }
   }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -278,23 +281,29 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pj->force.alpha_visc_max_ngb = max(pj->force.alpha_visc_max_ngb, alpha_i);
 
   /* Calculate the correction matrix */
-  for(int i=0;i<3;i++){
-  	pi->fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
-  	pj->fder_u[i] -= pi->mass * (pj->u - pi->u) * dx[i] * wj / pi->rho;
-  	for(int j=0;j<3;j++){
-		pi->c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
-		pj->c_matrix[i][j] += pi->mass * dx[i] * dx[j] * wj / pi->rho;
+  for (int i = 0; i < 3; i++) {
+    pi->fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
+    pj->fder_u[i] -= pi->mass * (pj->u - pi->u) * dx[i] * wj / pi->rho;
+    for (int j = 0; j < 3; j++) {
+      pi->c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
+      pj->c_matrix[i][j] += pi->mass * dx[i] * dx[j] * wj / pi->rho;
 
-		pi->sder_u[i][j] -= pj->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wi / pj->rho;
-		pj->sder_u[i][j] -= pi->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wj / pi->rho;
+      pi->sder_u[i][j] -=
+          pj->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wi / pj->rho;
+      pj->sder_u[i][j] -=
+          pi->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wj / pi->rho;
 
-		pi->fder_v[i][j] -= pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
-		pj->fder_v[i][j] -= pi->mass * (pj->v[i] - pi->v[i]) * dx[j] * wj / pi->rho;
-		for(int k=0;k<3;k++){
-			pi->sder_v[i][j][k] -= pj->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) * dx[k] * wi / pj->rho;
-			pj->sder_v[i][j][k] -= pi->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) * dx[k] * wj / pi->rho;
-  }
-  }
+      pi->fder_v[i][j] -=
+          pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
+      pj->fder_v[i][j] -=
+          pi->mass * (pj->v[i] - pi->v[i]) * dx[j] * wj / pi->rho;
+      for (int k = 0; k < 3; k++) {
+        pi->sder_v[i][j][k] -= pj->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) *
+                               dx[k] * wi / pj->rho;
+        pj->sder_v[i][j][k] -= pi->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) *
+                               dx[k] * wj / pi->rho;
+      }
+    }
   }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -372,16 +381,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
 
   /* Calculate the correction matrix*/
-  for(int i=0;i<3;i++){
-  	pi->fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
-  	for(int j=0;j<3;j++){
-		pi->c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
-		pi->sder_u[i][j] -= pj->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wi / pj->rho;
-		pi->fder_v[i][j] -= pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
-		for(int k=0;k<3;k++){
-			pi->sder_v[i][j][k] -= pj->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) * dx[k] * wi / pj->rho;
-  }
-  }
+  for (int i = 0; i < 3; i++) {
+    pi->fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
+    for (int j = 0; j < 3; j++) {
+      pi->c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
+      pi->sder_u[i][j] -=
+          pj->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wi / pj->rho;
+      pi->fder_v[i][j] -=
+          pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
+      for (int k = 0; k < 3; k++) {
+        pi->sder_v[i][j][k] -= pj->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) *
+                               dx[k] * wi / pj->rho;
+      }
+    }
   }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -442,18 +454,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float Hi = r / hi;
   const float Hj = r / hj;
   const float hij = min(Hi, Hj);
-  const float h_crit =0.833f;
+  const float h_crit = 0.833f;
 
   /* Get the slope constant A. */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
 
-  for(int i=0;i<3;i++){
-  	A_i += pi->fder_u[i] * dx[i];
-  	A_j += pj->fder_u[i] * dx[i];
-	for(int j=0;j<3;j++){
-		Av_i += pi->fder_v[i][j] * dx[i] * dx[j];
-		Av_j += pj->fder_v[i][j] * dx[i] * dx[j];
-  }
+  for (int i = 0; i < 3; i++) {
+    A_i += pi->fder_u[i] * dx[i];
+    A_j += pj->fder_u[i] * dx[i];
+    for (int j = 0; j < 3; j++) {
+      Av_i += pi->fder_v[i][j] * dx[i] * dx[j];
+      Av_j += pj->fder_v[i][j] * dx[i] * dx[j];
+    }
   }
 
   const float A_ij = A_i / A_j;
@@ -478,31 +490,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   float F_ij, F_ji, Fv_ij, Fv_ji;
 
-  if (hij > h_crit){
-  	F_ij = Fi_max;
-	F_ji = Fj_max;
-	Fv_ij = Fvi_max;
-        Fv_ji = Fvj_max;
-  } else{
-  	const float e_con = -(hij - h_crit) * (hij - h_crit) / 0.04f;
-	const float F_exp = optimized_expf(e_con);
-  	F_ij = Fi_max * F_exp;
-	F_ji = Fj_max * F_exp;
-	Fv_ij = Fvi_max * F_exp;
-        Fv_ji = Fvj_max * F_exp;
+  if (hij > h_crit) {
+    F_ij = Fi_max;
+    F_ji = Fj_max;
+    Fv_ij = Fvi_max;
+    Fv_ji = Fvj_max;
+  } else {
+    const float e_con = -(hij - h_crit) * (hij - h_crit) / 0.04f;
+    const float F_exp = optimized_expf(e_con);
+    F_ij = Fi_max * F_exp;
+    F_ji = Fj_max * F_exp;
+    Fv_ij = Fvi_max * F_exp;
+    Fv_ji = Fvj_max * F_exp;
   }
 
   /* Compute reconstructed u. */
-  float ui_mid, ui_fder=0.f, ui_sder=0.f;
-  float uj_mid, uj_fder=0.f, uj_sder=0.f;
+  float ui_mid, ui_fder = 0.f, ui_sder = 0.f;
+  float uj_mid, uj_fder = 0.f, uj_sder = 0.f;
 
-  for(int i=0;i<3;i++){
-  	ui_fder -= pi->fder_u[i] * 0.5f * dx[i];
-  	uj_fder += pj->fder_u[i] * 0.5f * dx[i];
-  	for(int j=0;j<3;j++){
-  		ui_sder += pi->sder_u[i][j] * 0.25f * dx[i] * dx[j];
-  		uj_sder += pj->sder_u[i][j] * 0.25f * dx[i] * dx[j];
-  }
+  for (int i = 0; i < 3; i++) {
+    ui_fder -= pi->fder_u[i] * 0.5f * dx[i];
+    uj_fder += pj->fder_u[i] * 0.5f * dx[i];
+    for (int j = 0; j < 3; j++) {
+      ui_sder += pi->sder_u[i][j] * 0.25f * dx[i] * dx[j];
+      uj_sder += pj->sder_u[i][j] * 0.25f * dx[i] * dx[j];
+    }
   }
 
   ui_mid = pi->u + F_ij * (ui_fder + 0.5f * ui_sder);
@@ -512,27 +524,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float vi_mid[3], vi_fder[3], vi_sder[3];
   float vj_mid[3], vj_fder[3], vj_sder[3];
 
-  for(int i=0;i<3;i++){
-  	vi_fder[i] = 0.f;
-	vj_fder[i] = 0.f;
-	vi_sder[i] = 0.f;
-	vj_sder[i] = 0.f;
+  for (int i = 0; i < 3; i++) {
+    vi_fder[i] = 0.f;
+    vj_fder[i] = 0.f;
+    vi_sder[i] = 0.f;
+    vj_sder[i] = 0.f;
   }
 
-  for(int i=0;i<3;i++){
-	for(int j=0;j<3;j++){
-		vi_fder[i] -= pi->fder_v[i][j] * 0.5f * dx[j];
-		vj_fder[i] += pj->fder_v[i][j] * 0.5f * dx[j];
-		for(int k=0;k<3;k++){
-			vi_sder[i] += pi->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
-			vj_sder[i] += pj->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      vi_fder[i] -= pi->fder_v[i][j] * 0.5f * dx[j];
+      vj_fder[i] += pj->fder_v[i][j] * 0.5f * dx[j];
+      for (int k = 0; k < 3; k++) {
+        vi_sder[i] += pi->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+        vj_sder[i] += pj->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+      }
+    }
   }
-  }
-  }
-  
-  for(int i=0;i<3;i++){
-  	vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + 0.5f * vi_sder[i]);
-  	vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + 0.5f * vj_sder[i]);
+
+  for (int i = 0; i < 3; i++) {
+    vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + 0.5f * vi_sder[i]);
+    vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + 0.5f * vj_sder[i]);
   }
 
   /* Compute dv dot r. */
@@ -543,16 +555,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Get de-dimensionalised separations. */
   float h_i[3], h_j[3];
 
-  for(int i=0;i<3;i++){
-        h_i[i] = dx[i] / hi;
-        h_j[i] = -dx[i] / hj;
+  for (int i = 0; i < 3; i++) {
+    h_i[i] = dx[i] / hi;
+    h_j[i] = -dx[i] / hj;
   }
   const float h_i2 = h_i[0] * h_i[0] + h_i[1] * h_i[1] + h_i[2] * h_i[2];
   const float h_j2 = h_j[0] * h_j[0] + h_j[1] * h_j[1] + h_j[2] * h_j[2];
 
   /* Compute new dv dot r. */
-  const float dvdh_i = (vi_mid[0] - vj_mid[0]) * h_i[0] + (vi_mid[1] - vj_mid[1]) * h_i[1] + (vi_mid[2] - vj_mid[2]) * h_i[2];
-  const float dvdh_j = (vj_mid[0] - vi_mid[0]) * h_j[0] + (vj_mid[1] - vi_mid[1]) * h_j[1] + (vj_mid[2] - vi_mid[2]) * h_j[2];
+  const float dvdh_i = (vi_mid[0] - vj_mid[0]) * h_i[0] +
+                       (vi_mid[1] - vj_mid[1]) * h_i[1] +
+                       (vi_mid[2] - vj_mid[2]) * h_i[2];
+  const float dvdh_j = (vj_mid[0] - vi_mid[0]) * h_j[0] +
+                       (vj_mid[1] - vi_mid[1]) * h_j[1] +
+                       (vj_mid[2] - vi_mid[2]) * h_j[2];
   const float dvdh_i2 = dvdh_i / (h_i2 + 0.01f);
   const float dvdh_j2 = dvdh_j / (h_j2 + 0.01f);
 
@@ -566,24 +582,36 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* New gradient functions*/
   float c_matrix_i[3][3], c_matrix_j[3][3];
-  
-  for(int i=0;i<3;i++){
-  	for(int j=0;j<3;j++){
-		c_matrix_i[i][j] = pi->c_matrix[i][j];
-		c_matrix_j[i][j] = pj->c_matrix[i][j];
-  }
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      c_matrix_i[i][j] = pi->c_matrix[i][j];
+      c_matrix_j[i][j] = pj->c_matrix[i][j];
+    }
   }
 
   float g_i[3], g_j[3], g_ij[3];
 
-  g_i[0] = -(c_matrix_i[0][0] * dx[0] + c_matrix_i[0][1] * dx[1] + c_matrix_i[0][2] * dx[2]) * wi * hi_inv_dim;
-  g_i[1] = -(c_matrix_i[1][0] * dx[0] + c_matrix_i[1][1] * dx[1] + c_matrix_i[1][2] * dx[2]) * wi * hi_inv_dim;
-  g_i[2] = -(c_matrix_i[2][0] * dx[0] + c_matrix_i[2][1] * dx[1] + c_matrix_i[2][2] * dx[2]) * wi * hi_inv_dim;
+  g_i[0] = -(c_matrix_i[0][0] * dx[0] + c_matrix_i[0][1] * dx[1] +
+             c_matrix_i[0][2] * dx[2]) *
+           wi * hi_inv_dim;
+  g_i[1] = -(c_matrix_i[1][0] * dx[0] + c_matrix_i[1][1] * dx[1] +
+             c_matrix_i[1][2] * dx[2]) *
+           wi * hi_inv_dim;
+  g_i[2] = -(c_matrix_i[2][0] * dx[0] + c_matrix_i[2][1] * dx[1] +
+             c_matrix_i[2][2] * dx[2]) *
+           wi * hi_inv_dim;
 
-  g_j[0] = -(c_matrix_j[0][0] * dx[0] + c_matrix_j[0][1] * dx[1] + c_matrix_j[0][2] * dx[2]) * wj * hj_inv_dim;
-  g_j[1] = -(c_matrix_j[1][0] * dx[0] + c_matrix_j[1][1] * dx[1] + c_matrix_j[1][2] * dx[2]) * wj * hj_inv_dim;
-  g_j[2] = -(c_matrix_j[2][0] * dx[0] + c_matrix_j[2][1] * dx[1] + c_matrix_j[2][2] * dx[2]) * wj * hj_inv_dim;
-  
+  g_j[0] = -(c_matrix_j[0][0] * dx[0] + c_matrix_j[0][1] * dx[1] +
+             c_matrix_j[0][2] * dx[2]) *
+           wj * hj_inv_dim;
+  g_j[1] = -(c_matrix_j[1][0] * dx[0] + c_matrix_j[1][1] * dx[1] +
+             c_matrix_j[1][2] * dx[2]) *
+           wj * hj_inv_dim;
+  g_j[2] = -(c_matrix_j[2][0] * dx[0] + c_matrix_j[2][1] * dx[1] +
+             c_matrix_j[2][2] * dx[2]) *
+           wj * hj_inv_dim;
+
   g_ij[0] = 0.5f * (g_i[0] + g_j[0]);
   g_ij[1] = 0.5f * (g_i[1] + g_j[1]);
   g_ij[2] = 0.5f * (g_i[2] + g_j[2]);
@@ -592,7 +620,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float rho_ij = rhoi + rhoj;
 
   /* Compute gradient terms */
-  const float P_over_rho_ij = (pressurei + Q_i + pressurej + Q_j) / (rhoi * rhoj);
+  const float P_over_rho_ij =
+      (pressurei + Q_i + pressurej + Q_j) / (rhoi * rhoj);
   const float P_over_rho_i = (pressurei + Q_i) / (rhoi * rhoj);
   const float P_over_rho_j = (pressurej + Q_j) / (rhoi * rhoj);
 
@@ -606,8 +635,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->a_hydro[2] += mi * P_over_rho_ij * g_ij[2];
 
   /* Get the v*g term*/
-  const float dvg_i = (pi->v[0] - pj->v[0]) * g_ij[0] + (pi->v[1] - pj->v[1]) * g_ij[1] + (pi->v[2] - pj->v[2]) * g_ij[2];
-  const float dvg_j = (pi->v[0] - pj->v[0]) * g_ij[0] + (pi->v[1] - pj->v[1]) * g_ij[1] + (pi->v[2] - pj->v[2]) * g_ij[2];
+  const float dvg_i = (pi->v[0] - pj->v[0]) * g_ij[0] +
+                      (pi->v[1] - pj->v[1]) * g_ij[1] +
+                      (pi->v[2] - pj->v[2]) * g_ij[2];
+  const float dvg_j = (pi->v[0] - pj->v[0]) * g_ij[0] +
+                      (pi->v[1] - pj->v[1]) * g_ij[1] +
+                      (pi->v[2] - pj->v[2]) * g_ij[2];
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = P_over_rho_i * dvg_i;
@@ -619,11 +652,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
    * diffusion limited particles always take precedence - another trick to
    * allow the scheme to work with thermal feedback. */
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
-  const float v_diffg = sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) + (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) + (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2]));
+  const float v_diffg =
+      sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
+            (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
+            (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2]));
   const float iG = 0.5f;
   const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
-  const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) + (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) + (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
-  const float diff_du_term = -0.1f * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
+  const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
+                                    (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) +
+                                    (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
+  const float diff_du_term =
+      -0.1f * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + diff_du_term;
@@ -685,7 +724,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the kernel for hj. */
   const float hj_inv = 1.0f / hj;
-  const float hj_inv_dim = pow_dimension(hj_inv); 
+  const float hj_inv_dim = pow_dimension(hj_inv);
   const float xj = r * hj_inv;
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
@@ -699,13 +738,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get the slope constant A. */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
 
-  for(int i=0;i<3;i++){
-        A_i += pi->fder_u[i] * dx[i];
-        A_j += pj->fder_u[i] * dx[i];
-	for(int j=0;j<3;j++){
-	Av_i += pi->fder_v[i][j] * dx[i] * dx[j];
-        Av_j += pj->fder_v[i][j] * dx[i] * dx[j];
-  }
+  for (int i = 0; i < 3; i++) {
+    A_i += pi->fder_u[i] * dx[i];
+    A_j += pj->fder_u[i] * dx[i];
+    for (int j = 0; j < 3; j++) {
+      Av_i += pi->fder_v[i][j] * dx[i] * dx[j];
+      Av_j += pj->fder_v[i][j] * dx[i] * dx[j];
+    }
   }
 
   const float A_ij = A_i / A_j;
@@ -730,31 +769,31 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   float F_ij, F_ji, Fv_ij, Fv_ji;
 
-  if (hij > h_crit){
-        F_ij = Fi_max;
-	F_ji = Fj_max;
-	Fv_ij = Fvi_max;
-        Fv_ji = Fvj_max;
-  } else{
-        const float e_con = -(hij - h_crit) * (hij - h_crit) / 0.04f;
-        const float F_exp = optimized_expf(e_con);
-        F_ij = Fi_max * F_exp;
-	F_ji = Fj_max * F_exp;
-	Fv_ij = Fvi_max * F_exp;
-        Fv_ji = Fvj_max * F_exp;
+  if (hij > h_crit) {
+    F_ij = Fi_max;
+    F_ji = Fj_max;
+    Fv_ij = Fvi_max;
+    Fv_ji = Fvj_max;
+  } else {
+    const float e_con = -(hij - h_crit) * (hij - h_crit) / 0.04f;
+    const float F_exp = optimized_expf(e_con);
+    F_ij = Fi_max * F_exp;
+    F_ji = Fj_max * F_exp;
+    Fv_ij = Fvi_max * F_exp;
+    Fv_ji = Fvj_max * F_exp;
   }
 
   /* Compute reconstructed u. */
-  float ui_mid, ui_fder=0.f, ui_sder=0.f;
-  float uj_mid, uj_fder=0.f, uj_sder=0.f;
+  float ui_mid, ui_fder = 0.f, ui_sder = 0.f;
+  float uj_mid, uj_fder = 0.f, uj_sder = 0.f;
 
-  for(int i=0;i<3;i++){
-        ui_fder -= pi->fder_u[i] * 0.5f * dx[i];
-        uj_fder += pj->fder_u[i] * 0.5f * dx[i];
-        for(int j=0;j<3;j++){
-                ui_sder += pi->sder_u[i][j] * 0.25f * dx[i] * dx[j];
-                uj_sder += pj->sder_u[i][j] * 0.25f * dx[i] * dx[j];
-  }
+  for (int i = 0; i < 3; i++) {
+    ui_fder -= pi->fder_u[i] * 0.5f * dx[i];
+    uj_fder += pj->fder_u[i] * 0.5f * dx[i];
+    for (int j = 0; j < 3; j++) {
+      ui_sder += pi->sder_u[i][j] * 0.25f * dx[i] * dx[j];
+      uj_sder += pj->sder_u[i][j] * 0.25f * dx[i] * dx[j];
+    }
   }
 
   ui_mid = pi->u + F_ij * (ui_fder + 0.5f * ui_sder);
@@ -764,27 +803,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float vi_mid[3], vi_fder[3], vi_sder[3];
   float vj_mid[3], vj_fder[3], vj_sder[3];
 
-  for(int i=0;i<3;i++){
-        vi_fder[i] = 0.f;
-        vj_fder[i] = 0.f;
-        vi_sder[i] = 0.f;
-        vj_sder[i] = 0.f;
+  for (int i = 0; i < 3; i++) {
+    vi_fder[i] = 0.f;
+    vj_fder[i] = 0.f;
+    vi_sder[i] = 0.f;
+    vj_sder[i] = 0.f;
   }
 
-  for(int i=0;i<3;i++){
-        for(int j=0;j<3;j++){
-                vi_fder[i] -= pi->fder_v[i][j] * 0.5f * dx[j];
-                vj_fder[i] += pj->fder_v[i][j] * 0.5f * dx[j];
-                for(int k=0;k<3;k++){
-                        vi_sder[i] += pi->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
-                        vj_sder[i] += pj->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      vi_fder[i] -= pi->fder_v[i][j] * 0.5f * dx[j];
+      vj_fder[i] += pj->fder_v[i][j] * 0.5f * dx[j];
+      for (int k = 0; k < 3; k++) {
+        vi_sder[i] += pi->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+        vj_sder[i] += pj->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+      }
+    }
   }
-  }
-  }
-  
-  for(int i=0;i<3;i++){
-  	vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + 0.5f * vi_sder[i]);
-	vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + 0.5f * vj_sder[i]);
+
+  for (int i = 0; i < 3; i++) {
+    vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + 0.5f * vi_sder[i]);
+    vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + 0.5f * vj_sder[i]);
   }
 
   /* Compute dv dot r. */
@@ -795,16 +834,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Get de-dimensionalised separations. */
   float h_i[3], h_j[3];
 
-  for(int i=0;i<3;i++){
-  	h_i[i] = dx[i] / hi;
-  	h_j[i] = -dx[i] / hj;
+  for (int i = 0; i < 3; i++) {
+    h_i[i] = dx[i] / hi;
+    h_j[i] = -dx[i] / hj;
   }
   const float h_i2 = h_i[0] * h_i[0] + h_i[1] * h_i[1] + h_i[2] * h_i[2];
   const float h_j2 = h_j[0] * h_j[0] + h_j[1] * h_j[1] + h_j[2] * h_j[2];
 
   /* Compute new dv dot r. */
-  const float dvdh_i = (vi_mid[0] - vj_mid[0]) * h_i[0] + (vi_mid[1] - vj_mid[1]) * h_i[1] + (vi_mid[2] - vj_mid[2]) * h_i[2];
-  const float dvdh_j = (vj_mid[0] - vi_mid[0]) * h_j[0] + (vj_mid[1] - vi_mid[1]) * h_j[1] + (vj_mid[2] - vi_mid[2]) * h_j[2];
+  const float dvdh_i = (vi_mid[0] - vj_mid[0]) * h_i[0] +
+                       (vi_mid[1] - vj_mid[1]) * h_i[1] +
+                       (vi_mid[2] - vj_mid[2]) * h_i[2];
+  const float dvdh_j = (vj_mid[0] - vi_mid[0]) * h_j[0] +
+                       (vj_mid[1] - vi_mid[1]) * h_j[1] +
+                       (vj_mid[2] - vi_mid[2]) * h_j[2];
   const float dvdh_i2 = dvdh_i / (h_i2 + 0.01f);
   const float dvdh_j2 = dvdh_j / (h_j2 + 0.01f);
 
@@ -818,23 +861,35 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* New gradient functions*/
   float c_matrix_i[3][3], c_matrix_j[3][3];
-  
-  for(int i=0;i<3;i++){
-  	for(int j=0;j<3;j++){
-		c_matrix_i[i][j] = pi->c_matrix[i][j];
-		c_matrix_j[i][j] = pj->c_matrix[i][j];
-  }
+
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
+      c_matrix_i[i][j] = pi->c_matrix[i][j];
+      c_matrix_j[i][j] = pj->c_matrix[i][j];
+    }
   }
 
   float g_i[3], g_j[3], g_ij[3];
 
-  g_i[0] = -(c_matrix_i[0][0] * dx[0] + c_matrix_i[0][1] * dx[1] + c_matrix_i[0][2] * dx[2]) * wi * hi_inv_dim;
-  g_i[1] = -(c_matrix_i[1][0] * dx[0] + c_matrix_i[1][1] * dx[1] + c_matrix_i[1][2] * dx[2]) * wi * hi_inv_dim;
-  g_i[2] = -(c_matrix_i[2][0] * dx[0] + c_matrix_i[2][1] * dx[1] + c_matrix_i[2][2] * dx[2]) * wi * hi_inv_dim;
+  g_i[0] = -(c_matrix_i[0][0] * dx[0] + c_matrix_i[0][1] * dx[1] +
+             c_matrix_i[0][2] * dx[2]) *
+           wi * hi_inv_dim;
+  g_i[1] = -(c_matrix_i[1][0] * dx[0] + c_matrix_i[1][1] * dx[1] +
+             c_matrix_i[1][2] * dx[2]) *
+           wi * hi_inv_dim;
+  g_i[2] = -(c_matrix_i[2][0] * dx[0] + c_matrix_i[2][1] * dx[1] +
+             c_matrix_i[2][2] * dx[2]) *
+           wi * hi_inv_dim;
 
-  g_j[0] = -(c_matrix_j[0][0] * dx[0] + c_matrix_j[0][1] * dx[1] + c_matrix_j[0][2] * dx[2]) * wj * hj_inv_dim;
-  g_j[1] = -(c_matrix_j[1][0] * dx[0] + c_matrix_j[1][1] * dx[1] + c_matrix_j[1][2] * dx[2]) * wj * hj_inv_dim;
-  g_j[2] = -(c_matrix_j[2][0] * dx[0] + c_matrix_j[2][1] * dx[1] + c_matrix_j[2][2] * dx[2]) * wj * hj_inv_dim;
+  g_j[0] = -(c_matrix_j[0][0] * dx[0] + c_matrix_j[0][1] * dx[1] +
+             c_matrix_j[0][2] * dx[2]) *
+           wj * hj_inv_dim;
+  g_j[1] = -(c_matrix_j[1][0] * dx[0] + c_matrix_j[1][1] * dx[1] +
+             c_matrix_j[1][2] * dx[2]) *
+           wj * hj_inv_dim;
+  g_j[2] = -(c_matrix_j[2][0] * dx[0] + c_matrix_j[2][1] * dx[1] +
+             c_matrix_j[2][2] * dx[2]) *
+           wj * hj_inv_dim;
 
   g_ij[0] = 0.5f * (g_i[0] + g_j[0]);
   g_ij[1] = 0.5f * (g_i[1] + g_j[1]);
@@ -844,16 +899,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float rho_ij = rhoi + rhoj;
 
   /* Compute gradient terms */
-  const float P_over_rho_ij = (pressurei + Q_i + pressurej + Q_j) / (rhoi * rhoj);
+  const float P_over_rho_ij =
+      (pressurei + Q_i + pressurej + Q_j) / (rhoi * rhoj);
   const float P_over_rho_i = (pressurei + Q_i) / (rhoi * rhoj);
 
   /* Use the force Luke ! */
   pi->a_hydro[0] -= mj * P_over_rho_ij * g_ij[0];
   pi->a_hydro[1] -= mj * P_over_rho_ij * g_ij[1];
   pi->a_hydro[2] -= mj * P_over_rho_ij * g_ij[2];
-  
+
   /* Get the v*g term*/
-  const float dvg_i = (pi->v[0] - pj->v[0]) * g_ij[0] + (pi->v[1] - pj->v[1]) * g_ij[1] + (pi->v[2] - pj->v[2]) * g_ij[2];
+  const float dvg_i = (pi->v[0] - pj->v[0]) * g_ij[0] +
+                      (pi->v[1] - pj->v[1]) * g_ij[1] +
+                      (pi->v[2] - pj->v[2]) * g_ij[2];
 
   /* Get the time derivative for u. */
   const float sph_du_term_i = P_over_rho_i * dvg_i;
@@ -864,11 +922,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * diffusion limited particles always take precedence - another trick to
    * allow the scheme to work with thermal feedback. */
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
-  const float v_diffg = sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) + (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) + (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2]));
+  const float v_diffg =
+      sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
+            (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
+            (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2]));
   const float iG = 0.5f;
   const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
-  const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) + (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) + (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
-  const float diff_du_term = -0.1f * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
+  const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
+                                    (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) +
+                                    (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
+  const float diff_du_term =
+      -0.1f * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + diff_du_term;

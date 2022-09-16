@@ -518,7 +518,6 @@ __attribute__((always_inline)) INLINE static float hydro_get_div_v(
   return p->viscosity.div_v;
 }
 
-
 /**
  * @brief Does some extra hydro operations once the actual physical time step
  * for the particle is known.
@@ -565,19 +564,19 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
 
-  for(int i=0;i<3;i++){
-  	p->aux_u[i] = 0.f;
-	p->fder_u[i] = 0.f;
-  	for(int j=0;j<3;j++){
-		p->aux_v[i][j] = 0.f;
-		p->fder_v[i][j] = 0.f;
-  		p->c_matrix[i][j] = 0.f;
-  		p->d_matrix[i][j] = 0.f;
-		p->sder_u[i][j] = 0.f;
-		for(int k=0;k<3;k++){
-			p->sder_v[i][j][k] = 0.f;
-  }
-  }
+  for (int i = 0; i < 3; i++) {
+    p->aux_u[i] = 0.f;
+    p->fder_u[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+      p->aux_v[i][j] = 0.f;
+      p->fder_v[i][j] = 0.f;
+      p->c_matrix[i][j] = 0.f;
+      p->d_matrix[i][j] = 0.f;
+      p->sder_u[i][j] = 0.f;
+      for (int k = 0; k < 3; k++) {
+        p->sder_v[i][j][k] = 0.f;
+      }
+    }
   }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -647,10 +646,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Finish calculation of the d-matrix */
   float tau[3][3];
 
-  for(int m=0;m<3;m++){
-  	for(int n=0;n<3;n++){
-		tau[m][n] = p->d_matrix[m][n];
-  }
+  for (int m = 0; m < 3; m++) {
+    for (int n = 0; n < 3; n++) {
+      tau[m][n] = p->d_matrix[m][n];
+    }
   }
 
 #if defined(HYDRO_DIMENSION_3D)
@@ -738,11 +737,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
     }
   }
 
-
-  for(int m=0;m<3;m++){
-  	for(int n=0;n<3;n++){
-		p->d_matrix[m][n] = tau[m][n];
-  }
+  for (int m = 0; m < 3; m++) {
+    for (int n = 0; n < 3; n++) {
+      p->d_matrix[m][n] = tau[m][n];
+    }
   }
 
 #elif defined(HYDRO_DIMENSION_2D)
@@ -765,18 +763,21 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   /* Calculate the auxiliary gradient u */
   float aux_un[3], aux_vn[3][3];
 
-  for(int m=0;m<3;m++){
-  	aux_un[m] = p->aux_u[m];
-	for(int n=0;n<3;n++){
-		aux_vn[m][n] = p->aux_v[m][n];
-  }
+  for (int m = 0; m < 3; m++) {
+    aux_un[m] = p->aux_u[m];
+    for (int n = 0; n < 3; n++) {
+      aux_vn[m][n] = p->aux_v[m][n];
+    }
   }
 
-  for(int m=0;m<3;m++){
-  	p->aux_u[m] = aux_un[0] * p->d_matrix[m][0] + aux_un[1] * p->d_matrix[m][1] + aux_un[2] * p->d_matrix[m][2];
-	for(int n=0;n<3;n++){
-	p->aux_v[m][n] = aux_vn[m][0] * p->d_matrix[n][0] + aux_vn[m][1] * p->d_matrix[n][1] + aux_vn[m][2] * p->d_matrix[n][2];
-  }
+  for (int m = 0; m < 3; m++) {
+    p->aux_u[m] = aux_un[0] * p->d_matrix[m][0] +
+                  aux_un[1] * p->d_matrix[m][1] + aux_un[2] * p->d_matrix[m][2];
+    for (int n = 0; n < 3; n++) {
+      p->aux_v[m][n] = aux_vn[m][0] * p->d_matrix[n][0] +
+                       aux_vn[m][1] * p->d_matrix[n][1] +
+                       aux_vn[m][2] * p->d_matrix[n][2];
+    }
   }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -902,15 +903,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Include the extra factors in the del^2 u */
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
-  
+
   /* Calculate the final correction matrix */
   int m, n;
   float tau[3][3];
-  
-  for(m=0;m<3;m++){
-  	for(n=0;n<3;n++){
-		tau[m][n] = (p->c_matrix[m][n]) * h_inv_dim;
-  }
+
+  for (m = 0; m < 3; m++) {
+    for (n = 0; n < 3; n++) {
+      tau[m][n] = (p->c_matrix[m][n]) * h_inv_dim;
+    }
   }
 
 #if defined(HYDRO_DIMENSION_3D)
@@ -998,11 +999,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
     }
   }
 
-
-  for(m=0;m<3;m++){
-  	for(n=0;n<3;n++){
-		p->c_matrix[m][n] = tau[m][n];
-  }
+  for (m = 0; m < 3; m++) {
+    for (n = 0; n < 3; n++) {
+      p->c_matrix[m][n] = tau[m][n];
+    }
   }
 
 #elif defined(HYDRO_DIMENSION_2D)
@@ -1022,29 +1022,41 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
 #endif
 
-/* Calculate the first derivative of internal energy. */
+  /* Calculate the first derivative of internal energy. */
   float fder_un[3], sder_un[3][3], fder_vn[3][3], sder_vn[3][3][3];
-  
-  for(m=0;m<3;m++){
-  	fder_un[m] = p->fder_u[m];
-  	for(n=0;n<3;n++){
-  		sder_un[m][n] = p->sder_u[m][n];
-		fder_vn[m][n] = p->fder_v[m][n];
-		for(int l=0;l<3;l++){
-			sder_vn[m][n][l] = p->sder_v[m][n][l];
-  }
-  }
+
+  for (m = 0; m < 3; m++) {
+    fder_un[m] = p->fder_u[m];
+    for (n = 0; n < 3; n++) {
+      sder_un[m][n] = p->sder_u[m][n];
+      fder_vn[m][n] = p->fder_v[m][n];
+      for (int l = 0; l < 3; l++) {
+        sder_vn[m][n][l] = p->sder_v[m][n][l];
+      }
+    }
   }
 
-  for(m=0;m<3;m++){
-  	p->fder_u[m] = (fder_un[0] * p->c_matrix[m][0] + fder_un[1] * p->c_matrix[m][1] + fder_un[2] * p->c_matrix[m][2]) * h_inv_dim;
-	for(n=0;n<3;n++){
-		p->sder_u[m][n] = (sder_un[m][0] * p->c_matrix[n][0] + sder_un[m][1] * p->c_matrix[n][1] + sder_un[m][2] * p->c_matrix[n][2]) * h_inv_dim;
-		p->fder_v[m][n] = (fder_vn[m][0] * p->c_matrix[n][0] + fder_vn[m][1] * p->c_matrix[n][1] + fder_vn[m][2] * p->c_matrix[n][2]) * h_inv_dim;
-		for(int l=0;l<3;l++){
-			p->sder_v[m][n][l] = (sder_vn[m][n][0] * p->c_matrix[l][0] + sder_vn[m][n][1] * p->c_matrix[l][1] + sder_vn[m][n][2] * p->c_matrix[l][2]) * h_inv_dim;
-  }
-  }
+  for (m = 0; m < 3; m++) {
+    p->fder_u[m] =
+        (fder_un[0] * p->c_matrix[m][0] + fder_un[1] * p->c_matrix[m][1] +
+         fder_un[2] * p->c_matrix[m][2]) *
+        h_inv_dim;
+    for (n = 0; n < 3; n++) {
+      p->sder_u[m][n] = (sder_un[m][0] * p->c_matrix[n][0] +
+                         sder_un[m][1] * p->c_matrix[n][1] +
+                         sder_un[m][2] * p->c_matrix[n][2]) *
+                        h_inv_dim;
+      p->fder_v[m][n] = (fder_vn[m][0] * p->c_matrix[n][0] +
+                         fder_vn[m][1] * p->c_matrix[n][1] +
+                         fder_vn[m][2] * p->c_matrix[n][2]) *
+                        h_inv_dim;
+      for (int l = 0; l < 3; l++) {
+        p->sder_v[m][n][l] = (sder_vn[m][n][0] * p->c_matrix[l][0] +
+                              sder_vn[m][n][1] * p->c_matrix[l][1] +
+                              sder_vn[m][n][2] * p->c_matrix[l][2]) *
+                             h_inv_dim;
+      }
+    }
   }
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS

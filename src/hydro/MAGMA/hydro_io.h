@@ -260,17 +260,17 @@ INLINE static void hydro_write_particles(const struct part* parts,
       convert_part_potential,
       "Co-moving gravitational potential at position of the particles");
 
-  list[15] = io_make_output_field(
-      "Acceleration", FLOAT, 3, UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
-      "Accelaration of the particles");
+  list[15] = io_make_output_field("Acceleration", FLOAT, 3,
+                                  UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
+                                  "Accelaration of the particles");
 
-  list[16] = io_make_output_field(
-      "C-matrix", FLOAT, 9, UNIT_CONV_AREA, 1.f, parts, c_matrix,
-      "Correction matrix of the particles");
+  list[16] =
+      io_make_output_field("C-matrix", FLOAT, 9, UNIT_CONV_AREA, 1.f, parts,
+                           c_matrix, "Correction matrix of the particles");
 
-  list[17] = io_make_output_field(
-      "InternalEnergyDt", FLOAT, 1, UNIT_CONV_POWER, 1.f, parts, u_dt,
-      "Time derivative of internal energy");
+  list[17] =
+      io_make_output_field("InternalEnergyDt", FLOAT, 1, UNIT_CONV_POWER, 1.f,
+                           parts, u_dt, "Time derivative of internal energy");
 }
 
 /**
