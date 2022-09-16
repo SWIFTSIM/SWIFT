@@ -203,9 +203,8 @@ def plot_photons(filename, emin, emax, fmin, fmax):
 
     use_const_emission_rates = False
     if scheme.startswith("GEAR M1closure"):
-        use_const_emission_rates = bool(
-            meta.parameters["GEARRT:use_const_emission_rates"]
-        )
+        luminosity_model = meta.parameters["GEARRT:stellar_luminosity_model"]
+        use_const_emission_rates = luminosity_model.decode("utf-8") == "const"
     elif scheme.startswith("SPH M1closure"):
         use_const_emission_rates = bool(
             meta.parameters["SPHM1RT:use_const_emission_rates"]
@@ -218,9 +217,9 @@ def plot_photons(filename, emin, emax, fmin, fmax):
     if use_const_emission_rates:
         # read emission rate parameter as string
         if scheme.startswith("GEAR M1closure"):
-            emissionstr = meta.parameters["GEARRT:star_emission_rates_LSol"].decode(
-                "utf-8"
-            )
+            emissionstr = meta.parameters[
+                "GEARRT:const_stellar_luminosities_LSol"
+            ].decode("utf-8")
             # clean string up
             if emissionstr.startswith("["):
                 emissionstr = emissionstr[1:]
