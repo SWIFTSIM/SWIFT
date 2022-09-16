@@ -43,11 +43,19 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
    * by dividing the printed out fluxes by the speed of light in
    * code units */
 #ifdef SWIFT_DEBUG_CHECKS
-  float ratio = 2.;
-  if (e_old != 0.f) ratio = fabsf(*energy_density / e_old);
+  float ratio = -1.f;
+  char print = 0;
+  if (e_old == 0.) {
+    if (*energy_density < -1.e-4f) print = 1;
+  } else {
+    if (fabsf(*energy_density) > 1.e-30) {
+      if (*energy_density < -1.e-4f * fabsf(e_old)) print = 1;
+      ratio = fabsf(*energy_density / e_old);
+    }
+  }
   /* callloc = 1 is gradient extrapolation. Don't print out those. */
-  if (*energy_density < -1e-3f * fabsf(e_old) && fabsf(ratio - 1.f) > 1.e-3f &&
-      callloc != 1)
+  if (callloc == 1) print = 0;
+  if (print)
     message("Fixing unphysical energy case %d | %.6e | %.6e %.6e %.6e | %.6e",
             callloc, *energy_density, flux[0], flux[1], flux[2], ratio);
 #endif
