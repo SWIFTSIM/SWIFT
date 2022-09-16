@@ -296,6 +296,16 @@ __attribute__((always_inline)) INLINE static void rt_prepare_force(
     struct part* p) {}
 
 /**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift) {}
+
+/**
  * @brief Clean the allocated memory inside the RT properties struct.
  *
  * @param props the #rt_props.

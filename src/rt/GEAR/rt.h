@@ -594,6 +594,29 @@ __attribute__((always_inline)) INLINE static void rt_prepare_force(
 }
 
 /**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift) {
+
+  float dx[3] = {xp->v_full[0] * dt_drift, xp->v_full[1] * dt_drift,
+                 xp->v_full[2] * dt_drift};
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    float Unew[4];
+    rt_gradients_predict_drift(p, Unew, g, dx);
+    p->rt_data.radiation[g].energy_density = Unew[0];
+    p->rt_data.radiation[g].flux[0] = Unew[1];
+    p->rt_data.radiation[g].flux[1] = Unew[2];
+    p->rt_data.radiation[g].flux[2] = Unew[3];
+  }
+}
+
+/**
  * @brief Clean the allocated memory inside the RT properties struct.
  *
  * @param props the #rt_props.
