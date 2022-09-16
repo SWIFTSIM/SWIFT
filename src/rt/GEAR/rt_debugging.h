@@ -137,8 +137,6 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
 
   unsigned long long emission_sum_this_step = 0ULL;
   unsigned long long emission_sum_tot = 0ULL;
-  float emitted_energy[RT_NGROUPS];
-  for (int g = 0; g < RT_NGROUPS; g++) emitted_energy[g] = 0.f;
 
   for (int k = 0; k < scount; k++) {
 
@@ -181,7 +179,6 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
                 sp->rt_data.debug_injected_energy[g], diff, diff_weights);
         }
       }
-      emitted_energy[g] += sp->rt_data.debug_injected_energy[g];
     }
 #endif
 
@@ -196,9 +193,6 @@ static void rt_debugging_end_of_step_stars_mapper(void *restrict map_data,
   atomic_add(&e->rt_props->debug_radiation_emitted_this_step,
              emission_sum_this_step);
   atomic_add(&e->rt_props->debug_radiation_emitted_tot, emission_sum_tot);
-  for (int g = 0; g < RT_NGROUPS; g++)
-    atomic_add_f(&e->rt_props->debug_total_star_emitted_energy[g],
-                 emitted_energy[g]);
 }
 
 /**
@@ -235,11 +229,6 @@ static void rt_debugging_end_of_step_hydro_mapper(void *restrict map_data,
   atomic_add(&e->rt_props->debug_radiation_absorbed_this_step,
              absorption_sum_this_step);
   atomic_add(&e->rt_props->debug_radiation_absorbed_tot, absorption_sum_tot);
-
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    atomic_add_f(&(e->rt_props->debug_total_radiation_conserved_energy[g]),
-                 energy_sum[g]);
-  }
 }
 
 /**
@@ -265,10 +254,6 @@ rt_debugging_checks_end_of_step(struct engine *e, int verbose) {
   e->rt_props->debug_radiation_absorbed_this_step = 0ULL;
   e->rt_props->debug_radiation_emitted_tot = 0ULL;
   e->rt_props->debug_radiation_absorbed_tot = 0ULL;
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    e->rt_props->debug_total_radiation_conserved_energy[g] = 0.f;
-    e->rt_props->debug_total_star_emitted_energy[g] = 0.f;
-  }
 
   /* hydro particle loop */
   if (s->nr_parts > 0)
