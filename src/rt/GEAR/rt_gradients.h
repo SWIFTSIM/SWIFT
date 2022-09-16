@@ -383,6 +383,7 @@ __attribute__((always_inline)) INLINE static float rt_gradients_extrapolate(
  * particle i
  * @param Uj (return) Resulting predicted and limited radiation state of
  * particle j
+ * @param group which photon group to use
  * @param dx Comoving distance vector between the particles (dx = pi->x -
  * pj->x).
  * @param r Comoving distance between particle i and particle j.
@@ -437,6 +438,42 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
   /* Check and correct unphysical extrapolated states */
   rt_check_unphysical_state(Ui, &Ui[1], /*e_old=*/0.f, /*callloc=*/1);
   rt_check_unphysical_state(Uj, &Uj[1], /*e_old=*/0.f, /*callloc=*/1);
+}
+
+/**
+ * @brief Gradients reconstruction. Predict the value at point x_ij given
+ * current values at particle positions and gradients at particle positions.
+ *
+ * @param p Particle to work on
+ * @param U (return) Resulting predicted and limited radiation state of
+ * particle
+ * @param group which photon group to use
+ * @param dx The drift distance
+ */
+__attribute__((always_inline)) INLINE static void rt_gradients_predict_drift(
+    const struct part *restrict p, float U[4], int group, const float dx[3]) {
+
+  rt_part_get_radiation_state_vector(p, group, U);
+  /* No need to check unphysical state here:
+   * they haven't been touched since the call
+   * to rt_injection_update_photon_density */
+
+  float dE[3], dFx[3], dFy[3], dFz[3];
+  rt_part_get_gradients(p, group, dE, dFx, dFy, dFz);
+
+  float dU[4];
+  dU[0] = rt_gradients_extrapolate(dE, dx);
+  dU[1] = rt_gradients_extrapolate(dFx, dx);
+  dU[2] = rt_gradients_extrapolate(dFy, dx);
+  dU[3] = rt_gradients_extrapolate(dFz, dx);
+
+  U[0] += dU[0];
+  U[1] += dU[1];
+  U[2] += dU[2];
+  U[3] += dU[3];
+
+  /* Check and correct unphysical extrapolated states */
+  rt_check_unphysical_state(U, &U[1], /*e_old=*/0.f, /*callloc=*/1);
 }
 
 #endif /* SWIFT_RT_GRADIENT_GEAR_H */
