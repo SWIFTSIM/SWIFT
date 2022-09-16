@@ -43,8 +43,8 @@ GEARRT:
   f_reduce_c: 1.        # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.99
   photon_groups_Hz: [0., 1., 2., ]                    # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
-  use_const_emission_rates: 1                         # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_LSol parameter
-  star_emission_rates_LSol: [1.e-28, 1.e-28, 1.e-28]  # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set.
+  stellar_luminosity_model: const                     # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [1.e-28, 1.e-28, 1.e-28]  # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
   hydrogen_mass_fraction:  0.76                       # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
   stellar_spectrum_type: 0                            # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
   stellar_spectrum_const_max_frequency_Hz: 1.e17      # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
