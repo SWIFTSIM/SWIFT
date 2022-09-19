@@ -809,7 +809,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
          bp->stellar_mass * props->mass_to_solar_mass, 
          0.f /* Mgas,bulge */, 
          bp->stellar_bulge_mass * props->mass_to_solar_mass, 
-         0.f /*r0 * 100.0f /* to pc */,
+         0.f /*r0 * 100.0f */,
          bp->x[0] * cosmo->a * props->length_to_parsec / 1.0e3f, 
          bp->x[1] * cosmo->a * props->length_to_parsec / 1.0e3f, 
          bp->x[2] * cosmo->a * props->length_to_parsec / 1.0e3f, 
@@ -829,7 +829,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
 /**
  * @brief Computes the (maximal) repositioning speed for a black hole.
- *
+ *f_Edd
  * Calculated as upsilon * (m_BH / m_ref) ^ beta_m * (n_H_BH / n_ref) ^ beta_n
  * where m_BH = BH subgrid mass, n_H_BH = physical gas density around BH
  * and upsilon, m_ref, beta_m, n_ref, and beta_n are parameters.
