@@ -73,7 +73,7 @@ INLINE static void hydro_read_particles(struct part* parts,
 INLINE static void convert_S(const struct engine* e, const struct part* p,
                              const struct xpart* xp, float* ret) {
 
-  ret[0] = hydro_get_comoving_entropy(p);
+  ret[0] = hydro_get_comoving_entropy(p, xp);
 }
 
 INLINE static void convert_P(const struct engine* e, const struct part* p,
