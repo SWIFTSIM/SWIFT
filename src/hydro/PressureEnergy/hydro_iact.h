@@ -319,6 +319,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float acc = sph_acc_term + visc_acc_term;
 
   /* Use the force Luke ! */
+  
   pi->a_hydro[0] -= mj * acc * dx[0];
   pi->a_hydro[1] -= mj * acc * dx[1];
   pi->a_hydro[2] -= mj * acc * dx[2];

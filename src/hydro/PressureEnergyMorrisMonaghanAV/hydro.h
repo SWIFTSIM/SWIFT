@@ -128,7 +128,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_entropy(
-    const struct part *restrict p) {
+    const struct part *restrict p, const struct xpart *restrict xp) {
 
   return gas_entropy_from_internal_energy(p->rho, p->u);
 }

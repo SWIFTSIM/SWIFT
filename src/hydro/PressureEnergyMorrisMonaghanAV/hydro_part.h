@@ -133,6 +133,26 @@ struct part {
   /*! Particle density. */
   float rho;
 
+  /* Store viscosity information in a separate struct. */
+  struct {
+
+    /*! Particle velocity divergence */
+    float div_v;
+
+    /*! Time differential of velocity divergence */
+    float div_v_dt;
+
+    /*! Particle velocity divergence from previous step */
+    float div_v_previous_step;
+
+    /*! Artificial viscosity parameter */
+    float alpha;
+
+    /*! Signal velocity */
+    float v_sig;
+
+  } viscosity;
+  
   /*! Particle pressure (weighted) */
   float pressure_bar;
 
