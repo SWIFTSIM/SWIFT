@@ -38,6 +38,17 @@
 #include <math.h>
 
 /**
+ * @brief Should this bh particle be doing any stars looping?
+ *
+ * @param bp The #bpart.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static int bh_stars_loop_is_active(
+    const struct bpart* bp, const struct engine* e) { 
+      return 0;
+}
+
+/**
  * @brief Computes the time-step of a given black hole particle.
  *
  * @param bp Pointer to the s-particle data.
@@ -541,7 +552,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
   const double sigma_Thomson = constants->const_thomson_cross_section;
 
   /* Gather the parameters of the model */
-  const double f_Edd = props->f_Edd;
+  const double f_Edd_limit = props->f_Edd;
   const double f_Edd_recording = props->f_Edd_recording;
   const double epsilon_r = props->epsilon_r;
 
@@ -624,8 +635,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   accr_rate = min3(accr_rate, Eddington_rate, Eddington_rate_custom_mass);
 
-  /* Let's compute the accretion rate from the torque limiter */
-  float torque_accr_rate = 0.f;
+  /*
   const float gas_stars_mass_in_kernel = bp->cold_gas_mass + bp->stellar_mass;
   if (bp->stellar_bulge_mass > bp->stellar_mass)
     bp->stellar_bulge_mass = bp->stellar_mass;
@@ -636,44 +646,68 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   const float r0 = bp->h * cosmo->a * (props->length_to_parsec / 100.f);
   if (f_disk > 0.f && f_gas > 0.f && gas_stars_mass_in_kernel > 0.f) {
-    /* alpha from Hopkins & Quataert 2011 */
     const float alpha = 5.f;
     const float mass_to_1e9solar = props->mass_to_solar_mass / 1.0e9f;
     const float mass_to_1e8solar = props->mass_to_solar_mass / 1.0e8f;
 
-    /* Literally f0 in the paper */
     const float f0 =
         0.31f * f_disk * f_disk * pow(disk_mass * mass_to_1e9solar, -1.f / 3.f);
 
-    /* When scaled, this comes out to Msun/yr so must be converted to internal
-     * units */
     torque_accr_rate = props->torque_accretion_norm * alpha *
-                       gas_stars_mass_in_kernel * mass_to_1e9solar *
-                       powf(f_disk, 5.f / 2.f) *
-                       powf(bp->subgrid_mass * mass_to_1e8solar, 1.f / 6.f) *
-                       powf(r0, -3.f / 2.f) / (1 + f0 / f_gas);
+                      gas_stars_mass_in_kernel * mass_to_1e9solar *
+                      powf(f_disk, 5.f / 2.f) *
+                      powf(bp->subgrid_mass * mass_to_1e8solar, 1.f / 6.f) *
+                      powf(r0, -3.f / 2.f) / (1 + f0 / f_gas);
     torque_accr_rate *=
         props->f_accretion * (props->time_to_yr / props->mass_to_solar_mass);
 
     if (props->suppress_growth == 1) {
-      /* r0 is in physical units, and in 1/(100 pc) units */
       const float sigma_eff =
           gas_stars_mass_in_kernel * props->mass_to_solar_mass /
-          (M_PI * r0 * r0 * 100.f * 100.f); /* Msun / pc^2 */
+          (M_PI * r0 * r0 * 100.f * 100.f);
 
       torque_accr_rate *=
           sigma_eff / (sigma_eff + props->sigma_crit_resolution_factor *
-                                       props->sigma_crit_Msun_pc2);
+                                      props->sigma_crit_Msun_pc2);
     } else if (props->suppress_growth == 2) {
       torque_accr_rate *= 1. - exp(-BH_mass * props->mass_to_solar_mass /
-                                   props->bh_characteristic_suppression_mass);
+                                  props->bh_characteristic_suppression_mass);
     }
 
     accr_rate += torque_accr_rate;
-  }
+
+    } */
+
+  /* Let's compute the accretion rate from the cold gas */
+  float torque_accr_rate = 0.f;
+
+  /* Here the accretion rate is only based on Mgas / tdyn.
+    * We do not use the DM mass to compute tdyn since it probably
+    * doesn't contribute much near the core of the system. We also
+    * assume that the gas fraction is constant in the galaxy in
+    * order to compute Mstar within the kernel of the black hole.
+    * Therefore, Mdot = Mgas / tdyn = Mgas / sqrt(3pi/(32 G rho))
+    * and rho = (Mgas + Mstar + Mdm) / (4pi h^3 / 3) where
+    * Mstar = Mgas / fgas, Mdm = 0. Therefore, 
+    * rho = 3 * ((1 + fgas) / fgas) * Mgas / (4 * pi * h^3)
+    * and
+    * Mdot = Mgas * sqrt(32 * G * 3 * ((1 + fgas) / fgas) * Mgas)) /
+    *    sqrt(3 * pi * 4 * pi * h^3)
+    *      = sqrt(96 * G * ((1 + fgas) / fgas) * Mgas^3) /
+    *    sqrt(12 * pi^2 * h^3)
+    *      = (1 / pi) * sqrt(8 * G * ((1 + fgas) / fgas) * (Mgas / h)^3))
+    */
+  const double rho_factor = 
+      bp->cold_gas_mass * bp->cold_gas_mass * bp->cold_gas_mass * 
+      h_inv * h_inv * h_inv;
+  const double f_gas = (bp->group_data.mass - bp->group_data.stellar_mass) / 
+                        (bp->group_data.stellar_mass);
+  torque_accr_rate = 
+      (1. / M_PI) * sqrt(8. * G * ((1 + f_gas) / f_gas) * rho_factor);
+  accr_rate += torque_accr_rate;
 
   /* Limit overall accretion rate */
-  accr_rate = min(accr_rate, f_Edd * Eddington_rate);
+  accr_rate = min(accr_rate, f_Edd_limit * Eddington_rate);
   bp->eddington_fraction = accr_rate / Eddington_rate;
   bp->accretion_rate = accr_rate;
 
@@ -1118,16 +1152,5 @@ INLINE static void black_holes_create_from_gas(
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
-/**
- * @brief Should this bh particle be doing any stars looping?
- *
- * @param bp The #bpart.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE static int bh_stars_loop_is_active(
-    const struct bpart* bp, const struct engine* e) {
-  /* Active bhs always do the stars loop for the SIMBA model */
-  return 1;
-}
 
 #endif /* SWIFT_SIMBA_BLACK_HOLES_H */

@@ -44,18 +44,7 @@
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_stars_density(const float r2, const float dx[3],
-                                    struct bpart *bi, const struct spart *sj) {
-
-  /* Neighbour's (drifted) velocity in the frame of the black hole
-   * (we don't include a Hubble term since we are interested in the
-   * velocity contribution at the location of the black hole) */
-  const float dv[3] = {sj->v[0] - bi->v[0], sj->v[1] - bi->v[1],
-                       sj->v[2] - bi->v[2]};
-
-  bi->specific_angular_momentum_stars[0] += dx[1] * dv[2] - dx[2] * dv[1];
-  bi->specific_angular_momentum_stars[1] += dx[2] * dv[0] - dx[0] * dv[2];
-  bi->specific_angular_momentum_stars[2] += dx[0] * dv[1] - dx[1] * dv[0];
-}
+                                    struct bpart *bi, const struct spart *sj) { }
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -67,27 +56,7 @@ runner_iact_nonsym_bh_stars_density(const float r2, const float dx[3],
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_bh_stars_bulge(const float r2, const float dx[3],
-                                  struct bpart *bi, const struct spart *sj) {
-
-  /* Neighbour's (drifted) velocity in the frame of the black hole
-   * (we don't include a Hubble term since we are interested in the
-   * velocity contribution at the location of the black hole) */
-  const float dv[3] = {sj->v[0] - bi->v[0], sj->v[1] - bi->v[1],
-                       sj->v[2] - bi->v[2]};
-
-  const float star_angular_momentum[3] = {dx[1] * dv[2] - dx[2] * dv[1],
-                                          dx[2] * dv[0] - dx[0] * dv[2],
-                                          dx[0] * dv[1] - dx[1] * dv[0]};
-
-  const float proj =
-      star_angular_momentum[0] * bi->specific_angular_momentum_stars[0] +
-      star_angular_momentum[1] * bi->specific_angular_momentum_stars[1] +
-      star_angular_momentum[2] * bi->specific_angular_momentum_stars[2];
-
-  bi->stellar_mass += sj->mass;
-  /* The bulge mass is twice the counter rotating mass */
-  if (proj < 0.f) bi->stellar_bulge_mass += 2.f * sj->mass;
-}
+                                  struct bpart *bi, const struct spart *sj) { }
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
