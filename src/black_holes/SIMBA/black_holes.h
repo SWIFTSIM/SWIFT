@@ -702,8 +702,10 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
       h_inv * h_inv * h_inv;
   const double f_gas = (bp->group_data.mass - bp->group_data.stellar_mass) / 
                         (bp->group_data.stellar_mass);
-  torque_accr_rate = 
-      (1. / M_PI) * sqrt(8. * G * ((1 + f_gas) / f_gas) * rho_factor);
+  if (f_gas > 0.) {
+    torque_accr_rate = 
+        (1. / M_PI) * sqrt(8. * G * ((1 + f_gas) / f_gas) * rho_factor);
+  }
   accr_rate += torque_accr_rate;
 
   /* Limit overall accretion rate */
