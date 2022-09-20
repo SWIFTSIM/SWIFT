@@ -148,7 +148,7 @@ vs_tot = np.vstack((vels, vels_sampled))
 vs = unyt.unyt_array(vs_tot, unyt.km / unyt.s)
 
 
-w = Writer(cosmo_units, boxsize)
+w = Writer(cosmo_units, boxsize, compress=False)
 w.gas.coordinates = xp
 w.stars.coordinates = xs
 w.gas.velocities = vp
