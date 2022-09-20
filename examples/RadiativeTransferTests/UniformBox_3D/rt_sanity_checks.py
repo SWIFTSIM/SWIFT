@@ -304,18 +304,38 @@ def check_stars_hydro_interaction_sanity(snapdata, rundata):
             print("Found no stars")
             sum_star_tot_radiation = 0.0
 
-        if sum_gas_tot_radiation != sum_star_tot_radiation:
-            print("- checking hydro v star sanity pt1; snapshot", snap.snapnr)
-            print(
-                "--- Total emitted and absorbed radiation not equal: Gas",
-                sum_gas_tot_radiation,
-                "stars",
-                sum_star_tot_radiation,
-                "diff",
-                sum_star_tot_radiation - sum_gas_tot_radiation,
-            )
-            if break_on_diff:
-                quit()
+        if rundata.with_mpi:
+            # with MPI, stars may have missing integer counts in total
+            # since stars that have been sent over won't get the updated
+            # interaction count sent back to their origin. So we allow
+            # stars to have fewer interaction counts over MPI.
+            if sum_gas_tot_radiation < sum_star_tot_radiation:
+                print("- checking hydro v star sanity pt1; snapshot", snap.snapnr)
+                print(
+                    "--- More star iacts than gas iacts: Gas",
+                    sum_gas_tot_radiation,
+                    "stars",
+                    sum_star_tot_radiation,
+                    "diff",
+                    sum_star_tot_radiation - sum_gas_tot_radiation,
+                )
+                if break_on_diff:
+                    quit()
+
+
+        else:
+            if sum_gas_tot_radiation != sum_star_tot_radiation:
+                print("- checking hydro v star sanity pt1; snapshot", snap.snapnr)
+                print(
+                    "--- Total emitted and absorbed radiation not equal: Gas",
+                    sum_gas_tot_radiation,
+                    "stars",
+                    sum_star_tot_radiation,
+                    "diff",
+                    sum_star_tot_radiation - sum_gas_tot_radiation,
+                )
+                if break_on_diff:
+                    quit()
 
         # --------------------------------------------------------------
         # check that we have the correct amount of interactions recorded
