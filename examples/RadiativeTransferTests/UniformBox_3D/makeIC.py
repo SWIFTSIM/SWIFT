@@ -69,7 +69,7 @@ xp = unyt.unyt_array(xp, boxsize.units)
 xs = unyt.unyt_array(xs, boxsize.units)
 
 
-w = Writer(unyt.unit_systems.cgs_unit_system, boxsize)
+w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, compress=False)
 
 w.gas.coordinates = xp
 w.stars.coordinates = xs
