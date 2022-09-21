@@ -95,6 +95,7 @@ Gravity:
   max_physical_nu_softening:     0.0007    # Maximal Plummer-equivalent softening length in physical coordinates for neutrino particles (in internal units).
   softening_ratio_background:    0.04      # Fraction of the mean inter-particle separation to use as Plummer-equivalent softening for the background DM particles.
   rebuild_frequency:             0.01      # (Optional) Frequency of the gravity-tree rebuild in units of the number of g-particles (this is the default value).
+  rebuild_active_fraction:       1.01      # (Optional) Fraction of active gravity particles needed to trigger a gravity-tree rebuild (not triggered by this if > 1, which is the default value).
   a_smooth:                      1.25      # (Optional) Smoothing scale in top-level cell sizes to smooth the long-range forces over (this is the default value).
   r_cut_max:                     4.5       # (Optional) Cut-off in number of top-level cells beyond which no FMM forces are computed (this is the default value).
   r_cut_min:                     0.1       # (Optional) Cut-off in number of top-level cells below which no truncation of FMM forces are performed (this is the default value).
@@ -159,6 +160,7 @@ TimeIntegration:
   dt_max:              1e-2  # The maximal time-step size of the simulation (in internal units).
   max_dt_RMS_factor:   0.25  # (Optional) Dimensionless factor for the maximal displacement allowed based on the RMS velocities.
   dt_RMS_use_gas_only: 0     # (Optional) When computing the max RMS dt, should only the gas particles be considered in the baryon component calculation?
+  max_nr_rt_subcycles: 0     # (Optional) Maximal number of radiative transfer sub-cycles per hydro step for any particle. Set = 0 to disable subcycling. Needs to be a power of 2.
   
 # Parameters governing the snapshots
 Snapshots:
@@ -751,36 +753,36 @@ XrayEmissivity:
 
 # Default sink particles
 DefaultSink:
-    cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
 
 # GEAR sink particles
 GEARSink:
-    cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
+  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
 
 # Parameters related to radiative transfer ---------------------------------------
 
 GEARRT:
-    f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
-    CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
-    f_limit_cooling_time: 0.9                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
-    photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N). Outer edges of zero and infinity are assumed.
-    use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_LSol parameter
-    star_emission_rates_LSol: [1., 1., 1., 1.]        # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set, in units of Solar Luminosity.
-    hydrogen_mass_fraction:  0.76                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
-    set_equilibrium_initial_ionization_mass_fractions: 0   # (Optional) set the initial ionization fractions depending on gas temperature assuming ionization equilibrium.
-    set_initial_ionization_mass_fractions: 0          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
-    mass_fraction_HI: 0.76                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HI mass fractions to this value
-    mass_fraction_HII: 0.                             # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HII mass fractions to this value
-    mass_fraction_HeI: 0.24                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeI mass fractions to this value
-    mass_fraction_HeII: 0.                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
-    mass_fraction_HeIII: 0.                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
-    skip_thermochemistry: 0                           # (Optional) skip the thermochemistry. This is intended only for debugging and testing the radiation transport, as it breaks the purpose of RT.
-    stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
-    stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
-    stellar_spectrum_blackbody_temperature_K: 1.e4    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum. 
-    stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
-    grackle_verbose: 0                                # (Optional) set grackle to verbose.
-    case_B_recombination: 1                           # (Optional) use case B recombination interaction rates.
+  f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
+  CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
+  f_limit_cooling_time: 0.9                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
+  photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [1., 1., 1.]     # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
+  hydrogen_mass_fraction:  0.76                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
+  set_equilibrium_initial_ionization_mass_fractions: 0   # (Optional) set the initial ionization fractions depending on gas temperature assuming ionization equilibrium.
+  set_initial_ionization_mass_fractions: 0          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
+  mass_fraction_HI: 0.76                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HI mass fractions to this value
+  mass_fraction_HII: 0.                             # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HII mass fractions to this value
+  mass_fraction_HeI: 0.24                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeI mass fractions to this value
+  mass_fraction_HeII: 0.                            # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeII mass fractions to this value
+  mass_fraction_HeIII: 0.                           # (Conditional) If overwrite_initial_ionization_fractions=1, needed to set initial HeIII mass fractions to this value
+  skip_thermochemistry: 0                           # (Optional) skip the thermochemistry. This is intended only for debugging and testing the radiation transport, as it breaks the purpose of RT.
+  stellar_spectrum_type: 0                          # Which radiation spectrum to use. 0: constant from 0 until some max frequency set by stellar_spectrum_const_max_frequency_Hz. 1: blackbody spectrum.
+  stellar_spectrum_const_max_frequency_Hz: 1.e17    # (Conditional) if stellar_spectrum_type=0, use this maximal frequency for the constant spectrum. 
+  stellar_spectrum_blackbody_temperature_K: 1.e4    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum. 
+  stars_max_timestep: -1.                           # (Optional) restrict the maximal timestep of stars to this value (in internal units). Set to negative to turn off.
+  grackle_verbose: 0                                # (Optional) set grackle to verbose. (Default: 0)
+  case_B_recombination: 1                           # (Optional) use case B recombination interaction rates. (Default: 1)
 
 SPHM1RT:
   cred: 2.99792458e10                                 # value of reduced speed of light for the RT solver in code unit

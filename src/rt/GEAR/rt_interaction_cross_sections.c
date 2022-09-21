@@ -181,10 +181,12 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
   double **cse = malloc(RT_NGROUPS * sizeof(double *));
   double **csn = malloc(RT_NGROUPS * sizeof(double *));
   double *av_energy = rt_props->average_photon_energy;
+  double *photon_number_integral = rt_props->photon_number_integral;
   for (int group = 0; group < RT_NGROUPS; group++) {
     cse[group] = malloc(rt_ionizing_species_count * sizeof(double));
     csn[group] = malloc(rt_ionizing_species_count * sizeof(double));
     av_energy[group] = 0.;
+    photon_number_integral[group] = 0.;
   }
 
   double integral_E[RT_NGROUPS];
@@ -237,12 +239,19 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
   for (int group = 0; group < RT_NGROUPS - 1; group++)
     nu_stop[group] = rt_props->photon_groups[group + 1];
 
-  /* don't start at exactly 0 to avoid unlucky divisions */
-  if (nu_start[0] == 0.) nu_start[0] = min(1e-20, 1e-12 * nu_start[1]);
   if (RT_NGROUPS == 1) {
     /* If we only have one group, start integrating from the Hydrogen
-     * ionization frequency, not from zero. */
+     * ionization frequency, not from zero. The reasoning here is that
+     * typically you define the *ionizing* radiation as stellar emission
+     * rates, not the *total* radiation. */
     nu_start[0] = cs_params.E_ion[rt_ionizing_species_HI] / h_planck_cgs;
+    message(
+        "Warning: with only 1 photon group, I'll start integrating"
+        " the cross sections at the first ionizing frequency %.3g",
+        nu_start[0]);
+  } else {
+    /* don't start at exactly 0 to avoid unlucky divisions */
+    if (nu_start[0] == 0.) nu_start[0] = min(1e-20, 1e-12 * nu_start[1]);
   }
 
   /* Get frequency at which we stop integrating */
@@ -250,7 +259,7 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
   if (rt_props->stellar_spectrum_type == 0) {
     nu_stop_final = rt_props->const_stellar_spectrum_max_frequency;
   } else if (rt_props->stellar_spectrum_type == 1) {
-    nu_stop_final = 100. * blackbody_peak_frequency(T_bb, kB_cgs, h_planck_cgs);
+    nu_stop_final = 10. * blackbody_peak_frequency(T_bb, kB_cgs, h_planck_cgs);
   } else {
     nu_stop_final = -1.;
     error("Unknown stellar spectrum type %d", rt_props->stellar_spectrum_type);
@@ -282,6 +291,7 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
   /* Now compute the actual average cross sections */
   /* --------------------------------------------- */
   for (int g = 0; g < RT_NGROUPS; g++) {
+    photon_number_integral[g] = integral_N[g];
     if (integral_N[g] > 0.) {
       av_energy[g] = integral_E[g] / integral_N[g];
     } else {

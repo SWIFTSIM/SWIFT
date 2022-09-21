@@ -1,5 +1,5 @@
 MetaData:
-  run_name: "advect ions"
+  run_name: advect_ions
 
 # Define the system of units to use internally. 
 InternalUnitSystem:
@@ -11,6 +11,7 @@ InternalUnitSystem:
 
 # Parameters governing the time integration
 TimeIntegration:
+  max_nr_rt_subcycles: 1
   time_begin: 0.    # The starting time of the simulation (in internal units).
   time_end:   0.01   # end time: radiation reaches edge of box
   dt_min:     1.e-12 # The minimal time-step size of the simulation (in internal units).
@@ -40,15 +41,16 @@ InitialConditions:
   periodic:   1                      # periodic ICs. Keep them periodic so we don't loose photon energy.
 
 GEARRT:
-    f_reduce_c: 1.e-5                                 # reduce the speed of light for the RT solver by multiplying c with this factor
-    CFL_condition: 0.9
-    photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Photon frequency group bin edges in Hz. Needs to be 1 less than the number of groups (N) requested during the configuration (--with-RT=GEAR_N). Outer edges of zero and infinity are assumed.
-    use_const_emission_rates: 1                       # (Optional) use constant emission rates for stars as defined with star_emission_rates_erg_LSol parameter
-    star_emission_rates_LSol: [0., 0., 0., 0.]        # (Optional) constant star emission rates for each photon frequency group to use if use_constant_emission_rates is set, in units of Solar Luminosity.
-    hydrogen_mass_fraction:  0.50                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
-    set_equilibrium_initial_ionization_mass_fractions: 0   # (Optional) set the initial ionization fractions depending on gas temperature assuming ionization equilibrium.
-    set_initial_ionization_mass_fractions: 0          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
-    stellar_spectrum_type: 1                          # Which radiation spectrum to use. 0: constant over all frequencies. 1: blackbody spectrum.
-    stellar_spectrum_blackbody_temperature_K: 1.e5    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum.
-    skip_thermochemistry: 1
+  f_reduce_c: 1.e-5                                 # reduce the speed of light for the RT solver by multiplying c with this factor
+  CFL_condition: 0.9
+  f_limit_cooling_time: 0.0                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
+  photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
+  stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
+  const_stellar_luminosities_LSol: [0., 0., 0.]     # (Conditional) constant star luminosities for each photon frequency group to use if stellar_luminosity_model:const is set, in units of Solar Luminosity.
+  hydrogen_mass_fraction:  0.50                     # total hydrogen (H + H+) mass fraction in the metal-free portion of the gas
+  set_equilibrium_initial_ionization_mass_fractions: 0   # (Optional) set the initial ionization fractions depending on gas temperature assuming ionization equilibrium.
+  set_initial_ionization_mass_fractions: 0          # (Optional) manually overwrite initial mass fraction of each species (using the values you set below)
+  stellar_spectrum_type: 1                          # Which radiation spectrum to use. 0: constant over all frequencies. 1: blackbody spectrum.
+  stellar_spectrum_blackbody_temperature_K: 1.e5    # (Conditional) if stellar_spectrum_type=1, use this temperature (in K) for the blackbody spectrum.
+  skip_thermochemistry: 1
 
