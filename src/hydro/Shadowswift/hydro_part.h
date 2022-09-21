@@ -36,6 +36,7 @@
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
+#include "const.h"
 
 enum kick_type {
   KICK1,

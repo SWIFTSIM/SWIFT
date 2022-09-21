@@ -11,6 +11,8 @@
 #include "runner_doiact_grid_hydro.h"
 #include "swift.h"
 
+#ifdef MOVING_MESH
+
 /*! @brief Method to do the flux exchange over the faces between a pair of
  * cells.
  *
@@ -170,6 +172,7 @@ void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
   }
 }
 
+
 void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
   const struct engine *e = r->e;
@@ -307,3 +310,14 @@ void DOSELF(struct runner *restrict r, struct cell *restrict c) {
 
   TIMER_TOC(TIMER_DOSELF);
 }
+
+#else
+
+void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
+                   struct cell *cj) {}
+
+void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {}
+
+void DOSELF(struct runner *restrict r, struct cell *restrict c) {}
+
+#endif
