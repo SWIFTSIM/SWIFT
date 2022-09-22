@@ -115,14 +115,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   /* Compute the D correction matrix */
 
   for (int i = 0; i < 3; i++) {
-    pi->aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
-    pj->aux_u[i] += pi->mass * (pj->u - pi->u) * wj_dr * dx[i] * r_inv;
+    pi->magma.aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
+    pj->magma.aux_u[i] += pi->mass * (pj->u - pi->u) * wj_dr * dx[i] * r_inv;
     for (int j = 0; j < 3; j++) {
-      pi->d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
-      pj->d_matrix[i][j] -= pi->mass * dx[i] * wj_dr * dx[j] * r_inv;
-      pi->aux_v[i][j] +=
+      pi->magma.d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
+      pj->magma.d_matrix[i][j] -= pi->mass * dx[i] * wj_dr * dx[j] * r_inv;
+      pi->magma.aux_v[i][j] +=
           pj->mass * (pj->v[i] - pi->v[i]) * wi_dr * dx[j] * r_inv;
-      pj->aux_v[i][j] +=
+      pj->magma.aux_v[i][j] +=
           pi->mass * (pj->v[i] - pi->v[i]) * wj_dr * dx[j] * r_inv;
     }
   }
@@ -195,10 +195,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 
   /* Compute the D correction matrix. */
   for (int i = 0; i < 3; i++) {
-    pi->aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
+    pi->magma.aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
     for (int j = 0; j < 3; j++) {
-      pi->d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
-      pi->aux_v[i][j] +=
+      pi->magma.d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
+      pi->magma.aux_v[i][j] +=
           pj->mass * (pj->v[i] - pi->v[i]) * wi_dr * dx[j] * r_inv;
     }
   }
@@ -280,27 +280,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
   pj->force.alpha_visc_max_ngb = max(pj->force.alpha_visc_max_ngb, alpha_i);
 
-  /* Calculate the correction matrix */
+  /* Calculate the correction matrix. */
   for (int i = 0; i < 3; i++) {
-    pi->fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
-    pj->fder_u[i] -= pi->mass * (pj->u - pi->u) * dx[i] * wj / pi->rho;
+    pi->magma.fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
+    pj->magma.fder_u[i] -= pi->mass * (pj->u - pi->u) * dx[i] * wj / pi->rho;
     for (int j = 0; j < 3; j++) {
-      pi->c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
-      pj->c_matrix[i][j] += pi->mass * dx[i] * dx[j] * wj / pi->rho;
+      pi->magma.c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
+      pj->magma.c_matrix[i][j] += pi->mass * dx[i] * dx[j] * wj / pi->rho;
 
-      pi->sder_u[i][j] -=
-          pj->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wi / pj->rho;
-      pj->sder_u[i][j] -=
-          pi->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wj / pi->rho;
+      pi->magma.sder_u[i][j] -=
+          pj->mass * (pj->magma.aux_u[i] - pi->magma.aux_u[i]) * dx[j] * wi / pj->rho;
+      pj->magma.sder_u[i][j] -=
+          pi->mass * (pj->magma.aux_u[i] - pi->magma.aux_u[i]) * dx[j] * wj / pi->rho;
 
-      pi->fder_v[i][j] -=
+      pi->magma.fder_v[i][j] -=
           pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
-      pj->fder_v[i][j] -=
+      pj->magma.fder_v[i][j] -=
           pi->mass * (pj->v[i] - pi->v[i]) * dx[j] * wj / pi->rho;
       for (int k = 0; k < 3; k++) {
-        pi->sder_v[i][j][k] -= pj->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) *
+        pi->magma.sder_v[i][j][k] -= pj->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) *
                                dx[k] * wi / pj->rho;
-        pj->sder_v[i][j][k] -= pi->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) *
+        pj->magma.sder_v[i][j][k] -= pi->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) *
                                dx[k] * wj / pi->rho;
       }
     }
@@ -380,17 +380,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float alpha_j = pj->viscosity.alpha;
   pi->force.alpha_visc_max_ngb = max(pi->force.alpha_visc_max_ngb, alpha_j);
 
-  /* Calculate the correction matrix*/
+  /* Calculate the correction matrix. */
   for (int i = 0; i < 3; i++) {
-    pi->fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
+    pi->magma.fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
     for (int j = 0; j < 3; j++) {
-      pi->c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
-      pi->sder_u[i][j] -=
-          pj->mass * (pj->aux_u[i] - pi->aux_u[i]) * dx[j] * wi / pj->rho;
-      pi->fder_v[i][j] -=
+      pi->magma.c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
+      pi->magma.sder_u[i][j] -=
+          pj->mass * (pj->magma.aux_u[i] - pi->magma.aux_u[i]) * dx[j] * wi / pj->rho;
+      pi->magma.fder_v[i][j] -=
           pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
       for (int k = 0; k < 3; k++) {
-        pi->sder_v[i][j][k] -= pj->mass * (pj->aux_v[i][j] - pi->aux_v[i][j]) *
+        pi->magma.sder_v[i][j][k] -= pj->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) *
                                dx[k] * wi / pj->rho;
       }
     }
@@ -418,6 +418,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part* restrict pi, struct part* restrict pj, const float a,
     const float H) {
+  /* Cosmological factors entering the EoMs */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -458,35 +461,53 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get the slope constant A. */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
+  float A_ij, A_ji, Av_ij, Av_ji;
 
   for (int i = 0; i < 3; i++) {
-    A_i += pi->fder_u[i] * dx[i];
-    A_j += pj->fder_u[i] * dx[i];
+    A_i += pi->magma.fder_u[i] * dx[i];
+    A_j += pj->magma.fder_u[i] * dx[i];
     for (int j = 0; j < 3; j++) {
-      Av_i += pi->fder_v[i][j] * dx[i] * dx[j];
-      Av_j += pj->fder_v[i][j] * dx[i] * dx[j];
+      Av_i += pi->magma.fder_v[i][j] * dx[i] * dx[j];
+      Av_j += pj->magma.fder_v[i][j] * dx[i] * dx[j];
     }
   }
 
-  const float A_ij = A_i / A_j;
-  const float A_ji = A_j / A_i;
-  const float Av_ij = Av_i / Av_j;
-  const float Av_ji = Av_j / Av_i;
+  if (A_i == 0.f && A_j == 0.f){
+	  A_ij = 1.f;
+	  A_ji = 1.f;
+  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)){
+	  A_ij = 0.f;
+	  A_ji = 0.f;
+  } else{
+	  A_ij = A_i / A_j;
+	  A_ji = A_j / A_i;
+  }
+
+  if (Av_i == 0.f && Av_j == 0.f){
+          Av_ij = 1.f;
+          Av_ji = 1.f;
+  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)){
+          Av_ij = 0.f;
+          Av_ji = 0.f;
+  } else{
+          Av_ij = Av_i / Av_j;
+          Av_ji = Av_j / Av_i;
+  }
 
   /* Compute slope limiter. */
-  const float Ai_min = 4.f * A_ij / ((1 + A_ij) * (1 + A_ij));
-  const float Aj_min = 4.f * A_ji / ((1 + A_ji) * (1 + A_ji));
-  const float Fi_min = min(1, Ai_min);
-  const float Fj_min = min(1, Aj_min);
-  const float Fi_max = max(0, Fi_min);
-  const float Fj_max = max(0, Fj_min);
+  const float Ai_min = 4.f * A_ij / ((1.f + A_ij) * (1.f + A_ij));
+  const float Aj_min = 4.f * A_ji / ((1.f + A_ji) * (1.f + A_ji));
+  const float Fi_min = min(1.f, Ai_min);
+  const float Fj_min = min(1.f, Aj_min);
+  const float Fi_max = max(0.f, Fi_min);
+  const float Fj_max = max(0.f, Fj_min);
 
-  const float Avi_min = 4.f * Av_ij / ((1 + Av_ij) * (1 + Av_ij));
-  const float Avj_min = 4.f * Av_ji / ((1 + Av_ji) * (1 + Av_ji));
-  const float Fvi_min = min(1, Avi_min);
-  const float Fvj_min = min(1, Avj_min);
-  const float Fvi_max = max(0, Fvi_min);
-  const float Fvj_max = max(0, Fvj_min);
+  const float Avi_min = 4.f * Av_ij / ((1.f + Av_ij) * (1.f + Av_ij));
+  const float Avj_min = 4.f * Av_ji / ((1.f + Av_ji) * (1.f + Av_ji));
+  const float Fvi_min = min(1.f, Avi_min);
+  const float Fvj_min = min(1.f, Avj_min);
+  const float Fvi_max = max(0.f, Fvi_min);
+  const float Fvj_max = max(0.f, Fvj_min);
 
   float F_ij, F_ji, Fv_ij, Fv_ji;
 
@@ -496,7 +517,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     Fv_ij = Fvi_max;
     Fv_ji = Fvj_max;
   } else {
-    const float e_con = -(hij - h_crit) * (hij - h_crit) / 0.04f;
+    const float e_con = -(hij - h_crit) * (hij - h_crit) * 25.f;
     const float F_exp = optimized_expf(e_con);
     F_ij = Fi_max * F_exp;
     F_ji = Fj_max * F_exp;
@@ -509,11 +530,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float uj_mid, uj_fder = 0.f, uj_sder = 0.f;
 
   for (int i = 0; i < 3; i++) {
-    ui_fder -= pi->fder_u[i] * 0.5f * dx[i];
-    uj_fder += pj->fder_u[i] * 0.5f * dx[i];
+    ui_fder -= pi->magma.fder_u[i] * 0.5f * dx[i];
+    uj_fder += pj->magma.fder_u[i] * 0.5f * dx[i];
     for (int j = 0; j < 3; j++) {
-      ui_sder += pi->sder_u[i][j] * 0.25f * dx[i] * dx[j];
-      uj_sder += pj->sder_u[i][j] * 0.25f * dx[i] * dx[j];
+      ui_sder += pi->magma.sder_u[i][j] * 0.25f * dx[i] * dx[j];
+      uj_sder += pj->magma.sder_u[i][j] * 0.25f * dx[i] * dx[j];
     }
   }
 
@@ -533,11 +554,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      vi_fder[i] -= pi->fder_v[i][j] * 0.5f * dx[j];
-      vj_fder[i] += pj->fder_v[i][j] * 0.5f * dx[j];
+      vi_fder[i] -= pi->magma.fder_v[i][j] * 0.5f * dx[j];
+      vj_fder[i] += pj->magma.fder_v[i][j] * 0.5f * dx[j];
       for (int k = 0; k < 3; k++) {
-        vi_sder[i] += pi->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
-        vj_sder[i] += pj->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+        vi_sder[i] += pi->magma.sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+        vj_sder[i] += pj->magma.sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
       }
     }
   }
@@ -565,16 +586,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Compute new dv dot r. */
   const float dvdh_i = (vi_mid[0] - vj_mid[0]) * h_i[0] +
                        (vi_mid[1] - vj_mid[1]) * h_i[1] +
-                       (vi_mid[2] - vj_mid[2]) * h_i[2];
+                       (vi_mid[2] - vj_mid[2]) * h_i[2] + a2_Hubble * r2 / hi;
   const float dvdh_j = (vj_mid[0] - vi_mid[0]) * h_j[0] +
                        (vj_mid[1] - vi_mid[1]) * h_j[1] +
-                       (vj_mid[2] - vi_mid[2]) * h_j[2];
+                       (vj_mid[2] - vi_mid[2]) * h_j[2] + a2_Hubble * r2 / hj;
   const float dvdh_i2 = dvdh_i / (h_i2 + 0.01f);
   const float dvdh_j2 = dvdh_j / (h_j2 + 0.01f);
 
   /* compute velocity jump. */
-  const float mu_i = min(0.f, dvdh_i2);
-  const float mu_j = min(0.f, dvdh_j2);
+  const float mu_i = fac_mu * min(0.f, dvdh_i2);
+  const float mu_j = fac_mu * min(0.f, dvdh_j2);
 
   /* compute viscosity pressure term. */
   const float Q_i = rhoi * (-pi->force.soundspeed * mu_i + 2.f * mu_i * mu_i);
@@ -585,8 +606,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      c_matrix_i[i][j] = pi->c_matrix[i][j];
-      c_matrix_j[i][j] = pj->c_matrix[i][j];
+      c_matrix_i[i][j] = pi->magma.c_matrix[i][j];
+      c_matrix_j[i][j] = pj->magma.c_matrix[i][j];
     }
   }
 
@@ -651,18 +672,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
    * alpha from the highest pressure particle to dominate, so that the
    * diffusion limited particles always take precedence - another trick to
    * allow the scheme to work with thermal feedback. */
+
+#if defined(MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER)
+  /*
+  const float alpha_diff_sphenix =
+      (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
+      (pressurei + pressurej);
+  const float alpha_diff = max(0.f, alpha_diff_sphenix);
+  */
+#else
+  const float alpha_diff = 0.05f;
+#endif
+
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
   const float v_diffg =
-      sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
+      (sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
             (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
-            (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2]));
+            (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2])) + H * a * r) * fac_mu;
   const float iG = 0.5f;
   const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
   const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
                                     (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) +
                                     (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
   const float diff_du_term =
-      -0.1f * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
+      -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + diff_du_term;
@@ -700,6 +733,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part* restrict pi, const struct part* restrict pj, const float a,
     const float H) {
+  /* Cosmological factors entering the EoMs */
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
   const float r_inv = r ? 1.0f / r : 0.0f;
@@ -737,20 +773,38 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get the slope constant A. */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
+  float A_ij, A_ji, Av_ij, Av_ji;
 
   for (int i = 0; i < 3; i++) {
-    A_i += pi->fder_u[i] * dx[i];
-    A_j += pj->fder_u[i] * dx[i];
+    A_i += pi->magma.fder_u[i] * dx[i];
+    A_j += pj->magma.fder_u[i] * dx[i];
     for (int j = 0; j < 3; j++) {
-      Av_i += pi->fder_v[i][j] * dx[i] * dx[j];
-      Av_j += pj->fder_v[i][j] * dx[i] * dx[j];
+      Av_i += pi->magma.fder_v[i][j] * dx[i] * dx[j];
+      Av_j += pj->magma.fder_v[i][j] * dx[i] * dx[j];
     }
   }
 
-  const float A_ij = A_i / A_j;
-  const float A_ji = A_j / A_i;
-  const float Av_ij = Av_i / Av_j;
-  const float Av_ji = Av_j / Av_i;
+  if (A_i == 0.f && A_j == 0.f){
+          A_ij = 1.f;
+          A_ji = 1.f;
+  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)){
+          A_ij = 0.f;
+          A_ji = 0.f;
+  } else{
+          A_ij = A_i / A_j;
+          A_ji = A_j / A_i;
+  }
+
+  if (Av_i == 0.f && Av_j == 0.f){
+          Av_ij = 1.f;
+          Av_ji = 1.f;
+  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)){
+          Av_ij = 0.f;
+          Av_ji = 0.f;
+  } else{
+          Av_ij = Av_i / Av_j;
+          Av_ji = Av_j / Av_i;
+  }
 
   /* Compute slope limiter. */
   const float Ai_min = 4.f * A_ij / ((1 + A_ij) * (1 + A_ij));
@@ -775,7 +829,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     Fv_ij = Fvi_max;
     Fv_ji = Fvj_max;
   } else {
-    const float e_con = -(hij - h_crit) * (hij - h_crit) / 0.04f;
+    const float e_con = -(hij - h_crit) * (hij - h_crit) * 25.f;
     const float F_exp = optimized_expf(e_con);
     F_ij = Fi_max * F_exp;
     F_ji = Fj_max * F_exp;
@@ -788,11 +842,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float uj_mid, uj_fder = 0.f, uj_sder = 0.f;
 
   for (int i = 0; i < 3; i++) {
-    ui_fder -= pi->fder_u[i] * 0.5f * dx[i];
-    uj_fder += pj->fder_u[i] * 0.5f * dx[i];
+    ui_fder -= pi->magma.fder_u[i] * 0.5f * dx[i];
+    uj_fder += pj->magma.fder_u[i] * 0.5f * dx[i];
     for (int j = 0; j < 3; j++) {
-      ui_sder += pi->sder_u[i][j] * 0.25f * dx[i] * dx[j];
-      uj_sder += pj->sder_u[i][j] * 0.25f * dx[i] * dx[j];
+      ui_sder += pi->magma.sder_u[i][j] * 0.25f * dx[i] * dx[j];
+      uj_sder += pj->magma.sder_u[i][j] * 0.25f * dx[i] * dx[j];
     }
   }
 
@@ -812,11 +866,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      vi_fder[i] -= pi->fder_v[i][j] * 0.5f * dx[j];
-      vj_fder[i] += pj->fder_v[i][j] * 0.5f * dx[j];
+      vi_fder[i] -= pi->magma.fder_v[i][j] * 0.5f * dx[j];
+      vj_fder[i] += pj->magma.fder_v[i][j] * 0.5f * dx[j];
       for (int k = 0; k < 3; k++) {
-        vi_sder[i] += pi->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
-        vj_sder[i] += pj->sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+        vi_sder[i] += pi->magma.sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
+        vj_sder[i] += pj->magma.sder_v[i][j][k] * 0.25f * dx[j] * dx[k];
       }
     }
   }
@@ -844,16 +898,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Compute new dv dot r. */
   const float dvdh_i = (vi_mid[0] - vj_mid[0]) * h_i[0] +
                        (vi_mid[1] - vj_mid[1]) * h_i[1] +
-                       (vi_mid[2] - vj_mid[2]) * h_i[2];
+                       (vi_mid[2] - vj_mid[2]) * h_i[2] + a2_Hubble * r2 / hi;
   const float dvdh_j = (vj_mid[0] - vi_mid[0]) * h_j[0] +
                        (vj_mid[1] - vi_mid[1]) * h_j[1] +
-                       (vj_mid[2] - vi_mid[2]) * h_j[2];
+                       (vj_mid[2] - vi_mid[2]) * h_j[2] + a2_Hubble * r2 / hj;
   const float dvdh_i2 = dvdh_i / (h_i2 + 0.01f);
   const float dvdh_j2 = dvdh_j / (h_j2 + 0.01f);
 
   /* compute velocity jump. */
-  const float mu_i = min(0.f, dvdh_i2);
-  const float mu_j = min(0.f, dvdh_j2);
+  const float mu_i = fac_mu * min(0.f, dvdh_i2);
+  const float mu_j = fac_mu * min(0.f, dvdh_j2);
 
   /* compute viscosity pressure term. */
   const float Q_i = rhoi * (-pi->force.soundspeed * mu_i + 2.f * mu_i * mu_i);
@@ -864,8 +918,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      c_matrix_i[i][j] = pi->c_matrix[i][j];
-      c_matrix_j[i][j] = pj->c_matrix[i][j];
+      c_matrix_i[i][j] = pi->magma.c_matrix[i][j];
+      c_matrix_j[i][j] = pj->magma.c_matrix[i][j];
     }
   }
 
@@ -921,18 +975,30 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * alpha from the highest pressure particle to dominate, so that the
    * diffusion limited particles always take precedence - another trick to
    * allow the scheme to work with thermal feedback. */
+
+#if defined(MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER)
+  /*
+  const float alpha_diff_sphenix =
+      (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
+      (pressurei + pressurej);
+  const float alpha_diff = max(0.f, alpha_diff_sphenix);
+  */
+#else
+  const float alpha_diff = 0.05f;
+#endif
+
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
   const float v_diffg =
-      sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
+      (sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
             (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
-            (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2]));
+            (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2])) + H * a * r) * fac_mu;
   const float iG = 0.5f;
   const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
   const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
                                     (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) +
                                     (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
   const float diff_du_term =
-      -0.1f * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
+      -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + diff_du_term;

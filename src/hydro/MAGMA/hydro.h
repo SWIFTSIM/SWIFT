@@ -565,16 +565,16 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->diffusion.laplace_u = 0.f;
 
   for (int i = 0; i < 3; i++) {
-    p->aux_u[i] = 0.f;
-    p->fder_u[i] = 0.f;
+    p->magma.aux_u[i] = 0.f;
+    p->magma.fder_u[i] = 0.f;
     for (int j = 0; j < 3; j++) {
-      p->aux_v[i][j] = 0.f;
-      p->fder_v[i][j] = 0.f;
-      p->c_matrix[i][j] = 0.f;
-      p->d_matrix[i][j] = 0.f;
-      p->sder_u[i][j] = 0.f;
+      p->magma.aux_v[i][j] = 0.f;
+      p->magma.fder_v[i][j] = 0.f;
+      p->magma.c_matrix[i][j] = 0.f;
+      p->magma.d_matrix[i][j] = 0.f;
+      p->magma.sder_u[i][j] = 0.f;
       for (int k = 0; k < 3; k++) {
-        p->sder_v[i][j][k] = 0.f;
+        p->magma.sder_v[i][j][k] = 0.f;
       }
     }
   }
@@ -644,139 +644,25 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->viscosity.div_v += cosmo->H * hydro_dimension;
 
   /* Finish calculation of the d-matrix */
-  float tau[3][3];
+  invert_dimension_by_dimension_matrix(p->magma.d_matrix);
 
-  for (int m = 0; m < 3; m++) {
-    for (int n = 0; n < 3; n++) {
-      tau[m][n] = p->d_matrix[m][n];
-    }
-  }
-
-#if defined(HYDRO_DIMENSION_3D)
-  int pivot[3];
-  for (int i = 0; i < 3; i++) {
-    int imax = i;
-    float Smax = fabsf(tau[imax][i]);
-    for (int j = i + 1; j < 3; j++) {
-      const float this_Smax = fabsf(tau[j][i]);
-      if (this_Smax > Smax) {
-        Smax = this_Smax;
-        imax = j;
-      }
-    }
-
-    if (Smax < 1.e-8f) {
-      /* singular matrix. Early abort */
-      for (int j = 0; j < 3; j++) {
-        for (int k = 0; k < 3; k++) {
-          tau[j][k] = 0.0f;
-        }
-      }
-    }
-
-    pivot[i] = imax;
-    if (i != imax) {
-      for (int j = 0; j < 3; j++) {
-        const float temp = tau[i][j];
-        tau[i][j] = tau[imax][j];
-        tau[imax][j] = temp;
-      }
-    }
-
-    const float Aii_inv = 1.0f / tau[i][i];
-    for (int j = i + 1; j < 3; j++) {
-      tau[j][i] *= Aii_inv;
-    }
-
-    for (int j = i + 1; j < 3; j++) {
-      for (int k = i + 1; k < 3; k++) {
-        tau[j][k] -= tau[j][i] * tau[i][k];
-      }
-    }
-  }
-
-  for (int i = 0; i < 3; i++) {
-    tau[i][i] = 1.0f / tau[i][i];
-    for (int j = i + 1; j < 3; j++) {
-      float Aij = 0.0f;
-      for (int k = i; k < j; k++) {
-        Aij -= tau[i][k] * tau[k][j];
-      }
-      tau[i][j] = Aij / tau[j][j];
-    }
-  }
-
-  float work[3];
-  for (int jp1 = 3; jp1 > 0; jp1--) {
-    const int j = jp1 - 1;
-    for (int i = 0; i < jp1; i++) {
-      work[i] = tau[i][j];
-    }
-    for (int i = jp1; i < 3; i++) {
-      work[i] = 0.0f;
-    }
-    for (int k = jp1; k < 3; k++) {
-      for (int i = 0; i < 3; i++) {
-        work[i] -= tau[i][k] * tau[k][j];
-      }
-    }
-    for (int i = 0; i < 3; i++) {
-      tau[i][j] = work[i];
-    }
-  }
-
-  for (int jp1 = 3; jp1 > 0; jp1--) {
-    const int j = jp1 - 1;
-    const int jp = pivot[j];
-    if (jp != j) {
-      for (int i = 0; i < 3; i++) {
-        const float temp = tau[i][j];
-        tau[i][j] = tau[i][jp];
-        tau[i][jp] = temp;
-      }
-    }
-  }
-
-  for (int m = 0; m < 3; m++) {
-    for (int n = 0; n < 3; n++) {
-      p->d_matrix[m][n] = tau[m][n];
-    }
-  }
-
-#elif defined(HYDRO_DIMENSION_2D)
-
-  const float detA = tau[0][0] * tau[1][1] - tau[0][1] * tau[1][0];
-
-  const float detAinv = (detA != 0.0f) ? 1.0f / detA : 0.0f;
-
-  p->d_matrix[0][0] = tau[1][1] * detAinv;
-  p->d_matrix[0][1] = -tau[0][1] * detAinv;
-  p->d_matrix[1][0] = -tau[1][0] * detAinv;
-  p->d_matrix[1][1] = tau[0][0] * detAinv;
-
-#else
-
-  error("The dimension is not defined !");
-
-#endif
-
-  /* Calculate the auxiliary gradient u */
+  /* Calculate the auxiliary gradient u/v */
   float aux_un[3], aux_vn[3][3];
 
   for (int m = 0; m < 3; m++) {
-    aux_un[m] = p->aux_u[m];
+    aux_un[m] = p->magma.aux_u[m];
     for (int n = 0; n < 3; n++) {
-      aux_vn[m][n] = p->aux_v[m][n];
+      aux_vn[m][n] = p->magma.aux_v[m][n];
     }
   }
 
   for (int m = 0; m < 3; m++) {
-    p->aux_u[m] = aux_un[0] * p->d_matrix[m][0] +
-                  aux_un[1] * p->d_matrix[m][1] + aux_un[2] * p->d_matrix[m][2];
+    p->magma.aux_u[m] = aux_un[0] * p->magma.d_matrix[m][0] +
+                  aux_un[1] * p->magma.d_matrix[m][1] + aux_un[2] * p->magma.d_matrix[m][2];
     for (int n = 0; n < 3; n++) {
-      p->aux_v[m][n] = aux_vn[m][0] * p->d_matrix[n][0] +
-                       aux_vn[m][1] * p->d_matrix[n][1] +
-                       aux_vn[m][2] * p->d_matrix[n][2];
+      p->magma.aux_v[m][n] = aux_vn[m][0] * p->magma.d_matrix[n][0] +
+                       aux_vn[m][1] * p->magma.d_matrix[n][1] +
+                       aux_vn[m][2] * p->magma.d_matrix[n][2];
     }
   }
 
@@ -906,154 +792,46 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Calculate the final correction matrix */
   int m, n;
-  float tau[3][3];
-
-  for (m = 0; m < 3; m++) {
-    for (n = 0; n < 3; n++) {
-      tau[m][n] = (p->c_matrix[m][n]) * h_inv_dim;
-    }
+  for(m=0;m<3;m++){
+  	for(n=0;n<3;n++){
+		p->magma.c_matrix[m][n] = (p->magma.c_matrix[m][n]) * h_inv_dim;
+  }
   }
 
-#if defined(HYDRO_DIMENSION_3D)
-  int pivot[3];
-  for (int i = 0; i < 3; i++) {
-    int imax = i;
-    float Smax = fabsf(tau[imax][i]);
-    for (int j = i + 1; j < 3; j++) {
-      const float this_Smax = fabsf(tau[j][i]);
-      if (this_Smax > Smax) {
-        Smax = this_Smax;
-        imax = j;
-      }
-    }
+  invert_dimension_by_dimension_matrix(p->magma.c_matrix);
 
-    if (Smax < 1.e-8f) {
-      /* singular matrix. Early abort */
-      for (int j = 0; j < 3; j++) {
-        for (int k = 0; k < 3; k++) {
-          tau[j][k] = 0.0f;
-        }
-      }
-    }
-
-    pivot[i] = imax;
-    if (i != imax) {
-      for (int j = 0; j < 3; j++) {
-        const float temp = tau[i][j];
-        tau[i][j] = tau[imax][j];
-        tau[imax][j] = temp;
-      }
-    }
-
-    const float Aii_inv = 1.0f / tau[i][i];
-    for (int j = i + 1; j < 3; j++) {
-      tau[j][i] *= Aii_inv;
-    }
-
-    for (int j = i + 1; j < 3; j++) {
-      for (int k = i + 1; k < 3; k++) {
-        tau[j][k] -= tau[j][i] * tau[i][k];
-      }
-    }
-  }
-
-  for (int i = 0; i < 3; i++) {
-    tau[i][i] = 1.0f / tau[i][i];
-    for (int j = i + 1; j < 3; j++) {
-      float Aij = 0.0f;
-      for (int k = i; k < j; k++) {
-        Aij -= tau[i][k] * tau[k][j];
-      }
-      tau[i][j] = Aij / tau[j][j];
-    }
-  }
-
-  float work[3];
-  for (int jp1 = 3; jp1 > 0; jp1--) {
-    const int j = jp1 - 1;
-    for (int i = 0; i < jp1; i++) {
-      work[i] = tau[i][j];
-    }
-    for (int i = jp1; i < 3; i++) {
-      work[i] = 0.0f;
-    }
-    for (int k = jp1; k < 3; k++) {
-      for (int i = 0; i < 3; i++) {
-        work[i] -= tau[i][k] * tau[k][j];
-      }
-    }
-    for (int i = 0; i < 3; i++) {
-      tau[i][j] = work[i];
-    }
-  }
-
-  for (int jp1 = 3; jp1 > 0; jp1--) {
-    const int j = jp1 - 1;
-    const int jp = pivot[j];
-    if (jp != j) {
-      for (int i = 0; i < 3; i++) {
-        const float temp = tau[i][j];
-        tau[i][j] = tau[i][jp];
-        tau[i][jp] = temp;
-      }
-    }
-  }
-
-  for (m = 0; m < 3; m++) {
-    for (n = 0; n < 3; n++) {
-      p->c_matrix[m][n] = tau[m][n];
-    }
-  }
-
-#elif defined(HYDRO_DIMENSION_2D)
-
-  const float detA = tau[0][0] * tau[1][1] - tau[0][1] * tau[1][0];
-
-  const float detAinv = (detA != 0.0f) ? 1.0f / detA : 0.0f;
-
-  p->c_matrix[0][0] = tau[1][1] * detAinv;
-  p->c_matrix[0][1] = -tau[0][1] * detAinv;
-  p->c_matrix[1][0] = -tau[1][0] * detAinv;
-  p->c_matrix[1][1] = tau[0][0] * detAinv;
-
-#else
-
-  error("The dimension is not defined !");
-
-#endif
-
-  /* Calculate the first derivative of internal energy. */
+  /* Calculate the first/second derivative of u/v. */
   float fder_un[3], sder_un[3][3], fder_vn[3][3], sder_vn[3][3][3];
 
   for (m = 0; m < 3; m++) {
-    fder_un[m] = p->fder_u[m];
+    fder_un[m] = p->magma.fder_u[m];
     for (n = 0; n < 3; n++) {
-      sder_un[m][n] = p->sder_u[m][n];
-      fder_vn[m][n] = p->fder_v[m][n];
+      sder_un[m][n] = p->magma.sder_u[m][n];
+      fder_vn[m][n] = p->magma.fder_v[m][n];
       for (int l = 0; l < 3; l++) {
-        sder_vn[m][n][l] = p->sder_v[m][n][l];
+        sder_vn[m][n][l] = p->magma.sder_v[m][n][l];
       }
     }
   }
 
   for (m = 0; m < 3; m++) {
-    p->fder_u[m] =
-        (fder_un[0] * p->c_matrix[m][0] + fder_un[1] * p->c_matrix[m][1] +
-         fder_un[2] * p->c_matrix[m][2]) *
+    p->magma.fder_u[m] =
+        (fder_un[0] * p->magma.c_matrix[m][0] + fder_un[1] * p->magma.c_matrix[m][1] +
+         fder_un[2] * p->magma.c_matrix[m][2]) *
         h_inv_dim;
     for (n = 0; n < 3; n++) {
-      p->sder_u[m][n] = (sder_un[m][0] * p->c_matrix[n][0] +
-                         sder_un[m][1] * p->c_matrix[n][1] +
-                         sder_un[m][2] * p->c_matrix[n][2]) *
+      p->magma.sder_u[m][n] = (sder_un[m][0] * p->magma.c_matrix[n][0] +
+                         sder_un[m][1] * p->magma.c_matrix[n][1] +
+                         sder_un[m][2] * p->magma.c_matrix[n][2]) *
                         h_inv_dim;
-      p->fder_v[m][n] = (fder_vn[m][0] * p->c_matrix[n][0] +
-                         fder_vn[m][1] * p->c_matrix[n][1] +
-                         fder_vn[m][2] * p->c_matrix[n][2]) *
+      p->magma.fder_v[m][n] = (fder_vn[m][0] * p->magma.c_matrix[n][0] +
+                         fder_vn[m][1] * p->magma.c_matrix[n][1] +
+                         fder_vn[m][2] * p->magma.c_matrix[n][2]) *
                         h_inv_dim;
       for (int l = 0; l < 3; l++) {
-        p->sder_v[m][n][l] = (sder_vn[m][n][0] * p->c_matrix[l][0] +
-                              sder_vn[m][n][1] * p->c_matrix[l][1] +
-                              sder_vn[m][n][2] * p->c_matrix[l][2]) *
+        p->magma.sder_v[m][n][l] = (sder_vn[m][n][0] * p->magma.c_matrix[l][0] +
+                              sder_vn[m][n][1] * p->magma.c_matrix[l][1] +
+                              sder_vn[m][n][2] * p->magma.c_matrix[l][2]) *
                              h_inv_dim;
       }
     }
