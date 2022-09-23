@@ -156,8 +156,7 @@ nPhotonGroups = 3
 
 # with this IC, the radiative cooling is negligible.
 #  photon_energy = u_part * pmass * 5.0
-# with this IC, you can observe the loss of radiative cooling very clearly.
-#  photon_energy = u_part * pmass * 0.025
+#  photon_energy = np.arange(1, nPhotonGroups+1) * photon_energy
 
 # Fluxes from the Iliev Test0 part3
 fluxes_iliev = np.array([1.350e1, 2.779e1, 6.152e0]) * unyt.erg / unyt.s / unyt.cm ** 2
