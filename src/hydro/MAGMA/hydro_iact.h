@@ -815,19 +815,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
 
   /* Compute slope limiter. */
-  const float Ai_min = 4.f * A_ij / ((1 + A_ij) * (1 + A_ij));
-  const float Aj_min = 4.f * A_ji / ((1 + A_ji) * (1 + A_ji));
-  const float Fi_min = min(1, Ai_min);
-  const float Fj_min = min(1, Aj_min);
-  const float Fi_max = max(0, Fi_min);
-  const float Fj_max = max(0, Fj_min);
+  const float Ai_min = 4.f * A_ij / ((1.f + A_ij) * (1.f + A_ij));
+  const float Aj_min = 4.f * A_ji / ((1.f + A_ji) * (1.f + A_ji));
+  const float Fi_min = min(1.f, Ai_min);
+  const float Fj_min = min(1.f, Aj_min);
+  const float Fi_max = max(0.f, Fi_min);
+  const float Fj_max = max(0.f, Fj_min);
 
-  const float Avi_min = 4.f * Av_ij / ((1 + Av_ij) * (1 + Av_ij));
-  const float Avj_min = 4.f * Av_ji / ((1 + Av_ji) * (1 + Av_ji));
-  const float Fvi_min = min(1, Avi_min);
-  const float Fvj_min = min(1, Avj_min);
-  const float Fvi_max = max(0, Fvi_min);
-  const float Fvj_max = max(0, Fvj_min);
+  const float Avi_min = 4.f * Av_ij / ((1.f + Av_ij) * (1.f + Av_ij));
+  const float Avj_min = 4.f * Av_ji / ((1.f + Av_ji) * (1.f + Av_ji));
+  const float Fvi_min = min(1.f, Avi_min);
+  const float Fvj_min = min(1.f, Avj_min);
+  const float Fvi_max = max(0.f, Fvi_min);
+  const float Fvj_max = max(0.f, Fvj_min);
 
   float F_ij, F_ji, Fv_ij, Fv_ji;
 
