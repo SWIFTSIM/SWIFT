@@ -288,20 +288,24 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
       pi->magma.c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
       pj->magma.c_matrix[i][j] += pi->mass * dx[i] * dx[j] * wj / pi->rho;
 
-      pi->magma.sder_u[i][j] -=
-          pj->mass * (pj->magma.aux_u[i] - pi->magma.aux_u[i]) * dx[j] * wi / pj->rho;
-      pj->magma.sder_u[i][j] -=
-          pi->mass * (pj->magma.aux_u[i] - pi->magma.aux_u[i]) * dx[j] * wj / pi->rho;
+      pi->magma.sder_u[i][j] -= pj->mass *
+                                (pj->magma.aux_u[i] - pi->magma.aux_u[i]) *
+                                dx[j] * wi / pj->rho;
+      pj->magma.sder_u[i][j] -= pi->mass *
+                                (pj->magma.aux_u[i] - pi->magma.aux_u[i]) *
+                                dx[j] * wj / pi->rho;
 
       pi->magma.fder_v[i][j] -=
           pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
       pj->magma.fder_v[i][j] -=
           pi->mass * (pj->v[i] - pi->v[i]) * dx[j] * wj / pi->rho;
       for (int k = 0; k < 3; k++) {
-        pi->magma.sder_v[i][j][k] -= pj->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) *
-                               dx[k] * wi / pj->rho;
-        pj->magma.sder_v[i][j][k] -= pi->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) *
-                               dx[k] * wj / pi->rho;
+        pi->magma.sder_v[i][j][k] -=
+            pj->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) * dx[k] *
+            wi / pj->rho;
+        pj->magma.sder_v[i][j][k] -=
+            pi->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) * dx[k] *
+            wj / pi->rho;
       }
     }
   }
@@ -385,13 +389,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     pi->magma.fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
     for (int j = 0; j < 3; j++) {
       pi->magma.c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
-      pi->magma.sder_u[i][j] -=
-          pj->mass * (pj->magma.aux_u[i] - pi->magma.aux_u[i]) * dx[j] * wi / pj->rho;
+      pi->magma.sder_u[i][j] -= pj->mass *
+                                (pj->magma.aux_u[i] - pi->magma.aux_u[i]) *
+                                dx[j] * wi / pj->rho;
       pi->magma.fder_v[i][j] -=
           pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
       for (int k = 0; k < 3; k++) {
-        pi->magma.sder_v[i][j][k] -= pj->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) *
-                               dx[k] * wi / pj->rho;
+        pi->magma.sder_v[i][j][k] -=
+            pj->mass * (pj->magma.aux_v[i][j] - pi->magma.aux_v[i][j]) * dx[k] *
+            wi / pj->rho;
       }
     }
   }
@@ -472,26 +478,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     }
   }
 
-  if (A_i == 0.f && A_j == 0.f){
-	  A_ij = 1.f;
-	  A_ji = 1.f;
-  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)){
-	  A_ij = 0.f;
-	  A_ji = 0.f;
-  } else{
-	  A_ij = A_i / A_j;
-	  A_ji = A_j / A_i;
+  if (A_i == 0.f && A_j == 0.f) {
+    A_ij = 1.f;
+    A_ji = 1.f;
+  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)) {
+    A_ij = 0.f;
+    A_ji = 0.f;
+  } else {
+    A_ij = A_i / A_j;
+    A_ji = A_j / A_i;
   }
 
-  if (Av_i == 0.f && Av_j == 0.f){
-          Av_ij = 1.f;
-          Av_ji = 1.f;
-  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)){
-          Av_ij = 0.f;
-          Av_ji = 0.f;
-  } else{
-          Av_ij = Av_i / Av_j;
-          Av_ji = Av_j / Av_i;
+  if (Av_i == 0.f && Av_j == 0.f) {
+    Av_ij = 1.f;
+    Av_ji = 1.f;
+  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)) {
+    Av_ij = 0.f;
+    Av_ji = 0.f;
+  } else {
+    Av_ij = Av_i / Av_j;
+    Av_ji = Av_j / Av_i;
   }
 
   /* Compute slope limiter. */
@@ -687,8 +693,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
   const float v_diffg =
       (sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
-            (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
-            (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2])) + H * a * r) * fac_mu;
+             (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
+             (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2])) +
+       H * a * r) *
+      fac_mu;
   const float iG = 0.5f;
   const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
   const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
@@ -784,26 +792,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     }
   }
 
-  if (A_i == 0.f && A_j == 0.f){
-          A_ij = 1.f;
-          A_ji = 1.f;
-  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)){
-          A_ij = 0.f;
-          A_ji = 0.f;
-  } else{
-          A_ij = A_i / A_j;
-          A_ji = A_j / A_i;
+  if (A_i == 0.f && A_j == 0.f) {
+    A_ij = 1.f;
+    A_ji = 1.f;
+  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)) {
+    A_ij = 0.f;
+    A_ji = 0.f;
+  } else {
+    A_ij = A_i / A_j;
+    A_ji = A_j / A_i;
   }
 
-  if (Av_i == 0.f && Av_j == 0.f){
-          Av_ij = 1.f;
-          Av_ji = 1.f;
-  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)){
-          Av_ij = 0.f;
-          Av_ji = 0.f;
-  } else{
-          Av_ij = Av_i / Av_j;
-          Av_ji = Av_j / Av_i;
+  if (Av_i == 0.f && Av_j == 0.f) {
+    Av_ij = 1.f;
+    Av_ji = 1.f;
+  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)) {
+    Av_ij = 0.f;
+    Av_ji = 0.f;
+  } else {
+    Av_ij = Av_i / Av_j;
+    Av_ji = Av_j / Av_i;
   }
 
   /* Compute slope limiter. */
@@ -990,8 +998,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
   const float v_diffg =
       (sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
-            (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
-            (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2])) + H * a * r) * fac_mu;
+             (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
+             (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2])) +
+       H * a * r) *
+      fac_mu;
   const float iG = 0.5f;
   const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
   const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +

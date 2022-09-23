@@ -658,11 +658,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
 
   for (int m = 0; m < 3; m++) {
     p->magma.aux_u[m] = aux_un[0] * p->magma.d_matrix[m][0] +
-                  aux_un[1] * p->magma.d_matrix[m][1] + aux_un[2] * p->magma.d_matrix[m][2];
+                        aux_un[1] * p->magma.d_matrix[m][1] +
+                        aux_un[2] * p->magma.d_matrix[m][2];
     for (int n = 0; n < 3; n++) {
       p->magma.aux_v[m][n] = aux_vn[m][0] * p->magma.d_matrix[n][0] +
-                       aux_vn[m][1] * p->magma.d_matrix[n][1] +
-                       aux_vn[m][2] * p->magma.d_matrix[n][2];
+                             aux_vn[m][1] * p->magma.d_matrix[n][1] +
+                             aux_vn[m][2] * p->magma.d_matrix[n][2];
     }
   }
 
@@ -792,10 +793,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Calculate the final correction matrix */
   int m, n;
-  for(m=0;m<3;m++){
-  	for(n=0;n<3;n++){
-		p->magma.c_matrix[m][n] = (p->magma.c_matrix[m][n]) * h_inv_dim;
-  }
+  for (m = 0; m < 3; m++) {
+    for (n = 0; n < 3; n++) {
+      p->magma.c_matrix[m][n] = (p->magma.c_matrix[m][n]) * h_inv_dim;
+    }
   }
 
   invert_dimension_by_dimension_matrix(p->magma.c_matrix);
@@ -815,24 +816,25 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   }
 
   for (m = 0; m < 3; m++) {
-    p->magma.fder_u[m] =
-        (fder_un[0] * p->magma.c_matrix[m][0] + fder_un[1] * p->magma.c_matrix[m][1] +
-         fder_un[2] * p->magma.c_matrix[m][2]) *
-        h_inv_dim;
+    p->magma.fder_u[m] = (fder_un[0] * p->magma.c_matrix[m][0] +
+                          fder_un[1] * p->magma.c_matrix[m][1] +
+                          fder_un[2] * p->magma.c_matrix[m][2]) *
+                         h_inv_dim;
     for (n = 0; n < 3; n++) {
       p->magma.sder_u[m][n] = (sder_un[m][0] * p->magma.c_matrix[n][0] +
-                         sder_un[m][1] * p->magma.c_matrix[n][1] +
-                         sder_un[m][2] * p->magma.c_matrix[n][2]) *
-                        h_inv_dim;
+                               sder_un[m][1] * p->magma.c_matrix[n][1] +
+                               sder_un[m][2] * p->magma.c_matrix[n][2]) *
+                              h_inv_dim;
       p->magma.fder_v[m][n] = (fder_vn[m][0] * p->magma.c_matrix[n][0] +
-                         fder_vn[m][1] * p->magma.c_matrix[n][1] +
-                         fder_vn[m][2] * p->magma.c_matrix[n][2]) *
-                        h_inv_dim;
+                               fder_vn[m][1] * p->magma.c_matrix[n][1] +
+                               fder_vn[m][2] * p->magma.c_matrix[n][2]) *
+                              h_inv_dim;
       for (int l = 0; l < 3; l++) {
-        p->magma.sder_v[m][n][l] = (sder_vn[m][n][0] * p->magma.c_matrix[l][0] +
-                              sder_vn[m][n][1] * p->magma.c_matrix[l][1] +
-                              sder_vn[m][n][2] * p->magma.c_matrix[l][2]) *
-                             h_inv_dim;
+        p->magma.sder_v[m][n][l] =
+            (sder_vn[m][n][0] * p->magma.c_matrix[l][0] +
+             sder_vn[m][n][1] * p->magma.c_matrix[l][1] +
+             sder_vn[m][n][2] * p->magma.c_matrix[l][2]) *
+            h_inv_dim;
       }
     }
   }

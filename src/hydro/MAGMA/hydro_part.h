@@ -127,7 +127,7 @@ struct part {
 
   /*! Particle density. */
   float rho;
-  
+
   /* Store matrix information of MAGMA in a separate struct. */
   struct {
     /*! correction matrix C. */

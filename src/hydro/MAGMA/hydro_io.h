@@ -264,9 +264,9 @@ INLINE static void hydro_write_particles(const struct part* parts,
                                   UNIT_CONV_ACCELERATION, 1.f, parts, a_hydro,
                                   "Accelaration of the particles");
 
-  list[16] =
-      io_make_output_field("C-matrix", FLOAT, 9, UNIT_CONV_AREA, 1.f, parts,
-                           magma.c_matrix, "Correction matrix of the particles");
+  list[16] = io_make_output_field("C-matrix", FLOAT, 9, UNIT_CONV_AREA, 1.f,
+                                  parts, magma.c_matrix,
+                                  "Correction matrix of the particles");
 
   list[17] =
       io_make_output_field("InternalEnergyDt", FLOAT, 1, UNIT_CONV_POWER, 1.f,
