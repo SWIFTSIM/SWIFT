@@ -72,7 +72,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const integertime_t ti_current) {
 
   /* Ignore wind in density computation */
-  if (pj->feedback_data.decoupling_delay_time > 0.f) return;
+  /*if (pj->feedback_data.decoupling_delay_time > 0.f) return;*/
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
