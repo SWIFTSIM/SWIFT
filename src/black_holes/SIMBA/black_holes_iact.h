@@ -859,7 +859,7 @@ runner_iact_nonsym_bh_gas_feedback(
                 dv_phys / bh_props->kms_to_internal);
 #endif
       }
-
+      else {
       const double u_new = u_init + du_xray_phys;
 
 #ifdef SIMBA_DEBUG_CHECKS
@@ -874,6 +874,7 @@ runner_iact_nonsym_bh_gas_feedback(
       /* Do the energy injection. */
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+      }
     }
   } else { /* Below is swallow_id = id for particle/bh */
 

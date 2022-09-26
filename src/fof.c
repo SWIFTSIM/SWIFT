@@ -1763,7 +1763,10 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
             first_on_node[dest] + num_on_node[dest]) ||
            (num_on_node[dest] == 0))
       dest += 1;
-    if (dest >= nr_nodes) error("Node index out of range!");
+    if (dest >= nr_nodes) {
+      warning("Node index out of range in mass_send %d > %d (num_on_node[dest]=%lu, global_root=%lu).", dest, nr_nodes, num_on_node[dest], fof_mass_send[i].global_root);
+      continue;
+    }
     sendcount[dest] += 1;
   }
 
@@ -3298,7 +3301,10 @@ void fof_search_tree(struct fof_props *props,
             first_on_node[dest] + num_on_node[dest]) ||
            (num_on_node[dest] == 0))
       dest += 1;
-    if (dest >= nr_nodes) error("Node index out of range!");
+    if (dest >= nr_nodes) {
+      warning("Node index out of range in index_send %d > %d (num_on_node[dest]=%lu, global_root=%lu).", dest, nr_nodes, num_on_node[dest], fof_index_send[i].global_root);
+      continue;
+    }
     sendcount[dest] += 1;
   }
 
