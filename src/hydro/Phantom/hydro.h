@@ -631,7 +631,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_gradient(
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.9999f * hydro_props->h_max) {
     grad_h_term = 0.f;
-    warning("h ~ h_max for particle with ID %lld (h: %g)", p->id, p->h);
   } else {
     const float grad_W_term = common_factor * p->density.wcount_dh;
     if (grad_W_term < -0.9999f) {

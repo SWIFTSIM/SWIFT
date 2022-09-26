@@ -655,7 +655,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Ignore changing-kernel effects when h ~= h_max */
   if (p->h > 0.9999f * hydro_props->h_max) {
     rho_dh = 0.f;
-    warning("h ~ h_max for particle with ID %lld (h: %g)", p->id, p->h);
   }
   const float rho_inv = 1.f / p->rho;
   float rho_dh_term;
