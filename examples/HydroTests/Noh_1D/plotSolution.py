@@ -98,9 +98,8 @@ binned_marker_size = 4
 
 scatter_props = dict(
     marker=".",
-    ms=1,
+    ms=4,
     markeredgecolor="none",
-    alpha=0.2,
     zorder=-1,
     rasterized=True,
     linestyle="none",
@@ -110,7 +109,7 @@ errorbar_props = dict(color=binned_color, ms=binned_marker_size, fmt=".", lw=1.2
 
 # Velocity profile --------------------------------
 plt.subplot(231)
-plt.plot(r, v, **scatter_props)
+plt.plot(x, v, **scatter_props)
 plt.plot(x_s, v_s, "--", color=line_color, alpha=0.8, lw=1.2)
 plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
 plt.ylabel("${\\rm{Velocity}}~v_x$", labelpad=-4)
@@ -119,7 +118,7 @@ plt.ylim(-1.2, 1.2)
 
 # Density profile --------------------------------
 plt.subplot(232)
-plt.plot(r, rho, **scatter_props)
+plt.plot(x, rho, **scatter_props)
 plt.plot(x_s, rho_s, "--", color=line_color, alpha=0.8, lw=1.2)
 plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
 plt.ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
@@ -128,7 +127,7 @@ plt.ylim(0.95, 4.4)
 
 # Pressure profile --------------------------------
 plt.subplot(233)
-plt.plot(r, P, **scatter_props)
+plt.plot(x, P, **scatter_props)
 plt.plot(x_s, P_s, "--", color=line_color, alpha=0.8, lw=1.2)
 plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
 plt.ylabel("${\\rm{Pressure}}~P$", labelpad=0)
@@ -137,7 +136,7 @@ plt.ylim(-0.05, 1.8)
 
 # Internal energy profile -------------------------
 plt.subplot(234)
-plt.plot(r, u, **scatter_props)
+plt.plot(x, u, **scatter_props)
 plt.plot(x_s, u_s, "--", color=line_color, alpha=0.8, lw=1.2)
 plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
 plt.ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
@@ -146,7 +145,7 @@ plt.ylim(-0.05, 0.8)
 
 # Entropy profile ---------------------------------
 plt.subplot(235)
-plt.plot(r, S, **scatter_props)
+plt.plot(x, S, **scatter_props)
 plt.plot(x_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
 plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
 plt.ylabel("${\\rm{Entropy}}~S$", labelpad=-9)
