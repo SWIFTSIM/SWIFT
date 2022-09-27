@@ -97,8 +97,8 @@ v[:, 2] =  0.
 b[:, 0] =  -B0 * np.sin(2. * np.pi * pos[:, 1]) 
 b[:, 1] =   B0 * np.sin(4. * np.pi * pos[:, 0]) 
 b[:, 2] =  0. 
-epa[:]  = B0*(np.cos(2.*np.pi*pos[:,1])/(2.*np.pi) + np.cos(4.*np.pi*pos[:,0])/(4.*np.pi))
-epb[:]  = pos[:,2]
+#epa[:]  = B0*(np.cos(2.*np.pi*pos[:,1])/(2.*np.pi) + np.cos(4.*np.pi*pos[:,0])/(4.*np.pi))
+#epb[:]  = pos[:,2]
 
 vp[:, 0] = 0.0
 vp[:, 1] = 0.0
@@ -139,8 +139,6 @@ grp.create_dataset("SmoothingLength", data = h, dtype = 'f')
 grp.create_dataset("InternalEnergy", data = u, dtype = 'f')
 grp.create_dataset("ParticleIDs", data = ids, dtype = 'L')
 grp.create_dataset("MagneticFluxDensity", data = b, dtype = 'f')
-grp.create_dataset("VecPot", data = vp, dtype = 'f')
-grp.create_dataset("EPalpha", data = epa, dtype = 'f')
-grp.create_dataset("EPbeta" , data = epb, dtype = 'f')
+grp.create_dataset("MagneticVectorPotential", data = vp, dtype = 'f')
 
 fileOutput.close()

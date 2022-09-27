@@ -76,8 +76,6 @@ vol_R = 1.0*1.0*boxSide/2.
 v   = zeros((numPart, 3))
 b   = zeros((numPart, 3))
 vp  = zeros((numPart, 3))
-epa = zeros(numPart)
-epb = zeros(numPart)
 
 ids = linspace(1, numPart, numPart)
 m = zeros(numPart)
@@ -145,9 +143,7 @@ grp.create_dataset('InternalEnergy', data=u, dtype='f')
 grp.create_dataset('ParticleIDs', data=ids, dtype='L')
 #grp.create_dataset("Bfield", data = b, dtype = 'f')
 grp.create_dataset("MagneticFluxDensity", data = b, dtype = 'f')
-grp.create_dataset("VecPot", data = vp, dtype = 'f')
-grp.create_dataset("EPalpha", data = epa, dtype = 'f')
-grp.create_dataset("EPbeta" , data = epb, dtype = 'f')
+grp.create_dataset("MagneticVectorPotential", data = vp, dtype = 'f')
 
 
 file.close()
