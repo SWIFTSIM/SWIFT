@@ -123,6 +123,7 @@ enum task_types {
   task_type_slope_estimate_ghost,
   task_type_slope_limiter_ghost,
   task_type_flux_ghost,
+  task_type_split_particles,
   task_type_count
 } __attribute__((packed));
 

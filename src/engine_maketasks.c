@@ -1496,6 +1496,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
                                               task_subtype_none, 0, 0, c, NULL);
     }
 
+    if (c->hydro.count > 0) {
+      c->hydro.split_particles = scheduler_addtask(
+          s, task_type_split_particles, task_subtype_none, 0, 0, c, NULL);
+    }
+
     if (with_star_formation && c->hydro.count > 0) {
       c->hydro.star_formation = scheduler_addtask(
           s, task_type_star_formation, task_subtype_none, 0, 0, c, NULL);

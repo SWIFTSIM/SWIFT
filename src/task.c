@@ -130,6 +130,7 @@ const char *taskID_names[task_type_count] = {
     "slope_estimate_ghost",
     "slope_limiter_ghost",
     "flux_ghost",
+    "split_particles"
 };
 
 /* Sub-task type names. */

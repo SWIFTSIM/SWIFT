@@ -137,6 +137,7 @@ void runner_do_slope_estimate_ghost(struct runner *r, struct cell *c, int timer)
 void runner_do_slope_limiter_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_flux_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer);
+void runner_do_split_parts(struct runner *r, struct cell *c, int timer);
 void runner_do_gas_swallow_self(struct runner *r, struct cell *c, int timer);
 void runner_do_bh_swallow_self(struct runner *r, struct cell *c, int timer);
 void runner_do_gas_swallow_pair(struct runner *r, struct cell *ci,
