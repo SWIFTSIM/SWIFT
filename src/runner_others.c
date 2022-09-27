@@ -1127,7 +1127,7 @@ void runner_do_split_parts(struct runner *r, struct cell *c, int timer) {
           struct part *restrict p2 = cell_add_part(e, c);
           /* If there are no free particles left, stop here. */
           if (p2 == NULL) return;
-          hydro_split_part(p, p2);
+          hydro_split_part(p, p2, e->ti_current);
         }
       }
     }

@@ -33,8 +33,6 @@
  * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
  */
 
-#include <string.h>
-
 #include "adiabatic_index.h"
 #include "approx_math.h"
 #include "cosmology.h"
@@ -55,6 +53,10 @@
 #include "hydro_velocities.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "random.h"
+
+#include <string.h>
+
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -721,7 +723,8 @@ __attribute__((always_inline)) INLINE static int hydro_should_split_part(
  * @param p2 The new particle to split p1 into.
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part(
-    struct part *restrict p1, struct part *restrict p2) {
+    struct part *restrict p1, struct part *restrict p2,
+    const integertime_t ti_current) {
 
   /* First copy this particle's properties to the new particle */
   p2->conserved = p1->conserved;
@@ -741,10 +744,22 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
   double rho_grad_norm = sqrt(rho_grad2);
 
   const double displacement_factor = 0.05;
-  double displacement[3] = {
-      p1->gradients.rho[0] / rho_grad_norm * p1->h * displacement_factor,
-      p1->gradients.rho[1] / rho_grad_norm * p1->h * displacement_factor,
-      p1->gradients.rho[2] / rho_grad_norm * p1->h * displacement_factor};
+  double displacement[3];
+  if (rho_grad_norm > 1e-6) {
+    displacement[0] = p1->gradients.rho[0] / rho_grad_norm;
+    displacement[1] = p1->gradients.rho[1] / rho_grad_norm;
+    displacement[2] = p1->gradients.rho[2] / rho_grad_norm;
+  } else {
+    displacement[0] =
+        random_unit_interval(p1->id, ti_current, (enum random_number_type)0);
+    displacement[1] =
+        random_unit_interval(p1->id, ti_current, (enum random_number_type)1);
+    displacement[2] =
+        random_unit_interval(p1->id, ti_current, (enum random_number_type)2);
+  }
+  displacement[0] *= p1->h * displacement_factor;
+  displacement[1] *= p1->h * displacement_factor;
+  displacement[2] *= p1->h * displacement_factor;
 
 #ifdef HYDRO_DIMENSION_2D
   int dim = 2;
