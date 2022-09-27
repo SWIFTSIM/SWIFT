@@ -386,6 +386,18 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
 
     /* Get its cell index */
     const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
+#ifdef WITH_ZOOM_REGION
+    /* If this spart has wandered into a background cell we need to
+     * convert it into a dark matter particle. */
+    if (index >= s->zoom_props->tl_cell_offset) {
+      /* For this we need to get the cell from the space. */
+      struct cell *c = &s->cells_top[index];
+      cell_convert_spart_to_gpart(s->e, c, sp);
+
+      /* Increment the number of wanderers */
+      s->zoom_props->nr_wanderers++;
+    }
+#endif
 
 #if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
     if (index < 0 || index >= s->cdim[0] * s->cdim[1] * s->cdim[2])
@@ -510,6 +522,18 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
 
     /* Get its cell index */
     const int index = cell_getid_pos(s, pos_x, pos_y, pos_z);
+#ifdef WITH_ZOOM_REGION
+    /* If this spart has wandered into a background cell we need to
+     * convert it into a dark matter particle. */
+    if (index >= s->zoom_props->tl_cell_offset) {
+      /* For this we need to get the cell from the space. */
+      struct cell *c = &s->cells_top[index];
+      cell_convert_bpart_to_gpart(s->e, c, bp);
+
+      /* Increment the number of wanderers */
+      s->zoom_props->nr_wanderers++;
+    }
+#endif
 
 #if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_ZOOM_REGION)
     if (index < 0 || index >= s->cdim[0] * s->cdim[1] * s->cdim[2])
