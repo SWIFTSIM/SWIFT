@@ -851,7 +851,7 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
  * ID of the #bpart and has a dark matter type.
  */
 struct gpart *cell_convert_bpart_to_gpart(const struct engine *e,
-                                          struct cell *c, struct spart *bp) {
+                                          struct cell *c, struct bpart *bp) {
   /* Quick cross-check */
   if (c->nodeID != e->nodeID)
     error("Can't remove a particle in a foreign cell.");
