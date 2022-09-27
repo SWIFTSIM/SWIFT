@@ -22,7 +22,7 @@ Compiling for GEAR RT
 -   You need to choose a Riemann solver for the RT equations. You can choose
     between the ``GLF`` and ``HLL`` solver. For the time being, I recommend 
     sticking to the ``GLF`` solver as the ``HLL`` solver is more expensive,
-    but seemingly offers no advantage, although this remains to be comfirmed
+    but seemingly offers no advantage, although this remains to be confirmed
     in further testing.
 
 -   GEAR RT is only compatible with the Meshless Finite Volume scheme. You'll
@@ -49,15 +49,22 @@ You need to provide the following runtime parameters in the yaml file:
 
    GEARRT:
        photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15]  # Photon frequency group bin edges in Hz
-       use_const_emission_rates: 1 
-       star_emission_rates_LSol: [1., 1., 1.]             # stellar emission rates for each photon 
-                                                          # frequency bin in units of solar luminosity
+       stellar_spectrum_type: 0                           # Which radiation spectrum to use. 
+                                                          #   0: constant. 
+                                                          #   1: blackbody spectrum.
+       stellar_luminosity_model: const                    # Which luminosity model to use.
+       const_stellar_luminosities_LSol: [1., 1., 1.]      # stellar emission rates for each photon 
+                                                          #   frequency bin in units of solar luminosity
+                                                          #   for the 'const' luminosity model
        f_reduce_c: 1e-3                                   # reduce the speed of light by this factor
        CFL_condition: 0.9                                 # CFL condition for time integration
        hydrogen_mass_fraction:  0.76                      # total hydrogen (H + H+) mass fraction in the 
                                                           # metal-free portion of the gas
 
-       stellar_spectrum_type: 0                           # Which radiation spectrum to use. 0: constant. 1: blackbody spectrum.
+
+   TimeIntegration:
+       max_nr_rt_subcycles: 128         # maximal number of RT subcycles per hydro step
+
 
 The ``photon_groups_Hz`` need to be ``N`` frequency edges (floats) to separate 
 the spectrum into ``N`` groups, where ``N`` is the same number you configured
@@ -66,17 +73,18 @@ need to be sorted in increasing order. The final upper edge is defined in a
 different manner, and depends on the stellar spectrum type you assume (see below
 for more details).
 
+To specify the radiation emitted by stars, there are two main parameters:
+``stellar_luminosity_model`` defines which model to use to obtain star 
+luminosities, while ``stellar_spectrum_type`` determines the spectrum of the
+radiation.
 At the moment, the only way to define star emission rates is to use constant
-star emission rates that need to be provided in the parameter file. The star 
-emission rates need to be defined for each photon frequency group individually.
-Each star particle will then emit the given energies, independent of their other 
-properties, i.e. the spectrum is currently independent of stellar age, metallicity, 
-redshift, etc.
-
-Furthermore, even though the parameter ``use_const_emission_rates`` is 
-intended to be optional in the future, **for now it needs to be set to 1**., and
-it requires you to manually set the stellar emission rates via the
-``star_emission_rates_LSol`` parameter.
+stellar luminosities by setting ``stellar_luminosity_model: const``. [#f3]_
+The constant star emission rates need to be provided in the parameter file and
+to be defined for each photon frequency group individually using the 
+``const_stellar_luminosities_LSol`` parameter. The luminosities are expected to
+be in units of solar luminosities. Each star particle will then emit the given 
+luminosities, independent of their other properties, e.g. the stellar age, 
+metallicity, redshift, etc.
 
 When solving the thermochemistry, we need to assume some form of stellar
 spectrum so we may integrate over frequency bins to obtain average interaction
@@ -111,6 +119,9 @@ to select between:
    e.g. equations 9 - 11 in `Rosdahl et al. 2013. 
    <https://ui.adsabs.harvard.edu/abs/2013MNRAS.436.2188R/abstract>`_
 
+Finally, you will also need to provide an upper threshold for the number of 
+RT-subcycles w.r.t. a single hydro step via ``TimeIntegration:max_nr_rt_subcycles``.
+For more details, refer to :ref:`the subcycling documentation <rt_subcycling>`.
 
 
 
@@ -393,7 +404,7 @@ useful:
    both methods can run on the exact same ICs.
 
 
-.. [#f2] For example, choosing cgs units as the interal units may lead to
+.. [#f2] For example, choosing cgs units as the internal units may lead to
    trouble with grackle. (Trouble like a gas at 10^6K without any heating
    sources heating up instead of cooling down.) The library is set up to work 
    with units geared towards cosmology. According to Britton Smith (private comm), 
@@ -403,4 +414,7 @@ useful:
    This is the state of things at 08.2022, with grackle being at version 3.2 (commit
    ``a089c837b8649c97b53ed3c51c84b1decf5073d8``)
     
-
+.. [#f3] Technically there is also the model used for "Test 4" from the 
+   `I. Iliev et al. 2006 <https://ui.adsabs.harvard.edu/abs/2006MNRAS.369.1625I>`_ 
+   paper, but that is very specialized and shouldn't have much use in real 
+   applications.

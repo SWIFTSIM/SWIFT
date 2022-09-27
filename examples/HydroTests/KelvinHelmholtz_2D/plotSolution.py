@@ -58,25 +58,25 @@ pos = sim["/PartType0/Coordinates"][:, :]
 x = pos[:, 0] - boxSize / 2
 y = pos[:, 1] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-v_norm = sqrt(vel[:, 0] ** 2 + vel[:, 1] ** 2)
+v_norm = np.sqrt(vel[:, 0] ** 2 + vel[:, 1] ** 2)
 rho = sim["/PartType0/Densities"][:]
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
 P = sim["/PartType0/Pressures"][:]
 
 # Plot the interesting quantities
-plt.figure()
+plt.figure(figsize=(7, 7 / 1.6))
 
 
 # Azimuthal velocity profile -----------------------------
 plt.subplot(231)
-scatter(
+plt.scatter(
     pos[:, 0],
     pos[:, 1],
     c=vel[:, 0],
     cmap="PuBu",
     edgecolors="face",
-    s=4,
+    s=0.25,
     vmin=-1.0,
     vmax=1.0,
 )
@@ -91,7 +91,14 @@ plt.ylim(0, 1)
 # Radial density profile --------------------------------
 plt.subplot(232)
 plt.scatter(
-    pos[:, 0], pos[:, 1], c=rho, cmap="PuBu", edgecolors="face", s=4, vmin=0.8, vmax=2.2
+    pos[:, 0],
+    pos[:, 1],
+    c=rho,
+    cmap="PuBu",
+    edgecolors="face",
+    s=0.25,
+    vmin=0.8,
+    vmax=2.2,
 )
 plt.text(0.97, 0.97, "${\\rm{Density}}$", ha="right", va="top", backgroundcolor="w")
 plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
@@ -102,7 +109,7 @@ plt.ylim(0, 1)
 # Radial pressure profile --------------------------------
 plt.subplot(233)
 plt.scatter(
-    pos[:, 0], pos[:, 1], c=P, cmap="PuBu", edgecolors="face", s=4, vmin=1, vmax=4
+    pos[:, 0], pos[:, 1], c=P, cmap="PuBu", edgecolors="face", s=0.25, vmin=1, vmax=4
 )
 plt.text(0.97, 0.97, "${\\rm{Pressure}}$", ha="right", va="top", backgroundcolor="w")
 plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
@@ -113,7 +120,14 @@ plt.ylim(0, 1)
 # Internal energy profile --------------------------------
 plt.subplot(234)
 plt.scatter(
-    pos[:, 0], pos[:, 1], c=u, cmap="PuBu", edgecolors="face", s=4, vmin=1.5, vmax=5.0
+    pos[:, 0],
+    pos[:, 1],
+    c=u,
+    cmap="PuBu",
+    edgecolors="face",
+    s=0.25,
+    vmin=1.5,
+    vmax=5.0,
 )
 plt.text(
     0.97, 0.97, "${\\rm{Internal~energy}}$", ha="right", va="top", backgroundcolor="w"
@@ -126,7 +140,14 @@ plt.ylim(0, 1)
 # Radial entropy profile --------------------------------
 plt.subplot(235)
 plt.scatter(
-    pos[:, 0], pos[:, 1], c=S, cmap="PuBu", edgecolors="face", s=4, vmin=0.5, vmax=3.0
+    pos[:, 0],
+    pos[:, 1],
+    c=S,
+    cmap="PuBu",
+    edgecolors="face",
+    s=0.25,
+    vmin=0.5,
+    vmax=3.0,
 )
 plt.text(0.97, 0.97, "${\\rm{Entropy}}$", ha="right", va="top", backgroundcolor="w")
 plt.xlabel("${\\rm{Position}}~x$", labelpad=0)

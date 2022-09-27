@@ -33,7 +33,6 @@ import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm
 from swiftsimio.visualisation.slice import slice_gas
-import stromgren_plotting_tools as spt
 
 import stromgren_plotting_tools as spt
 
@@ -46,7 +45,7 @@ snapshot_base = "output"
 imshow_kwargs = {"origin": "lower"}
 
 # parameters for swiftsimio slices
-slice_kwargs = {"resolution": 1000, "parallel": True}
+slice_kwargs = {"resolution": 1024, "parallel": True}
 
 # -----------------------------------------------------------------------
 
@@ -58,7 +57,6 @@ try:
     snapnr = int(sys.argv[1])
 except IndexError:
     plot_all = True
-    snapnr = -1
 
 mpl.rcParams["text.usetex"] = True
 
@@ -108,13 +106,18 @@ def plot_result(filename):
 
     imf = spt.get_imf(scheme, data)
 
-    data.gas.mXHI = imf.HI * data.gas.masses
-    data.gas.mXHII = imf.HII * data.gas.masses
-    data.gas.mP = data.gas.pressures * data.gas.masses
-    data.gas.mrhoHI = imf.HI * data.gas.densities * data.gas.masses
+    # use units that are most likely not to produce infinities and NaNs
+    masses_MSun = data.gas.masses.to("M_Sun")
+
+    data.gas.mXHI = imf.HI * masses_MSun
+    data.gas.mXHII = imf.HII * masses_MSun
+    data.gas.mP = data.gas.pressures * masses_MSun
+    data.gas.mrhoHI = imf.HI * data.gas.densities * masses_MSun
 
     mu = spt.mean_molecular_weight(imf.HI, imf.HII, imf.HeI, imf.HeII, imf.HeIII)
-    data.gas.mT = spt.gas_temperature(data.gas.internal_energies, mu, gamma)
+    data.gas.mT = (
+        spt.gas_temperature(data.gas.internal_energies, mu, gamma) * masses_MSun
+    )
 
     mass_weighted_HI_map = slice_gas(
         data, project="mXHI", z_slice=0.5 * meta.boxsize[2], **slice_kwargs
@@ -166,7 +169,7 @@ def plot_result(filename):
         )
         set_colorbar(ax1, im1)
         ax1.set_title(r"Neutral Hydrogen Number Density [cm$^{-3}$]")
-    except ValueError:
+    except (ValueError, TypeError) as e:
         print(
             filename,
             "densities wrong? min",
@@ -185,8 +188,14 @@ def plot_result(filename):
         )
         set_colorbar(ax2, im2)
         ax2.set_title("Neutral Hydrogen Mass Fraction [1]")
-    except ValueError:
-        print(filename, "mass fraction wrong? min", imf.HI.min(), "max", imf.HI.max())
+    except (ValueError, TypeError) as e:
+        print(
+            filename,
+            "mass fraction wrong? min",
+            data.gas.ion_mass_fractions.HI.min(),
+            "max",
+            data.gas.ion_mass_fractions.HI.max(),
+        )
         return
 
     try:
@@ -198,7 +207,7 @@ def plot_result(filename):
         )
         set_colorbar(ax3, im3)
         ax3.set_title(r"Pressure [g/cm/s$^2$]")
-    except ValueError:
+    except (ValueError, TypeError) as e:
         print(
             filename,
             "pressures wrong? min",
