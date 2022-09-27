@@ -57,7 +57,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
                                       struct io_props* list) {
 
   list[0] = io_make_output_field(
-      "MonopoleTerm", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
+      "MagneticDivergence", FLOAT, 1, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
       mhd_data.B_mon, "Monopole term associated to particle");
 
   list[1] = io_make_output_field(
@@ -70,7 +70,7 @@ INLINE static int mhd_write_particles(const struct part* parts,
       "Time derivative of Dedner scalar associated to particle");
 
   list[3] = io_make_output_field_convert_part(
-      "MagneticFluxDensities", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
+      "MagneticFluxDensity", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD, 1.f, parts,
       xparts, convert_B, "Magnetic flux densities of the particles");
 
   return 4;

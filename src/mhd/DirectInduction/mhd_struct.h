@@ -28,7 +28,10 @@ struct mhd_part_data {
 
   float B_over_rho_dt[3];
 
-  float B_mon;
+  union{
+     float B_mon;
+     float divB;
+  };
 
   float psi;
 
