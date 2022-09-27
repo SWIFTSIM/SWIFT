@@ -57,11 +57,7 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
 __attribute__((always_inline)) INLINE static void rt_props_init(
     struct rt_props* rtp, const struct phys_const* phys_const,
     const struct unit_system* us, struct swift_params* params,
-    struct cosmology* cosmo) {
-
-  /* After initialisation, print params to screen */
-  rt_props_print(rtp);
-}
+    struct cosmology* cosmo) {}
 
 /**
  * @brief Write an RT properties struct to the given FILE as a

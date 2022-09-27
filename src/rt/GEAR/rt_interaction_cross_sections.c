@@ -181,10 +181,12 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
   double **cse = malloc(RT_NGROUPS * sizeof(double *));
   double **csn = malloc(RT_NGROUPS * sizeof(double *));
   double *av_energy = rt_props->average_photon_energy;
+  double *photon_number_integral = rt_props->photon_number_integral;
   for (int group = 0; group < RT_NGROUPS; group++) {
     cse[group] = malloc(rt_ionizing_species_count * sizeof(double));
     csn[group] = malloc(rt_ionizing_species_count * sizeof(double));
     av_energy[group] = 0.;
+    photon_number_integral[group] = 0.;
   }
 
   double integral_E[RT_NGROUPS];
@@ -289,6 +291,7 @@ void rt_cross_sections_init(struct rt_props *restrict rt_props,
   /* Now compute the actual average cross sections */
   /* --------------------------------------------- */
   for (int g = 0; g < RT_NGROUPS; g++) {
+    photon_number_integral[g] = integral_N[g];
     if (integral_N[g] > 0.) {
       av_energy[g] = integral_E[g] / integral_N[g];
     } else {

@@ -51,8 +51,7 @@ rt_compute_stellar_emission_rate(struct spart* restrict sp, double time,
   sp->rt_data.debug_emission_rate_set += 1;
 
   /* rt_set_stellar_emission_rate(sp, star_age_begin_of_step, star_age,
-   * rt_props, */
-  /*                              phys_const, internal_units); */
+   *                              rt_props, phys_const, internal_units); */
 }
 
 /**
@@ -66,10 +65,10 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
     struct part* restrict p) {}
 
 /**
- * @brief Reset of the RT hydro particle data not related to the density.
+ * @brief Reset the RT hydro particle data not related to the hydro density.
  * Note: during initalisation (space_init), rt_reset_part and rt_init_part
- * are both called individually. Also an extra call to rt_reset_part is made
- * in space_convert_rt_quantities_after_zeroth_step().
+ * are both called individually. To reset RT data needed in each RT sub-cycle,
+ * use rt_reset_part_each_subcycle().
  *
  * @param p the particle to work on
  * @param cosmo Cosmology.
@@ -80,15 +79,19 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
   /* reset this here as well as in the rt_debugging_checks_end_of_step()
    * routine to test task dependencies are done right */
   p->rt_data.debug_iact_stars_inject = 0;
-
-  p->rt_data.debug_calls_iact_gradient_interaction = 0;
-  p->rt_data.debug_calls_iact_transport_interaction = 0;
-
+  p->rt_data.debug_nsubcycles = 0;
   p->rt_data.debug_kicked = 0;
-  p->rt_data.debug_injection_done = 0;
-  p->rt_data.debug_gradients_done = 0;
-  p->rt_data.debug_transport_done = 0;
-  p->rt_data.debug_thermochem_done = 0;
+}
+
+/**
+ * @brief Reset RT particle data which needs to be reset each sub-cycle.
+ *
+ * @param p the particle to work on
+ */
+__attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
+    struct part* restrict p) {
+
+  rt_debugging_reset_each_subcycle(p);
 }
 
 /**
@@ -104,33 +107,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
   rt_init_part(p);
   rt_reset_part(p, cosmo);
-  p->rt_data.debug_radiation_absorbed_tot = 0ULL;
-}
-
-/**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the particle density and time step to be known.
- *
- * @param p particle to work on
- * @param rt_props RT properties struct
- * @param cosmo #cosmology data structure.
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_part_after_zeroth_step(struct part* restrict p,
-                               const struct rt_props* rt_props,
-                               const struct cosmology* restrict cosmo) {
-
-  /* If we're running with debugging checks on, reset debugging
-   * counters and flags in particular after the zeroth step so
-   * that the checks work as intended. */
-  rt_init_part(p);
-  rt_reset_part(p, cosmo);
-  /* Since the inject_prep has been moved to the density loop, the
-   * initialization at startup is messing with the total counters for stars
-   * because the density is called, but not the force-and-kick tasks. So reset
-   * the total counters here as well so that they will match the star counters.
-   */
+  rt_reset_part_each_subcycle(p);
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
 }
 
@@ -154,8 +131,7 @@ __attribute__((always_inline)) INLINE static void rt_init_spart(
 /**
  * @brief Reset of the RT star particle data not related to the density.
  * Note: during initalisation (space_init), rt_reset_spart and rt_init_spart
- * are both called individually. Also an extra call to rt_reset_spart is made
- * in space_convert_rt_quantities_after_zeroth_step().
+ * are both called individually.
  *
  * @param sp star particle to work on
  */
@@ -176,44 +152,15 @@ __attribute__((always_inline)) INLINE static void rt_first_init_spart(
 }
 
 /**
- * @brief Initialises particle quantities that can't be set
- * otherwise before the zeroth step is finished. E.g. because
- * they require the star density and time step to be known.
- * @param sp star particle to work on
- * @param time current system time
- * @param star_age age of the star *at the end of the step*
- * @param dt star time step
- * @param rt_props RT properties struct
- * @param phys_const physical constants struct
- * @param internal_units struct holding internal units
- */
-__attribute__((always_inline)) INLINE static void
-rt_init_star_after_zeroth_step(struct spart* restrict sp, double time,
-                               double star_age, double dt,
-                               const struct rt_props* rt_props,
-                               const struct phys_const* phys_const,
-                               const struct unit_system* internal_units) {
-
-  /* If we're running with debugging checks on, reset debugging
-   * counters and flags in particular after the zeroth step so
-   * that the checks work as intended. */
-  rt_init_spart(sp);
-  rt_reset_spart(sp);
-  /* Since the inject_prep has been moved to the density loop, the
-   * initialization at startup is messing with the total counters because
-   * the density is called, but not the force-and-kick tasks. So reset
-   * the total counters here as well. */
-  sp->rt_data.debug_radiation_emitted_tot = 0ULL;
-}
-
-/**
  * @brief Split the RT data of a particle into n pieces
  *
  * @param p The #part.
  * @param n The number of pieces to split into.
  */
 __attribute__((always_inline)) INLINE static void rt_split_part(struct part* p,
-                                                                double n) {}
+                                                                double n) {
+  error("RT can't run with split particles for now.");
+}
 
 /**
  * @brief Exception handle a hydro part not having any neighbours in ghost task
@@ -316,9 +263,8 @@ __attribute__((always_inline)) INLINE static double rt_part_dt(
 __attribute__((always_inline)) INLINE static void rt_finalise_injection(
     struct part* restrict p, struct rt_props* props) {
 
-  if (p->rt_data.debug_kicked != 1)
-    error("called rt_ghost1 when particle %lld is unkicked (count=%d)", p->id,
-          p->rt_data.debug_kicked);
+  rt_debug_sequence_check(p, 1, "rt_ghost1/rt_finalise_injection");
+
   p->rt_data.debug_injection_done += 1;
 }
 
@@ -331,15 +277,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_injection(
 __attribute__((always_inline)) INLINE static void rt_end_gradient(
     struct part* restrict p, const struct cosmology* cosmo) {
 
-  if (p->rt_data.debug_kicked != 1)
-    error("called finalise gradient when particle %lld is unkicked (count=%d)",
-          p->id, p->rt_data.debug_kicked);
-
-  if (p->rt_data.debug_injection_done != 1)
-    error(
-        "Called finalise gradient on particle %lld"
-        "where injection_done count = %d",
-        p->id, p->rt_data.debug_injection_done);
+  rt_debug_sequence_check(p, 2, __func__);
 
   if (p->rt_data.debug_calls_iact_gradient_interaction == 0)
     message(
@@ -361,21 +299,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt,
     const struct cosmology* restrict cosmo) {
 
-  if (p->rt_data.debug_kicked != 1)
-    error("called finalise transport when particle %lld is unkicked (count=%d)",
-          p->id, p->rt_data.debug_kicked);
-
-  if (p->rt_data.debug_injection_done != 1)
-    error(
-        "Trying to do finalise_transport on particle %lld when "
-        "injection_done count is %d",
-        p->id, p->rt_data.debug_injection_done);
-
-  if (p->rt_data.debug_gradients_done != 1)
-    error(
-        "Trying to do finalise_transport on particle %lld when "
-        "gradients_done count is %d",
-        p->id, p->rt_data.debug_gradients_done);
+  rt_debug_sequence_check(p, 3, __func__);
 
   if (p->rt_data.debug_calls_iact_transport_interaction == 0)
     message(
@@ -407,28 +331,15 @@ __attribute__((always_inline)) INLINE static void rt_tchem(
     const struct phys_const* restrict phys_const,
     const struct unit_system* restrict us, const double dt) {
 
-  if (p->rt_data.debug_kicked != 1)
-    error(
-        "Part %lld trying to do thermochemistry on unkicked particle "
-        "(count=%d)",
-        p->id, p->rt_data.debug_kicked);
-  if (p->rt_data.debug_injection_done != 1)
-    error("Part %lld trying to do thermochemistry when injection_done != 1: %d",
-          p->id, p->rt_data.debug_injection_done);
-  if (p->rt_data.debug_gradients_done != 1)
-    error("Part %lld trying to do thermochemistry when gradients_done != 1: %d",
-          p->id, p->rt_data.debug_gradients_done);
-  if (p->rt_data.debug_transport_done != 1)
-    error("Part %lld trying to do thermochemistry when transport_done != 1: %d",
-          p->id, p->rt_data.debug_transport_done);
-
+  rt_debug_sequence_check(p, 4, __func__);
   p->rt_data.debug_thermochem_done += 1;
 
   /* rt_do_thermochemistry(p); */
 }
 
 /**
- * @brief Extra operations done during the kick.
+ * @brief Extra operations done during the kick. This needs to be
+ * done before the particle mass is updated in the hydro_kick_extra.
  *
  * @param p Particle to act upon.
  * @param dt_therm Thermal energy time-step @f$\frac{dt}{a^2}@f$.
@@ -447,6 +358,8 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
   /* Don't account for timestep_sync backward kicks */
   if (dt_therm >= 0.f && dt_grav >= 0.f && dt_hydro >= 0.f &&
       dt_kick_corr >= 0.f) {
+
+    rt_debug_sequence_check(p, 0, __func__);
     p->rt_data.debug_kicked += 1;
   }
 }
@@ -462,6 +375,16 @@ __attribute__((always_inline)) INLINE static void rt_kick_extra(
  **/
 __attribute__((always_inline)) INLINE static void rt_prepare_force(
     struct part* p) {}
+
+/**
+ * @brief Extra operations to be done during the drift
+ *
+ * @param p Particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param dt_drift The drift time-step for positions.
+ */
+__attribute__((always_inline)) INLINE static void rt_predict_extra(
+    struct part* p, struct xpart* xp, float dt_drift) {}
 
 /**
  * @brief Clean the allocated memory inside the RT properties struct.

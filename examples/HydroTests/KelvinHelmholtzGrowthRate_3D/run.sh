@@ -1,6 +1,11 @@
 #!/bin/bash
 
- # Generate the initial conditions if they are not present.
+# Generate the initial conditions if they are not present.
+if [ ! -e glassCube_64.hdf5 ]
+then
+    ./getGlass.sh
+fi
+
 if [ ! -e kelvinHelmholtzGrowthRate.hdf5 ]
 then
     echo "Generating initial conditions for the Kelvin-Helmholtz growth rate " \

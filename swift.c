@@ -1700,6 +1700,8 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    space_write_ghost_stats(e.s, j + 1);
+
     /* Dump memory use report if collected. */
 #ifdef SWIFT_MEMUSE_REPORTS
     {
