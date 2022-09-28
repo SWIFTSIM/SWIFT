@@ -193,8 +193,8 @@ struct feedback_props {
   /*! Conversion factor from temperature to internal energy */
   float temp_to_u_factor;
 
-  /*! Conversion factor for internal velocity to cgs */
-  float internal_to_cm_per_s;
+  /*! Conversion factor from km/s to cm/s */
+  float kms_to_cms;
 
   /* ------------- Parameters for IMF --------------- */
 
