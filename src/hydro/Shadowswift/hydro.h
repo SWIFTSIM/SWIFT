@@ -395,13 +395,6 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
 __attribute__((always_inline)) INLINE static void
 hydro_convert_conserved_to_primitive(struct part *restrict p,
                                      struct xpart *restrict xp) {
-#if SHADOWSWIFT_BC == LEFT_INFLOW_BC
-  /* Anything to do here? Only wrapping can invalidate the conserved
-   * quantities and then the primitive quantities are per definition up to date.
-   */
-  if (!p->conserved.valid)
-    error("Trying to convert invalidated conserved quantities!");
-#endif
   float W[5], Q[5];
   hydro_part_get_conserved_variables(p, Q);
   const float m_inv = (Q[0] != 0.0f) ? 1.0f / Q[0] : 0.0f;
@@ -544,28 +537,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
        * simulation) */
       float flux[5];
       hydro_part_get_fluxes(p, flux);
-
-#if (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
-      /* Before updating the conserved variables: Are they still valid? */
-      if (!p->conserved.valid) {
-        float Q[5] = {p->rho * p->geometry.volume, p->conserved.mass * p->v[0],
-                      p->conserved.mass * p->v[1], p->conserved.mass * p->v[2],
-                      p->conserved.mass *
-                          gas_internal_energy_from_pressure(p->rho, p->P)};
-
-#ifdef SHADOWSWIFT_TOTAL_ENERGY
-        /* add the kinetic energy; we want the total energy */
-        Q[4] += 0.5f * (p->conserved.momentum[0] * p->v[0] +
-                        p->conserved.momentum[1] * p->v[1] +
-                        p->conserved.momentum[2] * p->v[2]);
-#endif
-        hydro_part_set_conserved_variables(p, Q);
-
-        if (p->gpart) {
-          p->gpart->mass = p->conserved.mass;
-        }
-      }
-#endif
 
       /* Update conserved variables. */
       p->conserved.mass += flux[0];
