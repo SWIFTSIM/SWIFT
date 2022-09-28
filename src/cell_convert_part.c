@@ -195,6 +195,11 @@ void cell_recursively_shift_gparts(struct cell *c,
  * time bin.
  */
 struct part *cell_add_part(struct engine *e, struct cell *c) {
+
+  /* Usefull constants */
+  const int with_gravity = (e->policy & engine_policy_self_gravity) ||
+                           (e->policy & engine_policy_external_gravity);
+
   /* Progeny number at each level */
   int progeny[space_cell_maxdepth];
 
@@ -237,7 +242,7 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
     atomic_inc(&e->forcerebuild);
     return NULL;
   }
-  if (e->policy & engine_policy_self_gravity) {
+  if (with_gravity) {
     if (top->grav.count == top->grav.count_total) {
       message("We ran out of free gravity particles!");
 
@@ -264,7 +269,7 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
     memmove(&c->hydro.parts[1], &c->hydro.parts[0],
             n_copy * sizeof(struct spart));
 
-    if (e->policy & engine_policy_self_gravity) {
+    if (with_gravity) {
       /* Update the part->gpart links (shift by 1) */
       for (size_t i = 0; i < n_copy; ++i) {
 #ifdef SWIFT_DEBUG_CHECKS
@@ -311,7 +316,7 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
   p->ti_drift = e->ti_current;
 #endif
 
-  if (e->policy & engine_policy_self_gravity) {
+  if (with_gravity) {
     /* Create a new gpart and link it to this particle */
     struct gpart *gp = cell_add_gpart(e, c);
     p->gpart = gp;
