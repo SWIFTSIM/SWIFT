@@ -27,6 +27,7 @@
 #include "memswap.h"
 #include "memuse.h"
 #include "space.h"
+#include "timeline.h"
 
 /**
  * @brief Sort the particles and condensed particles according to the given
@@ -80,6 +81,28 @@ void space_parts_sort(struct part *parts, struct xpart *xparts,
       ind[k] = target_cid;
       if (parts[k].gpart)
         parts[k].gpart->id_or_neg_offset = -(k + parts_offset);
+    }
+
+    /* Sort the particles of this cell so that the not-created particles are at the end */
+    size_t head = offsets[cid];
+    size_t tail = head + counts[cid] - 1;
+    while (head < tail) {
+      if (parts[head].time_bin == time_bin_not_created) {
+        /* We need to swap this particle with a particle from the back */
+        while (parts[tail].time_bin == time_bin_not_created && tail > head) {
+          tail--;
+        }
+        /* Have we found a suitable particle to swap or are we done here? */
+        if (tail > head) {
+          memswap(&parts[head], &parts[tail], sizeof(struct part));
+          memswap(&xparts[head], &xparts[tail], sizeof(struct xpart));
+          if (parts[head].gpart)
+            parts[head].gpart->id_or_neg_offset = -(head + parts_offset);
+          if (parts[tail].gpart)
+            parts[tail].gpart->id_or_neg_offset = -(tail + parts_offset);
+        }
+      }
+      head++;
     }
   }
 
