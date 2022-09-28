@@ -53,9 +53,6 @@ hydro_part_set_conserved_variables(struct part* restrict p, const float* Q) {
   p->conserved.momentum[1] = Q[2];
   p->conserved.momentum[2] = Q[3];
   p->conserved.energy = Q[4];
-#if SHADOWSWIFT_BC == LEFT_INFLOW_BC
-  p->conserved.valid = 1;
-#endif
 }
 
 /**

@@ -223,7 +223,7 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
       p_boundary.gradients.P[i] = 0.;
     }
 #endif
-#elif (SHADOWSWIFT_BC == OPEN_BC) || (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
+#elif (SHADOWSWIFT_BC == OPEN_BC)
     /* We Treat inflow BC the same as open BC */
     /* Here we just flip the gradients for the flipped axis to ensure that the
      * extrapolated quantities on both sides of the face are the same during
@@ -261,6 +261,40 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 #endif
       }
     }
+#elif (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
+    /* Treat the boundary as open, except for the vertical boundaries, where we
+     * set the correct inflow properties */
+    struct hydro_space *hs = &r->e->s->hs;
+    if (sid == 4 || sid == 22) {
+      p_boundary.rho = hs->density;
+      p_boundary.v[0] = hs->velocity;
+      p_boundary.v[1] = 0.f;
+      p_boundary.v[2] = 0.f;
+      p_boundary.P = hs->pressure;
+    }
+    /* Set gradients to 0 for inflow boundary particles and flip them for the
+     * rest (similar to open boundary conditions) */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+    if (sid == 4 || sid == 22) {
+      for (int i = 0; i < 3; i++) {
+        p_boundary.gradients.rho[i] = 0.;
+        p_boundary.gradients.v[0][i] = 0.;
+        p_boundary.gradients.v[1][i] = 0.;
+        p_boundary.gradients.v[2][i] = 0.;
+        p_boundary.gradients.P[i] = 0.;
+      }
+    } else {
+      for (int i = 0; i < 3; i++) {
+        if (sortlist_shift_vector[sid][i] != 0) {
+          p_boundary.gradients.rho[i] *= -1;
+          p_boundary.gradients.v[0][i] *= -1;
+          p_boundary.gradients.v[1][i] *= -1;
+          p_boundary.gradients.v[2][i] *= -1;
+          p_boundary.gradients.P[i] *= -1;
+        }
+      }
+    }
+#endif
 #else
     error("Unknown boundary condition for non periodic run!");
 #endif
