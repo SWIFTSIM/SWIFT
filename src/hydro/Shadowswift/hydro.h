@@ -698,15 +698,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
     const integertime_t ti_current) {
 
   /* First copy this particle's properties to the new particle */
-  p2->conserved = p1->conserved;
-  p2->gradients = p1->gradients;
-  p2->rho = p1->rho;
-  memcpy(p2->v, p1->v, 3 * sizeof(p1->v[0]));
-  p2->P = p1->P;
-  memcpy(p2->v_full, p1->v_full, 3 * sizeof(p1->v_full[0]));
-  if (p2->gpart != NULL) {
-    memcpy(p2->gpart->v_full, p2->v_full, 3 * sizeof(p2->v_full[0]));
-  }
+  *p2 = *p1;
 
   /* Get the new positions of the particles */
   double rho_grad2 = p1->gradients.rho[0] * p1->gradients.rho[0] +
@@ -749,7 +741,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
     }
   }
 
-  /* Finally divide the conserved quantities in half
+  /* Finally divide the extensive quantities in half
    * TODO: Volume weighing would be better! Or even volume integral of the
    * extrapolated primitive quantities */
   p1->conserved.mass *= 0.5f;
@@ -763,6 +755,8 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
   p2->conserved.momentum[1] *= 0.5f;
   p2->conserved.momentum[2] *= 0.5f;
   p2->conserved.energy *= 0.5f;
+
+  p2->geometry.volume *= 0.5f;
 
   if (p1->gpart != NULL) {
     /* Update the gpart's mass */

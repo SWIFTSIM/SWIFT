@@ -1572,6 +1572,10 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       scheduler_addunlock(s, c->timestep, c->kick1);
       scheduler_addunlock(s, c->timestep, c->top->timestep_collect);
 
+      /* Particle splitting */
+      scheduler_addunlock(s, kick2_or_csds, c->top->hydro.split_particles);
+      scheduler_addunlock(s, c->top->hydro.split_particles, c->timestep);
+
       /* Subgrid tasks: star formation */
       if (with_star_formation && c->hydro.count > 0) {
         scheduler_addunlock(s, kick2_or_csds, c->top->hydro.star_formation);

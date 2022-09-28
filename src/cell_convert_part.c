@@ -214,15 +214,6 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
       }
     }
 
-    /* Check that the cell was indeed drifted to this point to avoid future
-     * issues */
-    #ifdef SWIFT_DEBUG_CHECKS
-    if (top->hydro.super != NULL && top->hydro.count > 0 &&
-        top->hydro.ti_old_part != e->ti_current) {
-      error("Cell had not been correctly drifted before star formation");
-    }
-    #endif
-
     /* Climb up */
     top = top->parent;
   }
@@ -256,7 +247,8 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
   }
 
   /* Number of particles to shift in order to get a free space. */
-  const size_t n_copy = &top->hydro.parts[top->hydro.count] - &c->hydro.parts[c->hydro.count];
+  const size_t n_copy =
+      &top->hydro.parts[top->hydro.count] - &c->hydro.parts[c->hydro.count];
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->hydro.parts + n_copy > top->hydro.parts + top->hydro.count)
@@ -266,10 +258,10 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
   if (n_copy > 0) {
     // MATTHIEU: This can be improved. We don't need to copy everything, just
     // need to swap a few particles.
-    memmove(&c->hydro.parts[1], &c->hydro.parts[0],
-            n_copy * sizeof(struct part));
-    memmove(&c->hydro.xparts[1], &c->hydro.xparts[0],
-            n_copy * sizeof(struct xpart));
+    memmove(&c->hydro.parts[c->hydro.count + 1],
+            &c->hydro.parts[c->hydro.count], n_copy * sizeof(struct part));
+    memmove(&c->hydro.xparts[c->hydro.count + 1],
+            &c->hydro.xparts[c->hydro.count], n_copy * sizeof(struct xpart));
 
     if (with_gravity) {
       /* Update the part->gpart links (shift by 1) */

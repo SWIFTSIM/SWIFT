@@ -1861,9 +1861,6 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->top->sinks.star_formation_sink != NULL) {
       cell_activate_star_formation_sink_tasks(c->top, s, with_feedback);
     }
-    if (c->hydro.split_particles != NULL) {
-      scheduler_activate(s, c->hydro.split_particles);
-    }
   }
 
   return rebuild;
@@ -3477,6 +3474,9 @@ int cell_unskip_grid_hydro_tasks(struct cell *c, struct scheduler *s) {
     if (c->timestep != NULL) scheduler_activate(s, c->timestep);
     if (c->top->timestep_collect != NULL)
       scheduler_activate(s, c->top->timestep_collect);
+    if (c->hydro.split_particles != NULL) {
+      scheduler_activate(s, c->hydro.split_particles);
+    }
 
     /* TODO add other task types here as well */
   }
