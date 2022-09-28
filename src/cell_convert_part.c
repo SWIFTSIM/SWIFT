@@ -267,7 +267,9 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
     // MATTHIEU: This can be improved. We don't need to copy everything, just
     // need to swap a few particles.
     memmove(&c->hydro.parts[1], &c->hydro.parts[0],
-            n_copy * sizeof(struct spart));
+            n_copy * sizeof(struct part));
+    memmove(&c->hydro.xparts[1], &c->hydro.xparts[0],
+            n_copy * sizeof(struct xpart));
 
     if (with_gravity) {
       /* Update the part->gpart links (shift by 1) */
