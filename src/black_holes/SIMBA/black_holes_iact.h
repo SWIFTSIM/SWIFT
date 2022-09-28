@@ -158,7 +158,7 @@ runner_iact_nonsym_bh_gas_density(
   const double Ly = mj * (dx[2] * dv[0] - dx[0] * dv[2]);
   const double Lz = mj * (dx[0] * dv[1] - dx[1] * dv[0]);
   const double proj = Lx * bi->angular_momentum_gas[0] + Ly * bi->angular_momentum_gas[1] + Lz * bi->angular_momentum_gas[2];
-  if ( (proj > 0.f) && (is_hot_gas==0) ) bi->cold_disk_mass += mj;
+  if ((proj > 0.f) && (is_hot_gas == 0)) bi->cold_disk_mass += mj;
 
   /* Gas angular momentum in kernel */
   bi->angular_momentum_gas[0] += mj * (dx[1] * dv[2] - dx[2] * dv[1]);

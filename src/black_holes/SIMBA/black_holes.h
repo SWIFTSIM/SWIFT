@@ -189,7 +189,8 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->mass_accreted_this_step = 0.f;
   bp->accretion_boost_factor = 0.f;
   bp->mass_at_start_of_step = bp->mass; /* bp->mass may grow in nibbling mode */
-
+  bp->cold_disk_mass = 0.f;
+  
 }
 
 /**
