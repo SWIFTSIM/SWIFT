@@ -198,6 +198,9 @@ struct bpart {
   /*! Specific angular momentum of the stars within the kernel */
   float specific_angular_momentum_stars[3];
 
+  /*! Co-rotating cold gas mass within the kernel (estimate) */
+  float cold_disk_mass;
+
   /*! Bulge mass of stars within the kernel (twice the counter-rotating mass) */
   float stellar_bulge_mass;
 
