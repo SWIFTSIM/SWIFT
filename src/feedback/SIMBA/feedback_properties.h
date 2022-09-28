@@ -180,6 +180,9 @@ struct feedback_props {
   /*! Conversion factor from internal mass unit to solar mass */
   double mass_to_solar_mass;
 
+  /*! The mass of the sun in g */
+  double solar_mass_in_g;
+
   /*! Conversion factor from internal mass unit to solar mass */
   double solar_mass_to_mass;
 
@@ -189,6 +192,9 @@ struct feedback_props {
 
   /*! Conversion factor from temperature to internal energy */
   float temp_to_u_factor;
+
+  /*! Conversion factor for internal velocity to cgs */
+  float internal_to_cm_per_s;
 
   /* ------------- Parameters for IMF --------------- */
 
@@ -293,7 +299,7 @@ struct feedback_props {
 
   /*! The internal energy corresponding to the cold gas temperature */
   float cold_wind_internal_energy;
-  
+
   /* ------------ Common conversion factors --------------- */
 
   /*! Factor to convert km/s to internal units */

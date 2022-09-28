@@ -127,6 +127,8 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
 
   const double galaxy_stellar_mass = 
       p->gpart->fof_data.group_stellar_mass;
+  const double galaxy_stellar_mass_Msun =
+      galaxy_stellar_mass * fb_props->mass_to_solar_mass;
   /* This is done in the RUNNER files. Therefore, we have
    * access to the gpart */
   const double galaxy_gas_stellar_mass_Msun = 
@@ -141,7 +143,7 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
                                       random_number_stellar_feedback_2);
 
   /* physical km/s */
-  const double wind_velocity =
+  double wind_velocity =
       fb_props->FIRE_velocity_normalization *
       pow(v_circ_km_s / 200., fb_props->FIRE_velocity_slope) *
       (
@@ -151,10 +153,10 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
       v_circ_km_s *
       fb_props->kms_to_internal;
 
-  /* Now we have wind_velocity, determine how much should go to heating */
+  /* Now we have wind_velocity in km/s, determine how much should go to heating */
   const double u_wind = 0.5 * wind_velocity * wind_velocity * 
-                          fb_props->internal_to_cm_per_s * 
-                          fb_props->internal_to_cm_per_s;
+                          (fb_props->kms_to_cms * fb_props->kms_to_cms) / 
+                          (fb_props->kms_to_internal * fb_props->kms_to_internal);
   const double Z = p->chemistry_data.metal_mass_fraction_total;
   double u_SN = 1.e51 * (0.0102778 / fb_props->solar_mass_in_g) * 
                     (p->sf_data.SFR * dt_part / wind_mass);
@@ -169,13 +171,13 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
 
   /* 0.2511886 = pow(10., -0.6) */
   float pandya_slope = 0.f;
-  if (galaxy_stellar_mass > 3.16e10) {
+  if (galaxy_stellar_mass_Msun > 3.16e10) {
     pandya_slope = -2.1f;
   } else {
     pandya_slope = -0.1f;
   }
 
-  const double f_warm = 0.2511886 *  pow(galaxy_stellar_mass / 3.16e10, pandya_slope);
+  const double f_warm = 0.2511886 * pow(galaxy_stellar_mass_Msun / 3.16e10, pandya_slope);
   const double hot_wind_fraction = max(0., 0.9 - f_warm); /* additional 10% removed for cold phase */
   const double rand_for_hot = random_unit_interval(p->id, ti_current,
                                                    random_number_stellar_feedback_3);
@@ -459,6 +461,7 @@ void feedback_props_init(struct feedback_props* fp,
                           units_cgs_conversion_factor(us, UNIT_CONV_MASS);
   const double unit_mass_cgs = units_cgs_conversion_factor(us, UNIT_CONV_MASS);
   fp->mass_to_solar_mass = unit_mass_cgs / Msun_cgs;
+  fp->solar_mass_in_g = Msun_cgs;
   fp->solar_mass_to_mass = 1. / fp->mass_to_solar_mass;
 
   /* Calculate temperature to internal energy conversion factor (all internal
@@ -475,6 +478,8 @@ void feedback_props_init(struct feedback_props* fp,
       (X_H / m_p) * units_cgs_conversion_factor(us, UNIT_CONV_NUMBER_DENSITY);
 
   fp->kms_to_internal = 1.0e5f / units_cgs_conversion_factor(us, UNIT_CONV_SPEED);
+
+  fp->kms_to_cms = 1.e5;
 
   fp->time_to_Myr = units_cgs_conversion_factor(us, UNIT_CONV_TIME) /
       (1.e6f * 365.25f * 24.f * 60.f * 60.f);
