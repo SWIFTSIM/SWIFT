@@ -31,6 +31,46 @@
 #include "sink_properties.h"
 
 /**
+ * @brief Recursively update the pointer and counter for #part after the
+ * addition of a new particle.
+ *
+ * @param c The cell we are working on.
+ * @param progeny_list The list of the progeny index at each level for the
+ * leaf-cell where the particle was added.
+ * @param main_branch Are we in a cell directly above the leaf where the new
+ * particle was added?
+ */
+void cell_recursively_shift_parts(struct cell *c,
+                                  const int progeny_list[space_cell_maxdepth],
+                                  const int main_branch) {
+  if (c->split) {
+    /* No need to recurse in progenies located before the insertion point */
+    const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
+
+    for (int k = first_progeny; k < 8; ++k) {
+      if (c->progeny[k] != NULL)
+        cell_recursively_shift_parts(c->progeny[k], progeny_list,
+                                     main_branch && (k == first_progeny));
+    }
+  }
+
+  /* When directly above the leaf with the new particle: increase the particle
+   * count */
+  /* When after the leaf with the new particle: shift by one position */
+  if (main_branch) {
+    c->hydro.count++;
+
+    /* Indicate that the cell is not sorted and cancel the pointer sorting
+     * arrays. */
+    c->hydro.sorted = 0;
+    cell_free_hydro_sorts(c);
+
+  } else {
+    c->hydro.parts++;
+  }
+}
+
+/**
  * @brief Recursively update the pointer and counter for #spart after the
  * addition of a new particle.
  *
@@ -136,6 +176,161 @@ void cell_recursively_shift_gparts(struct cell *c,
   } else {
     c->grav.parts++;
   }
+}
+
+/**
+ * @brief "Add a #part in a given cell.
+ *
+ * This function will add a #part at the *end* of the current cell's array by
+ * shifting all the #part after this cell in the top-level cell by one position.
+ * All the pointers and cell counts are updated accordingly.
+ * This function will also create a new #gpart if necessary and link this #part
+ * to it.
+ *
+ * @param e The #engine.
+ * @param c The leaf-cell in which to add the #part.
+ *
+ * @return A pointer to the newly added #part. The part has a been zeroed
+ * and given a position within the cell as well as set to the minimal active
+ * time bin.
+ */
+struct part *cell_add_part(struct engine *e, struct cell *c) {
+
+  /* Usefull constants */
+  const int with_gravity = (e->policy & engine_policy_self_gravity) ||
+                           (e->policy & engine_policy_external_gravity);
+
+  /* Progeny number at each level */
+  int progeny[space_cell_maxdepth];
+
+  /* Get the top-level this leaf cell is in and compute the progeny indices at
+     each level */
+  struct cell *top = c;
+  while (top->parent != NULL) {
+    /* What is the progeny index of the cell? */
+    for (int k = 0; k < 8; ++k) {
+      if (top->parent->progeny[k] == top) {
+        progeny[(int)top->parent->depth] = k;
+      }
+    }
+
+    /* Check that the cell was indeed drifted to this point to avoid future
+     * issues */
+    #ifdef SWIFT_DEBUG_CHECKS
+    if (top->hydro.super != NULL && top->hydro.count > 0 &&
+        top->hydro.ti_old_part != e->ti_current) {
+      error("Cell had not been correctly drifted before star formation");
+    }
+    #endif
+
+    /* Climb up */
+    top = top->parent;
+  }
+
+  /* Lock the top-level cell as we are going to operate on it */
+  lock_lock(&top->hydro.lock);
+
+  /* Make sure there are extra particles (and gparts if needed) left. */
+  if (top->hydro.count == top->hydro.count_total) {
+
+    message("We ran out of free hydro particles!");
+
+    /* Release the local lock before exiting. */
+    if (lock_unlock(&top->hydro.lock) != 0)
+      error("Failed to unlock the top-level cell.");
+
+    atomic_inc(&e->forcerebuild);
+    return NULL;
+  }
+  if (with_gravity) {
+    if (top->grav.count == top->grav.count_total) {
+      message("We ran out of free gravity particles!");
+
+      /* Release the local lock before exiting. */
+      if (lock_unlock(&top->hydro.lock) != 0)
+        error("Failed to unlock the top-level cell.");
+
+      atomic_inc(&e->forcerebuild);
+      return NULL;
+    }
+  }
+
+  /* Number of particles to shift in order to get a free space. */
+  const size_t n_copy = &top->hydro.parts[top->hydro.count] - &c->hydro.parts[c->hydro.count];
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->hydro.parts + n_copy > top->hydro.parts + top->hydro.count)
+    error("Copying beyond the allowed range");
+#endif
+
+  if (n_copy > 0) {
+    // MATTHIEU: This can be improved. We don't need to copy everything, just
+    // need to swap a few particles.
+    memmove(&c->hydro.parts[1], &c->hydro.parts[0],
+            n_copy * sizeof(struct spart));
+
+    if (with_gravity) {
+      /* Update the part->gpart links (shift by 1) */
+      for (size_t i = 0; i < n_copy; ++i) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (c->hydro.parts[i + 1].gpart == NULL) {
+          error("Incorrectly linked part!");
+        }
+#endif
+        c->hydro.parts[i + 1].gpart->id_or_neg_offset--;
+      }
+    }
+  }
+
+  /* Recursively shift all the parts to get a free spot at the *end* of the
+   * current cell */
+  cell_recursively_shift_parts(top, progeny, /* main_branch=*/1);
+
+  /* Make sure the gravity will be recomputed for this particle in the next
+   * step */
+  struct cell *top2 = c;
+  while (top2->parent != NULL) {
+    top2->hydro.ti_old_part = e->ti_current;
+    top2 = top2->parent;
+  }
+  top2->hydro.ti_old_part = e->ti_current;
+
+  /* Release the lock */
+  if (lock_unlock(&top->hydro.lock) != 0)
+    error("Failed to unlock the top-level cell.");
+
+  /* We now have an empty part as the last particle in that cell */
+  struct part *p = &c->hydro.parts[c->hydro.count - 1];
+  bzero(p, sizeof(struct part));
+
+  /* Give it a decent position */
+  p->x[0] = c->loc[0] + 0.5 * c->width[0];
+  p->x[1] = c->loc[1] + 0.5 * c->width[1];
+  p->x[2] = c->loc[2] + 0.5 * c->width[2];
+
+  /* Set it to the current time-bin */
+  p->time_bin = e->min_active_bin;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Specify it was drifted to this point */
+  p->ti_drift = e->ti_current;
+#endif
+
+  if (with_gravity) {
+    /* Create a new gpart and link it to this particle */
+    struct gpart *gp = cell_add_gpart(e, c);
+    p->gpart = gp;
+    gp->id_or_neg_offset = e->s->parts - p;
+    gp->x[0] = p->x[0];
+    gp->x[1] = p->x[1];
+    gp->x[2] = p->x[2];
+  }
+
+  /* Register that we used one of the free slots. */
+  const size_t one = 1;
+  atomic_sub(&e->s->nr_extra_parts, one);
+
+  return p;
 }
 
 /**

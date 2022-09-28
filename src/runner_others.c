@@ -1078,3 +1078,60 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 
   if (timer) TIMER_TOC(timer_do_rt_tchem);
 }
+
+/**
+ * @brief Splits hydro particles
+ *
+ *
+ */
+void runner_do_split_parts(struct runner *r, struct cell *c, int timer) {
+
+  struct engine *e = r->e;
+  const int count = c->hydro.count;
+  struct part *restrict parts = c->hydro.parts;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->nodeID != e->nodeID)
+    error("Running particle splitting task on a foreign node!");
+#endif
+
+  /* Anything to do here? */
+  if (!e->hydro_properties->particle_splitting) return;
+  if (count == 0 || !cell_is_active_hydro(c, e)) return;
+
+  /* Recurse? */
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) {
+        /* Load the child cell */
+        struct cell *restrict cp = c->progeny[k];
+
+        /* Do the recursion */
+        runner_do_split_parts(r, cp, timer);
+      }
+  } else {
+    TIMER_TIC;
+
+    /* Loop over the gas particles in this cell. */
+    for (int k = 0; k < count; k++) {
+
+      /* Get a handle on the part. */
+      struct part *restrict p = &parts[k];
+
+      /* Only work on active particles */
+      if (part_is_active(p, e)) {
+
+        /* Should we split this particle? */
+        if (hydro_should_split_part(p, e->hydro_properties)) {
+          /* Get a new particle and split */
+          struct part *restrict p2 = cell_add_part(e, c);
+          /* If there are no free particles left, stop here. */
+          if (p2 == NULL) return;
+          hydro_split_part(p, p2, e->ti_current);
+        }
+      }
+    }
+
+    if (timer) TIMER_TOC(timer_do_split_parts);
+  }
+}

@@ -65,7 +65,8 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   space_regrid(s, verbose);
 
   /* Allocate extra space for particles that will be created */
-  if (s->with_star_formation || s->with_sink) space_allocate_extras(s, verbose);
+  if (s->with_star_formation || s->with_sink || s->with_hydro)
+    space_allocate_extras(s, verbose);
 
   struct cell *cells_top = s->cells_top;
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;

@@ -155,6 +155,7 @@ enum {
   timer_do_slope_estimate_ghost,
   timer_do_slope_limiter_ghost,
   timer_do_flux_ghost,
+  timer_do_split_parts,
   timer_count,
 };
 

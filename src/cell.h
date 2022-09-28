@@ -669,6 +669,7 @@ void cell_remove_sink(const struct engine *e, struct cell *c,
                       struct sink *sink);
 void cell_remove_bpart(const struct engine *e, struct cell *c,
                        struct bpart *bp);
+struct part *cell_add_part(struct engine *e, struct cell *c);
 struct spart *cell_add_spart(struct engine *e, struct cell *c);
 struct gpart *cell_add_gpart(struct engine *e, struct cell *c);
 struct spart *cell_spawn_new_spart_from_part(struct engine *e, struct cell *c,

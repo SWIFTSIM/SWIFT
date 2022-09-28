@@ -52,6 +52,10 @@
 #include "hydro_velocities.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
+#include "random.h"
+
+#include <string.h>
+
 
 /**
  * @brief Computes the hydro time-step of a given particle
@@ -697,6 +701,102 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
   /* undo the flux exchange and kick the particles towards their centroid */
   /* TODO Lloyd */
+}
+
+/**
+ * @brief Check whether we should split this part.
+ *
+ * @param p The particle.
+ */
+__attribute__((always_inline)) INLINE static int hydro_should_split_part(
+    const struct part *p, const struct hydro_props *props) {
+  // TODO: More advanced splitting criterion (e.g. when the mass has increased
+  //  by a factor 2.
+  return p->conserved.mass > props->particle_splitting_mass_threshold;
+}
+
+/**
+ * @brief Split the given particle.
+ *
+ * @param p1 The particle to split.
+ * @param p2 The new particle to split p1 into.
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part(
+    struct part *restrict p1, struct part *restrict p2,
+    const integertime_t ti_current) {
+
+  /* First copy this particle's properties to the new particle */
+  p2->conserved = p1->conserved;
+  p2->gradients = p1->gradients;
+  p2->rho = p1->rho;
+  memcpy(p2->v, p1->v, 3 * sizeof(p1->v[0]));
+  p2->P = p1->P;
+  memcpy(p2->v_full, p1->v_full, 3 * sizeof(p1->v_full[0]));
+  if (p2->gpart != NULL) {
+    memcpy(p2->gpart->v_full, p2->v_full, 3 * sizeof(p2->v_full[0]));
+  }
+
+  /* Get the new positions of the particles */
+  double rho_grad2 = p1->gradients.rho[0] * p1->gradients.rho[0] +
+                     p1->gradients.rho[2] * p1->gradients.rho[2] +
+                     p1->gradients.rho[2] * p1->gradients.rho[2];
+  double rho_grad_norm = sqrt(rho_grad2);
+
+  const double displacement_factor = 0.05;
+  double displacement[3];
+  if (rho_grad_norm > 1e-6) {
+    displacement[0] = p1->gradients.rho[0] / rho_grad_norm;
+    displacement[1] = p1->gradients.rho[1] / rho_grad_norm;
+    displacement[2] = p1->gradients.rho[2] / rho_grad_norm;
+  } else {
+    displacement[0] =
+        random_unit_interval(p1->id, ti_current, (enum random_number_type)0);
+    displacement[1] =
+        random_unit_interval(p1->id, ti_current, (enum random_number_type)1);
+    displacement[2] =
+        random_unit_interval(p1->id, ti_current, (enum random_number_type)2);
+  }
+  displacement[0] *= p1->h * displacement_factor;
+  displacement[1] *= p1->h * displacement_factor;
+  displacement[2] *= p1->h * displacement_factor;
+
+#ifdef HYDRO_DIMENSION_2D
+  int dim = 2;
+#elifdef HYDRO_DIMENSION_3D
+  int dim = 3;
+#else
+  error("Only 2 and 3 hydrodimensions are supported by ShadowSWIFT!");
+#endif
+
+  for (int i = 0; i < dim; i++) {
+    p1->x[i] += displacement[i];
+    p2->x[i] -= displacement[i];
+    if (p1->gpart != NULL) {
+      p1->gpart->x[i] = p1->x[i];
+      p2->gpart->x[i] = p2->x[i];
+    }
+  }
+
+  /* Finally divide the conserved quantities in half
+   * TODO: Volume weighing would be better! Or even volume integral of the
+   * extrapolated primitive quantities */
+  p1->conserved.mass *= 0.5f;
+  p1->conserved.momentum[0] *= 0.5f;
+  p1->conserved.momentum[1] *= 0.5f;
+  p1->conserved.momentum[2] *= 0.5f;
+  p1->conserved.energy *= 0.5f;
+
+  p2->conserved.mass *= 0.5f;
+  p2->conserved.momentum[0] *= 0.5f;
+  p2->conserved.momentum[1] *= 0.5f;
+  p2->conserved.momentum[2] *= 0.5f;
+  p2->conserved.energy *= 0.5f;
+
+  if (p1->gpart != NULL) {
+    /* Update the gpart's mass */
+    p1->gpart->mass = p1->conserved.mass;
+    p2->gpart->mass = p2->conserved.mass;
+  }
 }
 
 /**
