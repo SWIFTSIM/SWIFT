@@ -291,6 +291,9 @@ struct feedback_props {
   /*! max decoupling time is (this factor) * current Hubble time */
   float wind_decouple_time_factor;
 
+  /*! The internal energy corresponding to the cold gas temperature */
+  float cold_wind_internal_energy;
+  
   /* ------------ Common conversion factors --------------- */
 
   /*! Factor to convert km/s to internal units */

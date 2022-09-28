@@ -393,6 +393,7 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
 
           /* By default, do nothing */
           double rand_for_sf_wind = FLT_MAX;
+          double wind_mass = 0.;
           int should_kick_wind = 0;
 
           /* The random number for star formation, stellar feedback,
@@ -400,7 +401,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
            */
           double wind_prob = feedback_wind_probability(p, xp, e, cosmo, 
                                     feedback_props, ti_current, dt_star,
-                                    &rand_for_sf_wind);
+                                    &rand_for_sf_wind,
+                                    &wind_mass);
 
           /* If the sum of the probabilities is greater than unity,
            * rescale so that we can throw the dice properly.
@@ -534,7 +536,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c, int timer) {
                                             feedback_props,
                                             ti_current,
                                             with_cosmology,
-                                            dt_star);
+                                            dt_star,
+                                            wind_mass);
 
           } else {
 #ifdef WITH_FOF_GALAXIES
