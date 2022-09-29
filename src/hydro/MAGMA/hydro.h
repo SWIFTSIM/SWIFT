@@ -883,6 +883,22 @@ __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
   /* Probably not shocking, so this is safe to do */
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
+
+  /* Adding MAGMA variables. */
+  for (int i = 0; i < 3; i++) {
+    p->magma.aux_u[i] = 0.f;
+    p->magma.fder_u[i] = 0.f;
+    for (int j = 0; j < 3; j++) {
+      p->magma.aux_v[i][j] = 0.f;
+      p->magma.fder_v[i][j] = 0.f;
+      p->magma.c_matrix[i][j] = 0.f;
+      p->magma.d_matrix[i][j] = 0.f;
+      p->magma.sder_u[i][j] = 0.f;
+      for (int k = 0; k < 3; k++) {
+        p->magma.sder_v[i][j][k] = 0.f;
+      }
+    }
+  }
 }
 
 /**
