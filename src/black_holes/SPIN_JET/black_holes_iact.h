@@ -277,23 +277,28 @@ runner_iact_nonsym_bh_gas_density(
   /* Choose AGN jet feedback model. Here we calculate the quantities to
      minimize, depending on the model. We calculate two numbers, one for each
      side of the BH. Particles are prioritized to be kicked from the 'same'
-     hemisphere as defined by the BH. However, there may be cases in which one
-     hemisphere is empty, so particles from the other side are used. If the
-     particle is on the 'wrong' side of the BH, relative to the spin vector, we
-     still put it in each ray, but they are pushed to the end (modulo other
-     particles that were already kicked  */
+     hemisphere as defined by the BH spin vector. However, there may be cases
+     in which one hemisphere is empty, so particles from the other side are
+     used. If the particle is on the 'wrong' side of the BH, relative to the
+     spin vector, we still put it in each ray, but they are pushed to the end
+     (modulo other particles that were already kicked). We push them to the end
+     so that they can still be used if the other hemisphere is empty. The way
+     we push them to the end of the ray is by multiplying whatever quantity is
+     being minimized by arbitrary numbers (large or small, depending on what is
+     being minimized). This way, these particles never compete with the ones
+     that are in the correct hemisphere of the BH. */
   switch (bh_props->jet_feedback_model) {
     case AGN_jet_minimum_distance_model: {
 
-      /* Check if relative velocity is significant fraction of jet launching
-         velocity. If it is, set the ray correction variable to some large
-         value. */
+      /* Check if the relative velocity is a significant fraction of the jet
+         launching velocity. If it is, set the ray correction variable to some
+         arbitrarily large value. */
       if (relative_velocity > 0.3 * bi->v_jet) {
         ray_jet_correction = 1e11 * bi->h;
       }
 
       /* In this case we minimize using particle separations from the BH, with
-         the order closest --> farthest  */
+         the order closest --> farthest.  */
       if (cosine_theta < 0) {
         quantity_to_minimize = r + ray_jet_correction;
         quantity_to_minimize_pos = 1e8 * r + ray_jet_correction;
@@ -305,9 +310,9 @@ runner_iact_nonsym_bh_gas_density(
     }
     case AGN_jet_maximum_distance_model: {
 
-      /* Check if relative velocity is significant fraction of jet launching
-         velocity. If it is, set the ray correction variable to some large
-         value. */
+      /* Check if the relative velocity is a significant fraction of the jet
+         launching velocity. If it is, set the ray correction variable to some
+         arbitrarily large value. */
       if (relative_velocity > 0.3 * bi->v_jet) {
         ray_jet_correction = 1e13 * 1. / bi->h;
       }
@@ -325,9 +330,9 @@ runner_iact_nonsym_bh_gas_density(
     }
     case AGN_jet_spin_axis_model: {
 
-      /* Check if relative velocity is significant fraction of jet launching
-         velocity. If it is, set the ray correction variable to some large
-         value. */
+      /* Check if the relative velocity is a significant fraction of the jet
+         launching velocity. If it is, set the ray correction variable to some
+         arbitrarily large value. */
       if (relative_velocity > 0.3 * bi->v_jet) {
         ray_jet_correction = 1e3;
       }
@@ -339,18 +344,18 @@ runner_iact_nonsym_bh_gas_density(
       if (cosine_theta < 0) {
         quantity_to_minimize = -fabsf(cosine_theta) + ray_jet_correction;
         quantity_to_minimize_pos =
-            -1e8 * fabsf(cosine_theta) + ray_jet_correction;
+            -1e-8 * fabsf(cosine_theta) + ray_jet_correction;
       } else {
-        quantity_to_minimize = -1e8 * fabsf(cosine_theta) + ray_jet_correction;
+        quantity_to_minimize = -1e-8 * fabsf(cosine_theta) + ray_jet_correction;
         quantity_to_minimize_pos = -fabsf(cosine_theta) + ray_jet_correction;
       }
       break;
     }
     case AGN_jet_minimum_density_model: {
 
-      /* Check if relative velocity is significant fraction of jet launching
-         velocity. If it is, set the ray correction variable to some large
-         value. */
+      /* Check if the relative velocity is a significant fraction of the jet
+         launching velocity. If it is, set the ray correction variable to some
+         arbitrarily large value. */
       if (relative_velocity > 0.3 * bi->v_jet) {
         ray_jet_correction = 1e15 * pj->rho;
       }
