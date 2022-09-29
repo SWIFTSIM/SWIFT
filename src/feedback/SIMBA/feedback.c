@@ -155,11 +155,12 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
 
   /* Now we have wind_velocity in km/s, determine how much should go to heating */
   const double u_wind = 0.5 * wind_velocity * wind_velocity * 
-                          (fb_props->kms_to_cms * fb_props->kms_to_cms) / 
                           (fb_props->kms_to_internal * fb_props->kms_to_internal);
   const double Z = p->chemistry_data.metal_mass_fraction_total;
   double u_SN = 1.e51 * (0.0102778 / fb_props->solar_mass_in_g) * 
-                    (p->sf_data.SFR * dt_part / wind_mass);
+                    (p->sf_data.SFR * dt_part / wind_mass) /
+                    (fb_props->kms_to_cms * fb_props->kms_to_cms) *
+		    (fb_props->kms_to_internal * fb_props->kms_to_internal);
   if (Z > 1.e-9) {
     u_SN *= pow(10., -0.0029 * pow(log10(Z) + 9., 2.5) + 0.417694);
   } else {
@@ -192,6 +193,12 @@ void feedback_kick_and_decouple_part(struct part* p, struct xpart* xp,
   } else {
     u_new = fb_props->cold_wind_internal_energy;
   }
+#ifdef SIMBA_DEBUG_CHECKS
+  if ( u_new / u_init > 1000 ) {
+    warning("Wind heating too large! T0=%g Tnew=%g fw=%g hwf=%g TSN=%g Tw=%g vw=%g ms=%g mwind=%g kmsunit=%g", u_init/fb_props->temp_to_u_factor, u_new/fb_props->temp_to_u_factor, f_warm, hot_wind_fraction, u_SN/fb_props->temp_to_u_factor, u_wind/fb_props->temp_to_u_factor, wind_velocity, p->sf_data.SFR*dt_part, wind_mass, fb_props->kms_to_internal);
+    u_new = u_init * 1000;
+  }
+#endif
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
   hydro_set_drifted_physical_internal_energy(p, cosmo, u_new);
