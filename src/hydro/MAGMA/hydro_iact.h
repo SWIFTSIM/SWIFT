@@ -19,6 +19,7 @@
  ******************************************************************************/
 #ifndef SWIFT_MAGMA_HYDRO_IACT_H
 #define SWIFT_MAGMA_HYDRO_IACT_H
+//#define MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER
 
 /**
  * @file SPHENIX/hydro_iact.h
@@ -463,7 +464,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float Hi = r / hi;
   const float Hj = r / hj;
   const float hij = min(Hi, Hj);
-  const float h_crit = 0.833f;
+  const float h_crit = 0.81f;
 
   /* Get the slope constant A. */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
@@ -680,12 +681,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
    * allow the scheme to work with thermal feedback. */
 
 #if defined(MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER)
-  /*
   const float alpha_diff_sphenix =
       (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
       (pressurei + pressurej);
   const float alpha_diff = max(0.f, alpha_diff_sphenix);
-  */
 #else
   const float alpha_diff = 0.05f;
 #endif
@@ -777,7 +776,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float Hi = r / hi;
   const float Hj = r / hj;
   const float hij = min(Hi, Hj);
-  const float h_crit = 0.833f;
+  const float h_crit = 0.81f;
 
   /* Get the slope constant A. */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
@@ -985,12 +984,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * allow the scheme to work with thermal feedback. */
 
 #if defined(MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER)
-  /*
   const float alpha_diff_sphenix =
       (pressurei * pi->diffusion.alpha + pressurej * pj->diffusion.alpha) /
       (pressurei + pressurej);
   const float alpha_diff = max(0.f, alpha_diff_sphenix);
-  */
 #else
   const float alpha_diff = 0.05f;
 #endif
