@@ -1295,6 +1295,8 @@ void cell_grid_set_self_completeness(struct cell *c) {
   int flags = 0;
   for (int i = 0; flags != criterion && i < c->hydro.count; i++) {
     struct part *p = &c->hydro.parts[i];
+    // TODO: better splitting/completeness criterion (speed of particles)
+    if (p->h > 0.5 * c->dmin) break;
     int x_bin = (int)(3. * (p->x[0] - c->loc[0]) / c->width[0]);
     int y_bin = (int)(3. * (p->x[1] - c->loc[1]) / c->width[1]);
     int z_bin = (int)(3. * (p->x[2] - c->loc[2]) / c->width[2]);
