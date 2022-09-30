@@ -2155,6 +2155,8 @@ void space_check_limiter_mapper(void *map_data, int nr_parts,
 
     if (parts[k].time_bin == time_bin_inhibited) continue;
 
+    if (parts[k].time_bin == time_bin_not_created) continue;
+
     if (parts[k].time_bin < 0) error("Particle has negative time-bin!");
 
     if (with_timestep_limiter &&

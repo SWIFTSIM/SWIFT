@@ -194,10 +194,18 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       /* Displacement unit vector */
       const double delta_x = random_unit_interval(p->id, e->ti_current,
                                                   (enum random_number_type)0);
+#if defined(HYDRO_DIMENSION_2D) || defined(HYDRO_DIMENSION_3D)
       const double delta_y = random_unit_interval(p->id, e->ti_current,
                                                   (enum random_number_type)1);
+#else
+      const double delta_y = 0.;
+#endif
+#ifdef HYDRO_DIMENSION_3D
       const double delta_z = random_unit_interval(p->id, e->ti_current,
                                                   (enum random_number_type)2);
+#else
+      const double delta_z = 0.;
+#endif
 
       /* Displace the old particle */
       p->x[0] += delta_x * displacement_factor * h;
