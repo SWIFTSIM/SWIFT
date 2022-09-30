@@ -110,12 +110,9 @@
 #define VACUUM_BC 0
 #define REFLECTIVE_BC 1
 #define OPEN_BC 2
-#define LEFT_INFLOW_BC 3
-#define SHADOWSWIFT_BC LEFT_INFLOW_BC
-//#if SHADOWSWIFT_BC == LEFT_INFLOW_BC
-//#define INFLOW_VELOCITY 1e8  // cm / s
-//#define INFLOW_DENSITY 1.67262192e-28  // g / cm^3
-//#endif
+#define INFLOW_BC 3
+#define RADIAL_INFLOW_BC 4
+#define SHADOWSWIFT_BC RADIAL_INFLOW_BC
 /* This option tries to recover from unphysical situations */
 #define SHADOWSWIFT_UNPHYSICAL_RESCUE
 /* Show a warning message if an unphysical value was reset */

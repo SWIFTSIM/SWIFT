@@ -261,13 +261,13 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 #endif
       }
     }
-#elif (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
+#elif (SHADOWSWIFT_BC == INFLOW_BC)
     /* Treat the boundary as open, except for the vertical boundaries, where we
      * set the correct inflow properties */
     struct hydro_space *hs = &r->e->s->hs;
     if (sid == 4 || sid == 22) {
       p_boundary.rho = hs->density;
-      p_boundary.v[0] = hs->velocity;
+      p_boundary.v[0] = sid == 4 ? hs->velocity : -hs->velocity;
       p_boundary.v[1] = 0.f;
       p_boundary.v[2] = 0.f;
       p_boundary.P = hs->pressure;
@@ -293,6 +293,33 @@ void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
           p_boundary.gradients.P[i] *= -1;
         }
       }
+    }
+#endif
+#elif (SHADOWSWIFT_BC == RADIAL_INFLOW_BC)
+    /* Set a radial inflow velocity everywhere and gradients to 0 */
+    struct space *s = r->e->s;
+    struct hydro_space *hs = &s->hs;
+    double dx[3] = {
+        0.5 * s->dim[0] - p_boundary.x[0],
+        0.5 * s->dim[1] - p_boundary.x[1],
+        0.5 * s->dim[2] - p_boundary.x[2],
+    };
+#ifdef HYDRO_DIMENSION_2D
+    dx[2] = 0.;
+#endif
+    double norm = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+    p_boundary.rho = hs->density;
+    p_boundary.v[0] = hs->velocity * dx[0] / norm;
+    p_boundary.v[1] = hs->velocity * dx[1] / norm;
+    p_boundary.v[2] = hs->velocity * dx[2] / norm;
+    p_boundary.P = hs->pressure;
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FLUX_EXCHANGE)
+    for (int i = 0; i < 3; i++) {
+      p_boundary.gradients.rho[i] = 0.;
+      p_boundary.gradients.v[0][i] = 0.;
+      p_boundary.gradients.v[1][i] = 0.;
+      p_boundary.gradients.v[2][i] = 0.;
+      p_boundary.gradients.P[i] = 0.;
     }
 #endif
 #else
