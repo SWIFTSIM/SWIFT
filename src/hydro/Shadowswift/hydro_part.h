@@ -225,7 +225,7 @@ struct part {
     /*! cell_pair_connections offset in voronoi tesselation */
     int pair_connections_offset;
 
-    /*! Minimal distance from generator to a face */
+    /*! Estimate of the minimal distance from centroid to a face */
     float min_face_dist;
 
     /*! Flags indicating to which neighbouring cells this particle has already

@@ -99,6 +99,12 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   if (vmax > 0.0f) {
     dt = psize / vmax;
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (dt == 0.f)
+    error("Part wants dt=0!");
+#endif
+
   return CFL_condition * dt;
 }
 
