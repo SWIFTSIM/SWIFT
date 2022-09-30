@@ -708,7 +708,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
 
   /* Get the new positions of the particles */
   double rho_grad2 = p1->gradients.rho[0] * p1->gradients.rho[0] +
-                     p1->gradients.rho[2] * p1->gradients.rho[2] +
+                     p1->gradients.rho[1] * p1->gradients.rho[1] +
                      p1->gradients.rho[2] * p1->gradients.rho[2];
   double rho_grad_norm = sqrt(rho_grad2);
 
@@ -719,12 +719,20 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
     displacement[1] = p1->gradients.rho[1] / rho_grad_norm;
     displacement[2] = p1->gradients.rho[2] / rho_grad_norm;
   } else {
-    displacement[0] =
-        random_unit_interval(p1->id, ti_current, (enum random_number_type)0);
-    displacement[1] =
-        random_unit_interval(p1->id, ti_current, (enum random_number_type)1);
-    displacement[2] =
-        random_unit_interval(p1->id, ti_current, (enum random_number_type)2);
+    double v2 = p1->v[0] * p1->v[0] + p1->v[1] * p1->v[1] + p1->v[2] * p1->v[2];
+    const double v_norm = sqrt(v2);
+    if (v_norm > 1e-6) {
+      displacement[0] = p1->v[0] / v_norm;
+      displacement[1] = p1->v[1] / v_norm;
+      displacement[2] = p1->v[2] / v_norm;
+    } else {
+      displacement[0] =
+          random_unit_interval(p1->id, ti_current, (enum random_number_type)0);
+      displacement[1] =
+          random_unit_interval(p1->id, ti_current, (enum random_number_type)1);
+      displacement[2] =
+          random_unit_interval(p1->id, ti_current, (enum random_number_type)2);
+    }
   }
   displacement[0] *= p1->h * displacement_factor;
   displacement[1] *= p1->h * displacement_factor;
@@ -732,7 +740,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
 
 #ifdef HYDRO_DIMENSION_2D
   int dim = 2;
-#elifdef HYDRO_DIMENSION_3D
+#elif defined(HYDRO_DIMENSION_3D)
   int dim = 3;
 #else
   error("Only 2 and 3 hydrodimensions are supported by ShadowSWIFT!");

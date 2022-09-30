@@ -5,9 +5,8 @@
 #ifndef SWIFTSIM_RUNNER_DOIACT_GRID_H
 #define SWIFTSIM_RUNNER_DOIACT_GRID_H
 
-/* Local headers. */
-#include "part.h"
 #ifdef MOVING_MESH
+/* Local headers. */
 #include "active.h"
 #include "cell.h"
 #include "shadowswift/bvh.h"

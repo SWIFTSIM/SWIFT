@@ -293,6 +293,8 @@ void engine_split_gas_particles(struct engine *e) {
   if (!e->hydro_properties->particle_splitting) return;
   if (e->total_nr_parts == 0) return;
 
+  return;
+
   /* Time this */
   const ticks tic = getticks();
 
