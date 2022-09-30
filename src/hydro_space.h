@@ -19,8 +19,8 @@
 #ifndef SWIFT_HYDRO_SPACE_H
 #define SWIFT_HYDRO_SPACE_H
 
-#include "parser.h"
 #include "const.h"
+#include "parser.h"
 
 #include <config.h>
 
@@ -37,7 +37,8 @@ struct hydro_space {
   /*! Side lengths of the simulation space. */
   double side[3];
 };
-#elif defined(SHADOWSWIFT) && (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
+#elif defined(SHADOWSWIFT) && \
+    (SHADOWSWIFT_BC == INFLOW_BC || SHADOWSWIFT_BC == RADIAL_INFLOW_BC)
 struct hydro_space {
   /* Inflow density */
   float density;

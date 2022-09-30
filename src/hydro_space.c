@@ -45,7 +45,7 @@ void hydro_space_init(struct hydro_space *hs, const struct space *s,
     hs->side[2] = s->dim[2];
   }
 }
-#elif defined(SHADOWSWIFT) && (SHADOWSWIFT_BC == LEFT_INFLOW_BC)
+#elif defined(SHADOWSWIFT) && (SHADOWSWIFT_BC == INFLOW_BC || SHADOWSWIFT_BC == RADIAL_INFLOW_BC)
 void hydro_space_init(struct hydro_space *hs, const struct space *s,
                       struct swift_params *params) {
 
