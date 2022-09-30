@@ -1097,7 +1097,7 @@ void runner_do_split_parts(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (!e->hydro_properties->particle_splitting) return;
-  if (count == 0 || !cell_is_active_hydro(c, e)) return;
+  if (count == 0 || !cell_is_starting_hydro(c, e)) return;
 
   /* Recurse? */
   if (c->split) {
