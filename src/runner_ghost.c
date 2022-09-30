@@ -1821,7 +1821,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
     }
 
     /* Check that h_max does not exceed the cell dimensions */
-    if (h_max_active > c->width[0])
+    if (h_max_active > c->dmin)
       error("Some search radii grew larger than cell dimensions!");
 
     /* We now need to treat the particles whose smoothing length had not

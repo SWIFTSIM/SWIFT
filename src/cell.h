@@ -647,6 +647,7 @@ void cell_activate_limiter(struct cell *c, struct scheduler *s);
 void cell_clear_drift_flags(struct cell *c, void *data);
 void cell_clear_limiter_flags(struct cell *c, void *data);
 void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data);
+void cell_grid_set_self_completeness(struct cell *c);
 void cell_set_grid_completeness_mapper(void *map_data, int num_elements,
                                        void *extra_data);
 void cell_set_grid_construction_level_mapper(void *map_data, int num_elements,
@@ -1021,15 +1022,20 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
  * @param cj The second #cell.
  */
 __attribute__((always_inline, nonnull)) INLINE static int
-cell_need_rebuild_for_grid_pair(const struct cell *ci, const struct cell *cj) {
+cell_need_rebuild_for_grid_pair(struct cell *ci, struct cell *cj) {
 
   /* The max distance the parts in both cells have */
   /* moved larger than the cell size divided by three? */
-  /* TODO: Also check if completeness criterion is still satisfied? */
   /* Note ci->dmin == cj->dmin */
-  if (ci->hydro.dx_max_part + cj->hydro.dx_max_part > cj->dmin / 3.) {
-    return 1;
-  }
+  if (ci->hydro.dx_max_part > 0.333 * ci->dmin) return 1;
+  if (cj->hydro.dx_max_part > 0.333 * cj->dmin) return 1;
+
+  /* Check completeness criteria */
+  cell_grid_set_self_completeness(ci);
+  if (!ci->grid.self_complete) return 1;
+  cell_grid_set_self_completeness(cj);
+  if (!cj->grid.self_complete) return 1;
+
   return 0;
 }
 
