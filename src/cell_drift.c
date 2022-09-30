@@ -316,7 +316,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       if (e->s->with_zoom_region) {
 
         /* Get some useful zoom properties. */
-        const double *zoom_edges = e->s->region_bounds;
+        const double *zoom_edges = e->s->zoom_props->region_bounds;
         
         /* Did the particle leave the zoom region?  */
         if ((p->x[0] > zoom_edges[1]) || (p->x[0] < zoom_edges[0]) ||  // x
@@ -751,7 +751,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       if (e->s->with_zoom_region) {
 
         /* Get some useful zoom properties. */
-        const double *zoom_edges = e->s->region_bounds;
+        const double *zoom_edges = e->s->zoom_props->region_bounds;
         
         /* Did the particle leave the zoom region?  */
         if ((sp->x[0] > zoom_edges[1]) || (sp->x[0] < zoom_edges[0]) ||  // x
@@ -994,7 +994,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       if (e->s->with_zoom_region) {
 
         /* Get some useful zoom properties. */
-        const double *zoom_edges = e->s->region_bounds;
+        const double *zoom_edges = e->s->zoom_props->region_bounds;
         
         /* Did the particle leave the zoom region?  */
         if ((bp->x[0] > zoom_edges[1]) || (bp->x[0] < zoom_edges[0]) ||  // x
