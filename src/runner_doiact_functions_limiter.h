@@ -240,6 +240,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     const float hi = pi->h;
     const float hj = pj->h;
 
+    /* Skip inhibited particles */
+    if (pi->time_bin == time_bin_inhibited) continue;
+    if (pj->time_bin == time_bin_inhibited) continue;
+
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
     if (pi->ti_drift != e->ti_current)
