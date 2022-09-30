@@ -422,6 +422,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     int nface = 0;
     int pair_connections_offset = v->cell_pair_connections.index;
     double min_ngb_dist2 = DBL_MAX;
+    double min_ngb_dist_pos[2] = {0., 0.};
     double generator_pos[2] = {p->x[0], p->x[1]};
 
     int del_vert_ix = i + d->vertex_start;
@@ -493,7 +494,12 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
         delaunay_get_vertex_at(d, ngb_del_vert_ix, ngb_pos);
         double dx[2] = {ngb_pos[0] - generator_pos[0],
                         ngb_pos[1] - generator_pos[1]};
-        min_ngb_dist2 = fmin(min_ngb_dist2, dx[0] * dx[0] + dx[1] * dx[1]);
+        double dist2 = dx[0] * dx[0] + dx[1] * dx[1];
+        if (dist2 < min_ngb_dist2) {
+          min_ngb_dist2 = dist2;
+          min_ngb_dist_pos[0] = ngb_pos[0];
+          min_ngb_dist_pos[1] = ngb_pos[1];
+        }
       }
 
       cur_t_ix_in_next_t =
@@ -521,13 +527,27 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
       delaunay_get_vertex_at(d, first_ngb_del_vert_ix, ngb_pos);
       double dx[2] = {ngb_pos[0] - generator_pos[0],
                       ngb_pos[1] - generator_pos[1]};
-      min_ngb_dist2 = fmin(min_ngb_dist2, dx[0] * dx[0] + dx[1] * dx[1]);
+      double dist2 = dx[0] * dx[0] + dx[1] * dx[1];
+      if (dist2 < min_ngb_dist2) {
+        min_ngb_dist2 = dist2;
+        min_ngb_dist_pos[0] = ngb_pos[0];
+        min_ngb_dist_pos[1] = ngb_pos[1];
+      }
     }
 
     /* now compute the actual centroid by dividing the volume-weighted
        accumulators by the cell volume */
     cell_centroid[0] /= cell_volume;
     cell_centroid[1] /= cell_volume;
+
+    /* now compute an estimate for the distance of the centroid to the closest
+     * face. */
+    double face[2] = {0.5 * (min_ngb_dist_pos[0] + p->x[0]),
+                      0.5 * (min_ngb_dist_pos[1] + p->x[1])};
+    double dx_gen[2] = {face[0] - p->x[0], face[1] - p->x[1]};
+    double dx_cen[2] = {face[0] - cell_centroid[0], face[1] - cell_centroid[1]};
+    double dist = (dx_cen[0] * dx_gen[0] + dx_cen[1] * dx_gen[1]) /
+                  (0.5 * sqrt(min_ngb_dist2));
 
     /* Store the voronoi cell in the particle. */
     p->geometry.volume = (float)cell_volume;
@@ -536,7 +556,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     p->geometry.centroid[2] = 0.f;
     p->geometry.nface = nface;
     p->geometry.pair_connections_offset = pair_connections_offset;
-    p->geometry.min_face_dist = (float)(0.5 * sqrt(min_ngb_dist2));
+    p->geometry.min_face_dist = (float)dist;
   } /* loop over all cell generators */
 
   voronoi_check_grid(v);
@@ -621,11 +641,12 @@ static inline void voronoi_check_grid(const struct voronoi *restrict v) {
  */
 static inline void voronoi_write_grid(const struct voronoi *restrict v,
                                       const struct part *parts, int count,
-                                      FILE *file, size_t* offset) {
+                                      FILE *file, size_t *offset) {
 
   /* Write the generator positions */
   for (int i = 0; i < count; i++)
-    fprintf(file, "G\t%g\t%g\t%lu\n", parts[i].x[0], parts[i].x[1], *offset + i);
+    fprintf(file, "G\t%g\t%g\t%lu\n", parts[i].x[0], parts[i].x[1],
+            *offset + i);
 
   /* Write the centroid positions */
   for (int i = 0; i < count; i++)

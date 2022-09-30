@@ -172,7 +172,6 @@ void DOPAIR_BRANCH(struct runner *restrict r, struct cell *ci,
   }
 }
 
-
 void DOPAIR_BOUNDARY(struct runner *restrict r, struct cell *restrict c) {
 
   const struct engine *e = r->e;

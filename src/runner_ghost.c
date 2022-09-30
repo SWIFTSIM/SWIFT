@@ -1780,7 +1780,7 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
 
   /* Add boundary particles? */
   if (!periodic)
-    runner_add_boundary_particles_grid_construction(r, c, h_max_active);
+    runner_add_boundary_particles_grid_construction(r, c, c->hydro.h_max_active);
 
   /* While there are particles that need to be updated and their search radius
    * remains smaller than the cell width... */
