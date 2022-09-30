@@ -971,7 +971,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
   /* Re-order the extra particles such that they are at the end of their cell's
      memory pool. */
-  if (s->with_star_formation || s->with_sink) space_reorder_extras(s, verbose);
+  if (s->with_star_formation || s->with_sink || s->with_hydro) space_reorder_extras(s, verbose);
 
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
