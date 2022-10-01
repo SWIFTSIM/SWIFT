@@ -636,23 +636,24 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   accr_rate = min3(accr_rate, Eddington_rate, Eddington_rate_custom_mass);
 
-  /*
-  const float gas_stars_mass_in_kernel = bp->cold_gas_mass + bp->stellar_mass;
-  if (bp->stellar_bulge_mass > bp->stellar_mass)
-    bp->stellar_bulge_mass = bp->stellar_mass;
-  const float disk_mass = gas_stars_mass_in_kernel - bp->stellar_bulge_mass;
-  const float f_disk = disk_mass / gas_stars_mass_in_kernel;
-  float f_gas = 0.f;
-  if (disk_mass > 0.f) f_gas = bp->cold_gas_mass / disk_mass;
+  float torque_accr_rate = 0.f;
 
+  /* Let's compute the torque-limited accretion rate from the cold gas 
+  const double f_gas = (bp->group_data.mass - bp->group_data.stellar_mass) / 
+                        (bp->group_data.stellar_mass);
+  double f_corr_stellar = (1 + f_gas) / f_gas;
+  if (f_corr_stellar > 10) f_corr_stellar = 10.;
+  const double gas_stars_mass_in_kernel = bp->ngb_mass / f_corr_stellar;
+  const float f_disk = bp->cold_disk_mass / gas_stars_mass_in_kernel;
   const float r0 = bp->h * cosmo->a * (props->length_to_parsec / 100.f);
+
   if (f_disk > 0.f && f_gas > 0.f && gas_stars_mass_in_kernel > 0.f) {
     const float alpha = 5.f;
     const float mass_to_1e9solar = props->mass_to_solar_mass / 1.0e9f;
     const float mass_to_1e8solar = props->mass_to_solar_mass / 1.0e8f;
 
     const float f0 =
-        0.31f * f_disk * f_disk * pow(disk_mass * mass_to_1e9solar, -1.f / 3.f);
+        0.31f * f_disk * f_disk * pow(bp->cold_disk_mass * mass_to_1e9solar, -1.f / 3.f);
 
     torque_accr_rate = props->torque_accretion_norm * alpha *
                       gas_stars_mass_in_kernel * mass_to_1e9solar *
@@ -662,25 +663,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     torque_accr_rate *=
         props->f_accretion * (props->time_to_yr / props->mass_to_solar_mass);
 
-    if (props->suppress_growth == 1) {
-      const float sigma_eff =
-          gas_stars_mass_in_kernel * props->mass_to_solar_mass /
-          (M_PI * r0 * r0 * 100.f * 100.f);
-
-      torque_accr_rate *=
-          sigma_eff / (sigma_eff + props->sigma_crit_resolution_factor *
-                                      props->sigma_crit_Msun_pc2);
-    } else if (props->suppress_growth == 2) {
-      torque_accr_rate *= 1. - exp(-BH_mass * props->mass_to_solar_mass /
-                                  props->bh_characteristic_suppression_mass);
-    }
-
-    accr_rate += torque_accr_rate;
-
-    } */
-
-  /* Let's compute the accretion rate from the cold gas */
-  float torque_accr_rate = 0.f;
+  } */
 
   /* Here the accretion rate is only based on Mgas / tdyn.
     * We do not use the DM mass to compute tdyn since it probably
@@ -698,17 +681,30 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     *    sqrt(12 * pi^2 * h^3)
     *      = (1 / pi) * sqrt(8 * G * ((1 + fgas) / fgas) * (Mgas / h)^3))
     */
-  /*const double rho_factor = 
-      bp->cold_gas_mass * bp->cold_gas_mass * bp->cold_gas_mass * 
-      h_inv * h_inv * h_inv;
   const double f_gas = (bp->group_data.mass - bp->group_data.stellar_mass) / 
                         (bp->group_data.stellar_mass);
   double f_corr_stellar = (1 + f_gas) / f_gas;
-  if (f_corr_stellar > 10) f_corr_stellar = 10.;*/
+  if (f_corr_stellar > 10) f_corr_stellar = 10.;
   torque_accr_rate = props->torque_accretion_norm * 
-        bp->cold_disk_mass * sqrt(G * bp->rho_gas);
+        bp->cold_disk_mass * sqrt(G * f_corr_stellar * bp->rho_gas);
   torque_accr_rate *= props->f_accretion;
-  
+
+  /* Do suppression of BH growth */
+  if (props->suppress_growth == 1) {
+    const float r0 = bp->h * cosmo->a * (props->length_to_parsec / 100.f);
+    const float sigma_eff =
+        f_corr_stellar * bp->ngb_mass * props->mass_to_solar_mass /
+        (M_PI * r0 * r0 * 100.f * 100.f);
+
+    torque_accr_rate *=
+        sigma_eff / (sigma_eff + props->sigma_crit_resolution_factor *
+                                    props->sigma_crit_Msun_pc2);
+  } else if (props->suppress_growth == 2) {
+    torque_accr_rate *= 1. - exp(-BH_mass * props->mass_to_solar_mass /
+                                props->bh_characteristic_suppression_mass);
+  }
+
+  /* Total accretion rate is Bondi + torque */
   accr_rate += torque_accr_rate;
 
   /* Limit overall accretion rate */
