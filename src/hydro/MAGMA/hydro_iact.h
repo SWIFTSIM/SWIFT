@@ -19,7 +19,7 @@
  ******************************************************************************/
 #ifndef SWIFT_MAGMA_HYDRO_IACT_H
 #define SWIFT_MAGMA_HYDRO_IACT_H
-//#define MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER
+#define MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER
 
 /**
  * @file SPHENIX/hydro_iact.h
@@ -479,10 +479,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     }
   }
 
-  if (A_i == 0.f && A_j == 0.f) {
+  if (A_i == 0.f && A_j == 0.f) { /* For smooth internal energy field, we turn off diffusion term*/
     A_ij = 1.f;
     A_ji = 1.f;
-  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)) {
+  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)) { /* For extreme values, we add diffusion term*/
     A_ij = 0.f;
     A_ji = 0.f;
   } else {
@@ -490,10 +490,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     A_ji = A_j / A_i;
   }
 
-  if (Av_i == 0.f && Av_j == 0.f) {
+  if (Av_i == 0.f && Av_j == 0.f) { /* For smooth velocity field, we turn off viscosity term*/
     Av_ij = 1.f;
     Av_ji = 1.f;
-  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)) {
+  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)) { /* For extreme values, we add viscosity term*/
     Av_ij = 0.f;
     Av_ji = 0.f;
   } else {
@@ -791,10 +791,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     }
   }
 
-  if (A_i == 0.f && A_j == 0.f) {
+  if (A_i == 0.f && A_j == 0.f) { /* For smooth internal energy field, we turn off diffusion term*/
     A_ij = 1.f;
     A_ji = 1.f;
-  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)) {
+  } else if ((A_i == 0.f && A_j != 0.f) || (A_j == 0.f && A_i != 0.f)) { /* For extreme values, we add diffusion term*/
     A_ij = 0.f;
     A_ji = 0.f;
   } else {
@@ -802,10 +802,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     A_ji = A_j / A_i;
   }
 
-  if (Av_i == 0.f && Av_j == 0.f) {
+  if (Av_i == 0.f && Av_j == 0.f) { /* For smooth velocity field, we turn off viscosity term*/
     Av_ij = 1.f;
     Av_ji = 1.f;
-  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)) {
+  } else if ((Av_i == 0.f && Av_j != 0.f) || (Av_j == 0.f && Av_i != 0.f)) { /* For extreme values, we add viscosity term*/
     Av_ij = 0.f;
     Av_ji = 0.f;
   } else {
