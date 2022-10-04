@@ -830,6 +830,50 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
         }
       }
 
+      /* Pair tasks between inactive local cells and active remote cells. */
+      if ((ci_nodeID != nodeID && cj_nodeID == nodeID && ci_active_hydro &&
+           !cj_active_hydro) ||
+          (ci_nodeID == nodeID && cj_nodeID != nodeID && !ci_active_hydro &&
+           cj_active_hydro)) {
+
+#if defined(WITH_MPI) && defined(MPI_SYMMETRIC_FORCE_INTERACTION)
+        if (t_subtype == task_subtype_force) {
+
+          scheduler_activate(s, t);
+
+          /* Set the correct sorting flags */
+          if (t_type == task_type_pair) {
+            /* Store some values. */
+            atomic_or(&ci->hydro.requires_sorts, 1 << t->flags);
+            atomic_or(&cj->hydro.requires_sorts, 1 << t->flags);
+            ci->hydro.dx_max_sort_old = ci->hydro.dx_max_sort;
+            cj->hydro.dx_max_sort_old = cj->hydro.dx_max_sort;
+
+            /* Activate the hydro drift tasks. */
+            if (ci_nodeID == nodeID) cell_activate_drift_part(ci, s);
+            if (cj_nodeID == nodeID) cell_activate_drift_part(cj, s);
+
+            /* And the limiter */
+            if (ci_nodeID == nodeID && with_timestep_limiter)
+              cell_activate_limiter(ci, s);
+            if (cj_nodeID == nodeID && with_timestep_limiter)
+              cell_activate_limiter(cj, s);
+
+            /* Check the sorts and activate them if needed. */
+            cell_activate_hydro_sorts(ci, t->flags, s);
+            cell_activate_hydro_sorts(cj, t->flags, s);
+
+          }
+
+          /* Store current values of dx_max and h_max. */
+          else if (t_type == task_type_sub_pair) {
+            cell_activate_subcell_hydro_tasks(t->ci, t->cj, s,
+                                              with_timestep_limiter);
+          }
+        }
+#endif
+      }
+
       /* Only interested in density tasks as of here. */
       if (t_subtype == task_subtype_density) {
 
@@ -849,6 +893,26 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
               scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
 #endif
             }
+          }
+          /* If the local cell is inactive and the remote cell is active, we
+           * still need to receive stuff to be able to do the force interaction
+           * on this node as well. */
+          else if (ci_active_hydro) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+            /* NOTE: (yuyttenh, 09/2022) Since the particle communications send
+             * over whole particles currently, just activating the gradient
+             * send/recieve should be enough for now. The remote active
+             * particles are only needed for the sorts and the flux exchange on
+             * the node of the inactive cell, so sending over the xv and
+             * gradient suffices. If at any point the commutications change, we
+             * should probably also send over the rho separately. */
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+#ifndef EXTRA_HYDRO_LOOP
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+#else
+            scheduler_activate_recv(s, ci->mpi.recv, task_subtype_gradient);
+#endif
+#endif
           }
 
           /* If the foreign cell is active, we want its particles for the
@@ -878,6 +942,27 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                       ci_nodeID);
 #endif
             }
+          }
+          /* If the foreign cell is inactive, but the local cell is active,
+           * we still need to send stuff to be able to do the force interaction
+           * on both nodes */
+          else if (cj_active_hydro) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+            /* See NOTE on line 867 */
+            struct link *l = scheduler_activate_send(
+                s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+            /* Drift the cell which will be sent at the level at which it is
+             * sent, i.e. drift the cell specified in the send task (l->t)
+             * itself. */
+            cell_activate_drift_part(l->t->ci, s);
+#ifndef EXTRA_HYDRO_LOOP
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_rho,
+                                    ci_nodeID);
+#else
+            scheduler_activate_send(s, cj->mpi.send, task_subtype_gradient,
+                                    ci_nodeID);
+#endif
+#endif
           }
 
           /* If the local cell is active, send its particles for the limiting.
@@ -914,6 +999,20 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
 #endif
             }
           }
+          /* If the local cell is inactive and the remote cell is active, we
+           * still need to receive stuff to be able to do the force interaction
+           * on this node as well. */
+          else if (cj_active_hydro) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+            /* See NOTE on line 867. */
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+#ifndef EXTRA_HYDRO_LOOP
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+#else
+            scheduler_activate_recv(s, cj->mpi.recv, task_subtype_gradient);
+#endif
+#endif
+          }
 
           /* If the foreign cell is active, we want its particles for the
            * limiter */
@@ -944,6 +1043,27 @@ void engine_marktasks_mapper(void *map_data, int num_elements,
                                       cj_nodeID);
 #endif
             }
+          }
+          /* If the foreign cell is inactive, but the local cell is active,
+           * we still need to send stuff to be able to do the force interaction
+           * on both nodes */
+          else if (ci_active_hydro) {
+#ifdef MPI_SYMMETRIC_FORCE_INTERACTION
+            /* See NOTE on line 867. */
+            struct link *l = scheduler_activate_send(
+                s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+            /* Drift the cell which will be sent at the level at which it is
+             * sent, i.e. drift the cell specified in the send task (l->t)
+             * itself. */
+            cell_activate_drift_part(l->t->ci, s);
+#ifndef EXTRA_HYDRO_LOOP
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_rho,
+                                    cj_nodeID);
+#else
+            scheduler_activate_send(s, ci->mpi.send, task_subtype_gradient,
+                                    cj_nodeID);
+#endif
+#endif
           }
 
           /* If the local cell is active, send its particles for the limiting.

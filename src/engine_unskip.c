@@ -85,8 +85,10 @@ static void engine_do_unskip_hydro(struct cell *c, struct engine *e) {
   /* Ignore empty cells. */
   if (c->hydro.count == 0) return;
 
+#ifndef MPI_SYMMETRIC_FORCE_INTERACTION
   /* Skip inactive cells. */
   if (!cell_is_active_hydro(c, e)) return;
+#endif
 
   /* Recurse */
   if (c->split) {
