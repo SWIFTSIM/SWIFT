@@ -310,6 +310,9 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
   p->ti_drift = e->ti_current;
 #endif
 
+  /* Give it a new ID */
+  p->id = atomic_add(&e->max_parts_id, 2);
+
   if (with_gravity) {
     /* Create a new gpart and link it to this particle */
     struct gpart *gp = cell_add_gpart(e, c);
