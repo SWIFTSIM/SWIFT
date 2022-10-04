@@ -26,9 +26,15 @@
 #include "cell.h"
 
 /* Local headers. */
+#include "black_holes_struct.h"
+#include "chemistry.h"
+#include "cooling.h"
 #include "engine.h"
 #include "hydro.h"
+#include "rt.h"
 #include "sink_properties.h"
+#include "star_formation.h"
+#include "tracers.h"
 
 /**
  * @brief Recursively update the pointer and counter for #part after the
@@ -189,12 +195,14 @@ void cell_recursively_shift_gparts(struct cell *c,
  *
  * @param e The #engine.
  * @param c The leaf-cell in which to add the #part.
+ * @param p (Return) Pointer to the created #part.
+ * @param xp (Return) Pointer to the created #xpart.
  *
- * @return A pointer to the newly added #part. The part has a been zeroed
- * and given a position within the cell as well as set to the minimal active
- * time bin.
+ * @return 1 if we successfully created a new part, xpart and gpart (if needed),
+ * zero in all other cases.
  */
-struct part *cell_add_part(struct engine *e, struct cell *c) {
+int cell_add_part(struct engine *e, struct cell *c, struct part **p,
+                  struct xpart **xp) {
 
   /* Usefull constants */
   const int with_gravity = (e->policy & engine_policy_self_gravity) ||
@@ -231,7 +239,7 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
       error("Failed to unlock the top-level cell.");
 
     atomic_inc(&e->forcerebuild);
-    return NULL;
+    return 0;
   }
   if (with_gravity) {
     if (top->grav.count == top->grav.count_total) {
@@ -242,7 +250,7 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
         error("Failed to unlock the top-level cell.");
 
       atomic_inc(&e->forcerebuild);
-      return NULL;
+      return 0;
     }
   }
 
@@ -294,40 +302,115 @@ struct part *cell_add_part(struct engine *e, struct cell *c) {
     error("Failed to unlock the top-level cell.");
 
   /* We now have an empty part as the last particle in that cell */
-  struct part *p = &c->hydro.parts[c->hydro.count - 1];
-  bzero(p, sizeof(struct part));
+  struct part *new_part = &c->hydro.parts[c->hydro.count - 1];
+  bzero(new_part, sizeof(struct part));
 
   /* Give it a decent position */
-  p->x[0] = c->loc[0] + 0.5 * c->width[0];
-  p->x[1] = c->loc[1] + 0.5 * c->width[1];
-  p->x[2] = c->loc[2] + 0.5 * c->width[2];
+  new_part->x[0] = c->loc[0] + 0.5 * c->width[0];
+  new_part->x[1] = c->loc[1] + 0.5 * c->width[1];
+  new_part->x[2] = c->loc[2] + 0.5 * c->width[2];
 
   /* Set it to the current time-bin */
-  p->time_bin = e->min_active_bin;
+  new_part->time_bin = e->min_active_bin;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Specify it was drifted to this point */
-  p->ti_drift = e->ti_current;
+  new_part->ti_drift = e->ti_current;
 #endif
 
   /* Give it a new ID */
-  p->id = atomic_add(&e->max_parts_id, 2);
+  new_part->id = atomic_add(&e->max_parts_id, 2);
 
   if (with_gravity) {
     /* Create a new gpart and link it to this particle */
     struct gpart *gp = cell_add_gpart(e, c);
-    p->gpart = gp;
-    gp->id_or_neg_offset = e->s->parts - p;
-    gp->x[0] = p->x[0];
-    gp->x[1] = p->x[1];
-    gp->x[2] = p->x[2];
+    new_part->gpart = gp;
+    gp->id_or_neg_offset = e->s->parts - new_part;
+    gp->x[0] = new_part->x[0];
+    gp->x[1] = new_part->x[1];
+    gp->x[2] = new_part->x[2];
   }
 
   /* Register that we used one of the free slots. */
   const size_t one = 1;
   atomic_sub(&e->s->nr_extra_parts, one);
 
-  return p;
+  *p = new_part;
+  *xp = &c->hydro.xparts[c->hydro.count - 1];
+  return 1;
+}
+
+/**
+ * @brief Split a #part in a given #cell over the #part itself and a newly
+ * created #part.
+ *
+ * @param e The #engine
+ * @param c the #cell
+ * @param p1 the #part to split
+ * @param xp1 The accompanying #xpart
+ * @param p2 the newly created particle to split the #part into
+ * @param xp2 The accompanying #xpart */
+void cell_split_part(struct engine *e, struct cell *c, struct part *p1,
+                     struct xpart *xp1, struct part *p2, struct xpart *xp2) {
+
+  /* Get and apply the displacement of the particles */
+  double displacement[3];
+  hydro_split_part_displacement(p1, e->ti_current, /*ret*/ displacement);
+
+#ifdef HYDRO_DIMENSION_2D
+  int dim = 2;
+#elif defined(HYDRO_DIMENSION_3D)
+  int dim = 3;
+#else
+  error("Only 2 and 3 hydro dimensions are supported by ShadowSWIFT!");
+#endif
+
+  for (int i = 0; i < dim; i++) {
+    p2->x[i] = p1->x[i] - displacement[i];
+    p1->x[i] += displacement[i];
+    if (p1->gpart != NULL) {
+      p1->gpart->x[i] = p1->x[i];
+      p2->gpart->x[i] = p2->x[i];
+    }
+  }
+
+  // TODO split geometry of the part (rebuild local vortess)
+
+  /* Split the hydro quantities */
+  double splitting_fraction = 0.5;
+  hydro_split_part(p1, p2, &splitting_fraction);
+
+  /* Determine the splitting factors */
+  double splitting_factor1 = 1. / splitting_fraction;
+  double splitting_factor2 = 1. / (1 - splitting_fraction);
+
+  /* Split the chemistry fields */
+  chemistry_split_part(p1, splitting_factor1);
+  chemistry_split_part(p2, splitting_factor2);
+
+  /* Split the cooling fields */
+  cooling_split_part(p1, xp1, splitting_factor1);
+  cooling_split_part(p2, xp2, splitting_factor2);
+
+  /* Split the star formation fields */
+  star_formation_split_part(p1, xp1, splitting_factor1);
+  star_formation_split_part(p2, xp2, splitting_factor2);
+
+  /* Split the tracer fields */
+  tracers_split_part(p1, xp1, splitting_factor1);
+  tracers_split_part(p2, xp2, splitting_factor2);
+
+  /* Split the RT fields */
+  rt_split_part(p1, splitting_factor1);
+  rt_split_part(p2, splitting_factor2);
+
+  /* Mark the particles as not having been swallowed */
+  black_holes_mark_part_as_not_swallowed(&p1->black_holes_data);
+  black_holes_mark_part_as_not_swallowed(&p2->black_holes_data);
+
+  /* Mark the particles as not having been swallowed by a sink */
+  sink_mark_part_as_not_swallowed(&p1->sink_data);
+  sink_mark_part_as_not_swallowed(&p2->sink_data);
 }
 
 /**

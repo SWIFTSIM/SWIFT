@@ -692,91 +692,81 @@ __attribute__((always_inline)) INLINE static int hydro_should_split_part(
 }
 
 /**
+ * @brief Get the optimal displacement for splitting the current particle.
+ *
+ * @param p The particle to split.
+ * @param ti_current The ti_current to feed the random number generator
+ * @param displacement (return) The displacement vector to split the particle.
+ */
+__attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
+    struct part *p, const integertime_t ti_current, double *displacement) {
+
+  double rho_grad2 = p->gradients.rho[0] * p->gradients.rho[0] +
+                     p->gradients.rho[1] * p->gradients.rho[1] +
+                     p->gradients.rho[2] * p->gradients.rho[2];
+  double rho_grad_norm = sqrt(rho_grad2);
+
+  const double displacement_factor = 0.05;
+  if (rho_grad_norm > 1e-6) {
+    displacement[0] = p->gradients.rho[0] / rho_grad_norm;
+    displacement[1] = p->gradients.rho[1] / rho_grad_norm;
+    displacement[2] = p->gradients.rho[2] / rho_grad_norm;
+  } else {
+    double v2 = p->v[0] * p->v[0] + p->v[1] * p->v[1] + p->v[2] * p->v[2];
+    const double v_norm = sqrt(v2);
+    if (v_norm > 1e-6) {
+      displacement[0] = p->v[0] / v_norm;
+      displacement[1] = p->v[1] / v_norm;
+      displacement[2] = p->v[2] / v_norm;
+    } else {
+      displacement[0] =
+          random_unit_interval(p->id, ti_current, (enum random_number_type)0) -
+          0.5;
+      displacement[1] =
+          random_unit_interval(p->id, ti_current, (enum random_number_type)1) -
+          0.5;
+      displacement[2] =
+          random_unit_interval(p->id, ti_current, (enum random_number_type)2) -
+          0.5;
+    }
+  }
+  displacement[0] *= p->h * displacement_factor;
+  displacement[1] *= p->h * displacement_factor;
+  displacement[2] *= p->h * displacement_factor;
+}
+
+/**
  * @brief Split the given particle.
  *
  * @param p1 The particle to split.
  * @param p2 The new particle to split p1 into.
+ * @param splitting_fraction The splitting fraction of part1.
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part(
     struct part *restrict p1, struct part *restrict p2,
-    const integertime_t ti_current) {
+    float *splitting_fraction) {
 
-  /* First copy this particle's properties to the new particle */
-  long long id = p2->id;
-  *p2 = *p1;
-  p2->id = id;
+  float Vtotal = p1->geometry.volume + p2->geometry.volume;
+  float fraction1 = p1->geometry.volume / Vtotal;
+  float fraction2 = p2->geometry.volume / Vtotal;
 
-  /* Get the new positions of the particles */
-  double rho_grad2 = p1->gradients.rho[0] * p1->gradients.rho[0] +
-                     p1->gradients.rho[1] * p1->gradients.rho[1] +
-                     p1->gradients.rho[2] * p1->gradients.rho[2];
-  double rho_grad_norm = sqrt(rho_grad2);
+  /* Finally divide the extensive quantities */
+  // TODO: Volume integral of the extrapolated primitive quantities would be
+  //  even better
+  p1->conserved.mass *= fraction1;
+  p1->conserved.momentum[0] *= fraction1;
+  p1->conserved.momentum[1] *= fraction1;
+  p1->conserved.momentum[2] *= fraction1;
+  p1->conserved.energy *= fraction1;
 
-  const double displacement_factor = 0.05;
-  double displacement[3];
-  if (rho_grad_norm > 1e-6) {
-    displacement[0] = p1->gradients.rho[0] / rho_grad_norm;
-    displacement[1] = p1->gradients.rho[1] / rho_grad_norm;
-    displacement[2] = p1->gradients.rho[2] / rho_grad_norm;
-  } else {
-    double v2 = p1->v[0] * p1->v[0] + p1->v[1] * p1->v[1] + p1->v[2] * p1->v[2];
-    const double v_norm = sqrt(v2);
-    if (v_norm > 1e-6) {
-      displacement[0] = p1->v[0] / v_norm;
-      displacement[1] = p1->v[1] / v_norm;
-      displacement[2] = p1->v[2] / v_norm;
-    } else {
-      displacement[0] =
-          random_unit_interval(p1->id, ti_current, (enum random_number_type)0) -
-          0.5;
-      displacement[1] =
-          random_unit_interval(p1->id, ti_current, (enum random_number_type)1) -
-          0.5;
-      displacement[2] =
-          random_unit_interval(p1->id, ti_current, (enum random_number_type)2) -
-          0.5;
-    }
-  }
-  displacement[0] *= p1->h * displacement_factor;
-  displacement[1] *= p1->h * displacement_factor;
-  displacement[2] *= p1->h * displacement_factor;
+  p2->conserved.mass *= fraction2;
+  p2->conserved.momentum[0] *= fraction2;
+  p2->conserved.momentum[1] *= fraction2;
+  p2->conserved.momentum[2] *= fraction2;
+  p2->conserved.energy *= fraction2;
 
-#ifdef HYDRO_DIMENSION_2D
-  int dim = 2;
-#elif defined(HYDRO_DIMENSION_3D)
-  int dim = 3;
-#else
-  error("Only 2 and 3 hydrodimensions are supported by ShadowSWIFT!");
-#endif
-
-  for (int i = 0; i < dim; i++) {
-    p1->x[i] += displacement[i];
-    p2->x[i] -= displacement[i];
-    if (p1->gpart != NULL) {
-      p1->gpart->x[i] = p1->x[i];
-      p2->gpart->x[i] = p2->x[i];
-    }
-  }
-
-  /* Finally divide the extensive quantities in half
-   * TODO: Volume weighing would be better! Or even volume integral of the
-   * extrapolated primitive quantities */
-  p1->conserved.mass *= 0.5f;
-  p1->conserved.momentum[0] *= 0.5f;
-  p1->conserved.momentum[1] *= 0.5f;
-  p1->conserved.momentum[2] *= 0.5f;
-  p1->conserved.energy *= 0.5f;
-
-  p2->conserved.mass *= 0.5f;
-  p2->conserved.momentum[0] *= 0.5f;
-  p2->conserved.momentum[1] *= 0.5f;
-  p2->conserved.momentum[2] *= 0.5f;
-  p2->conserved.energy *= 0.5f;
-
-  p2->geometry.volume *= 0.5f;
-
+  /* Update the gpart's mass */
   if (p1->gpart != NULL) {
-    /* Update the gpart's mass */
     p1->gpart->mass = p1->conserved.mass;
     p2->gpart->mass = p2->conserved.mass;
   }

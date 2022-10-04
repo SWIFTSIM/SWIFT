@@ -1116,22 +1116,25 @@ void runner_do_split_parts(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p = &parts[k];
+      struct part *restrict p1 = &parts[k];
 
       /* Only work on active particles */
-      if (part_is_active(p, e)) {
+      if (part_is_active(p1, e)) {
 
         /* Should we split this particle? */
-        if (hydro_should_split_part(p, e->hydro_properties)) {
+        if (hydro_should_split_part(p1, e->hydro_properties)) {
           if (e->verbose)
-            message("Splitting particle at (%f, %f, %f)!", p->x[0], p->x[1], p->x[2]);
+            message("Splitting particle at (%f, %f, %f)!", p1->x[0], p1->x[1],
+                    p1->x[2]);
 
-          /* Get a new particle (added to the end of this cell's parts) and
-           * split */
-          struct part *restrict p2 = cell_add_part(e, c);
-          /* If there are no free particles left, stop here. */
-          if (p2 == NULL) return;
-          hydro_split_part(p, p2, e->ti_current);
+          /* Get a new particle (added to the end of this cell's parts) */
+          struct part *p2;
+          struct xpart *xp2;
+          if (!cell_add_part(e, c, &p2, &xp2)) return;
+
+          /* Split the current part over itself and the newly created part */
+          struct xpart *xp1 = &c->hydro.xparts[k];
+          cell_split_part(e, c, p1, xp1, p2, xp2);
         }
       }
     }
