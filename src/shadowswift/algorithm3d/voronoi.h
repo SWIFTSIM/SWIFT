@@ -31,6 +31,10 @@ struct voronoi_pair {
    * the corresponding cell in this voronoi tesselation. */
   int right_idx;
 
+  /*! Coordinates of the right particle in case the sid != 13
+   * (i.e. The particle is from a neighbouring cell) */
+  double right_coords[3];
+
   /*! Real sid of this pair (boundary faces are stored under sid 27) */
   int sid;
 
@@ -627,6 +631,16 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
     sid = d->ngb_cell_sids[right_part_idx_in_d - d->ngb_offset];
     right_part_idx = d->ngb_part_idx[right_part_idx_in_d - d->ngb_offset];
   }
+  double right_coords[3];
+  right_coords[0] =
+      (d->rescaled_vertices[3 * right_part_idx_in_d] - 1.) * d->side -
+      d->anchor[0];
+  right_coords[1] =
+      (d->rescaled_vertices[3 * right_part_idx_in_d + 1] - 1.) * d->side -
+      d->anchor[1];
+  right_coords[2] =
+      (d->rescaled_vertices[3 * right_part_idx_in_d + 2] - 1.) * d->side -
+      d->anchor[2];
 
   /* Boundary particle? */
   int actual_sid = sid;
@@ -657,6 +671,7 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
   /* Initialize pair */
   this_pair->left_idx = left_part_idx_in_d - d->vertex_start;
   this_pair->right_idx = right_part_idx;
+  memcpy(this_pair->right_coords, right_coords, 3 * sizeof(right_coords[0]));
   this_pair->sid = actual_sid;
 
 #ifdef VORONOI_STORE_FACES
