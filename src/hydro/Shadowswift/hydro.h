@@ -57,7 +57,6 @@
 
 #include <string.h>
 
-
 /**
  * @brief Computes the hydro time-step of a given particle
  *
@@ -106,8 +105,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (dt == 0.f)
-    error("Part wants dt=0!");
+  if (dt == 0.f) error("Part wants dt=0!");
 #endif
 
   return CFL_condition * dt;
@@ -704,7 +702,9 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
     const integertime_t ti_current) {
 
   /* First copy this particle's properties to the new particle */
+  long long id = p2->id;
   *p2 = *p1;
+  p2->id = id;
 
   /* Get the new positions of the particles */
   double rho_grad2 = p1->gradients.rho[0] * p1->gradients.rho[0] +
@@ -727,11 +727,14 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
       displacement[2] = p1->v[2] / v_norm;
     } else {
       displacement[0] =
-          random_unit_interval(p1->id, ti_current, (enum random_number_type)0);
+          random_unit_interval(p1->id, ti_current, (enum random_number_type)0) -
+          0.5;
       displacement[1] =
-          random_unit_interval(p1->id, ti_current, (enum random_number_type)1);
+          random_unit_interval(p1->id, ti_current, (enum random_number_type)1) -
+          0.5;
       displacement[2] =
-          random_unit_interval(p1->id, ti_current, (enum random_number_type)2);
+          random_unit_interval(p1->id, ti_current, (enum random_number_type)2) -
+          0.5;
     }
   }
   displacement[0] *= p1->h * displacement_factor;
