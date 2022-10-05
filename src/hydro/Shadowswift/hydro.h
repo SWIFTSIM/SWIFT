@@ -730,6 +730,17 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
           0.5;
     }
   }
+  /* Add some noise */
+  displacement[0] += 0.5 * (random_unit_interval(p->id, ti_current,
+                                                 (enum random_number_type)0) -
+                            0.5);
+  displacement[1] += 0.5 * (random_unit_interval(p->id, ti_current,
+                                                 (enum random_number_type)1) -
+                            0.5);
+  displacement[2] += 0.5 * (random_unit_interval(p->id, ti_current,
+                                                 (enum random_number_type)2) -
+                            0.5);
+
   displacement[0] *= p->h * displacement_factor;
   displacement[1] *= p->h * displacement_factor;
   displacement[2] *= p->h * displacement_factor;
