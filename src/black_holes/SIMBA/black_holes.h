@@ -750,20 +750,24 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Here we do the jet mode feedback */
   if (v_kick > 0.f) {
+    if (bp->eddington_fraction < 1.e-10) bp->eddington_fraction = 1.e-10;
+
     if (bp->eddington_fraction < props->eddington_fraction_lower_boundary) {
       const float mass_min = props->jet_mass_min_Msun * cosmo->a; /* Msun */
-      const float mass_max = props->jet_mass_max_Msun * cosmo->a;
+      const float mass_max = (props->jet_mass_min_Msun + props->jet_mass_spread_Msun) * cosmo->a;
+      /* The threshold is varied slightly for each particle */
       const float jet_mass_thresh = mass_min + 0.01 * (bp->id % 100) *
-              (mass_max - mass_min);  // threshold is varied slightly for each BH particles
+              (mass_max - mass_min);
       if (bp->subgrid_mass > jet_mass_thresh) {
         const double random_number =
             random_unit_interval(bp->id, ti_begin, random_number_BH_feedback);
+        /* Add some spread around the maximum velocity */
         const float jet_vmax = (0.8 + 0.4 * random_number) *
-                               props->jet_velocity;  // spread max velocity
-        v_kick += fmaxf(props->jet_velocity *
+                               props->jet_velocity;
+        v_kick += min(props->jet_velocity *
                             log10(props->eddington_fraction_lower_boundary /
                                   bp->eddington_fraction),
-                        jet_vmax);
+                      jet_vmax);
       }
     }
 
