@@ -1103,9 +1103,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
  * @param floor_props The properties of the entropy floor.
  */
 __attribute__((always_inline)) INLINE static void hydro_predict_extra(
-    struct part *restrict p, const struct xpart *restrict xp, const float dt_drift,
-    const float dt_therm, const float dt_kick_grav, const struct cosmology *cosmo,
-    const struct hydro_props *hydro_props,
+    struct part *restrict p, const struct xpart *restrict xp,
+    const float dt_drift, const float dt_therm, const float dt_kick_grav,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
   /* Predict the internal energy */
@@ -1193,8 +1193,9 @@ __attribute__((always_inline)) INLINE static void hydro_end_force(
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     struct part *restrict p, struct xpart *restrict xp, const float dt_therm,
-    const float dt_grav, const float dt_grav_mesh, const float dt_hydro, const float dt_kick_corr,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const float dt_grav, const float dt_grav_mesh, const float dt_hydro,
+    const float dt_kick_corr, const struct cosmology *cosmo,
+    const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
   /* Integrate the internal energy forward in time */
