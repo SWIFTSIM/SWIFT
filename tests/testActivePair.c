@@ -114,9 +114,10 @@ struct cell *make_cell(size_t n, double *offset, double size, double h,
 /* Set the thermodynamic variable */
 #if defined(GADGET2_SPH)
         part->entropy = 1.f;
-#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
-    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-  defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH) || defined(MAGMA_SPH) 
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||                     \
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) ||           \
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH) || \
+    defined(MAGMA_SPH)
         part->u = 1.f;
 #elif defined(HOPKINS_PE_SPH)
         part->entropy = 1.f;

@@ -419,7 +419,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].force.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || \
-    defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
+    defined(PHANTOM_SPH) || defined(GASOLINE_SPH) || defined(MAGMA_SPH)
             main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else
