@@ -109,6 +109,9 @@ struct part {
     /* Energy flux. */
     float energy;
 
+    /* Particle time step. Used to compute time-integrated fluxes. */
+    float dt;
+
   } flux;
 
   /* Geometrical quantities used for hydro. */
