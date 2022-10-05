@@ -54,8 +54,8 @@ __attribute__((always_inline)) INLINE static void riemann_solve_for_flux(
   /* STEP 0: obtain velocity in interface frame */
   const float uL = WL[1] * n[0] + WL[2] * n[1] + WL[3] * n[2];
   const float uR = WR[1] * n[0] + WR[2] * n[1] + WR[3] * n[2];
-  const float rhoLinv = 1.0f / WL[0];
-  const float rhoRinv = 1.0f / WR[0];
+  const float rhoLinv = (WL[0] > 0.0f) ? 1.0f / WL[0] : 0.0f;
+  const float rhoRinv = (WR[0] > 0.0f) ? 1.0f / WR[0] : 0.0f;
   const float aL = sqrtf(hydro_gamma * WL[4] * rhoLinv);
   const float aR = sqrtf(hydro_gamma * WR[4] * rhoRinv);
 
