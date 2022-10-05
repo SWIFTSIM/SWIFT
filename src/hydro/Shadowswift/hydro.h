@@ -740,15 +740,15 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
  *
  * @param p1 The particle to split.
  * @param p2 The new particle to split p1 into.
- * @param splitting_fraction The splitting fraction of part1.
+ * @param splitting_fraction (return) The splitting fraction of part1.
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part(
     struct part *restrict p1, struct part *restrict p2,
     float *splitting_fraction) {
 
-  float Vtotal = p1->geometry.volume + p2->geometry.volume;
-  float fraction1 = p1->geometry.volume / Vtotal;
-  float fraction2 = p2->geometry.volume / Vtotal;
+  float Vtotal_inv = 1.f / (p1->geometry.volume + p2->geometry.volume);
+  float fraction1 = p1->geometry.volume * Vtotal_inv;
+  float fraction2 = p2->geometry.volume * Vtotal_inv;
 
   /* Finally divide the extensive quantities */
   // TODO: Volume integral of the extrapolated primitive quantities would be
@@ -770,6 +770,8 @@ __attribute__((always_inline)) INLINE static void hydro_split_part(
     p1->gpart->mass = p1->conserved.mass;
     p2->gpart->mass = p2->conserved.mass;
   }
+
+  *splitting_fraction = fraction1;
 }
 
 /**

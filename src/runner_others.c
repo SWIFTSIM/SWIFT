@@ -1127,14 +1127,12 @@ void runner_do_split_parts(struct runner *r, struct cell *c, int timer) {
             message("Splitting particle at (%f, %f, %f)!", p1->x[0], p1->x[1],
                     p1->x[2]);
 
-          /* Get a new particle (added to the end of this cell's parts) */
-          struct part *p2;
-          struct xpart *xp2;
-          if (!cell_add_part(e, c, &p2, &xp2)) return;
+          /* Add a new particle to the end of this cell's parts (if possible) */
+          if (!cell_add_part(e, c)) return;
 
-          /* Split the current part over itself and the newly created part */
-          struct xpart *xp1 = &c->hydro.xparts[k];
-          cell_split_part(e, c, p1, xp1, p2, xp2);
+          /* Split the current part over itself and the newly created part
+           * (which will be at the end of the current cells particle array) */
+          cell_split_part(e, c, k, c->hydro.count - 1);
         }
       }
     }
