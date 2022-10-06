@@ -273,10 +273,34 @@ rt_tchem_set_particle_radiation_field_for_test(
 __attribute__((always_inline)) INLINE static void
 rt_tchem_set_boundary_particles_for_test(struct part* restrict p) {
 
-  if (p->id >= 1000000000) {
+  if (p->id < 1000000000) {
     for (int g = 0; g < RT_NGROUPS; g++) {
       p->rt_data.radiation[g].energy_density = 0.f;
       p->rt_data.radiation[g].flux[0] = 0.f;
+      p->rt_data.radiation[g].flux[1] = 0.f;
+      p->rt_data.radiation[g].flux[2] = 0.f;
+    }
+  }
+
+  /* Now add this for the radiation source */
+  /* ------------------------------------- */
+
+  const double cred_inv = rt_params.reduced_speed_of_light_inverse;
+  /* flux units assuming U_M = 1.98848e18g, U_L = 3.08567758e+15, U_V = 1.e5 */
+  const double flux_units = 6.802181e-14;
+
+  /* In case of 1 group */
+  /* float fluxes[1] = {4.744e-05 / flux_units}; */
+  /* float energy_densities[1] = {fluxes[0] * cred_inv}; */
+
+  /* In case of 3 groups */
+  float fluxes[3] = { 1.350e-05 / flux_units, 2.779e-05 / flux_units, 6.152e-06 / flux_units };
+  float energy_densities[3] = { fluxes[0] * cred_inv, fluxes[1] * cred_inv, fluxes[2] * cred_inv };
+
+  if (p->id < 10000000) {
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      p->rt_data.radiation[g].energy_density = energy_densities[g];
+      p->rt_data.radiation[g].flux[0] = fluxes[g];
       p->rt_data.radiation[g].flux[1] = 0.f;
       p->rt_data.radiation[g].flux[2] = 0.f;
     }
