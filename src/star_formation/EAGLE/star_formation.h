@@ -208,8 +208,8 @@ INLINE static int star_formation_is_star_forming_Z_dep(
   /* Physical density of the particle */
   const double physical_density = hydro_get_physical_density(p, cosmo);
 
-  /* Get the Hydrogen number density (assuming primordial H abundance) */
-  const double n_H = physical_density * hydro_props->hydrogen_mass_fraction;
+  /* Get the Hydrogen mass density (assuming primordial H abundance) */
+  const double rho_H = physical_density * hydro_props->hydrogen_mass_fraction;
 
   /* Get the density threshold for star formation */
   const double Z =
@@ -232,7 +232,7 @@ INLINE static int star_formation_is_star_forming_Z_dep(
   density_threshold *= phys_const->const_proton_mass;
 
   /* Check if it exceeded the minimum density */
-  if (n_H < density_threshold) return 0;
+  if (rho_H < density_threshold) return 0;
 
   /* Calculate the entropy of the particle */
   const double entropy = hydro_get_physical_entropy(p, xp, cosmo);
