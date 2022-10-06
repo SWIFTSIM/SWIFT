@@ -683,8 +683,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
    */
   const double f_gas = (bp->group_data.mass - bp->group_data.stellar_mass) /
                        (bp->group_data.stellar_mass);
-  double f_corr_stellar = (1 + f_gas) / f_gas;
-  if (f_corr_stellar > 10) f_corr_stellar = 10.;
+  double f_corr_stellar = 0.;
+  if (f_gas > 0.) {
+    f_corr_stellar = (1 + f_gas) / f_gas;
+    if (f_corr_stellar > 10) f_corr_stellar = 10.;
+  }
   torque_accr_rate = props->torque_accretion_norm * bp->cold_disk_mass *
                      sqrt(G * f_corr_stellar * bp->rho_gas);
   torque_accr_rate *= props->f_accretion;
