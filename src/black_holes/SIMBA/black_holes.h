@@ -705,6 +705,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
           bp->cold_disk_mass * props->mass_to_solar_mass,
           f_gas,
           gas_rho_phys * props->rho_to_n_cgs,
+          props->torque_accretion_norm,
           props->f_accretion);
   }
 #endif
