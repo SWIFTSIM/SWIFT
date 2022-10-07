@@ -689,8 +689,25 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     if (f_corr_stellar > 10) f_corr_stellar = 10.;
   }
   torque_accr_rate = props->torque_accretion_norm * bp->cold_disk_mass *
-                     sqrt(G * f_corr_stellar * bp->rho_gas);
+                     sqrt(G * f_corr_stellar * gas_rho_phys);
   torque_accr_rate *= props->f_accretion;
+
+#ifdef SIMBA_DEBUG_CHECKS
+  if (isnan(torque_accr_rate) || torque_accr_rate < 0.) {
+    error("torque_accr_rate is incorrect!\n"
+          "f_corr_stellar = %g\n"
+          "cold_disk_mass = %g Msun\n"
+          "f_gas = %g\n"
+          "rho_gas = %g cm^-3\n"
+          "torque_accretion_norm = %g\n"
+          "f_accretion = %g\n",
+          f_corr_stellar, 
+          bp->cold_disk_mass * props->mass_to_solar_mass,
+          f_gas,
+          gas_rho_phys * props->rho_to_n_cgs,
+          props->f_accretion);
+  }
+#endif
 
   /* Do suppression of BH growth */
   if (props->suppress_growth == 1) {
