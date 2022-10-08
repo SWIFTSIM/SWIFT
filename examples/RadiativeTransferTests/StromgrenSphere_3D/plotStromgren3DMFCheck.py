@@ -6,13 +6,15 @@
 # Plot comparison of simulated neutral fraction and temperature with the solution.
 # ----------------------------------------------------
 
-import swiftsimio
-from matplotlib import pyplot as plt
+import sys
+
 import matplotlib as mpl
 import numpy as np
-import sys
-import stromgren_plotting_tools as spt
+import swiftsimio
 import unyt
+from matplotlib import pyplot as plt
+
+import stromgren_plotting_tools as spt
 
 # Plot parameters
 params = {
@@ -80,11 +82,12 @@ def get_TT1Dsolution():
     rTtt1dlist = data[:, 0] * TT1D_runit
     Ttt1dlist = 10 ** data[:, 1] * unyt.K
 
-    outdict = {}
-    outdict["rtt1dlist"] = rtt1dlist
-    outdict["xtt1dlist"] = xtt1dlist
-    outdict["rTtt1dlist"] = rTtt1dlist
-    outdict["Ttt1dlist"] = Ttt1dlist
+    outdict = {
+        "rtt1dlist": rtt1dlist,
+        "xtt1dlist": xtt1dlist,
+        "rTtt1dlist": rTtt1dlist,
+        "Ttt1dlist": Ttt1dlist,
+    }
     return outdict
 
 

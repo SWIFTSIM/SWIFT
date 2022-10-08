@@ -6,14 +6,16 @@
 # Plot comparison of simulated neutral fraction and temperature with the solution.
 # ----------------------------------------------------
 
-import swiftsimio
-from matplotlib import pyplot as plt
+import sys
+
 import matplotlib as mpl
 import matplotlib.lines as mlines
 import numpy as np
-import sys
-import stromgren_plotting_tools as spt
+import swiftsimio
 import unyt
+from matplotlib import pyplot as plt
+
+import stromgren_plotting_tools as spt
 
 # Plot parameters
 params = {
@@ -91,19 +93,20 @@ def get_TT1Dsolution_HHe():
     rTtt1dlist = data[:, 0] * TT1D_runit
     Ttt1dlist = 10 ** data[:, 1] * unyt.K
 
-    outdict = {}
-    outdict["rHItt1dlist"] = rHItt1dlist
-    outdict["xHItt1dlist"] = xHItt1dlist
-    outdict["rHIItt1dlist"] = rHIItt1dlist
-    outdict["xHIItt1dlist"] = xHIItt1dlist
-    outdict["rHeItt1dlist"] = rHeItt1dlist
-    outdict["xHeItt1dlist"] = xHeItt1dlist
-    outdict["rHeIItt1dlist"] = rHeIItt1dlist
-    outdict["xHeIItt1dlist"] = xHeIItt1dlist
-    outdict["rHeIIItt1dlist"] = rHeIIItt1dlist
-    outdict["xHeIIItt1dlist"] = xHeIIItt1dlist
-    outdict["rTtt1dlist"] = rTtt1dlist
-    outdict["Ttt1dlist"] = Ttt1dlist
+    outdict = {
+        "rHItt1dlist": rHItt1dlist,
+        "xHItt1dlist": xHItt1dlist,
+        "rHIItt1dlist": rHIItt1dlist,
+        "xHIItt1dlist": xHIItt1dlist,
+        "rHeItt1dlist": rHeItt1dlist,
+        "xHeItt1dlist": xHeItt1dlist,
+        "rHeIItt1dlist": rHeIItt1dlist,
+        "xHeIItt1dlist": xHeIItt1dlist,
+        "rHeIIItt1dlist": rHeIIItt1dlist,
+        "xHeIIItt1dlist": xHeIIItt1dlist,
+        "rTtt1dlist": rTtt1dlist,
+        "Ttt1dlist": Ttt1dlist,
+    }
     return outdict
 
 
