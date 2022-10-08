@@ -31,11 +31,10 @@
 # Third photon group: Gaussian.
 # -----------------------------------------------------------
 
-from swiftsimio import Writer
-
-import unyt
-import numpy as np
 import h5py
+import numpy as np
+import unyt
+from swiftsimio import Writer
 
 # define unit system to use
 unitsystem = unyt.unit_systems.cgs_unit_system
@@ -53,12 +52,11 @@ n_p = 1000
 outputfilename = "advection_1D.hdf5"
 
 
-def initial_condition(x, V):
+def initial_condition(x):
     """
     The initial conditions that will be advected
 
     x: particle position. 3D unyt array
-    V: particle "volume". 1D unyt array or scalar
 
     returns: 
     E: photon energy density for each photon group. List of scalars with size of nPhotonGroups
@@ -137,7 +135,7 @@ if __name__ == "__main__":
     w.gas.velocities = np.zeros(xp.shape) * (unyt.cm / unyt.s)
     w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 1000 * unyt.g
     w.gas.internal_energy = (
-        np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / (unyt.g)
+        np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
     )
 
     # Generate initial guess for smoothing lengths based on MIPS
@@ -166,7 +164,7 @@ if __name__ == "__main__":
         parts.create_dataset(dsetname, data=fluxdata)
 
     for p in range(nparts):
-        E, Flux = initial_condition(xp[p], dx)
+        E, Flux = initial_condition(xp[p])
         for g in range(nPhotonGroups):
             Esetname = "PhotonEnergiesGroup{0:d}".format(g + 1)
             parts[Esetname][p] = E[g]

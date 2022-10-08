@@ -26,11 +26,10 @@
 # gas and stars that are sampled from a sine wave
 # ---------------------------------------------------------------------
 
+import numpy as np
+import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
-
-import unyt
-import numpy as np
 
 np.random.seed(666)
 
@@ -79,7 +78,7 @@ vels_max = 200.0
 
 
 def sine(x, amplitude=1.0):
-    # raise the sine by 1.01 so you don't get negative probablities
+    # raise the sine by 1.01, so you don't get negative probablities
     return amplitude * np.sin(x / boxsize.value * 2.0 * np.pi) + 1.01
 
 

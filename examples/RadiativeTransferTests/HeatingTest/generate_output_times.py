@@ -5,11 +5,7 @@
 # ----------------------------------------------
 
 import yaml
-import numpy as np
 
-unit_l = None
-unit_v = None
-t_end = None
 with open(r"rt_heating_test.yml") as paramfile:
     params = yaml.load(paramfile, Loader=yaml.FullLoader)
 

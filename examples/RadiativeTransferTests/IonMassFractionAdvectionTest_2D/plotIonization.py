@@ -23,16 +23,14 @@
 # Plot the ionizing species
 # ----------------------------------------------------
 
-import sys
 import os
-import swiftsimio
-import numpy as np
-import gc
-import unyt
-from matplotlib import pyplot as plt
+import sys
+
 import matplotlib as mpl
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+import swiftsimio
+from matplotlib import pyplot as plt
 from matplotlib.colors import SymLogNorm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Parameters users should/may tweak
 
@@ -213,7 +211,7 @@ def plot_ionization(filename):
         ax.set_xlabel("[kpc]")
         ax.set_ylabel("[kpc]")
 
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time.to("Myr"))

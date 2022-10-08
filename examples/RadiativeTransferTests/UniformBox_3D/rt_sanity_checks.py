@@ -256,6 +256,7 @@ def check_stars_sanity(snapdata, rundata):
 
         fishy = np.logical_and(this.EmissionRateSet == 0, this.RadiationEmittedTot > 0)
         if fishy.any():
+            count = 0
             print("- checking stars sanity pt1", snap.snapnr)
             print("--- Emitted with unset emission rate")
             for i in range(nspart):
@@ -321,7 +322,6 @@ def check_stars_hydro_interaction_sanity(snapdata, rundata):
                 )
                 if break_on_diff:
                     quit()
-
 
         else:
             if sum_gas_tot_radiation != sum_star_tot_radiation:
