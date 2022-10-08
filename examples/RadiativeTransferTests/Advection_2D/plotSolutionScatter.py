@@ -26,12 +26,13 @@
 # all snapshots available in the workdir
 # ----------------------------------------------------
 
-import sys
-import os
-import swiftsimio
 import gc
-from matplotlib import pyplot as plt
+import os
+import sys
+
 import matplotlib as mpl
+import swiftsimio
+from matplotlib import pyplot as plt
 
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
@@ -177,10 +178,10 @@ def plot_photons(filename):
             ax.set_ylabel("Energies [$" + energy_units_str + "$]")
 
     # Add title
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
-        title += ", $z$ = {0:.2e}".format(meta.z)
-    title += ", $t$ = {0:.2e}".format(meta.time)
+        title += r", $z$ = {0:.2e}".format(meta.z)
+    title += r", $t$ = {0:.2e}".format(meta.time)
     fig.suptitle(title)
 
     plt.tight_layout()

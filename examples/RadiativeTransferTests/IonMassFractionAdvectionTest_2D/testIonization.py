@@ -24,16 +24,10 @@
 # remains constant
 # ----------------------------------------------------
 
-import sys
 import os
+
 import swiftsimio
-import numpy as np
-import gc
-import unyt
 from matplotlib import pyplot as plt
-import matplotlib as mpl
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.colors import SymLogNorm
 
 snapshot_base = "output"
 

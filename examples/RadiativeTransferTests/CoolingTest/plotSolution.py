@@ -23,12 +23,13 @@
 # weight, and mass fractions
 # -------------------------------------------
 
-import numpy as np
-from matplotlib import pyplot as plt
-import unyt
-import swiftsimio
-import os
 import copy
+import os
+
+import numpy as np
+import swiftsimio
+import unyt
+from matplotlib import pyplot as plt
 
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
@@ -38,7 +39,6 @@ referenceplotkwargs = {"color": "grey", "lw": 4, "alpha": 0.6}
 legendprops = {"size": 8}
 # snapshot basenames
 snapshot_base = "output"
-
 
 # -----------------------------------------------------------------------
 
@@ -122,6 +122,7 @@ def get_ion_mass_fractions(swiftsimio_loaded_data):
     meta = data.metadata
     gas = data.gas
     with_rt = True
+    scheme = None
     try:
         scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
     except KeyError:
@@ -152,6 +153,8 @@ def get_ion_mass_fractions(swiftsimio_loaded_data):
                     * mamu[column]
                 )
                 setattr(imf, column, mass_function)
+        else:
+            raise ValueError("Unknown scheme", scheme)
     else:
         # try to find solutions for cooling only runs
         imf = {
@@ -250,9 +253,19 @@ if __name__ == "__main__":
     if with_rt:
         ngroups = photon_energies.shape[0]
 
-    t_ref, dt_ref, T_ref, mu_ref, rho_ref, rhoHI_ref, rhoHII_ref, rhoHeI_ref, rhoHeII_ref, rhoHeIII_ref, rhoe_ref = np.loadtxt(
-        "RTCoolingTestReference.txt", dtype=np.float64, unpack=True
-    )
+    refdata = np.loadtxt("RTCoolingTestReference.txt", dtype=np.float64)
+    t_ref = refdata[:, 0]
+    dt_ref = refdata[:, 1]
+    T_ref = refdata[:, 2]
+    mu_ref = refdata[:, 3]
+    rho_ref = refdata[:, 4]
+    rhoHI_ref = refdata[:, 5]
+    rhoHII_ref = refdata[:, 6]
+    rhoHeI_ref = refdata[:, 7]
+    rhoHeII_ref = refdata[:, 8]
+    rhoHeIII_ref = refdata[:, 9]
+    rhoe_ref = refdata[:, 10]
+
     t_ref *= 1e-6  # turn to Myrs
     mass_fraction_ref = np.empty((t_ref.shape[0], 5))
     mass_fraction_ref[:, 0] = rhoHI_ref / rho_ref
@@ -322,7 +335,7 @@ if __name__ == "__main__":
             ax4.plot(
                 t,
                 photon_energies[g, :],
-                label=f"photon energies group {g+1}",
+                label=f"photon energies group {g + 1}",
                 **plotkwargs,
             )
         ax4.plot(t, u, label="gas internal energy", **plotkwargs)
