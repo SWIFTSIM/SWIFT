@@ -681,15 +681,15 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
    *    sqrt(12 * pi^2 * h^3)
    *      = (1 / pi) * sqrt(8 * G * ((1 + fgas) / fgas) * (Mgas / h)^3))
    */
-  const double f_gas = (bp->group_data.mass - bp->group_data.stellar_mass) /
-                       (bp->group_data.stellar_mass);
+  double f_gas = (bp->group_data.mass - bp->group_data.stellar_mass) /
+                       (bp->group_data.stellar_mass + 1.e-20);
   double f_corr_stellar = 0.;
-  if (f_gas > 0.) {
+  if (f_gas > 0. && bp->group_data.stellar_mass > 0) {
     f_corr_stellar = (1 + f_gas) / f_gas;
     if (f_corr_stellar > 10) f_corr_stellar = 10.;
   }
   torque_accr_rate = props->torque_accretion_norm * bp->cold_disk_mass *
-                     sqrt(G * f_corr_stellar * gas_rho_phys);
+                     sqrt(G * f_corr_stellar * bp->rho_gas * cosmo->a3_inv);
   torque_accr_rate *= props->f_accretion;
 
 #ifdef SIMBA_DEBUG_CHECKS
