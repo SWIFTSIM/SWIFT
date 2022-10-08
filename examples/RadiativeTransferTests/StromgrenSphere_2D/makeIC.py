@@ -23,11 +23,11 @@
 # Add a single star in the center of a glass distribution
 # ---------------------------------------------------------------------
 
+import h5py
+import numpy as np
+import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
-import unyt
-import numpy as np
-import h5py
 
 gamma = 5.0 / 3.0
 
@@ -338,7 +338,7 @@ if __name__ == "__main__":
 
     w = Writer(unit_system=cosmo_units, box_size=boxsize, dimension=2)
 
-    # write particle positions ans smoothing lengths
+    # write particle positions and smoothing lengths
     w.gas.coordinates = xp
     w.stars.coordinates = xs
     w.gas.velocities = np.zeros(xp.shape) * (unitL / unyt.Myr)
