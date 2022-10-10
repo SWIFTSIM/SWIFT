@@ -930,11 +930,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   }
 
   /* If we have a zoom region we need some extra edges. */
-  if (!s->with_zoom_region) {
-    const int extras = 0; 
-  } else {
+  int extras = 0;
+  if (s->with_zoom_region)
     const int extras = s->zoom_props->nr_zoom_cells * 26; 
-  }
 
   /* We all get one of these with the same content. It defines the ranges of
    * vertices that are found on each rank. This contiguity constraint seems to
@@ -1424,11 +1422,9 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   int ncells = s->nr_cells;
 
   /* If we have a zoom region we need some extra edges. */
-  if (!s->with_zoom_region) {
-    const int extras = 0; 
-  } else {
+  int extras = 0;
+  if (s->with_zoom_region)
     const int extras = s->zoom_props->nr_zoom_cells * 26; 
-  }
 
   /* Nothing much to do if only using a single partition. Also avoids METIS
    * bug that doesn't handle this case well. */
@@ -1771,11 +1767,9 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   struct cell *cells = s->cells_top;
 
   /* If we have a zoom region we need some extra edges. */
-  if (!s->with_zoom_region) {
-    const int extras = 0; 
-  } else {
+  int extras = 0;
+  if (s->with_zoom_region)
     const int extras = s->zoom_props->nr_zoom_cells * 26; 
-  }
 
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
@@ -2203,11 +2197,9 @@ void partition_initial_partition(struct partition *initial_partition,
      */
 
     /* If we have a zoom region we need some extra edges. */
-    if (!s->with_zoom_region) {
-      const int extras = 0; 
-    } else {
+    int extras = 0;
+    if (s->with_zoom_region)
       const int extras = s->zoom_props->nr_zoom_cells * 26; 
-    }
     
     double *weights_v = NULL;
     double *weights_e = NULL;
