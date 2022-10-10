@@ -659,7 +659,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                                    s->zoom_props->nr_zoom_cells * 26));
 
     /* Extract useful zoom region properties */
-    const int void_cid = s->zoom_props->void_cell_index;
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
     /* First lets cover the zoom cells themselves. */
