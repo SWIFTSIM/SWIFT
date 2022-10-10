@@ -43,6 +43,8 @@ sufficient (The extra "+1" is for the sign bit).
 
 SWIFT implements 5 variants of this filter:
 
+ * ``Nbit32`` stores the 32 most significant bits (Numbers up to
+   :math:`2\times10^{9}`, comp. ratio: 2)
  * ``Nbit36`` stores the 36 most significant bits (Numbers up to
    :math:`3.4\times10^{10}`, comp. ratio: 1.78)
  * ``Nbit40`` stores the 40 most significant bits (Numbers up to
