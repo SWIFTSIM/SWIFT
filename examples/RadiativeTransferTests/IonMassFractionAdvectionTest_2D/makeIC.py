@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     w = Writer(unit_system=cosmo_units, box_size=boxsize, dimension=2)
 
-    # write particle positions ans smoothing lengths
+    # write particle positions and smoothing lengths
     w.gas.coordinates = xp
     w.gas.smoothing_length = h
 
@@ -84,11 +84,11 @@ if __name__ == "__main__":
     pos = parts["Coordinates"]
 
     # Create initial ionization species mass fractions.
-    HIdata = np.ones((nparts), dtype=np.float32) * 0.76
-    HIIdata = np.zeros((nparts), dtype=np.float32)
-    HeIdata = np.ones((nparts), dtype=np.float32) * 0.24
-    HeIIdata = np.zeros((nparts), dtype=np.float32)
-    HeIIIdata = np.zeros((nparts), dtype=np.float32)
+    HIdata = np.ones(nparts, dtype=np.float32) * 0.76
+    HIIdata = np.zeros(nparts, dtype=np.float32)
+    HeIdata = np.ones(nparts, dtype=np.float32) * 0.24
+    HeIIdata = np.zeros(nparts, dtype=np.float32)
+    HeIIIdata = np.zeros(nparts, dtype=np.float32)
 
     mask1 = pos[:, 0] > edgelen / 3
     mask1 = np.logical_and(mask1, pos[:, 0] < 2 * edgelen / 3)
