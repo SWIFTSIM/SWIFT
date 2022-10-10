@@ -520,9 +520,9 @@ void engine_exchange_top_multipoles(struct engine *e) {
       }
     } else {
       if (m->m_pole.M_000 != 0.) error("Non-zero mass for foreign m-pole");
-      if (m->CoM[0] != 0.) error("Non-zero position in X for foreign m-pole");
-      if (m->CoM[1] != 0.) error("Non-zero position in Y for foreign m-pole");
-      if (m->CoM[2] != 0.) error("Non-zero position in Z for foreign m-pole");
+      if (m->CoM[0] != 0.) error("Non-zero position in X for foreign m-pole (cid=%d)", i);
+      if (m->CoM[1] != 0.) error("Non-zero position in Y for foreign m-pole (cid=%d)", i);
+      if (m->CoM[2] != 0.) error("Non-zero position in Z for foreign m-pole (cid=%d)", i);
       if (m->m_pole.num_gpart != 0)
         error("Non-zero gpart count in foreign m-pole");
     }
