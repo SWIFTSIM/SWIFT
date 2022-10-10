@@ -1617,6 +1617,10 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
                t->subtype == task_subtype_grav_zoombkg ||
                t->subtype == task_subtype_grav_bkgzoom) {
       scheduler_splittask_gravity(t, s);
+    } else if (t->subtype == task_subtype_grav_bkg_pool) {
+      /* Explictly handling bgk pool which are not split, with
+       * debugging checks this kicks an error. */
+      continue;
     } else {
 #ifdef SWIFT_DEBUG_CHECKS
       error("Unexpected task sub-type %s/%s", taskID_names[t->type],
