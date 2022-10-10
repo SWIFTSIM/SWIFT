@@ -236,7 +236,8 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
                 /* If not self, record id of neighbour. */
                 if (i || j || k) {
-                  adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk);
+                  adjncy[cid * 26 + p] = cell_getid(s->zoom_props->cdim,
+                                                    ii, jj, kk);
                   p++;
                 }
               }
