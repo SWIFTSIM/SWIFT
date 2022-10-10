@@ -681,13 +681,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
    *    sqrt(12 * pi^2 * h^3)
    *      = (1 / pi) * sqrt(8 * G * ((1 + fgas) / fgas) * (Mgas / h)^3))
    */
-  double f_gas = (bp->group_data.mass - bp->group_data.stellar_mass) /
-                       (bp->group_data.stellar_mass + 1.e-20);
-  double f_corr_stellar = 0.;
-  if (f_gas > 0. && bp->group_data.stellar_mass > 0) {
-    f_corr_stellar = (1 + f_gas) / f_gas;
-    if (f_corr_stellar > 10) f_corr_stellar = 10.;
+  double f_corr_stellar = 10.;  // corrects from gas density to total density; set this to max value allowed
+  if (bp->group_data.mass - bp->group_data.stellar_mass > 0) {
+    f_corr_stellar = fminf(1. + bp->group_data.stellar_mass / (bp->group_data.mass - bp->group_data.stellar_mass), f_corr_stellar);
   }
+
   torque_accr_rate = props->torque_accretion_norm * bp->cold_disk_mass *
                      sqrt(G * f_corr_stellar * bp->rho_gas * cosmo->a3_inv);
   torque_accr_rate *= props->f_accretion;
@@ -697,13 +695,11 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     error("torque_accr_rate is incorrect!\n"
           "f_corr_stellar = %g\n"
           "cold_disk_mass = %g Msun\n"
-          "f_gas = %g\n"
           "rho_gas = %g cm^-3\n"
           "torque_accretion_norm = %g\n"
           "f_accretion = %g\n",
           f_corr_stellar, 
           bp->cold_disk_mass * props->mass_to_solar_mass,
-          f_gas,
           gas_rho_phys * props->rho_to_n_cgs,
           props->torque_accretion_norm,
           props->f_accretion);
@@ -721,8 +717,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
         sigma_eff / (sigma_eff + props->sigma_crit_resolution_factor *
                                      props->sigma_crit_Msun_pc2);
   } else if (props->suppress_growth == 2) {
-    torque_accr_rate *= 1. - exp(-BH_mass * props->mass_to_solar_mass /
-                                 props->bh_characteristic_suppression_mass);
+    torque_accr_rate *= 1. - exp(-pow(BH_mass * props->mass_to_solar_mass /
+                                 props->bh_characteristic_suppression_mass,2.f));
   }
 
   /* Total accretion rate is Bondi + torque */
