@@ -548,6 +548,11 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
   /* Let's check that what we received makes sense */
   for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    /* Skip the void cell if running with a zoom region. */
+    if (e->s->with_zoom_region)
+      if (i == e->s->zoom_props->void_cell_index) continue;
+    
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
     if (m->m_pole.num_gpart < 0) {
@@ -555,11 +560,11 @@ void engine_exchange_top_multipoles(struct engine *e) {
     }
     if (m->m_pole.M_000 > 0.) {
       if (m->CoM[0] < 0. || m->CoM[0] > e->s->dim[0])
-        error("Invalid multipole position in X (cid=%d, m->CoM[0]=%.2f)", i, m->CoM[0]);
+        error("Invalid multipole position in X (cid=%d)", i);
       if (m->CoM[1] < 0. || m->CoM[1] > e->s->dim[1])
-        error("Invalid multipole position in Y (cid=%d, m->CoM[1]=%.2f)", i, m->CoM[1]);
+        error("Invalid multipole position in Y (cid=%d)", i);
       if (m->CoM[2] < 0. || m->CoM[2] > e->s->dim[2])
-        error("Invalid multipole position in Z (cid=%d, m->CoM[2]=%.2f)", i, m->CoM[2]);
+        error("Invalid multipole position in Z (cid=%d)", i);
     }
   }
   if (counter != e->total_nr_gparts)
