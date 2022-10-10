@@ -1085,7 +1085,7 @@ void void_tree_build(struct space *s, int verbose) {
 
   /* Total the number of particles in zoom cells. */
   for (int i = 0; i < s->zoom_props->nr_zoom_cells; i++) {
-    zoom_count += s->multipoles_top[i]->m_pole.num_gpart;
+    zoom_count += &s->multipoles_top[i]->m_pole.num_gpart;
   }
 
   if (void_count != zoom_count) {
