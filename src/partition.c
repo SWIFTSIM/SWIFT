@@ -617,8 +617,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
   if (s->with_zoom_region) {
 
     /* Extract useful zoom region properties */
-    const ind void_cid = s->zoom_props->void_cell_index;
-    const ind bkg_cell_offset = s->zoom_props->tl_cell_offset;
+    const int void_cid = s->zoom_props->void_cell_index;
+    const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
     /* Lets accumulate the cost of the void cell for background
      * cell edges. */
