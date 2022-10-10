@@ -216,7 +216,87 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
   /* Loop over all cells in the space. */
   *nadjcny = 0;
-  if (periodic) {
+  if (s->with_zoom_region) {
+    int cid = 0;
+    for (int l = 0; l < s->zoom_props->cdim[0]; l++) {
+      for (int m = 0; m < s->zoom_props->cdim[1]; m++) {
+        for (int n = 0; n < s->zoom_props->cdim[2]; n++) {
+
+          /* Visit all neighbours of this cell, wrapping space at edges. */
+          int p = 0;
+          for (int i = -1; i <= 1; i++) {
+            int ii = l + i;
+            if (ii < 0 || ii >= s->zoom_props->cdim[0]) continue;
+            for (int j = -1; j <= 1; j++) {
+              int jj = m + j;
+              if (jj < 0 || jj >= s->zoom_props->cdim[1]) continue;
+              for (int k = -1; k <= 1; k++) {
+                int kk = n + k;
+                if (kk < 0 || kk >= s->zoom_props->cdim[2]) continue;
+
+                /* If not self, record id of neighbour. */
+                if (i || j || k) {
+                  adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk);
+                  p++;
+                }
+              }
+            }
+          }
+
+          /* Next cell. */
+          cid++;
+        }
+      }
+    }
+    for (int l = 0; l < s->cdim[0]; l++) {
+      for (int m = 0; m < s->cdim[1]; m++) {
+        for (int n = 0; n < s->cdim[2]; n++) {
+
+          /* Visit all neighbours of this cell, wrapping space at edges. */
+          int p = 0;
+          for (int i = -1; i <= 1; i++) {
+            int ii = l + i;
+            if (ii < 0)
+              ii += s->cdim[0];
+            else if (ii >= s->cdim[0])
+              ii -= s->cdim[0];
+            for (int j = -1; j <= 1; j++) {
+              int jj = m + j;
+              if (jj < 0)
+                jj += s->cdim[1];
+              else if (jj >= s->cdim[1])
+                jj -= s->cdim[1];
+              for (int k = -1; k <= 1; k++) {
+                int kk = n + k;
+                if (kk < 0)
+                  kk += s->cdim[2];
+                else if (kk >= s->cdim[2])
+                  kk -= s->cdim[2];
+
+                /* If not self, record id of neighbour. */
+                if (i || j || k) {
+                  adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk);
+                  p++;
+                }
+              }
+            }
+          }
+
+          /* Next cell. */
+          cid++;
+        }
+      }
+    }
+    *nadjcny = cid * 26;
+
+    /* If given set METIS xadj. */
+    if (xadj != NULL) {
+      xadj[0] = 0;
+      for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+      *nxadj = s->nr_cells;
+    }
+    
+  } else if (periodic) {
     int cid = 0;
     for (int l = 0; l < s->cdim[0]; l++) {
       for (int m = 0; m < s->cdim[1]; m++) {
@@ -532,6 +612,20 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
   bzero(edges, sizeof(double) * s->nr_cells * 26);
 
+  /* If need have a zoom region theres some initial work to be done. */
+  if (s->with_zoom_region) {
+
+    /* Extract useful zoom region properties */
+    const ind void_cid = s->zoom_props->void_cell_index;
+    const ind bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
+    /* Lets accumulate the cost of the void cell for background
+     * cell edges. */
+    for (int l = 0; l < bkg_cell_offset; l++)
+      counts[void_cid] += counts[l];
+    
+  }
+
   for (int l = 0; l < s->nr_cells; l++) {
     int p = 0;
     for (int i = -1; i <= 1; i++) {
@@ -540,7 +634,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
         for (int k = -1; k <= 1; k++) {
           int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
-
+          
           /* If not self, we work out the sort indices to get the expected
            * fractional weight and add that. Scale to keep sum less than
            * counts and a bit of tuning... */
@@ -551,7 +645,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
-  }
+  } 
 }
 #endif
 
@@ -718,7 +812,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   MPI_Comm_dup(MPI_COMM_WORLD, &comm);
 
   /* Total number of cells. */
-  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+  int ncells = s->nr_cells;
 
   /* Nothing much to do if only using a single MPI rank. */
   if (nregions == 1) {
@@ -1209,7 +1303,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
                        double *vertexw, double *edgew, int *celllist) {
 
   /* Total number of cells. */
-  int ncells = s->cdim[0] * s->cdim[1] * s->cdim[2];
+  int ncells = s->nr_cells;
 
   /* Nothing much to do if only using a single partition. Also avoids METIS
    * bug that doesn't handle this case well. */
