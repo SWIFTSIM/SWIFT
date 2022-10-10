@@ -503,6 +503,11 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    /* Skip the void cell if running with a zoom region. */
+    if (s->with_zoom_region)
+      if (i == s->zoom_props->void_cell_index) continue;
+    
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     if (e->s->cells_top[i].nodeID == engine_rank) {
       if (m->m_pole.M_000 > 0.) {
