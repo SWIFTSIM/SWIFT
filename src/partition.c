@@ -1774,7 +1774,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
   idx_t *inds;
-  if ((inds = (idx_t *)malloc(sizeof(idx_t) * ((26 * nr_cells) + extras)) == NULL)
+  if ((inds = (idx_t *)malloc(sizeof(idx_t) * ((26 * nr_cells) + extras))) == NULL)
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
