@@ -219,9 +219,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
   if (s->with_zoom_region) {
 
     /* Get some zoom region properties. */
-    const int *void_i = s->zoom_props->zoom_cell_ijk[0];
-    const int *void_j = s->zoom_props->zoom_cell_ijk[1];
-    const int *void_k = s->zoom_props->zoom_cell_ijk[2];
+    const int void_i = s->zoom_props->zoom_cell_ijk[0];
+    const int void_j = s->zoom_props->zoom_cell_ijk[1];
+    const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     
     int cid = 0;
