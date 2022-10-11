@@ -232,53 +232,40 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           /* Visit all neighbours of this cell, wrapping space at edges. */
           int p = 0;
 
-          /* First handle the zoom cell neighbours. */
+          /* Here we need to handle that the zoom region isn't periodic. */
           for (int i = -1; i <= 1; i++) {
             int ii = l + i;
-            if (ii < 0 || ii >= s->zoom_props->cdim[0]) continue;
             for (int j = -1; j <= 1; j++) {
               int jj = m + j;
-              if (jj < 0 || jj >= s->zoom_props->cdim[1]) continue;
               for (int k = -1; k <= 1; k++) {
                 int kk = n + k;
-                if (kk < 0 || kk >= s->zoom_props->cdim[2]) continue;
+
+                /* Here we handle cells at the zoom region edge. These get a
+                 * relation to their neighbouring background cell. */
+                if (ii < 0 || ii >= s->zoom_props->cdim[0] ||
+                    jj < 0 || jj >= s->zoom_props->cdim[1] ||
+                    kk < 0 || kk >= s->zoom_props->cdim[2]) {
+
+                  adjncy[cid * 26 + p] =
+                    cell_getid(s->cdim, void_i + i,
+                               void_j + j, void_k + k) + bkg_cell_offset;
+                  p++;
+                }
 
                 /* If not self, record id of neighbour. */
-                if (i || j || k) {
-                  adjncy[cid * (26 * 2) + p] = cell_getid(s->zoom_props->cdim,
-                                                          ii, jj, kk);
+                else if (i || j || k) {
+                  adjncy[cid * 26 + p] = cell_getid(s->zoom_props->cdim,
+                                                    ii, jj, kk);
                   p++;
                 }
               }
             }
           }
-
-          /* And now handle the background cell neighbours. */
-          for (int i = -1; i <= 1; i++) {
-            int ii = void_i + i;
-            for (int j = -1; j <= 1; j++) {
-              int jj = void_j + j;
-              for (int k = -1; k <= 1; k++) {
-                int kk = void_k + k;
-
-                /* If not self, record id of neighbour. */
-                if (i || j || k) {
-                  adjncy[cid * (26 * 2) + p] =
-                    cell_getid(s->cdim, ii, jj, kk) + bkg_cell_offset;
-                  p++;
-                }
-              }
-            }
-          }
-
           /* Next cell. */
           cid++;
         }
       }
     }
-
-    /* Define the offset due to zoom cells having 26 * 2 neighbours */
-    const int edge_offset = s->zoom_props->nr_zoom_cells * 26 * 2;
     
     /* Now loop over the background cells setting their adjacencies.
      * NOTE: We ignore relations to the zoom region here to reduce the memory
@@ -310,8 +297,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
                 /* If not self, record id of neighbour. */
                 if (i || j || k) {
-                  adjncy[edge_offset + ((cid - bkg_cell_offset) * 26) + p] =
-                    cell_getid(s->cdim, ii, jj, kk) + bkg_cell_offset;
+                  adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk) + bkg_cell_offset;
                   p++;
                 }
               }
@@ -323,18 +309,12 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
         }
       }
     }
-    *nadjcny = cid * 26 + (s->zoom_props->nr_zoom_cells * 26);
+    *nadjcny = cid * 26;
 
     /* If given set METIS xadj. */
     if (xadj != NULL) {
       xadj[0] = 0;
-      for (int k = 0; k < s->nr_cells; k++) {
-        if (k < bkg_cell_offset) {
-          xadj[k + 1] = xadj[k] + (26 * 2);
-        } else {
-          xadj[k + 1] = xadj[k] + 26;
-        }
-      }
+      for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
       *nxadj = s->nr_cells;
     }
     
@@ -652,104 +632,25 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
  */
 static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
-  /* If we have a zoom region we need extra entries. */
-  if (s->with_zoom_region) {
+  
+  bzero(edges, sizeof(double) * s->nr_cells * 26); 
 
-    bzero(edges, sizeof(double) * (s->nr_cells * 26 +
-                                   s->zoom_props->nr_zoom_cells * 26));
-
-    /* Extract useful zoom region properties */
-    const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-
-    /* First lets cover the zoom cells themselves. */
-    for (int l = 0; l < bkg_cell_offset; l++) {
-      int p = 0;
-      for (int i = -1; i <= 1; i++) {
-        int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
-        for (int j = -1; j <= 1; j++) {
-          int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
-          for (int k = -1; k <= 1; k++) {
-            int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
+  /* Loop over cells and neigbours */
+  for (int l = 0; l < s->nr_cells; l++) {
+    int p = 0;
+    for (int i = -1; i <= 1; i++) {
+      int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
+      for (int j = -1; j <= 1; j++) {
+        int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
+        for (int k = -1; k <= 1; k++) {
+          int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
           
-            /* If not self, we work out the sort indices to get the expected
-             * fractional weight and add that. Scale to keep sum less than
-             * counts and a bit of tuning... */
-            if (i || j || k) {
-              edges[l * (26 * 2) + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
-              p++;
-            }
-          }
-        }
-      }
-      /* And now do this cells background neighbours */
-      for (int i = -1; i <= 1; i++) {
-        int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
-        for (int j = -1; j <= 1; j++) {
-          int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
-          for (int k = -1; k <= 1; k++) {
-            int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
-          
-            /* If not self, we work out the sort indices to get the expected
-             * fractional weight and add that. Scale to keep sum less than
-             * counts and a bit of tuning... */
-            /* TODO: can adjust this edge to better reflect how cheap
-             * bkg cells are. */
-            if (i || j || k) {
-              edges[l * (26 * 2) + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
-              p++;
-            }
-          }
-        }
-      }
-    }
-
-    /* Define the offset cause by the extra edges for zoom cells. */
-    const int edge_offset = s->zoom_props->nr_zoom_cells * 26 * 2;
-
-    /* And now the background cells. */
-    for (int l = 0; l < s->zoom_props->nr_bkg_cells; l++) {
-      int p = 0;
-      for (int i = -1; i <= 1; i++) {
-        int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
-        for (int j = -1; j <= 1; j++) {
-          int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
-          for (int k = -1; k <= 1; k++) {
-            int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
-          
-            /* If not self, we work out the sort indices to get the expected
-             * fractional weight and add that. Scale to keep sum less than
-             * counts and a bit of tuning... */
-            if (i || j || k) {
-              edges[edge_offset + l * 26 + p] = counts[bkg_cell_offset + l]
-                * sid_scale[sortlistID[ksid]] / 26.0;
-              p++;
-            }
-          }
-        }
-      }
-    }
-  /* Otherwise, were in the simple usual case. */
-  } else {
-
-    bzero(edges, sizeof(double) * s->nr_cells * 26); 
-
-    /* Loop over cells and neigbours */
-    for (int l = 0; l < s->nr_cells; l++) {
-      int p = 0;
-      for (int i = -1; i <= 1; i++) {
-        int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
-        for (int j = -1; j <= 1; j++) {
-          int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
-          for (int k = -1; k <= 1; k++) {
-            int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
-          
-            /* If not self, we work out the sort indices to get the expected
-             * fractional weight and add that. Scale to keep sum less than
-             * counts and a bit of tuning... */
-            if (i || j || k) {
-              edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
-              p++;
-            }
+          /* If not self, we work out the sort indices to get the expected
+           * fractional weight and add that. Scale to keep sum less than
+           * counts and a bit of tuning... */
+          if (i || j || k) {
+            edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
+            p++;
           }
         }
       }
@@ -929,11 +830,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     return;
   }
 
-  /* If we have a zoom region we need some extra edges. */
-  int extras = 0;
-  if (s->with_zoom_region)
-    extras = s->zoom_props->nr_zoom_cells * 26; 
-
   /* We all get one of these with the same content. It defines the ranges of
    * vertices that are found on each rank. This contiguity constraint seems to
    * stop efficient local processing, since our cell distributions do not
@@ -1011,8 +907,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate std xadj buffer.");
     idx_t *full_adjncy = NULL;
-    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t)
-                                       * ((26 * ncells) + extras))) == NULL)
+    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
       error("Failed to allocate full adjncy array.");
     idx_t *full_weights_v = NULL;
     if (weights_v != NULL)
@@ -1020,9 +915,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate full vertex weights array");
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
-      if ((full_weights_e = (idx_t *)malloc(sizeof(idx_t)
-                                            * ((26 * ncells)
-                                               + extras))) == NULL)
+      if ((full_weights_e = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
         error("Failed to allocate full edge weights array");
 
     idx_t *full_regionid = NULL;
@@ -1061,7 +954,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Init the edges weights array. */
     if (edgew != NULL) {
-      for (int k = 0; k < (26 * ncells) + extras; k++) {
+      for (int k = 0; k < 26 * ncells; k++) {
         if (edgew[k] > 1) {
           full_weights_e[k] = edgew[k];
         } else {
@@ -1072,7 +965,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < (26 * ncells) + extras; k++) {
+      for (int k = 0; k < 26 * ncells; k++) {
 
         if ((idx_t)edgew[k] < 0) {
           message("Input edge weight out of range: %ld", (long)edgew[k]);
@@ -1421,11 +1314,6 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   /* Total number of cells. */
   int ncells = s->nr_cells;
 
-  /* If we have a zoom region we need some extra edges. */
-  int extras = 0;
-  if (s->with_zoom_region)
-    extras = s->zoom_props->nr_zoom_cells * 26; 
-
   /* Nothing much to do if only using a single partition. Also avoids METIS
    * bug that doesn't handle this case well. */
   if (nregions == 1) {
@@ -1441,8 +1329,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate xadj buffer.");
     idx_t *adjncy;
-    if ((adjncy = (idx_t *)malloc(sizeof(idx_t)
-                                  * ((26 * ncells) + extras))) == NULL)
+    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
       error("Failed to allocate adjncy array.");
     idx_t *weights_v = NULL;
     if (vertexw != NULL)
@@ -1450,8 +1337,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate vertex weights array");
     idx_t *weights_e = NULL;
     if (edgew != NULL)
-      if ((weights_e = (idx_t *)malloc(sizeof(idx_t)
-                                       * ((26 * ncells) + extras))) == NULL)
+      if ((weights_e = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
         error("Failed to allocate edge weights array");
     idx_t *regionid;
     if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
@@ -1487,7 +1373,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     /* Init the edges weights array. */
 
     if (edgew != NULL) {
-      for (int k = 0; k < (26 * ncells) + extras; k++) {
+      for (int k = 0; k < 26 * ncells; k++) {
         if (edgew[k] > 1) {
           weights_e[k] = edgew[k];
         } else {
@@ -1498,7 +1384,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < (26 * ncells) + extras; k++) {
+      for (int k = 0; k < 26 * ncells; k++) {
 
         if ((idx_t)edgew[k] < 0) {
           message("Input edge weight out of range: %ld", (long)edgew[k]);
@@ -1766,15 +1652,10 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   int nr_cells = s->nr_cells;
   struct cell *cells = s->cells_top;
 
-  /* If we have a zoom region we need some extra edges. */
-  int extras = 0;
-  if (s->with_zoom_region)
-    extras = s->zoom_props->nr_zoom_cells * 26; 
-
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
   idx_t *inds;
-  if ((inds = (idx_t *)malloc(sizeof(idx_t) * ((26 * nr_cells) + extras))) == NULL)
+  if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
@@ -1790,8 +1671,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     bzero(weights_v, sizeof(double) * nr_cells);
   }
   if (eweights) {
-    if ((weights_e = (double *)malloc(sizeof(double)
-                                      * ((26 * nr_cells) + extras))) == NULL)
+    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
       error("Failed to allocate edge weights arrays.");
     bzero(weights_e, sizeof(double) * 26 * nr_cells);
   }
@@ -1833,7 +1713,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   if (eweights) {
-    res = MPI_Allreduce(MPI_IN_PLACE, weights_e, (26 * nr_cells) + extras,
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_e, 26 * nr_cells,
                         MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
   }
@@ -2195,11 +2075,6 @@ void partition_initial_partition(struct partition *initial_partition,
      * counts as weights or not. Should be best when starting with a
      * inhomogeneous dist.
      */
-
-    /* If we have a zoom region we need some extra edges. */
-    int extras = 0;
-    if (s->with_zoom_region)
-      extras = s->zoom_props->nr_zoom_cells * 26; 
     
     double *weights_v = NULL;
     double *weights_e = NULL;
@@ -2217,8 +2092,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
       if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      if ((weights_e = (double *)malloc(sizeof(double)
-                                        * ((s->nr_cells * 26) + extras))) ==
+      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) ==
           NULL)
         error("Failed to allocate weights_e buffer.");
 
