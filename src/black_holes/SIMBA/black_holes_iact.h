@@ -867,22 +867,32 @@ runner_iact_nonsym_bh_gas_feedback(
                 dv_phys / bh_props->kms_to_internal);
 #endif
       }
-      else {
+
       const double u_new = u_init + du_xray_phys;
+      /* Do the energy injection. */
+      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
+      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
+
+      if (bh_props->xray_shutoff_cooling) {
+        /* u_init is physical so cs_physical is physical */
+        const double cs_physical = gas_soundspeed_from_internal_energy(pj->rho, u_init);
+
+        /* a_factor_sound_speed converts cs_physical to internal (comoving) units) */
+        pj->feedback_data.cooling_shutoff_delay_time = 
+            cosmo->a_factor_sound_speed * (pj->h / cs_physical);
+      }
 
 #ifdef SIMBA_DEBUG_CHECKS
       const double T_gas_final_cgs = 
           u_new / (bh_props->temp_to_u_factor * bh_props->T_K_to_int);
-      message("BH_XRAY_HEAT: bid=%lld, pid=%lld, T_init %g K, T_new %g K, T_new/T_init=%g",
+      message("BH_XRAY_HEAT: bid=%lld, pid=%lld, T_init %g K, T_new %g K, T_new/T_init=%g, dt_shutoff=%g Myr",
               bi->id, pj->id,
               T_gas_cgs,
               T_gas_final_cgs,
-              T_gas_final_cgs / T_gas_cgs);
+              T_gas_final_cgs / T_gas_cgs,
+              pj->feedback_data.cooling_shutoff_delay_time * bh_props->time_to_Myr);
 #endif
-      /* Do the energy injection. */
-      hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
-      hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
-      }
+
     }
   } else { /* Below is swallow_id = id for particle/bh */
 

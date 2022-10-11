@@ -93,6 +93,46 @@ __attribute__((always_inline)) INLINE static void feedback_recouple_part(
 }
 
 /**
+ * @brief Determine if particles that ignore cooling should start cooling again.
+ *
+ * @param p The #part to consider.
+ * @param xp The #xpart to consider.
+ * @param e The #engine.
+ * @param with_cosmology Is this a cosmological simulation?
+ */
+__attribute__((always_inline)) INLINE static void feedback_ready_to_cool(
+    struct part* p, struct xpart* xp, const struct engine* e,
+    const int with_cosmology) {
+
+  /* No reason to do this is the decoupling time is zero */
+  if (p->feedback_data.cooling_shutoff_delay_time > 0.f) {
+    const integertime_t ti_step = get_integer_timestep(p->time_bin);
+    const integertime_t ti_begin =
+        get_integer_time_begin(e->ti_current - 1, p->time_bin);
+
+    /* Get particle time-step */
+    double dt_part;
+    if (with_cosmology) {
+      dt_part =
+          cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
+    } else {
+      dt_part = get_timestep(p->time_bin, e->time_base);
+    }
+
+    p->feedback_data.cooling_shutoff_delay_time -= dt_part;
+    if (p->feedback_data.cooling_shutoff_delay_time < 0.f) {
+      p->feedback_data.cooling_shutoff_delay_time = 0.f;
+
+      /* Make sure to sync the newly coupled part on the timeline */
+      timestep_sync_part(p);
+    }
+  } else {
+    /* Because we are using floats, always make sure to set exactly zero */
+    p->feedback_data.cooling_shutoff_delay_time = 0.f;
+  }
+}
+
+/**
  * @brief Update the properties of a particle due to feedback effects after
  * the cooling was applied.
  *

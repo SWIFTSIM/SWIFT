@@ -37,6 +37,9 @@ struct feedback_part_data {
 
   /*! Number of times decoupled */
   int number_of_times_decoupled;
+
+  /*! The time to shut off cooling for this particle */
+  float cooling_shutoff_delay_time;
 };
 
 /**

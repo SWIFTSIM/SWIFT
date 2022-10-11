@@ -254,6 +254,9 @@ struct black_holes_props {
   /*! The limit for X-ray feedback, below this use X-ray feedback */
   float xray_f_gas_limit;
 
+  /*! Should cooling be shut off for X-ray impacted particles? */
+  int xray_shutoff_cooling;
+
   /*! What is the physical max. velocity of the jet? (km/s) */
   float jet_velocity;
 
@@ -688,6 +691,9 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->xray_f_gas_limit =
       parser_get_param_float(params, "SIMBAAGN:xray_f_gas_limit");
+
+  bp->xray_shutoff_cooling =
+      parser_get_param_int(params, "SIMBAAGN:xray_shutoff_cooling");
 
   bp->jet_velocity = parser_get_param_float(params, "SIMBAAGN:jet_velocity");
 
