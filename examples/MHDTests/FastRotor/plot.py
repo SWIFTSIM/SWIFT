@@ -1,5 +1,5 @@
 from swiftsimio import load
-from swiftsimio.visualisation.projection import project_gas
+from swiftsimio.visualisation.slice import slice_gas
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
@@ -32,46 +32,51 @@ data.gas.mass_weighted_speeds = data.gas.masses * np.sqrt(v[:,0]**2 + v[:,1]**2 
 data.gas.mass_weighted_densities = data.gas.masses * data.gas.densities
 
 # Map in mass per area
-mass_map = project_gas(data, resolution=1024, project="masses", parallel=True)
+mass_map = slice_gas(data, z_slice=0.5 * data.metadata.boxsize[2], resolution=1024, project="masses", parallel=True)
 
 # Map in density per area
-rho_pa_map = project_gas(data, resolution=1024, project="mass_weighted_densities", parallel=True)
+rho_pa_map = slice_gas(data, z_slice=0.5 * data.metadata.boxsize[2], resolution=1024, project="mass_weighted_densities", parallel=True)
 
 # Map in magnetism squared times mass per area
-mass_weighted_magnetic_pressure_map = project_gas(
+mass_weighted_magnetic_pressure_map = slice_gas(
     data,
+    z_slice=0.5 * data.metadata.boxsize[2],
     resolution=1024,
     project="mass_weighted_magnetic_pressures",
     parallel=True
 )
 
 # Map in pressure times mass per area
-mass_weighted_pressure_map = project_gas(
+mass_weighted_pressure_map = slice_gas(
     data,
+    z_slice=0.5 * data.metadata.boxsize[2],
     resolution=1024,
     project="mass_weighted_pressures",
     parallel=True
 )
 
 # Map in speed squared times mass per area
-mass_weighted_speeds_map = project_gas(
+mass_weighted_speeds_map = slice_gas(
     data,
+    z_slice=0.5 * data.metadata.boxsize[2],
     resolution=1024,
     project="mass_weighted_speeds",
     parallel=True
 )
 
 # Map in speed squared times mass per area
-mass_weighted_speeds_x_map = project_gas(
+mass_weighted_speeds_x_map = slice_gas(
     data,
+    z_slice=0.5 * data.metadata.boxsize[2],
     resolution=1024,
     project="mass_weighted_speeds_x",
     parallel=True
 )
 
 # Map in speed squared times mass per area
-mass_weighted_speeds_y_map = project_gas(
+mass_weighted_speeds_y_map = slice_gas(
     data,
+    z_slice=0.5 * data.metadata.boxsize[2],
     resolution=1024,
     project="mass_weighted_speeds_y",
     parallel=True
@@ -94,18 +99,32 @@ from matplotlib.pyplot import imsave
 #imsave(sys.argv[2], np.rot90(magnetic_pressure_map.value), cmap="jet", vmin=0.0177, vmax=2.642)
 #imsave(sys.argv[3], speed_map.value, cmap="viridis")
 
-levels = 9
 
-fig, axs = plt.subplots(2, 2, figsize=(12, 10))
-im = axs[0,0].contourf(np.rot90(rho_map.value), levels, cmap='viridis', vmin=0.483, vmax=12.95)
+levels = 29
+
+fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+
+im = axs[0,0].contour(np.rot90(rho_map.value), levels, colors='k', vmin=0.483, vmax=12.95)
+#plt.colorbar(im, ax = axs[0,0])
+im = axs[0,1].contour(np.rot90(pressure_map.value), levels, colors='k', vmin=0.0202, vmax=2.008)
+#plt.colorbar(im, ax = axs[0,1])
+im = axs[1,0].contour(np.rot90(speed_map.value), levels, colors='k', vmin=0., vmax=2.6) #, vmin=0., vmax=8.18)
+#cb = plt.colorbar(im, ax = axs[1,0])
+im = axs[1,1].contour(np.rot90(magnetic_pressure_map.value), levels, colors='k', vmin=0.0177, vmax=2.642)
+#plt.colorbar(im, ax = axs[1,1])
+
+"""
+
+im = axs[0,0].contourf(np.rot90(rho_map.value), levels, cmap='viridis') #, vmin=0.483, vmax=12.95)
 plt.colorbar(im, ax = axs[0,0])
-im = axs[0,1].contourf(np.rot90(pressure_map.value), levels, cmap='viridis', vmin=0.0202, vmax=2.008)
+im = axs[0,1].contourf(np.rot90(pressure_map.value), levels, cmap='viridis') #, vmin=0.0202, vmax=2.008)
 plt.colorbar(im, ax = axs[0,1])
-im = axs[1,0].contourf(np.rot90(speed_map.value), levels, cmap='viridis', vmin=0., vmax=2.6) #, vmin=0., vmax=8.18)
+im = axs[1,0].contourf(np.rot90(speed_map.value), levels, cmap='viridis') #, vmin=0., vmax=2.6) #, vmin=0., vmax=8.18)
 cb = plt.colorbar(im, ax = axs[1,0])
-#vf = axs[1,0].quiver(X, Y, speed_x_map.value, speed_y_map.value, color='k', scale = 100)
-im = axs[1,1].contourf(np.rot90(magnetic_pressure_map.value), 2, cmap='viridis') # vmin=0.0177, vmax=2.642)
+im = axs[1,1].contourf(np.rot90(magnetic_pressure_map.value), levels, cmap='viridis') #, vmin=0.0177, vmax=2.642)
 plt.colorbar(im, ax = axs[1,1])
+
+"""
 
 plt.setp(plt.gcf().get_axes(), xticks=[], yticks=[]);
 

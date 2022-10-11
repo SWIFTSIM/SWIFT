@@ -10,10 +10,10 @@ r_in      = 0.1
 rho_in_0  = 10.
 rho_out_0 = 1.
 P_0       = 1.
-B_0       = 2.5 / np.sqrt(np.pi)
+B_0       = 0. #2.5 / np.sqrt(np.pi)
 omega_0   = 20.
 
-fileOutputName = "FastRotor.hdf5"
+fileOutputName = "FastRotor_no_B.hdf5"
 
 ###---------------------------###
 

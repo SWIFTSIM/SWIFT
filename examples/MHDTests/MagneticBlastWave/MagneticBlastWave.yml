@@ -37,8 +37,8 @@ MHD:
   diffusion_eta:      0.0
 
 # Physical parameters
-# PhysicalConstants:
-#  mu_0: 1.0
+PhysicalConstants:
+  mu_0: 1.0
 
 # Parameters related to the initial conditions
 InitialConditions:

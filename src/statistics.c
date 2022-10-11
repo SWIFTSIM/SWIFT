@@ -144,6 +144,9 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
   const struct phys_const *phys_const = e->physical_constants;
   const struct cosmology *cosmo = e->cosmology;
 
+  /* */
+  const float mu_0 = phys_const->const_vacuum_permeability;
+
   /* Some constants from cosmology */
   const float a_inv = cosmo->a_inv;
   const float a_inv2 = a_inv * a_inv;
@@ -243,7 +246,7 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
     stats.entropy += m * entropy;
 
     /* Collect magnetic energy */
-    stats.E_mag += mhd_get_magnetic_energy(p, xp);
+    stats.E_mag += mhd_get_magnetic_energy(p, xp, mu_0);
 
     /* Collect helicity */
     stats.H_mag += mhd_get_magnetic_helicity(p, xp);

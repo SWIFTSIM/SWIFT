@@ -13,30 +13,30 @@ r_in	  = 0.1
 rho_0     = 1.
 P_in_0	  = 10.
 P_out_0   = 0.1
-B_0	  = 10. #1.0 / np.sqrt(2.0)
+B_0	  = np.sqrt(2.0 * np.pi)
 gamma     = 5.0 / 3.0
 
 fileOutputName = "MagneticBlastWave.hdf5"
 
 ###---------------------------###
 
-glass = h5py.File("glassCube_8.hdf5", 'r')
+glass = h5py.File("glassCube_32.hdf5", 'r')
 
 unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell   = glass["/PartType0/SmoothingLength"][:] 
 
 N_unit_cell = len(h_unit_cell)
-times = 16
+times = 32
 
 ###---------------------------###
 
 cx = times
 cy = times
-cz = 4
+cz = 1
 
-lx = 4.0
-ly = 4.0
-lz = 4.0/float(times)
+lx = 2.0
+ly = 2.0
+lz = 2.0/float(times)
 
 lx_c = lx/2
 ly_c = ly/2
@@ -63,7 +63,7 @@ for i in range(0,cx):
 pos[:,0] = pos[:,0] * lx/cx
 pos[:,1] = pos[:,1] * ly/cy
 pos[:,2] = pos[:,2] * lz/cz
-h = h/cx
+h = h * lx/cx
 
 vol = lx*ly*lz
 

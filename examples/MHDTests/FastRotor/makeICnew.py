@@ -13,21 +13,21 @@ r_in	  = 0.1
 rho_in_0  = 10.
 rho_out_0 = 1.
 P_0	  = 1.
-B_0	  = 2.5 / np.sqrt(np.pi)
+B_0	  = 5. #2.5 / np.sqrt(np.pi)
 omega_0   = 20.
 gamma = 1.4
 
-fileOutputName = "FastRotor.hdf5"
+fileOutputName = "FastRotor_temp.hdf5"
 
 ###---------------------------###
 
-glass = h5py.File("glassCube_8.hdf5", 'r')
+glass = h5py.File("glassCube_32.hdf5", 'r')
 
 unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell   = glass["/PartType0/SmoothingLength"][:] 
 
 N_unit_cell = len(h_unit_cell)
-times = 8
+times = 3
 
 ratio = np.cbrt(rho_in_0/rho_out_0)
 
@@ -35,7 +35,7 @@ ratio = np.cbrt(rho_in_0/rho_out_0)
 
 cx_out = times
 cy_out = times
-cz_out = 8
+cz_out = 1
 
 cx_in = int(np.ceil(ratio * cx_out))
 cy_in = int(np.ceil(ratio * cy_out))

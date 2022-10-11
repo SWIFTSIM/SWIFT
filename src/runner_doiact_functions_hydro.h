@@ -117,7 +117,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2 && pi_active) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -138,7 +138,7 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -252,7 +252,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 
         if (pi_active && pj_active) {
 
-          IACT(r2, dx, hi, hj, pi, pj, a, H);
+          IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -266,7 +266,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
         } else if (pi_active) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -286,7 +286,7 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
           dx[1] = -dx[1];
           dx[2] = -dx[2];
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -389,7 +389,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (doi && doj) {
 
-        IACT(r2, dx, hi, hj, pi, pj, a, H);
+        IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -403,7 +403,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
       } else if (doi) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -423,7 +423,7 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -525,7 +525,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
       /* Hit or miss? */
       if (doi && doj) {
 
-        IACT(r2, dx, hi, hj, pi, pj, a, H);
+        IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -539,7 +539,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
 #endif
       } else if (doi) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -559,7 +559,7 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
         dx[1] = -dx[1];
         dx[2] = -dx[2];
 
-        IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+        IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -660,7 +660,7 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, pj->h, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, pj->h, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
@@ -768,7 +768,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -833,7 +833,7 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -999,7 +999,7 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
       /* Hit or miss? */
       if (r2 < hig2) {
 
-        IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+        IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1181,7 +1181,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hig2) {
 
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1280,7 +1280,7 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss? */
         if (r2 < hjg2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1600,7 +1600,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss?
            (note that we will do the other condition in the reverse loop) */
         if (r2 < hig2) {
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1682,7 +1682,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
           /* Does pj need to be updated too? */
           if (PART_IS_ACTIVE(pj, e)) {
-            IACT(r2, dx, hi, hj, pi, pj, a, H);
+            IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1695,7 +1695,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
                                   t_current, cosmo, with_cosmology);
 #endif
           } else {
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1810,7 +1810,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
         /* Hit or miss?
            (note that we must avoid the r2 < hig2 cases we already processed) */
         if (r2 < hjg2 && r2 >= hig2) {
-          IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+          IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -1894,7 +1894,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
 
           /* Does pi need to be updated too? */
           if (PART_IS_ACTIVE(pi, e)) {
-            IACT(r2, dx, hj, hi, pj, pi, a, H);
+            IACT(r2, dx, hj, hi, pj, pi, mu_0, a, H);
             IACT_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -1907,7 +1907,7 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
                                   t_current, cosmo, with_cosmology);
 #endif
           } else {
-            IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2112,7 +2112,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hj * hj * kernel_gamma2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2173,7 +2173,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
           /* Which parts need to be updated? */
           if (doi && doj) {
 
-            IACT(r2, dx, hi, hj, pi, pj, a, H);
+            IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2187,7 +2187,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
 #endif
           } else if (doi) {
 
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2207,7 +2207,7 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
             dx[0] = -dx[0];
             dx[1] = -dx[1];
             dx[2] = -dx[2];
-            IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+            IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2350,7 +2350,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
         /* Hit or miss? */
         if (r2 < hig2 || r2 < hj * hj * kernel_gamma2) {
 
-          IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
+          IACT_NONSYM(r2, dx, hj, hi, pj, pi, mu_0, a, H);
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
@@ -2406,7 +2406,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
 
           /* Does pj need to be updated too? */
           if (PART_IS_ACTIVE(pj, e)) {
-            IACT(r2, dx, hi, hj, pi, pj, a, H);
+            IACT(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
@@ -2419,7 +2419,7 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
                                   t_current, cosmo, with_cosmology);
 #endif
           } else {
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
+            IACT_NONSYM(r2, dx, hi, hj, pi, pj, mu_0, a, H);
             IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);

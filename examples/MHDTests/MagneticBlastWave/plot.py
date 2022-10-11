@@ -24,5 +24,5 @@ density_map = mass_weighted_density_map / mass_map
 from matplotlib.pyplot import imsave
 
 # Normalize and save
-imsave(sys.argv[2], np.rot90(density_map.value), cmap="jet")
+imsave(sys.argv[2], np.rot90(density_map.value), cmap="jet", vmin=0.1, vmax = 2.4)
 #imsave(sys.argv[3], speed_map.value, cmap="viridis")
