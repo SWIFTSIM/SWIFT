@@ -19,7 +19,7 @@
  ******************************************************************************/
 #ifndef SWIFT_MAGMA_HYDRO_IACT_H
 #define SWIFT_MAGMA_HYDRO_IACT_H
-#define MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER
+//#define MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER
 
 /**
  * @file SPHENIX/hydro_iact.h
@@ -700,7 +700,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
       (sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
              (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
              (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2])) +
-       H * a * r) *
+       a2_Hubble * r) *
       fac_mu;
   const float iG = 0.5f;
   const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
@@ -1009,7 +1009,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       (sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
              (vi_mid[1] - vj_mid[1]) * (vi_mid[1] - vj_mid[1]) +
              (vi_mid[2] - vj_mid[2]) * (vi_mid[2] - vj_mid[2])) +
-       H * a * r) *
+       a2_Hubble * r) *
       fac_mu;
   const float iG = 0.5f;
   const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
