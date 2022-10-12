@@ -1244,7 +1244,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
 #ifdef SWIFT_DEBUG_CHECKS
               if (cid >= s->zoom_props->tl_cell_offset ||
                   cjd >= s->zoom_props->tl_cell_offset)
-                error("Found a background cell while searching for zoom properties!");
+                error("Found a background cell while searching for zoom proxies!");
 #endif
 
               int proxy_type = 0;
