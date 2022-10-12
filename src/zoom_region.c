@@ -1207,7 +1207,7 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k);
 
-        /* Loop over all its neighbours neighbours in range. */
+        /* Loop over all its neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
           if (iii < 0 || iii >= cdim[0]) continue;
@@ -1234,6 +1234,12 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
               /* Early abort (both foreign node) */
               if (cells[cid].nodeID != nodeID && cells[cjd].nodeID != nodeID)
                 continue;
+              
+#ifdef SWIFT_DEBUG_CHECKS
+              if (cid >= s->zoom_props->tl_cell_offset ||
+                  cjd >= s->zoom_props->tl_cell_offset)
+                error("Found a background cell while searching for zoom properties!")
+#endif
 
               int proxy_type = 0;
 
