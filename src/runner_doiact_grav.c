@@ -2827,9 +2827,9 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
   /* Loop over plausibly useful cells */
-  for (int ii = i - d; ii <= i + d; ++ii) {
-    for (int jj = j - d; jj <= j + d; ++jj) {
-      for (int kk = k - d; kk <= k + d; ++kk) {
+  for (int ii = i - delta_m; ii <= i + delta_p; ++ii) {
+    for (int jj = j - delta_m; jj <= j + delta_p; ++jj) {
+      for (int kk = k - delta_m; kk <= k + delta_p; ++kk) {
 
         /* Box wrap */
         const int iii = (ii + s->cdim[0]) % s->cdim[0];
