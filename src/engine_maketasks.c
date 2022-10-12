@@ -2165,7 +2165,8 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
         const int kkk = (kk + cdim[2]) % cdim[2];
         
         /* Get the second cell */
-        const int cjd = cell_getid(cdim, iii, jjj, kkk);
+        const int cjd =
+          cell_getid(cdim, iii, jjj, kkk) + s->zoom_props->tl_cell_offset;
         struct cell *cj = &cells[cjd];
 
         /* Avoid duplicates and empty cells. */
