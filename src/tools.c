@@ -88,6 +88,7 @@ void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic) {
   // double maxratio = 1.0;
   double r2, rho = 0.0;
   double rho_max = 0.0, rho_min = 100;
+  float mu_0 = 1.f;
   float a = 1.f, H = 0.f;
   float dx[3];
 
@@ -152,6 +153,7 @@ void pairs_single_density(double *dim, long long int pid,
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float mu_0 = 1.f;
   float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
@@ -202,6 +204,7 @@ void pairs_all_density(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -286,6 +289,7 @@ void pairs_all_gradient(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -364,6 +368,7 @@ void pairs_all_force(struct runner *r, struct cell *ci, struct cell *cj) {
   const double dim[3] = {r->e->s->dim[0], r->e->s->dim[1], r->e->s->dim[2]};
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -518,6 +523,7 @@ void self_all_density(struct runner *r, struct cell *ci) {
   struct part *pi, *pj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -580,6 +586,7 @@ void self_all_gradient(struct runner *r, struct cell *ci) {
   struct part *pi, *pj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -632,6 +639,7 @@ void self_all_force(struct runner *r, struct cell *ci) {
   struct part *pi, *pj;
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
 
@@ -720,6 +728,7 @@ void engine_single_density(double *dim, long long int pid,
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float mu_0 = 1.f;
   float a = 1.f, H = 0.f;
 
   /* Find "our" part. */
@@ -766,6 +775,7 @@ void engine_single_force(double *dim, long long int pid,
   double r2, dx[3];
   float fdx[3];
   struct part p;
+  float mu_0 = 1.f;
   float a = 1.f, H = 0.f;
 
   /* Find "our" part. */

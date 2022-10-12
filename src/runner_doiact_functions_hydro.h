@@ -57,9 +57,10 @@ void DOPAIR1_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -190,9 +191,10 @@ void DOPAIR2_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -332,9 +334,10 @@ void DOSELF1_NAIVE(struct runner *r, struct cell *restrict c) {
   if (!CELL_IS_ACTIVE(c, e)) return;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -468,9 +471,10 @@ void DOSELF2_NAIVE(struct runner *r, struct cell *restrict c) {
   if (!CELL_IS_ACTIVE(c, e)) return;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   const int count = c->hydro.count;
   struct part *restrict parts = c->hydro.parts;
@@ -613,9 +617,10 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Loop over the parts_i. */
   for (int pid = 0; pid < count; pid++) {
@@ -714,9 +719,10 @@ void DOPAIR_SUBSET(struct runner *r, struct cell *restrict ci,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Pick-out the sorted lists. */
   const struct sort_entry *sort_j = cell_get_hydro_sorts(cj, sid);
@@ -946,9 +952,10 @@ void DOSELF_SUBSET(struct runner *r, struct cell *restrict ci,
   TIMER_TIC;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   const int count_i = ci->hydro.count;
   struct part *restrict parts_j = ci->hydro.parts;
@@ -1097,9 +1104,10 @@ void DOPAIR1(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   const float dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   if (CELL_IS_ACTIVE(ci, e)) {
 
@@ -1448,9 +1456,10 @@ void DOPAIR2(struct runner *r, struct cell *ci, struct cell *cj, const int sid,
   struct part *restrict parts_j = cj->hydro.parts;
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Maximal displacement since last rebuild */
   const double dx_max = (ci->hydro.dx_max_sort + cj->hydro.dx_max_sort);
@@ -2064,9 +2073,10 @@ void DOSELF1(struct runner *r, struct cell *restrict c) {
     }
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
@@ -2302,9 +2312,10 @@ void DOSELF2(struct runner *r, struct cell *restrict c) {
     }
 
   /* Cosmological terms and physical constants */
+  const float mu_0 = e->physical_constants->const_vacuum_permeability;
   const float a = cosmo->a;
   const float H = cosmo->H;
-  GET_MU0();
+  // GET_MU0();
 
   /* Loop over the particles in the cell. */
   for (int pid = 0; pid < count; pid++) {
