@@ -607,12 +607,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float dvdh_j2 = dvdh_j / (h_j2 + 0.01f);
 
   /* compute velocity jump. */
-  const float mu_i = fac_mu * min(0.f, dvdh_i2);
-  const float mu_j = fac_mu * min(0.f, dvdh_j2);
+  const float mu_i = min(0.f, dvdh_i2);
+  const float mu_j = min(0.f, dvdh_j2);
 
   /* compute viscosity pressure term. */
-  const float Q_i = rhoi * (-pi->force.soundspeed * mu_i + 2.f * mu_i * mu_i);
-  const float Q_j = rhoj * (-pj->force.soundspeed * mu_j + 2.f * mu_j * mu_j);
+  const float Q_i = fac_mu * rhoi * (-pi->force.soundspeed * mu_i + 2.f * fac_mu * mu_i * mu_i);
+  const float Q_j = fac_mu * rhoj * (-pj->force.soundspeed * mu_j + 2.f * fac_mu * mu_j * mu_j);
 
   /* New gradient functions*/
   float c_matrix_i[3][3], c_matrix_j[3][3];
@@ -925,12 +925,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float dvdh_j2 = dvdh_j / (h_j2 + 0.01f);
 
   /* compute velocity jump. */
-  const float mu_i = fac_mu * min(0.f, dvdh_i2);
-  const float mu_j = fac_mu * min(0.f, dvdh_j2);
+  const float mu_i = min(0.f, dvdh_i2);
+  const float mu_j = min(0.f, dvdh_j2);
 
   /* compute viscosity pressure term. */
-  const float Q_i = rhoi * (-pi->force.soundspeed * mu_i + 2.f * mu_i * mu_i);
-  const float Q_j = rhoj * (-pj->force.soundspeed * mu_j + 2.f * mu_j * mu_j);
+  const float Q_i = fac_mu * rhoi * (-pi->force.soundspeed * mu_i + 2.f * fac_mu * mu_i * mu_i);
+  const float Q_j = fac_mu * rhoj * (-pj->force.soundspeed * mu_j + 2.f * fac_mu * mu_j * mu_j);
 
   /* New gradient functions*/
   float c_matrix_i[3][3], c_matrix_j[3][3];
