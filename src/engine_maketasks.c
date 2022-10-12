@@ -2146,9 +2146,9 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
   const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
   /* Loop over plausibly useful cells */
-  for (int ii = top_i - d; ii <= top_i + d; ++ii) {
-    for (int jj = top_j - d; jj <= top_j + d; ++jj) {
-      for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+  for (int ii = i - d; ii <= i + d; ++ii) {
+    for (int jj = j - d; jj <= j + d; ++jj) {
+      for (int kk = k - d; kk <= k + d; ++kk) {
 
         /* Box wrap */
         const int iii = (ii + s->cdim[0]) % s->cdim[0];
