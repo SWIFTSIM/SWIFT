@@ -315,7 +315,9 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->mpi.pcell_size != count) error("Inconsistent tag and pcell count!");
+  if (c->mpi.pcell_size != count)
+    error("Inconsistent tag and pcell count! (c->mpi.pcell_size=%d, count=%d)",
+          c->mpi.pcell_size, count);
 #endif  // SWIFT_DEBUG_CHECKS
 
   /* Return the total number of unpacked tags. */
