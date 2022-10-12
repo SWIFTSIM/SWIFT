@@ -126,7 +126,9 @@ int cell_pack_tags(const struct cell *c, int *tags) {
       count += cell_pack_tags(c->progeny[k], &tags[count]);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (c->mpi.pcell_size != count) error("Inconsistent tag and pcell count!");
+  if (c->mpi.pcell_size != count)
+    error("Inconsistent tag and pcell count! (c->mpi.pcell_size=%d, count=%d)",
+          c->mpi.pcell_size, count);
 #endif  // SWIFT_DEBUG_CHECKS
 
   /* Return the number of packed tags used. */
