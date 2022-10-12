@@ -952,6 +952,9 @@ void engine_makeproxies_natural_cells(struct engine *e) {
         /* Get the cell ID. */
         const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
+        /* Skip the void cell. */
+        if (cid == s->zoom_props->void_cell_index) continue;
+
         /* Loop over all its neighbours neighbours in range. */
         for (int ii = -delta_m; ii <= delta_p; ii++) {
           int iii = i + ii;
@@ -968,6 +971,9 @@ void engine_makeproxies_natural_cells(struct engine *e) {
 
               /* Get the cell ID. */
               const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+
+              /* Skip the void cell. */
+              if (cjd == s->zoom_props->void_cell_index) continue;
 
               /* Early abort  */
               if (cid >= cjd) continue;
