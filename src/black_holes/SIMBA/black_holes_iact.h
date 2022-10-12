@@ -875,11 +875,13 @@ runner_iact_nonsym_bh_gas_feedback(
 
       if (bh_props->xray_shutoff_cooling) {
         /* u_init is physical so cs_physical is physical */
-        const double cs_physical = gas_soundspeed_from_internal_energy(pj->rho, u_init);
+        const double cs_physical = gas_soundspeed_from_internal_energy(pj->rho, u_new);
 
         /* a_factor_sound_speed converts cs_physical to internal (comoving) units) */
-        pj->feedback_data.cooling_shutoff_delay_time = 
-            cosmo->a_factor_sound_speed * (pj->h / cs_physical);
+        pj->feedback_data.cooling_shutoff_delay_time = max(
+              cosmo->a_factor_sound_speed * (pj->h / cs_physical),
+              dt /* BH timestep as a lower limit */
+            );
       }
 
 #ifdef SIMBA_DEBUG_CHECKS
