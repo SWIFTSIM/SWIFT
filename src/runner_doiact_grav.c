@@ -2628,7 +2628,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Loop over the first level of the void cell hierarchy. */
     for (int k = 0; k < 8; k++) {
-        runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
+        runner_do_grav_long_range_recurse(r, top, void_cell->progeny[k]);
       }
 
   } else { /* Periodic background cells. */
