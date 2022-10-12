@@ -106,7 +106,7 @@ void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
   /* Pack the local tags. */
   for (int k = 0; k < s->nr_cells; k++) {
     if (s->cells_top[k].mpi.sendto) {
-      if (s->cells_top[k]->tl_cell_type == void_tl_cell) continue;
+      if (&s->cells_top[k]->tl_cell_type == void_tl_cell) continue;
       cell_pack_tags(&s->cells_top[k], &tags_out[offset_out[k]]);
     }
   }
