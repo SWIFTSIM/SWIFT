@@ -2781,22 +2781,24 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                       s->zoom_props->cdim[2]};
+  const int cdim[3] = {s->cdim[0], s->cdim[1],
+                       s->cdim[2]};
   struct cell *cells = s->cells_top;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
   TIMER_TIC;
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
+      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
+  const int delta = (int)(sqrt(3) * distance
+                          / cells[bkg_cell_offset].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
@@ -2822,31 +2824,20 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   const int i = ci->loc[0] * s->iwidth[0];
   const int j = ci->loc[1] * s->iwidth[1];
   const int k = ci->loc[2] * s->iwidth[2];
-  const int cid = cell_getid(cdim, i, j, k);
+  const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
-  /* Loop over every other cell within (Manhattan) range delta */
-  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+  /* Loop over plausibly useful cells */
+  for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+    for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+      for (int kk = top_k - d; kk <= top_k + d; ++kk) {
 
-    /* Zoom cells are never periodic, exit if beyond zoom region */
-    if (ii < 0 || ii >= cdim[0]) continue;
-
-    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
-      
-      /* Zoom cells are never periodic, exit if beyond zoom region */
-      if (jj < 0 || jj >= cdim[1]) continue;
-
-      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
-
-        /* Zoom cells are never periodic, exit if beyond zoom region */
-        if (kk < 0 || kk >= cdim[2]) continue;
-
-        /* Apply periodic BC (not harmful if not using periodic BC) */
-        const int iii = (ii + cdim[0]) % cdim[0];
-        const int jjj = (jj + cdim[1]) % cdim[1];
-        const int kkk = (kk + cdim[2]) % cdim[2];
+        /* Box wrap */
+        const int iii = (ii + s->cdim[0]) % s->cdim[0];
+        const int jjj = (jj + s->cdim[1]) % s->cdim[1];
+        const int kkk = (kk + s->cdim[2]) % s->cdim[2];
         
         /* Get the second cell */
-        const int cjd = cell_getid(cdim, iii, jjj, kkk);
+        const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         struct cell *cj = &cells[cjd];
 
         /* Avoid duplicates and empty cells. */
