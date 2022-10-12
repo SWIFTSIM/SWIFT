@@ -172,6 +172,7 @@ tests/testGravityDerivatives
 tests/testGravitySpeed
 tests/testPotentialSelf
 tests/testPotentialPair
+tests/testTwoGravityCells
 tests/testEOS
 tests/testEOS*.txt
 tests/testEOS*.png

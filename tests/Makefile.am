@@ -35,7 +35,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 	testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
-	testLog testDistance testTimeline
+	testLog testDistance testTimeline testTwoGravityCells
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -49,7 +49,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
                  testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline
+		 testNeutrinoFermiDirac testLog testTimeline testTwoGravityCells
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -168,7 +168,9 @@ testLog_SOURCES = testLog.c
 
 testTimeline_SOURCES = testTimeline.c
 
-testHydroMPIrules = testHydroMPIrules.c
+testHydroMPIrules_SOURCES = testHydroMPIrules.c
+
+testTwoGravityCells_SOURCES = testTwoGravityCells.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
