@@ -104,9 +104,9 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
                          struct task *tb) {
 #ifdef SWIFT_DEBUG_CHECKS
   if (ta == NULL) error("Unlocking task is NULL. (tb->type=%s tb->subtype=%s)",
-                        tb->type, tb->subtype);
+                        task_types[tb->type], task_subtypes[tb->subtype]);
   if (tb == NULL) error("Unlocked task is NULL. (ta->type=%s ta->subtype=%s)",
-                        ta->type, ta->subtype);
+                        task_types[ta->type], task_subtypes[ta->subtype]);
 #endif
 
   /* Get an index at which to store this unlock. */
