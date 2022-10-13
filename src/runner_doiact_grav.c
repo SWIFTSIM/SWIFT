@@ -2616,7 +2616,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       } /* We are in charge of this pair */
     }   /* Loop over top-level cells */
-  } else if (top->tl_cell_type == zoom_tl_cell) { /* Zoom cell case */
+  } else if (ci->tl_cell_type == zoom_tl_cell) { /* Zoom cell case */
 
     /* Zoom cell case
 
