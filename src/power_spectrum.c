@@ -474,13 +474,11 @@ __attribute__((always_inline)) INLINE static void TSC_set(
 
   const double lx = 0.5 * (0.5 - dx) * (0.5 - dx); /* left side, dist 1 + dx  */
   const double mx = 0.75 - dx * dx;                /* center, dist |dx|  */
-  const double rx =
-      0.5 * (0.5 + dx) * (0.5 + dx); /* right side, dist 1 - dx  */
+  const double rx = 0.5 * (0.5 + dx) * (0.5 + dx); /* right side, dist 1 - dx */
 
   const double ly = 0.5 * (0.5 - dy) * (0.5 - dy); /* left side, dist 1 + dy  */
   const double my = 0.75 - dy * dy;                /* center, dist |dy|  */
-  const double ry =
-      0.5 * (0.5 + dy) * (0.5 + dy); /* right side, dist 1 - dy  */
+  const double ry = 0.5 * (0.5 + dy) * (0.5 + dy); /* right side, dist 1 - dy */
 
   const double lz = 0.5 * (0.5 - dz) * (0.5 - dz); /* left side, dist 1 + dz  */
   const double mz = 0.75 - dz * dz;                /* center, dist |dz|  */
