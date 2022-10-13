@@ -22,13 +22,13 @@
 #include "minmax.h"
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_energy(
-    const struct part *p, const struct xpart *xp) {
+    const struct part *p, const struct xpart *xp, const float mu_0) {
 
   const float rho = p->rho;
   const float b2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
                    p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
                    p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return 0.5f * b2 * MHD_MU0_1 / rho / rho;
+  return 0.5f * b2 * rho * rho / mu_0;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_magnetic_helicity(
@@ -87,9 +87,7 @@ __attribute__((always_inline)) INLINE static float mhd_compute_timestep(
  */
 __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
-    const float mu_ij, const float beta, const float a) {
-
-  const float mu_0 = MHD_MU0;
+    const float mu_ij, const float beta, const float a, const float mu_0) {
 
   /* Get r and 1/r. */
   const float r2 = (dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
