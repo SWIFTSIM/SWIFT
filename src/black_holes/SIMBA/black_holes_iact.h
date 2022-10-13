@@ -857,9 +857,6 @@ runner_iact_nonsym_bh_gas_feedback(
         /* Update the signal velocity of the particle based on the velocity
          * kick. */
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
-        
-        /* Synchronize the particle on the timeline */
-        timestep_sync_part(pj);
 
 #ifdef SIMBA_DEBUG_CHECKS
         message("BH_XRAY_KICK: bid=%lld, pid=%lld, %g km/s", 
@@ -873,6 +870,9 @@ runner_iact_nonsym_bh_gas_feedback(
       hydro_set_physical_internal_energy(pj, xpj, cosmo, u_new);
       hydro_set_drifted_physical_internal_energy(pj, cosmo, u_new);
 
+      /* Impose maximal viscosity */
+      hydro_diffusive_feedback_reset(pj);
+
       if (bh_props->xray_shutoff_cooling) {
         /* u_init is physical so cs_physical is physical */
         const double cs_physical = gas_soundspeed_from_internal_energy(pj->rho, u_new);
@@ -883,6 +883,9 @@ runner_iact_nonsym_bh_gas_feedback(
               dt /* BH timestep as a lower limit */
             );
       }
+
+      /* Synchronize the particle on the timeline */
+      timestep_sync_part(pj);
 
 #ifdef SIMBA_DEBUG_CHECKS
       const double T_gas_final_cgs = 

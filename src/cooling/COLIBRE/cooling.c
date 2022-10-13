@@ -735,9 +735,13 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        struct part *p, struct xpart *xp, const float dt,
                        const float dt_therm, const double time) {
 
-  /* No cooling happens over zero time or if the wind is decoupled */
-  if (dt == 0. || p->feedback_data.decoupling_delay_time > 0.f
+  if (p->feedback_data.decoupling_delay_time > 0.f
         || p->feedback_data.cooling_shutoff_delay_time > 0.f) {
+    return;
+  }
+
+  /* No cooling happens over zero time or if the wind is decoupled */
+  if (dt == 0.) {
 
     /* But we still set the subgrid properties to a valid state */
     cooling_set_particle_subgrid_properties(
