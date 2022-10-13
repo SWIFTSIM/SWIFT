@@ -31,8 +31,8 @@
 #include "swift.h"
 
 const int L = 8;
-const float THETA = 0.9;
-const float EPSILON = 0.1;
+const float THETA = 0.5;
+const float EPSILON = 0.001;
 const int USE_MAC = 1;
  
 struct cell *make_cell(const size_t n, const double offset[3],
@@ -122,6 +122,15 @@ void end_force(struct cell *c) {
 void init(struct cell *c) {
   for (int i = 0; i < c->grav.count; ++i) {
     gravity_init_gpart(&c->grav.parts[i]);
+  }
+}
+
+void grav_down(struct cell *c) {
+  const struct grav_tensor *pot = &c->grav.multipole->pot;
+  const double CoM[3] = {c->grav.multipole->CoM[0], c->grav.multipole->CoM[1],
+    c->grav.multipole->CoM[2]};  
+  for (int i = 0; i < c->grav.count; ++i) {
+    gravity_L2P(pot, CoM, &c->grav.parts[i]);
   }
 }
 
@@ -269,7 +278,7 @@ int main(int argc, char *argv[]) {
   gravity_cache_init(&runner.ci_gravity_cache, L * L * L);
   gravity_cache_init(&runner.cj_gravity_cache, L * L * L);
 
-  for (int i = 0; i < 50; ++i) {
+  for (int i = 0; i < 100; i+=5) {
     
     long long partID = 0LL;
     
@@ -288,10 +297,22 @@ int main(int argc, char *argv[]) {
     /* Build multipoles */
     gravity_P2M(ci->grav.multipole, ci->grav.parts, ci->grav.count, &props);
     gravity_P2M(cj->grav.multipole, cj->grav.parts, cj->grav.count, &props);
+
+    gravity_multipole_compute_power(&ci->grav.multipole->m_pole);
+    gravity_multipole_compute_power(&cj->grav.multipole->m_pole);
+    
+    /* Init the field tensors */
+    gravity_field_tensors_init(&ci->grav.multipole->pot, e.ti_current);
+    gravity_field_tensors_init(&cj->grav.multipole->pot, e.ti_current);
     
     /* Interact the two cells the SWIFT way */
-    runner_dopair_grav_pp(&runner, ci, cj, /*symmetric=*/0, /*allow_mpole=*/1);
+    runner_dopair_recursive_grav(&runner, ci, cj, 0);
 
+    /* Propagate the field tensor to the particles */
+    grav_down(ci);
+    grav_down(cj);
+
+    /* Finish the calculation */
     end_force(ci);
     end_force(cj);
 
@@ -304,8 +325,23 @@ int main(int argc, char *argv[]) {
       gravity_P2M(ci->grav.multipole, ci->grav.parts, ci->grav.count, &props);
       gravity_P2M(cj->grav.multipole, cj->grav.parts, cj->grav.count, &props);
 
+      gravity_multipole_compute_power(&ci->grav.multipole->m_pole);
+      gravity_multipole_compute_power(&cj->grav.multipole->m_pole);
+
+      /* Init the field tensors */
+      gravity_field_tensors_init(&ci->grav.multipole->pot, e.ti_current);
+      gravity_field_tensors_init(&cj->grav.multipole->pot, e.ti_current);
+      
       /* Interact the two cells the SWIFT way */
-      runner_dopair_grav_pp(&runner, ci, cj, /*symmetric=*/0, /*allow_mpole=*/1);      
+      runner_dopair_recursive_grav(&runner, ci, cj, 0);
+
+      /* Propagate the field tensor to the particles */
+      grav_down(ci);
+      grav_down(cj);
+
+      /* Finish the calculation */
+      end_force(ci);
+      end_force(cj);
     }
       
     /* Direct summation comparison */
