@@ -2591,11 +2591,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
       /* We can skip non-neighbour background cells */
-      if (top->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == tl_cell)
+      if (ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == tl_cell)
         continue;
 
       /* We can skip top-level cells parent to the zoom region */
-      if (top->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == void_tl_cell)
+      if (ci->tl_cell_type == zoom_tl_cell && cj->tl_cell_type == void_tl_cell)
         continue;
 
       /* Avoid self contributions */
@@ -2604,7 +2604,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Skip empty cells */
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
-      if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
+      if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                                /*is_tree_walk=*/0)) {
 
         /* Call the PM interaction function on the active sub-cells of ci */
@@ -2628,7 +2628,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Loop over the first level of the void cell hierarchy. */
     for (int k = 0; k < 8; k++) {
-        runner_do_grav_long_range_recurse(r, top, void_cell->progeny[k]);
+        runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
       }
 
   } else { /* Periodic background cells. */
@@ -2674,7 +2674,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           if (cj->tl_cell_type == void_tl_cell) {
 
             /* Interact with the zoom cells recursively. */
-            runner_do_grav_long_range_recurse(r, top, cj);
+            runner_do_grav_long_range_recurse(r, ci, cj);
             
           } /* This neighbour is not the void cell. */
 
