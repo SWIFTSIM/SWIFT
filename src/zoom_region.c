@@ -761,7 +761,7 @@ void find_neighbouring_cells(struct space *s,
         /* Get the cell ID of the neighbour. */
         const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         
-        if (cells[cjd].tl_cell_type == tl_cell) {
+        if (cells[cjd].tl_cell_type != void_tl_cell) {
 
           /* Record that we've found a neighbour. */
           cells[cjd].tl_cell_type = tl_cell_neighbour;
@@ -1663,7 +1663,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
+  const int delta = (int)(sqrt(3) * distance /
+                          cells[bkg_cell_offset].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
@@ -1712,8 +1713,6 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                         NULL);
     }
 
-#ifndef WITH_MPI
-
     /* Create the background specific pair task for non-neighbour bkg cells. */
     if (ci->tl_cell_type == tl_cell) { 
       /* Ok, we need to add a direct pair calculation */
@@ -1722,7 +1721,6 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
       continue;
       
     } 
-#endif 
 
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
