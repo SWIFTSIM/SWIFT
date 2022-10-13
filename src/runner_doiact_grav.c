@@ -2623,13 +2623,54 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * We can loop over the void cell hierarchy and interact at depths
      * allowed by the pair mm criterion. */
 
-    /* Get the void cell */
-    struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index];
+    /* /\* Get the void cell *\/ */
+    /* struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index]; */
 
-    /* Loop over the first level of the void cell hierarchy. */
-    for (int k = 0; k < 8; k++) {
-        runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
+    /* /\* Loop over the first level of the void cell hierarchy. *\/ */
+    /* for (int k = 0; k < 8; k++) { */
+    /*     runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]); */
+    /*   } */
+
+    /* Loop over zoom cells. */
+    for (int k = 0; k < s->zoom_props->tl_cell_offset; k++) {
+
+      /* Handle on the neighbouring background cell. */
+      struct cell *cj = &cells[k];
+
+      /* Handle on the top-level cell's gravity business*/
+      const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+      /* Skip empty cells */
+      if (multi_j->m_pole.M_000 == 0.f) continue;
+
+      /* Minimal distance between any pair of particles */
+      const double min_radius2 =
+        cell_min_dist2_same_size(top, cj, periodic, dim);
+
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
+      if (min_radius2 > max_distance2) {
+
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
+              
+        /* We are done here. */
+        continue;
       }
+
+      /* Shall we interact with this cell? */
+      if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0)) {
+
+        /* Call the PM interaction function on the active sub-cells of ci
+         */
+        runner_dopair_grav_mm_nonsym(r, ci, cj);
+        // runner_dopair_recursive_grav_pm(r, ci, cj);
+        
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
+
+      } /* We can interact with this cell. */
+    }   /* Background cell loop. */
 
     /* Get the neighbouring background cells. */
     const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
