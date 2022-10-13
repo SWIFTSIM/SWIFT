@@ -851,14 +851,9 @@ double cell_min_dist2(const struct cell *restrict ci,
 #ifdef WITH_ZOOM_REGION
   double dist2;
 
-  /* Two natural TL cells. */
-  if (ci->tl_cell_type <= 2 && cj->tl_cell_type <= 2) {
+  /* Handle whether we have 2 cells of the same size or not. */
+  if (ci->width == cj->width) {
     dist2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
-    /* Two zoom TL cells. */
-  } else if (ci->tl_cell_type == zoom_tl_cell &&
-             cj->tl_cell_type == zoom_tl_cell) {
-    dist2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
-    /* A mix of natural and zoom TL cells. */
   } else {
     dist2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
   }
