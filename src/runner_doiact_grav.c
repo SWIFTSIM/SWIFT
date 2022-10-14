@@ -2526,6 +2526,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
       for (int k = 0; k < 8; k++) {
         runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
       }
+
+      /* We're done here */
+      return
     }
 
     /* Shall we interact with this cell? */
