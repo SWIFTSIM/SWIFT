@@ -2452,18 +2452,18 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Avoid self contributions */
   if (ci == cj) return;
 
-  /* If ci is inside cj immediately recurse. */
-  if ((ci->loc[0] >= cj->loc[0]) &&
-      (ci->loc[0] < (cj->loc[0] + cj->width[0])) &&
-      (ci->loc[1] >= cj->loc[1]) &&
-      (ci->loc[1] < (cj->loc[1] + cj->width[1])) &&
-      (ci->loc[2] >= cj->loc[2]) &&
-      (ci->loc[2] < (cj->loc[2] + cj->width[2]))) {
+  /* /\* If ci is inside cj immediately recurse. *\/ */
+  /* if ((ci->loc[0] >= cj->loc[0]) && */
+  /*     (ci->loc[0] < (cj->loc[0] + cj->width[0])) && */
+  /*     (ci->loc[1] >= cj->loc[1]) && */
+  /*     (ci->loc[1] < (cj->loc[1] + cj->width[1])) && */
+  /*     (ci->loc[2] >= cj->loc[2]) && */
+  /*     (ci->loc[2] < (cj->loc[2] + cj->width[2]))) { */
 
-    for (int k = 0; k < 8; k++)
-      runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+  /*   for (int k = 0; k < 8; k++) */
+  /*     runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]); */
  
-  }
+  /* } */
 
   /* Are we at the zoom cell level? */
   if (cj->tl_cell_type == zoom_tl_cell) {
