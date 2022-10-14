@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ * Coypright (c) 2022 Zhen Xiang (z.xiang@umail.leidenuniv.nl) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk) &
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -22,9 +23,9 @@
 //#define MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER
 
 /**
- * @file SPHENIX/hydro_iact.h
+ * @file MAGMA/hydro_iact.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added SPHENIX physics (Borrow 2020) (interaction routines)
+ *        with added MAGMA2 physics (Rosswog 2020) (interaction routines)
  */
 
 #include "adiabatic_index.h"

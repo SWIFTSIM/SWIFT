@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk)
+ * Coypright (c) 2022 Zhen Xiang (z.xiang@umail.leidenuniv.nl) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk)
  *
  *
  * This program is free software: you can redistribute it and/or modify
@@ -35,9 +36,9 @@
 #include "inline.h"
 
 /**
- * @file SPHENIX/hydro_parameters.h
+ * @file MAGMA/hydro_parameters.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added SPHENIX physics (Borrow 2020) (default compile-time
+ *        with added MAGMA2 physics (Rosswog 2020) (default compile-time
  *        parameters).
  *
  *        This file defines a number of things that are used in

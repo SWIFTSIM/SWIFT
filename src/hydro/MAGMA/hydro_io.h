@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ * Coypright (c) 2022 Zhen Xiang (z.xiang@umail.leidenuniv.nl) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk) &
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,9 +22,9 @@
 #define SWIFT_MAGMA_HYDRO_IO_H
 
 /**
- * @file SPHENIX/hydro_io.h
+ * @file MAGMA/hydro_io.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added SPHENIX physics (Borrow 2020) (i/o routines)
+ *        with added MAGMA2 physics (Rosswog 2020) (i/o routines)
  */
 
 #include "adiabatic_index.h"

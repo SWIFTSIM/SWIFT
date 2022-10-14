@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ * Coypright (c) 2022 Zhen Xiang (z.xiang@umail.leidenuniv.nl) &
+ *                    Josh Borrow (joshua.borrow@durham.ac.uk) &
  *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,9 +22,9 @@
 #define SWIFT_MAGMA_HYDRO_H
 
 /**
- * @file SPHENIX/hydro.h
+ * @file MAGMA/hydro.h
  * @brief Density-Energy conservative implementation of SPH,
- *        with added SPHENIX physics (Borrow 2020)  (Non-neighbour loop
+ *        with added MAGMA2 physics (Rosswog 2020)  (Non-neighbour loop
  *        equations)
  */
 
@@ -563,7 +564,8 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
-
+  
+  /* Zeroes all MAGMA related arrays*/
   for (int i = 0; i < 3; i++) {
     p->magma.aux_u[i] = 0.f;
     p->magma.fder_u[i] = 0.f;
