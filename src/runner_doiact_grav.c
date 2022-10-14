@@ -2522,8 +2522,10 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
       
-      /* We're done here! */
-      return;
+      /* Recurse */
+      for (int k = 0; k < 8; k++) {
+        runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+      }
     }
 
     /* Shall we interact with this cell? */
