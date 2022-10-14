@@ -902,15 +902,18 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
     for (int k = 0; k < 8; k++) {
 
       /* Establish the location of the fake progeny cell. */
-      zoom_loc[0] = c->loc[0] + (s->zoom_props->width[0] / 2);
-      zoom_loc[1] = c->loc[1] + (s->zoom_props->width[1] / 2);
-      zoom_loc[2] = c->loc[2] + (s->zoom_props->width[2] / 2);
+      zoom_loc[0] = c->loc[0];
+      zoom_loc[1] = c->loc[1];
+      zoom_loc[2] = c->loc[2];
       if (k & 4) zoom_loc[0] += s->zoom_props->width[0];
       if (k & 2) zoom_loc[1] += s->zoom_props->width[1];
       if (k & 1) zoom_loc[2] += s->zoom_props->width[2];
 
       /* Which zoom cell are we in? */
-      int cid = cell_getid_pos(s, zoom_loc[0], zoom_loc[1], zoom_loc[2]);
+      int cid = cell_getid_pos(s,
+                               zoom_loc[0] + (s->zoom_props->width[0] / 2),
+                               zoom_loc[1] + (s->zoom_props->width[0] / 2),
+                               zoom_loc[2] + (s->zoom_props->width[0] / 2));
 
       /* Get the zoom cell. */
       struct cell *zoom_cell = &s->cells_top[cid];
