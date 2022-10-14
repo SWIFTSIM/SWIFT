@@ -2528,7 +2528,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
       }
 
       /* We're done here */
-      return
+      return;
     }
 
     /* Shall we interact with this cell? */
