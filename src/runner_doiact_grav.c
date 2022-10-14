@@ -2460,7 +2460,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
       (ci->loc[2] >= cj->loc[2]) &&
       (ci->loc[2] < (cj->loc[2] + cj->width[2]))) {
 
-    for (int k = 0; k < 8; k++) {
+    for (int k = 0; k < 8; k++)
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
  
   }
@@ -2642,7 +2642,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Loop over the first level of the void cell hierarchy. */
     for (int k = 0; k < 8; k++) {
         runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
-      }
+    }
 
     /* /\* Loop over zoom cells. *\/ */
     /* for (int k = 0; k < s->zoom_props->tl_cell_offset; k++) { */
