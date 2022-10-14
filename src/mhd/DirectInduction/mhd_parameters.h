@@ -43,6 +43,8 @@
  *        as well as a number of compile-time parameters.
  */
 
+#define MHD_MU0 4.f * M_PI
+#define MHD_MU0_1 1.f / (4.f * M_PI)
 /* Dedner cleaning -- FIXED -- MUST BE DEFINED AT COMPILE-TIME */
 
 /* if set to 0 NO dedner cleaning
