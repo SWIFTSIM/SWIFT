@@ -2449,11 +2449,24 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Are we at the zoom cell level? */
-  if (cj->tl_cell_type == 3) {
+  /* Avoid self contributions */
+  if (ci == cj) return;
 
-    /* Avoid self contributions */
-    if (ci == cj) return;
+  /* If ci is inside cj immediately recurse. */
+  if ((ci->loc[0] >= cj->loc[0]) &&
+      (ci->loc[0] < (cj->loc[0] + cj->width[0])) &&
+      (ci->loc[1] >= cj->loc[1]) &&
+      (ci->loc[1] < (cj->loc[1] + cj->width[1])) &&
+      (ci->loc[2] >= cj->loc[2]) &&
+      (ci->loc[2] < (cj->loc[2] + cj->width[2]))) {
+
+    for (int k = 0; k < 8; k++) {
+      runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+ 
+  }
+
+  /* Are we at the zoom cell level? */
+  if (cj->width[0] == s->zoom_props->width[0]) {
 
     /* Handle on the cell's gravity business. */
     struct gravity_tensors *multi_i = ci->grav.multipole;
@@ -2464,7 +2477,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 =
-      cell_min_dist2(ci, cj, periodic, dim);
+      cell_min_dist2_same_size(ci, cj, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
@@ -2501,7 +2514,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
     /* Minimal distance between any pair of particles */
     const double min_radius2 =
-      cell_min_dist2(ci, cj, periodic, dim);
+      cell_min_dist2_diff_size(ci, cj, periodic, dim);
 
     /* Are we beyond the distance where the truncated forces are 0 ?*/
     if (min_radius2 > max_distance2) {
@@ -2623,54 +2636,54 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * We can loop over the void cell hierarchy and interact at depths
      * allowed by the pair mm criterion. */
 
-    /* /\* Get the void cell *\/ */
-    /* struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index]; */
+    /* Get the void cell */
+    struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index];
 
-    /* /\* Loop over the first level of the void cell hierarchy. *\/ */
-    /* for (int k = 0; k < 8; k++) { */
-    /*     runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]); */
-    /*   } */
-
-    /* Loop over zoom cells. */
-    for (int k = 0; k < s->zoom_props->tl_cell_offset; k++) {
-
-      /* Handle on the neighbouring background cell. */
-      struct cell *cj = &cells[k];
-
-      /* Handle on the top-level cell's gravity business*/
-      const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-      /* Skip empty cells */
-      if (multi_j->m_pole.M_000 == 0.f) continue;
-
-      /* Minimal distance between any pair of particles */
-      const double min_radius2 =
-        cell_min_dist2_same_size(top, cj, periodic, dim);
-
-      /* Are we beyond the distance where the truncated forces are 0 ?*/
-      if (min_radius2 > max_distance2) {
-
-        /* Record that this multipole received a contribution */
-        multi_i->pot.interacted = 1;
-              
-        /* We are done here. */
-        continue;
+    /* Loop over the first level of the void cell hierarchy. */
+    for (int k = 0; k < 8; k++) {
+        runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
       }
 
-      /* Shall we interact with this cell? */
-      if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                               /*is_tree_walk=*/0)) {
+    /* /\* Loop over zoom cells. *\/ */
+    /* for (int k = 0; k < s->zoom_props->tl_cell_offset; k++) { */
 
-        /* Call the PM interaction function on the active sub-cells of ci
-         */
-        runner_dopair_grav_mm_nonsym(r, ci, cj);
-        // runner_dopair_recursive_grav_pm(r, ci, cj);
+    /*   /\* Handle on the neighbouring background cell. *\/ */
+    /*   struct cell *cj = &cells[k]; */
+
+    /*   /\* Handle on the top-level cell's gravity business*\/ */
+    /*   const struct gravity_tensors *multi_j = cj->grav.multipole; */
+
+    /*   /\* Skip empty cells *\/ */
+    /*   if (multi_j->m_pole.M_000 == 0.f) continue; */
+
+    /*   /\* Minimal distance between any pair of particles *\/ */
+    /*   const double min_radius2 = */
+    /*     cell_min_dist2_same_size(top, cj, periodic, dim); */
+
+    /*   /\* Are we beyond the distance where the truncated forces are 0 ?*\/ */
+    /*   if (min_radius2 > max_distance2) { */
+
+    /*     /\* Record that this multipole received a contribution *\/ */
+    /*     multi_i->pot.interacted = 1; */
+              
+    /*     /\* We are done here. *\/ */
+    /*     continue; */
+    /*   } */
+
+    /*   /\* Shall we interact with this cell? *\/ */
+    /*   if (cell_can_use_pair_mm(top, cj, e, e->s, /\*use_rebuild_data=*\/1, */
+    /*                            /\*is_tree_walk=*\/0)) { */
+
+    /*     /\* Call the PM interaction function on the active sub-cells of ci */
+    /*      *\/ */
+    /*     runner_dopair_grav_mm_nonsym(r, ci, cj); */
+    /*     // runner_dopair_recursive_grav_pm(r, ci, cj); */
         
-        /* Record that this multipole received a contribution */
-        multi_i->pot.interacted = 1;
+    /*     /\* Record that this multipole received a contribution *\/ */
+    /*     multi_i->pot.interacted = 1; */
 
-      } /* We can interact with this cell. */
-    }   /* Background cell loop. */
+    /*   } /\* We can interact with this cell. *\/ */
+    /* }   /\* Background cell loop. *\/ */
 
     /* Get the neighbouring background cells. */
     const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
