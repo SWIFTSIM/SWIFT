@@ -13,10 +13,10 @@ r_in	  = 0.1
 rho_0     = 1.
 P_in_0	  = 10.
 P_out_0   = 0.1
-B_0	  = np.sqrt(2.0 * np.pi)
+B_0	  = 1.0 / np.sqrt(2.0)
 gamma     = 5.0 / 3.0
 
-fileOutputName = "MagneticBlastWave.hdf5"
+fileOutputName = "MagneticBlastWave_LR.hdf5"
 
 ###---------------------------###
 
@@ -26,7 +26,7 @@ unit_cell = glass["/PartType0/Coordinates"][:, :]
 h_unit_cell   = glass["/PartType0/SmoothingLength"][:] 
 
 N_unit_cell = len(h_unit_cell)
-times = 32
+times = 2
 
 ###---------------------------###
 
