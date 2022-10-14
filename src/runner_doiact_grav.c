@@ -2466,7 +2466,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   }
 
   /* Are we at the zoom cell level? */
-  if (cj->width[0] == s->zoom_props->width[0]) {
+  if (cj->tl_cell_type == zoom_tl_cell) {
 
     /* Handle on the cell's gravity business. */
     struct gravity_tensors *multi_i = ci->grav.multipole;
