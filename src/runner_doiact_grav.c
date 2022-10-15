@@ -2882,6 +2882,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   /* Get some useful information. */
   const struct engine *e = r->e;
   struct space *s = e->s;
+  const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1],
