@@ -2943,8 +2943,9 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         struct cell *cj = &cells[cjd];
 
-        /* Avoid duplicates and empty cells. */
-        if (cid >= cjd || cj->grav.count == 0)
+        /* Avoid duplicates, empty cells and completely foreign pairs */
+        if (cid >= cjd || cj->grav.count == 0 ||
+            (ci->nodeID != nodeID && cj->nodeID != nodeID))
           continue;
 
         /* Minimal distance between any pair of particles */
