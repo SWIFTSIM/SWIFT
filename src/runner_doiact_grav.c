@@ -2930,10 +2930,21 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   const int k = ci->loc[2] * s->iwidth[2];
   const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
-  /* Loop over plausibly useful cells */
-  for (int ii = i - delta_m; ii <= i + delta_p; ++ii) {
-    for (int jj = j - delta_m; jj <= j + delta_p; ++jj) {
-      for (int kk = k - delta_m; kk <= k + delta_p; ++kk) {
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+    
+    /* Escape if non-periodic and beyond range */
+    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+
+      /* Escape if non-periodic and beyond range */
+      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+        
+        /* Escape if non-periodic and beyond range */
+        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
         /* Box wrap */
         const int iii = (ii + s->cdim[0]) % s->cdim[0];
