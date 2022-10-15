@@ -2164,7 +2164,7 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
           continue;
 
         /* Skip foreign neighbours. */
-        if (cj->nodeID == nodeID) continue;
+        if (cj->nodeID != nodeID) continue;
 
         /* Minimal distance between any pair of particles */
         const double min_radius2 =
