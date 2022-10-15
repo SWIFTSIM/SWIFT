@@ -2163,6 +2163,9 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
         if (cid >= cjd || cj->grav.count == 0)
           continue;
 
+        /* Skip foreign neighbours. */
+        if (cj->nodeID == nodeID) continue;
+
         /* Minimal distance between any pair of particles */
         const double min_radius2 =
           cell_min_dist2_same_size(ci, cj, periodic, dim);
@@ -2174,14 +2177,12 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
         if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                     /*is_tree_walk=*/0)) {
 
-          if (cj->nodeID == nodeID) {
-
-            /* drift ---+-> gravity --> grav_down */
-            /* init  --/    */
-            scheduler_addunlock(sched, cj->grav.drift_out, t);
-            scheduler_addunlock(sched, cj->grav.init_out, t);
-            scheduler_addunlock(sched, t, cj->grav.down_in);
-          }
+          /* drift ---+-> gravity --> grav_down */
+          /* init  --/    */
+          scheduler_addunlock(sched, cj->grav.drift_out, t);
+          scheduler_addunlock(sched, cj->grav.init_out, t);
+          scheduler_addunlock(sched, t, cj->grav.down_in);
+          
         } 
       } /* Loop over kkks */
     } /* Loop over jjjs */
@@ -2295,13 +2296,18 @@ void engine_link_gravity_tasks(struct engine *e) {
     else if (t_type == task_type_pair &&
              t_subtype == task_subtype_grav_bkg_pool) {
 
-      /* drift ---+-> gravity --> grav_down */
-      /* init  --/    */
-      scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
-      scheduler_addunlock(sched, ci_parent->grav.init_out, t);
-      scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+      /* Is this cell local? */
+      if (ci_nodeID == nodeID) {
+
+        /* drift ---+-> gravity --> grav_down */
+        /* init  --/    */
+        scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
+        scheduler_addunlock(sched, ci_parent->grav.init_out, t);
+        scheduler_addunlock(sched, t, ci_parent->grav.down_in);
+        
+      }
       
-      /* Handle the possible neighbours */
+      /* Handle the possible neighbours. */
       engine_link_gravity_pooled_pairs(e, ci, t);
     }
 
