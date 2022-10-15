@@ -717,8 +717,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
         sigma_eff / (sigma_eff + props->sigma_crit_resolution_factor *
                                      props->sigma_crit_Msun_pc2);
   } else if (props->suppress_growth == 2) {
-    torque_accr_rate *= 1. - exp(-pow(BH_mass * props->mass_to_solar_mass /
-                                 props->bh_characteristic_suppression_mass,2.f));
+    torque_accr_rate *= 1. - exp(-bp->subgrid_mass * props->mass_to_solar_mass /
+                                 props->bh_characteristic_suppression_mass);
   }
 
   /* Total accretion rate is Bondi + torque */
@@ -770,8 +770,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
     if (bp->eddington_fraction < 1.e-10) bp->eddington_fraction = 1.e-10;
 
     if (bp->eddington_fraction < props->eddington_fraction_lower_boundary) {
-      const float mass_min = props->jet_mass_min_Msun * cosmo->a; /* Msun */
-      const float mass_max = (props->jet_mass_min_Msun + props->jet_mass_spread_Msun) * cosmo->a;
+      const float mass_min = props->jet_mass_min_Msun; /* Msun */
+      const float mass_max = (props->jet_mass_min_Msun + props->jet_mass_spread_Msun);
       /* The threshold is varied slightly for each particle */
       const float jet_mass_thresh_Msun = mass_min + 0.01 * (bp->id % 100) *
               (mass_max - mass_min);
