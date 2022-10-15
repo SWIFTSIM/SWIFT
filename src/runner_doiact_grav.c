@@ -2955,6 +2955,9 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         struct cell *cj = &cells[cjd];
 
+        /* Skip the void cell. */
+        if (cj->tl_cell_type == void_tl_cell) continue;
+
         /* Avoid duplicates, empty cells and completely foreign pairs */
         if (cid >= cjd || cj->grav.count == 0 ||
             (ci->nodeID != nodeID && cj->nodeID != nodeID))
