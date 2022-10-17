@@ -2437,7 +2437,7 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
  * @param ci The #cell of interest.
  * @param cj The void #cell we are interacting with.
  */
-int check_can_long_range(struct engine *e, struct cell *ci,
+int check_can_long_range(const struct engine *e, struct cell *ci,
                          struct cell *cj) {
 
   /* Some constants. */
