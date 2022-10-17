@@ -2695,6 +2695,51 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
     }
 
+    /* Get the neighbouring background cells. */
+    const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
+    const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
+
+    /* Now loop over the neighbouring background cells.  */
+    for (int k = 0; k < nr_neighbours; k++) {
+
+      /* Handle on the neighbouring background cell. */
+      struct cell *bkg_cj = &cells[neighbour_cells[k]];
+
+      /* Handle on the top-level cell's gravity business*/
+      const struct gravity_tensors *multi_j = bkg_cj->grav.multipole;
+
+      /* Skip empty cells */
+      if (multi_j->m_pole.M_000 == 0.f) continue;
+
+      /* Minimal distance between any pair of particles */
+      const double min_radius2 =
+        cell_min_dist2_diff_size(top, bkg_cj, periodic, dim);
+
+      /* Are we beyond the distance where the truncated forces are 0 ?*/
+      if (min_radius2 > max_distance2) {
+
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
+              
+        /* We are done here. */
+        continue;
+      }
+
+      /* Shall we interact with this cell? */
+      if (cell_can_use_pair_mm(top, bkg_cj, e, e->s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/0)) {
+
+        /* Call the PM interaction function on the active sub-cells of ci
+         */
+        runner_dopair_grav_mm_nonsym(r, ci, bkg_cj);
+        // runner_dopair_recursive_grav_pm(r, ci, cj);
+        
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
+
+      } /* We can interact with this cell. */
+    }   /* Background cell loop. */
+
   } else { /* Periodic background cells. */
 
     /* Periodic case
