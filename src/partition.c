@@ -915,7 +915,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate full vertex weights array");
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
-      if ((full_weights_e = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+      if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) ==
+          NULL)
         error("Failed to allocate full edge weights array");
 
     idx_t *full_regionid = NULL;
@@ -954,7 +955,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Init the edges weights array. */
     if (edgew != NULL) {
-      for (int k = 0; k < 26 * ncells; k++) {
+      for (int k = 0; k < ncells * 26; k++) {
         if (edgew[k] > 1) {
           full_weights_e[k] = edgew[k];
         } else {
@@ -965,7 +966,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < 26 * ncells; k++) {
+      for (int k = 0; k < ncells * 26; k++) {
 
         if ((idx_t)edgew[k] < 0) {
           message("Input edge weight out of range: %ld", (long)edgew[k]);
@@ -1288,6 +1289,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 }
 #endif
 
+
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 /**
  * @brief Partition the given space into a number of connected regions.
@@ -1337,7 +1339,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate vertex weights array");
     idx_t *weights_e = NULL;
     if (edgew != NULL)
-      if ((weights_e = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+      if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
         error("Failed to allocate edge weights array");
     idx_t *regionid;
     if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
@@ -1450,6 +1452,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast new celllist");
 }
 #endif
+
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
