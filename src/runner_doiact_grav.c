@@ -2535,7 +2535,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
     
   }
 
-  /* Are we at the zoom cell level? */
+  /* Are we at the zoom cell level? If so: interact. */
   else if (cj->tl_cell_type == 3) {
 
     /* Skip empty cells */
@@ -2568,7 +2568,8 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
     }
   }
-  /* We are in the hierarchy so test and recurse if necessary. */
+  
+  /* Otherwise, we are in the hierarchy so test and recurse if necessary. */
   else {
 
     /* Skip empty cells */
