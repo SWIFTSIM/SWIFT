@@ -2430,6 +2430,62 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 }
 
 /**
+ * @brief Ensure no progeny of this neighbour cell have pair tasks
+ *        or are beyond the maximum distance for a long range task.
+ *
+ * @param e The #engine.
+ * @param ci The #cell of interest.
+ * @param cj The void #cell we are interacting with.
+ */
+int check_can_long_range(struct engine *e, struct cell *ci,
+                         struct cell *cj) {
+
+  /* Some constants. */
+  const struct space *s = e->s;
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
+
+  /* Declare interaction flag. */
+  int can_interact;
+
+  /* Minimal distance between any pair of particles */
+  const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
+
+  /* Are we beyond the distance where the truncated forces are 0 ?*/
+  if (min_radius2 > max_distance2) {
+    
+    /* We can't interact here. */
+    can_interact = 0;
+
+    /* We're done here */
+    return can_interact;
+    
+  }
+
+  /* Otherwise, can we do a long range interactions at all levels?  */
+
+  /* Check this level. */
+  can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                      /*is_tree_walk=*/0);
+
+  /* If we're at the zoom level return this result. */
+  if (cj->tl_cell_type == zoom_tl_cell) {
+    return can_interact;
+  }
+
+  /* Otherwise recurse and combine the result from the progeny. */
+  for (int k = 0; k < 8; k++) {
+    can_interact = can_interact & check_can_long_range(e, ci,
+                                                       cj->progeny[k]);
+  }
+
+  return can_interact;
+
+}
+
+/**
  * @brief Performs M-M interactions between a given top-level cell and
  *        all void cells at this depth of hierarchy. If a cell is not
  *        accepted for a pair mm interaction, recurse.
@@ -2473,9 +2529,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   if (ci->tl_cell_type == zoom_tl_cell && r2 < cj->width[0]) {
     
     /* Recurse */
-      for (int k = 0; k < 8; k++) {
-        runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
-      }
+    for (int k = 0; k < 8; k++) {
+      runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+    }
     
   }
 
@@ -2518,34 +2574,16 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) return;
 
-    /* Minimal distance between any pair of particles */
-    const double min_radius2 =
-      cell_min_dist2(ci, cj, periodic, dim);
+    /* Can we interact here? */
+    if (check_can_long_range(e, ci, cj)) {
 
-    /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (min_radius2 > max_distance2) {
-
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
-      
-      /* Recurse */
-      for (int k = 0; k < 8; k++) {
-        runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
-      }
-
-    }
-
-    /* Shall we interact with this cell? */
-    else if (cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0)) {
-
-      /* Call the PM interaction function on the active sub-cells of ci
+       /* Call the PM interaction function on the active sub-cells of ci
        */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
 
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
-
+      
     }
 
     /* Can't interact here let's recurse */
