@@ -267,7 +267,7 @@ end
 if isfile(ARGS[1])
    gsnap=read_snap(ARGS[1])
    do_6plot(gsnap)
-   savefig("Solution.jpeg")
+   savefig("Solution.png")
 else
    println("File ",ARGS[1]," ***  NOT FOUND   *** ")
 end
