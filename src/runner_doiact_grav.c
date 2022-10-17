@@ -2509,6 +2509,21 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
       
+      /* Recurse */
+      for (int k = 0; k < 8; k++) {
+        runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+      }
+
+      /* We're done here */
+      return;
+    }
+
+    /* Are we beyond the distance where the truncated forces are 0 ?*/
+    if (min_radius2 > max_distance2) {
+
+      /* Record that this multipole received a contribution */
+      multi_i->pot.interacted = 1;
+      
       /* We're done here! */
       return;
     }
