@@ -1908,7 +1908,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i)
+
+      if (s->with_zoom_region) {
+        /* Skip the void cell's fake multipole. */
+        if (i == e->s->zoom_props->void_cell_index) continue;
+      }
+      
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
+      
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Top-level multipoles don't contain the total number of gpart "
@@ -2334,8 +2341,15 @@ void engine_step(struct engine *e) {
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    for (int i = 0; i < e->s->nr_cells; ++i)
-      num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      if (s->with_zoom_region) {
+        /* Skip the void cell's fake multipole. */
+        if (i == e->s->zoom_props->void_cell_index) continue;
+      }
+      
+      num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart; 
+    }
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Multipoles don't contain the total number of gpart mpoles=%lld "
