@@ -851,10 +851,12 @@ double cell_min_dist2(const struct cell *restrict ci,
 #ifdef WITH_ZOOM_REGION
   double dist2;
 
-  /* Handle whether we have 2 cells of the same size or not. */
+  /* Two TL cells with the same size. */
   if (ci->dmin == cj->dmin) {
     dist2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
-  } else {
+  }
+  /* Two cells with different sizes. */
+  else {
     dist2 = cell_min_dist2_diff_size(ci, cj, periodic, dim);
   }
 
