@@ -2448,16 +2448,39 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
+  
+  /* Avoid self contributions */
+  if (ci == cj) return;
+
+  /* Handle on the cell's gravity business. */
+  struct gravity_tensors *multi_i = ci->grav.multipole;
+  const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+  /* Get the distance between the CoMs */
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  /* If we are inside cj we must recurse further. */
+  if (ci->tl_cell_type == zoom_tl_cell && r2 < cj->width[0]) {
+    
+    /* Recurse */
+      for (int k = 0; k < 8; k++) {
+        runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+      }
+    
+  }
 
   /* Are we at the zoom cell level? */
-  if (cj->tl_cell_type == 3) {
-
-    /* Avoid self contributions */
-    if (ci == cj) return;
-
-    /* Handle on the cell's gravity business. */
-    struct gravity_tensors *multi_i = ci->grav.multipole;
-    const struct gravity_tensors *multi_j = cj->grav.multipole;
+  else if (cj->tl_cell_type == 3) {
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) return;
@@ -2492,10 +2515,6 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* We are in the hierarchy so test and recurse if necessary. */
   else {
 
-    /* Handle on the cell's gravity business. */
-    struct gravity_tensors *multi_i = ci->grav.multipole;
-    const struct gravity_tensors *multi_j = cj->grav.multipole;
-
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) return;
 
@@ -2514,22 +2533,10 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
         runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
       }
 
-      /* We're done here */
-      return;
-    }
-
-    /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (min_radius2 > max_distance2) {
-
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
-      
-      /* We're done here! */
-      return;
     }
 
     /* Shall we interact with this cell? */
-    if (cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+    else if (cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                              /*is_tree_walk=*/0)) {
 
       /* Call the PM interaction function on the active sub-cells of ci
@@ -2539,7 +2546,10 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
       /* Record that this multipole received a contribution */
       multi_i->pot.interacted = 1;
 
-    } else {
+    }
+
+    /* Can't interact here let's recurse */
+    else {
       
       /* Recurse */
       for (int k = 0; k < 8; k++) {
@@ -2619,7 +2629,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Skip empty cells */
       if (multi_j->m_pole.M_000 == 0.f) continue;
 
-      if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
+      if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                                /*is_tree_walk=*/0)) {
 
         /* Call the PM interaction function on the active sub-cells of ci */
@@ -2654,9 +2664,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * Add some buffer for safety */
 
     /* Get the (i,j,k) location of the top-level cell in the grid. */
-    const int top_i = ci->loc[0] * s->iwidth[0];
-    const int top_j = ci->loc[1] * s->iwidth[1];
-    const int top_k = ci->loc[2] * s->iwidth[2];
+    const int top_i = top->loc[0] * s->iwidth[0];
+    const int top_j = top->loc[1] * s->iwidth[1];
+    const int top_k = top->loc[2] * s->iwidth[2];
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
@@ -2686,13 +2696,16 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
           /* If this is the void cell we need to interact with the zoom cells.
            */
-          if (cj->tl_cell_type == 2) {
+          if (cj->tl_cell_type == void_tl_cell) {
 
-            /* Interact with the zoom cells recursively. */
-            runner_do_grav_long_range_recurse(r, ci, cj);
+            /* Loop over the first level of the void cell hierarchy. */
+            for (int k = 0; k < 8; k++) {
+              runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+            }
             
-          } /* This neighbour is not the void cell. */
-
+          }
+          
+          /* This neighbour is not the void cell. */
           else {
 
             /* Handle on the top-level cell's gravity business*/
@@ -2703,8 +2716,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
             /* Minimal distance between any pair of particles */
             const double min_radius2 =
-
-              cell_min_dist2_same_size(ci, cj, periodic, dim);
+              cell_min_dist2_same_size(top, cj, periodic, dim);
 
             /* Are we beyond the distance where the truncated forces are 0 ?*/
             if (min_radius2 > max_distance2) {
@@ -2717,7 +2729,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
             }
 
             /* Shall we interact with this cell? */
-            if (cell_can_use_pair_mm(ci, cj, e, e->s, /*use_rebuild_data=*/1,
+            if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
                                      /*is_tree_walk=*/0)) {
 
               /* Call the PM interaction function on the active sub-cells of ci
