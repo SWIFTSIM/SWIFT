@@ -1909,7 +1909,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i)
 
-      if (s->with_zoom_region) {
+      if (e->s->with_zoom_region) {
         /* Skip the void cell's fake multipole. */
         if (i == e->s->zoom_props->void_cell_index) continue;
       }
@@ -2343,7 +2343,7 @@ void engine_step(struct engine *e) {
   if (e->policy & engine_policy_self_gravity) {
     for (int i = 0; i < e->s->nr_cells; ++i) {
 
-      if (s->with_zoom_region) {
+      if (e->s->with_zoom_region) {
         /* Skip the void cell's fake multipole. */
         if (i == e->s->zoom_props->void_cell_index) continue;
       }
