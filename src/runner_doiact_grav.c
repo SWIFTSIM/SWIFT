@@ -2511,9 +2511,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Avoid self contributions */
   if (ci == cj) return;
 
-  /* /\* Handle on the cell's gravity business. *\/ */
-  /* struct gravity_tensors *multi_i = ci->grav.multipole; */
-  /* const struct gravity_tensors *multi_j = cj->grav.multipole; */
+  /* Handle on the cell's gravity business. */
+  struct gravity_tensors *multi_i = ci->grav.multipole;
+  const struct gravity_tensors *multi_j = cj->grav.multipole;
 
   /* /\* Get the distance between the CoMs *\/ */
   /* double dx = multi_i->CoM[0] - multi_j->CoM[0]; */
