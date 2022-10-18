@@ -2479,6 +2479,9 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   for (int k = 0; k < 8; k++) {
     can_interact = can_interact & check_can_long_range(e, ci,
                                                        cj->progeny[k]);
+
+    /* If we found a progeny we can't interact with break. */
+    if (!can_interact) break;
   }
 
   return can_interact;
@@ -2508,35 +2511,42 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Avoid self contributions */
   if (ci == cj) return;
 
-  /* Handle on the cell's gravity business. */
-  struct gravity_tensors *multi_i = ci->grav.multipole;
-  const struct gravity_tensors *multi_j = cj->grav.multipole;
+  /* /\* Handle on the cell's gravity business. *\/ */
+  /* struct gravity_tensors *multi_i = ci->grav.multipole; */
+  /* const struct gravity_tensors *multi_j = cj->grav.multipole; */
 
-  /* Get the distance between the CoMs */
-  double dx = multi_i->CoM[0] - multi_j->CoM[0];
-  double dy = multi_i->CoM[1] - multi_j->CoM[1];
-  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+  /* /\* Get the distance between the CoMs *\/ */
+  /* double dx = multi_i->CoM[0] - multi_j->CoM[0]; */
+  /* double dy = multi_i->CoM[1] - multi_j->CoM[1]; */
+  /* double dz = multi_i->CoM[2] - multi_j->CoM[2]; */
 
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-  const double r2 = dx * dx + dy * dy + dz * dz;
+  /* /\* Apply BC *\/ */
+  /* if (periodic) { */
+  /*   dx = nearest(dx, dim[0]); */
+  /*   dy = nearest(dy, dim[1]); */
+  /*   dz = nearest(dz, dim[2]); */
+  /* } */
+  /* const double r2 = dx * dx + dy * dy + dz * dz; */
 
-  /* If we are inside cj we must recurse further. */
-  if (ci->tl_cell_type == zoom_tl_cell && r2 < cj->width[0]) {
+  /* /\* If we are inside cj we must recurse further. *\/ */
+  /* if (ci->tl_cell_type == zoom_tl_cell && r2 < cj->width[0]) { */
     
-    /* Recurse */
-    for (int k = 0; k < 8; k++) {
-      runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
-    }
+  /*   /\* Recurse *\/ */
+  /*   for (int k = 0; k < 8; k++) { */
+  /*     runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]); */
+  /*   } */
     
-  }
+  /* } */
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0)
+    error("Long range gravity trying to interact with a zoom progeny!");
+
+#endif
 
   /* Are we at the zoom cell level? If so: interact. */
-  else if (cj->tl_cell_type == 3) {
+  if (cj->tl_cell_type == zoom_tl_cell) {
 
     /* Skip empty cells */
     if (multi_j->m_pole.M_000 == 0.f) return;
