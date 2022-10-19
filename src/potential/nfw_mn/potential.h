@@ -216,7 +216,7 @@ external_gravity_get_potential_energy(
   const float mn_term = potential->Rdisk + sqrtf(potential->Zdisk + dz * dz);
   const float mn_pot = -potential->Mdisk / sqrtf(R2 + mn_term * mn_term);
 
-  return term1 * term2 + mn_pot;
+  return phys_const->const_newton_G * (term1 * term2 + mn_pot);
 }
 
 /**
