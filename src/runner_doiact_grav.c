@@ -2672,15 +2672,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /*   } /\* We can interact with this cell. *\/ */
     /* }   /\* Background cell loop. *\/ */
 
-    /* /\* Get the neighbouring background cells. *\/ */
-    /* const int nr_neighbours = s->zoom_props->nr_neighbour_cells; */
-    /* const int *neighbour_cells = s->zoom_props->neighbour_cells_top; */
+    /* Get the neighbouring background cells. */
+    const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
+    const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
 
     /* Now loop over the neighbouring background cells.  */
-    for (int k = s->zoom_props->tl_cell_offset; k < s->nr_cells; k++) {
+    for (int k = 0; k < nr_neighbours; k++) {
 
       /* Handle on the neighbouring background cell. */
-      struct cell *bkg_cj = &cells[k];
+      struct cell *bkg_cj = &cells[neighbour_cells[k]];
 
       /* Handle on the top-level cell's gravity business*/
       const struct gravity_tensors *multi_j = bkg_cj->grav.multipole;
