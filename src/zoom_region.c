@@ -689,7 +689,7 @@ void find_neighbouring_cells(struct space *s,
   const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
 
   /* Compute how many cells away we need to walk */
-  const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 2;
+  const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 5;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;

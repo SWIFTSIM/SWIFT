@@ -2474,8 +2474,8 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                         /*is_tree_walk=*/0);
 
-    /* If we're not at the zoom level and can interact lets check the progeny
-     * can also interact. */
+    /* If we're not at the zoom level lets check whether the progeny
+     * can interact. */
     if (cj->tl_cell_type != zoom_tl_cell) {
     
       /* Otherwise, recurse and combine the result from the progeny. */
