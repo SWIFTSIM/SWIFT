@@ -2507,11 +2507,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
   /* Some constants */
   const struct engine *e = r->e;
-  const struct space *s = e->s;
-  const int periodic = e->mesh->periodic;
-  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
+
+  /* Get this cell's multipole information */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Check whether we can interact at this level. */
   if (check_can_long_range(e, ci, cj)) {
