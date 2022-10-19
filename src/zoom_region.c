@@ -761,7 +761,7 @@ void find_neighbouring_cells(struct space *s,
         /* Get the cell ID of the neighbour. */
         const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         
-        if (cells[cjd].tl_cell_type == tl_cell) {
+        if (cells[cjd].tl_cell_type != void_tl_cell) {
 
           /* Record that we've found a neighbour. */
           cells[cjd].tl_cell_type = tl_cell_neighbour;
