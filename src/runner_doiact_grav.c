@@ -2446,6 +2446,14 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
+  const double width2 = cj->width[0] * cj->width[0];
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0)
+    error("Long range gravity trying to interact with a zoom progeny!");
+
+#endif
 
   /* Declare interaction flag. */
   int can_interact;
@@ -2453,33 +2461,32 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
-  /* Are we beyond the distance where the truncated forces are 0? */
-  if (min_radius2 > max_distance2) {
+  /* Beyond the distance where the truncated forces are 0, self interaction,
+   * or ci inside cj? */
+  if ((min_radius2 > max_distance2) || (ci == cj) || (min_radius2 < width2)) {
     
     /* We can't interact here. */
     can_interact = 0;
-
-    /* We're done here */
-    return can_interact;
     
-  }
+  } else {
+   
+    /* Otherwise, can we do a long range interaction at this level?  */
+    can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                        /*is_tree_walk=*/0);
 
-  /* Otherwise, can we do a long range interaction at this level?  */
-  can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                      /*is_tree_walk=*/0);
+    /* If we're not at the zoom level and can interact lets check the progeny
+     * can also interact. */
+    if (cj->tl_cell_type != zoom_tl_cell) {
+    
+      /* Otherwise, recurse and combine the result from the progeny. */
+      for (int k = 0; k < 8; k++) {
+        int progeny_can_interact = check_can_long_range(e, ci, cj->progeny[k]);
+        can_interact = can_interact & progeny_can_interact;
 
-  /* If we're at the zoom level return this result. */
-  if (cj->tl_cell_type == zoom_tl_cell) {
-    return can_interact;
-  }
-
-  /* Otherwise, recurse and combine the result from the progeny. */
-  for (int k = 0; k < 8; k++) {
-    can_interact = can_interact & check_can_long_range(e, ci,
-                                                       cj->progeny[k]);
-
-    /* If we found a progeny we can't interact with break. */
-    if (!can_interact) break;
+        /* If we found a progeny we can't interact with break. */
+        if (!can_interact) break;
+      }
+    } 
   }
 
   return can_interact;
@@ -2505,109 +2512,21 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-  
-  /* Avoid self contributions */
-  if (ci == cj) return;
 
-  /* Handle on the cell's gravity business. */
-  struct gravity_tensors *multi_i = ci->grav.multipole;
-  const struct gravity_tensors *multi_j = cj->grav.multipole;
-
-  /* Get the distance between the CoMs */
-  double dx = multi_i->CoM[0] - multi_j->CoM[0];
-  double dy = multi_i->CoM[1] - multi_j->CoM[1];
-  double dz = multi_i->CoM[2] - multi_j->CoM[2];
-
-  /* Apply BC */
-  if (periodic) {
-    dx = nearest(dx, dim[0]);
-    dy = nearest(dy, dim[1]);
-    dz = nearest(dz, dim[2]);
-  }
-  const double r2 = dx * dx + dy * dy + dz * dz;
-
-  /* If we are inside cj we must recurse further. */
-  if ((ci->tl_cell_type == zoom_tl_cell) && (r2 < cj->width[0] * cj->width[0])) {
+  /* Check whether we can interact at this level. */
+  if (check_can_long_range(e, ci, cj)) {
     
-    /* Recurse */
+    /* Call the PM interaction function on the active sub-cells of ci. */
+    runner_dopair_grav_mm_nonsym(r, ci, cj);
+
+    /* Record that this multipole received a contribution */
+    multi_i->pot.interacted = 1;
+  }
+
+  /* Otherwise, recurse. */
+  else {
     for (int k = 0; k < 8; k++) {
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
-    }
-
-    /* We're done here. */
-    return;
-    
-  }
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-  if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0)
-    error("Long range gravity trying to interact with a zoom progeny!");
-
-#endif
-
-  /* Are we at the zoom cell level? If so: interact. */
-  if (cj->tl_cell_type == zoom_tl_cell) {
-
-    /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f) return;
-
-    /* Minimal distance between any pair of particles */
-    const double min_radius2 =
-      cell_min_dist2(ci, cj, periodic, dim);
-
-    /* Are we beyond the distance where the truncated forces are 0 ?*/
-    if (min_radius2 > max_distance2) {
-
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
-
-      /* We're done here! */
-      return;
-    }
-
-    /* Shall we interact with this cell? */
-    if (cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0)) {
-
-      /* Call the PM interaction function on the active sub-cells of ci
-       */
-      runner_dopair_grav_mm_nonsym(r, ci, cj);
-
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
-
-    }
-  }
-  
-  /* Otherwise, we are in the hierarchy so test and recurse if necessary. */
-  else {
-
-    /* Skip empty cells */
-    if (multi_j->m_pole.M_000 == 0.f) return;
-
-    /* Can we interact here? */
-    if (check_can_long_range(e, ci, cj)) {
-
-       /* Call the PM interaction function on the active sub-cells of ci
-       */
-      runner_dopair_grav_mm_nonsym(r, ci, cj);
-
-      /* Record that this multipole received a contribution */
-      multi_i->pot.interacted = 1;
-      
-    }
-
-    /* Can't interact here, let's recurse */
-    else {
-      
-      /* Recurse */
-      for (int k = 0; k < 8; k++) {
-        runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
-      }
-
-      /* We're done here. */
-      return;
     }
   }
 }
