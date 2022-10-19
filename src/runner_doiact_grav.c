@@ -2677,7 +2677,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* const int *neighbour_cells = s->zoom_props->neighbour_cells_top; */
 
     /* Now loop over the neighbouring background cells.  */
-    for (int k = s->tl_cell_offset; k < s->nr_cells; k++) {
+    for (int k = s->zoom_props->tl_cell_offset; k < s->nr_cells; k++) {
 
       /* Handle on the neighbouring background cell. */
       struct cell *bkg_cj = &cells[k];
