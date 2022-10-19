@@ -2430,8 +2430,8 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
 }
 
 /**
- * @brief Ensure no progeny of this neighbour cell have pair tasks
- *        or are beyond the maximum distance for a long range task.
+ * @brief Ensure no progeny of this cell neighbour in the void cell heirarchy
+ *        cannot interact by a long range mm interaction.
  *
  * @param e The #engine.
  * @param ci The #cell of interest.
@@ -2521,7 +2521,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
     multi_i->pot.interacted = 1;
   }
 
-  /* Otherwise, recurse. */
+  /* Otherwise, recurse if we haven't reached the bottom. */
   else if (cj->tl_cell_type != zoom_tl_cell){
     for (int k = 0; k < 8; k++) {
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
@@ -2672,15 +2672,15 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       } /* We can interact with this cell. */
     }   /* Background cell loop. */
 
-    /* Get the neighbouring background cells. */
-    const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
-    const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
+    /* /\* Get the neighbouring background cells. *\/ */
+    /* const int nr_neighbours = s->zoom_props->nr_neighbour_cells; */
+    /* const int *neighbour_cells = s->zoom_props->neighbour_cells_top; */
 
     /* Now loop over the neighbouring background cells.  */
-    for (int k = 0; k < nr_neighbours; k++) {
+    for (int k = s->tl_cell_offset; k < s->nr_cells; k++) {
 
       /* Handle on the neighbouring background cell. */
-      struct cell *bkg_cj = &cells[neighbour_cells[k]];
+      struct cell *bkg_cj = &cells[k];
 
       /* Handle on the top-level cell's gravity business*/
       const struct gravity_tensors *multi_j = bkg_cj->grav.multipole;
