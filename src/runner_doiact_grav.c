@@ -2453,7 +2453,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
-  /* Are we beyond the distance where the truncated forces are 0 ?*/
+  /* Are we beyond the distance where the truncated forces are 0? */
   if (min_radius2 > max_distance2) {
     
     /* We can't interact here. */
@@ -2464,9 +2464,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     
   }
 
-  /* Otherwise, can we do a long range interactions at all levels?  */
-
-  /* Check this level. */
+  /* Otherwise, can we do a long range interaction at this level?  */
   can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                       /*is_tree_walk=*/0);
 
@@ -2475,7 +2473,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     return can_interact;
   }
 
-  /* Otherwise recurse and combine the result from the progeny. */
+  /* Otherwise, recurse and combine the result from the progeny. */
   for (int k = 0; k < 8; k++) {
     can_interact = can_interact & check_can_long_range(e, ci,
                                                        cj->progeny[k]);
@@ -2515,28 +2513,31 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   struct gravity_tensors *multi_i = ci->grav.multipole;
   const struct gravity_tensors *multi_j = cj->grav.multipole;
 
-  /* /\* Get the distance between the CoMs *\/ */
-  /* double dx = multi_i->CoM[0] - multi_j->CoM[0]; */
-  /* double dy = multi_i->CoM[1] - multi_j->CoM[1]; */
-  /* double dz = multi_i->CoM[2] - multi_j->CoM[2]; */
+  /* Get the distance between the CoMs */
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
 
-  /* /\* Apply BC *\/ */
-  /* if (periodic) { */
-  /*   dx = nearest(dx, dim[0]); */
-  /*   dy = nearest(dy, dim[1]); */
-  /*   dz = nearest(dz, dim[2]); */
-  /* } */
-  /* const double r2 = dx * dx + dy * dy + dz * dz; */
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
 
-  /* /\* If we are inside cj we must recurse further. *\/ */
-  /* if (ci->tl_cell_type == zoom_tl_cell && r2 < cj->width[0]) { */
+  /* If we are inside cj we must recurse further. */
+  if ((ci->tl_cell_type == zoom_tl_cell) && (r2 < cj->width[0] * cj->width[0])) {
     
-  /*   /\* Recurse *\/ */
-  /*   for (int k = 0; k < 8; k++) { */
-  /*     runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]); */
-  /*   } */
+    /* Recurse */
+    for (int k = 0; k < 8; k++) {
+      runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+    }
+
+    /* We're done here. */
+    return;
     
-  /* } */
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -2597,7 +2598,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
       
     }
 
-    /* Can't interact here let's recurse */
+    /* Can't interact here, let's recurse */
     else {
       
       /* Recurse */
