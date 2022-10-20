@@ -2455,7 +2455,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 #endif
 
   /* Declare interaction flag. */
-  int can_interact;
+  int can_interact = 1;
 
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
