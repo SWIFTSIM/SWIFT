@@ -2485,12 +2485,11 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
                                         /*is_tree_walk=*/0);
     
     /* And check the progeny. */
-    for (int k = 0; k < 8; k++) {
+    int k = 0;
+    while (k < 8 && can_interact) {
       int progeny_can_interact = check_can_long_range(e, ci, cj->progeny[k]);
       can_interact = can_interact & progeny_can_interact;
-
-      /* If we found a progeny we can't interact with break. */
-      if (!can_interact) break;
+      k++;
     } 
   }
 
