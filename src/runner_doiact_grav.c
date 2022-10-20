@@ -2461,7 +2461,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
   /* If were in the leaves of the cell tree do the checks. */
-  if (cj->depth == 0) {
+  if (cj->tl_cell_type == zoom_tl_cell) {
     
     /* Beyond where the truncated forces are 0, or self interaction? */
     if ((min_radius2 > max_distance2) || (ci == cj)) {
