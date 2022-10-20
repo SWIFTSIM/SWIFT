@@ -2456,7 +2456,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float pair_distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
+      e->gravity_properties, sqrtf(3) * ci->width[0],
       s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
   const float pair_distance2 = pair_distance * pair_distance;
 
