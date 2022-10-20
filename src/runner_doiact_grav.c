@@ -2446,7 +2446,6 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-  /* const double width2 = cj->width[0] * cj->width[0]; */
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -2463,7 +2462,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
   /* Beyond the distance where the truncated forces are 0, self interaction,
    * or ci inside cj? */
-  if ((min_radius2 > max_distance2) || (ci == cj)) {
+  if ((min_radius2 > max_distance2 && cj->depth==0) || (ci == cj)) {
     
     /* We can't interact here. */
     can_interact = 0;
@@ -2818,10 +2817,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   if (periodic) {
     /* Loop over all other cells and account for the mesh contribution. */
-    for (int n = 0; n < nr_cells_with_particles; ++n) {
+    for (int n = 0; n < s->nr_cells; ++n) {
 
       /* Handle on the top-level cell and it's gravity business*/
-      struct cell *cj = &cells[cells_with_particles[n]];
+      struct cell *cj = &cells[n];
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
       /* Explict skip of void cell just in case */
