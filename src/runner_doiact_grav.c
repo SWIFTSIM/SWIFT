@@ -2468,24 +2468,30 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     /* We can't interact here. */
     can_interact = 0;
     
-  } else {
+  }
+
+  /* If we're at the zoom level simply test */
+  else if (cj->tl_cell_type == zoom_tl_cell) {
+
+    /* Can we do a long range interaction between ci and this zoom cell? */
+    can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                        /*is_tree_walk=*/0);
+    
+  }
+
+  else {
    
     /* Otherwise, can we do a long range interaction at this level?  */
     can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                         /*is_tree_walk=*/0);
-
-    /* If we're not at the zoom level lets check whether the progeny
-     * can interact. */
-    if (cj->tl_cell_type != zoom_tl_cell) {
     
-      /* Otherwise, recurse and combine the result from the progeny. */
-      for (int k = 0; k < 8; k++) {
-        int progeny_can_interact = check_can_long_range(e, ci, cj->progeny[k]);
-        can_interact = can_interact & progeny_can_interact;
+    /* And check the progeny. */
+    for (int k = 0; k < 8; k++) {
+      int progeny_can_interact = check_can_long_range(e, ci, cj->progeny[k]);
+      can_interact = can_interact & progeny_can_interact;
 
-        /* If we found a progeny we can't interact with break. */
-        if (!can_interact) break;
-      }
+      /* If we found a progeny we can't interact with break. */
+      if (!can_interact) break;
     } 
   }
 
@@ -2522,7 +2528,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   }
 
   /* Otherwise, recurse if we haven't reached the bottom. */
-  else if (cj->tl_cell_type != zoom_tl_cell){
+  else if (cj->depth != 0){
     for (int k = 0; k < 8; k++) {
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
     }
