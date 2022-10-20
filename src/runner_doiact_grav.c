@@ -2469,12 +2469,12 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
       /* We can't interact here. */
       can_interact = 0;
     
+    } else {
+      
+      /* In that case, can we do a long range interaction between ci and cj? */
+      can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+                                          /*is_tree_walk=*/0);
     }
-
-    /* Can we do a long range interaction between ci and cj? */
-    can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                        /*is_tree_walk=*/0);
-    
   }
 
   /* Otherwise, were in the tree and need to recurse. */
