@@ -2454,49 +2454,39 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float pair_distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * ci->width[0],
-      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
-  const float pair_distance2 = pair_distance * pair_distance;
-
   /* Declare interaction flag. */
   int can_interact;
 
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
-  /* Beyond the distance where the truncated forces are 0, self interaction,
-   * or inside pair task distance? */
-  if ((min_radius2 > max_distance2 && cj->depth == 0) || (ci == cj) ||
-      (min_radius2 <= pair_distance2 && cj->depth == 0)) {
+  /* If were in the leaves of the cell tree do the checks. */
+  if (cj->depth == 0) {
     
-    /* We can't interact here. */
-    can_interact = 0;
+    /* Beyond where the truncated forces are 0, or self interaction? */
+    if ((min_radius2 > max_distance2) || (ci == cj)) {
     
-  }
+      /* We can't interact here. */
+      can_interact = 0;
+    
+    }
 
-  /* If we're at the zoom level simply test */
-  else if (cj->tl_cell_type == zoom_tl_cell) {
-
-    /* Can we do a long range interaction between ci and this zoom cell? */
+    /* Can we do a long range interaction between ci and cj? */
     can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                         /*is_tree_walk=*/0);
     
   }
 
+  /* Otherwise, were in the tree and need to recurse. */
   else {
-   
-    /* Otherwise, can we do a long range interaction at this level?  */
-    can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
-                                        /*is_tree_walk=*/0);
     
-    /* And check the progeny. */
+    /* Check the progeny. */
     int k = 0;
     while (k < 8 && can_interact) {
       can_interact = check_can_long_range(e, ci, cj->progeny[k]);
       k++;
-    } 
+    }
+    
   }
 
   return can_interact;
