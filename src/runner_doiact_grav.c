@@ -2487,8 +2487,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     /* And check the progeny. */
     int k = 0;
     while (k < 8 && can_interact) {
-      int progeny_can_interact = check_can_long_range(e, ci, cj->progeny[k]);
-      can_interact = can_interact & progeny_can_interact;
+      can_interact = check_can_long_range(e, ci, cj->progeny[k]);
       k++;
     } 
   }
