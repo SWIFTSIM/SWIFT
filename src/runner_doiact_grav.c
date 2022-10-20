@@ -2446,7 +2446,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-  const double width2 = cj->width[0] * cj->width[0];
+  /* const double width2 = cj->width[0] * cj->width[0]; */
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -2463,7 +2463,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
   /* Beyond the distance where the truncated forces are 0, self interaction,
    * or ci inside cj? */
-  if ((min_radius2 > max_distance2) || (ci == cj) || (min_radius2 < width2)) {
+  if ((min_radius2 > max_distance2) || (ci == cj)) {
     
     /* We can't interact here. */
     can_interact = 0;
