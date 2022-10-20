@@ -2454,6 +2454,12 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float pair_distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
+  const float pair_distance2 = pair_distance * pair_distance;
+
   /* Declare interaction flag. */
   int can_interact;
 
@@ -2461,8 +2467,9 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
   /* Beyond the distance where the truncated forces are 0, self interaction,
-   * or ci inside cj? */
-  if ((min_radius2 > max_distance2 && cj->depth==0) || (ci == cj)) {
+   * or inside pair task distance? */
+  if ((min_radius2 > max_distance2 && cj->depth == 0) || (ci == cj) ||
+      (min_radius2 <= pair_distance2 && cj->depth == 0)) {
     
     /* We can't interact here. */
     can_interact = 0;
