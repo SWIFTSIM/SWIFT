@@ -2533,7 +2533,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Check whether we can interact at this level. */
-  if (check_can_long_range(e, ci, cj, pair_distance2)) {
+  if (ci->depth == cj->depth && check_can_long_range(e, ci, cj, pair_distance2)) {
     
     /* Call the PM interaction function on the active sub-cells of ci. */
     runner_dopair_grav_mm_nonsym(r, ci, cj);
