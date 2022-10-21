@@ -2846,13 +2846,13 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   if (periodic) {
     /* Loop over all other cells and account for the mesh contribution. */
-    for (int n = 0; n < s->nr_cells; ++n) {
+    for (int n = 0; n < s->nr_cells; n++) {
 
       /* Handle on the top-level cell and it's gravity business*/
       struct cell *cj = &cells[n];
       struct gravity_tensors *const multi_j = cj->grav.multipole;
 
-      /* Explict skip of void cell just in case */
+      /* Explict skip of void cell. */
       if (cj->tl_cell_type == void_tl_cell) continue;
 
       /* Avoid self contributions */

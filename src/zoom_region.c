@@ -670,9 +670,11 @@ void find_neighbouring_cells(struct space *s,
                              struct gravity_props *gravity_properties,
                              const int verbose) {
 #ifdef WITH_ZOOM_REGION
+  const struct engine *e = s->e;
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
+  const double max_distance = e->mesh->r_cut_max;
 
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
@@ -682,14 +684,11 @@ void find_neighbouring_cells(struct space *s,
    * Here we just make sure all possible neighbour cells are flagged
    * as such. */
 
-  /* Get some info about the physics */
-  const double theta_crit_inv = 1. / gravity_properties->theta_crit;
-
-  /* Maximal distance from shifted CoM to any corner */
-  const double distance = 2. * cells[bkg_cell_offset].width[0] * theta_crit_inv;
-
-  /* Compute how many cells away we need to walk */
-  const int delta_cells = (int)(distance / cells[bkg_cell_offset].dmin) + 1;
+  /* Maximal distance any interaction can take place
+   * before the mesh kicks in, rounded up to the next integer */
+  const int delta_cells = ceil(max_distance * max3(s->iwidth[0],
+                                                   s->iwidth[1],
+                                                   s->iwidth[2])) + 1;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;
