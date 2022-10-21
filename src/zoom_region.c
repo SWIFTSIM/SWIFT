@@ -2049,9 +2049,9 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
   const double max_mesh_dist = e->mesh->r_cut_max;
   const double max_mesh_dist2 = max_mesh_dist * max_mesh_dist;
 
-  /* Define neighbour loop variables */
-  int cjd_low = 0;
-  int cjd_high = bkg_cell_offset;
+  /* /\* Get the neighbouring background cells. *\/ */
+  const int nr_neighbours = s->zoom_props->nr_neighbour_cells;
+  const int *neighbour_cells = s->zoom_props->neighbour_cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -2062,51 +2062,20 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
     /* Get the cell */
     struct cell *ci = &cells[cid];
 
-    /* If this cell is on this node and is a background cell
-     * then we have to avoid duplicating tasks */
-    if (ci->nodeID == nodeID && ci->tl_cell_type <= 2) {
-      continue;
-    }
-
     /* Skip cells without gravity particles */
     if (ci->grav.count == 0) continue;
 
-    /* If the cell is a natural cell and not a neighbour cell
-     * we don't need to do anything */
-    if ((ci->tl_cell_type <= 2) && (ci->tl_cell_type != tl_cell_neighbour)) {
-      continue;
-    }
-
-    /* Get the loop range for the neighbouring cells */
-    if (ci->tl_cell_type <= 2) {
-      cjd_low = 0;
-      cjd_high = bkg_cell_offset;
-    } else {
-      cjd_low = bkg_cell_offset;
-      cjd_high = s->nr_cells;
-    }
-
-    /* Loop over every other cell */
-    for (int cjd = cjd_low; cjd < cjd_high; cjd++) {
+    /* Loop over every neighbouring background cell */
+    for (int n = 0; n < nr_neighbours; n++) {
 
       /* Get the cell */
+      int cjd = neighbour_cells[n];
       struct cell *cj = &cells[cjd];
 
-      /* If the cell is a natural cell and not a neighbour cell
-       * we don't need to do anything */
-      if ((cj->tl_cell_type <= 2) && (cj->tl_cell_type != tl_cell_neighbour)) {
-        continue;
-      }
-
       /* Avoid empty cells and completely foreign pairs */
-      if (cj->grav.count == 0 || (ci->nodeID != nodeID && cj->nodeID != nodeID))
+      if (cj->grav.count == 0 ||
+          (ci->nodeID != nodeID && cj->nodeID != nodeID))
         continue;
-
-      /* Explictly avoid duplicates */
-      if ((ci->nodeID == cj->nodeID && cid >= cjd) ||
-          (cj->nodeID == nodeID && cj->tl_cell_type == zoom_tl_cell)) {
-        continue;
-      }
 
 #ifdef WITH_MPI
           /* Recover the multipole information */
@@ -2129,15 +2098,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
       /* Are the cells too close for a MM interaction ? */
       if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                 /*is_tree_walk=*/0)) {
-        if (ci->tl_cell_type <= 2) {
-          /* Ok, we need to add a direct pair calculation */
-          scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkgzoom,
-                            0, 0, ci, cj);
-        } else {
+        
           /* Ok, we need to add a direct pair calculation */
           scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg,
                             0, 0, ci, cj);
-        }
 
 #ifdef SWIFT_DEBUG_CHECKS
         /* Ensure both cells are not in the same level */
