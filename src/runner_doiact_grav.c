@@ -2455,11 +2455,15 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
 
 #endif
 
+  /* Find this cell's top-level (great-)parent */
+  struct cell *top = ci;
+  while (top->parent != NULL) top = top->parent;
+
   /* Declare interaction flag. */
   int can_interact = 1;
 
   /* Minimal distance between any pair of particles */
-  const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
+  const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 
   /* If we're in the zoom cell leaves of the cell tree do the checks. */
   if (cj->tl_cell_type == zoom_tl_cell) {
@@ -2476,7 +2480,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */
-      can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+      can_interact = cell_can_use_pair_mm(top, cj, e, s, /*use_rebuild_data=*/1,
                                           /*is_tree_walk=*/0);
       
       /* We're done here! */
@@ -2484,8 +2488,8 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     }
   }
 
-  /* Otherwise, early exit if we are within direct interaction distance.
-  * avoids needless recursion. */
+  /* Otherwise, early exit if we are within direct interaction distance,
+  * avoids needless recursion here. */
   if (min_radius2 <= pair_distance2) {
 
     /* We can't interact here. */
