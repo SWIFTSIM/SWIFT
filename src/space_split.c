@@ -893,7 +893,7 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 
 #ifdef SWIFT_DEBUG_CHECKS
 
-  if (c->width[0] != zoom_tl_cell && s->zoom_props->width[0])
+  if (c->width[0] != s->zoom_props->width[0])
     error("Void tree root trying to assign zoom cells into incorrect depth (void_c->width=%.2f, zoom_c->width=%.2f)",
           c->width[0], s->zoom_props->width[0]);
 
