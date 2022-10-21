@@ -1836,7 +1836,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   struct cell *cells = s->cells_top;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
-  const double theta_crit = e->gravity_properties->theta_crit;
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
