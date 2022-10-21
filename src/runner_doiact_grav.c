@@ -2674,6 +2674,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (min_radius2 > max_distance2) {
+
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
               
         /* We are done here. */
         continue;
