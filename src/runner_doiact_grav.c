@@ -2594,6 +2594,10 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
   const float pair_distance2 = pair_distance * pair_distance;
 
+  if (top->tl_cell_type != ci->tl_cell_type)
+    error("top and ci cell types incompatible! (top->tl_cell_type=%d ci->tl_cell_type=%d)",
+          top->tl_cell_type, ci->tl_cell_type)
+
   /* Non-periodic case: loop over everything */
   if (!periodic) {
 
