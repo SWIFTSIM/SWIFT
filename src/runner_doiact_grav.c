@@ -2559,7 +2559,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   }
 
   /* Otherwise, recurse if we haven't reached the top zoom cell level. */
-  if (cj->tl_cell_type != zoom_tl_cell) {
+  if (cj->tl_cell_type == void_tl_cell) {
     for (int k = 0; k < 8; k++) {
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k], pair_distance2);
     } 
