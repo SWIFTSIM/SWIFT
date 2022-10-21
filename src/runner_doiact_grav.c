@@ -2469,7 +2469,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   if (ci->depth == cj->depth) {
     
     /* Beyond where the truncated forces are 0, or self interaction? */
-    if ((min_radius2 > max_distance2) || (ci == cj)) {
+    if ((min_radius2 > max_distance2) || (top == cj)) {
     
       /* We can't interact here. */
       can_interact = 0;
@@ -2533,7 +2533,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Check whether we can interact at this level. */
-  if (ci->depth == cj->depth && check_can_long_range(e, ci, cj, pair_distance2)) {
+  if (check_can_long_range(e, ci, cj, pair_distance2)) {
     
     /* Call the PM interaction function on the active sub-cells of ci. */
     runner_dopair_grav_mm_nonsym(r, ci, cj);
@@ -2626,7 +2626,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
         continue;
 
       /* Avoid self contributions */
-      if (ci == cj) continue;
+      if (top == cj) continue;
 
       /* Skip empty cells */
       if (multi_j->m_pole.M_000 == 0.f) continue;
@@ -2677,9 +2677,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
       /* Are we beyond the distance where the truncated forces are 0 ?*/
       if (min_radius2 > max_distance2) {
-
-        /* Record that this multipole received a contribution */
-        multi_i->pot.interacted = 1;
               
         /* We are done here. */
         continue;
@@ -2781,7 +2778,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
           struct cell *cj = &cells[cell_index];
 
           /* Avoid self contributions  */
-          if (ci == cj) continue;
+          if (top == cj) continue;
 
           /* If this is the void cell we need to interact with the zoom cells.
            */
@@ -2810,9 +2807,6 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
             /* Are we beyond the distance where the truncated forces are 0 ?*/
             if (min_radius2 > max_distance2) {
-
-              /* Record that this multipole received a contribution */
-              multi_i->pot.interacted = 1;
               
               /* We are done here. */
               continue;
@@ -2864,16 +2858,18 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       if (min_radius2 > max_distance2) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-              /* Need to account for the interactions we missed */
-              accumulate_add_ll(&multi_i->pot.num_interacted,
-                                multi_j->m_pole.num_gpart);
+        /* Need to account for the interactions we missed */
+        accumulate_add_ll(&multi_i->pot.num_interacted,
+                          multi_j->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
-              /* Need to account for the interactions we missed */
-              accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                                multi_j->m_pole.num_gpart);
+        /* Need to account for the interactions we missed */
+        accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                          multi_j->m_pole.num_gpart);
 #endif
+        /* Record that this multipole received a contribution */
+        multi_i->pot.interacted = 1;
       }
     }
   }
