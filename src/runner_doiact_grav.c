@@ -2711,7 +2711,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     }   /* Background cell loop. */
 
     /* Loop over all background cells.  */
-    for (int k = s->zoom_props->tl_cell_type; k < s->nr_cells; k++) {
+    for (int k = s->zoom_props->tl_cell_offset; k < s->nr_cells; k++) {
 
       /* Skip the void cell */
       if (k == s->zoom_props->void_cell_index) continue;
