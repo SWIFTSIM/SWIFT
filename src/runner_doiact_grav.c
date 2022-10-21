@@ -2499,7 +2499,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Otherwise, were in the tree and need to recurse. */
   int k = 0;
   while (k < 8 && can_interact) {
-    can_interact = check_can_long_range(e, ci, cj->progeny[k]);
+    can_interact = check_can_long_range(e, ci, cj->progeny[k], pair_distance2);
     k++;
   }
 
@@ -2529,7 +2529,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   struct gravity_tensors *const multi_i = ci->grav.multipole;
 
   /* Check whether we can interact at this level. */
-  if (check_can_long_range(e, ci, cj)) {
+  if (check_can_long_range(e, ci, cj, pair_distance2)) {
     
     /* Call the PM interaction function on the active sub-cells of ci. */
     runner_dopair_grav_mm_nonsym(r, ci, cj);
