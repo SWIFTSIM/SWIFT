@@ -2596,7 +2596,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
   if (top->tl_cell_type != ci->tl_cell_type)
     error("top and ci cell types incompatible! (top->tl_cell_type=%d ci->tl_cell_type=%d)",
-          top->tl_cell_type, ci->tl_cell_type)
+          top->tl_cell_type, ci->tl_cell_type);
 
   /* Non-periodic case: loop over everything */
   if (!periodic) {
