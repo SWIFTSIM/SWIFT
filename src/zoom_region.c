@@ -2038,9 +2038,6 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
   /* Handle on the cells and proxies */
   struct cell *cells = s->cells_top;
 
-  /* Some info about the zoom domain */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-
   /* Some info about the domain */
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   int periodic = s->periodic;
@@ -2066,10 +2063,10 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
     if (ci->grav.count == 0) continue;
 
     /* Loop over every neighbouring background cell */
-    for (int n = 0; n < nr_neighbours; n++) {
+    for (int k = 0; k < nr_neighbours; k++) {
 
       /* Get the cell */
-      int cjd = neighbour_cells[n];
+      int cjd = neighbour_cells[k];
       struct cell *cj = &cells[cjd];
 
       /* Avoid empty cells and completely foreign pairs */
