@@ -2435,10 +2435,11 @@ void runner_doself_recursive_grav(struct runner *r, struct cell *c,
  *
  * @param e The #engine.
  * @param ci The #cell of interest.
- * @param cj The void #cell we are interacting with.
+ * @param cj The void tree #cell we are interacting with.
+ * @param pair_distance2 The maximum distance for a direct interaction.
  */
 int check_can_long_range(const struct engine *e, struct cell *ci,
-                         struct cell *cj) {
+                         struct cell *cj, const float pair_distance2) {
 
   /* Some constants. */
   const struct space *s = e->s;
@@ -2460,7 +2461,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(ci, cj, periodic, dim);
 
-  /* If were in the leaves of the cell tree do the checks. */
+  /* If we're in the zoom cell leaves of the cell tree do the checks. */
   if (cj->tl_cell_type == zoom_tl_cell) {
     
     /* Beyond where the truncated forces are 0, or self interaction? */
@@ -2468,29 +2469,43 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     
       /* We can't interact here. */
       can_interact = 0;
+
+      /* We're done here! */
+      return can_interact;
     
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */
       can_interact = cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                           /*is_tree_walk=*/0);
+      
+      /* We're done here! */
+      return can_interact;
     }
+  }
+
+  /* Otherwise, early exit if we are within direct interaction distance.
+  * avoids needless recursion. */
+  if (min_radius2 <= pair_distance2) {
+
+    /* We can't interact here. */
+    can_interact = 0;
+
+    /* We're done here! */
+    return can_interact;
+    
   }
 
   /* Otherwise, were in the tree and need to recurse. */
-  else {
-    
-    /* Check the progeny. */
-    int k = 0;
-    while (k < 8 && can_interact) {
-      can_interact = check_can_long_range(e, ci, cj->progeny[k]);
-      k++;
-    }
-    
+  int k = 0;
+  while (k < 8 && can_interact) {
+    can_interact = check_can_long_range(e, ci, cj->progeny[k]);
+    k++;
   }
 
+  /* We're done here! */
   return can_interact;
-
+    
 }
 
 /**
@@ -2501,9 +2516,11 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
  * @param r The thread #runner.
  * @param ci The #cell of interest.
  * @param cj The void #cell we are interacting with.
+ * @param pair_distance2 The maximum distance for a direct interaction.
  */
 void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
-                                       struct cell *cj) {
+                                       struct cell *cj,
+                                       const float pair_distance2) {
 
   /* Some constants */
   const struct engine *e = r->e;
@@ -2524,7 +2541,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   /* Otherwise, recurse if we haven't reached the bottom. */
   else if (cj->tl_cell_type != zoom_tl_cell){
     for (int k = 0; k < 8; k++) {
-      runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+      runner_do_grav_long_range_recurse(r, ci, cj->progeny[k], pair_distance2);
     }
   }
 
@@ -2579,6 +2596,12 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float pair_distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * top->width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
+  const float pair_distance2 = pair_distance * pair_distance;
+
   /* Non-periodic case: loop over everything */
   if (!periodic) {
 
@@ -2628,7 +2651,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Loop over the first level of the void cell hierarchy. */
     for (int k = 0; k < 8; k++) {
-      runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k]);
+      runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k],
+                                        pair_distance2);
     }
 
     /* Loop over all background cells.  */
@@ -2761,7 +2785,8 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
             /* Loop over the first level of the void cell hierarchy. */
             for (int k = 0; k < 8; k++) {
-              runner_do_grav_long_range_recurse(r, ci, cj->progeny[k]);
+              runner_do_grav_long_range_recurse(r, ci, cj->progeny[k],
+                                                pair_distance2);
             }
             
           }
