@@ -2448,13 +2448,6 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-#ifdef SWIFT_DEBUG_CHECKS
-
-  if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0)
-    error("Long range gravity trying to interact with a zoom progeny!");
-
-#endif
-
   /* Find this cell's top-level (great-)parent */
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
@@ -2500,15 +2493,37 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     
   /* } */
 
-  /* Otherwise, were in the tree and need to recurse. */
-  int k = 0;
-  while (k < 8 && can_interact) {
-    can_interact = check_can_long_range(e, ci, cj->progeny[k], pair_distance2);
-    k++;
+  /* Do we need to recurse? */
+  if (ci->tl_cell_type == tl_cell || ci->tl_cell_type == tl_cell_neighbour) {
+
+    /* For background cells we only need to recurse to the top zoom level. */
+    if (cj->tl_cell_type == zoom_tl_cell) {
+      int recurse = 0;
+    } else {
+      int recurse = 1;
+    }
+  } else {
+
+    /* For zoom cells we need to recurse to the depth of ci to check
+     * for interactions. */
+    if (cj->tl_cell_type == zoom_tl_cell && cj->depth == ci->depth) {
+      int recurse 0;
+    } else {
+      int recurse = 1;
+    }
   }
 
-  /* We're done here! */
-  return can_interact;
+  if (recurse) {
+    /* Otherwise, were in the tree and need to recurse. */
+    int k = 0;
+    while (k < 8 && can_interact) {
+      can_interact = check_can_long_range(e, ci, cj->progeny[k], pair_distance2);
+      k++;
+    }
+
+    /* We're done here! */
+    return can_interact; 
+  }
     
 }
 
@@ -2540,10 +2555,33 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
 
     /* Record that this multipole received a contribution */
     multi_i->pot.interacted = 1;
+
+    /* We're done here. */
+    return;
+  }
+
+  /* Do we need to recurse? */
+  if (ci->tl_cell_type == tl_cell || ci->tl_cell_type == tl_cell_neighbour) {
+
+    /* For background cells we only need to recurse to the top zoom level. */
+    if (cj->tl_cell_type == zoom_tl_cell) {
+      int recurse = 0;
+    } else {
+      int recurse = 1;
+    }
+  } else {
+
+    /* For zoom cells we need to recurse to the depth of ci to check
+     * for interactions. */
+    if (cj->tl_cell_type == zoom_tl_cell && cj->depth == ci->depth) {
+      int recurse 0;
+    } else {
+      int recurse = 1;
+    }
   }
 
   /* Otherwise, recurse if we haven't reached the same depth as ci. */
-  else if (cj->depth != ci->depth){
+ if (recurse) {
     for (int k = 0; k < 8; k++) {
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k], pair_distance2);
     }
