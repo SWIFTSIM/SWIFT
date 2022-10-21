@@ -2494,22 +2494,23 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* } */
 
   /* Do we need to recurse? */
+  int recurse;
   if (ci->tl_cell_type == tl_cell || ci->tl_cell_type == tl_cell_neighbour) {
 
     /* For background cells we only need to recurse to the top zoom level. */
     if (cj->tl_cell_type == zoom_tl_cell) {
-      int recurse = 0;
+      recurse = 0;
     } else {
-      int recurse = 1;
+      recurse = 1;
     }
   } else {
 
     /* For zoom cells we need to recurse to the depth of ci to check
      * for interactions. */
     if (cj->tl_cell_type == zoom_tl_cell && cj->depth == ci->depth) {
-      int recurse 0;
+      recurse 0;
     } else {
-      int recurse = 1;
+      recurse = 1;
     }
   }
 
@@ -2561,22 +2562,23 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   }
 
   /* Do we need to recurse? */
+  int recurse;
   if (ci->tl_cell_type == tl_cell || ci->tl_cell_type == tl_cell_neighbour) {
 
     /* For background cells we only need to recurse to the top zoom level. */
     if (cj->tl_cell_type == zoom_tl_cell) {
-      int recurse = 0;
+      recurse = 0;
     } else {
-      int recurse = 1;
+      recurse = 1;
     }
   } else {
 
     /* For zoom cells we need to recurse to the depth of ci to check
      * for interactions. */
     if (cj->tl_cell_type == zoom_tl_cell && cj->depth == ci->depth) {
-      int recurse 0;
+      recurse 0;
     } else {
-      int recurse = 1;
+      recurse = 1;
     }
   }
 
