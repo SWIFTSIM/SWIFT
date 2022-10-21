@@ -2508,7 +2508,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     /* For zoom cells we need to recurse to the depth of ci to check
      * for interactions. */
     if (cj->tl_cell_type == zoom_tl_cell && cj->depth == ci->depth) {
-      recurse 0;
+      recurse = 0;
     } else {
       recurse = 1;
     }
