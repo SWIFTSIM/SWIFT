@@ -1054,14 +1054,14 @@ void void_mpole_tree_recursive(struct space *s, struct cell *c) {
   long long progeny_count = 0;
 
   /* Total the number of particles in the progeny. */
-  for (int k = 0; k < 8; i++) {
-    progeny_count += c->progeny[k].grav.multipole->m_pole.num_gpart;
+  for (int k = 0; k < 8; k++) {
+    progeny_count += &c->progeny[k].grav.multipole->m_pole.num_gpart;
   }
 
   if (void_count != progeny_count) {
     error("Void multipole doesn't have the same number of particles "
-          "as its progeny at depth c->depth=%d! (void=%lld, zoom=%lld)",
-          c->depth, void_count, zoom_count);
+          "as its progeny at depth c->depth=%d! (void=%lld, progeny=%lld)",
+          c->depth, void_count, progeny_count);
   }
 #endif
   
