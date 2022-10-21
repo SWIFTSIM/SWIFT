@@ -2611,11 +2611,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float pair_distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * top->width[0],
-      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
-  const float pair_distance2 = pair_distance * pair_distance;
+  /* /\* Compute maximal distance where we can expect a direct interaction *\/ */
+  /* const float pair_distance = gravity_M2L_min_accept_distance( */
+  /*     e->gravity_properties, sqrtf(3) * top->width[0], */
+  /*     s->max_softening, s->min_a_grav, s->max_mpole_power, periodic); */
+  /* const float pair_distance2 = pair_distance * pair_distance; */
 
   /* Non-periodic case: loop over everything */
   if (!periodic) {
