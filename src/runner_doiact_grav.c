@@ -2488,17 +2488,17 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     }
   }
 
-  /* Otherwise, early exit if we are within direct interaction distance,
-  * avoids needless recursion here. */
-  if (min_radius2 <= pair_distance2) {
+  /* /\* Otherwise, early exit if we are within direct interaction distance, */
+  /* * avoids needless recursion here. *\/ */
+  /* if (min_radius2 <= pair_distance2) { */
 
-    /* We can't interact here. */
-    can_interact = 0;
+  /*   /\* We can't interact here. *\/ */
+  /*   can_interact = 0; */
 
-    /* We're done here! */
-    return can_interact;
+  /*   /\* We're done here! *\/ */
+  /*   return can_interact; */
     
-  }
+  /* } */
 
   /* Otherwise, were in the tree and need to recurse. */
   int k = 0;
