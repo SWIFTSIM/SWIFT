@@ -670,11 +670,11 @@ void find_neighbouring_cells(struct space *s,
                              struct gravity_props *gravity_properties,
                              const int verbose) {
 #ifdef WITH_ZOOM_REGION
-  const struct engine *e = s->e;
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int periodic = s->periodic;
   struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance = gravity_properties->r_s
+    * gravity_properties->r_cut_max_ratio;
 
   /* Some info about the zoom domain */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
