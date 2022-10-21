@@ -2468,7 +2468,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
     
     /* Beyond where the truncated forces are 0, or self interaction? */
-    if ((min_radius2 > max_distance2) || (top_i == top_j)) {
+    if ((min_radius2 > max_distance2)) {
     
       /* We can't interact here. */
       int can_interact = 0;
@@ -2539,7 +2539,7 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   if (cj->tl_cell_type != zoom_tl_cell) {
     for (int k = 0; k < 8; k++) {
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k], pair_distance2);
-  } 
+    } 
   }
 }
 
