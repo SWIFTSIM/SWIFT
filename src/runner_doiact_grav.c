@@ -2465,8 +2465,8 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   /* Minimal distance between any pair of particles */
   const double min_radius2 = cell_min_dist2(top, cj, periodic, dim);
 
-  /* If we're in the zoom cell leaves of the cell tree do the checks. */
-  if (cj->tl_cell_type == zoom_tl_cell) {
+  /* If we're at the same depth in both cells do the checks. */
+  if (ci->depth == cj->depth) {
     
     /* Beyond where the truncated forces are 0, or self interaction? */
     if ((min_radius2 > max_distance2) || (ci == cj)) {
@@ -2542,8 +2542,8 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
     multi_i->pot.interacted = 1;
   }
 
-  /* Otherwise, recurse if we haven't reached the bottom. */
-  else if (cj->tl_cell_type != zoom_tl_cell){
+  /* Otherwise, recurse if we haven't reached the same depth as ci. */
+  else if (cj->depth != ci->depth){
     for (int k = 0; k < 8; k++) {
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k], pair_distance2);
     }
