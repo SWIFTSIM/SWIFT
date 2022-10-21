@@ -2661,17 +2661,17 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
      * We can loop over the void cell hierarchy and interact at depths
      * allowed by the pair mm criterion. */
 
-    /* /\* Get the void cell *\/ */
-    /* struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index]; */
+    /* Get the void cell */
+    struct cell *void_cell = &s->cells_top[s->zoom_props->void_cell_index];
 
-    /* /\* Loop over the first level of the void cell hierarchy. *\/ */
-    /* for (int k = 0; k < 8; k++) { */
-    /*   runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k], */
-    /*                                     pair_distance2); */
-    /* } */
+    /* Loop over the first level of the void cell hierarchy. */
+    for (int k = 0; k < 8; k++) {
+      runner_do_grav_long_range_recurse(r, ci, void_cell->progeny[k],
+                                        pair_distance2);
+    }
 
     /* Loop over all background cells.  */
-    for (int k = 0; k < s->nr_cells; k++) {
+    for (int k = s->zoom_props->tl_cell_offset; k < s->nr_cells; k++) {
 
       /* Handle on the neighbouring background cell. */
       struct cell *cj = &cells[k];

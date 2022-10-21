@@ -1046,6 +1046,24 @@ void void_mpole_tree_recursive(struct space *s, struct cell *c) {
 
   /* Compute the multipole power */
   gravity_multipole_compute_power(&c->grav.multipole->m_pole);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the number of particles in the void cell multipole
+   * is the same as the number in it's progeny. */
+  const long long void_count = c->grav.multipole->m_pole.num_gpart;
+  long long progeny_count = 0;
+
+  /* Total the number of particles in the progeny. */
+  for (int k = 0; k < 8; i++) {
+    progeny_count += c->progeny[k].grav.multipole->m_pole.num_gpart;
+  }
+
+  if (void_count != progeny_count) {
+    error("Void multipole doesn't have the same number of particles "
+          "as its progeny at depth c->depth=%d! (void=%lld, zoom=%lld)",
+          c->depth, void_count, zoom_count);
+  }
+#endif
   
 }
 
