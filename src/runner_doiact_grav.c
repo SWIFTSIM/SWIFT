@@ -2448,12 +2448,12 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-#ifdef SWIFT_DEBUG_CHECKS
+/* #ifdef SWIFT_DEBUG_CHECKS */
 
-  if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0)
-    error("Long range gravity trying to interact with a zoom progeny!");
+/*   if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0) */
+/*     error("Long range gravity trying to interact with a zoom progeny!"); */
 
-#endif
+/* #endif */
 
   /* Find each cell's top-level (great-)parent */
   struct cell *top_i = ci;
@@ -2536,15 +2536,9 @@ void runner_do_grav_long_range_recurse(struct runner *r, struct cell *ci,
   }
 
   /* Otherwise, recurse if we haven't reached the top zoom cell level. */
-  else if (cj->tl_cell_type != zoom_tl_cell) {
-    for (int k = 0; k < 8; k++) {
+  for (int k = 0; k < 8; k++) {
+    if (cj->progeny[k] != NULL)
       runner_do_grav_long_range_recurse(r, ci, cj->progeny[k], pair_distance2);
-    }
-  }
-
-  /* Otherwise, there's nothing to do here. */
-  else {
-    return;
   }
 }
 
