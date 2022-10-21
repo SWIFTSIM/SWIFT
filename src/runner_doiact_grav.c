@@ -2448,12 +2448,12 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-/* #ifdef SWIFT_DEBUG_CHECKS */
+#ifdef SWIFT_DEBUG_CHECKS
 
-/*   if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0) */
-/*     error("Long range gravity trying to interact with a zoom progeny!"); */
+  if (cj->tl_cell_type == zoom_tl_cell && cj->depth != 0)
+    error("Long range gravity trying to interact with a zoom progeny!");
 
-/* #endif */
+#endif
 
   /* Find each cell's top-level (great-)parent */
   struct cell *top_i = ci;
@@ -2461,45 +2461,68 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     struct cell *top_j = cj;
   while (top_j->parent != NULL) top_j = top_j->parent;
 
-  /* If we're at the zoom level do the checks. */
-  if (top_j->tl_cell_type == zoom_tl_cell) {
+  /* /\* If we're at the zoom level do the checks. *\/ */
+  /* if (top_j->tl_cell_type == zoom_tl_cell) { */
 
-    /* Minimal distance between any pair of particles */
-    const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
+  /*   /\* Minimal distance between any pair of particles *\/ */
+  /*   const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim); */
     
-    /* Beyond where the truncated forces are 0, or self interaction? */
-    if ((min_radius2 > max_distance2)) {
+  /*   /\* Beyond where the truncated forces are 0, or self interaction? *\/ */
+  /*   if ((min_radius2 > max_distance2)) { */
     
-      /* We can't interact here. */
-      int can_interact = 0;
+  /*     /\* We can't interact here. *\/ */
+  /*     int can_interact = 0; */
 
-      /* We're done here! */
-      return can_interact;
+  /*     /\* We're done here! *\/ */
+  /*     return can_interact; */
     
-    } else {
+  /*   } else { */
       
-      /* In that case, can we do a long range interaction between ci and cj? */
-      int can_interact = cell_can_use_pair_mm(top_i, top_j, e, s,
+  /*     /\* In that case, can we do a long range interaction between ci and cj? *\/ */
+  /*     int can_interact = cell_can_use_pair_mm(top_i, top_j, e, s, */
+  /*                                         /\*use_rebuild_data=*\/1, */
+  /*                                         /\*is_tree_walk=*\/0); */
+      
+  /*     /\* We're done here! *\/ */
+  /*     return can_interact; */
+  /*   } */
+  /* } */
+  
+  /* /\* Declare interaction flag. *\/ */
+  /* int can_interact = 1; */
+
+  /* /\* Otherwise, we're in the tree and need to recurse. *\/ */
+  /* int k = 0; */
+  /* while (k < 8 && can_interact) { */
+  /*   can_interact = check_can_long_range(e, ci, cj->progeny[k], pair_distance2); */
+  /*   k++; */
+  /* } */
+
+  /* Minimal distance between any pair of particles */
+  const double min_radius2 = cell_min_dist2(top_i, top_j, periodic, dim);
+    
+  /* Beyond where the truncated forces are 0, or self interaction? */
+  if ((min_radius2 > max_distance2)) {
+    
+    /* We can't interact here. */
+    int can_interact = 0;
+
+    /* We're done here! */
+    return can_interact;
+    
+  } else {
+      
+    /* In that case, can we do a long range interaction between ci and cj? */
+    int can_interact = cell_can_use_pair_mm(top_i, top_j, e, s,
                                           /*use_rebuild_data=*/1,
                                           /*is_tree_walk=*/0);
       
-      /* We're done here! */
-      return can_interact;
-    }
-  }
-  
-  /* Declare interaction flag. */
-  int can_interact = 1;
-
-  /* Otherwise, we're in the tree and need to recurse. */
-  int k = 0;
-  while (k < 8 && can_interact) {
-    can_interact = check_can_long_range(e, ci, cj->progeny[k], pair_distance2);
-    k++;
+    /* We're done here! */
+    return can_interact;
   }
 
-  /* We're done here! */
-  return can_interact;     
+  /* /\* We're done here! *\/ */
+  /* return can_interact;    */  
 }
 
 /**
