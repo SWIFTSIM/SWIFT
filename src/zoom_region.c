@@ -688,7 +688,7 @@ void find_neighbouring_cells(struct space *s,
    * before the mesh kicks in, rounded up to the next integer */
   const int delta_cells = ceil(max_distance * max3(s->iwidth[0],
                                                    s->iwidth[1],
-                                                   s->iwidth[2])) + 5;
+                                                   s->iwidth[2])) + 1;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;
@@ -1844,7 +1844,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 3;
+  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
