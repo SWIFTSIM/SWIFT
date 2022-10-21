@@ -2131,11 +2131,11 @@ void engine_make_self_gravity_tasks_mapper_with_zoom_diffsize(
                                 /*is_tree_walk=*/0)) {
         if (ci->tl_cell_type <= 2) {
           /* Ok, we need to add a direct pair calculation */
-          scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg,
+          scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkgzoom,
                             0, 0, ci, cj);
         } else {
           /* Ok, we need to add a direct pair calculation */
-          scheduler_addtask(sched, task_type_pair, task_subtype_grav,
+          scheduler_addtask(sched, task_type_pair, task_subtype_grav_zoombkg,
                             0, 0, ci, cj);
         }
 
