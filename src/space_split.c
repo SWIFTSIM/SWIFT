@@ -813,7 +813,7 @@ void space_split(struct space *s, int verbose) {
 void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 
   /* Check we aren't at the depth of the zoom cells. */
-  if (pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
+  if (pow(2, c->depth) != s->zoom_props->cdim[0]) {
 
     /* No longer just a leaf. */
     c->split = 1;
