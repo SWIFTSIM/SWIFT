@@ -2611,11 +2611,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
-  /* /\* Compute maximal distance where we can expect a direct interaction *\/ */
-  /* const float pair_distance = gravity_M2L_min_accept_distance( */
-  /*     e->gravity_properties, sqrtf(3) * top->width[0], */
-  /*     s->max_softening, s->min_a_grav, s->max_mpole_power, periodic); */
-  /* const float pair_distance2 = pair_distance * pair_distance; */
+  /* Compute maximal distance where we can expect a direct interaction */
+  const float pair_distance = gravity_M2L_min_accept_distance(
+      e->gravity_properties, sqrtf(3) * top->width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
+  const float pair_distance2 = pair_distance * pair_distance;
 
   /* Non-periodic case: loop over everything */
   if (!periodic) {
@@ -2656,6 +2656,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     }   /* Loop over top-level cells */
   } else if (ci->tl_cell_type == zoom_tl_cell) { /* Zoom cell case */
 
+    if (top->tl_cell_type != zoom_tl_cell)
+      error("Top of zoom cell is not zoom cell!");
+
     /* Zoom cell case
 
      * We can loop over the void cell hierarchy and interact at depths
@@ -2672,6 +2675,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Loop over all background cells.  */
     for (int k = 0; k < s->nr_cells; k++) {
+
+      /* Skip the void cell */
+      if (k == s->zoom_props->void_cell_index) continue;
 
       /* Handle on the neighbouring background cell. */
       struct cell *cj = &cells[k];
@@ -2795,51 +2801,11 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
            */
           if (cj->tl_cell_type == void_tl_cell) {
 
-            /* /\* Loop over the first level of the void cell hierarchy. *\/ */
-            /* for (int k = 0; k < 8; k++) { */
-            /*   runner_do_grav_long_range_recurse(r, ci, cj->progeny[k], */
-            /*                                     pair_distance2); */
-            /* } */
-
-            /* Loop over all background cells.  */
-            for (int k = 0; k < s->zoom_props->nr_zoom_cells; k++) {
-              
-              /* Handle on the neighbouring background cell. */
-              struct cell *zoom_cj = &cells[k];
-
-              /* Handle on the top-level cell's gravity business*/
-              const struct gravity_tensors *multi_j = zoom_cj->grav.multipole;
-
-              /* Skip empty cells */
-              if (multi_j->m_pole.M_000 == 0.f) continue;
-
-              /* Minimal distance between any pair of particles */
-              const double min_radius2 =
-                cell_min_dist2(top, zoom_cj, periodic, dim);
-
-              /* Are we beyond the distance where the truncated forces are 0 ?*/
-              if (min_radius2 > max_distance2) {
-              
-                /* We are done here. */
-                continue;
-              }
-
-              /* Shall we interact with this cell? */
-              if (cell_can_use_pair_mm(top, zoom_cj, e, e->s, /*use_rebuild_data=*/1,
-                                       /*is_tree_walk=*/0)) {
-
-                /* Call the PM interaction function on the active sub-cells of ci
-                 */
-                runner_dopair_grav_mm_nonsym(r, ci, zoom_cj);
-                // runner_dopair_recursive_grav_pm(r, ci, cj);
-                
-                /* Record that this multipole received a contribution */
-                multi_i->pot.interacted = 1;
-                
-              } /* We can interact with this cell. */
-            }   /* Background cell loop. */
-            
-          }
+            /* Loop over the first level of the void cell hierarchy. */
+            for (int k = 0; k < 8; k++) {
+              runner_do_grav_long_range_recurse(r, ci, cj->progeny[k],
+                                                pair_distance2);
+            }
           
           /* This neighbour is not the void cell. */
           else {
