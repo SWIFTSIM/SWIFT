@@ -2471,7 +2471,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     if ((min_radius2 > max_distance2) || (top_i == top_j)) {
     
       /* We can't interact here. */
-      can_interact = 0;
+      int can_interact = 0;
 
       /* We're done here! */
       return can_interact;
@@ -2479,7 +2479,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     } else {
       
       /* In that case, can we do a long range interaction between ci and cj? */
-      can_interact = cell_can_use_pair_mm(top_i, top_j, e, s,
+      int can_interact = cell_can_use_pair_mm(top_i, top_j, e, s,
                                           /*use_rebuild_data=*/1,
                                           /*is_tree_walk=*/0);
       
