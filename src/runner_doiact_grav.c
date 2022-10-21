@@ -2806,6 +2806,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
               runner_do_grav_long_range_recurse(r, ci, cj->progeny[k],
                                                 pair_distance2);
             }
+          }
           
           /* This neighbour is not the void cell. */
           else {
