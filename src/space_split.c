@@ -1055,7 +1055,7 @@ void void_mpole_tree_recursive(struct space *s, struct cell *c) {
 
   /* Total the number of particles in the progeny. */
   for (int k = 0; k < 8; k++) {
-    progeny_count += &c->progeny[k].grav.multipole->m_pole.num_gpart;
+    progeny_count += c->progeny[k]->grav.multipole->m_pole.num_gpart;
   }
 
   if (void_count != progeny_count) {
