@@ -2461,7 +2461,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
   struct cell *top_i = ci;
   while (top_i->parent != NULL) top_i = top_i->parent;
     struct cell *top_j = cj;
-  while (top_i->parent != NULL) top_j = top_j->parent;
+  while (top_j->parent != NULL) top_j = top_j->parent;
 
   /* Declare interaction flag. */
   int can_interact = 1;
@@ -2493,7 +2493,7 @@ int check_can_long_range(const struct engine *e, struct cell *ci,
     }
   }
 
-  /* Otherwise, were in the tree and need to recurse. */
+  /* Otherwise, we're in the tree and need to recurse. */
   int k = 0;
   while (k < 8 && can_interact) {
     can_interact = check_can_long_range(e, ci, cj->progeny[k], pair_distance2);
