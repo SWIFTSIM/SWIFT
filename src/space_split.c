@@ -941,7 +941,7 @@ void void_tree_recursive(struct space *s, struct cell *c, const int thread_id) {
 void void_mpole_tree_recursive(struct space *s, struct cell *c) {
 
   /* Check we aren't at the depth of the zoom cells. */
-  if (pow(2, c->depth + 1) != s->zoom_props->cdim[0]) {
+  if (pow(2, c->depth) != s->zoom_props->cdim[0]) {
 
     /* Recurse through progney. */
     for (int k = 0; k < 8; k++) {
