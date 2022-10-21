@@ -2653,6 +2653,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
       /* Handle on the neighbouring background cell. */
       struct cell *cj = &cells[k];
 
+      /* Skip cells with no particles. */
+      if (cj->grav.count == 0) continue;
+
       if (top == cj) continue;
 
       /* Handle on the top-level cell's gravity business*/
@@ -2690,11 +2693,14 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
     /* Loop over all background cells.  */
     for (int k = s->zoom_props->tl_cell_offset; k < s->nr_cells; k++) {
 
-      /* Skip the void cell */
-      if (k == s->zoom_props->void_cell_index) continue;
-
       /* Handle on the neighbouring background cell. */
       struct cell *cj = &cells[k];
+
+      /* Skip cells with no particles. */
+      if (cj->grav.count == 0) continue;
+
+      /* Explict skip of void cell. */
+      if (cj->tl_cell_type == void_tl_cell) continue;
 
       /* Handle on the top-level cell's gravity business*/
       const struct gravity_tensors *multi_j = cj->grav.multipole;

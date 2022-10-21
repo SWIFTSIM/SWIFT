@@ -851,7 +851,7 @@ double cell_min_dist2(const struct cell *restrict ci,
   double dist2;
 
   /* Two TL cells with the same size. */
-  if (ci->dmin == cj->dmin) {
+  if (ci->width[0] == cj->width[0]) {
     dist2 = cell_min_dist2_same_size(ci, cj, periodic, dim);
   }
   /* Two cells with different sizes. */
