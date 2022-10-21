@@ -688,7 +688,7 @@ void find_neighbouring_cells(struct space *s,
    * before the mesh kicks in, rounded up to the next integer */
   const int delta_cells = ceil(max_distance * max3(s->iwidth[0],
                                                    s->iwidth[1],
-                                                   s->iwidth[2])) + 1;
+                                                   s->iwidth[2])) + 5;
 
   /* Turn this into upper and lower bounds for loops */
   int delta_m = delta_cells;
