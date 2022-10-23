@@ -1693,7 +1693,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     }
 
     /* Create the background specific pair task for non-neighbour bkg cells. */
-    if (ci->tl_cell_type == tl_cell || ci->tl_cell_type == tl_cell_neighbour) {
+    if (ci->tl_cell_type == tl_cell) {
       /* Ok, we need to add a direct pair calculation */
       scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
                         0, 0, ci, NULL);
