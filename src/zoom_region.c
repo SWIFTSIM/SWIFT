@@ -1842,7 +1842,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0], s->max_softening,
+      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
       s->min_a_grav, s->max_mpole_power, periodic);
 
   /* Convert the maximal search distance to a number of cells
@@ -1852,21 +1852,9 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   int delta_p = delta;
 
   /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
+  if (delta > cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
   }
 
   /* Loop through the elements, which are just byte offsets from NULL. */
@@ -1875,10 +1863,10 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
 
-    /* /\* Integer indices of the cell in the top-level grid *\/ */
-    /* const int i = cid / (cdim[1] * cdim[2]); */
-    /* const int j = (cid / cdim[2]) % cdim[1]; */
-    /* const int k = cid % cdim[2]; */
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
 
     /* Get the first cell */
     struct cell *ci = &cells[cid];
@@ -1892,29 +1880,29 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
                         NULL);
     }
 
-    /* Loop over all zoom cells. */
-    for (int cjd = 0; cjd < s->zoom_props->nr_zoom_cells; cjd++) {
+    /* /\* Loop over all zoom cells. *\/ */
+    /* for (int cjd = 0; cjd < s->zoom_props->nr_zoom_cells; cjd++) { */
 
-    /* /\* Loop over every other cell within (Manhattan) range delta *\/ */
-    /* for (int ii = i - delta_m; ii <= i + delta_p; ii++) { */
+    /* Loop over every other cell within (Manhattan) range delta */
+    for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
 
-    /*   /\* Zoom cells are never periodic, exit if beyond zoom region *\/ */
-    /*   if (ii < 0 || ii >= cdim[0]) continue; */
+      /* Zoom cells are never periodic, exit if beyond zoom region */
+      if (ii < 0 || ii >= cdim[0]) continue;
 
-    /*   for (int jj = j - delta_m; jj <= j + delta_p; jj++) { */
+      for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
 
-    /*     /\* Zoom cells are never periodic, exit if beyond zoom region *\/ */
-    /*     if (jj < 0 || jj >= cdim[1]) continue; */
+        /* Zoom cells are never periodic, exit if beyond zoom region */
+        if (jj < 0 || jj >= cdim[1]) continue;
 
-    /*     for (int kk = k - delta_m; kk <= k + delta_p; kk++) { */
+        for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
-    /*       /\* Zoom cells are never periodic, exit if beyond zoom region *\/ */
-    /*       if (kk < 0 || kk >= cdim[2]) continue; */
+          /* Zoom cells are never periodic, exit if beyond zoom region */
+          if (kk < 0 || kk >= cdim[2]) continue;
 
-    /*       /\* Apply periodic BC (not harmful if not using periodic BC) *\/ */
-    /*       const int iii = (ii + cdim[0]) % cdim[0]; */
-    /*       const int jjj = (jj + cdim[1]) % cdim[1]; */
-    /*       const int kkk = (kk + cdim[2]) % cdim[2]; */
+          /* Apply periodic BC (not harmful if not using periodic BC) */
+          const int iii = (ii + cdim[0]) % cdim[0];
+          const int jjj = (jj + cdim[1]) % cdim[1];
+          const int kkk = (kk + cdim[2]) % cdim[2];
           
           /* Get the second cell */
           /* const int cjd = cell_getid(cdim, iii, jjj, kkk); */
@@ -2010,8 +1998,8 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 #endif /* SWIFT_DEBUG_CHECKS */
           }
         }
-    /*   } */
-    /* } */
+      }
+    }
   }
 }
 
