@@ -1642,7 +1642,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[bkg_cell_offset].width[0]) + 1;
+  const int delta = (int)(sqrt(3) * distance /
+                          cells[bkg_cell_offset].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
