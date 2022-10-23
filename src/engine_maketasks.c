@@ -2116,8 +2116,9 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance
-                          / cells[bkg_cell_offset].width[0]) + 1;
+  const int delta = (int)(sqrt(3) * distance /
+                          cells[bkg_cell_offset].width[0]) + 1;
+
   int delta_m = delta;
   int delta_p = delta;
 
@@ -2145,43 +2146,62 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
   const int k = ci->loc[2] * s->iwidth[2];
   const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
-  /* Loop over plausibly useful cells */
-  for (int ii = i - delta_m; ii <= i + delta_p; ++ii) {
-    for (int jj = j - delta_m; jj <= j + delta_p; ++jj) {
-      for (int kk = k - delta_m; kk <= k + delta_p; ++kk) {
+  /* Loop over every other cell within (Manhattan) range delta */
+  for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+    
+    /* Escape if non-periodic and beyond range */
+    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
 
-        /* Box wrap */
-        const int iii = (ii + s->cdim[0]) % s->cdim[0];
-        const int jjj = (jj + s->cdim[1]) % s->cdim[1];
-        const int kkk = (kk + s->cdim[2]) % s->cdim[2];
+    for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+      
+      /* Escape if non-periodic and beyond range */
+      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+
+        /* Escape if non-periodic and beyond range */
+        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+        /* Apply periodic BC (not harmful if not using periodic BC) */
+        const int iii = (ii + cdim[0]) % cdim[0];
+        const int jjj = (jj + cdim[1]) % cdim[1];
+        const int kkk = (kk + cdim[2]) % cdim[2];
         
         /* Get the second cell */
         const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         struct cell *cj = &cells[cjd];
 
-        /* Avoid duplicates and empty cells. */
-        if (cid >= cjd || cj->grav.count == 0)
+        /* Avoid duplicates, empty cells and foreign cells */
+        if (cid >= cjd || cj->grav.count == 0 ||
+            (cj->nodeID != nodeID))
           continue;
 
-        /* Skip foreign neighbours. */
-        if (cj->nodeID != nodeID) continue;
+        /* Pointers to the parent cells for tasks going up and down the tree
+         * In the case where we are at the super-level we don't
+         * want the parent as no tasks are defined above that level. */
+        struct cell *cj_parent;
+        if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
+          cj_parent = cj->parent;
+        else
+          cj_parent = cj;
+
+        /* Avoid double unlock */
+        if (ci == cj_parent) continue;
 
         /* Minimal distance between any pair of particles */
         const double min_radius2 =
-          cell_min_dist2_same_size(ci, cj, periodic, dim);
+          cell_min_dist2_same_size(ci, cj_parent, periodic, dim);
 
         /* Are we beyond the distance where the truncated forces are 0? */
         if (periodic && min_radius2 > max_distance2) continue;
 
         /* Are the cells too close for a MM interaction ? */
-        if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
+        if (!cell_can_use_pair_mm(ci, cj_parent, e, s, /*use_rebuild_data=*/1,
                                     /*is_tree_walk=*/0)) {
 
           /* drift ---+-> gravity --> grav_down */
           /* init  --/    */
-          scheduler_addunlock(sched, cj->grav.drift_out, t);
-          scheduler_addunlock(sched, cj->grav.init_out, t);
-          scheduler_addunlock(sched, t, cj->grav.down_in);
+          scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
+          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
+          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
           
         } 
       } /* Loop over kkks */
@@ -2304,11 +2324,11 @@ void engine_link_gravity_tasks(struct engine *e) {
         scheduler_addunlock(sched, ci_parent->grav.drift_out, t);
         scheduler_addunlock(sched, ci_parent->grav.init_out, t);
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
-        
+
       }
       
-      /* Handle the possible neighbours. */
-      engine_link_gravity_pooled_pairs(e, ci, t);
+      /* Handle the possible neighbours */
+      engine_link_gravity_pooled_pairs(e, ci_parent, t);
     }
 
     /* Otherwise, sub-self interaction? */
@@ -4539,7 +4559,8 @@ void engine_maketasks(struct engine *e) {
           NULL, s->zoom_props->nr_bkg_cells, 1, threadpool_auto_chunk_size, e);
       threadpool_map(&e->threadpool,
                      engine_make_self_gravity_tasks_mapper_with_zoom_diffsize,
-                     NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+                     NULL, s->zoom_props->nr_zoom_cells, 1,
+                     threadpool_auto_chunk_size, e);
     } else {
       threadpool_map(&e->threadpool, engine_make_self_gravity_tasks_mapper,
                      NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
