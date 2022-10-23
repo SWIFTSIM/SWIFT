@@ -2102,8 +2102,8 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
   const int periodic = s->periodic;
   const int nodeID = e->nodeID;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
-                       s->zoom_props->cdim[2]};
+  const int cdim[3] = {s->cdim[0], s->cdim[1],
+                       s->cdim[2]};
   struct cell *cells = s->cells_top;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
