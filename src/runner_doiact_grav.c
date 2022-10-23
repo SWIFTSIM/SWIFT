@@ -2846,9 +2846,6 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   const double max_distance2 = max_distance * max_distance;
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
-  /* Some info about the zoom domain */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
-
   TIMER_TIC;
 
   /* Compute maximal distance where we can expect a direct interaction */
