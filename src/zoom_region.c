@@ -1178,14 +1178,9 @@ void engine_makeproxies_zoom_cells(struct engine *e) {
   int delta_p = delta_cells;
 
   /* Special case where every cell is in range of every other one */
-  if (delta_cells >= cdim[0] / 2) {
-    if (cdim[0] % 2 == 0) {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2 - 1;
-    } else {
-      delta_m = cdim[0] / 2;
-      delta_p = cdim[0] / 2;
-    }
+  if (delta_cells >= cdim[0]) {
+    delta_m = cdim[0];
+    delta_p = cdim[0];
   }
 
   /* Let's be verbose about this choice */
@@ -1837,9 +1832,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* /\* Some info about the zoom domain *\/ */
-  /* const int bkg_cell_offset = s->zoom_props->tl_cell_offset; */
-
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
       e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
@@ -1879,9 +1871,6 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
       scheduler_addtask(sched, task_type_self, task_subtype_grav, 0, 0, ci,
                         NULL);
     }
-
-    /* /\* Loop over all zoom cells. *\/ */
-    /* for (int cjd = 0; cjd < s->zoom_props->nr_zoom_cells; cjd++) { */
 
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
