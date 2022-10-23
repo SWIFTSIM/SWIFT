@@ -1837,8 +1837,8 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
-  /* Some info about the zoom domain */
-  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  /* /\* Some info about the zoom domain *\/ */
+  /* const int bkg_cell_offset = s->zoom_props->tl_cell_offset; */
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
