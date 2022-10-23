@@ -2108,14 +2108,18 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
 
+    /* Some info about the zoom domain */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
-      s->min_a_grav, s->max_mpole_power, periodic);
+      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
+      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
+  const int delta = (int)(sqrt(3) * distance /
+                          cells[bkg_cell_offset].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
@@ -2141,7 +2145,7 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
   const int i = ci->loc[0] * s->iwidth[0];
   const int j = ci->loc[1] * s->iwidth[1];
   const int k = ci->loc[2] * s->iwidth[2];
-  const int cid = cell_getid(cdim, i, j, k);
+  const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
   /* Loop over every other cell within (Manhattan) range delta */
   for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -2165,11 +2169,12 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
         const int kkk = (kk + cdim[2]) % cdim[2];
         
         /* Get the second cell */
-        const int cjd = cell_getid(cdim, iii, jjj, kkk);
+        const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         struct cell *cj = &cells[cjd];
 
-        /* Avoid duplicates and empty cells. */
-        if (cid >= cjd || cj->grav.count == 0)
+        /* Avoid duplicates, empty cells and completely foreign pairs */
+        if (cid >= cjd || cj->grav.count == 0 ||
+            (ci->nodeID != nodeID && cj->nodeID != nodeID))
           continue;
 
         /* Minimal distance between any pair of particles */
