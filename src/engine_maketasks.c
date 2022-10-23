@@ -2149,19 +2149,19 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
 
   /* Loop over every other cell within (Manhattan) range delta */
   for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
-
-    /* Zoom cells are never periodic, exit if beyond zoom region */
-    if (ii < 0 || ii >= cdim[0]) continue;
+    
+    /* Escape if non-periodic and beyond range */
+    if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
 
     for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
       
-      /* Zoom cells are never periodic, exit if beyond zoom region */
-      if (jj < 0 || jj >= cdim[1]) continue;
+      /* Escape if non-periodic and beyond range */
+      if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
       for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
 
-        /* Zoom cells are never periodic, exit if beyond zoom region */
-        if (kk < 0 || kk >= cdim[2]) continue;
+        /* Escape if non-periodic and beyond range */
+        if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
         /* Apply periodic BC (not harmful if not using periodic BC) */
         const int iii = (ii + cdim[0]) % cdim[0];
