@@ -1875,10 +1875,10 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     /* Get the cell index. */
     const int cid = (size_t)(map_data) + ind;
 
-    /* Integer indices of the cell in the top-level grid */
-    const int i = cid / (cdim[1] * cdim[2]);
-    const int j = (cid / cdim[2]) % cdim[1];
-    const int k = cid % cdim[2];
+    /* /\* Integer indices of the cell in the top-level grid *\/ */
+    /* const int i = cid / (cdim[1] * cdim[2]); */
+    /* const int j = (cid / cdim[2]) % cdim[1]; */
+    /* const int k = cid % cdim[2]; */
 
     /* Get the first cell */
     struct cell *ci = &cells[cid];
