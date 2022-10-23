@@ -2180,6 +2180,7 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
         /* Pointers to the parent cells for tasks going up and down the tree
          * In the case where we are at the super-level we don't
          * want the parent as no tasks are defined above that level. */
+        struct cell *cj_parent;
         if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
           cj_parent = cj->parent;
         else
