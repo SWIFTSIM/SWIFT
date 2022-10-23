@@ -2157,6 +2157,8 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
       /* Escape if non-periodic and beyond range */
       if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
 
+      for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+
         /* Escape if non-periodic and beyond range */
         if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
@@ -2207,7 +2209,6 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
       } /* Loop over kkks */
     } /* Loop over jjjs */
   } /* Loop over iiis */
-
 }
 
 
