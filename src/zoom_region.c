@@ -1892,26 +1892,29 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
                         NULL);
     }
 
-    /* Loop over every other cell within (Manhattan) range delta */
-    for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
+    /* Loop over all zoom cells. */
+    for (int cjd = 0; cjd < s->zoom_props->nr_zoom_cells; cjd++) {
 
-      /* Zoom cells are never periodic, exit if beyond zoom region */
-      if (ii < 0 || ii >= cdim[0]) continue;
+    /* /\* Loop over every other cell within (Manhattan) range delta *\/ */
+    /* for (int ii = i - delta_m; ii <= i + delta_p; ii++) { */
 
-      for (int jj = j - delta_m; jj <= j + delta_p; jj++) {
+    /*   /\* Zoom cells are never periodic, exit if beyond zoom region *\/ */
+    /*   if (ii < 0 || ii >= cdim[0]) continue; */
 
-        /* Zoom cells are never periodic, exit if beyond zoom region */
-        if (jj < 0 || jj >= cdim[1]) continue;
+    /*   for (int jj = j - delta_m; jj <= j + delta_p; jj++) { */
 
-        for (int kk = k - delta_m; kk <= k + delta_p; kk++) {
+    /*     /\* Zoom cells are never periodic, exit if beyond zoom region *\/ */
+    /*     if (jj < 0 || jj >= cdim[1]) continue; */
 
-          /* Zoom cells are never periodic, exit if beyond zoom region */
-          if (kk < 0 || kk >= cdim[2]) continue;
+    /*     for (int kk = k - delta_m; kk <= k + delta_p; kk++) { */
 
-          /* Apply periodic BC (not harmful if not using periodic BC) */
-	  const int iii = (ii + cdim[0]) % cdim[0];
-	  const int jjj = (jj + cdim[1]) % cdim[1];
-	  const int kkk = (kk + cdim[2]) % cdim[2];
+    /*       /\* Zoom cells are never periodic, exit if beyond zoom region *\/ */
+    /*       if (kk < 0 || kk >= cdim[2]) continue; */
+
+    /*       /\* Apply periodic BC (not harmful if not using periodic BC) *\/ */
+    /*       const int iii = (ii + cdim[0]) % cdim[0]; */
+    /*       const int jjj = (jj + cdim[1]) % cdim[1]; */
+    /*       const int kkk = (kk + cdim[2]) % cdim[2]; */
           
           /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
@@ -2007,8 +2010,8 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 #endif /* SWIFT_DEBUG_CHECKS */
           }
         }
-      }
-    }
+    /*   } */
+    /* } */
   }
 }
 
