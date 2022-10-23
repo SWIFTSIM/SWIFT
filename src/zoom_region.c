@@ -1647,7 +1647,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[bkg_cell_offset].width[0]) + 10;
+  const int delta = (int)(sqrt(3) * distance / cells[bkg_cell_offset].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
@@ -1839,12 +1839,12 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[0].width[0], s->max_softening,
+      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0], s->max_softening,
       s->min_a_grav, s->max_mpole_power, periodic);
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 10;
+  const int delta = (int)(sqrt(3) * distance / cells[0].width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
