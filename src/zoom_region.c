@@ -1917,7 +1917,7 @@ void engine_make_self_gravity_tasks_mapper_zoom_cells(void *map_data,
     /*       const int kkk = (kk + cdim[2]) % cdim[2]; */
           
           /* Get the second cell */
-          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          /* const int cjd = cell_getid(cdim, iii, jjj, kkk); */
           struct cell *cj = &cells[cjd];
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
