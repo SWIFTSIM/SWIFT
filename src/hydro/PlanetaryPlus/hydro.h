@@ -10,7 +10,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARThydro_timestep_extraICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
@@ -557,9 +557,10 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   p->drho_dh = 0.f;  
-  p->grad_rho[0] = 0.f;
+    p->grad_rho[0] = 0.f;
   p->grad_rho[1] = 0.f;
   p->grad_rho[2] = 0.f;   
+
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
@@ -653,9 +654,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->drho_dh -= p->mass * hydro_dimension * kernel_root;
   p->drho_dh *= h_inv_dim_plus_one;    
     
-  p->grad_rho[0] *= h_inv_dim_plus_one;
+      p->grad_rho[0] *= h_inv_dim_plus_one;
   p->grad_rho[1] *= h_inv_dim_plus_one;
   p->grad_rho[2] *= h_inv_dim_plus_one;    
+
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
@@ -936,10 +938,20 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->grad_drho_dh[1] *= h_inv_dim_plus_one;
   p->grad_drho_dh[2] *= h_inv_dim_plus_one;
     
-  float f_g = 0.5f * (1.f + tanhf(3.f - 3.f / (0.5f)));
+   float s = (p->h /p->rho) * fabs(p->drho_dh);
     
-  p->P_tilde_numerator += kernel_root * p->P * f_g; 
-  p->P_tilde_denominator += kernel_root * f_g;
+  float f_g = 0.5f * (1.f + tanhf(3.f - 3.f * s / 0.075f));//0.5f * (1.f + tanhf(3.f - 3.f * s / 0.075f));//
+    
+     //float s =(p->h / p->rho) * sqrtf(p->grad_rho[0]*p->grad_rho[0] + p->grad_rho[1]*p->grad_rho[1] + p->grad_rho[2]*p->grad_rho[2]);
+       
+     //  float f_g =expf(-23.0259f * s);
+    
+  p->P_tilde_numerator += p->P * f_g * sqrtf(kernel_root); 
+  p->P_tilde_denominator += f_g * sqrtf(kernel_root);
+    if (p->P_tilde_numerator == 0.f || p->P_tilde_denominator == 0.f){
+        p->P_tilde_numerator = p->P;
+        p->P_tilde_denominator = 1.f;
+    }
      
    float S;  
    float f_S; 
@@ -967,8 +979,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
       }
       
        // Compute rho from u, P_new
-      float rho_new_from_u = gas_density_from_pressure_and_internal_energy(P_new, p->u, rho_ref, p->mat_id);
-
+      float rho_new_from_u = gas_density_from_pressure_and_internal_energy(P_new, p->u, rho_ref, p->rho, p->mat_id);
+      
       if (rho_new_from_u > p->max_ngb_sph_rho){
           rho_new_from_u = p->max_ngb_sph_rho;
       }

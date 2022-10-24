@@ -3237,7 +3237,7 @@ gas_density_from_pressure_and_temperature(float P, float T,
  * @param T The temperature \f$T\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
+gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref, float rho_sph,
                                  enum eos_planetary_material_id mat_id) {
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_planetary_type_factor);
@@ -3255,7 +3255,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.idg_def.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_idg_def: 1");
 #endif
-          return idg_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.idg_def);
+          return idg_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.idg_def);
           break;
 
         default:
@@ -3276,7 +3276,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.Til_iron.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_Til_iron: 1");
 #endif
-          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_iron);
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til_iron);
           break;
 
         case eos_planetary_id_Til_granite:
@@ -3284,7 +3284,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.Til_granite.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_Til_granite: 1");
 #endif
-          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_granite);
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til_granite);
           break;
 
         case eos_planetary_id_Til_water:
@@ -3292,7 +3292,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.Til_water.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_Til_water: 1");
 #endif
-          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_water);
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til_water);
           break;
 
         case eos_planetary_id_Til_basalt:
@@ -3300,7 +3300,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.Til_basalt.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_Til_basalt: 1");
 #endif
-          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_basalt);
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til_basalt);
           break;
               
         case eos_planetary_id_Til_ice:
@@ -3308,7 +3308,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.Til_ice.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_Til_ice: 1");
 #endif
-          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.Til_ice);
+          return Til_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.Til_ice);
           break;
 
         default:
@@ -3329,7 +3329,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.HM80_HHe.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_HM80_HHe: 1");
 #endif
-          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.HM80_HHe);
+          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.HM80_HHe);
           break;
 
         case eos_planetary_id_HM80_ice:
@@ -3337,7 +3337,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.HM80_ice.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_HM80_ice: 1");
 #endif
-          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.HM80_ice);
+          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.HM80_ice);
           break;
 
         case eos_planetary_id_HM80_rock:
@@ -3345,7 +3345,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
           if (eos.HM80_rock.mat_id != mat_id)
             error("EoS not enabled. Please set EoS:planetary_use_HM80_rock: 1");
 #endif
-          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, &eos.HM80_rock);
+          return HM80_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph, &eos.HM80_rock);
           break;
 
         default:
@@ -3367,7 +3367,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_SESAME_iron: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.SESAME_iron);
           break;
 
@@ -3377,7 +3377,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_SESAME_basalt: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.SESAME_basalt);
           break;
 
@@ -3387,7 +3387,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_SESAME_water: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.SESAME_water);
           break;
 
@@ -3397,7 +3397,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_SS08_water: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.SS08_water);
           break;
               
@@ -3407,7 +3407,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_AQUA: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.AQUA);
           break;
               
@@ -3417,7 +3417,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_CMS19_H: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.CMS19_H);
           break;
               
@@ -3427,7 +3427,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_CMS19_He: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.CMS19_He);
           break;
               
@@ -3437,7 +3437,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_CD21_HHe: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.CD21_HHe);
           break;
 
@@ -3460,7 +3460,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_ANEOS_forsterite: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.ANEOS_forsterite);
           break;
 
@@ -3470,7 +3470,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_ANEOS_iron: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.ANEOS_iron);
           break;
 
@@ -3480,7 +3480,7 @@ gas_density_from_pressure_and_internal_energy(float P, float u, float rho_ref,
             error(
                 "EoS not enabled. Please set EoS:planetary_use_ANEOS_Fe85Si15: 1");
 #endif
-          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref,
+          return SESAME_density_from_pressure_and_internal_energy(P, u, rho_ref, rho_sph,
                                                      &eos.ANEOS_Fe85Si15);
           break;
 

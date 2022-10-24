@@ -198,11 +198,9 @@ INLINE static float idg_density_from_pressure_and_temperature(
 
 // gas_density_from_pressure_and_internal_energy
 INLINE static float idg_density_from_pressure_and_internal_energy(
-    float P, float u, float rho_ref, const struct idg_params *mat) {
+    float P, float u, float rho_ref, float rho_sph, const struct idg_params *mat) {
 
-  error("This EOS function is not yet implemented!");
-
-  return 0.f;
+  return mat->one_over_gamma_minus_one * P / u;
 }
 
 #endif /* SWIFT_IDEAL_GAS_EQUATION_OF_STATE_H */
