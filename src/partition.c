@@ -2367,18 +2367,18 @@ void partition_init(struct partition *partition,
     case 'e':
       partition->type = INITPART_METIS_WEIGHT_EDGE;
       break;
-    case 'r':
+    case 'w':
       partition->type = INITPART_RADIAL;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
           "Permitted values are: 'grid', 'region', 'memory', 'edgememory', "
-          "'vectorized' or 'radial'",);
+          "'vectorized' or 'wedges'",);
 #else
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid' or 'vectorized' when compiled "
+          "Permitted values are: 'grid', 'wedges' or 'vectorized' when compiled "
           "without METIS or ParMETIS.");
 #endif
   }
