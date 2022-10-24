@@ -156,15 +156,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
-  pj->drho_dh -= pi->mass * (hydro_dimension * wj + uj * wj_dx);
+  pj->drho_dh -= pi->mass * (hydro_dimension * wj + uj * wj_dx);  
     
-  pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
+    pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
   pi->grad_rho[1] += dx[1]*wi_dx*r_inv*mj;
   pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;
 
   pj->grad_rho[0] += -dx[0]*wj_dx*r_inv*mi;
   pj->grad_rho[1] += -dx[1]*wj_dx*r_inv*mi;
   pj->grad_rho[2] += -dx[2]*wj_dx*r_inv*mi;      
+
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
@@ -286,9 +287,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
     
-  pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
+        pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
   pi->grad_rho[1] += dx[1]*wi_dx*r_inv*mj;
-  pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;    
+  pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;
 #endif
 
 #ifdef PLANETARY_QUAD_VISC
@@ -373,16 +374,25 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float gi = (pi->h / pi->rho) * sqrtf(pi->grad_rho[0] * pi->grad_rho[0] + pi->grad_rho[1] * pi->grad_rho[1] + pi->grad_rho[2] * pi->grad_rho[2]);   
-  float gj = (pj->h / pj->rho) * sqrtf(pj->grad_rho[0] * pj->grad_rho[0] + pj->grad_rho[1] * pj->grad_rho[1] + pj->grad_rho[2] * pj->grad_rho[2]);
-   
-  float f_gi = 0.5f * (1.f + tanhf(3.f - 3.f * gi / (0.5f * gj)));
-  float f_gj = 0.5f * (1.f + tanhf(3.f - 3.f * gj / (0.5f * gi)));
+  float si = (pi->h /pi->rho) * fabs(pi->drho_dh);
+  float sj = (pj->h /pj->rho) * fabs(pj->drho_dh);
     
-  pi->P_tilde_numerator += wi * pj->P * f_gj;
-  pj->P_tilde_numerator += wj * pi->P * f_gi;   
-  pi->P_tilde_denominator += wi * f_gj;
-  pj->P_tilde_denominator += wj * f_gi;
+ //    float si = (pj->h /pj->rho) * fabs(pi->drho_dh);
+ // float sj = (pi->h /pi->rho) * fabs(pj->drho_dh);
+    
+  float f_gi =0.5f * (1.f + tanhf(3.f - 3.f * si / 0.075f));// 0.5f * (1.f + tanhf(3.f - 3.f * si / 0.075f));//
+  float f_gj = 0.5f * (1.f + tanhf(3.f - 3.f * sj / 0.075f));//0.5f * (1.f + tanhf(3.f - 3.f * sj / 0.075f));//
+    
+ //  float si =(pi->h / pi->rho) * sqrtf(pi->grad_rho[0]*pi->grad_rho[0] + pi->grad_rho[1]*pi->grad_rho[1] + pi->grad_rho[2]*pi->grad_rho[2]);
+   //    float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
+       
+     //  float f_gi =expf(-23.0259f * si);
+ // float f_gj = expf(-23.0259f * sj);
+    
+  pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi);
+  pj->P_tilde_numerator += pi->P * f_gi * sqrtf(wj);   
+  pi->P_tilde_denominator += f_gj * sqrtf(wi);
+  pj->P_tilde_denominator += f_gi * sqrtf(wj);
     
   pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
   pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);
@@ -508,13 +518,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float gi = (pi->h / pi->rho) * sqrtf(pi->grad_rho[0] * pi->grad_rho[0] + pi->grad_rho[1] * pi->grad_rho[1] + pi->grad_rho[2] * pi->grad_rho[2]);   
-  float gj = (pj->h / pj->rho) * sqrtf(pj->grad_rho[0] * pj->grad_rho[0] + pj->grad_rho[1] * pj->grad_rho[1] + pj->grad_rho[2] * pj->grad_rho[2]);
-   
-  float f_gj = 0.5f * (1.f + tanhf(3.f - 3.f * gj / (0.5f * gi)));
+  float sj = (pi->h /pi->rho) * fabs(pj->drho_dh);//(pj->h /pj->rho) * fabs(pj->drho_dh);
     
-  pi->P_tilde_numerator += wi * pj->P * f_gj; 
-  pi->P_tilde_denominator += wi * f_gj;
+  float f_gj = 0.5f * (1.f + tanhf(3.f - 3.f * sj / 0.075f));//0.5f * (1.f + tanhf(3.f - 3.f * sj / 0.075f));//
+    
+    //   float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
+       
+ // float f_gj = expf(-23.0259f * sj);
+     
+  pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi); 
+  pi->P_tilde_denominator += f_gj * sqrtf(wi);
    
   pi->max_ngb_sph_rho = max(pi->max_ngb_sph_rho, pj->rho);
   pi->min_ngb_sph_rho = min(pi->min_ngb_sph_rho, pj->rho);

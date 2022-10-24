@@ -973,10 +973,10 @@ INLINE static float SESAME_density_from_pressure_and_temperature(
 
 // gas_density_from_pressure_and_internal_energy
 INLINE static float SESAME_density_from_pressure_and_internal_energy(
-    float P, float u,  float rho_ref, const struct SESAME_params *mat) {
+    float P, float u,  float rho_ref, float rho_sph, const struct SESAME_params *mat) {
 
   if (u <= 0.f || P <= 0.f) {
-    return rho_ref;
+    return rho_sph;
   }
   
   // Convert inputs to log  
@@ -1023,7 +1023,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
     P_below_lower = 0.f;
     
     // Counters will stop us getting stuck in a while loop.
-    int max_counter = 20;
+    int max_counter = 5;
     int counter1 = 0;
     int counter2;
     
@@ -1129,7 +1129,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
             // Unless already trying to extrapolate in which case return zero
             if ((num_non_pos > 2) || (mat->P_tiny == 0.f) ||
                 (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
-              return 0.f;
+              return rho_sph;
             }
             if (P_1 <= 0.f) P_1 = mat->P_tiny;
             if (P_2 <= 0.f) P_2 = mat->P_tiny;
@@ -1254,7 +1254,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
             // Unless already trying to extrapolate in which case return zero
             if ((num_non_pos > 2) || (mat->P_tiny == 0.f) ||
                 (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
-              return 0.f;
+              return rho_sph;
             }
             if (P_1 <= 0.f) P_1 = mat->P_tiny;
             if (P_2 <= 0.f) P_2 = mat->P_tiny;
@@ -1317,10 +1317,10 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
         
         // If we cover the whole EoS table and don't find a root, return rho_ref. Maybe we should give an error here?
         if (idx_rho_below_max == 0 && idx_rho_above_min == mat->num_rho - 1){
-            return  rho_ref;
+            return  rho_sph;
          }       
     }    
     // If we don't find a root before we reach max_counter, return rho_ref. Maybe we should give an error here?
-    return rho_ref;
+    return rho_sph;
 }
 #endif /* SWIFT_SESAME_EQUATION_OF_STATE_H */
