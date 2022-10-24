@@ -171,6 +171,101 @@ static void split_vector(struct space *s, int *cdim, int nregions,
 }
 #endif
 
+#ifdef WITH_MPI
+#ifdef WITH_ZOOM_REGION
+/**
+ * @brief Partition the into radial slices.
+ *
+ * This simply slices the box into wedges along the x-y plane.
+ */
+void split_radial_wedges(struct space *s, int nregions) {
+    
+  /* Define variables for selection */
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
+  /* Calculate the size of a radial slice. */
+  float slice_width = 2 * M_PI / nregions;
+
+  /* Loop over zoom  */
+  for (int i = 0; i < s->zoom_props->cdim[0]; i++) {
+    for (int j = 0; j < s->zoom_props->cdim[1]; j++) {
+      for (int k = 0; k < s->zoom_props->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->zoom_props->cdim, i, j, k);
+
+        /* Center cell coordinates. */
+        int ii = i - (s->zoom_props->cdim[0] / 2);
+        int jj = j - (s->zoom_props->cdim[0] / 2);
+
+        /* Calculate the radius of this cell */
+        float r = sqrt(ii * ii + jj * jj);
+
+        /* Calculate the angle, handling all cases. Not using atan2
+         * here since integers allow the central cells to be
+         * easily identified without casting. */
+        float phi;
+        if (ii == 0 && jj == 0) {
+          /* Handle the central cell. */
+          s->cells_top[cid].nodeID = 0;
+          continue;
+        }
+        else if (ii >= 0) {
+          phi = asin(jj / r) + (M_PI / 2);
+        }
+        else {
+          phi = - asin(jj / r) + (3 * M_PI / 2);
+        }
+
+        /* Compute the nodeID. */
+        int select = phi / slice_width;
+        s->cells_top[cid].nodeID = select;
+      }
+    }
+  }
+
+  /* Loop over natural cells. Decomp these into radial slices. */
+  for (int i = 0; i < s->cdim[0]; i++) {
+    for (int j = 0; j < s->cdim[1]; j++) {
+      for (int k = 0; k < s->cdim[2]; k++) {
+
+        /* Get cell ID. */
+        const int cid = cell_getid(s->cdim, i, j, k) + bkg_cell_offset;
+
+        /* Center cell coordinates. */
+        int ii = i - (s->cdim[0] / 2);
+        int jj = j - (s->cdim[0] / 2);
+
+        /* Calculate the radius of this cell */
+        float r = sqrt(ii * ii + jj * jj);
+
+        /* Calculate the angle, handling all cases. Not using atan2
+         * here since integers allow the central cells to be
+         * easily identified without casting. */
+        float phi;
+        if (ii == 0 && jj == 0) {
+          /* Handle the central cell. */
+          s->cells_top[cid].nodeID = 0;
+          continue;
+        }
+        else if (ii >= 0) {
+          phi = asin(jj / r) + (M_PI / 2);
+        }
+        else {
+          phi = - asin(jj / r) + (3 * M_PI / 2);
+        }
+
+        /* Compute the nodeID. */
+        int select = phi / slice_width;
+        s->cells_top[cid].nodeID = select;
+      }
+    }
+  }
+}
+#endif
+#endif
+
+
 /* METIS/ParMETIS support (optional)
  * =================================
  *
@@ -2070,6 +2165,20 @@ void partition_initial_partition(struct partition *initial_partition,
       return;
     }
 
+  } else if (initial_partition->type == INIPART_RADIAL) {
+
+    /* Do a simple radial wedge decomposition. */
+    split_radial_wedges(s, nregions);
+
+    /* The radial technique shouldn't fail, but lets be safe. */
+    if (!check_complete(s, (nodeID == 0), nr_nodes)) {
+      if (nodeID == 0)
+        message("Grid initial partition failed, using a vectorised partition");
+      initial_partition->type = INITPART_VECTORIZE;
+      partition_initial_partition(initial_partition, nodeID, nr_nodes, s);
+      return;
+    }
+
   } else if (initial_partition->type == INITPART_METIS_WEIGHT ||
              initial_partition->type == INITPART_METIS_WEIGHT_EDGE ||
              initial_partition->type == INITPART_METIS_NOWEIGHT) {
@@ -2258,11 +2367,13 @@ void partition_init(struct partition *partition,
     case 'e':
       partition->type = INITPART_METIS_WEIGHT_EDGE;
       break;
+    case 'r':
+      partition->type = INITPART_RADIAL;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
-          "Permitted values are: 'grid', 'region', 'memory', 'edgememory' or "
-          "'vectorized'");
+          "Permitted values are: 'grid', 'region', 'memory', 'edgememory', "
+          "'vectorized' or 'radial'",);
 #else
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
