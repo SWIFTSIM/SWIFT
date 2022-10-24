@@ -2168,7 +2168,7 @@ void partition_initial_partition(struct partition *initial_partition,
   } else if (initial_partition->type == INITPART_RADIAL) {
 
     /* Do a simple radial wedge decomposition. */
-    split_radial_wedges(s, nregions);
+    split_radial_wedges(s, nr_nodes);
 
     /* The radial technique shouldn't fail, but lets be safe. */
     if (!check_complete(s, (nodeID == 0), nr_nodes)) {
