@@ -320,7 +320,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
       for (int m = 0; m < s->zoom_props->cdim[1]; m++) {
         for (int n = 0; n < s->zoom_props->cdim[2]; n++) {
 
-          /* Visit all neighbours of this cell, wrapping space at edges. */
+          /* Visit all neighbours of this cell. */
           int p = 0;
 
           /* Here we need to handle that the zoom region isn't periodic. */
@@ -1414,6 +1414,9 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     return;
   }
 
+  /* Define the number of edges we have to handle. */
+  int nedges = 26 * ncells;   
+
   /* Only one node needs to calculate this. */
   if (nodeID == 0) {
 
@@ -1422,7 +1425,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate xadj buffer.");
     idx_t *adjncy;
-    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+    if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
       error("Failed to allocate adjncy array.");
     idx_t *weights_v = NULL;
     if (vertexw != NULL)
@@ -1430,7 +1433,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate vertex weights array");
     idx_t *weights_e = NULL;
     if (edgew != NULL)
-      if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) == NULL)
+      if ((weights_e = (idx_t *)malloc(nedges * sizeof(idx_t))) == NULL)
         error("Failed to allocate edge weights array");
     idx_t *regionid;
     if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
@@ -1466,7 +1469,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     /* Init the edges weights array. */
 
     if (edgew != NULL) {
-      for (int k = 0; k < 26 * ncells; k++) {
+      for (int k = 0; k < nedges; k++) {
         if (edgew[k] > 1) {
           weights_e[k] = edgew[k];
         } else {
@@ -1477,7 +1480,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < 26 * ncells; k++) {
+      for (int k = 0; k < nedges; k++) {
 
         if ((idx_t)edgew[k] < 0) {
           message("Input edge weight out of range: %ld", (long)edgew[k]);
@@ -1892,6 +1895,8 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     }
   }
 
+  message("Entering pick_metis");
+
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
   if (repartition->usemetis) {
@@ -2196,11 +2201,19 @@ void partition_initial_partition(struct partition *initial_partition,
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
+      /* Define the number of edges we have to handle. */
+      int nedges = 26 * nr_cells;
+      /* if (s->with_zoom_region) { */
+      /*   int nedges = 26 * (nr_cells + s->zoom_props->nr_zoom_cells); */
+      /* } else { */
+      /*   int nedges = 26 * nr_cells;    */
+      /* } */
+
       /* Particle sizes also counted towards the edges. */
 
       if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
-      if ((weights_e = (double *)malloc(sizeof(double) * s->nr_cells * 26)) ==
+      if ((weights_e = (double *)malloc(sizeof(double) * nedges)) ==
           NULL)
         error("Failed to allocate weights_e buffer.");
 
