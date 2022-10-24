@@ -329,7 +329,7 @@ INLINE static float HM80_density_from_pressure_and_temperature(
 
 // gas_density_from_pressure_and_internal_energy
 INLINE static float HM80_density_from_pressure_and_internal_energy(
-    float P, float u, float rho_ref, const struct HM80_params *mat) {
+    float P, float u, float rho_ref, float rho_sph, const struct HM80_params *mat) {
 
   error("This EOS function is not yet implemented!");
 
