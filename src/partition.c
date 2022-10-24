@@ -172,13 +172,12 @@ static void split_vector(struct space *s, int *cdim, int nregions,
 #endif
 
 #ifdef WITH_MPI
-#ifdef WITH_ZOOM_REGION
 /**
  * @brief Partition the into radial slices.
  *
  * This simply slices the box into wedges along the x-y plane.
  */
-void split_radial_wedges(struct space *s, int nregions) {
+static void split_radial_wedges(struct space *s, int nregions) {
     
   /* Define variables for selection */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
@@ -262,7 +261,6 @@ void split_radial_wedges(struct space *s, int nregions) {
     }
   }
 }
-#endif
 #endif
 
 
