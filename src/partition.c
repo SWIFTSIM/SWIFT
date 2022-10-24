@@ -2353,6 +2353,9 @@ void partition_init(struct partition *partition,
     case 'v':
       partition->type = INITPART_VECTORIZE;
       break;
+    case 'w':
+      partition->type = INITPART_RADIAL;
+      break;
 #if defined(HAVE_METIS) || defined(HAVE_PARMETIS)
     case 'r':
       partition->type = INITPART_METIS_NOWEIGHT;
@@ -2363,8 +2366,6 @@ void partition_init(struct partition *partition,
     case 'e':
       partition->type = INITPART_METIS_WEIGHT_EDGE;
       break;
-    case 'w':
-      partition->type = INITPART_RADIAL;
     default:
       message("Invalid choice of initial partition type '%s'.", part_type);
       error(
