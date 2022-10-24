@@ -220,8 +220,17 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
   /* Mean density */
   c->mean_density = c->critical_density_0 * c->a3_inv;
 
+  /* Mean matter density */
+  c->mean_density_Omega_m = c->mean_density * Omega_m;
+
   /* Mean baryonic density */
   c->mean_density_Omega_b = c->mean_density * c->Omega_b;
+
+  /* Over-density threshold for virialization
+   * Fitting function from Bryan & Norman, 1998, ApJ, 495, 1, 80-99
+   * Equation 6. */
+  const double x = Omega_m * c->a3_inv / (E_z * E_z) - 1.;
+  c->overdensity_BN98 = 18. * M_PI * M_PI + 82. * x - 39 * x * x;
 
   /* Time-step conversion factor */
   c->time_step_factor = c->H;
@@ -1050,7 +1059,9 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->critical_density = 0.;
   c->critical_density_0 = 0.;
   c->mean_density = 0.;
+  c->mean_density_Omega_m = 0;
   c->mean_density_Omega_b = 0;
+  c->overdensity_BN98 = 0.;
   c->T_CMB_0 = 0.;
   c->T_CMB_0_K = 0.;
 
@@ -1513,6 +1524,14 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "Scale-factor", c->a);
   io_write_attribute_d(h_grp, "Critical density [internal units]",
                        c->critical_density);
+  io_write_attribute_d(h_grp,
+                       "Critical density at redshift zero [internal units]",
+                       c->critical_density_0);
+  io_write_attribute_d(h_grp, "Mean matter density [internal units]",
+                       c->mean_density_Omega_m);
+  io_write_attribute_d(h_grp, "Mean baryonic density [internal units]",
+                       c->mean_density_Omega_b);
+  io_write_attribute_d(h_grp, "Virial overdensity (BN98)", c->overdensity_BN98);
 }
 #endif
 
