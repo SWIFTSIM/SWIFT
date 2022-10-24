@@ -2202,7 +2202,7 @@ void partition_initial_partition(struct partition *initial_partition,
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
       /* Define the number of edges we have to handle. */
-      int nedges = 26 * nr_cells;
+      int nedges = 26 * s->nr_cells;
       /* if (s->with_zoom_region) { */
       /*   int nedges = 26 * (nr_cells + s->zoom_props->nr_zoom_cells); */
       /* } else { */
