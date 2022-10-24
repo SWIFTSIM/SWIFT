@@ -645,7 +645,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
   p->viscosity.div_v *= h_inv_dim_plus_one * rho_inv * a_inv2;
   p->viscosity.div_v += cosmo->H * hydro_dimension;
 
-  /* Finish calculation of the d-matrix */
+  /* Finish calculation of the d-matrix(Eq20). */
   invert_dimension_by_dimension_matrix(p->magma.d_matrix);
 
   /* Calculate the auxiliary gradient u/v */
@@ -663,6 +663,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
                         aux_un[1] * p->magma.d_matrix[m][1] +
                         aux_un[2] * p->magma.d_matrix[m][2];
     for (int n = 0; n < 3; n++) {
+      /* Final Eq19. */
       p->magma.aux_v[m][n] = aux_vn[m][0] * p->magma.d_matrix[n][0] +
                              aux_vn[m][1] * p->magma.d_matrix[n][1] +
                              aux_vn[m][2] * p->magma.d_matrix[n][2];
@@ -793,7 +794,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   p->diffusion.laplace_u *= 2.f * h_inv_dim_plus_one;
 
-  /* Calculate the final correction matrix */
+  /* Calculate the final correction matrix C, Eq6 in Rosswog(2020). */
   int m, n;
   for (m = 0; m < 3; m++) {
     for (n = 0; n < 3; n++) {
@@ -827,6 +828,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
                                sder_un[m][1] * p->magma.c_matrix[n][1] +
                                sder_un[m][2] * p->magma.c_matrix[n][2]) *
                               h_inv_dim;
+      /* Final Eq18. */
       p->magma.fder_v[m][n] = (fder_vn[m][0] * p->magma.c_matrix[n][0] +
                                fder_vn[m][1] * p->magma.c_matrix[n][1] +
                                fder_vn[m][2] * p->magma.c_matrix[n][2]) *

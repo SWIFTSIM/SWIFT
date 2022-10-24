@@ -21,6 +21,7 @@
 #ifndef SWIFT_MAGMA_HYDRO_IACT_H
 #define SWIFT_MAGMA_HYDRO_IACT_H
 //#define MAGMA_USE_SPHENIX_DIFFUSION_PARAMETER
+//#define MAGMA_USE_FIRST_ORDER
 
 /**
  * @file MAGMA/hydro_iact.h
@@ -120,8 +121,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
     pi->magma.aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
     pj->magma.aux_u[i] += pi->mass * (pj->u - pi->u) * wj_dr * dx[i] * r_inv;
     for (int j = 0; j < 3; j++) {
+      /* Eq20 without inversing matrix. */
       pi->magma.d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
       pj->magma.d_matrix[i][j] -= pi->mass * dx[i] * wj_dr * dx[j] * r_inv;
+      /* Eq19 without multiplying matrix D. */
       pi->magma.aux_v[i][j] +=
           pj->mass * (pj->v[i] - pi->v[i]) * wi_dr * dx[j] * r_inv;
       pj->magma.aux_v[i][j] +=
@@ -199,7 +202,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   for (int i = 0; i < 3; i++) {
     pi->magma.aux_u[i] += pj->mass * (pj->u - pi->u) * wi_dr * dx[i] * r_inv;
     for (int j = 0; j < 3; j++) {
+      /* Eq20 without inversing matrix. */
       pi->magma.d_matrix[i][j] -= pj->mass * dx[i] * wi_dr * dx[j] * r_inv;
+      /* Eq19 without multiplying matrix D. */
       pi->magma.aux_v[i][j] +=
           pj->mass * (pj->v[i] - pi->v[i]) * wi_dr * dx[j] * r_inv;
     }
@@ -287,6 +292,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
     pi->magma.fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
     pj->magma.fder_u[i] -= pi->mass * (pj->u - pi->u) * dx[i] * wj / pi->rho;
     for (int j = 0; j < 3; j++) {
+      /* Eq6 without inversing matrix. */
       pi->magma.c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
       pj->magma.c_matrix[i][j] += pi->mass * dx[i] * dx[j] * wj / pi->rho;
 
@@ -296,7 +302,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
       pj->magma.sder_u[i][j] -= pi->mass *
                                 (pj->magma.aux_u[i] - pi->magma.aux_u[i]) *
                                 dx[j] * wj / pi->rho;
-
+      
+      /* Eq18 without multiplying matrix C. */
       pi->magma.fder_v[i][j] -=
           pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
       pj->magma.fder_v[i][j] -=
@@ -390,10 +397,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   for (int i = 0; i < 3; i++) {
     pi->magma.fder_u[i] -= pj->mass * (pj->u - pi->u) * dx[i] * wi / pj->rho;
     for (int j = 0; j < 3; j++) {
+      /* Eq6 without inversing matrix. */
       pi->magma.c_matrix[i][j] += pj->mass * dx[i] * dx[j] * wi / pj->rho;
       pi->magma.sder_u[i][j] -= pj->mass *
                                 (pj->magma.aux_u[i] - pi->magma.aux_u[i]) *
                                 dx[j] * wi / pj->rho;
+      /* Eq18 without multiplying matrix C. */
       pi->magma.fder_v[i][j] -=
           pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
       for (int k = 0; k < 3; k++) {
@@ -461,13 +470,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   kernel_deval(xj, &wj, &wj_dx);
   const float wj_dr = hjd_inv * wj_dx;
 
-  /* Get the slope constant h. */
+  /* Get the slope constant h(Eq23). */
   const float Hi = r / hi;
   const float Hj = r / hj;
   const float hij = min(Hi, Hj);
   const float h_crit = 0.81f;
 
-  /* Get the slope constant A. */
+  /* Get the slope constant A(Eq22). */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
   float A_ij, A_ji, Av_ij, Av_ji;
 
@@ -508,7 +517,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     Av_ji = Av_j / Av_i;
   }
 
-  /* Compute slope limiter. */
+  /* Compute slope limiter(Eq21). */
   const float Ai_min = 4.f * A_ij / ((1.f + A_ij) * (1.f + A_ij));
   const float Aj_min = 4.f * A_ji / ((1.f + A_ji) * (1.f + A_ji));
   const float Fi_min = min(1.f, Ai_min);
@@ -540,6 +549,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   }
 
   /* Compute reconstructed u. */
+#if defined(MAGMA_USE_FIRST_ORDER)
+  const float para_vis = 0.f;
+#else
+  const float para_vis = 0.5f;
+#endif
+
   float ui_mid, ui_fder = 0.f, ui_sder = 0.f;
   float uj_mid, uj_fder = 0.f, uj_sder = 0.f;
 
@@ -552,8 +567,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     }
   }
 
-  ui_mid = pi->u + F_ij * (ui_fder + 0.5f * ui_sder);
-  uj_mid = pj->u + F_ji * (uj_fder + 0.5f * uj_sder);
+  ui_mid = pi->u + F_ij * (ui_fder + para_vis * ui_sder);
+  uj_mid = pj->u + F_ji * (uj_fder + para_vis * uj_sder);
 
   /* Compute reconstructed v. */
   float vi_mid[3], vi_fder[3], vi_sder[3];
@@ -577,9 +592,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     }
   }
 
-  for (int i = 0; i < 3; i++) {
-    vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + 0.5f * vi_sder[i]);
-    vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + 0.5f * vj_sder[i]);
+  for (int i = 0; i < 3; i++) {/* Eq17 */
+    vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + para_vis * vi_sder[i]);
+    vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + para_vis * vj_sder[i]);
   }
 
   /* Compute dv dot r. */
@@ -587,7 +602,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
 
-  /* Get de-dimensionalised separations. */
+  /* Get de-dimensionalised separations(Eq16). */
   float h_i[3], h_j[3];
 
   for (int i = 0; i < 3; i++) {
@@ -607,11 +622,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float dvdh_i2 = dvdh_i / (h_i2 + 0.01f);
   const float dvdh_j2 = dvdh_j / (h_j2 + 0.01f);
 
-  /* compute velocity jump. */
+  /* compute velocity jump(Eq15). */
   const float mu_i = min(0.f, dvdh_i2);
   const float mu_j = min(0.f, dvdh_j2);
 
-  /* compute viscosity pressure term. */
+  /* compute viscosity pressure term(Eq14). */
   const float Q_i = fac_mu * rhoi * (-pi->force.soundspeed * mu_i + 2.f * fac_mu * mu_i * mu_i);
   const float Q_j = fac_mu * rhoj * (-pj->force.soundspeed * mu_j + 2.f * fac_mu * mu_j * mu_j);
 
@@ -625,8 +640,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     }
   }
 
-  float g_i[3], g_j[3], g_ij[3];
-
+  float g_i[3], g_j[3], g_ij[3];/*Eq4 and Eq5 for gradient functions G. */
+  
   g_i[0] = -(c_matrix_i[0][0] * dx[0] + c_matrix_i[0][1] * dx[1] +
              c_matrix_i[0][2] * dx[2]) *
            wi * hi_inv_dim;
@@ -660,7 +675,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float P_over_rho_i = (pressurei + Q_i) / (rhoi * rhoj);
   const float P_over_rho_j = (pressurej + Q_j) / (rhoi * rhoj);
 
-  /* Use the force Luke ! */
+  /* Use the force Luke ! */ /* Eq10 */
   pi->a_hydro[0] -= mj * P_over_rho_ij * g_ij[0];
   pi->a_hydro[1] -= mj * P_over_rho_ij * g_ij[1];
   pi->a_hydro[2] -= mj * P_over_rho_ij * g_ij[2];
@@ -677,7 +692,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                       (pi->v[1] - pj->v[1]) * g_ij[1] +
                       (pi->v[2] - pj->v[2]) * g_ij[2];
 
-  /* Get the time derivative for u. */
+  /* Get the time derivative for u(Eq11). */
   const float sph_du_term_i = P_over_rho_i * dvg_i;
   const float sph_du_term_j = P_over_rho_j * dvg_j;
 
@@ -695,7 +710,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 #else
   const float alpha_diff = 0.05f;
 #endif
-
+ 
+  /* Two conductivity signal velocities(Eq26). */
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
   const float v_diffg =
       (sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
@@ -704,12 +720,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
        a2_Hubble * r) *
       fac_mu;
   const float iG = 0.5f;
-  const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
+  const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;/* Eq25. */
   const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
                                     (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) +
                                     (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
   const float diff_du_term =
-      -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
+      -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;/* Eq24. */
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + diff_du_term;
@@ -779,13 +795,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float wj, wj_dx;
   kernel_deval(xj, &wj, &wj_dx);
 
-  /* Get the slope constant h. */
+  /* Get the slope constant h(Eq23). */
   const float Hi = r / hi;
   const float Hj = r / hj;
   const float hij = min(Hi, Hj);
   const float h_crit = 0.81f;
 
-  /* Get the slope constant A. */
+  /* Get the slope constant A(Eq22). */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
   float A_ij, A_ji, Av_ij, Av_ji;
 
@@ -826,7 +842,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     Av_ji = Av_j / Av_i;
   }
 
-  /* Compute slope limiter. */
+  /* Compute slope limiter(Eq21). */
   const float Ai_min = 4.f * A_ij / ((1.f + A_ij) * (1.f + A_ij));
   const float Aj_min = 4.f * A_ji / ((1.f + A_ji) * (1.f + A_ji));
   const float Fi_min = min(1.f, Ai_min);
@@ -858,6 +874,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   }
 
   /* Compute reconstructed u. */
+#if defined(MAGMA_USE_FIRST_ORDER)
+  const float para_vis = 0.f;
+#else
+  const float para_vis = 0.5f;
+#endif
+
   float ui_mid, ui_fder = 0.f, ui_sder = 0.f;
   float uj_mid, uj_fder = 0.f, uj_sder = 0.f;
 
@@ -870,8 +892,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     }
   }
 
-  ui_mid = pi->u + F_ij * (ui_fder + 0.5f * ui_sder);
-  uj_mid = pj->u + F_ji * (uj_fder + 0.5f * uj_sder);
+  ui_mid = pi->u + F_ij * (ui_fder + para_vis * ui_sder);
+  uj_mid = pj->u + F_ji * (uj_fder + para_vis * uj_sder);
 
   /* Compute reconstructed v. */
   float vi_mid[3], vi_fder[3], vi_sder[3];
@@ -895,9 +917,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     }
   }
 
-  for (int i = 0; i < 3; i++) {
-    vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + 0.5f * vi_sder[i]);
-    vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + 0.5f * vj_sder[i]);
+  for (int i = 0; i < 3; i++) {/* Eq17 */
+    vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + para_vis * vi_sder[i]);
+    vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + para_vis * vj_sder[i]);
   }
 
   /* Compute dv dot r. */
@@ -905,7 +927,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                      (pi->v[1] - pj->v[1]) * dx[1] +
                      (pi->v[2] - pj->v[2]) * dx[2];
 
-  /* Get de-dimensionalised separations. */
+  /* Get de-dimensionalised separations(Eq16). */
   float h_i[3], h_j[3];
 
   for (int i = 0; i < 3; i++) {
@@ -925,11 +947,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float dvdh_i2 = dvdh_i / (h_i2 + 0.01f);
   const float dvdh_j2 = dvdh_j / (h_j2 + 0.01f);
 
-  /* compute velocity jump. */
+  /* compute velocity jump(Eq15). */
   const float mu_i = min(0.f, dvdh_i2);
   const float mu_j = min(0.f, dvdh_j2);
 
-  /* compute viscosity pressure term. */
+  /* compute viscosity pressure term(Eq14). */
   const float Q_i = fac_mu * rhoi * (-pi->force.soundspeed * mu_i + 2.f * fac_mu * mu_i * mu_i);
   const float Q_j = fac_mu * rhoj * (-pj->force.soundspeed * mu_j + 2.f * fac_mu * mu_j * mu_j);
 
@@ -943,7 +965,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     }
   }
 
-  float g_i[3], g_j[3], g_ij[3];
+  float g_i[3], g_j[3], g_ij[3]; /*Eq4 and Eq5 for gradient functions G. */
 
   g_i[0] = -(c_matrix_i[0][0] * dx[0] + c_matrix_i[0][1] * dx[1] +
              c_matrix_i[0][2] * dx[2]) *
@@ -977,7 +999,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       (pressurei + Q_i + pressurej + Q_j) / (rhoi * rhoj);
   const float P_over_rho_i = (pressurei + Q_i) / (rhoi * rhoj);
 
-  /* Use the force Luke ! */
+  /* Use the force Luke ! */ /* Eq10 */
   pi->a_hydro[0] -= mj * P_over_rho_ij * g_ij[0];
   pi->a_hydro[1] -= mj * P_over_rho_ij * g_ij[1];
   pi->a_hydro[2] -= mj * P_over_rho_ij * g_ij[2];
@@ -987,7 +1009,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                       (pi->v[1] - pj->v[1]) * g_ij[1] +
                       (pi->v[2] - pj->v[2]) * g_ij[2];
 
-  /* Get the time derivative for u. */
+  /* Get the time derivative for u(Eq11). */
   const float sph_du_term_i = P_over_rho_i * dvg_i;
 
   /* Diffusion term */
@@ -1005,6 +1027,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float alpha_diff = 0.05f;
 #endif
 
+  /* Two conductivity signal velocities(Eq26). */
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
   const float v_diffg =
       (sqrtf((vi_mid[0] - vj_mid[0]) * (vi_mid[0] - vj_mid[0]) +
@@ -1013,12 +1036,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
        a2_Hubble * r) *
       fac_mu;
   const float iG = 0.5f;
-  const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;
+  const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg; /* Eq25. */
   const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
                                     (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) +
                                     (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
   const float diff_du_term =
-      -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;
+      -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij; /* Eq24. */
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + diff_du_term;
