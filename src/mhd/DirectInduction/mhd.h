@@ -426,6 +426,19 @@ __attribute__((always_inline)) INLINE static void mhd_first_init_part(
  * @param xp The extended particle data to act upon
  */
 __attribute__((always_inline)) INLINE static void mhd_debug_particle(
-    const struct part *p, const struct xpart *xp) {}
+    const struct part *p, const struct xpart *xp) {
+
+  warning("B/rho= [%.3e,%.3e,%.3e] d(B/rho)/dt= [%.3e,%.3e,%.3e]\n"
+	  "divB= %.3e psi= %.3e psi_dt= %.3e",
+	  p->mhd_data.B_over_rho[0],
+	  p->mhd_data.B_over_rho[1],
+	  p->mhd_data.B_over_rho[2],
+	  p->mhd_data.B_over_rho_dt[0],
+	  p->mhd_data.B_over_rho_dt[1],
+	  p->mhd_data.B_over_rho_dt[2],
+	  p->mhd_data.divB,
+	  p->mhd_data.psi,
+	  p->mhd_data.psi_dt);
+}
 
 #endif /* SWIFT_DIRECT_INDUCTION_MHD_H */
