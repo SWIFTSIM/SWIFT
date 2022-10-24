@@ -171,7 +171,6 @@ static void split_vector(struct space *s, int *cdim, int nregions,
 }
 #endif
 
-#ifdef WITH_MPI
 /**
  * @brief Partition the into radial slices.
  *
@@ -261,7 +260,6 @@ static void split_radial_wedges(struct space *s, int nregions) {
     }
   }
 }
-#endif
 
 
 /* METIS/ParMETIS support (optional)
