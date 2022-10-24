@@ -2165,7 +2165,7 @@ void partition_initial_partition(struct partition *initial_partition,
       return;
     }
 
-  } else if (initial_partition->type == INIPART_RADIAL) {
+  } else if (initial_partition->type == INITPART_RADIAL) {
 
     /* Do a simple radial wedge decomposition. */
     split_radial_wedges(s, nregions);
