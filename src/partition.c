@@ -942,7 +942,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       vtxdist[i + 1] = vtxdist[i] + l;
       k -= l;
     }
-    message("Everyone has got their vertexes.");
     res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
 
@@ -950,6 +949,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
   }
+
+  message("Everyone has got their vertexes.");
 
   /* Number of cells on this node and space for the expected arrays. */
   int nverts = vtxdist[nodeID + 1] - vtxdist[nodeID];
@@ -986,6 +987,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   MPI_Status *stats;
   if ((stats = (MPI_Status *)malloc(sizeof(MPI_Status) * 5 * nregions)) == NULL)
     error("Failed to allocate MPI status list.");
+
+  message("Sucessfully allocated local memory.");
 
   /* Only use one rank to organize everything. */
   if (nodeID == 0) {
