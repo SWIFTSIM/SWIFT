@@ -942,6 +942,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
       vtxdist[i + 1] = vtxdist[i] + l;
       k -= l;
     }
+    message("Everyone has got their vertexes.");
     res = MPI_Bcast((void *)vtxdist, nregions + 1, IDX_T, 0, comm);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
 
