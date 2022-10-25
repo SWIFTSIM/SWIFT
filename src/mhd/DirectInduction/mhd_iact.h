@@ -326,6 +326,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   const float v_sig_B_2 = dv_cross_dx[0] * dv_cross_dx[0] + dv_cross_dx[1] * dv_cross_dx[1] + dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B   = sqrtf(v_sig_B_2) * r_inv;
 
+  // const float v_sig_B = 1.0f;
+
   const float art_res_pref = 0.5f * resistivity_beta * v_sig_B * (dB_dt_pref_i + dB_dt_pref_j);
 
   pi->mhd_data.B_over_rho_dt[0] += mj * art_res_pref * dB[0];
@@ -336,8 +338,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
   pj->mhd_data.B_over_rho_dt[1] -= mi * art_res_pref * dB[1];
   pj->mhd_data.B_over_rho_dt[2] -= mi * art_res_pref * dB[2];  
 
-  pi->u_dt -= 0.5f * mj * art_res_pref * dB_2;
-  pj->u_dt -= 0.5f * mi * art_res_pref * dB_2;
+  pi->u_dt -= 0.5f * mj * permeability_inv * art_res_pref * dB_2;
+  pj->u_dt -= 0.5f * mi * permeability_inv * art_res_pref * dB_2;
 
   /*Divergence diffusion */
   float grad_psi_i = over_rho2_i * psi_i * wi_dr * r_inv;
@@ -536,13 +538,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_mhd_force(
   const float v_sig_B_2 = dv_cross_dx[0] * dv_cross_dx[0] + dv_cross_dx[1] * dv_cross_dx[1] + dv_cross_dx[2] * dv_cross_dx[2];
   const float v_sig_B   = sqrtf(v_sig_B_2) * r_inv;
 
-  const float art_res_pref = 0.5f * v_sig_B * (dB_dt_pref_i + dB_dt_pref_j);
+  // const float v_sig_B = 1.0f;
 
-  pi->mhd_data.B_over_rho_dt[0] += mj * resistivity_beta * art_res_pref * dB[0];
-  pi->mhd_data.B_over_rho_dt[1] += mj * resistivity_beta * art_res_pref * dB[1];
-  pi->mhd_data.B_over_rho_dt[2] += mj * resistivity_beta * art_res_pref * dB[2];  
+  const float art_res_pref = 0.5f * resistivity_beta * v_sig_B * (dB_dt_pref_i + dB_dt_pref_j);
 
-  pi->u_dt -= 0.5f * mj * art_res_pref * dB_2;
+  pi->mhd_data.B_over_rho_dt[0] += mj * art_res_pref * dB[0];
+  pi->mhd_data.B_over_rho_dt[1] += mj * art_res_pref * dB[1];
+  pi->mhd_data.B_over_rho_dt[2] += mj * art_res_pref * dB[2];  
+
+  pi->u_dt -= 0.5f * mj * permeability_inv * art_res_pref * dB_2;
 
   /*Divergence diffusion */
   float grad_psi_i = over_rho2_i * psi_i * wi_dr * r_inv;

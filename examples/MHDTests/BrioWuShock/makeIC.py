@@ -115,8 +115,8 @@ for i in range(numPart):
         
 # Shift particles
 pos[:,0] -= x_min
-b[:,:]  *= sqrt(4.0*3.14159265)
-vp[:,:] *= sqrt(4.0*3.14159265)
+#b[:,:]  *= sqrt(4.0*3.14159265)
+#vp[:,:] *= sqrt(4.0*3.14159265)
 
 #File
 file = h5py.File(fileName, 'w')
