@@ -84,7 +84,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     const int use_rebuild_sizes, const int periodic) {
 
   /* Order of the expansion */
-  const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
+  const int p = 2;
 
   /* Sizes of the multipoles */
   const float rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
@@ -106,15 +106,11 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
     E_BA_term /= (rho_A + rho_B);
   }
 
-  /* Compute r^p */
-#if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
-  const float r_to_p = integer_powf(sqrtf(r2), p);
-#else
+  /* Compute r^p = (r^2)^(p/2) */
   const float r_to_p = integer_powf(r2, (p / 2));
-#endif
 
   float f_MAC_inv;
-  if (props->consider_truncation_in_MAC) {
+  if (periodic && props->consider_truncation_in_MAC) {
     f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s_inv, r2);
   } else {
     f_MAC_inv = r2;
@@ -277,7 +273,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
     const struct gravity_tensors *B, const float r2, const int periodic) {
 
   /* Order of the expansion */
-  const int p = SELF_GRAVITY_MULTIPOLE_ORDER;
+  const int p = 2;
 
   /* Sizes of the multipoles */
   const float rho_B = B->r_max;
@@ -293,15 +289,11 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   /* Compute the error estimator (without the 1/M_B term that cancels out) */
   const float E_BA_term = 8.f * B->m_pole.power[p];
 
-  /* Compute r^p */
-#if SELF_GRAVITY_MULTIPOLE_ORDER % 2 == 1
-  const float r_to_p = integer_powf(sqrtf(r2), p);
-#else
+  /* Compute r^p = (r^2)^(p/2) */
   const float r_to_p = integer_powf(r2, (p / 2));
-#endif
 
   float f_MAC_inv;
-  if (props->consider_truncation_in_MAC) {
+  if (periodic && props->consider_truncation_in_MAC) {
     f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s_inv, r2);
   } else {
     f_MAC_inv = r2;
