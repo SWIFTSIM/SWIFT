@@ -4,11 +4,11 @@
 if [ ! -e interactingBlastWaves.hdf5 ]
 then
     echo "Generating initial conditions for the Sedov blast example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
-../../swift --hydro --threads=1 interactingBlastWaves.yml 2>&1 | tee output.log
+../../../swift --hydro --threads=1  --limiter interactingBlastWaves.yml 2>&1 | tee output.log
 
 # Get the high resolution reference solution if not present.
 if [ ! -e interactingBlastWaves1D_exact.txt ]
@@ -18,4 +18,4 @@ then
 fi
 
 # Plot the solution
-python plotSolution.py 4
+python3 plotSolution.py 4

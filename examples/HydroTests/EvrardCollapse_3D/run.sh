@@ -4,11 +4,11 @@
 if [ ! -e evrard.hdf5 ]
 then
     echo "Generating initial conditions for the Evrard collapse example..."
-    python makeIC.py
+    python3 makeIC.py
 fi
 
 # Run SWIFT
-../../swift --hydro --self-gravity --threads=4 evrard.yml 2>&1 | tee output.log
+../../../swift --hydro --self-gravity --threads=4 evrard.yml 2>&1 | tee output.log
 
 # Get the high resolution 1D reference result if not present.
 if [ ! -e evrardCollapse3D_exact.txt ]
@@ -18,4 +18,4 @@ then
 fi
 
 # Plot the solution
-python plotSolution.py 8
+python3 plotSolution.py 8

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -141,7 +141,7 @@ runner_iact_grav_pp_truncated(const float r2, const float h2, const float h_inv,
 __attribute__((always_inline, nonnull)) INLINE static void
 runner_iact_grav_pm_full(const float r_x, const float r_y, const float r_z,
                          const float r2, const float h, const float h_inv,
-                         const struct multipole *m, float *f_x,
+                         const struct multipole *m, float *restrict f_x,
                          float *restrict f_y, float *restrict f_z,
                          float *restrict pot) {
 

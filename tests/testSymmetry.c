@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -16,10 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "swift.h"
 #include "timestep_limiter_iact.h"
 
+/* System includes. */
 #include <fenv.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,6 +49,7 @@ void test(void) {
   /* Start with some values for the cosmological parameters */
   const float a = (float)random_uniform(0.8, 1.);
   const float H = 1.f;
+  const float mu_0 = 4. * M_PI;
   const integertime_t ti_current = 1;
   const double time_base = 1e-5;
 
@@ -66,7 +70,7 @@ void test(void) {
   pi.time_bin = 1;
   pj.time_bin = 1;
 
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(SHADOWFAX_SPH)
   /* Give the primitive variables sensible values, since the Riemann solver does
      not like negative densities and pressures */
   pi.primitives.rho = random_uniform(0.1f, 1.0f);
@@ -111,7 +115,6 @@ void test(void) {
   pj.primitives.gradients.P[1] = 0.0f;
   pj.primitives.gradients.P[2] = 0.0f;
 
-#ifdef SHADOWFAX_SPH
   /* set time step to reasonable value */
   pi.force.dt = 0.001;
   pj.force.dt = 0.001;
@@ -120,6 +123,50 @@ void test(void) {
   voronoi_cell_init(&pj.cell, pj.x, box_anchor, box_side);
 #endif
 
+#if defined(GIZMO_MFV_SPH)
+  /* Give the primitive variables sensible values, since the Riemann solver does
+     not like negative densities and pressures */
+  pi.rho = random_uniform(0.1f, 1.0f);
+  pi.v[0] = random_uniform(-10.0f, 10.0f);
+  pi.v[1] = random_uniform(-10.0f, 10.0f);
+  pi.v[2] = random_uniform(-10.0f, 10.0f);
+  pi.P = random_uniform(0.1f, 1.0f);
+  pj.rho = random_uniform(0.1f, 1.0f);
+  pj.v[0] = random_uniform(-10.0f, 10.0f);
+  pj.v[1] = random_uniform(-10.0f, 10.0f);
+  pj.v[2] = random_uniform(-10.0f, 10.0f);
+  pj.P = random_uniform(0.1f, 1.0f);
+  /* make gradients zero */
+  pi.gradients.rho[0] = 0.0f;
+  pi.gradients.rho[1] = 0.0f;
+  pi.gradients.rho[2] = 0.0f;
+  pi.gradients.v[0][0] = 0.0f;
+  pi.gradients.v[0][1] = 0.0f;
+  pi.gradients.v[0][2] = 0.0f;
+  pi.gradients.v[1][0] = 0.0f;
+  pi.gradients.v[1][1] = 0.0f;
+  pi.gradients.v[1][2] = 0.0f;
+  pi.gradients.v[2][0] = 0.0f;
+  pi.gradients.v[2][1] = 0.0f;
+  pi.gradients.v[2][2] = 0.0f;
+  pi.gradients.P[0] = 0.0f;
+  pi.gradients.P[1] = 0.0f;
+  pi.gradients.P[2] = 0.0f;
+  pj.gradients.rho[0] = 0.0f;
+  pj.gradients.rho[1] = 0.0f;
+  pj.gradients.rho[2] = 0.0f;
+  pj.gradients.v[0][0] = 0.0f;
+  pj.gradients.v[0][1] = 0.0f;
+  pj.gradients.v[0][2] = 0.0f;
+  pj.gradients.v[1][0] = 0.0f;
+  pj.gradients.v[1][1] = 0.0f;
+  pj.gradients.v[1][2] = 0.0f;
+  pj.gradients.v[2][0] = 0.0f;
+  pj.gradients.v[2][1] = 0.0f;
+  pj.gradients.v[2][2] = 0.0f;
+  pj.gradients.P[0] = 0.0f;
+  pj.gradients.P[1] = 0.0f;
+  pj.gradients.P[2] = 0.0f;
 #endif
 
   /* Make an xpart companion */
@@ -149,12 +196,14 @@ void test(void) {
 
   /* Call the symmetric version */
   runner_iact_density(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_mhd_density(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_chemistry(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_pressure_floor(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
   runner_iact_star_formation(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_mhd_density(r2, dx, pi2.h, pj2.h, &pi2, &pj2, mu_0, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
@@ -162,6 +211,7 @@ void test(void) {
   dx[1] = -dx[1];
   dx[2] = -dx[2];
   runner_iact_nonsym_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_mhd_density(r2, dx, pj2.h, pi2.h, &pj2, &pi2, mu_0, a, H);
   runner_iact_nonsym_chemistry(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_pressure_floor(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
   runner_iact_nonsym_star_formation(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
@@ -190,13 +240,16 @@ void test(void) {
 
   /* Call the symmetric version */
   runner_iact_gradient(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_mhd_gradient(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_gradient(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_mhd_gradient(r2, dx, pi2.h, pj2.h, &pi2, &pj2, mu_0, a, H);
   dx[0] = -dx[0];
   dx[1] = -dx[1];
   dx[2] = -dx[2];
   runner_iact_nonsym_gradient(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_mhd_gradient(r2, dx, pj2.h, pi2.h, &pj2, &pi2, mu_0, a, H);
 
   i_not_ok = memcmp((char *)&pi, (char *)&pi2, sizeof(struct part));
   j_not_ok = memcmp((char *)&pj, (char *)&pj2, sizeof(struct part));
@@ -221,12 +274,14 @@ void test(void) {
 
   /* Call the symmetric version */
   runner_iact_force(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
+  runner_iact_mhd_force(r2, dx, pi.h, pj.h, &pi, &pj, mu_0, a, H);
   runner_iact_diffusion(r2, dx, pi.h, pj.h, &pi, &pj, a, H, time_base,
                         ti_current, NULL, /*with_cosmology=*/0);
   runner_iact_timebin(r2, dx, pi.h, pj.h, &pi, &pj, a, H);
 
   /* Call the non-symmetric version */
   runner_iact_nonsym_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H);
+  runner_iact_nonsym_mhd_force(r2, dx, pi2.h, pj2.h, &pi2, &pj2, mu_0, a, H);
   runner_iact_nonsym_diffusion(r2, dx, pi2.h, pj2.h, &pi2, &pj2, a, H,
                                time_base, ti_current, NULL,
                                /*with_cosmology=*/0);
@@ -235,6 +290,7 @@ void test(void) {
   dx[1] = -dx[1];
   dx[2] = -dx[2];
   runner_iact_nonsym_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H);
+  runner_iact_nonsym_mhd_force(r2, dx, pj2.h, pi2.h, &pj2, &pi2, mu_0, a, H);
   runner_iact_nonsym_diffusion(r2, dx, pj2.h, pi2.h, &pj2, &pi2, a, H,
                                time_base, ti_current, NULL,
                                /*with_cosmology=*/0);
@@ -245,33 +301,49 @@ void test(void) {
   i_not_ok = 0;
   j_not_ok = 0;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
-    float aa = *(((float *)&pi) + i);
-    float bb = *(((float *)&pi2) + i);
-    float cc = *(((float *)&pj) + i);
-    float dd = *(((float *)&pj2) + i);
 
-    int a_is_b;
-    if ((aa + bb)) {
-      a_is_b = (fabs((aa - bb) / (aa + bb)) > 1.e-4);
-    } else {
-      a_is_b = !(aa == 0.0f);
-    }
-    int c_is_d;
-    if ((cc + dd)) {
-      c_is_d = (fabs((cc - dd) / (cc + dd)) > 1.e-4);
-    } else {
-      c_is_d = !(cc == 0.0f);
+    /* try this first to avoid dealing with NaNs and infinities */
+    int check_i = memcmp((float *)&pi + i, (float *)&pi2 + i, sizeof(float));
+    int check_j = memcmp((float *)&pj + i, (float *)&pj2 + i, sizeof(float));
+
+    if (!check_i && !check_j) continue;
+
+    if (check_i) {
+      /* allow some wiggle room for roundoff errors */
+      float aa = *(((float *)&pi) + i);
+      float bb = *(((float *)&pi2) + i);
+
+      int a_is_not_b;
+      if ((aa + bb)) {
+        a_is_not_b = (fabs((aa - bb) / (aa + bb)) > 1.e-4);
+      } else {
+        a_is_not_b = !(aa == 0.0f);
+      }
+
+      if (a_is_not_b) {
+        message("%.8e, %.8e, %lu", aa, bb, i);
+      }
+
+      i_not_ok |= a_is_not_b;
     }
 
-    if (a_is_b) {
-      message("%.8e, %.8e, %lu", aa, bb, i);
-    }
-    if (c_is_d) {
-      message("%.8e, %.8e, %lu", cc, dd, i);
-    }
+    if (check_j) {
+      /* allow some wiggle room for roundoff errors */
+      float cc = *(((float *)&pj) + i);
+      float dd = *(((float *)&pj2) + i);
+      int c_is_not_d;
+      if ((cc + dd)) {
+        c_is_not_d = (fabs((cc - dd) / (cc + dd)) > 1.e-4);
+      } else {
+        c_is_not_d = !(cc == 0.0f);
+      }
 
-    i_not_ok |= a_is_b;
-    j_not_ok |= c_is_d;
+      if (c_is_not_d) {
+        message("%.8e, %.8e, %lu", cc, dd, i);
+      }
+
+      j_not_ok |= c_is_not_d;
+    }
   }
 #else
   i_not_ok = memcmp((char *)&pi, (char *)&pi2, sizeof(struct part));

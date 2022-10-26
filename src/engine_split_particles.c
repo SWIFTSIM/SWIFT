@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "engine.h"
@@ -258,6 +258,10 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       black_holes_mark_part_as_not_swallowed(&p->black_holes_data);
       black_holes_mark_part_as_not_swallowed(
           &global_parts[k_parts].black_holes_data);
+
+      /* Mark the particles as not having been swallowed by a sink */
+      sink_mark_part_as_not_swallowed(&p->sink_data);
+      sink_mark_part_as_not_swallowed(&global_parts[k_parts].sink_data);
     }
   }
 }
@@ -279,7 +283,7 @@ void engine_split_gas_particles(struct engine *e) {
 
   /* Abort if we are not doing any splitting */
   if (!e->hydro_properties->particle_splitting) return;
-  if (e->s->nr_parts == 0) return;
+  if (e->total_nr_parts == 0) return;
 
   /* Time this */
   const ticks tic = getticks();

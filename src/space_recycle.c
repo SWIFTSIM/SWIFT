@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "space.h"
@@ -127,9 +127,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.ghost_out = NULL;
     c->hydro.ghost = NULL;
     c->hydro.prep1_ghost = NULL;
-    c->hydro.sink_formation = NULL;
     c->hydro.star_formation = NULL;
-    c->hydro.star_formation_sink = NULL;
+    c->sinks.sink_formation = NULL;
+    c->sinks.star_formation_sink = NULL;
     c->hydro.stars_resort = NULL;
     c->stars.density_ghost = NULL;
     c->stars.prep1_ghost = NULL;
@@ -138,9 +138,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->stars.feedback = NULL;
     c->stars.prepare1 = NULL;
     c->stars.prepare2 = NULL;
-    c->sinks.compute_formation = NULL;
-    c->sinks.merger = NULL;
-    c->sinks.accretion = NULL;
+    c->sinks.swallow = NULL;
+    c->sinks.do_sink_swallow = NULL;
+    c->sinks.do_gas_swallow = NULL;
     c->black_holes.density_ghost = NULL;
     c->black_holes.swallow_ghost_0 = NULL;
     c->black_holes.swallow_ghost_1 = NULL;
@@ -150,11 +150,15 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.do_gas_swallow = NULL;
     c->black_holes.do_bh_swallow = NULL;
     c->black_holes.feedback = NULL;
+#ifdef WITH_CSDS
+    c->csds = NULL;
+#endif
     c->kick1 = NULL;
     c->kick2 = NULL;
     c->timestep = NULL;
     c->timestep_limiter = NULL;
     c->timestep_sync = NULL;
+    c->timestep_collect = NULL;
     c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
     c->sinks.drift = NULL;
@@ -165,7 +169,8 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->black_holes.black_holes_in = NULL;
     c->black_holes.black_holes_out = NULL;
     c->sinks.sink_in = NULL;
-    c->sinks.ghost = NULL;
+    c->sinks.sink_ghost1 = NULL;
+    c->sinks.sink_ghost2 = NULL;
     c->sinks.sink_out = NULL;
     c->grav.drift = NULL;
     c->grav.drift_out = NULL;
@@ -176,6 +181,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.down_in = NULL;
     c->grav.down = NULL;
     c->grav.end_force = NULL;
+    c->grav.neutrino_weight = NULL;
     c->top = c;
     c->super = c;
     c->hydro.super = c;
@@ -194,15 +200,24 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->sinks.ti_end_min = -1;
     c->stars.ti_end_min = -1;
     c->black_holes.ti_end_min = -1;
-    c->hydro.rt_in = NULL;
-    c->hydro.rt_inject = NULL;
-    c->hydro.rt_ghost1 = NULL;
-    c->hydro.rt_gradient = NULL;
-    c->hydro.rt_ghost2 = NULL;
-    c->hydro.rt_transport = NULL;
-    c->hydro.rt_transport_out = NULL;
-    c->hydro.rt_tchem = NULL;
-    c->hydro.rt_out = NULL;
+    c->rt.rt_in = NULL;
+    c->rt.rt_ghost1 = NULL;
+    c->rt.rt_gradient = NULL;
+    c->rt.rt_ghost2 = NULL;
+    c->rt.rt_transport = NULL;
+    c->rt.rt_transport_out = NULL;
+    c->rt.rt_tchem = NULL;
+    c->rt.rt_advance_cell_time = NULL;
+    c->rt.rt_sorts = NULL;
+    c->rt.rt_out = NULL;
+    c->rt.rt_collect_times = NULL;
+    c->rt.ti_rt_end_min = -1;
+    c->rt.ti_rt_min_step_size = -1;
+    c->rt.updated = 0;
+#ifdef SWIFT_RT_DEBUG_CHECKS
+    c->rt.advanced_time = 0;
+#endif
+
     star_formation_logger_init(&c->stars.sfh);
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
     c->cellID = 0;

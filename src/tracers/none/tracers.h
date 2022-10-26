@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_TRACERS_NONE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "cooling.h"
@@ -116,6 +116,20 @@ static INLINE void tracers_first_init_xpart(
  * @param xp The extended particle data.
  */
 static INLINE void tracers_after_feedback(struct xpart *xp) {}
+
+/**
+ * @brief Update the particles' tracer data with values before an AGN feedback
+ * event. Note: this function is called in `black_holes_iact.h` before the
+ * particle data are updated.
+ *
+ * Nothing to do here.
+ *
+ * @param p Pointer to the basic particle data.
+ * @param xp The extended particle data.
+ * (internal physical units)
+ */
+static INLINE void tracers_before_black_holes_feedback(
+    const struct part *p, struct xpart *xp, const float scale_factor) {}
 
 /**
  * @brief Update the particles' tracer data after an AGN feedback

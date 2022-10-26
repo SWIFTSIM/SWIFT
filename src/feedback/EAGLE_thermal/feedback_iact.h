@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -40,7 +40,7 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float *dx,
+runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
                                     const float hi, const float hj,
                                     struct spart *si, const struct part *pj,
                                     const struct xpart *xpj,
@@ -98,17 +98,17 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
          * to randomly select the direction of the ith ray */
 
         /* Two random numbers in [0, 1[ */
-        const double rand_theta_SNII = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_theta_SNII = random_unit_interval_part_ID_and_index(
             si->id, i, ti_current,
             random_number_isotropic_SNII_feedback_ray_theta);
-        const double rand_phi_SNII = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_phi_SNII = random_unit_interval_part_ID_and_index(
             si->id, i, ti_current,
             random_number_isotropic_SNII_feedback_ray_phi);
 
         /* Compute arclength */
         ray_minimise_arclength(dx, r, si->feedback_data.SNII_rays + i,
                                /*ray_type=*/ray_feedback_thermal, pj->id,
-                               rand_theta_SNII, rand_phi_SNII, pj->mass,
+                               rand_theta_SNII, rand_phi_SNII, mj,
                                /*ray_ext=*/NULL, /*v=*/NULL);
       }
       break;
@@ -126,7 +126,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(r, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
     case SNII_minimum_density_model: {
@@ -142,7 +142,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller distances to the star. */
       ray_minimise_distance(rho, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
     case SNII_random_ngb_model: {
@@ -164,7 +164,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
        * structs with smaller ids in the ray array will refer to the particles
        * with smaller 'fake' distances to the BH. */
       ray_minimise_distance(dist, si->feedback_data.SNII_rays, arr_size, pj->id,
-                            pj->mass);
+                            mj);
       break;
     }
   }
@@ -187,16 +187,14 @@ runner_iact_nonsym_feedback_density(const float r2, const float *dx,
  * generator
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
-                                  const float hi, const float hj,
-                                  const struct spart *si, struct part *pj,
-                                  struct xpart *xpj,
-                                  const struct cosmology *cosmo,
-                                  const struct feedback_props *fb_props,
-                                  const integertime_t ti_current) {
+runner_iact_nonsym_feedback_apply(
+    const float r2, const float dx[3], const float hi, const float hj,
+    const struct spart *si, struct part *pj, struct xpart *xpj,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (si->count_since_last_enrichment != 0)
+  if (si->count_since_last_enrichment != 0 && engine_current_step > 0)
     error("Computing feedback from a star that should not");
 #endif
 
@@ -358,13 +356,24 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
       si->feedback_data.to_distribute.energy * Omega_frac;
 
   /* Apply energy conservation to recover the new thermal energy of the gas
+   *
    * Note: in some specific cases the new_thermal_energy could be lower
    * than the current_thermal_energy, this is mainly the case if the change
    * in mass is relatively small and the velocity vectors between both the
    * gas particle and the star particle have a small angle. */
-  const double new_thermal_energy = current_kinetic_energy_gas +
-                                    current_thermal_energy + injected_energy -
-                                    new_kinetic_energy_gas;
+  double new_thermal_energy = current_kinetic_energy_gas +
+                              current_thermal_energy + injected_energy -
+                              new_kinetic_energy_gas;
+
+  /* In rare configurations the new thermal energy could become negative.
+   * We must prevent that even if that implies a slight violation of the
+   * conservation of total energy.
+   * The minimum energy (in units of energy not energy per mass) is
+   * the total particle mass (including the mass to distribute) at the
+   * minimal internal energy per unit mass */
+  const double min_u = hydro_props->minimal_internal_energy * new_mass;
+
+  new_thermal_energy = max(new_thermal_energy, min_u);
 
   /* Convert this to a specific thermal energy */
   const double u_new_enrich = new_thermal_energy * new_mass_inv;
@@ -375,7 +384,7 @@ runner_iact_nonsym_feedback_apply(const float r2, const float *dx,
 
   /* Finally, SNII stochastic feedback */
 
-  /* Get the total number of SNIa thermal energy injections per stellar
+  /* Get the total number of SNII thermal energy injections per stellar
    * particle at this time-step */
   const int N_of_SNII_thermal_energy_inj =
       si->feedback_data.to_distribute.SNII_num_of_thermal_energy_inj;

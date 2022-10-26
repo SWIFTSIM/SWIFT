@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -24,7 +24,7 @@
 #define SWIFT_RUNNER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "cache.h"
@@ -41,14 +41,13 @@ struct task;
 #define TASK_LOOP_LIMITER 3
 #define TASK_LOOP_FEEDBACK 4
 #define TASK_LOOP_SWALLOW 5
-#define TASK_LOOP_SINK_FORMATION 6
-#define TASK_LOOP_SINK_MERGER 7
-#define TASK_LOOP_SINK_ACCRETION 8
+#define TASK_LOOP_SINK_SWALLOW 6
+#define TASK_LOOP_SINK_DO_SINK_SWALLOW 7
+#define TASK_LOOP_SINK_DO_GAS_SWALLOW 8
 #define TASK_LOOP_STARS_PREP1 9
 #define TASK_LOOP_STARS_PREP2 10
 #define TASK_LOOP_RT_GRADIENT 11
 #define TASK_LOOP_RT_TRANSPORT 12
-#define TASK_LOOP_RT_INJECT 13
 
 /**
  * @brief A struct representing a runner's thread and its data.
@@ -72,6 +71,9 @@ struct runner {
 
   /*! The particle gravity_cache of cell cj. */
   struct gravity_cache cj_gravity_cache;
+
+  /*! Time this runner was active during the last engine_launch. */
+  ticks active_time;
 
 #ifdef WITH_VECTORIZATION
 
@@ -98,7 +100,7 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
                                          int timer);
 void runner_do_init_grav(struct runner *r, struct cell *c, int timer);
 void runner_do_hydro_sort(struct runner *r, struct cell *c, int flag,
-                          int cleanup, int clock);
+                          int cleanup, int rt_requests_sort, int clock);
 void runner_do_stars_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int clock);
 void runner_do_all_hydro_sort(struct runner *r, struct cell *c);
@@ -111,6 +113,7 @@ void runner_do_drift_bpart(struct runner *r, struct cell *c, int timer);
 void runner_do_kick1(struct runner *r, struct cell *c, int timer);
 void runner_do_kick2(struct runner *r, struct cell *c, int timer);
 void runner_do_timestep(struct runner *r, struct cell *c, int timer);
+void runner_do_timestep_collect(struct runner *r, struct cell *c, int timer);
 void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer);
 void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer);
 void runner_do_init(struct runner *r, struct cell *c, int timer);
@@ -145,7 +148,18 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
                           int timer);
 void runner_do_recv_bpart(struct runner *r, struct cell *c, int clear_sorts,
                           int timer);
+void runner_do_pack_limiter(struct runner *r, struct cell *c, void **buffer,
+                            const int timer);
+void runner_do_unpack_limiter(struct runner *r, struct cell *c, void *buffer,
+                              const int timer);
 void runner_do_neutrino_weighting(struct runner *r, struct cell *c, int timer);
+void runner_do_rt_advance_cell_time(struct runner *r, struct cell *c,
+                                    int timer);
+void runner_do_collect_rt_times(struct runner *r, struct cell *c,
+                                const int timer);
 void *runner_main(void *data);
+
+ticks runner_get_active_time(const struct runner *restrict r);
+void runner_reset_active_time(struct runner *restrict r);
 
 #endif /* SWIFT_RUNNER_H */

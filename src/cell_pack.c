@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "cell.h"
@@ -51,6 +51,8 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
   pc->stars.ti_end_min = c->stars.ti_end_min;
   pc->sinks.ti_end_min = c->sinks.ti_end_min;
   pc->black_holes.ti_end_min = c->black_holes.ti_end_min;
+  pc->rt.ti_rt_end_min = c->rt.ti_rt_end_min;
+  pc->rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
 
   pc->hydro.ti_old_part = c->hydro.ti_old_part;
   pc->grav.ti_old_part = c->grav.ti_old_part;
@@ -208,6 +210,8 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
   c->stars.ti_end_min = pc->stars.ti_end_min;
   c->black_holes.ti_end_min = pc->black_holes.ti_end_min;
   c->sinks.ti_end_min = pc->sinks.ti_end_min;
+  c->rt.ti_rt_end_min = pc->rt.ti_rt_end_min;
+  c->rt.ti_rt_min_step_size = pc->rt.ti_rt_min_step_size;
 
   c->hydro.ti_old_part = pc->hydro.ti_old_part;
   c->grav.ti_old_part = pc->grav.ti_old_part;
@@ -273,6 +277,7 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->black_holes.dx_max_part = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
+      temp->top = c->top;
       c->progeny[k] = temp;
       c->split = 1;
       count += cell_unpack(&pc[pc->progeny[k]], temp, s, with_gravity);
@@ -325,217 +330,37 @@ int cell_unpack_tags(const int *tags, struct cell *restrict c) {
 }
 
 /**
- * @brief Pack the time information of the given cell and all it's sub-cells.
+ * @brief Pack the cell information about time-step sizes and displacements
+ * of a cell hierarchy.
  *
- * @param c The #cell.
- * @param pcells (output) The end-of-timestep information we pack into
+ * @param c The #cells to pack.
+ * @param pcells the packed cell structures to pack into.
  *
- * @return The number of packed cells.
+ * @return The number of cells that were packed.
  */
-int cell_pack_end_step_hydro(struct cell *restrict c,
-                             struct pcell_step_hydro *restrict pcells) {
-#ifdef WITH_MPI
-
-  /* Pack this cell's data. */
-  pcells[0].ti_end_min = c->hydro.ti_end_min;
-  pcells[0].dx_max_part = c->hydro.dx_max_part;
-
-  /* Fill in the progeny, depth-first recursion. */
-  int count = 1;
-  for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
-      count += cell_pack_end_step_hydro(c->progeny[k], &pcells[count]);
-    }
-
-  /* Return the number of packed values. */
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
-}
-
-/**
- * @brief Unpack the time information of a given cell and its sub-cells.
- *
- * @param c The #cell
- * @param pcells The end-of-timestep information to unpack
- *
- * @return The number of cells created.
- */
-int cell_unpack_end_step_hydro(struct cell *restrict c,
-                               struct pcell_step_hydro *restrict pcells) {
-#ifdef WITH_MPI
-
-  /* Unpack this cell's data. */
-  c->hydro.ti_end_min = pcells[0].ti_end_min;
-  c->hydro.dx_max_part = pcells[0].dx_max_part;
-
-  /* Fill in the progeny, depth-first recursion. */
-  int count = 1;
-  for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
-      count += cell_unpack_end_step_hydro(c->progeny[k], &pcells[count]);
-    }
-
-  /* Return the number of packed values. */
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
-}
-
-/**
- * @brief Pack the time information of the given cell and all it's sub-cells.
- *
- * @param c The #cell.
- * @param pcells (output) The end-of-timestep information we pack into
- *
- * @return The number of packed cells.
- */
-int cell_pack_end_step_grav(struct cell *restrict c,
-                            struct pcell_step_grav *restrict pcells) {
-#ifdef WITH_MPI
-
-  /* Pack this cell's data. */
-  pcells[0].ti_end_min = c->grav.ti_end_min;
-
-  /* Fill in the progeny, depth-first recursion. */
-  int count = 1;
-  for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
-      count += cell_pack_end_step_grav(c->progeny[k], &pcells[count]);
-    }
-
-  /* Return the number of packed values. */
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
-}
-
-/**
- * @brief Unpack the time information of a given cell and its sub-cells.
- *
- * @param c The #cell
- * @param pcells The end-of-timestep information to unpack
- *
- * @return The number of cells created.
- */
-int cell_unpack_end_step_grav(struct cell *restrict c,
-                              struct pcell_step_grav *restrict pcells) {
-#ifdef WITH_MPI
-
-  /* Unpack this cell's data. */
-  c->grav.ti_end_min = pcells[0].ti_end_min;
-
-  /* Fill in the progeny, depth-first recursion. */
-  int count = 1;
-  for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
-      count += cell_unpack_end_step_grav(c->progeny[k], &pcells[count]);
-    }
-
-  /* Return the number of packed values. */
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
-}
-
-/**
- * @brief Pack the time information of the given cell and all it's sub-cells.
- *
- * @param c The #cell.
- * @param pcells (output) The end-of-timestep information we pack into
- *
- * @return The number of packed cells.
- */
-int cell_pack_end_step_stars(struct cell *restrict c,
-                             struct pcell_step_stars *restrict pcells) {
-#ifdef WITH_MPI
-
-  /* Pack this cell's data. */
-  pcells[0].ti_end_min = c->stars.ti_end_min;
-  pcells[0].dx_max_part = c->stars.dx_max_part;
-
-  /* Fill in the progeny, depth-first recursion. */
-  int count = 1;
-  for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
-      count += cell_pack_end_step_stars(c->progeny[k], &pcells[count]);
-    }
-
-  /* Return the number of packed values. */
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
-}
-
-/**
- * @brief Unpack the time information of a given cell and its sub-cells.
- *
- * @param c The #cell
- * @param pcells The end-of-timestep information to unpack
- *
- * @return The number of cells created.
- */
-int cell_unpack_end_step_stars(struct cell *restrict c,
-                               struct pcell_step_stars *restrict pcells) {
-#ifdef WITH_MPI
-
-  /* Unpack this cell's data. */
-  c->stars.ti_end_min = pcells[0].ti_end_min;
-  c->stars.dx_max_part = pcells[0].dx_max_part;
-
-  /* Fill in the progeny, depth-first recursion. */
-  int count = 1;
-  for (int k = 0; k < 8; k++)
-    if (c->progeny[k] != NULL) {
-      count += cell_unpack_end_step_stars(c->progeny[k], &pcells[count]);
-    }
-
-  /* Return the number of packed values. */
-  return count;
-
-#else
-  error("SWIFT was not compiled with MPI support.");
-  return 0;
-#endif
-}
-
-/**
- * @brief Pack the time information of the given cell and all it's sub-cells.
- *
- * @param c The #cell.
- * @param pcells (output) The end-of-timestep information we pack into
- *
- * @return The number of packed cells.
- */
-int cell_pack_end_step_black_holes(
-    struct cell *restrict c, struct pcell_step_black_holes *restrict pcells) {
+int cell_pack_end_step(const struct cell *c, struct pcell_step *pcells) {
 
 #ifdef WITH_MPI
 
   /* Pack this cell's data. */
-  pcells[0].ti_end_min = c->black_holes.ti_end_min;
-  pcells[0].dx_max_part = c->black_holes.dx_max_part;
+  pcells[0].hydro.ti_end_min = c->hydro.ti_end_min;
+  pcells[0].hydro.dx_max_part = c->hydro.dx_max_part;
+  pcells[0].rt.ti_rt_end_min = c->rt.ti_rt_end_min;
+  pcells[0].rt.ti_rt_min_step_size = c->rt.ti_rt_min_step_size;
+
+  pcells[0].grav.ti_end_min = c->grav.ti_end_min;
+
+  pcells[0].stars.ti_end_min = c->stars.ti_end_min;
+  pcells[0].stars.dx_max_part = c->stars.dx_max_part;
+
+  pcells[0].black_holes.ti_end_min = c->black_holes.ti_end_min;
+  pcells[0].black_holes.dx_max_part = c->black_holes.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_pack_end_step_black_holes(c->progeny[k], &pcells[count]);
+      count += cell_pack_end_step(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */
@@ -548,27 +373,38 @@ int cell_pack_end_step_black_holes(
 }
 
 /**
- * @brief Unpack the time information of a given cell and its sub-cells.
+ * @brief Unpack the cell information about time-step sizes and displacements
+ * of a cell hierarchy.
  *
- * @param c The #cell
- * @param pcells The end-of-timestep information to unpack
+ * @param c The #cells to unpack into.
+ * @param pcells the packed cell structures to unpack from.
  *
- * @return The number of cells created.
+ * @return The number of cells that were packed.
  */
-int cell_unpack_end_step_black_holes(
-    struct cell *restrict c, struct pcell_step_black_holes *restrict pcells) {
+int cell_unpack_end_step(struct cell *c, const struct pcell_step *pcells) {
 
 #ifdef WITH_MPI
 
   /* Unpack this cell's data. */
-  c->black_holes.ti_end_min = pcells[0].ti_end_min;
-  c->black_holes.dx_max_part = pcells[0].dx_max_part;
+  c->hydro.ti_end_min = pcells[0].hydro.ti_end_min;
+  c->hydro.dx_max_part = pcells[0].hydro.dx_max_part;
+
+  c->rt.ti_rt_end_min = pcells[0].rt.ti_rt_end_min;
+  c->rt.ti_rt_min_step_size = pcells[0].rt.ti_rt_min_step_size;
+
+  c->grav.ti_end_min = pcells[0].grav.ti_end_min;
+
+  c->stars.ti_end_min = pcells[0].stars.ti_end_min;
+  c->stars.dx_max_part = pcells[0].stars.dx_max_part;
+
+  c->black_holes.ti_end_min = pcells[0].black_holes.ti_end_min;
+  c->black_holes.dx_max_part = pcells[0].black_holes.dx_max_part;
 
   /* Fill in the progeny, depth-first recursion. */
   int count = 1;
   for (int k = 0; k < 8; k++)
     if (c->progeny[k] != NULL) {
-      count += cell_unpack_end_step_black_holes(c->progeny[k], &pcells[count]);
+      count += cell_unpack_end_step(c->progeny[k], &pcells[count]);
     }
 
   /* Return the number of packed values. */
@@ -577,6 +413,50 @@ int cell_unpack_end_step_black_holes(
 #else
   error("SWIFT was not compiled with MPI support.");
   return 0;
+#endif
+}
+
+/**
+ * @brief Pack the hydro timebin information of the given cell.
+ *
+ * t needs to be aligned on SWIFT_CACHE_ALIGNMENT.
+ *
+ * @param c The #cell.
+ * @param t (output) The array of timebins we pack into.
+ */
+void cell_pack_timebin(const struct cell *const c, timebin_t *const t) {
+
+#ifdef WITH_MPI
+
+  swift_declare_aligned_ptr(timebin_t, t_align, t, SWIFT_CACHE_ALIGNMENT);
+
+  for (int i = 0; i < c->hydro.count; ++i)
+    t_align[i] = c->hydro.parts[i].time_bin;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+#endif
+}
+
+/**
+ * @brief Unpack the hydro timebin information of a given cell.
+ *
+ * t needs to be aligned on SWIFT_CACHE_ALIGNMENT.
+ *
+ * @param c The #cell
+ * @param t The array of timebins we unpack from.
+ */
+void cell_unpack_timebin(struct cell *const c, timebin_t *const t) {
+
+#ifdef WITH_MPI
+
+  swift_declare_aligned_ptr(timebin_t, t_align, t, SWIFT_CACHE_ALIGNMENT);
+
+  for (int i = 0; i < c->hydro.count; ++i)
+    c->hydro.parts[i].time_bin = t_align[i];
+
+#else
+  error("SWIFT was not compiled with MPI support.");
 #endif
 }
 

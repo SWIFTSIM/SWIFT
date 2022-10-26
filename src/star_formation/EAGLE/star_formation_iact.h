@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2018 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2018 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -38,8 +38,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {
 
   /* Nothing to do here. We do not need to compute any quantity in the hydro
      density loop for the EAGLE star formation model. */
@@ -59,7 +60,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_star_formation(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_star_formation(float r2, const float *dx, float hi, float hj,
+runner_iact_nonsym_star_formation(const float r2, const float dx[3],
+                                  const float hi, const float hj,
                                   struct part *restrict pi,
                                   const struct part *restrict pj, float a,
                                   float H) {

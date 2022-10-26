@@ -34,15 +34,15 @@ rho = np.array(f["/PartType0/Densities"])
 gradrho = np.array(f["/PartType0/GradDensity"])
 coords = np.array(f["/PartType0/Coordinates"])
 
-fig, ax = pl.subplots(1,2, sharey=True)
+fig, ax = pl.subplots(1, 2, sharey=True)
 
-ax[0].plot(coords[:,0], rho, "r.", label="density")
-ax[0].plot(coords[:,0], gradrho[:,0], "b.", label="grad density x")
+ax[0].plot(coords[:, 0], rho, "r.", label="density")
+ax[0].plot(coords[:, 0], gradrho[:, 0], "b.", label="grad density x")
 ax[0].set_xlabel("x")
 ax[0].legend(loc="best")
 
-ax[1].plot(coords[:,1], rho, "r.", label="density")
-ax[1].plot(coords[:,1], gradrho[:,1], "b.", label="grad density y")
+ax[1].plot(coords[:, 1], rho, "r.", label="density")
+ax[1].plot(coords[:, 1], gradrho[:, 1], "b.", label="grad density y")
 ax[1].set_xlabel("y")
 ax[1].legend(loc="best")
 

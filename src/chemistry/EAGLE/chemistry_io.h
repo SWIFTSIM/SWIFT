@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -293,7 +293,7 @@ INLINE static int chemistry_write_bparticles(const struct bpart* bparts,
 #ifdef HAVE_HDF5
 
 /**
- * @brief Writes the current model of SPH to the file
+ * @brief Writes the current model of chemistry to the file
  * @param h_grp The HDF5 group in which to write
  * @param h_grp_columns The HDF5 group containing named columns
  * @param e The #engine.

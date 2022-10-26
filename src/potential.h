@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016  Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016  Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right external potential definition */
 #if defined(EXTERNAL_POTENTIAL_NONE)
@@ -36,6 +36,8 @@
 #include "./potential/isothermal/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_HERNQUIST)
 #include "./potential/hernquist/potential.h"
+#elif defined(EXTERNAL_POTENTIAL_HERNQUIST_SDMH05)
+#include "./potential/hernquist_sdmh05/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_NFW)
 #include "./potential/nfw/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_NFW_MN)
@@ -44,8 +46,6 @@
 #include "./potential/disc_patch/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_SINE_WAVE)
 #include "./potential/sine_wave/potential.h"
-#elif defined(EXTERNAL_POTENTIAL_POINTMASS_RING)
-#include "./potential/point_mass_ring/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_POINTMASS_SOFT)
 #include "./potential/point_mass_softened/potential.h"
 #elif defined(EXTERNAL_POTENTIAL_CONSTANT)

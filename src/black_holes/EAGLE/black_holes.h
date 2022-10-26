@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,6 +25,7 @@
 #include "cooling.h"
 #include "cosmology.h"
 #include "dimension.h"
+#include "exp10.h"
 #include "gravity.h"
 #include "kernel_hydro.h"
 #include "minmax.h"
@@ -139,8 +140,6 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   /* Set the initial targetted heating temperature, used for the
    * BH time step determination */
   bp->AGN_delta_T = props->AGN_delta_T_desired;
-
-  black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }
 
 /**
@@ -310,6 +309,11 @@ __attribute__((always_inline)) INLINE static void
 black_holes_bpart_has_no_neighbours(struct bpart* bp,
                                     const struct cosmology* cosmo) {
 
+  warning(
+      "BH particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      bp->id, bp->h, bp->density.wcount);
+
   /* Some smoothing length multiples. */
   const float h = bp->h;
   const float h_inv = 1.0f / h;                 /* 1/h */
@@ -443,11 +447,12 @@ __attribute__((always_inline)) INLINE static void black_holes_swallow_part(
  * @param time Time since the start of the simulation (non-cosmo mode).
  * @param with_cosmology Are we running with cosmology?
  * @param props The properties of the black hole scheme.
+ * @param constants The physical constants in internal units.
  */
 __attribute__((always_inline)) INLINE static void black_holes_swallow_bpart(
     struct bpart* bpi, const struct bpart* bpj, const struct cosmology* cosmo,
     const double time, const int with_cosmology,
-    const struct black_holes_props* props) {
+    const struct black_holes_props* props, const struct phys_const* constants) {
 
   /* Get the current dynamical masses */
   const float bpi_dyn_mass = bpi->mass;
@@ -932,7 +937,7 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
          * ray directions in the isotropic case or the first N closest particles
          * in the other modes. */
         for (int i = 0; i < bp->num_ngbs; i++) {
-          const double rand = random_unit_interval_part_ID_and_ray_idx(
+          const double rand = random_unit_interval_part_ID_and_index(
               bp->id, i, ti_begin, random_number_BH_feedback);
 
           /* Increase the counter if we are lucky */
@@ -1242,11 +1247,13 @@ black_holes_store_potential_in_part(struct black_holes_part_data* p_data,
  * @param cosmo The current cosmological model.
  * @param p The #part that became a black hole.
  * @param xp The #xpart that became a black hole.
+ * @param ti_current the current time on the time-line.
  */
 INLINE static void black_holes_create_from_gas(
     struct bpart* bp, const struct black_holes_props* props,
     const struct phys_const* constants, const struct cosmology* cosmo,
-    const struct part* p, const struct xpart* xp) {
+    const struct part* p, const struct xpart* xp,
+    const integertime_t ti_current) {
 
   /* All the non-basic properties of the black hole have been zeroed
    * in the FOF code. We update them here.

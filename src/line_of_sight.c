@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2020 Stuart McAlpine (stuart.mcalpine@helsinki.fi)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -33,6 +33,7 @@
 #include "kernel_hydro.h"
 #include "line_of_sight.h"
 #include "periodic.h"
+#include "version.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -323,6 +324,7 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
     error("Error while setting checksum options for field '%s'.", props.name);
 
   /* Impose data compression */
+  char comp_buffer[32] = "None";
   if (e->snapshot_compression > 0) {
     h_err = H5Pset_shuffle(h_prop);
     if (h_err < 0)
@@ -372,6 +374,7 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   io_write_attribute_f(h_data, "h-scale exponent", 0.f);
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+  io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -483,6 +486,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   io_write_attribute_d(h_grp, "Scale-factor", e->cosmology->a);
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
+  io_write_attribute_s(h_grp, "System", hostname());
 
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
@@ -502,7 +506,7 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   struct tm *timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
-  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
+  io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
@@ -530,6 +534,8 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
                      swift_type_count);
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", 1);
   io_write_attribute_i(h_grp, "ThisFile", 0);
+  io_write_attribute_s(h_grp, "SelectOutput", "Default");
+  io_write_attribute_i(h_grp, "Virtual", 0);
   io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
 
   /* Close group */
@@ -822,7 +828,9 @@ void do_line_of_sight(struct engine *e) {
       }
 #ifdef WITH_MPI
       free(counts);
+      counts = NULL;
       free(offsets);
+      offsets = NULL;
 #endif
       swift_free("tl_cells_los", los_cells_top);
       continue;
@@ -831,6 +839,7 @@ void do_line_of_sight(struct engine *e) {
     /* Setup LOS part and xpart structures. */
     struct part *LOS_parts = NULL;
     struct xpart *LOS_xparts = NULL;
+    struct gpart *LOS_gparts = NULL;
 
     /* Rank 0 allocates more space as it will gather all the data for writing */
     if (e->nodeID == 0) {
@@ -844,6 +853,11 @@ void do_line_of_sight(struct engine *e) {
                sizeof(struct xpart) * LOS_list[j].particles_in_los_total)) ==
           NULL)
         error("Failed to allocate LOS xpart memory.");
+      if ((LOS_gparts = (struct gpart *)swift_malloc(
+               "los_gparts_array",
+               sizeof(struct gpart) * LOS_list[j].particles_in_los_total)) ==
+          NULL)
+        error("Failed to allocate LOS gpart memory.");
     } else {
       if ((LOS_parts = (struct part *)swift_malloc(
                "los_parts_array",
@@ -855,6 +869,11 @@ void do_line_of_sight(struct engine *e) {
                sizeof(struct xpart) * LOS_list[j].particles_in_los_local)) ==
           NULL)
         error("Failed to allocate LOS xpart memory.");
+      if ((LOS_gparts = (struct gpart *)swift_malloc(
+               "los_gparts_array",
+               sizeof(struct gpart) * LOS_list[j].particles_in_los_local)) ==
+          NULL)
+        error("Failed to allocate LOS gpart memory.");
     }
 
     /* Loop over each part again, pulling out those in LOS. */
@@ -873,6 +892,7 @@ void do_line_of_sight(struct engine *e) {
 
         /* Don't consider inhibited parts. */
         if (cell_parts[i].time_bin == time_bin_inhibited) continue;
+        if (cell_parts[i].time_bin == time_bin_not_created) continue;
 
         /* Don't consider part if outwith allowed z-range. */
         if (cell_parts[i].x[LOS_list[j].zaxis] <
@@ -917,6 +937,8 @@ void do_line_of_sight(struct engine *e) {
               /* Store part and xpart properties. */
               memcpy(&LOS_parts[count], &cell_parts[i], sizeof(struct part));
               memcpy(&LOS_xparts[count], &cell_xparts[i], sizeof(struct xpart));
+              memcpy(&LOS_gparts[count], cell_parts[i].gpart,
+                     sizeof(struct gpart));
 
               count++;
             }
@@ -937,14 +959,30 @@ void do_line_of_sight(struct engine *e) {
                   part_mpi_type, 0, MPI_COMM_WORLD);
       MPI_Gatherv(MPI_IN_PLACE, 0, xpart_mpi_type, LOS_xparts, counts, offsets,
                   xpart_mpi_type, 0, MPI_COMM_WORLD);
+      MPI_Gatherv(MPI_IN_PLACE, 0, gpart_mpi_type, LOS_gparts, counts, offsets,
+                  gpart_mpi_type, 0, MPI_COMM_WORLD);
+
     } else {
       MPI_Gatherv(LOS_parts, LOS_list[j].particles_in_los_local, part_mpi_type,
                   LOS_parts, counts, offsets, part_mpi_type, 0, MPI_COMM_WORLD);
       MPI_Gatherv(LOS_xparts, LOS_list[j].particles_in_los_local,
                   xpart_mpi_type, LOS_xparts, counts, offsets, xpart_mpi_type,
                   0, MPI_COMM_WORLD);
+      MPI_Gatherv(LOS_gparts, LOS_list[j].particles_in_los_local,
+                  gpart_mpi_type, LOS_gparts, counts, offsets, gpart_mpi_type,
+                  0, MPI_COMM_WORLD);
     }
 #endif
+
+    /* Re-instate part->gpart pointer on teh receiving side */
+    if (e->nodeID == 0) {
+#ifdef WITH_MPI
+      for (int i = 0; i < LOS_list[j].particles_in_los_total; ++i) {
+        LOS_parts[i].gpart = &LOS_gparts[i];
+        LOS_gparts[i].id_or_neg_offset = -i;
+      }
+#endif
+    }
 
     /* Rank 0 writes particles to file. */
     if (e->nodeID == 0) {
@@ -964,6 +1002,12 @@ void do_line_of_sight(struct engine *e) {
       io_write_attribute(h_grp, "Xpos", DOUBLE, &LOS_list[j].Xpos, 1);
       io_write_attribute(h_grp, "Ypos", DOUBLE, &LOS_list[j].Ypos, 1);
 
+#ifdef SWIFT_DEBUG_CHECKS
+      for (int i = 0; i < LOS_list[j].particles_in_los_total; ++i) {
+        if (LOS_parts[i].gpart != &LOS_gparts[i]) error("Incorrect pointers!");
+      }
+#endif
+
       /* Write the data for this LOS */
       write_los_hdf5_datasets(h_grp, j, LOS_list[j].particles_in_los_total,
                               LOS_parts, e, LOS_xparts);
@@ -980,6 +1024,7 @@ void do_line_of_sight(struct engine *e) {
     swift_free("tl_cells_los", los_cells_top);
     swift_free("los_parts_array", LOS_parts);
     swift_free("los_xparts_array", LOS_xparts);
+    swift_free("los_gparts_array", LOS_gparts);
 
   } /* End of loop over each LOS */
 

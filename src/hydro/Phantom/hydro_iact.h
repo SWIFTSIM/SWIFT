@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk) &
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -33,6 +33,7 @@
 #include "adiabatic_index.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
+#include "signal_velocity.h"
 
 /**
  * @brief Density interaction between two particles.
@@ -47,8 +48,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_density(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   float wi, wj, wi_dx, wj_dx;
   float dv[3], curlvr[3];
@@ -82,7 +84,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pj->density.wcount_dh -= (hydro_dimension * wj + uj * wj_dx);
 
   /* Now we need to compute the div terms */
-  const float r_inv = 1.f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
   const float facj = mi * wj_dx * r_inv;
 
@@ -123,8 +125,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    const struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
+    const float H) {
 
   float wi, wi_dx;
   float dv[3], curlvr[3];
@@ -145,7 +148,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
   pi->density.wcount += wi;
   pi->density.wcount_dh -= (hydro_dimension * wi + ui * wi_dx);
 
-  const float r_inv = 1.f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
   const float faci = mj * wi_dx * r_inv;
 
   /* Compute dv dot r */
@@ -183,16 +186,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_gradient(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.f / r;
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -210,7 +212,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float new_v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -235,16 +238,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
-    float r2, const float* dx, float hi, float hj, struct part* restrict pi,
-    struct part* restrict pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   /* We need to construct the maximal signal velocity between our particle
    * and all of it's neighbours */
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.f / r;
-  const float ci = pi->force.soundspeed;
-  const float cj = pj->force.soundspeed;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Cosmology terms for the signal velocity */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
@@ -262,7 +264,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
   /* Signal velocity */
-  const float new_v_sig = ci + cj - const_viscosity_beta * mu_ij;
+  const float new_v_sig =
+      signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Update if we need to */
   pi->viscosity.v_sig = max(pi->viscosity.v_sig, new_v_sig);
@@ -281,15 +284,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_force(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, struct part* restrict pj, const float a,
+    const float H) {
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mj = pj->mass;
@@ -329,9 +333,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
-  /* Compute sound speeds and signal velocity */
-  const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
-                      const_viscosity_beta * mu_ij;
+  /* Compute the signal velocity */
+  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -385,7 +388,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term = alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
-                             (wi_dr * f_ij / pi->rho + wj_dr * f_ji / pi->rho);
+                             (wi_dr * f_ij / rhoi + wj_dr * f_ji / rhoj);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -396,8 +399,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pj->u_dt += du_dt_j * mi;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * f_ij * r_inv / rhoj * wi_dr;
-  pj->force.h_dt -= mi * dvdr * f_ji * r_inv / rhoi * wj_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
+  pj->force.h_dt -= mi * dvdr * r_inv / rhoi * wj_dr;
 }
 
 /**
@@ -413,15 +416,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
-    float r2, const float* dx, float hi, float hj, struct part* pi,
-    const struct part* pj, float a, float H) {
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part* restrict pi, const struct part* restrict pj, const float a,
+    const float H) {
 
   /* Cosmological factors entering the EoMs */
   const float fac_mu = pow_three_gamma_minus_five_over_two(a);
   const float a2_Hubble = a * a * H;
 
   const float r = sqrtf(r2);
-  const float r_inv = 1.0f / r;
+  const float r_inv = r ? 1.0f / r : 0.0f;
 
   /* Recover some data */
   const float mi = pi->mass;
@@ -461,9 +465,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float omega_ij = min(dvdr_Hubble, 0.f);
   const float mu_ij = fac_mu * r_inv * omega_ij; /* This is 0 or negative */
 
-  /* Compute sound speeds and signal velocity */
-  const float v_sig = pi->force.soundspeed + pj->force.soundspeed -
-                      const_viscosity_beta * mu_ij;
+  /* Compute the signal velocity */
+  const float v_sig = signal_velocity(dx, pi, pj, mu_ij, const_viscosity_beta);
 
   /* Variable smoothing length term */
   const float f_ij = 1.f - pi->force.f / mj;
@@ -511,7 +514,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float alpha_diff = 0.5f * (pi->diffusion.alpha + pj->diffusion.alpha);
   /* wi_dx + wj_dx / 2 is F_ij */
   const float diff_du_term = alpha_diff * v_diff * (pi->u - pj->u) * 0.5f *
-                             (wi_dr * f_ij / pi->rho + wj_dr * f_ji / pi->rho);
+                             (wi_dr * f_ij / rhoi + wj_dr * f_ji / rhoj);
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + visc_du_term + diff_du_term;
@@ -520,7 +523,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->u_dt += du_dt_i * mj;
 
   /* Get the time derivative for h. */
-  pi->force.h_dt -= mj * dvdr * f_ij * r_inv / rhoj * wi_dr;
+  pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dr;
 }
 
 #endif /* SWIFT_PHANTOM_HYDRO_IACT_H */

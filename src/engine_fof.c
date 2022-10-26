@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "engine.h"
@@ -105,13 +105,23 @@ void engine_activate_fof_tasks(struct engine *e) {
  * @param dump_debug_results Are we writing a txt-file debug catalogue
  * (including BH seed info)?
  * @param seed_black_holes Are we seeding black holes?
+ * @param foreign_buffers_allocated Are the foreign buffers currently
+ * allocated?
  */
 void engine_fof(struct engine *e, const int dump_results,
-                const int dump_debug_results, const int seed_black_holes) {
+                const int dump_debug_results, const int seed_black_holes,
+                const int foreign_buffers_allocated) {
 
 #ifdef WITH_FOF
 
-  ticks tic = getticks();
+  const ticks tic = getticks();
+
+  /* Start by cleaning up the foreign buffers */
+  if (foreign_buffers_allocated) {
+#ifdef WITH_MPI
+    space_free_foreign_parts(e->s, /*clear pointers=*/1);
+#endif
+  }
 
   /* Compute number of DM particles */
   const long long total_nr_baryons =
@@ -149,6 +159,13 @@ void engine_fof(struct engine *e, const int dump_results,
 
   /* ... and find the next FOF time */
   if (seed_black_holes) engine_compute_next_fof_time(e);
+
+  /* Restore the foreign buffers as they were*/
+  if (foreign_buffers_allocated) {
+#ifdef WITH_MPI
+    engine_allocate_foreign_particles(e, /*fof=*/0);
+#endif
+  }
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

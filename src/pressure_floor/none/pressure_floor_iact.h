@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *               2019 Fabien Jeanquartier (fabien.jeanquartier@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -41,8 +41,9 @@
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_pressure_floor(
-    float r2, const float *dx, float hi, float hj, struct part *restrict pi,
-    struct part *restrict pj, float a, float H) {}
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
 
 /**
  * @brief do pressure_floor computation after the runner_iact_density (non
@@ -58,9 +59,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_pressure_floor(
  * @param H Current Hubble parameter.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_pressure_floor(float r2, const float *dx, float hi, float hj,
+runner_iact_nonsym_pressure_floor(const float r2, const float dx[3],
+                                  const float hi, const float hj,
                                   struct part *restrict pi,
-                                  const struct part *restrict pj, float a,
-                                  float H) {}
+                                  const struct part *restrict pj, const float a,
+                                  const float H) {}
 
 #endif /* SWIFT_NONE_PRESSURE_FLOOR_IACT_H */

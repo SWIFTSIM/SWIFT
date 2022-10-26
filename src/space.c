@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -48,6 +48,7 @@
 #include "error.h"
 #include "kernel_hydro.h"
 #include "lock.h"
+#include "mhd.h"
 #include "minmax.h"
 #include "proxy.h"
 #include "restart.h"
@@ -89,6 +90,11 @@ int space_extra_sinks = space_extra_sinks_default;
 int engine_max_parts_per_ghost = engine_max_parts_per_ghost_default;
 int engine_max_sparts_per_ghost = engine_max_sparts_per_ghost_default;
 int engine_max_parts_per_cooling = engine_max_parts_per_cooling_default;
+
+/*! Allocation margins */
+double engine_redistribute_alloc_margin =
+    engine_redistribute_alloc_margin_default;
+double engine_foreign_alloc_margin = engine_foreign_alloc_margin_default;
 
 /*! Maximal depth at which the stars resort task can be pushed */
 int engine_star_resort_task_depth = engine_star_resort_task_depth_default;
@@ -747,105 +753,6 @@ void space_synchronize_particle_positions(struct space *s) {
             clocks_getunit());
 }
 
-void space_convert_rt_star_quantities_mapper(void *restrict map_data,
-                                             int scount,
-                                             void *restrict extra_data) {
-
-  struct spart *restrict sparts = (struct spart *)map_data;
-  const struct engine *restrict e = (struct engine *)extra_data;
-  const int with_cosmology = (e->policy & engine_policy_cosmology);
-
-  for (int k = 0; k < scount; k++) {
-
-    struct spart *restrict sp = &sparts[k];
-    rt_reset_spart(sp);
-
-    /* If we're running with star controlled injection, we don't
-     * need to compute the stellar emission rates here now. */
-    if (!e->rt_props->hydro_controlled_injection) continue;
-
-    /* get star's age and time step for stellar emission rates */
-    const integertime_t ti_begin =
-        get_integer_time_begin(e->ti_current - 1, sp->time_bin);
-    const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-
-    /* Get particle time-step */
-    double dt_star;
-    if (with_cosmology) {
-      dt_star =
-          cosmology_get_delta_time(e->cosmology, ti_begin, ti_begin + ti_step);
-    } else {
-      dt_star = get_timestep(sp->time_bin, e->time_base);
-    }
-
-    /* Calculate age of the star at current time */
-    const double star_age_end_of_step =
-        stars_compute_age(sp, e->cosmology, e->time, with_cosmology);
-
-    rt_compute_stellar_emission_rate(sp, e->time, star_age_end_of_step,
-                                     dt_star);
-  }
-}
-
-void space_convert_rt_hydro_quantities_mapper(void *restrict map_data,
-                                              int count,
-                                              void *restrict extra_data) {
-
-  struct part *restrict parts = (struct part *)map_data;
-
-  for (int k = 0; k < count; k++) {
-    struct part *restrict p = &parts[k];
-    rt_reset_part(p);
-  }
-}
-
-/**
- * @brief Initializes values of radiative transfer data for particles
- * that needs to be set before the first actual step is done, but will
- * be reset in forthcoming steps when the corresponding particle is
- * active.
- * In hydro controlled injection, in particular we need the stellar
- * emisison rates to be set from the start, not only after the stellar
- * particle has been active. This function requires that the time bins
- * for star particles have been set already and is called after the
- * zeroth time step.
- * In either star controlled injection or hydro controlled injection,
- * for the debug RT scheme some data fields need to be reset after the
- * zeroth step. In particular the interaction count between stars and
- * hydro particles needs to be reset to zero; Otherwise only the active
- * particles/stars will be reset when called in their respective ghosts,
- * while the others remain nonzero, such that the respective sums over
- * all hydro particles and the sum over all star particles won't be
- * equal any longer.
- * TODO MLADEN: Clean this up once you finish with the hydro/star
- * controlled injection and debugging mode.
- *
- * @param s The #space.
- * @param verbose Are we talkative?
- */
-void space_convert_rt_quantities(struct space *s, int verbose) {
-
-  const ticks tic = getticks();
-
-  if (s->nr_parts > 0)
-    /* Particle loop. Reset hydro particle values so we don't inject too much
-     * radiation into the gas */
-    threadpool_map(&s->e->threadpool, space_convert_rt_hydro_quantities_mapper,
-                   s->parts, s->nr_parts, sizeof(struct part),
-                   threadpool_auto_chunk_size, /*extra_data=*/s->e);
-
-  if (s->nr_sparts > 0)
-    /* Star particle loop. Hydro controlled injection requires star particles
-     * to have their emission rated computed and ready for interactions. */
-    threadpool_map(&s->e->threadpool, space_convert_rt_star_quantities_mapper,
-                   s->sparts, s->nr_sparts, sizeof(struct spart),
-                   threadpool_auto_chunk_size, /*extra_data=*/s->e);
-
-  if (verbose)
-    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
-            clocks_getunit());
-}
-
 void space_convert_quantities_mapper(void *restrict map_data, int count,
                                      void *restrict extra_data) {
   struct space *s = (struct space *)extra_data;
@@ -857,9 +764,12 @@ void space_convert_quantities_mapper(void *restrict map_data, int count,
 
   /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
    * creation */
-  for (int k = 0; k < count; k++)
-    if (parts[k].time_bin <= num_time_bins)
+  for (int k = 0; k < count; k++) {
+    if (parts[k].time_bin <= num_time_bins) {
       hydro_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+      mhd_convert_quantities(&parts[k], &xparts[k], cosmo, hydro_props);
+    }
+  }
 }
 
 /**
@@ -877,6 +787,49 @@ void space_convert_quantities(struct space *s, int verbose) {
     threadpool_map(&s->e->threadpool, space_convert_quantities_mapper, s->parts,
                    s->nr_parts, sizeof(struct part), threadpool_auto_chunk_size,
                    s);
+
+  if (verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+void space_convert_rt_quantities_mapper(void *restrict map_data, int count,
+                                        void *restrict extra_data) {
+  struct space *s = (struct space *)extra_data;
+  const struct engine *restrict e = s->e;
+  const int with_rt = (e->policy & engine_policy_rt);
+  if (!with_rt) return;
+
+  const struct rt_props *restrict rt_props = e->rt_props;
+  const struct phys_const *restrict phys_const = e->physical_constants;
+  const struct unit_system *restrict iu = e->internal_units;
+  const struct cosmology *restrict cosmo = e->cosmology;
+
+  struct part *restrict parts = (struct part *)map_data;
+
+  /* Loop over all the particles ignoring the extra buffer ones for on-the-fly
+   * creation */
+  for (int k = 0; k < count; k++) {
+    if (parts[k].time_bin <= num_time_bins)
+      rt_convert_quantities(&parts[k], rt_props, phys_const, iu, cosmo);
+  }
+}
+
+/**
+ * @brief Calls the #part RT quantities conversion function on all particles in
+ * the space.
+ *
+ * @param s The #space.
+ * @param verbose Are we talkative?
+ */
+void space_convert_rt_quantities(struct space *s, int verbose) {
+
+  const ticks tic = getticks();
+
+  if (s->nr_parts > 0)
+    threadpool_map(&s->e->threadpool, space_convert_rt_quantities_mapper,
+                   s->parts, s->nr_parts, sizeof(struct part),
+                   threadpool_auto_chunk_size, s);
 
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1019,6 +972,8 @@ void space_collect_mean_masses(struct space *s, int verbose) {
    *
    * Note: the Intel compiler vectorizes this loop and creates FPEs from
    * the masked bit of the vector... Silly ICC... */
+  /* TK comment: the following also has problems with gnu_7.3.0 and optimization
+   */
 #if defined(__ICC)
 #pragma novector
 #endif
@@ -1072,8 +1027,8 @@ void space_init(struct space *s, struct swift_params *params,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int self_gravity, int star_formation, int with_sink,
-                int DM_background, int neutrinos, int verbose, int dry_run,
-                int nr_nodes) {
+                int with_DM, int with_DM_background, int neutrinos, int verbose,
+                int dry_run, int nr_nodes) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1087,7 +1042,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
   s->with_sink = with_sink;
-  s->with_DM_background = DM_background;
+  s->with_DM = with_DM;
+  s->with_DM_background = with_DM_background;
   s->with_neutrinos = neutrinos;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
@@ -1148,7 +1104,7 @@ void space_init(struct space *s, struct swift_params *params,
 
   /* Are we generating gas from the DM-only ICs? */
   if (generate_gas_in_ics) {
-    space_generate_gas(s, cosmo, hydro_properties, periodic, DM_background,
+    space_generate_gas(s, cosmo, hydro_properties, periodic, with_DM_background,
                        neutrinos, dim, verbose);
     parts = s->parts;
     gparts = s->gparts;
@@ -1167,7 +1123,7 @@ void space_init(struct space *s, struct swift_params *params,
     error("Value of 'InitialConditions:replicate' (%d) is too small",
           replicate);
   if (replicate > 1) {
-    if (DM_background)
+    if (with_DM_background)
       error("Can't replicate the space if background DM particles are in use.");
     if (neutrinos)
       error("Can't replicate the space if neutrino DM particles are in use.");
@@ -1253,6 +1209,14 @@ void space_init(struct space *s, struct swift_params *params,
   engine_max_parts_per_cooling =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_cooling",
                                engine_max_parts_per_cooling_default);
+
+  engine_redistribute_alloc_margin = parser_get_opt_param_double(
+      params, "Scheduler:engine_redist_alloc_margin",
+      engine_redistribute_alloc_margin_default);
+
+  engine_foreign_alloc_margin = parser_get_opt_param_double(
+      params, "Scheduler:engine_foreign_alloc_margin",
+      engine_foreign_alloc_margin_default);
 
   if (verbose) {
     message("max_size set to %d split_size set to %d", space_maxsize,
@@ -1636,6 +1600,15 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
 
   if (verbose) message("Remapping all the IDs");
 
+  size_t local_nr_dm_background = 0;
+  size_t local_nr_neutrino = 0;
+  for (size_t i = 0; i < s->nr_gparts; ++i) {
+    if (s->gparts[i].type == swift_type_neutrino)
+      local_nr_neutrino++;
+    else if (s->gparts[i].type == swift_type_dark_matter_background)
+      local_nr_dm_background++;
+  }
+
   /* Get the current local number of particles */
   const size_t local_nr_parts = s->nr_parts;
   const size_t local_nr_sinks = s->nr_sinks;
@@ -1645,7 +1618,9 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   const size_t local_nr_baryons =
       local_nr_parts + local_nr_sinks + local_nr_sparts + local_nr_bparts;
   const size_t local_nr_dm =
-      local_nr_gparts > 0 ? local_nr_gparts - local_nr_baryons : 0;
+      local_nr_gparts > 0 ? local_nr_gparts - local_nr_baryons -
+                                local_nr_neutrino - local_nr_dm_background
+                          : 0;
 
   /* Get the global offsets */
   long long offset_parts = 0;
@@ -1653,6 +1628,7 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long offset_sparts = 0;
   long long offset_bparts = 0;
   long long offset_dm = 0;
+  long long offset_dm_background = 0;
 #ifdef WITH_MPI
   MPI_Exscan(&local_nr_parts, &offset_parts, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
@@ -1664,6 +1640,8 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
              MPI_COMM_WORLD);
   MPI_Exscan(&local_nr_dm, &offset_dm, 1, MPI_LONG_LONG_INT, MPI_SUM,
              MPI_COMM_WORLD);
+  MPI_Exscan(&local_nr_dm_background, &offset_dm_background, 1,
+             MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
   /* Total number of particles of each kind */
@@ -1671,7 +1649,9 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   long long total_parts = offset_parts + local_nr_parts;
   long long total_sinks = offset_sinks + local_nr_sinks;
   long long total_sparts = offset_sparts + local_nr_sparts;
-  // long long total_bparts = offset_bparts + local_nr_bparts;
+  long long total_bparts = offset_bparts + local_nr_bparts;
+  // long long total_dm_backgroud = offset_dm_background +
+  // local_nr_dm_background;
 
 #ifdef WITH_MPI
   /* The last rank now has the correct total, let's broadcast this back */
@@ -1679,17 +1659,23 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   MPI_Bcast(&total_parts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_sinks, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
   MPI_Bcast(&total_sparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
-  // MPI_Bcast(&total_bparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1,
+  MPI_Bcast(&total_bparts, 1, MPI_LONG_LONG_INT, nr_nodes - 1, MPI_COMM_WORLD);
+  // MPI_Bcast(&total_dm_background, 1, MPI_LONG_LONG_INT, nr_nodes - 1,
   // MPI_COMM_WORLD);
 #endif
 
   /* Let's order the particles
-   * IDs will be DM then gas then sinks than stars then BHs */
+   * IDs will be DM then gas then sinks than stars then BHs then DM background
+   * Note that we leave a large gap (10x the number of particles) in-between the
+   * regular particles and the background ones. This allow for particle
+   * splitting to keep a compact set of ids. */
   offset_dm += 1;
   offset_parts += 1 + total_dm;
   offset_sinks += 1 + total_dm + total_parts;
   offset_sparts += 1 + total_dm + total_parts + total_sinks;
   offset_bparts += 1 + total_dm + total_parts + total_sinks + total_sparts;
+  offset_dm_background += 1 + 10 * (total_dm * total_parts + total_sinks +
+                                    total_sparts + total_bparts);
 
   /* We can now remap the IDs in the range [offset offset + local_nr] */
   for (size_t i = 0; i < local_nr_parts; ++i) {
@@ -1704,11 +1690,17 @@ void space_remap_ids(struct space *s, int nr_nodes, int verbose) {
   for (size_t i = 0; i < local_nr_bparts; ++i) {
     s->bparts[i].id = offset_bparts + i;
   }
-  for (size_t i = 0; i < local_nr_dm; ++i) {
-    if (s->gparts[i].type == swift_type_dark_matter ||
-        s->gparts[i].type == swift_type_dark_matter_background ||
-        s->gparts[i].type == swift_type_neutrino)
-      s->gparts[i].id_or_neg_offset = offset_dm + i;
+  size_t count_dm = 0;
+  size_t count_dm_background = 0;
+  for (size_t i = 0; i < s->nr_gparts; ++i) {
+    if (s->gparts[i].type == swift_type_dark_matter) {
+      s->gparts[i].id_or_neg_offset = offset_dm + count_dm;
+      count_dm++;
+    } else if (s->gparts[i].type == swift_type_dark_matter_background) {
+      s->gparts[i].id_or_neg_offset =
+          offset_dm_background + count_dm_background;
+      count_dm_background++;
+    }
   }
 }
 
@@ -1749,23 +1741,27 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
         "Cannot generate gas from ICs if the initial temperature is set to 0. "
         "Need to set 'SPH:initial_temperature' to a sensible value.");
 
+  if (cosmo->Omega_b == 0.)
+    error("Cannot generate gas from ICs if Omega_b is set to 0.");
+
   if (verbose) message("Generating gas particles from gparts");
 
   /* Store the current values */
   const size_t current_nr_parts = s->nr_parts;
   const size_t current_nr_gparts = s->nr_gparts;
 
+  /* Basic checks for unwanted modes */
   if (current_nr_parts != 0)
-    error("Generating gas particles from DM but gas already exists!");
+    error("Generating gas particles from DM but gas already exist!");
 
   if (s->nr_sparts != 0)
-    error("Generating gas particles from DM but stars already exists!");
+    error("Generating gas particles from DM but stars already exist!");
 
   if (s->nr_bparts != 0)
-    error("Generating gas particles from DM but BHs already exists!");
+    error("Generating gas particles from DM but BHs already exist!");
 
   if (s->nr_sinks != 0)
-    error("Generating gas particles from DM but sink already exists!");
+    error("Generating gas particles from DM but sinks already exist!");
 
   /* Pull out information about particle splitting */
   const int particle_splitting = hydro_properties->particle_splitting;
@@ -1812,21 +1808,29 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   bzero(parts, s->nr_parts * sizeof(struct part));
 
   /* Compute some constants */
-  const double mass_ratio = cosmo->Omega_b / cosmo->Omega_m;
-  const double bg_density = cosmo->Omega_m * cosmo->critical_density_0;
+  const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+  const double mass_ratio = cosmo->Omega_b / Omega_m;
+  const double bg_density = Omega_m * cosmo->critical_density_0;
   const double bg_density_inv = 1. / bg_density;
 
-  message("%zd", current_nr_gparts);
+  // message("%zd", current_nr_gparts);
 
   /* Update the particle properties */
   size_t j = 0;
   for (size_t i = 0; i < current_nr_gparts; ++i) {
 
-    /* For the background & neutrino DM particles, just copy the data */
-    if (s->gparts[i].type == swift_type_dark_matter_background ||
-        s->gparts[i].type == swift_type_neutrino) {
+    /* For the neutrino DM particles, just copy the data */
+    if (s->gparts[i].type == swift_type_neutrino) {
 
       memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
+
+      /* For the background DM particles, copy the data and give a better ID */
+    } else if (s->gparts[i].type == swift_type_dark_matter_background) {
+
+      memcpy(&gparts[i], &s->gparts[i], sizeof(struct gpart));
+
+      /* Multiply the ID by two to match the convention of even IDs for DM. */
+      gparts[i].id_or_neg_offset *= 2;
 
     } else {
 
@@ -1922,33 +1926,63 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
  *
  * @param s The #space.
  * @param cosmo The current cosmology model.
+ * @param with_hydro Are we running with hydro switched on?
  * @param rank The MPI rank of this #space.
+ * @param check_neutrinos Should neutrino masses be checked?
  */
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
-                           int rank) {
+                           const int with_hydro, const int rank,
+                           const int check_neutrinos) {
 
   struct gpart *gparts = s->gparts;
   const size_t nr_gparts = s->nr_gparts;
 
   /* Sum up the mass in this space */
-  double mass = 0.;
+  int has_background_particles = 0;
+  double mass_cdm = 0.;
+  double mass_b = 0.;
+  double mass_nu = 0.;
   for (size_t i = 0; i < nr_gparts; ++i) {
-    /* Skip neutrino particles, which are not included in cosmo.Omega_m */
-    if (gparts[i].type == swift_type_neutrino) continue;
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (gparts[i].time_bin == time_bin_not_created)
-      error("Found an extra particle when checking cosmology");
-#endif
-    mass += gparts[i].mass;
+    /* Skip extra particles */
+    if (gparts[i].time_bin == time_bin_not_created) continue;
+
+    switch (gparts[i].type) {
+      case swift_type_dark_matter:
+      case swift_type_dark_matter_background:
+        mass_cdm += gparts[i].mass;
+        break;
+      case swift_type_neutrino:
+        mass_nu += gparts[i].mass;
+        break;
+      case swift_type_gas:
+      case swift_type_stars:
+      case swift_type_black_hole:
+      case swift_type_sink:
+        mass_b += gparts[i].mass;
+        break;
+      default:
+        error("Invalid particle type");
+    }
+
+    if (gparts[i].type == swift_type_dark_matter_background)
+      has_background_particles = 1;
   }
 
 /* Reduce the total mass */
 #ifdef WITH_MPI
-  double total_mass;
-  MPI_Reduce(&mass, &total_mass, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  double total_mass_cdm;
+  double total_mass_b;
+  double total_mass_nu;
+  MPI_Reduce(&mass_cdm, &total_mass_cdm, 1, MPI_DOUBLE, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+  MPI_Reduce(&mass_b, &total_mass_b, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(&mass_nu, &total_mass_nu, 1, MPI_DOUBLE, MPI_SUM, 0,
+             MPI_COMM_WORLD);
 #else
-  double total_mass = mass;
+  double total_mass_cdm = mass_cdm;
+  double total_mass_b = mass_b;
+  double total_mass_nu = mass_nu;
 #endif
 
   if (rank == 0) {
@@ -1964,15 +1998,46 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
     /* Critical density at z=0 */
     const double rho_crit0 = cosmo->critical_density * H0 * H0 / (H * H);
 
-    /* Compute the mass density */
-    const double Omega_particles = (total_mass / volume) / rho_crit0;
+    /* Compute the mass densities */
+    const double Omega_particles_cdm = (total_mass_cdm / volume) / rho_crit0;
+    const double Omega_particles_b = (total_mass_b / volume) / rho_crit0;
+    const double Omega_particles_nu = (total_mass_nu / volume) / rho_crit0;
 
-    if (fabs(Omega_particles - cosmo->Omega_m) > 1e-3)
+    const double Omega_particles_m = Omega_particles_cdm + Omega_particles_b;
+
+    /* Expected matter density */
+    const double Omega_m = cosmo->Omega_cdm + cosmo->Omega_b;
+
+    if (with_hydro && !has_background_particles &&
+        fabs(Omega_particles_cdm - cosmo->Omega_cdm) > 1e-3)
       error(
-          "The matter content of the simulation does not match the cosmology "
-          "in the parameter file cosmo.Omega_m=%e, Omega_particles=%e. Neither "
-          "quantity includes neutrinos.",
-          cosmo->Omega_m, Omega_particles);
+          "The cold dark matter content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_cdm = %e particles "
+          "Omega_cdm = %e",
+          cosmo->Omega_cdm, Omega_particles_cdm);
+
+    if (with_hydro && !has_background_particles &&
+        fabs(Omega_particles_b - cosmo->Omega_b) > 1e-3)
+      error(
+          "The baryon content of the simulation does not match the cosmology "
+          "in the parameter file: cosmo.Omega_b = %e particles Omega_b = %e",
+          cosmo->Omega_b, Omega_particles_b);
+
+    if (check_neutrinos && fabs(Omega_particles_nu - cosmo->Omega_nu_0) > 1e-3)
+      error(
+          "The massive neutrino content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_nu = %e particles "
+          "Omega_nu = %e",
+          cosmo->Omega_nu_0, Omega_particles_nu);
+
+    if (fabs(Omega_particles_m - Omega_m) > 1e-3)
+      error(
+          "The total matter content of the simulation does not match the "
+          "cosmology in the parameter file: cosmo.Omega_m = %e particles "
+          "Omega_m = %e \n cosmo: Omega_b=%e Omega_cdm=%e \n "
+          "particles: Omega_b=%e Omega_cdm=%e",
+          Omega_m, Omega_particles_m, cosmo->Omega_b, cosmo->Omega_cdm,
+          Omega_particles_b, Omega_particles_cdm);
   }
 }
 
@@ -1980,6 +2045,7 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
  * @brief Compute the max id of any #part in this space.
  *
  * This function is inefficient. Don't call often.
+ * Background particles are ignored.
  *
  * @param s The #space.
  */
@@ -1992,9 +2058,10 @@ long long space_get_max_parts_id(struct space *s) {
     max_id = max(max_id, s->sparts[i].id);
   for (size_t i = 0; i < s->nr_bparts; ++i)
     max_id = max(max_id, s->bparts[i].id);
+
+  /* Note: We Explicitly do *NOT* consider background particles */
   for (size_t i = 0; i < s->nr_gparts; ++i)
     if (s->gparts[i].type == swift_type_dark_matter ||
-        s->gparts[i].type == swift_type_dark_matter_background ||
         s->gparts[i].type == swift_type_neutrino)
       max_id = max(max_id, s->gparts[i].id_or_neg_offset);
   return max_id;
@@ -2336,6 +2403,12 @@ void space_struct_dump(struct space *s, FILE *stream) {
   restart_write_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
                        "engine_star_resort_task_depth",
                        "engine_star_resort_task_depth");
+  restart_write_blocks(&engine_redistribute_alloc_margin, sizeof(double), 1,
+                       stream, "engine_redistribute_alloc_margin",
+                       "engine_redistribute_alloc_margin");
+  restart_write_blocks(&engine_foreign_alloc_margin, sizeof(double), 1, stream,
+                       "engine_foreign_alloc_margin",
+                       "engine_foreign_alloc_margin");
 
   /* More things to write. */
   if (s->nr_parts > 0) {
@@ -2410,6 +2483,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       NULL, "engine_max_parts_per_cooling");
   restart_read_blocks(&engine_star_resort_task_depth, sizeof(int), 1, stream,
                       NULL, "engine_star_resort_task_depth");
+  restart_read_blocks(&engine_redistribute_alloc_margin, sizeof(double), 1,
+                      stream, NULL, "engine_redistribute_alloc_margin");
+  restart_read_blocks(&engine_foreign_alloc_margin, sizeof(double), 1, stream,
+                      NULL, "engine_foreign_alloc_margin");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;

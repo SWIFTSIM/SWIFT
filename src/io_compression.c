@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "io_compression.h"
@@ -35,9 +35,10 @@
  *        parameter file.
  **/
 const char* lossy_compression_schemes_names[compression_level_count] = {
-    "off",     "on",         "DScale1",     "Dscale2",   "DScale3",
-    "DScale6", "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16",
-    "Nbit36",  "Nbit40",     "Nbit44",      "Nbit48",    "Nbit56"};
+    "off",        "on",          "DScale1",   "DScale2",    "DScale3",
+    "DScale4",    "DScale5",     "DScale6",   "DMantissa9", "DMantissa13",
+    "FMantissa9", "FMantissa13", "HalfFloat", "BFloat16",   "Nbit32",
+    "Nbit36",     "Nbit40",      "Nbit44",    "Nbit48",     "Nbit56"};
 
 /**
  * @brief Returns the lossy compression scheme given its name
@@ -64,14 +65,18 @@ enum lossy_compression_schemes compression_scheme_from_name(const char* name) {
  * @brief Sets the properties and type of an HDF5 dataspace to apply a given
  * lossy compression scheme.
  *
+ * The filter name is only updated if a filter was applied. If no lossy
+ * compression is chosen the string is not altered.
+ *
  * @param h_prop The properties of the dataspace.
  * @param h_type The type of the dataspace.
  * @param comp The lossy compression scheme to apply to this dataspace.
  * @param field_name The name of the field to write in the dataspace.
+ * @param filter_name (return) The name of the filter (if one is applied).
  */
 void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
                                 const enum lossy_compression_schemes comp,
-                                const char* field_name) {
+                                const char* field_name, char filter_name[32]) {
 
   if (comp == compression_do_not_write) {
     error(
@@ -84,6 +89,26 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     /* Scale filter with a scaling by 10^6 */
 
     hid_t h_err = H5Pset_scaleoffset(*h_prop, H5Z_SO_FLOAT_DSCALE, 6);
+    if (h_err < 0)
+      error("Error while setting scale-offset filter for field '%s'.",
+            field_name);
+  }
+
+  else if (comp == compression_write_d_scale_5) {
+
+    /* Scale filter with a scaling by 10^5 */
+
+    hid_t h_err = H5Pset_scaleoffset(*h_prop, H5Z_SO_FLOAT_DSCALE, 5);
+    if (h_err < 0)
+      error("Error while setting scale-offset filter for field '%s'.",
+            field_name);
+  }
+
+  else if (comp == compression_write_d_scale_4) {
+
+    /* Scale filter with a scaling by 10^4 */
+
+    hid_t h_err = H5Pset_scaleoffset(*h_prop, H5Z_SO_FLOAT_DSCALE, 4);
     if (h_err < 0)
       error("Error while setting scale-offset filter for field '%s'.",
             field_name);
@@ -117,6 +142,118 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
     if (h_err < 0)
       error("Error while setting scale-offset filter for field '%s'.",
             field_name);
+  }
+
+  else if (comp == compression_write_d_mantissa_9) {
+
+    /* Double numbers with 9-bits mantissa and 11-bits exponent
+     *
+     * This has a relative accuracy of log10(2^(9+1)) = 3.01 decimal digits
+     * and the same range as a regular float.
+     *
+     * This leads to a compression ratio of 3.05 */
+
+    /* Note a regular IEEE-754 double has:
+     * - size = 8
+     * - m_size = 52
+     * - e_size = 11
+     * i.e. 52 + 11 + 1 (the sign bit) == 64 bits (== 8 bytes) */
+
+    const int size = 8;
+    const int m_size = 9;
+    const int e_size = 11;
+    const int offset = 0;
+    const int precision = m_size + e_size + 1;
+    const int e_pos = offset + m_size;
+    const int s_pos = e_pos + e_size;
+    const int m_pos = offset;
+    const int bias = (1 << (e_size - 1)) - 1;
+
+    H5Tclose(*h_type);
+    *h_type = H5Tcopy(H5T_NATIVE_FLOAT);
+    hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
+    if (h_err < 0)
+      error("Error while setting type properties for field '%s'.", field_name);
+
+    h_err = H5Tset_offset(*h_type, offset);
+    if (h_err < 0)
+      error("Error while setting type offset properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_precision(*h_type, precision);
+    if (h_err < 0)
+      error("Error while setting type precision properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_size(*h_type, size);
+    if (h_err < 0)
+      error("Error while setting type size properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_ebias(*h_type, bias);
+    if (h_err < 0)
+      error("Error while setting type bias properties for field '%s'.",
+            field_name);
+
+    h_err = H5Pset_nbit(*h_prop);
+    if (h_err < 0)
+      error("Error while setting n-bit filter for field '%s'.", field_name);
+  }
+
+  else if (comp == compression_write_d_mantissa_13) {
+
+    /* Double numbers with 13-bits mantissa and 11-bits exponent
+     *
+     * This has a relative accuracy of log10(2^(13+1)) = 4.21 decimal digits
+     * and the same range as a regular float.
+     *
+     * This leads to a compression ratio of 2.56 */
+
+    /* Note a regular IEEE-754 double has:
+     * - size = 8
+     * - m_size = 52
+     * - e_size = 11
+     * i.e. 52 + 11 + 1 (the sign bit) == 64 bits (== 8 bytes) */
+
+    const int size = 8;
+    const int m_size = 13;
+    const int e_size = 11;
+    const int offset = 0;
+    const int precision = m_size + e_size + 1;
+    const int e_pos = offset + m_size;
+    const int s_pos = e_pos + e_size;
+    const int m_pos = offset;
+    const int bias = (1 << (e_size - 1)) - 1;
+
+    H5Tclose(*h_type);
+    *h_type = H5Tcopy(H5T_NATIVE_FLOAT);
+    hid_t h_err = H5Tset_fields(*h_type, s_pos, e_pos, e_size, m_pos, m_size);
+    if (h_err < 0)
+      error("Error while setting type properties for field '%s'.", field_name);
+
+    h_err = H5Tset_offset(*h_type, offset);
+    if (h_err < 0)
+      error("Error while setting type offset properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_precision(*h_type, precision);
+    if (h_err < 0)
+      error("Error while setting type precision properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_size(*h_type, size);
+    if (h_err < 0)
+      error("Error while setting type size properties for field '%s'.",
+            field_name);
+
+    h_err = H5Tset_ebias(*h_type, bias);
+    if (h_err < 0)
+      error("Error while setting type bias properties for field '%s'.",
+            field_name);
+
+    h_err = H5Pset_nbit(*h_prop);
+    if (h_err < 0)
+      error("Error while setting n-bit filter for field '%s'.", field_name);
   }
 
   else if (comp == compression_write_f_mantissa_9) {
@@ -344,13 +481,16 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
   }
 
   else if (comp == compression_write_Nbit_36 ||
+           comp == compression_write_Nbit_32 ||
            comp == compression_write_Nbit_40 ||
            comp == compression_write_Nbit_44 ||
            comp == compression_write_Nbit_48 ||
            comp == compression_write_Nbit_56) {
 
     int n_bits = 0;
-    if (comp == compression_write_Nbit_36)
+    if (comp == compression_write_Nbit_32)
+      n_bits = 32;
+    else if (comp == compression_write_Nbit_36)
       n_bits = 36;
     else if (comp == compression_write_Nbit_40)
       n_bits = 40;
@@ -381,6 +521,10 @@ void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
   }
 
   /* Other case: Do nothing! */
+
+  /* Finish by returning the filter name */
+  if (comp != compression_write_lossless)
+    snprintf(filter_name, 32, "%s", lossy_compression_schemes_names[comp]);
 }
 
 #endif /* HAVE_HDF5 */

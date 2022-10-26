@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,12 +20,14 @@
 #define SWIFT_KICK_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "black_holes.h"
 #include "const.h"
 #include "debug.h"
+#include "mhd.h"
+#include "rt.h"
 #include "sink.h"
 #include "stars.h"
 #include "timeline.h"
@@ -265,8 +267,15 @@ __attribute__((always_inline)) INLINE static void kick_part(
   }
 
   /* Extra kick work (thermal quantities etc.) */
-  hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
-                   dt_kick_corr, cosmo, hydro_props, floor_props);
+  /* for the GEAR RT, we need to do this before we update
+   * the particle masses in hydro_kick_extra */
+  rt_kick_extra(p, dt_kick_therm, dt_kick_grav, dt_kick_hydro, dt_kick_corr,
+                cosmo, hydro_props);
+  hydro_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_mesh_grav,
+                   dt_kick_hydro, dt_kick_corr, cosmo, hydro_props,
+                   floor_props);
+  mhd_kick_extra(p, xp, dt_kick_therm, dt_kick_grav, dt_kick_hydro,
+                 dt_kick_corr, cosmo, hydro_props, floor_props);
   if (p->gpart != NULL) gravity_kick_extra(p->gpart, dt_kick_grav);
 }
 

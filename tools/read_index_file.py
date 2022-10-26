@@ -7,7 +7,7 @@ import struct
 import os
 
 
-class DarkMatterParticle():
+class DarkMatterParticle:
     def __init__(self, pos, vel, acc, mass, ids):
         self.pos = pos
         self.vel = vel
@@ -15,13 +15,13 @@ class DarkMatterParticle():
         self.mass = mass
         self.ids = ids
 
-class LogfileReader():
+
+class LogfileReader:
     n_type = 7
     swift_type_dark_matter = 1
 
     # dtype for the particle's data
-    index_dtype = np.dtype([("ids", np.ulonglong),
-                            ("offset", np.uint64)])
+    index_dtype = np.dtype([("ids", np.ulonglong), ("offset", np.uint64)])
 
     def __init__(self, basename):
         self.basename = basename
@@ -62,8 +62,13 @@ class LogfileReader():
         self.string_length = self.read_uint()
         self.n_masks = self.read_uint()
 
-        mask_dtype = np.dtype([("name", "U%i" % self.string_length),
-                               ("value", "int32"), ("size", "uint32")])
+        mask_dtype = np.dtype(
+            [
+                ("name", "U%i" % self.string_length),
+                ("value", "int32"),
+                ("size", "uint32"),
+            ]
+        )
 
         self.masks = np.empty(self.n_masks, dtype=mask_dtype)
         for i in range(self.n_masks):
@@ -73,12 +78,11 @@ class LogfileReader():
 
         print("Fields found (name, mask, size): ", self.masks)
 
-
     def read_record_header(self):
         mask = self.m.read(2)
         mask = struct.unpack("h", mask)[0]
 
-        if (mask != 316):
+        if mask != 316:
             print(mask)
 
         offset = self.read_offset()
@@ -92,8 +96,7 @@ class LogfileReader():
             # read the time
             time = np.fromfile(f, dtype=float, count=1)
             time_int = np.fromfile(f, dtype=np.longlong, count=1)
-            print("Time: {}, integer time: {}".format(
-                time[0], time_int[0]))
+            print("Time: {}, integer time: {}".format(time[0], time_int[0]))
 
             # read the number of particles
             nparts = np.fromfile(f, dtype=np.uint64, count=LogfileReader.n_type)
@@ -154,38 +157,38 @@ class LogfileReader():
     def read_particle(self, mask):
         flag = None
         ref = self.masks["name"] == "SpecialFlags"
-        if (mask & self.masks[ref]["value"]):
+        if mask & self.masks[ref]["value"]:
             flag = self.m.read(4)
             print("Flag: ", struct.unpack("i", flag)[0])
 
         pos = None
         ref = self.masks["name"] == "Coordinates"
-        if (mask & self.masks[ref]["value"]):
+        if mask & self.masks[ref]["value"]:
             pos = self.m.read(24)
             pos = struct.unpack("ddd", pos)[0]
 
         vel = None
         ref = self.masks["name"] == "Velocities"
-        if (mask & self.masks[ref]["value"]):
+        if mask & self.masks[ref]["value"]:
             vel = self.m.read(12)
             vel = struct.unpack("fff", vel)[0]
 
         acc = None
         ref = self.masks["name"] == "Accelerations"
-        if (mask & self.masks[ref]["value"]):
+        if mask & self.masks[ref]["value"]:
             acc = self.m.read(12)
             acc = struct.unpack("fff", acc)[0]
 
         # print(pos, vel, acc)
         mass = None
         ref = self.masks["name"] == "Masses"
-        if (mask & self.masks[ref]["value"]):
+        if mask & self.masks[ref]["value"]:
             mass = self.m.read(4)
             mass = struct.unpack("f", mass)[0]
 
         ids = None
         ref = self.masks["name"] == "ParticleIDs"
-        if (mask & self.masks[ref]["value"]):
+        if mask & self.masks[ref]["value"]:
             ids = self.m.read(8)
             ids = struct.unpack("q", ids)[0]
 
@@ -221,7 +224,7 @@ if __name__ == "__main__":
             print(mask, offset, off)
 
             part = reader.read_particle(mask)
-            if (index_ids != part.ids):
+            if index_ids != part.ids:
                 raise Exception("Failed", index_ids, part.ids)
 
             if offset == 0:

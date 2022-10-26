@@ -20,7 +20,7 @@
 #define SWIFT_COLLECTGROUP_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers. */
 #include <stddef.h>
@@ -46,6 +46,7 @@ struct collectgroup1 {
 
   /* Times for the time-step */
   integertime_t ti_hydro_end_min, ti_hydro_beg_max;
+  integertime_t ti_rt_end_min, ti_rt_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_beg_max;
   integertime_t ti_black_holes_end_min, ti_black_holes_beg_max;
@@ -63,6 +64,17 @@ struct collectgroup1 {
 
   /* Global runtime of application in hours. */
   float runtime;
+
+  /* Flag to determine if lightcone maps should be updated this step */
+  int flush_lightcone_maps;
+
+  /* Accumulated dead time during the step. */
+  double deadtime;
+
+#ifdef WITH_CSDS
+  /* Filesize used by the CSDS (does not correspond to the allocated one) */
+  float csds_file_size_gb;
+#endif
 };
 
 void collectgroup_init(void);
@@ -72,13 +84,15 @@ void collectgroup1_init(
     size_t s_updated, size_t b_updated, size_t sink_updated, size_t inhibited,
     size_t g_inhibited, size_t s_inhibited, size_t sink_inhibited,
     size_t b_inhibited, integertime_t ti_hydro_end_min,
-    integertime_t ti_hydro_beg_max, integertime_t ti_gravity_end_min,
+    integertime_t ti_hydro_beg_max, integertime_t ti_rt_end_min,
+    integertime_t ti_rt_beg_max, integertime_t ti_gravity_end_min,
     integertime_t ti_gravity_beg_max, integertime_t ti_stars_end_min,
     integertime_t ti_stars_beg_max, integertime_t ti_sinks_end_min,
     integertime_t ti_sinks_beg_max, integertime_t ti_black_holes_end_min,
     integertime_t ti_black_holes_beg_max, int forcerebuild,
     long long total_nr_cells, long long total_nr_tasks, float tasks_per_cell,
-    const struct star_formation_history sfh, float runtime);
+    const struct star_formation_history sfh, float runtime,
+    int flush_lightcone_maps, double deadtime, float csds_file_size_gb);
 void collectgroup1_reduce(struct collectgroup1 *grp1);
 #ifdef WITH_MPI
 void mpicollect_free_MPI_type(void);

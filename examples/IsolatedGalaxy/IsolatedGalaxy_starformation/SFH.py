@@ -38,6 +38,7 @@ except ImportError:
             raised_info = True
         return x
 
+
 np.seterr(divide="ignore")
 np.seterr(invalid="ignore")
 
@@ -56,10 +57,8 @@ params = {
     "figure.subplot.bottom": 0.08,
     "figure.subplot.top": 0.98,
     "lines.linewidth": 2.0,
-    "text.latex.unicode": True,
 }
 plt.rcParams.update(params)
-plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 def getSFH(filename, points):

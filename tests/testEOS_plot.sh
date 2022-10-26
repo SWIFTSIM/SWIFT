@@ -21,7 +21,7 @@ A1_mat_id=(
 
 for mat_id in "${A1_mat_id[@]}"
 do
-    python ./testEOS.py "$mat_id"
+    python3 ./testEOS.py "$mat_id"
 done
 
 exit $?

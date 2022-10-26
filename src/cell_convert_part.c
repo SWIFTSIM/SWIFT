@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "cell.h"
@@ -155,7 +155,7 @@ void cell_recursively_shift_gparts(struct cell *c,
 struct spart *cell_add_spart(struct engine *e, struct cell *const c) {
   /* Perform some basic consitency checks */
   if (c->nodeID != engine_rank) error("Adding spart on a foreign node");
-  if (c->grav.ti_old_part != e->ti_current) error("Undrifted cell!");
+  if (c->stars.ti_old_part != e->ti_current) error("Undrifted cell!");
   if (c->split) error("Addition of spart performed above the leaf level");
 
   /* Progeny number at each level */
@@ -565,6 +565,9 @@ void cell_remove_part(const struct engine *e, struct cell *c, struct part *p,
 
   /* Mark the particle as inhibited */
   p->time_bin = time_bin_inhibited;
+  /* Mark the RT time bin as inhibited as well,
+   * so part_is_rt_active() checks work as intended */
+  p->rt_time_data.time_bin = time_bin_inhibited;
 
   /* Mark the gpart as inhibited and stand-alone */
   if (p->gpart) {

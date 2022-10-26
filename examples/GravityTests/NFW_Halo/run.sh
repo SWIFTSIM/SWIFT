@@ -6,15 +6,15 @@ then
     if command -v python3 &>/dev/null; then
         python3 makeIC.py
     else 
-        python makeIC.py
+        python3 makeIC.py
     fi
 fi
 
 # self gravity G, external potential g, hydro s, threads t and high verbosity v
-../../swift --external-gravity --threads=6 test.yml 2>&1 | tee output.log
+../../../swift --external-gravity --threads=6 test.yml 2>&1 | tee output.log
 
 if command -v python3 &>/dev/null; then
     python3 makePlots.py
 else 
-    python makePlots.py
+    python3 makePlots.py
 fi

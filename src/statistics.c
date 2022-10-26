@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <math.h>
@@ -41,6 +41,8 @@
 #include "error.h"
 #include "gravity_io.h"
 #include "hydro_io.h"
+#include "mhd_io.h"
+#include "potential.h"
 #include "sink_io.h"
 #include "stars_io.h"
 #include "threadpool.h"
@@ -48,7 +50,7 @@
 /**
  * @brief Information required to compute the statistics in the mapper
  */
-struct index_data {
+struct space_index_data {
   /*! The space we play with */
   const struct space *s;
 
@@ -97,6 +99,10 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->gas_H2_mass += b->gas_H2_mass;
   a->gas_HI_mass += b->gas_HI_mass;
   a->gas_He_mass += b->gas_He_mass;
+  a->E_mag += b->E_mag;
+  a->divB_error += b->divB_error;
+  a->H_cross += b->H_cross;
+  a->H_mag += b->H_mag;
 }
 
 /**
@@ -123,7 +129,7 @@ void stats_init(struct statistics *s) {
 void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -235,6 +241,16 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
     /* Collect entropy */
     stats.entropy += m * entropy;
+
+    /* Collect magnetic energy */
+    stats.E_mag += mhd_get_magnetic_energy(p, xp);
+
+    /* Collect helicity */
+    stats.H_mag += mhd_get_magnetic_helicity(p, xp);
+    stats.H_cross += mhd_get_cross_helicity(p, xp);
+
+    /* Collect div B error */
+    stats.divB_error += mhd_get_divB_error(p, xp);
   }
 
   /* Now write back to memory */
@@ -253,7 +269,7 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -341,7 +357,7 @@ void stats_collect_spart_mapper(void *map_data, int nr_sparts,
 void stats_collect_sink_mapper(void *map_data, int nr_sinks, void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -427,7 +443,7 @@ void stats_collect_bpart_mapper(void *map_data, int nr_bparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -523,7 +539,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
                                 void *extra_data) {
 
   /* Unpack the data */
-  const struct index_data *data = (struct index_data *)extra_data;
+  const struct space_index_data *data = (struct space_index_data *)extra_data;
   const struct space *s = data->s;
   const struct engine *e = s->e;
   const int with_ext_grav = (e->policy & engine_policy_external_gravity);
@@ -612,7 +628,7 @@ void stats_collect_gpart_mapper(void *map_data, int nr_gparts,
 void stats_collect(const struct space *s, struct statistics *stats) {
 
   /* Prepare the data */
-  struct index_data extra_data;
+  struct space_index_data extra_data;
   extra_data.s = s;
   extra_data.stats = stats;
 
@@ -820,29 +836,50 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
           "simulation. \n");
   fprintf(file, "#      Unit = %e gram\n", us->UnitMass_in_cgs);
   fprintf(file, "#      Unit = %e Msun\n", 1. / phys_const->const_solar_mass);
+  fprintf(file,
+          "# (34) Total Magnetic Energy B2/(2*mu0) in the"
+          "simulation. \n");
+  fprintf(file, "#      Unit = %e erg\n",
+          units_cgs_conversion_factor(us, UNIT_CONV_ENERGY));
+  fprintf(file,
+          "# (35) Total DivB error in the"
+          "simulation. \n");
+  fprintf(file, "#      Unit = dimensionless\n");
+  fprintf(file,
+          "# (36) Total Cross Helicity :: sum(V.B) in the"
+          "simulation. \n");
+  fprintf(file, "#      Unit = %e gram * cm * s**-3 * A**-1 \n",
+          units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_CROSS_HELICITY));
+  fprintf(file,
+          "# (37) Total Magnetic Helicity :: sum(A.B) in the"
+          "simulation. \n");
+  fprintf(file, "#      Unit = %e gram**2 * cm * s**-4 * A**-2\n",
+          1. / units_cgs_conversion_factor(us, UNIT_CONV_MAGNETIC_HELICITY));
 
   fprintf(file, "#\n");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s\n",
+      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s \n",
       "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
       "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
       "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)",
-      "(28)", "(29)", "(30)", "(31)", "(32)", "(33)");
+      "(28)", "(29)", "(30)", "(31)", "(32)", "(33)", "(34)", "(35)", "(36)",
+      "(37)");
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s\n",
+      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s \n",
       "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
       "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
       "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
       "Gas Entropy", "CoM x", "CoM y", "CoM z", "Mom. x", "Mom. y", "Mom. z",
       "Ang. mom. x", "Ang. mom. y", "Ang. mom. z", "BH acc. rate",
       "BH acc. mass", "BH sub. mass", "Gas H mass", "Gas H2 mass",
-      "Gas HI mass", "Gas He mass");
+      "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cross Helicity",
+      "Mag. Helicity");
 
   fflush(file);
 }
@@ -861,20 +898,25 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
                          const double time, const double a, const double z,
                          const int step) {
 
+  /* Compute the total potential */
+  double E_pot = stats->E_pot_ext + stats->E_pot_self;
+
+  /* Write to the file */
   fprintf(
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
       "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-      "%14e %14e %14e %14e %14e %14e %14e\n",
+      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
-      stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int,
-      stats->E_pot, stats->E_rad, stats->entropy, stats->centre_of_mass[0],
+      stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int, E_pot,
+      stats->E_rad, stats->entropy, stats->centre_of_mass[0],
       stats->centre_of_mass[1], stats->centre_of_mass[2], stats->mom[0],
       stats->mom[1], stats->mom[2], stats->ang_mom[0], stats->ang_mom[1],
       stats->ang_mom[2], stats->bh_accretion_rate, stats->bh_accreted_mass,
       stats->bh_subgrid_mass, stats->gas_H_mass, stats->gas_H2_mass,
-      stats->gas_HI_mass, stats->gas_He_mass);
+      stats->gas_HI_mass, stats->gas_He_mass, stats->E_mag, stats->divB_error,
+      stats->H_cross, stats->H_mag);
 
   fflush(file);
 }

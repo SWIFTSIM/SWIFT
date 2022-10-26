@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -34,8 +34,11 @@
 #include "csds_io.h"
 #include "distributed_io.h"
 #include "kick.h"
+#include "lightcone/lightcone.h"
+#include "lightcone/lightcone_array.h"
 #include "line_of_sight.h"
 #include "parallel_io.h"
+#include "power_spectrum.h"
 #include "serial_io.h"
 #include "single_io.h"
 
@@ -47,23 +50,43 @@
  * @param e the engine.
  * @param drifted_all true if a drift_all has just been performed.
  * @param force force a dump, if dumping is enabled.
+ * @return Do we want to stop the run altogether?
  */
-void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
+int engine_dump_restarts(struct engine *e, const int drifted_all,
+                         const int force) {
+
+  /* Are any of the conditions to fully stop a run met? */
+  const int end_run_time = e->runtime > e->restart_max_hours_runtime;
+  const int stop_file = (e->step % e->restart_stop_steps == 0 &&
+                         restart_stop_now(e->restart_dir, 0));
+
+  /* Exit run when told to */
+  const int exit_run = (end_run_time || stop_file);
 
   if (e->restart_dump) {
     ticks tic = getticks();
 
+    const int check_point_time = tic > e->restart_next;
+
     /* Dump when the time has arrived, or we are told to. */
-    int dump = ((tic > e->restart_next) || force);
+    int dump = (check_point_time || end_run_time || force || stop_file);
 
 #ifdef WITH_MPI
     /* Synchronize this action from rank 0 (ticks may differ between
      * machines). */
     MPI_Bcast(&dump, 1, MPI_INT, 0, MPI_COMM_WORLD);
 #endif
+
     if (dump) {
 
-      if (e->nodeID == 0) message("Writing restart files");
+      if (e->nodeID == 0) {
+
+        /* Flush the time-step file to avoid gaps in case of crashes
+         * before the next automated flush */
+        fflush(e->file_timesteps);
+
+        message("Writing restart files");
+      }
 
       /* Clean out the previous saved files, if found. Do this now as we are
        * MPI synchronized. */
@@ -71,6 +94,24 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
 
       /* Drift all particles first (may have just been done). */
       if (!drifted_all) engine_drift_all(e, /*drift_mpole=*/1);
+
+        /* Free the foreign particles to get more breathing space. */
+#ifdef WITH_MPI
+      if (e->free_foreign_when_dumping_restart)
+        space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
+#endif
+
+#ifdef WITH_LIGHTCONE
+      /* Flush lightcone buffers before dumping restarts */
+      lightcone_array_flush(e->lightcone_array_properties, &(e->threadpool),
+                            e->cosmology, e->internal_units, e->snapshot_units,
+                            /*flush_map_updates=*/1, /*flush_particles=*/1,
+                            /*end_file=*/1, /*dump_all_shells=*/0);
+#ifdef WITH_MPI
+      MPI_Barrier(MPI_COMM_WORLD);
+#endif
+#endif
+
       restart_write(e, e->restart_file);
 
 #ifdef WITH_MPI
@@ -78,6 +119,10 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
        * sets of restart files should the code crash before all the ranks
        * are done */
       MPI_Barrier(MPI_COMM_WORLD);
+
+      /* Reallocate freed memory */
+      if (e->free_foreign_when_dumping_restart)
+        engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
 
       if (e->verbose)
@@ -91,6 +136,12 @@ void engine_dump_restarts(struct engine *e, int drifted_all, int force) {
       e->step_props |= engine_step_prop_restarts;
     }
   }
+
+  /* If we stopped by reaching the time limit, flag that we need to
+   * run the resubmission command */
+  if (end_run_time && e->resubmit_after_max_hours) e->resubmit = 1;
+
+  return exit_run;
 }
 
 /**
@@ -178,7 +229,9 @@ void engine_dump_snapshot(struct engine *e) {
             (float)clocks_diff(&time1, &time2), clocks_getunit());
 
   /* Run the post-dump command if required */
-  engine_run_on_dump(e);
+  if (e->nodeID == 0) {
+    engine_run_on_dump(e);
+  }
 }
 
 /**
@@ -215,17 +268,19 @@ void engine_run_on_dump(struct engine *e) {
  *
  * @param e The #engine.
  */
-void engine_check_for_dumps(struct engine *e) {
+void engine_io(struct engine *e) {
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_stf = (e->policy & engine_policy_structure_finding);
   const int with_los = (e->policy & engine_policy_line_of_sight);
   const int with_fof = (e->policy & engine_policy_fof);
+  const int with_power = (e->policy & engine_policy_power_spectra);
 
   /* What kind of output are we getting? */
   enum output_type {
     output_none,
     output_snapshot,
     output_statistics,
+    output_ps,
     output_stf,
     output_los,
   };
@@ -250,6 +305,14 @@ void engine_check_for_dumps(struct engine *e) {
     if (e->ti_next_snapshot < ti_output) {
       ti_output = e->ti_next_snapshot;
       type = output_snapshot;
+    }
+  }
+
+  /* Do we want a power-spectrum? */
+  if (e->ti_end_min > e->ti_next_ps && e->ti_next_ps > 0) {
+    if (e->ti_next_ps < ti_output) {
+      ti_output = e->ti_next_ps;
+      type = output_ps;
     }
   }
 
@@ -307,17 +370,17 @@ void engine_check_for_dumps(struct engine *e) {
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_free(e->mesh);
 
-        /* Do we want FoF group IDs in the snapshot? */
-        if (with_fof && e->snapshot_invoke_fof) {
-          engine_fof(e, /*dump_results=*/1, /*dump_debug=*/0,
-                     /*seed_black_holes=*/0);
-        }
-
-        /* Free the foreign particles to get more breathing space.
-         * This cannot be done before FOF as comms are used in there. */
+          /* Free the foreign particles to get more breathing space.
+           * If called, the FOF code itself will reallocate what it needs. */
 #ifdef WITH_MPI
         space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
 #endif
+
+        /* Do we want FoF group IDs in the snapshot? */
+        if (with_fof && e->snapshot_invoke_fof) {
+          engine_fof(e, /*dump_results=*/1, /*dump_debug=*/0,
+                     /*seed_black_holes=*/0, /*buffers allocated=*/0);
+        }
 
         /* Do we want a corresponding VELOCIraptor output? */
         if (with_stf && e->snapshot_invoke_stf && !e->stf_this_timestep) {
@@ -330,6 +393,12 @@ void engine_check_for_dumps(struct engine *e) {
               "Asking for a VELOCIraptor output but SWIFT was compiled without "
               "the interface!");
 #endif
+        }
+
+        /* Do we want power spectrum outputs? */
+        if (with_power && e->snapshot_invoke_ps) {
+          calc_all_power_spectra(e->power_data, e->s, &e->threadpool,
+                                 e->verbose);
         }
 
         /* Dump... */
@@ -347,7 +416,7 @@ void engine_check_for_dumps(struct engine *e) {
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_allocate(e->mesh);
 #ifdef WITH_MPI
-        engine_allocate_foreign_particles(e);
+        engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
 
         /* ... and find the next output time */
@@ -384,7 +453,7 @@ void engine_check_for_dumps(struct engine *e) {
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_allocate(e->mesh);
 #ifdef WITH_MPI
-        engine_allocate_foreign_particles(e);
+        engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
 
         /* ... and find the next output time */
@@ -403,6 +472,16 @@ void engine_check_for_dumps(struct engine *e) {
 
         /* Move on */
         engine_compute_next_los_time(e);
+
+        break;
+
+      case output_ps:
+
+        /* Compute the PS */
+        calc_all_power_spectra(e->power_data, e->s, &e->threadpool, e->verbose);
+
+        /* Move on */
+        engine_compute_next_ps_time(e);
 
         break;
 
@@ -429,6 +508,14 @@ void engine_check_for_dumps(struct engine *e) {
       if (e->ti_next_snapshot < ti_output) {
         ti_output = e->ti_next_snapshot;
         type = output_snapshot;
+      }
+    }
+
+    /* Do we want a power-spectrum? */
+    if (e->ti_end_min > e->ti_next_ps && e->ti_next_ps > 0) {
+      if (e->ti_next_ps < ti_output) {
+        ti_output = e->ti_next_ps;
+        type = output_ps;
       }
     }
 
@@ -793,11 +880,80 @@ void engine_compute_next_fof_time(struct engine *e) {
     if (e->policy & engine_policy_cosmology) {
       const float next_fof_time =
           exp(e->ti_next_fof * e->time_base) * e->cosmology->a_begin;
-      // if (e->verbose)
-      message("Next FoF time set to a=%e.", next_fof_time);
+      if (e->verbose) message("Next FoF time set to a=%e.", next_fof_time);
     } else {
       const float next_fof_time = e->ti_next_fof * e->time_base + e->time_begin;
       if (e->verbose) message("Next FoF time set to t=%e.", next_fof_time);
+    }
+  }
+}
+
+/**
+ * @brief Computes the next time (on the time line) for a power-spectrum dump
+ *
+ * @param e The #engine.
+ */
+void engine_compute_next_ps_time(struct engine *e) {
+  /* Do output_list file case */
+  if (e->output_list_ps) {
+    output_list_read_next_time(e->output_list_ps, e, "power spectrum",
+                               &e->ti_next_ps);
+    return;
+  }
+
+  /* Find upper-bound on last output */
+  double time_end;
+  if (e->policy & engine_policy_cosmology)
+    time_end = e->cosmology->a_end * e->delta_time_ps;
+  else
+    time_end = e->time_end + e->delta_time_ps;
+
+  /* Find next ps above current time */
+  double time;
+  if (e->policy & engine_policy_cosmology)
+    time = e->a_first_ps_output;
+  else
+    time = e->time_first_ps_output;
+
+  int found_ps_time = 0;
+  while (time < time_end) {
+
+    /* Output time on the integer timeline */
+    if (e->policy & engine_policy_cosmology)
+      e->ti_next_ps = log(time / e->cosmology->a_begin) / e->time_base;
+    else
+      e->ti_next_ps = (time - e->time_begin) / e->time_base;
+
+    /* Found it? */
+    if (e->ti_next_ps > e->ti_current) {
+      found_ps_time = 1;
+      break;
+    }
+
+    if (e->policy & engine_policy_cosmology)
+      time *= e->delta_time_ps;
+    else
+      time += e->delta_time_ps;
+  }
+
+  /* Deal with last line of sight */
+  if (!found_ps_time) {
+    e->ti_next_ps = -1;
+    if (e->verbose) message("No further PS output time.");
+  } else {
+
+    /* Be nice, talk... */
+    if (e->policy & engine_policy_cosmology) {
+      const double next_ps_time =
+          exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
+      if (e->verbose)
+        message("Next output time for power spectrum set to a=%e.",
+                next_ps_time);
+    } else {
+      const double next_ps_time = e->ti_next_ps * e->time_base + e->time_begin;
+      if (e->verbose)
+        message("Next output time for power spectrum set to t=%e.",
+                next_ps_time);
     }
   }
 }
@@ -851,31 +1007,55 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
   }
 
   /* Deal with stf */
-  e->output_list_stf = NULL;
-  output_list_init(&e->output_list_stf, e, "StructureFinding",
-                   &e->delta_time_stf);
+  if (e->policy & engine_policy_structure_finding) {
 
-  if (e->output_list_stf) {
-    engine_compute_next_stf_time(e);
+    e->output_list_stf = NULL;
+    output_list_init(&e->output_list_stf, e, "StructureFinding",
+                     &e->delta_time_stf);
 
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_stf_output =
-          exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
-    else
-      e->time_first_stf_output = e->ti_next_stf * e->time_base + e->time_begin;
+    if (e->output_list_stf) {
+      engine_compute_next_stf_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_stf_output =
+            exp(e->ti_next_stf * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_stf_output =
+            e->ti_next_stf * e->time_base + e->time_begin;
+    }
   }
 
   /* Deal with line of sight */
-  e->output_list_los = NULL;
-  output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los);
+  if (e->policy & engine_policy_line_of_sight) {
 
-  if (e->output_list_los) {
-    engine_compute_next_los_time(e);
+    e->output_list_los = NULL;
+    output_list_init(&e->output_list_los, e, "LineOfSight", &e->delta_time_los);
 
-    if (e->policy & engine_policy_cosmology)
-      e->a_first_los =
-          exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
-    else
-      e->time_first_los = e->ti_next_los * e->time_base + e->time_begin;
+    if (e->output_list_los) {
+      engine_compute_next_los_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_los =
+            exp(e->ti_next_los * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_los = e->ti_next_los * e->time_base + e->time_begin;
+    }
+  }
+
+  /* Deal with power-spectra */
+  if (e->policy & engine_policy_power_spectra) {
+
+    e->output_list_ps = NULL;
+    output_list_init(&e->output_list_ps, e, "PowerSpectrum", &e->delta_time_ps);
+
+    if (e->output_list_ps) {
+      engine_compute_next_ps_time(e);
+
+      if (e->policy & engine_policy_cosmology)
+        e->a_first_ps_output =
+            exp(e->ti_next_ps * e->time_base) * e->cosmology->a_begin;
+      else
+        e->time_first_ps_output = e->ti_next_ps * e->time_base + e->time_begin;
+    }
   }
 }

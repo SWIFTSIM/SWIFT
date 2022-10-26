@@ -14,7 +14,7 @@ then
     python3 makeIC.py
 fi
 
-swift_location="../../swift"
+swift_location="../../../swift"
 
 rm data/redshift_dependence_*_z_*.hdf5
 

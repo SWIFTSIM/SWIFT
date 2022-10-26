@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #ifdef WITH_FOF
 
@@ -44,6 +44,7 @@
 #include "memuse.h"
 #include "proxy.h"
 #include "threadpool.h"
+#include "tools.h"
 
 #define fof_props_default_group_id 2147483647
 #define fof_props_default_group_id_offset 1
@@ -101,11 +102,10 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
   /* Check that we can write outputs by testing if the output
    * directory exists and is searchable and writable. */
-  const char *dirp = dirname(props->base_name);
-  if (access(dirp, W_OK | X_OK) != 0) {
-    error("Cannot write FOF outputs in directory %s (%s)", dirp,
-          strerror(errno));
-  }
+  char directory[PARSER_MAX_LINE_SIZE] = {0};
+  sprintf(directory, "%s", props->base_name);
+  const char *dirp = dirname(directory);
+  if (engine_rank == 0) safe_checkdir(dirp, /*create=*/1);
 
   /* Read the minimum group size. */
   props->min_group_size = parser_get_param_int(params, "FOF:min_group_size");
@@ -292,12 +292,13 @@ void fof_allocate(const struct space *s, const long long total_nr_DM_particles,
     /* Calculate the mean inter-particle separation as if we were in
        a scenario where the entire box was filled with high-resolution
          particles */
-    const double Omega_m = s->e->cosmology->Omega_m;
+    const double Omega_cdm = s->e->cosmology->Omega_cdm;
     const double Omega_b = s->e->cosmology->Omega_b;
+    const double Omega_m = Omega_cdm + Omega_b;
     const double critical_density_0 = s->e->cosmology->critical_density_0;
     double mean_matter_density;
     if (s->with_hydro)
-      mean_matter_density = (Omega_m - Omega_b) * critical_density_0;
+      mean_matter_density = Omega_cdm * critical_density_0;
     else
       mean_matter_density = Omega_m * critical_density_0;
 
@@ -2056,10 +2057,12 @@ void fof_finalise_group_data(struct fof_props *props,
                              const struct gpart *gparts, const int periodic,
                              const double dim[3], const int num_groups) {
 
-  size_t *group_size = (size_t *)malloc(num_groups * sizeof(size_t));
-  size_t *group_index = (size_t *)malloc(num_groups * sizeof(size_t));
-  double *group_centre_of_mass =
-      (double *)malloc(3 * num_groups * sizeof(double));
+  size_t *group_size =
+      (size_t *)swift_malloc("fof_group_size", num_groups * sizeof(size_t));
+  size_t *group_index =
+      (size_t *)swift_malloc("fof_group_index", num_groups * sizeof(size_t));
+  double *group_centre_of_mass = (double *)swift_malloc(
+      "fof_group_centre_of_mass", 3 * num_groups * sizeof(double));
 
   for (int i = 0; i < num_groups; i++) {
 
@@ -2210,7 +2213,8 @@ void fof_seed_black_holes(const struct fof_props *props,
 #endif
 
       /* Copy over all the gas properties that we want */
-      black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp);
+      black_holes_create_from_gas(bp, bh_props, constants, cosmo, p, xp,
+                                  s->e->ti_current);
 
       /* Move to the next BH slot */
       k++;
@@ -2250,10 +2254,17 @@ void fof_dump_group_data(const struct fof_props *props, const int my_rank,
 
     if (rank == my_rank) {
 
+      const char *mode;
       if (my_rank == 0)
-        file = fopen(out_file_name, "w");
+        mode = "w";
       else
-        file = fopen(out_file_name, "a");
+        mode = "a";
+
+      file = fopen(out_file_name, mode);
+
+      if (file == NULL)
+        error("Could not open the file '%s' with mode '%s'.", out_file_name,
+              mode);
 
       if (my_rank == 0) {
         fprintf(file, "# %8s %12s %12s %12s %12s %12s %12s %24s %24s \n",
@@ -2471,7 +2482,8 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   /* Set the root of outgoing particles. */
 
   /* Allocate array of outgoing cells and populate it */
-  struct cell **local_cells = malloc(num_cells_out * sizeof(struct cell *));
+  struct cell **local_cells =
+      (struct cell **)malloc(num_cells_out * sizeof(struct cell *));
   int count = 0;
   for (int i = 0; i < e->nr_proxies; i++) {
     for (int j = 0; j < e->proxies[i].nr_cells_out; j++) {
@@ -2509,6 +2521,9 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
         "took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
 
+  /* Allocate buffers to receive the gpart fof information */
+  engine_allocate_foreign_particles(e, /*fof=*/1);
+
   /* Activate the tasks exchanging all the required gparts */
   engine_activate_gpart_comms(e);
 
@@ -2541,6 +2556,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
 
   /* Clean up memory. */
   swift_free("fof_cell_pairs", cell_pairs);
+  space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
   if (verbose)
     message("Searching for foreign links took: %.3f %s.",

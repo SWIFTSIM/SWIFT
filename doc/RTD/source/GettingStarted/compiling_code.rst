@@ -93,19 +93,28 @@ GRACKLE
 ~~~~~~~
 GRACKLE cooling is implemented in SWIFT. If you wish to take advantage of it, you will need it installed.
 
+HEALPix C library
+~~~~~~~~~~~~~~~~~~~
+
+This is required for making light cone HEALPix maps. Note that by default HEALPix builds a static library which cannot be used to build the SWIFT shared library. Either HEALPix must be built as a shared library or -fPIC must be added to the C compiler flags when HEALPix is being configured.
+
+CFITSIO
+~~~~~~~
+
+This may be required as a dependency of HEALPix.
+
 
 Initial Setup
 -------------
 
-We use autotools for setup. To get a basic running version of the code
-(the binary is created in swiftsim/examples) on most platforms, run
-
+We use autotools for setup. To get a basic running version of the code use:
 .. code-block:: bash
 
   ./autogen.sh
   ./configure
   make
 
+the executable binaries are found in the top directory.
 
 MacOS Specific Oddities
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,6 +127,9 @@ MacOS, so it is best to leave it out. To configure:
 
   ./configure --disable-compiler-warnings --disable-doxygen-doc
 
+When using the clang compiler, the hand-written vectorized routines
+have to be disabled. This is done at configuration time by adding
+the flag `--disable-hand-vec`.
 
 Trouble Finding Libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~

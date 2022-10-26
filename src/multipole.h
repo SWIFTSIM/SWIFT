@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -21,7 +21,7 @@
 #define SWIFT_MULTIPOLE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <math.h>
@@ -102,7 +102,7 @@ __attribute__((nonnull)) INLINE static void gravity_drift(
               m->m_pole.vel[2] - m->m_pole.min_delta_vel[2]);
 
   const float max_delta_vel =
-      sqrt(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
+      sqrtf(dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
   const float x_diff = max_delta_vel * dt;
 
   /* Conservative change in maximal radius containing all gpart */
@@ -890,7 +890,7 @@ __attribute__((nonnull)) INLINE static void gravity_multipole_compute_power(
   // power[1] += m->M_100 * m->M_100;
 
   // m->power[1] = sqrt(power[1]);
-  m->power[1] = 0.;
+  m->power[1] = 0.f;
 #endif
 #if SELF_GRAVITY_MULTIPOLE_ORDER > 1
   /* 2nd order terms */

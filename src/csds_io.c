@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk),
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(WITH_CSDS)
 
@@ -40,28 +40,7 @@
 #include "csds_io.h"
 
 /* Local includes. */
-#include "chemistry_io.h"
-#include "common_io.h"
-#include "cooling_io.h"
-#include "dimension.h"
-#include "engine.h"
-#include "error.h"
-#include "gravity_io.h"
-#include "gravity_properties.h"
-#include "hydro_io.h"
-#include "hydro_properties.h"
-#include "io_properties.h"
-#include "kernel_hydro.h"
-#include "parallel_io.h"
-#include "part.h"
-#include "serial_io.h"
-#include "single_io.h"
-#include "stars_io.h"
-#include "threadpool.h"
-#include "tracers_io.h"
-#include "units.h"
 #include "version.h"
-#include "xmf.h"
 
 /**
  * @brief Write the parameters into a yaml file.
@@ -100,6 +79,19 @@ void csds_write_description(struct csds_writer* log, struct engine* e) {
   fprintf(f, "  NumberParts: %li\n", e->s->nr_parts);
   fprintf(f, "  NumberSParts: %li\n", e->s->nr_sparts);
   fprintf(f, "  NumberGParts: %li\n", e->s->nr_gparts);
+  fprintf(f, "\n");
+
+  /* Write the cosmology */
+  fprintf(f, "Cosmology:\n");
+  fprintf(f, "  Omega_cdm: %g\n", e->cosmology->Omega_cdm);
+  fprintf(f, "  Omega_lambda: %g\n", e->cosmology->Omega_lambda);
+  fprintf(f, "  Omega_b: %g\n", e->cosmology->Omega_b);
+  fprintf(f, "  Omega_r: %g\n", e->cosmology->Omega_r);
+  fprintf(f, "  Omega_k: %g\n", e->cosmology->Omega_k);
+  fprintf(f, "  Omega_nu_0: %g\n", e->cosmology->Omega_nu_0);
+  fprintf(f, "  w_0: %g\n", e->cosmology->w_0);
+  fprintf(f, "  w_a: %g\n", e->cosmology->w_a);
+  fprintf(f, "  Hubble0: %g\n", e->cosmology->H0);
   fprintf(f, "\n");
 
   /* Write unit system */

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -55,8 +55,9 @@ __attribute__((always_inline)) INLINE static float stars_compute_age(
     const int with_cosmology) {
 
   if (with_cosmology) {
+    const double birth = sp->birth_scale_factor;
     return cosmology_get_delta_time_from_scale_factors(
-        cosmo, (double)sp->birth_scale_factor, cosmo->a);
+        cosmo, min(birth, cosmo->a), cosmo->a);
   } else {
     return time - (double)sp->birth_time;
   }
@@ -167,6 +168,11 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
  */
 __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
     struct spart* restrict sp, const struct cosmology* cosmo) {
+
+  warning(
+      "Star particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      sp->id, sp->h, sp->density.wcount);
 
   /* Re-set problematic values */
   sp->density.wcount = 0.f;

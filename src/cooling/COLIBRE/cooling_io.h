@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_COOLING_COLIBRE_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "cooling.h"
@@ -144,7 +144,7 @@ INLINE static void convert_part_H2_mass(const struct engine* e,
 
 INLINE static void convert_part_e_density(const struct engine* e,
                                           const struct part* p,
-                                          const struct xpart* xp, float* ret) {
+                                          const struct xpart* xp, double* ret) {
 
   *ret = cooling_get_electron_density(e->physical_constants,
                                       e->hydro_properties, e->internal_units,
@@ -223,16 +223,16 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "pressure.");
 
   list[6] = io_make_output_field_convert_part(
-      "ElectronNumberDensities", FLOAT, 1, UNIT_CONV_NUMBER_DENSITY, 0.f, parts,
-      xparts, convert_part_e_density,
+      "ElectronNumberDensities", DOUBLE, 1, UNIT_CONV_NUMBER_DENSITY, 0.f,
+      parts, xparts, convert_part_e_density,
       "Electron number densities in the physical frame computed based on the "
-      "cooling tables.");
+      "cooling tables. This is 0 for star-forming particles.");
 
   list[7] = io_make_output_field_convert_part(
       "ComptonYParameters", DOUBLE, 1, UNIT_CONV_AREA, 0.f, parts, xparts,
       convert_part_y_compton,
       "Compton y parameters in the physical frame computed based on the "
-      "cooling tables.");
+      "cooling tables. This is 0 for star-forming particles.");
 
   return 8;
 }

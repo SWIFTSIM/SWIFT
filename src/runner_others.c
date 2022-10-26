@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
  *                    Tom Theuns (tom.theuns@durham.ac.uk)
@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -50,6 +50,7 @@
 #include "fof.h"
 #include "gravity.h"
 #include "hydro.h"
+#include "potential.h"
 #include "pressure_floor.h"
 #include "rt.h"
 #include "space.h"
@@ -233,7 +234,7 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
       }
   } else {
 
-    /* Loop over the gas particles in this cell. */
+    /* Loop over the sink particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
@@ -655,6 +656,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
         /* Finish the force loop */
         hydro_end_force(p, cosmo);
+        mhd_end_force(p, cosmo);
         timestep_limiter_end_force(p);
         chemistry_end_force(p, cosmo, with_cosmology, e->time, dt);
 
@@ -668,12 +670,14 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
           /* Don't move ! */
           hydro_reset_acceleration(p);
+          mhd_reset_acceleration(p);
 
 #if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 
           /* Some values need to be reset in the Gizmo case. */
           hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
-                              e->hydro_properties, 0);
+                              e->hydro_properties, 0, 0);
+          rt_prepare_force(p);
 #endif
         }
 #endif
@@ -1009,10 +1013,16 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 
   const struct engine *e = r->e;
   const int count = c->hydro.count;
+  const int with_cosmology = (e->policy & engine_policy_cosmology);
+  struct rt_props *rt_props = e->rt_props;
+  const struct hydro_props *hydro_props = e->hydro_properties;
+  const struct cosmology *cosmo = e->cosmology;
+  const struct phys_const *phys_const = e->physical_constants;
+  const struct unit_system *us = e->internal_units;
 
   /* Anything to do here? */
   if (count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
@@ -1022,28 +1032,49 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_rt_tchem(r, c->progeny[k], 0);
   } else {
 
-    /* const struct cosmology *cosmo = e->cosmology; */
     struct part *restrict parts = c->hydro.parts;
+    struct xpart *restrict xparts = c->hydro.xparts;
 
     /* Loop over the gas particles in this cell. */
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
       struct part *restrict p = &parts[k];
+      struct xpart *restrict xp = &xparts[k];
 
       /* Skip inhibited parts */
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
       /* Finish the force loop */
-      rt_finalise_transport(p);
+      const integertime_t ti_current_subcycle = e->ti_current_subcycle;
+      const integertime_t ti_step =
+          get_integer_timestep(p->rt_time_data.time_bin);
+      const integertime_t ti_begin = get_integer_time_begin(
+          ti_current_subcycle + 1, p->rt_time_data.time_bin);
+      const integertime_t ti_end = ti_begin + ti_step;
+
+      const double dt =
+          rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
+#ifdef SWIFT_DEBUG_CHECKS
+      if (ti_begin != ti_current_subcycle)
+        error(
+            "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
+            "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
+            ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
+            ti_current_subcycle);
+      if (dt < 0.)
+        error("Got part with negative time-step: %lld, %.6g", p->id, dt);
+#endif
+
+      rt_finalise_transport(p, dt, cosmo);
 
       /* And finally do thermochemistry */
-      rt_tchem(p);
+      rt_tchem(p, xp, rt_props, cosmo, hydro_props, phys_const, us, dt);
     }
   }
 
-  if (timer) TIMER_TOC(timer_end_rt_tchem);
+  if (timer) TIMER_TOC(timer_do_rt_tchem);
 }

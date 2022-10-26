@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_HYDRO_IO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right functions */
 #if defined(NONE_SPH)
@@ -45,6 +45,8 @@
 #include "./hydro/Planetary/hydro_io.h"
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_io.h"
+#elif defined(GASOLINE_SPH)
+#include "./hydro/Gasoline/hydro_io.h"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_io.h"
 #else

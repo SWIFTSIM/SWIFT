@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,6 +18,8 @@
  ******************************************************************************/
 #ifndef SWIFT_EAGLE_STARS_H
 #define SWIFT_EAGLE_STARS_H
+
+#include "exp10.h"
 
 #include <float.h>
 
@@ -225,6 +227,11 @@ __attribute__((always_inline)) INLINE static void stars_end_density(
  */
 __attribute__((always_inline)) INLINE static void stars_spart_has_no_neighbours(
     struct spart* restrict sp, const struct cosmology* cosmo) {
+
+  warning(
+      "Star particle with ID %lld treated as having no neighbours (h: %g, "
+      "wcount: %g).",
+      sp->id, sp->h, sp->density.wcount);
 
   /* Re-set problematic values */
   sp->density.wcount = 0.f;

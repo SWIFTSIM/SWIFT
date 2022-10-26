@@ -19,7 +19,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 /* Needs to be included so that strtok returns char * instead of a int *. */
@@ -375,8 +375,8 @@ static void parse_line(char *line, struct swift_params *params) {
         parse_value(no_space_line, params);
       }
       /* Check for invalid lines,not including the start and end of file. */
-      else if (strcmp(trim_line, PARSER_START_OF_FILE) &&
-               strcmp(trim_line, PARSER_END_OF_FILE)) {
+      else if (!strcmp(trim_line, PARSER_START_OF_FILE) &&
+               !strcmp(trim_line, PARSER_END_OF_FILE)) {
         error("Invalid line:%d '%s'.", lineNumber, trim_line);
       }
     }
@@ -518,6 +518,13 @@ static void parse_section_param(char *line, int *isFirstParam,
 
   /* Check for duplicate parameter name. */
   find_duplicate_params(params, paramName);
+
+  /* Choke on invalid input */
+  if (token == NULL)
+    error(
+        "Invalid parameter value for parameter '%s'. Cannot be an empty "
+        "string.",
+        paramName);
 
   strcpy(params->data[params->paramCount].name, paramName);
   strcpy(params->data[params->paramCount].value, token);
@@ -1248,6 +1255,8 @@ void parser_print_params(const struct swift_params *params) {
 void parser_write_params_to_file(const struct swift_params *params,
                                  const char *file_name, int write_used) {
   FILE *file = fopen(file_name, "w");
+  if (file == NULL) error("Error opening file '%s' to write.", file_name);
+
   char param_name[PARSER_MAX_LINE_SIZE] = {0};
   char section[PARSER_MAX_LINE_SIZE] = {0};
   char *token;
@@ -1259,10 +1268,11 @@ void parser_write_params_to_file(const struct swift_params *params,
     fprintf(file, "# SWIFT used parameter file\n");
   else
     fprintf(file, "# SWIFT unused parameter file\n");
-  fprintf(file, "# Code version: %s\n", package_version());
+  fprintf(file, "# code version: %s\n", package_version());
   fprintf(file, "# git revision: %s\n", git_revision());
   fprintf(file, "# git branch: %s\n", git_branch());
   fprintf(file, "# git date: %s\n", git_date());
+  fprintf(file, "# current date: %s\n", clocks_now(1 /* swift */));
 
   /* Flags to track which parameters are written. */
   int *written = (int *)calloc(params->paramCount, sizeof(int));
@@ -1387,4 +1397,39 @@ int parser_get_section_id(const struct swift_params *params, const char *name) {
     if (strcmp(section_name, name) == 0) return section_id;
   }
   return -1;
+}
+
+/**
+ * @brief Compares two param structs and sets the used flag of any
+ *        parameters with different values to 1, all other parameters
+ *        are set to unused.
+ *
+ * @param refparams Structure that holds the parameters to compare to.
+ * @param params Structure that holds the parameters to check.
+ *
+ * @result the number of changed values found.
+ */
+int parser_compare_params(const struct swift_params *refparams,
+                          struct swift_params *params) {
+
+  int changed = 0;
+  for (int j = 0; j < params->paramCount; j++) {
+
+    /* All parameters are unused until found to differ to a reference
+     * parameter. */
+    params->data[j].used = 0;
+
+    for (int i = 0; i < refparams->paramCount; i++) {
+      if (strcmp(refparams->data[i].name, params->data[j].name) == 0) {
+        if (strcmp(refparams->data[i].value, params->data[j].value) != 0) {
+
+          /* Same parameter, values differ. */
+          params->data[j].used = 1;
+          changed++;
+        }
+        break;
+      }
+    }
+  }
+  return changed;
 }

@@ -35,15 +35,42 @@ this sub-snapshot file when the user asked for distributed snapshots (see
 ``NumPart_Total``. Note however, that there is no high-word for this field. We
 store it as a 64-bits integer [#f1]_. The field ``NumFilesPerSnapshot`` specifies the
 number of sub-snapshot files (always 1 unless a distributed snapshot was asked
-for). 
+for) and ``ThisFile`` the id of that specific file (always 0 unless a distributed
+snapshot was asked for). 
+
+The field ``TotalNumberOfParticles`` gives the total number of particles of each type
+as a 64 bit integer. This allows the total number of particles to be read directly
+with no calculation required even if there are 2^31 or more particles. This field is
+equal to ``NumPart_ThisFile`` if the snapshot is not distributed over multiple files.
 
 The field ``InitialMassTable`` contains the *mean* initial mass of each of the
 particle types present in the initial conditions. This can be used as estimator
 of the mass resolution of the run. The masses are expressed in internal units.
 
+The field ``OutputType`` contains information about the kind of output this
+snapshot is. The possible values are:
+
++---------------------+-----------------------------------------------------+
+| OutputType          | Definition                                          |
++=====================+=====================================================+
+| ``FullVolume``      | Regular vanilla snapshot                            |
++---------------------+-----------------------------------------------------+
+| ``SubSampled``      | Snapshot where some particle types were sub-sampled |
++---------------------+-----------------------------------------------------+
+| ``LineOfSight``     | Line-of-sight snapshot                              |
++---------------------+-----------------------------------------------------+
+| ``FOF``             | Friends-Of-Friends Halo Catalogue                   |
++---------------------+-----------------------------------------------------+
+
+
 The ``RunName`` field contains the name of the simulation that was specified as
 the ``run_name`` in the :ref:`Parameters_meta_data` section of the YAML
 parameter file.
+
+The ``System`` field contains the name of the machine where the MPI rank 0 was
+placed. This name is whatever UNIX's ``gethostname()`` function returns on that
+system. Similarly, the ``SnapshotDate`` field contains the date and time when
+the file was written.
 
 The ``TimeBase_dloga`` field contains the change in logarithm of the
 scale-factor corresponding to a time-step of length 1 on the integer
@@ -51,8 +78,26 @@ time-line. This is the smallest time-step size that the code can use. This field
 is zero in non-cosmological runs. Similarly, the field ``TimeBase_dt`` contains
 the smallest time-step size (in internal units) that the code can take. This
 would be the increase in time a particle in the time-bin one would have. Note
-that in cosmological runs this quantity evolves with redhsift as the (logarithm
+that in cosmological runs this quantity evolves with redshift as the (logarithm
 of the) scale-factor is used on the integer time-line.
+
+The field ``SelectOutput`` will contain the name of the
+:ref:`Output_selection_label` used for this specific output and will take the value
+``Default`` if no such selection (or the default one) was used.
+
+If a sub-sampling of the particle fields was used, then the header additionally
+contains a field describing the fraction of the particles of each type that were
+written to the snapshot. Note, however, that when sub-sampling the fields 
+``NumPart_Total``, ``NumPart_HighWord``, and ``NumPart_ThisFile`` contain the number
+of particles actually written (i.e. after sub-sampling), not the total number of
+particles in the run.
+
+The field ``CanHaveTypes`` contains information about whether a given particle
+type is to be expected in snapshots of the run. For instance, a simulation with
+star formation switched on, the code may not have formed a star yet but might in
+future snapshots. This allows reading tools to distinguish fields they will
+never expect to find in a given simulation from fields that may be present in
+other outputs.
 
 Meta-data about the code and run
 --------------------------------
@@ -346,9 +391,9 @@ expressed in the unit system used for the snapshots (see above) and are hence
 consistent with the particle positions themselves. 
 
 Once the cell(s) containing the region of interest has been located,
-users can use the ``/Cells/Offsets/PartTypeN/Files``,
-``/Cells/Offsets/PartTypeN/Counts`` and
-``/Cells/Offsets/PartTypeN/OffsetsInFile`` to retrieve the location of
+users can use the ``/Cells/Files/PartTypeN/``,
+``/Cells/Counts/PartTypeN/`` and
+``/Cells/OffsetsInFile/PartTypeN/`` to retrieve the location of
 the particles of type ``N`` in the ``/PartTypeN`` arrays.  These
 contain information about which file contains the particles of a given
 cell. It also gives the offset from the start of the ``/PartTypeN``
@@ -364,6 +409,19 @@ over the z axis, then y axis and x is the slowest varying dimension.
 In the case of a single-file snapshot, the ``Files`` array is just an array of
 zeroes since all the particles will be in the 0-th file. Note also that in the
 case of a multi-files snapshot, a cell is always contained in a single file.
+
+As noted above, particles can (slightly) drift out of their cells. This can be
+problematic in cases where one wants to find precisely all the particles in a
+given region. To help with this, the meta-data also contains a "cell bounding
+box". The arrays ``/Cells/MinPositions/PartTypeN`` and
+``/Cells/MaxPositions/PartTypeN`` contain the minimal (maximal) x,y,z
+coordinates of all the particles of this type in the cells. Note that these
+coordinates can be outside of the cell itself. When using periodic boundary
+conditions, no box-wrapping is applied.
+
+If a snapshot used a sub-sampled output, then the counts and offsets are
+adjusted accordingly and correspond to the actual content of the file
+(i.e. after the sub-sampling was applied).
 
 As an example, if one is interested in retriving all the densities of the gas
 particles in the cell around the position `[1, 1, 1]` in a single-file
@@ -413,6 +471,37 @@ from the disk.
 
 Note that this is all automated in the ``swiftsimio`` python library
 and we highly encourage its use.
+
+Meta-file for distributed snapshots
+-----------------------------------
+
+If distributed snapshots are chosen for an MPI parallel run (see
+:ref:`Parameters_snapshots`), N snapshot files are produced, where N is the
+number of MPI ranks. When HDF5 1.10.0 or higher is available, an
+additional meta-snapshot is produced that uses HDF5's virtual dataset
+feature to present these N files as if they were a single, regular
+snapshot file.
+
+The meta-snapshot contains all the meta-data (including the top level
+cell hash-tables) contained in a regular snapshot, but does not store
+any actual particle data. Instead, the particle datasets contain virtual
+links to the corresponding particle data in the distributed snapshot
+files. Since this is a feature of the HDF5 library itself, this is
+entirely transparent to modules like ``h5py`` that try to read the data.
+A user only needs to access the meta-snapshot, and the HDF5 library
+takes care of the rest.
+
+The virtual links in the meta-snapshot only work if the HDF5 library
+knows the location of the distributed snapshots. These are stored within
+the meta-snapshot as relative paths. When SWIFT produces a distributed
+snapshot, all files are placed within the same directory. This means
+that the meta-snapshot can only be safely read if the other N files are
+also present in the same directory.
+
+The header of a meta-snapshot looks exactly like the header of a normal,
+non-distributed snapshot (i.e. ``NumFilesPerSnapshot`` is 1). However,
+the attribute ``Virtual`` is set to 1 to distinguish it from a normal
+snapshot file.
 
 .. [#f1] In the rare case where an output
 	 selection (see :ref:`Output_selection_label`) disabling a given particle type in

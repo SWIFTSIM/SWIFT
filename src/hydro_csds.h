@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_HYDRO_CSDS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "align.h"
@@ -49,6 +49,8 @@
 #error TODO
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_csds.h"
+#elif defined(GASOLINE_SPH)
+#error TODO
 #elif defined(ANARCHY_PU_SPH)
 #error TODO
 #else

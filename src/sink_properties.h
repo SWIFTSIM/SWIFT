@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2020 Loic Hausammann (loic.hausammann@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_SINK_PROPERTIES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Select the correct sink model */
 #if defined(SINK_NONE)
@@ -28,7 +28,7 @@
 #elif defined(SINK_GEAR)
 #include "./sink/GEAR/sink_properties.h"
 #else
-#error "Invalid choice of black hole model"
+#error "Invalid choice of sink model"
 #endif
 
 #endif /* SWIFT_SINK_PROPERTIES_H */

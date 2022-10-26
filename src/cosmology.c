@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -200,7 +200,7 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
 
   /* E(z) */
   const double Omega_r = c->Omega_r + c->Omega_nu;
-  const double Omega_m = c->Omega_m;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w0 = c->w_0;
@@ -220,8 +220,17 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
   /* Mean density */
   c->mean_density = c->critical_density_0 * c->a3_inv;
 
+  /* Mean matter density */
+  c->mean_density_Omega_m = c->mean_density * Omega_m;
+
   /* Mean baryonic density */
   c->mean_density_Omega_b = c->mean_density * c->Omega_b;
+
+  /* Over-density threshold for virialization
+   * Fitting function from Bryan & Norman, 1998, ApJ, 495, 1, 80-99
+   * Equation 6. */
+  const double x = Omega_m * c->a3_inv / (E_z * E_z) - 1.;
+  c->overdensity_BN98 = 18. * M_PI * M_PI + 82. * x - 39 * x * x;
 
   /* Time-step conversion factor */
   c->time_step_factor = c->H;
@@ -242,7 +251,7 @@ double drift_integrand(double a, void *param) {
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_m;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -267,7 +276,7 @@ double gravity_kick_integrand(double a, void *param) {
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_m;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -282,6 +291,31 @@ double gravity_kick_integrand(double a, void *param) {
 }
 
 /**
+ * @brief Computes \f$ c dt / a \f$ for the current cosmology.
+ *
+ * @param a The scale-factor of interest.
+ * @param param The current #cosmology.
+ */
+double comoving_distance_integrand(double a, void *param) {
+
+  const struct cosmology *c = (const struct cosmology *)param;
+  const double Omega_nu = cosmology_get_neutrino_density(c, a);
+  const double Omega_r = c->Omega_r + Omega_nu;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  const double Omega_k = c->Omega_k;
+  const double Omega_l = c->Omega_lambda;
+  const double w_0 = c->w_0;
+  const double w_a = c->w_a;
+  const double H0 = c->H0;
+  const double const_speed_light_c = c->const_speed_light_c;
+  const double a_inv = 1. / a;
+  const double E_z = E(Omega_r, Omega_m, Omega_k, Omega_l, w_0, w_a, a);
+  const double H = H0 * E_z;
+
+  return (const_speed_light_c / H) * a_inv * a_inv;
+}
+
+/**
  * @brief Computes \f$ dt / a^{3(\gamma - 1) + 1} \f$ for the current cosmology.
  *
  * @param a The scale-factor of interest.
@@ -292,7 +326,7 @@ double hydro_kick_integrand(double a, void *param) {
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_m;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -319,7 +353,7 @@ double hydro_kick_corr_integrand(double a, void *param) {
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_m;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -343,7 +377,7 @@ double time_integrand(double a, void *param) {
   const struct cosmology *c = (const struct cosmology *)param;
   const double Omega_nu = cosmology_get_neutrino_density(c, a);
   const double Omega_r = c->Omega_r + Omega_nu;
-  const double Omega_m = c->Omega_m;
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
   const double Omega_k = c->Omega_k;
   const double Omega_l = c->Omega_lambda;
   const double w_0 = c->w_0;
@@ -573,6 +607,14 @@ void cosmology_init_tables(struct cosmology *c) {
                      SWIFT_STRUCT_ALIGNMENT,
                      cosmology_table_length * sizeof(double)) != 0)
     error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign("cosmo.table", (void **)&c->comoving_distance_interp_table,
+                     SWIFT_STRUCT_ALIGNMENT,
+                     cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
+  if (swift_memalign(
+          "cosmo.table", (void **)&c->comoving_distance_inverse_interp_table,
+          SWIFT_STRUCT_ALIGNMENT, cosmology_table_length * sizeof(double)) != 0)
+    error("Failed to allocate cosmology interpolation table");
 
   /* Prepare a table of scale factors for the integral bounds */
   const double delta_a =
@@ -653,6 +695,28 @@ void cosmology_init_tables(struct cosmology *c) {
                       GSL_INTEG_GAUSS61, space, &result, &abserr);
   c->universe_age_at_present_day = result;
 
+  /* Integrate the comoving distance \int_{a_begin}^{a_table[i]} c dt/a */
+  F.function = &comoving_distance_integrand;
+  for (int i = 0; i < cosmology_table_length; i++) {
+    gsl_integration_qag(&F, a_begin, a_table[i], 0, 1.0e-10, GSL_workspace_size,
+                        GSL_INTEG_GAUSS61, space, &result, &abserr);
+
+    /* Store result */
+    c->comoving_distance_interp_table[i] = result;
+  }
+
+  /* Integrate the comoving distance \int_{a_begin}^{1.0} c dt/a */
+  F.function = &comoving_distance_integrand;
+  gsl_integration_qag(&F, a_begin, 1.0, 0, 1.0e-10, GSL_workspace_size,
+                      GSL_INTEG_GAUSS61, space, &result, &abserr);
+  c->comoving_distance_interp_table_offset = result;
+
+  /* Integrate the comoving distance \int_{a_begin}^{a_end} c dt/a */
+  F.function = &comoving_distance_integrand;
+  gsl_integration_qag(&F, a_begin, a_end, 0, 1.0e-10, GSL_workspace_size,
+                      GSL_INTEG_GAUSS61, space, &result, &abserr);
+  c->comoving_distance_start_to_end = result;
+
   /* Update the times */
   c->time_begin = cosmology_get_time_since_big_bang(c, c->a_begin);
   c->time_end = cosmology_get_time_since_big_bang(c, c->a_end);
@@ -692,6 +756,41 @@ void cosmology_init_tables(struct cosmology *c) {
     c->scale_factor_interp_table[i_time] = exp(log_a) - c->a_begin;
   }
 
+  /*
+   * Inverse comoving distance(a)
+   */
+  const double r_begin = cosmology_get_comoving_distance(c, a_begin);
+  const double r_end = cosmology_get_comoving_distance(c, a_end);
+  const double delta_r = (r_begin - r_end) / cosmology_table_length;
+
+  i_a = 0;
+  for (int i_r = 0; i_r < cosmology_table_length; i_r++) {
+
+    /* Current comoving distance from a_begin */
+    double r_interp = delta_r * (i_r + 1);
+
+    /* Find next r in comoving_distance_interp_table */
+    while (i_a < cosmology_table_length &&
+           c->comoving_distance_interp_table[i_a] <= r_interp) {
+      i_a++;
+    }
+
+    /* Find linear interpolation scaling */
+    double scale = 0;
+    if (i_a != cosmology_table_length) {
+      scale = r_interp - c->comoving_distance_interp_table[i_a - 1];
+      scale /= c->comoving_distance_interp_table[i_a] -
+               c->comoving_distance_interp_table[i_a - 1];
+    }
+
+    scale += i_a;
+
+    /* Compute interpolated scale factor */
+    double log_a = c->log_a_begin + scale * (c->log_a_end - c->log_a_begin) /
+                                        cosmology_table_length;
+    c->comoving_distance_inverse_interp_table[i_r] = exp(log_a) - c->a_begin;
+  }
+
   /* Free the workspace and temp array */
   gsl_integration_workspace_free(space);
   swift_free("cosmo.table", a_table);
@@ -714,8 +813,19 @@ void cosmology_init_tables(struct cosmology *c) {
 void cosmology_init(struct swift_params *params, const struct unit_system *us,
                     const struct phys_const *phys_const, struct cosmology *c) {
 
+  /* Check first for outdated parameter files still giving Omega_m */
+  const double test_Omega_m =
+      parser_get_opt_param_double(params, "Cosmology:Omega_m", -1.);
+  if (test_Omega_m != -1.)
+    error(
+        "Parameter file contains Cosmology:Omega_m. This is deprecated. Please "
+        "specify Omega_cdm (the cold dark matter density parameter) and "
+        "optionally neutrino parameters.\nIf that simulation did not use "
+        "neutrinos then the new Omega_cdm parameter should just be (old) "
+        "Omega_m - Omega_b.");
+
   /* Read in the cosmological parameters */
-  c->Omega_m = parser_get_param_double(params, "Cosmology:Omega_m");
+  c->Omega_cdm = parser_get_param_double(params, "Cosmology:Omega_cdm");
   c->Omega_r = parser_get_opt_param_double(params, "Cosmology:Omega_r", 0.);
   c->Omega_lambda = parser_get_param_double(params, "Cosmology:Omega_lambda");
   c->Omega_b = parser_get_param_double(params, "Cosmology:Omega_b");
@@ -787,6 +897,9 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
   const double rho_c3_on_4sigma = c->critical_density_0 * cc * cc * cc /
                                   (4. * phys_const->const_stefan_boltzmann);
 
+  /* Store speed of light in internal units */
+  c->const_speed_light_c = phys_const->const_speed_light_c;
+
   /* Handle neutrinos only if present */
   if (c->N_ur == 0. && c->N_nu == 0) {
     /* Infer T_CMB_0 from Omega_r */
@@ -801,10 +914,13 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
     c->Omega_nu_0 = 0.;
     c->Omega_nu = 0.;
     c->N_eff = 0.;
+    c->deg_nu_tot = 0.;
 
     c->neutrino_density_early_table = NULL;
     c->neutrino_density_late_table = NULL;
+
   } else {
+
     /* Infer T_CMB_0 from Omega_r if the latter is specified */
     if (c->Omega_r != 0) {
       c->T_CMB_0 = pow(c->Omega_r * rho_c3_on_4sigma, 1. / 4.);
@@ -827,9 +943,12 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
 
     /* Set photon density and compute radiation density if necessary */
     if (c->Omega_r != 0.) {
+
       c->Omega_g = c->Omega_r;
       c->Omega_ur = 0.;
+
     } else {
+
       /* Infer CMB density from the temperature */
       c->Omega_g = pow(c->T_CMB_0, 4) / rho_c3_on_4sigma;
 
@@ -846,6 +965,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
       N_nu_tot_deg += c->deg_nu[i];
     }
     c->N_eff = c->N_ur + N_nu_tot_deg * pow(c->T_nu_0 / c->T_CMB_0, 4) / dec_4;
+    c->deg_nu_tot = N_nu_tot_deg;
 
     /* Initialise the neutrino density interpolation tables if necessary */
     c->neutrino_density_early_table = NULL;
@@ -855,19 +975,11 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
     /* Retrieve the present-day total density due to massive neutrinos */
     c->Omega_nu_0 = cosmology_get_neutrino_density(c, 1);
     c->Omega_nu = c->Omega_nu_0;  // will be updated
-
-    /* Find the smallest neutrino mass */
-    double M_eV_min = FLT_MAX;
-    for (int i = 0; i < c->N_nu; i++) {
-      M_eV_min = fmin(M_eV_min, c->M_nu_eV[i]);
-    }
   }
 
-  /* Cold dark matter density */
-  c->Omega_cdm = c->Omega_m - c->Omega_b;
-
   /* Curvature density (for closure) */
-  c->Omega_k = 1. - (c->Omega_m + c->Omega_r + c->Omega_lambda + c->Omega_nu_0);
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
+  c->Omega_k = 1. - (Omega_m + c->Omega_r + c->Omega_lambda + c->Omega_nu_0);
 
   /* Initialise the interpolation tables */
   c->drift_fac_interp_table = NULL;
@@ -898,7 +1010,7 @@ void cosmology_init(struct swift_params *params, const struct unit_system *us,
  */
 void cosmology_init_no_cosmo(struct cosmology *c) {
 
-  c->Omega_m = 0.;
+  c->Omega_cdm = 0.;
   c->Omega_r = 0.;
   c->Omega_nu = 0.;
   c->Omega_k = 0.;
@@ -909,7 +1021,6 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->h = 1.;
   c->w = -1.;
 
-  c->Omega_cdm = 0.;
   c->Omega_ur = 0.;
   c->Omega_g = 0.;
   c->T_nu_0 = 0.;
@@ -917,6 +1028,7 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->N_nu = 0;
   c->N_ur = 0.;
   c->N_eff = 0.;
+  c->deg_nu_tot = 0.;
 
   c->a_begin = 1.;
   c->a_end = 1.;
@@ -947,7 +1059,9 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->critical_density = 0.;
   c->critical_density_0 = 0.;
   c->mean_density = 0.;
+  c->mean_density_Omega_m = 0;
   c->mean_density_Omega_b = 0;
+  c->overdensity_BN98 = 0.;
   c->T_CMB_0 = 0.;
   c->T_CMB_0_K = 0.;
 
@@ -969,6 +1083,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->neutrino_density_late_table = NULL;
   c->time_interp_table_offset = 0.;
   c->scale_factor_interp_table = NULL;
+  c->comoving_distance_interp_table = NULL;
+  c->comoving_distance_inverse_interp_table = NULL;
 
   c->time_begin = 0.;
   c->time_end = 0.;
@@ -1148,6 +1264,49 @@ double cosmology_get_delta_time(const struct cosmology *c,
 }
 
 /**
+ * @brief Compute the comoving distance to the specified scale factor
+ *
+ * @param c The current #cosmology.
+ * @param a The scale factor
+ */
+double cosmology_get_comoving_distance(const struct cosmology *c,
+                                       const double a) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (a < c->a_begin) error("a must be >= a_begin");
+  if (a > c->a_end) error("a must be <= a_end");
+#endif
+
+  const double log_a = log(a);
+
+  /* Comoving distance from a_begin to a */
+  const double dist = interp_table(c->comoving_distance_interp_table, log_a,
+                                   c->log_a_begin, c->log_a_end);
+
+  /* Subtract dist from comoving distance from a_begin to a=1 */
+  return c->comoving_distance_interp_table_offset - dist;
+}
+
+/**
+ * @brief Compute scale factor from a comoving distance (in internal units).
+ *
+ * @param c The current #cosmology.
+ * @param r The comoving distance
+ * @return The scale factor.
+ */
+double cosmology_scale_factor_at_comoving_distance(const struct cosmology *c,
+                                                   double r) {
+
+  /* Get comoving distance from a_begin to a corresponding to input r */
+  const double r_interp = c->comoving_distance_interp_table_offset - r;
+
+  const double a =
+      interp_table(c->comoving_distance_inverse_interp_table, r_interp, 0.0,
+                   c->comoving_distance_start_to_end);
+  return a + c->a_begin;
+}
+
+/**
  * @brief Compute neutrino density parameter Omega_nu at the given scale-factor
  * This is the effective present day value, i.e. must be multiplied by (1+z)^4
  *
@@ -1273,9 +1432,10 @@ double cosmology_get_scale_factor(const struct cosmology *c, double t) {
  */
 void cosmology_print(const struct cosmology *c) {
 
+  const double Omega_m = c->Omega_cdm + c->Omega_b;
   message(
       "Density parameters: [O_m, O_l, O_b, O_k, O_r] = [%f, %f, %f, %f, %f]",
-      c->Omega_m, c->Omega_lambda, c->Omega_b, c->Omega_k, c->Omega_r);
+      Omega_m, c->Omega_lambda, c->Omega_b, c->Omega_k, c->Omega_r);
   message(
       "Additional density parameters: [O_nu_0, O_cdm, O_ur, O_g] = [%f, "
       "%f, %f, %f]",
@@ -1311,6 +1471,8 @@ void cosmology_clean(struct cosmology *c) {
   swift_free("cosmo.table", c->hydro_kick_corr_interp_table);
   swift_free("cosmo.table", c->time_interp_table);
   swift_free("cosmo.table", c->scale_factor_interp_table);
+  swift_free("cosmo.table", c->comoving_distance_interp_table);
+  swift_free("cosmo.table", c->comoving_distance_inverse_interp_table);
   if (c->N_nu > 0) {
     swift_free("cosmo.table", c->neutrino_density_early_table);
     swift_free("cosmo.table", c->neutrino_density_late_table);
@@ -1333,7 +1495,7 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "H0 [internal units]", c->H0);
   io_write_attribute_d(h_grp, "H [internal units]", c->H);
   io_write_attribute_d(h_grp, "Hubble time [internal units]", c->Hubble_time);
-  io_write_attribute_d(h_grp, "Omega_m", c->Omega_m);
+  io_write_attribute_d(h_grp, "Omega_m", c->Omega_cdm + c->Omega_b);
   io_write_attribute_d(h_grp, "Omega_r", c->Omega_r);
   io_write_attribute_d(h_grp, "Omega_b", c->Omega_b);
   io_write_attribute_d(h_grp, "Omega_k", c->Omega_k);
@@ -1352,6 +1514,7 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
     io_write_attribute(h_grp, "M_nu_eV", DOUBLE, c->M_nu_eV, c->N_nu);
     io_write_attribute(h_grp, "deg_nu", DOUBLE, c->deg_nu, c->N_nu);
   }
+  io_write_attribute_d(h_grp, "deg_nu_tot", c->deg_nu_tot);
   io_write_attribute_d(h_grp, "T_CMB_0 [internal units]", c->T_CMB_0);
   io_write_attribute_d(h_grp, "T_CMB_0 [K]", c->T_CMB_0_K);
   io_write_attribute_d(h_grp, "w_0", c->w_0);
@@ -1361,6 +1524,14 @@ void cosmology_write_model(hid_t h_grp, const struct cosmology *c) {
   io_write_attribute_d(h_grp, "Scale-factor", c->a);
   io_write_attribute_d(h_grp, "Critical density [internal units]",
                        c->critical_density);
+  io_write_attribute_d(h_grp,
+                       "Critical density at redshift zero [internal units]",
+                       c->critical_density_0);
+  io_write_attribute_d(h_grp, "Mean matter density [internal units]",
+                       c->mean_density_Omega_m);
+  io_write_attribute_d(h_grp, "Mean baryonic density [internal units]",
+                       c->mean_density_Omega_b);
+  io_write_attribute_d(h_grp, "Virial overdensity (BN98)", c->overdensity_BN98);
 }
 #endif
 

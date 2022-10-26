@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -34,6 +34,11 @@ INLINE static void convert_gpart_pos(const struct engine* e,
     ret[0] = gp->x[0];
     ret[1] = gp->x[1];
     ret[2] = gp->x[2];
+  }
+  if (e->snapshot_use_delta_from_edge) {
+    ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);
+    ret[1] = min(ret[1], s->dim[1] - e->snapshot_delta_from_edge);
+    ret[2] = min(ret[2], s->dim[2] - e->snapshot_delta_from_edge);
   }
 }
 
@@ -70,6 +75,12 @@ INLINE static void convert_gpart_vel(const struct engine* e,
   ret[0] *= cosmo->a_inv;
   ret[1] *= cosmo->a_inv;
   ret[2] *= cosmo->a_inv;
+}
+
+INLINE static void convert_gpart_potential(const struct engine* e,
+                                           const struct gpart* gp, float* ret) {
+
+  ret[0] = gravity_get_comoving_potential(gp);
 }
 
 /**
@@ -109,7 +120,7 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
                                               int* num_fields) {
 
   /* Say how much we want to write */
-  *num_fields = 4;
+  *num_fields = 5;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_gpart(
@@ -118,7 +129,7 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
 
   list[1] = io_make_output_field_convert_gpart(
       "Velocities", FLOAT, 3, UNIT_CONV_SPEED, 0.f, gparts, convert_gpart_vel,
-      "Peculiar velocities of the stars. This is a * dx/dt where x is the "
+      "Peculiar velocities of the particles. This is a * dx/dt where x is the "
       "co-moving position of the particles.");
 
   list[2] = io_make_output_field("Masses", FLOAT, 1, UNIT_CONV_MASS, 0.f,
@@ -127,6 +138,10 @@ INLINE static void darkmatter_write_particles(const struct gpart* gparts,
   list[3] = io_make_output_field(
       "ParticleIDs", ULONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
       id_or_neg_offset, "Unique ID of the particles");
+
+  list[4] = io_make_output_field_convert_gpart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, gparts,
+      convert_gpart_potential, "Gravitational potentials of the particles");
 }
 
 #endif /* SWIFT_DEFAULT_GRAVITY_IO_H */

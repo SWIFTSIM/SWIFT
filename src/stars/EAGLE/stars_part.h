@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2018 Folkert Nobels (nobels@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -156,6 +156,8 @@ struct spart {
 
   /*! Exact value of the density field obtained via brute-force loop */
   float rho_exact;
+
+  int has_done_feedback;
 #endif
 
 #ifdef DEBUG_INTERACTIONS_STARS

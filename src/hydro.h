@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2015 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2015 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_HYDRO_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "const.h"
@@ -75,6 +75,10 @@
 #include "./hydro/SPHENIX/hydro.h"
 #include "./hydro/SPHENIX/hydro_iact.h"
 #define SPH_IMPLEMENTATION "SPHENIX (Borrow+ 2020)"
+#elif defined(GASOLINE_SPH)
+#include "./hydro/Gasoline/hydro.h"
+#include "./hydro/Gasoline/hydro_iact.h"
+#define SPH_IMPLEMENTATION "Gasoline-2 (Wadsley+ 2017)"
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro.h"
 #include "./hydro/AnarchyPU/hydro_iact.h"
@@ -86,9 +90,9 @@
 
 /* Check whether this scheme implements the density checks */
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-#if !defined(SPHENIX_SPH)
+#if !defined(SPHENIX_SPH) && !defined(PLANETARY_SPH)
 #error \
-    "Can only use the hydro brute-force density checks with the SPHENIX hydro scheme."
+    "Can only use the hydro brute-force density checks with the SPHENIX or PLANETARY hydro schemes."
 #endif
 #endif
 

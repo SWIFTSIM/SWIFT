@@ -20,7 +20,7 @@
 #define SWIFT_IO_COMPRESSION_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /**
  * @brief Compression levels for snapshot fields
@@ -31,11 +31,16 @@ enum lossy_compression_schemes {
   compression_write_d_scale_1,     /*!< D-scale filter of magnitude 10^1 */
   compression_write_d_scale_2,     /*!< D-scale filter of magnitude 10^2 */
   compression_write_d_scale_3,     /*!< D-scale filter of magnitude 10^3 */
+  compression_write_d_scale_4,     /*!< D-scale filter of magnitude 10^4 */
+  compression_write_d_scale_5,     /*!< D-scale filter of magnitude 10^5 */
   compression_write_d_scale_6,     /*!< D-scale filter of magnitude 10^6 */
+  compression_write_d_mantissa_9,  /*!< Conversion to 9-bits mantissa double */
+  compression_write_d_mantissa_13, /*!< Conversion to 13-bits mantissa double */
   compression_write_f_mantissa_9,  /*!< Conversion to 9-bits mantissa float */
   compression_write_f_mantissa_13, /*!< Conversion to 13-bits mantissa float */
   compression_write_half_float,    /*!< Conversion to IEEE754 half-float */
   compression_write_bfloat_16,     /*!< Conversion to Bfloat16 */
+  compression_write_Nbit_32, /*!< Conversion to 32-bit int (from long long) */
   compression_write_Nbit_36, /*!< Conversion to 36-bit int (from long long) */
   compression_write_Nbit_40, /*!< Conversion to 40-bit int (from long long) */
   compression_write_Nbit_44, /*!< Conversion to 44-bit int (from long long) */
@@ -59,7 +64,7 @@ enum lossy_compression_schemes compression_scheme_from_name(const char* name);
 
 void set_hdf5_lossy_compression(hid_t* h_prop, hid_t* h_type,
                                 const enum lossy_compression_schemes comp,
-                                const char* field_name);
+                                const char* field_name, char filter_name[32]);
 
 #endif /* HAVE_HDF5 */
 

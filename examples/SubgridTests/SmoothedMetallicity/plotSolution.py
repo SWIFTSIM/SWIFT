@@ -2,7 +2,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2015 Bert Vandenbroucke (bert.vandenbroucke@ugent.be)
-#                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+#                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -30,17 +30,17 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Parameters
-low_metal = -6     # low metal abundance
+low_metal = -6  # low metal abundance
 high_metal = -5.5  # High metal abundance
 sigma_metal = 0.2  # relative standard deviation for Z
-max_shift = 1      # Shift between the different elements
+max_shift = 1  # Shift between the different elements
 
 Nelem = 10
 # shift all metals in order to obtain nicer plots
 low_metal = [low_metal] * Nelem + np.linspace(0, max_shift, Nelem)
-low_metal = 10**low_metal
+low_metal = 10 ** low_metal
 high_metal = [high_metal] * Nelem + np.linspace(0, max_shift, Nelem)
-high_metal = 10**high_metal
+high_metal = 10 ** high_metal
 
 # ---------------------------------------------------------------
 # Don't touch anything after this.
@@ -64,11 +64,9 @@ params = {
     "figure.subplot.hspace": 0.12,
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
-    "text.latex.unicode": True,
 }
 
 plt.rcParams.update(params)
-plt.rc("font", **{"family": "sans-serif", "sans-serif": ["Times"]})
 
 
 snap = int(sys.argv[1])
@@ -205,7 +203,7 @@ plt.subplot(222, frameon=False)
 
 plt.text(-0.49, 0.9, "Smoothed Metallicity in 3D at $t=%.2f$" % time, fontsize=10)
 plt.plot([-0.49, 0.1], [0.82, 0.82], "k-", lw=1)
-plt.text(-0.49, 0.7, "$\\textsc{Swift}$ %s" % git, fontsize=10)
+plt.text(-0.49, 0.7, "$SWIFT$ %s" % git, fontsize=10)
 plt.text(-0.49, 0.6, scheme, fontsize=10)
 plt.text(-0.49, 0.5, kernel, fontsize=10)
 plt.text(-0.49, 0.4, chemistry + "'s Chemistry", fontsize=10)

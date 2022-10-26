@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -141,6 +141,93 @@ static INLINE void chemistry_read_solar_abundances(
 }
 
 /**
+ * @brief Get the name of the element i.
+ *
+ * @param sm The #stellar_model.
+ * @param i The element indice.
+ */
+static INLINE const char* chemistry_get_element_name(
+    const struct chemistry_global_data* data, int i) {
+
+  return data->elements_name + i * GEAR_LABELS_SIZE;
+}
+
+/**
+ * @brief Get the index of the element .
+ *
+ * @param sm The #stellar_model.
+ * @param element_name The element name.
+ */
+static INLINE int chemistry_get_element_index(
+    const struct chemistry_global_data* data, const char* element_name) {
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    if (strcmp(chemistry_get_element_name(data, i), element_name) == 0)
+      return i;
+  }
+  error("Chemical element %s not found !", element_name);
+
+  return -1;
+}
+
+/**
+ * @brief Read the name of all the elements present in the tables.
+ * It is nearly a copy/paste of stellar_evolution_read_elements
+ *
+ * @param parameter_file The parsed parameter file.
+ * @param data The properties to initialise.
+ */
+static INLINE void chemistry_read_elements(struct swift_params* params,
+                                           struct chemistry_global_data* data) {
+
+  /* Read the elements from the parameter file. */
+  int nval = -1;
+  char** elements;
+  parser_get_param_string_array(params, "GEARFeedback:elements", &nval,
+                                &elements);
+
+  /* Check that we have the correct number of elements. */
+  if (nval != GEAR_CHEMISTRY_ELEMENT_COUNT - 1) {
+    error(
+        "You need to provide %i elements but found %i. "
+        "If you wish to provide a different number of elements, "
+        "you need to compile with --with-chemistry=GEAR_N where N "
+        "is the number of elements + 1.",
+        GEAR_CHEMISTRY_ELEMENT_COUNT, nval);
+  }
+
+  /* Copy the elements into the stellar model. */
+  for (int i = 0; i < nval; i++) {
+    if (strlen(elements[i]) >= GEAR_LABELS_SIZE) {
+      error("Element name '%s' too long", elements[i]);
+    }
+    strcpy(data->elements_name + i * GEAR_LABELS_SIZE, elements[i]);
+  }
+
+  /* Cleanup. */
+  parser_free_param_string_array(nval, elements);
+
+  /* Add the metals to the end. */
+  strcpy(data->elements_name +
+             (GEAR_CHEMISTRY_ELEMENT_COUNT - 1) * GEAR_LABELS_SIZE,
+         "Metals");
+
+  /* Check the elements */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    for (int j = i + 1; j < GEAR_CHEMISTRY_ELEMENT_COUNT; j++) {
+      const char* el_i = chemistry_get_element_name(data, i);
+      const char* el_j = chemistry_get_element_name(data, j);
+      if (strcmp(el_i, el_j) == 0) {
+        error("You need to provide each element only once (%s).", el_i);
+      }
+    }
+  }
+
+  /* Check that iron is at index 0 */
+  if (chemistry_get_element_index(data, "Fe") != 0)
+    error("Element Fe must be at index 0 !");
+}
+
+/**
  * @brief Initialises the chemistry properties.
  *
  * Nothing to do here.
@@ -178,6 +265,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
   if (scale_metallicity) {
     /* Read the solar abundances */
     chemistry_read_solar_abundances(parameter_file, data);
+    chemistry_read_elements(parameter_file, data);
 
     /* Scale the solar abundances */
     chemistry_scale_initial_metallicities(parameter_file, data);
@@ -186,6 +274,7 @@ static INLINE void chemistry_init_backend(struct swift_params* parameter_file,
 #ifdef FEEDBACK_GEAR
   else {
     chemistry_read_solar_abundances(parameter_file, data);
+    chemistry_read_elements(parameter_file, data);
   }
 #endif
 }
@@ -342,34 +431,31 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_spart(
 }
 
 /**
- * @brief Initialise the chemistry properties of a black hole with
- * the chemistry properties of the gas it is born from.
+ * @brief Add the chemistry data of a sink particle to a sink.
  *
- * Nothing to do here.
- *
- * @param bp_data The black hole data to initialise.
- * @param p_data The gas data to use.
+ * @param si_data The black hole data to add to.
+ * @param sj_data The gas data to use.
  * @param gas_mass The mass of the gas particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_bpart_from_part(
-    struct chemistry_bpart_data* bp_data,
-    const struct chemistry_part_data* p_data, const double gas_mass) {
-  error("Loic: to be implemented");
+__attribute__((always_inline)) INLINE static void chemistry_add_sink_to_sink(
+    struct chemistry_sink_data* si_data,
+    const struct chemistry_sink_data* sj_data) {
+
+  // To be implemented.
 }
 
 /**
- * @brief Add the chemistry data of a gas particle to a black hole.
+ * @brief Add the chemistry data of a gas particle to a sink.
  *
- * Nothing to do here.
- *
- * @param bp_data The black hole data to add to.
+ * @param sp_data The sink data to add to.
  * @param p_data The gas data to use.
  * @param gas_mass The mass of the gas particle.
  */
-__attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
-    struct chemistry_bpart_data* bp_data,
+__attribute__((always_inline)) INLINE static void chemistry_add_part_to_sink(
+    struct chemistry_sink_data* sp_data,
     const struct chemistry_part_data* p_data, const double gas_mass) {
-  error("Loic: to be implemented");
+
+  // To be implemented.
 }
 
 /**
@@ -462,6 +548,20 @@ chemistry_get_star_total_metal_mass_fraction_for_feedback(
 
   return sp->chemistry_data
       .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+}
+
+/**
+ * @brief Returns the total iron mass fraction of the
+ * star particle to be used in feedback/enrichment related routines.
+ * We assume iron to be stored at index 0.
+ *
+ * @param sp Pointer to the particle data.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_star_total_iron_mass_fraction_for_feedback(
+    const struct spart* restrict sp) {
+
+  return sp->chemistry_data.metal_mass_fraction[0];
 }
 
 /**

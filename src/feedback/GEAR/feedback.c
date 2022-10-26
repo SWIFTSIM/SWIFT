@@ -195,20 +195,19 @@ void feedback_will_do_feedback(
 
   /* Pick the correct table. (if only one table, threshold is < 0) */
   const float metal =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+      chemistry_get_star_total_iron_mass_fraction_for_feedback(sp);
   const float threshold = feedback_props->metallicity_max_first_stars;
 
   const struct stellar_model* model =
       metal < threshold ? &feedback_props->stellar_model_first_stars
                         : &feedback_props->stellar_model;
 
-  /* Compute the stellar evolution */
+  /* Compute the stellar evolution including SNe energy */
   stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const, ti_begin,
                                  star_age_beg_step_safe, dt_enrichment);
 
-  /* Transform the number of SN to the energy */
-  sp->feedback_data.energy_ejected =
-      sp->feedback_data.number_sn * feedback_props->energy_per_supernovae;
+  /* apply the energy efficiency factor */
+  sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
 
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback = sp->feedback_data.energy_ejected != 0.;
@@ -218,13 +217,9 @@ void feedback_will_do_feedback(
  * @brief Should this particle be doing any feedback-related operation?
  *
  * @param sp The #spart.
- * @param time The current simulation time (Non-cosmological runs).
- * @param cosmo The cosmological model (cosmological runs).
- * @param with_cosmology Are we doing a cosmological run?
+ * @param e The #engine.
  */
-int feedback_is_active(const struct spart* sp, const double time,
-                       const struct cosmology* cosmo,
-                       const int with_cosmology) {
+int feedback_is_active(const struct spart* sp, const struct engine* e) {
 
   return sp->feedback_data.will_do_feedback;
 }

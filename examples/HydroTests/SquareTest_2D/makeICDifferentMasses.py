@@ -1,7 +1,7 @@
 ###############################################################################
 # This file is part of SWIFT.
 # Copyright (c) 2019 Josh Borrow (joshua.borrow@durham.ac.uk)
-#               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+#               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published
@@ -26,11 +26,11 @@ from numpy import *
 # Parameters
 L = 2 * 64  # Number of particles on the side
 gamma = 5.0 / 3.0  # Gas adiabatic index
-rho0 = 4.0 # Gas central density
-rho1 = 1.0 # Gas outskirt density
-P0 = 2.5   # Gas central pressure
-P1 = 2.5   # Gas central pressure
-vx = 0.0   # Random velocity for all particles
+rho0 = 4.0  # Gas central density
+rho1 = 1.0  # Gas outskirt density
+P0 = 2.5  # Gas central pressure
+P1 = 2.5  # Gas central pressure
+vx = 0.0  # Random velocity for all particles
 vy = 0.0
 fileOutputName = "square.hdf5"
 # ---------------------------------------------------
@@ -107,4 +107,3 @@ ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids.reshape((numPart, 1))
 
 fileOutput.close()
-

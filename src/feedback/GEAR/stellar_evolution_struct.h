@@ -106,6 +106,9 @@ struct supernovae_ia {
     /*! Minimal mass of the companion */
     float mass_min;
   } companion[GEAR_NUMBER_TYPE_OF_COMPANION];
+
+  /*! Energy released per supernovae */
+  float energy_per_supernovae;
 };
 
 /**
@@ -155,6 +158,12 @@ struct supernovae_ii {
 
   /*! Number of element in the interpolation array */
   int interpolation_size;
+
+  /*! Energy released as a function of progenitor mass */
+  struct interpolation_1d energy_per_progenitor_mass;
+
+  /*! Energy released per supernovae */
+  float energy_per_supernovae;
 };
 
 /**

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *                    Angus Lepper (angus.lepper@ed.ac.uk)
  *               2016 John A. Regan (john.a.regan@durham.ac.uk)
@@ -23,10 +23,11 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "engine.h"
+#include "lightcone/lightcone_array.h"
 
 /**
  * @brief Mapper function to drift *all* the #part to the current time.
@@ -71,7 +72,7 @@ void engine_do_drift_all_part_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_part(c, e, /* force the drift=*/1);
+      cell_drift_part(c, e, /* force the drift=*/1, NULL);
     }
   }
 }
@@ -119,7 +120,7 @@ void engine_do_drift_all_gpart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_gpart(c, e, /* force the drift=*/1);
+      cell_drift_gpart(c, e, /* force the drift=*/1, /*replication_list=*/NULL);
     }
   }
 }
@@ -167,7 +168,7 @@ void engine_do_drift_all_spart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_spart(c, e, /* force the drift=*/1);
+      cell_drift_spart(c, e, /* force the drift=*/1, NULL);
     }
   }
 }
@@ -215,7 +216,7 @@ void engine_do_drift_all_bpart_mapper(void *map_data, int num_elements,
     if (c->nodeID == e->nodeID) {
 
       /* Drift all the particles */
-      cell_drift_bpart(c, e, /* force the drift=*/1);
+      cell_drift_bpart(c, e, /* force the drift=*/1, NULL);
     }
   }
 }
@@ -323,15 +324,20 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
 
   const ticks tic = getticks();
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (e->nodeID == 0) {
+  if (e->nodeID == 0 && e->verbose) {
     if (e->policy & engine_policy_cosmology)
-      message("Drifting all to a=%e",
+      message("Drifting all to a=%15.12e",
               exp(e->ti_current * e->time_base) * e->cosmology->a_begin);
     else
-      message("Drifting all to t=%e",
+      message("Drifting all to t=%15.12e",
               e->ti_current * e->time_base + e->time_begin);
   }
+
+#ifdef WITH_LIGHTCONE
+  /* Determine which periodic replications could contribute to the lightcone
+     during this time step */
+  lightcone_array_prepare_for_step(e->lightcone_array_properties, e->cosmology,
+                                   e->ti_earliest_undrifted, e->ti_current);
 #endif
 
   if (!e->restarting) {
@@ -421,9 +427,21 @@ void engine_drift_all(struct engine *e, const int drift_mpoles) {
                     e->verbose);
 #endif
 
+  /* All particles have now been drifted to ti_current */
+  e->ti_earliest_undrifted = e->ti_current;
+
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+
+#ifdef WITH_LIGHTCONE
+  /* Drifting all of the particles can cause many particles to cross
+     the lightcone, so flush buffers now to reduce peak memory use . */
+  lightcone_array_flush(e->lightcone_array_properties, &e->threadpool,
+                        e->cosmology, e->internal_units, e->snapshot_units,
+                        /*flush_map_updates=*/1, /*flush_particles=*/1,
+                        /*end_file=*/0, /*dump_all_shells=*/0);
+#endif
 }
 
 /**

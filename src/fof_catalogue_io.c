@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2020  Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2020  Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,14 +18,19 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
+
+#ifdef HAVE_HDF5
+
+/* Some standard headers. */
+#include <libgen.h>
 
 /* Local headers */
 #include "engine.h"
 #include "fof.h"
 #include "hydro_io.h"
-
-#ifdef HAVE_HDF5
+#include "tools.h"
+#include "version.h"
 
 void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
                            const long long num_groups_total,
@@ -55,6 +60,14 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_attribute_s(h_grp, "Code", "SWIFT");
   io_write_attribute_s(h_grp, "RunName", e->run_name);
 
+  /* We write rank 0's hostname so that it is uniform across all files. */
+  char systemname[256] = {0};
+  if (e->nodeID == 0) sprintf(systemname, "%s", hostname());
+#ifdef WITH_MPI
+  MPI_Bcast(systemname, 256, MPI_CHAR, 0, MPI_COMM_WORLD);
+#endif
+  io_write_attribute_s(h_grp, "System", systemname);
+
   /* Write out the particle types */
   io_write_part_type_names(h_grp);
 
@@ -73,7 +86,7 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   struct tm* timeinfo = localtime(&tm);
   char snapshot_date[64];
   strftime(snapshot_date, 64, "%T %F %Z", timeinfo);
-  io_write_attribute_s(h_grp, "Snapshot date", snapshot_date);
+  io_write_attribute_s(h_grp, "SnapshotDate", snapshot_date);
 
   /* GADGET-2 legacy values */
   /* Number of particles of each type */
@@ -107,6 +120,10 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   /* Close group */
   H5Gclose(h_grp);
 
+  /* Copy metadata from ICs to the file */
+  ic_info_write_hdf5(e->ics_metadata, h_file);
+
+  /* Write all the meta-data */
   io_write_meta_data(h_file, e, e->internal_units, e->snapshot_units);
 }
 
@@ -176,6 +193,7 @@ void write_fof_hdf5_array(
   hid_t h_prop = H5Pcreate(H5P_DATASET_CREATE);
 
   /* Create filters and set compression level if we have something to write */
+  char comp_buffer[32] = "None";
   if (N > 0) {
 
     /* Set chunk size */
@@ -187,7 +205,7 @@ void write_fof_hdf5_array(
     /* Are we imposing some form of lossy compression filter? */
     if (lossy_compression != compression_write_lossless)
       set_hdf5_lossy_compression(&h_prop, &h_type, lossy_compression,
-                                 props.name);
+                                 props.name, comp_buffer);
 
     /* Impose GZIP data compression */
     if (e->snapshot_compression > 0) {
@@ -232,6 +250,7 @@ void write_fof_hdf5_array(
   io_write_attribute_f(h_data, "h-scale exponent", 0.f);
   io_write_attribute_f(h_data, "a-scale exponent", props.scale_factor_exponent);
   io_write_attribute_s(h_data, "Expression for physical CGS units", buffer);
+  io_write_attribute_s(h_data, "Lossy compression filter", comp_buffer);
 
   /* Write the actual number this conversion factor corresponds to */
   const double factor =
@@ -264,16 +283,22 @@ void write_fof_hdf5_array(
 void write_fof_hdf5_catalogue(const struct fof_props* props,
                               const size_t num_groups, const struct engine* e) {
 
-  char fileName[512];
+  char file_name[512];
 #ifdef WITH_MPI
-  sprintf(fileName, "%s_%04i.%d.hdf5", props->base_name,
-          e->snapshot_output_count, e->nodeID);
+  char subdir_name[265];
+  sprintf(subdir_name, "%s_%04i", props->base_name, e->snapshot_output_count);
+  if (e->nodeID == 0) safe_checkdir(subdir_name, /*create=*/1);
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  const char* base = basename(subdir_name);
+  sprintf(file_name, "%s/%s.%d.hdf5", subdir_name, base, e->nodeID);
 #else
-  sprintf(fileName, "%s_%04i.hdf5", props->base_name, e->snapshot_output_count);
+  sprintf(file_name, "%s_%04i.hdf5", props->base_name,
+          e->snapshot_output_count);
 #endif
 
-  hid_t h_file = H5Fcreate(fileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-  if (h_file < 0) error("Error while opening file '%s'.", fileName);
+  hid_t h_file = H5Fcreate(file_name, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+  if (h_file < 0) error("Error while opening file '%s'.", file_name);
 
   /* Compute the number of groups */
   long long num_groups_local = num_groups;
@@ -291,28 +316,29 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   if (h_grp < 0) error("Error while creating groups group.\n");
 
   struct io_props output_prop;
-  output_prop =
-      io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
-                            (char*)props->group_mass, sizeof(double), "aaa");
-  write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
-                       num_groups_local, compression_write_lossless,
-                       e->internal_units, e->snapshot_units);
-  output_prop = io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH,
-                                      1.f, (char*)props->group_centre_of_mass,
-                                      3 * sizeof(double), "aaa");
-  write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
+  output_prop = io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
+                                      (char*)props->group_mass, sizeof(double),
+                                      "FOF group masses");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
   output_prop =
-      io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->group_index, sizeof(size_t), "aaa");
-  write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
+      io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
+                            (char*)props->group_centre_of_mass,
+                            3 * sizeof(double), "FOF group centres of mass");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
-  output_prop =
-      io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
-                            (char*)props->group_size, sizeof(size_t), "aaa");
-  write_fof_hdf5_array(e, h_grp, fileName, "Groups", output_prop,
+  output_prop = io_make_output_field_(
+      "GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+      (char*)props->group_index, sizeof(size_t), "FOF group IDs");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
+                       num_groups_local, compression_write_lossless,
+                       e->internal_units, e->snapshot_units);
+  output_prop = io_make_output_field_(
+      "Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, (char*)props->group_size,
+      sizeof(size_t), "FOF group length (number of particles)");
+  write_fof_hdf5_array(e, h_grp, file_name, "Groups", output_prop,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
 

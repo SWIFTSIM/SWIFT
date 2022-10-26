@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,8 +20,9 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
+/* System includes. */
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -38,6 +39,7 @@
 #include "fof.h"
 #include "mpiuse.h"
 #include "part.h"
+#include "pressure_floor.h"
 #include "proxy.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
@@ -73,8 +75,16 @@ int *engine_mainmask = NULL;
  */
 static void *engine_dumper_poll(void *p) {
   struct engine *e = (struct engine *)p;
+
+#ifdef WITH_MPI
+  char dumpfile[10];
+  snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
+#else
+  const char *dumpfile = ".dump";
+#endif
+
   while (1) {
-    if (access(".dump", F_OK) == 0) {
+    if (access(dumpfile, F_OK) == 0) {
 
       /* OK, do our work. */
       message("Dumping engine tasks in step: %d", e->step);
@@ -95,7 +105,7 @@ static void *engine_dumper_poll(void *p) {
       scheduler_dump_queues(e);
 
       /* Delete the file. */
-      unlink(".dump");
+      unlink(dumpfile);
       message("Dumping completed");
       fflush(stdout);
     }
@@ -121,9 +131,16 @@ static void *engine_dumper_poll(void *p) {
 static void engine_dumper_init(struct engine *e) {
   pthread_t dumper;
 
+#ifdef WITH_MPI
+  char dumpfile[10];
+  snprintf(dumpfile, sizeof(dumpfile), ".dump.%d", e->nodeID);
+#else
+  const char *dumpfile = ".dump";
+#endif
+
   /* Make sure the .dump file is not present, that is bad when starting up. */
   struct stat buf;
-  if (stat(".dump", &buf) == 0) unlink(".dump");
+  if (stat(dumpfile, &buf) == 0) unlink(dumpfile);
 
   /* Thread does not exit, so nothing to do but create it. */
   pthread_create(&dumper, NULL, &engine_dumper_poll, e);
@@ -154,11 +171,16 @@ static void engine_dumper_init(struct engine *e) {
  * @param with_aff use processor affinity, if supported.
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
+ * @param reparttype What type of repartition algorithm are we using.
  */
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_file) {
+                   int verbose, const char *restart_dir,
+                   const char *restart_file, struct repartition *reparttype) {
+
+  struct clocks_time tic, toc;
+  if (nodeID == 0) clocks_gettime(&tic);
 
   /* Store the values and initialise global fields. */
   e->nodeID = nodeID;
@@ -179,11 +201,26 @@ void engine_config(int restart, int fof, struct engine *e,
   e->verbose = verbose;
   e->wallclock_time = 0.f;
   e->restart_dump = 0;
+  e->restart_dir = restart_dir;
   e->restart_file = restart_file;
+  e->resubmit = 0;
   e->restart_next = 0;
   e->restart_dt = 0;
   e->run_fof = 0;
-  engine_rank = nodeID;
+
+  /* Allow repartitioning to be changed between restarts. On restart this is
+   * already allocated and freed on exit, so we need to copy over. */
+#ifdef WITH_MPI
+  if (restart) {
+    int *celllist = e->reparttype->celllist;
+    int ncelllist = e->reparttype->ncelllist;
+    memcpy(e->reparttype, reparttype, sizeof(struct repartition));
+    e->reparttype->celllist = celllist;
+    e->reparttype->ncelllist = ncelllist;
+  } else {
+    e->reparttype = reparttype;
+  }
+#endif
 
   if (restart && fof) {
     error(
@@ -194,42 +231,20 @@ void engine_config(int restart, int fof, struct engine *e,
   /* Welcome message */
   if (e->nodeID == 0) message("Running simulation '%s'.", e->run_name);
 
-  if (!restart && e->total_nr_neutrino_gparts > 0) {
-    /* For diagnostics, collect the range of neutrino masses in eV */
-    float neutrino_mass_min = FLT_MAX;
-    float neutrino_mass_max = -FLT_MAX;
+  /* Check-pointing properties */
 
-    if (e->s->nr_gparts > 0) {
-      for (size_t k = 0; k < e->s->nr_gparts; k++) {
-        if (e->s->gparts[k].type == swift_type_neutrino) {
-          struct gpart *gp = &e->s->gparts[k];
-          float neutrino_mass = gp->mass;
-          if (neutrino_mass > neutrino_mass_max)
-            neutrino_mass_max = neutrino_mass;
-          if (neutrino_mass < neutrino_mass_min)
-            neutrino_mass_min = neutrino_mass;
-        }
-      }
+  e->restart_stop_steps =
+      parser_get_opt_param_int(params, "Restarts:stop_steps", 100);
 
-      float min_max_mass[2] = {neutrino_mass_min, neutrino_mass_max};
+  e->restart_max_hours_runtime =
+      parser_get_opt_param_float(params, "Restarts:max_run_time", FLT_MAX);
 
-#ifdef WITH_MPI
-      min_max_mass[1] = -min_max_mass[1];
+  e->resubmit_after_max_hours =
+      parser_get_opt_param_int(params, "Restarts:resubmit_on_exit", 0);
 
-      MPI_Allreduce(MPI_IN_PLACE, min_max_mass, 2, MPI_FLOAT, MPI_MIN,
-                    MPI_COMM_WORLD);
-
-      min_max_mass[1] = -min_max_mass[1];
-#endif
-
-      if (e->nodeID == 0) {
-        float mass_mult = e->neutrino_mass_conversion_factor;
-        message("Neutrino mass multiplier: %.5e eV / U_M", mass_mult);
-        message("Neutrino simulation particle masses in range: [%.4f, %.4f] eV",
-                min_max_mass[0] * mass_mult, min_max_mass[1] * mass_mult);
-      }
-    }
-  }
+  if (e->resubmit_after_max_hours)
+    parser_get_param_string(params, "Restarts:resubmit_command",
+                            e->resubmit_command);
 
   /* Get the number of queues */
   int nr_queues =
@@ -245,6 +260,9 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->sched.frequency_dependency < 0) {
     error("Scheduler:dependency_graph_frequency should be >= 0");
   }
+  /* Get cellID for extra dependency graph dumps of specific cell */
+  e->sched.dependency_graph_cellID = parser_get_opt_param_longlong(
+      params, "Scheduler:dependency_graph_cell", 0LL);
 
   /* Get the frequency of the task level dumping */
   e->sched.frequency_task_levels = parser_get_opt_param_int(
@@ -433,10 +451,15 @@ void engine_config(int restart, int fof, struct engine *e,
 
     if (nodeID == 0) {
       FILE *ranklog = NULL;
-      if (restart)
+      if (restart) {
         ranklog = fopen("rank_hostname.log", "a");
-      else
+        if (ranklog == NULL)
+          error("Could not create file 'rank_hostname.log'.");
+      } else {
         ranklog = fopen("rank_hostname.log", "w");
+        if (ranklog == NULL)
+          error("Could not open file 'rank_hostname.log' for writing.");
+      }
 
       /* Write the header every restart-cycle. It does not hurt. */
       fprintf(ranklog, "# step rank hostname\n");
@@ -467,6 +490,9 @@ void engine_config(int restart, int fof, struct engine *e,
                                 engine_default_energy_file_name);
     sprintf(energyfileName + strlen(energyfileName), ".txt");
     e->file_stats = fopen(energyfileName, mode);
+    if (e->file_stats == NULL)
+      error("Could not open the file '%s' with mode '%s'.", energyfileName,
+            mode);
 
     if (!restart)
       stats_write_file_header(e->file_stats, e->internal_units,
@@ -480,6 +506,9 @@ void engine_config(int restart, int fof, struct engine *e,
     sprintf(timestepsfileName + strlen(timestepsfileName), "_%d.txt",
             nr_nodes * nr_task_threads);
     e->file_timesteps = fopen(timestepsfileName, mode);
+    if (e->file_timesteps == NULL)
+      error("Could not open the file '%s' with mode '%s'.", timestepsfileName,
+            mode);
 
     if (!restart) {
       fprintf(
@@ -507,16 +536,20 @@ void engine_config(int restart, int fof, struct engine *e,
 
       fprintf(e->file_timesteps,
               "# %6s %14s %12s %12s %14s %9s %12s %12s %12s %12s %12s %16s "
-              "[%s] %6s\n",
+              "[%s] %6s %12s [%s]\n",
               "Step", "Time", "Scale-factor", "Redshift", "Time-step",
               "Time-bins", "Updates", "g-Updates", "s-Updates", "Sink-Updates",
-              "b-Updates", "Wall-clock time", clocks_getunit(), "Props");
+              "b-Updates", "Wall-clock time", clocks_getunit(), "Props",
+              "Dead time", clocks_getunit());
       fflush(e->file_timesteps);
     }
 
     /* Initialize the SFH logger if running with star formation */
     if (e->policy & engine_policy_star_formation) {
       e->sfh_logger = fopen("SFR.txt", mode);
+      if (e->sfh_logger == NULL)
+        error("Could not open the file 'SFR.txt' with mode '%s'.", mode);
+
       if (!restart) {
         star_formation_logger_init_log_file(e->sfh_logger, e->internal_units,
                                             e->physical_constants);
@@ -533,6 +566,7 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Print information about the hydro scheme */
     if (e->policy & engine_policy_hydro) {
       if (e->nodeID == 0) hydro_props_print(e->hydro_properties);
+      if (e->nodeID == 0) pressure_floor_print(e->pressure_floor_props);
       if (e->nodeID == 0) entropy_floor_print(e->entropy_floor);
     }
 
@@ -543,6 +577,30 @@ void engine_config(int restart, int fof, struct engine *e,
     /* Print information about the stellar scheme */
     if (e->policy & engine_policy_stars)
       if (e->nodeID == 0) stars_props_print(e->stars_properties);
+
+    /* Print information about the RT scheme */
+    if (e->policy & engine_policy_rt) {
+      rt_props_print(e->rt_props);
+      if (e->nodeID == 0) {
+        if (e->max_nr_rt_subcycles <= 1)
+          message("WARNING: running without RT sub-cycling.");
+        else {
+          /* Make sure max_nr_rt_subcycles is an acceptable power of 2 */
+          timebin_t power_subcycles = 0;
+          while ((e->max_nr_rt_subcycles > (1 << power_subcycles)) &&
+                 power_subcycles < num_time_bins)
+            ++power_subcycles;
+          if (power_subcycles == num_time_bins)
+            error("TimeIntegration:max_nr_rt_subcycles=%d too big",
+                  e->max_nr_rt_subcycles);
+          if ((1 << power_subcycles) > e->max_nr_rt_subcycles)
+            error("TimeIntegration:max_nr_rt_subcycles=%d not a power of 2",
+                  e->max_nr_rt_subcycles);
+          message("Running up to %d RT sub-cycles per hydro step.",
+                  e->max_nr_rt_subcycles);
+        }
+      }
+    }
 
     /* Check we have sensible time bounds */
     if (e->time_begin >= e->time_end)
@@ -732,6 +790,10 @@ void engine_config(int restart, int fof, struct engine *e,
      * on restart. */
     e->restart_onexit = parser_get_opt_param_int(params, "Restarts:onexit", 0);
 
+    /* Read the number of Lustre OSTs to distribute the restart files over */
+    e->restart_lustre_OST_count =
+        parser_get_opt_param_int(params, "Restarts:lustre_OST_count", 0);
+
     /* Hours between restart dumps. Can be changed on restart. */
     float dhours =
         parser_get_opt_param_float(params, "Restarts:delta_hours", 5.0f);
@@ -834,13 +896,13 @@ void engine_config(int restart, int fof, struct engine *e,
         parser_get_opt_param_int(params, "Scheduler:cell_subdepth_diff_grav",
                                  space_subdepth_diff_grav_default);
     space_extra_parts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_parts", space_extra_parts);
+        params, "Scheduler:cell_extra_parts", space_extra_parts_default);
     space_extra_sparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_sparts", space_extra_sparts);
+        params, "Scheduler:cell_extra_sparts", space_extra_sparts_default);
     space_extra_gparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_gparts", space_extra_gparts);
+        params, "Scheduler:cell_extra_gparts", space_extra_gparts_default);
     space_extra_bparts = parser_get_opt_param_int(
-        params, "Scheduler:cell_extra_bparts", space_extra_bparts);
+        params, "Scheduler:cell_extra_bparts", space_extra_bparts_default);
 
     /* Do we want any spare particles for on the fly creation?
        This condition should be the same than in space.c */
@@ -948,4 +1010,10 @@ void engine_config(int restart, int fof, struct engine *e,
 
   /* Wait for the runner threads to be in place. */
   swift_barrier_wait(&e->wait_barrier);
+
+  if (e->nodeID == 0) {
+    clocks_gettime(&toc);
+    message("took %.3f %s.", clocks_diff(&tic, &toc), clocks_getunit());
+    fflush(stdout);
+  }
 }

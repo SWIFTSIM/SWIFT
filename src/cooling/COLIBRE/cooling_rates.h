@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_COLIBRE_COOLING_RATES_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "chemistry_struct.h"
@@ -111,8 +111,9 @@ __attribute__((always_inline)) INLINE static float abundance_ratio_to_solar(
 
   /* Convert mass fractions to abundances (nx/nH) and compute metal mass */
   float totmass = 0., metalmass = 0.;
-  for (enum colibre_cooling_element elem = element_H; elem < element_OA;
-       elem++) {
+  for (int elem_nr = element_H; elem_nr < element_OA; elem_nr++) {
+
+    enum colibre_cooling_element elem = (enum colibre_cooling_element)elem_nr;
 
     /* Normal elements: Get the abundance from the particle carried arrays */
     if ((elem != element_S) && (elem != element_Ca)) {

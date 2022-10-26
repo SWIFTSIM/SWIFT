@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2017 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2017 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,9 @@
 #define SWIFT_COSMOLOGY_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "parser.h"
 #include "physical_constants.h"
 #include "timeline.h"
@@ -81,9 +83,17 @@ struct cosmology {
   /*! The mean density at the current redshift (in internal physical units) */
   double mean_density;
 
+  /*! The mean matter density at the current redshift (in internal physical
+   * units) */
+  double mean_density_Omega_m;
+
   /*! The mean baryonic density at the current redshift (in internal physical
    * units) */
   double mean_density_Omega_b;
+
+  /*! Over-density for virialised haloes at the current redshift
+   * from the Bryan & Norman 1998 fit */
+  double overdensity_BN98;
 
   /*! Conversion factor from internal time-step size to cosmological step */
   double time_step_factor;
@@ -135,8 +145,8 @@ struct cosmology {
   /*! Hubble time 1/H0 */
   double Hubble_time;
 
-  /*! Matter density parameter */
-  double Omega_m;
+  /*! Cold Dark Matter density parameter */
+  double Omega_cdm;
 
   /*! Baryon density parameter */
   double Omega_b;
@@ -158,9 +168,6 @@ struct cosmology {
 
   /*! Ultra-relativistic species (e.g. massless neutrinos) density parameter */
   double Omega_ur;
-
-  /*! Cold dark matter density parameter */
-  double Omega_cdm;
 
   /*! Curvature density parameter */
   double Omega_k;
@@ -198,6 +205,9 @@ struct cosmology {
   /*! Degeneracy of each massive neutrino species */
   double *deg_nu;
 
+  /*! Sum of massive neutrino degeneracies */
+  double deg_nu_tot;
+
   /*! Log of starting expansion factor for neutrino interpolation tables */
   double log_a_long_begin;
 
@@ -212,6 +222,9 @@ struct cosmology {
 
   /*! Log of final expansion factor */
   double log_a_end;
+
+  /*! Speed of light (internal units) */
+  double const_speed_light_c;
 
   /*! Drift factor interpolation table */
   double *drift_fac_interp_table;
@@ -230,6 +243,18 @@ struct cosmology {
 
   /*! Scale factor interpolation table */
   double *scale_factor_interp_table;
+
+  /*! Comoving distance interpolation table */
+  double *comoving_distance_interp_table;
+
+  /*! Comoving distance from present day (a=1) to a_end */
+  double comoving_distance_interp_table_offset;
+
+  /*! Comoving distance from a_start to a_end */
+  double comoving_distance_start_to_end;
+
+  /*! Comoving distance inverse interpolation table */
+  double *comoving_distance_inverse_interp_table;
 
   /*! Massive neutrino density interpolation table at early times */
   double *neutrino_density_early_table;
@@ -278,6 +303,12 @@ double cosmology_get_timebase(struct cosmology *c,
                               const integertime_t ti_current);
 
 double cosmology_get_scale_factor(const struct cosmology *cosmo, double t);
+
+double cosmology_get_comoving_distance(const struct cosmology *c,
+                                       const double a);
+
+double cosmology_scale_factor_at_comoving_distance(const struct cosmology *c,
+                                                   double r);
 
 double cosmology_get_time_since_big_bang(const struct cosmology *c, double a);
 void cosmology_init(struct swift_params *params, const struct unit_system *us,

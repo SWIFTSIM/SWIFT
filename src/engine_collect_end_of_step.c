@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *                    Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *                    Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2015 Peter W. Draper (p.w.draper@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,13 +20,14 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "engine.h"
 
 /* Local headers. */
 #include "active.h"
+#include "lightcone/lightcone_array.h"
 #include "star_formation_logger.h"
 #include "timeline.h"
 
@@ -38,6 +39,7 @@ struct end_of_step_data {
   size_t updated, g_updated, s_updated, sink_updated, b_updated;
   size_t inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited;
   integertime_t ti_hydro_end_min, ti_hydro_beg_max;
+  integertime_t ti_rt_end_min, ti_rt_beg_max;
   integertime_t ti_gravity_end_min, ti_gravity_beg_max;
   integertime_t ti_stars_end_min, ti_stars_beg_max;
   integertime_t ti_sinks_end_min, ti_sinks_beg_max;
@@ -45,273 +47,10 @@ struct end_of_step_data {
   struct engine *e;
   struct star_formation_history sfh;
   float runtime;
+  int flush_lightcone_maps;
+  double deadtime;
+  float csds_file_size_gb;
 };
-
-/**
- * @brief Recursive function gathering end-of-step data.
- *
- * We recurse until we encounter a timestep or time-step MPI recv task
- * as the values will have been set at that level. We then bring these
- * values upwards.
- *
- * @param c The #cell to recurse into.
- * @param e The #engine.
- */
-void engine_collect_end_of_step_recurse_hydro(struct cell *c,
-                                              const struct engine *e) {
-
-  /* Skip super-cells (Their values are already set) */
-  if (c->timestep != NULL) return;
-#ifdef WITH_MPI
-  if (cell_get_recv(c, task_subtype_tend_part) != NULL) return;
-#endif /* WITH_MPI */
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* if (!c->split) error("Reached a leaf without finding a time-step task!
-     * c->depth=%d c->maxdepth=%d c->count=%d c->node=%d", */
-    /* 		       c->depth, c->maxdepth, c->hydro.count, c->nodeID); */
-#endif
-
-  /* Counters for the different quantities. */
-  size_t updated = 0;
-  integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
-
-  /* Collect the values from the progeny. */
-  for (int k = 0; k < 8; k++) {
-    struct cell *cp = c->progeny[k];
-    if (cp != NULL && cp->hydro.count > 0) {
-
-      /* Recurse */
-      engine_collect_end_of_step_recurse_hydro(cp, e);
-
-      /* And update */
-      ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
-      ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
-
-      updated += cp->hydro.updated;
-
-      /* Collected, so clear for next time. */
-      cp->hydro.updated = 0;
-    }
-  }
-
-  /* Store the collected values in the cell. */
-  c->hydro.ti_end_min = ti_hydro_end_min;
-  c->hydro.ti_beg_max = ti_hydro_beg_max;
-  c->hydro.updated = updated;
-}
-
-/**
- * @brief Recursive function gathering end-of-step data.
- *
- * We recurse until we encounter a timestep or time-step MPI recv task
- * as the values will have been set at that level. We then bring these
- * values upwards.
- *
- * @param c The #cell to recurse into.
- * @param e The #engine.
- */
-void engine_collect_end_of_step_recurse_grav(struct cell *c,
-                                             const struct engine *e) {
-
-  /* Skip super-cells (Their values are already set) */
-  if (c->timestep != NULL) return;
-#ifdef WITH_MPI
-  if (cell_get_recv(c, task_subtype_tend_gpart) != NULL) return;
-#endif /* WITH_MPI */
-
-#ifdef SWIFT_DEBUG_CHECKS
-    //  if (!c->split) error("Reached a leaf without finding a time-step
-    //  task!");
-#endif
-
-  /* Counters for the different quantities. */
-  size_t updated = 0;
-  integertime_t ti_grav_end_min = max_nr_timesteps, ti_grav_beg_max = 0;
-
-  /* Collect the values from the progeny. */
-  for (int k = 0; k < 8; k++) {
-    struct cell *cp = c->progeny[k];
-    if (cp != NULL && cp->grav.count > 0) {
-
-      /* Recurse */
-      engine_collect_end_of_step_recurse_grav(cp, e);
-
-      /* And update */
-      ti_grav_end_min = min(ti_grav_end_min, cp->grav.ti_end_min);
-      ti_grav_beg_max = max(ti_grav_beg_max, cp->grav.ti_beg_max);
-
-      updated += cp->grav.updated;
-
-      /* Collected, so clear for next time. */
-      cp->grav.updated = 0;
-    }
-  }
-
-  /* Store the collected values in the cell. */
-  c->grav.ti_end_min = ti_grav_end_min;
-  c->grav.ti_beg_max = ti_grav_beg_max;
-  c->grav.updated = updated;
-}
-
-/**
- * @brief Recursive function gathering end-of-step data.
- *
- * We recurse until we encounter a timestep or time-step MPI recv task
- * as the values will have been set at that level. We then bring these
- * values upwards.
- *
- * @param c The #cell to recurse into.
- * @param e The #engine.
- */
-void engine_collect_end_of_step_recurse_stars(struct cell *c,
-                                              const struct engine *e) {
-
-  /* Skip super-cells (Their values are already set) */
-  if (c->timestep != NULL) return;
-#ifdef WITH_MPI
-  if (cell_get_recv(c, task_subtype_tend_spart) != NULL) return;
-#endif /* WITH_MPI */
-
-#ifdef SWIFT_DEBUG_CHECKS
-    // if (!c->split) error("Reached a leaf without finding a time-step task!");
-#endif
-
-  /* Counters for the different quantities. */
-  size_t updated = 0;
-  integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
-
-  /* Collect the values from the progeny. */
-  for (int k = 0; k < 8; k++) {
-    struct cell *cp = c->progeny[k];
-    if (cp != NULL && cp->stars.count > 0) {
-
-      /* Recurse */
-      engine_collect_end_of_step_recurse_stars(cp, e);
-
-      /* And update */
-      ti_stars_end_min = min(ti_stars_end_min, cp->stars.ti_end_min);
-      ti_stars_beg_max = max(ti_stars_beg_max, cp->stars.ti_beg_max);
-
-      updated += cp->stars.updated;
-
-      /* Collected, so clear for next time. */
-      cp->stars.updated = 0;
-    }
-  }
-
-  /* Store the collected values in the cell. */
-  c->stars.ti_end_min = ti_stars_end_min;
-  c->stars.ti_beg_max = ti_stars_beg_max;
-  c->stars.updated = updated;
-}
-
-/**
- * @brief Recursive function gathering end-of-step data.
- *
- * We recurse until we encounter a timestep or time-step MPI recv task
- * as the values will have been set at that level. We then bring these
- * values upwards.
- *
- * @param c The #cell to recurse into.
- * @param e The #engine.
- */
-void engine_collect_end_of_step_recurse_black_holes(struct cell *c,
-                                                    const struct engine *e) {
-
-  /* Skip super-cells (Their values are already set) */
-  if (c->timestep != NULL) return;
-#ifdef WITH_MPI
-  if (cell_get_recv(c, task_subtype_tend_bpart) != NULL) return;
-#endif /* WITH_MPI */
-
-#ifdef SWIFT_DEBUG_CHECKS
-    // if (!c->split) error("Reached a leaf without finding a time-step task!");
-#endif
-
-  /* Counters for the different quantities. */
-  size_t updated = 0;
-  integertime_t ti_black_holes_end_min = max_nr_timesteps,
-                ti_black_holes_beg_max = 0;
-
-  /* Collect the values from the progeny. */
-  for (int k = 0; k < 8; k++) {
-    struct cell *cp = c->progeny[k];
-    if (cp != NULL && cp->black_holes.count > 0) {
-
-      /* Recurse */
-      engine_collect_end_of_step_recurse_black_holes(cp, e);
-
-      /* And update */
-      ti_black_holes_end_min =
-          min(ti_black_holes_end_min, cp->black_holes.ti_end_min);
-      ti_black_holes_beg_max =
-          max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
-
-      updated += cp->black_holes.updated;
-
-      /* Collected, so clear for next time. */
-      cp->black_holes.updated = 0;
-    }
-  }
-
-  /* Store the collected values in the cell. */
-  c->black_holes.ti_end_min = ti_black_holes_end_min;
-  c->black_holes.ti_beg_max = ti_black_holes_beg_max;
-  c->black_holes.updated = updated;
-}
-
-/**
- * @brief Recursive function gathering end-of-step data.
- *
- * We recurse until we encounter a timestep or time-step MPI recv task
- * as the values will have been set at that level. We then bring these
- * values upwards.
- *
- * @param c The #cell to recurse into.
- * @param e The #engine.
- */
-void engine_collect_end_of_step_recurse_sinks(struct cell *c,
-                                              const struct engine *e) {
-
-  /* Skip super-cells (Their values are already set) */
-  if (c->timestep != NULL) return;
-#ifdef WITH_MPI
-  if (cell_get_recv(c, task_subtype_tend_sink) != NULL) return;
-#endif /* WITH_MPI */
-
-#ifdef SWIFT_DEBUG_CHECKS
-    // if (!c->split) error("Reached a leaf without finding a time-step task!");
-#endif
-
-  /* Counters for the different quantities. */
-  size_t updated = 0;
-  integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
-
-  /* Collect the values from the progeny. */
-  for (int k = 0; k < 8; k++) {
-    struct cell *cp = c->progeny[k];
-    if (cp != NULL && cp->sinks.count > 0) {
-
-      /* Recurse */
-      engine_collect_end_of_step_recurse_sinks(cp, e);
-
-      /* And update */
-      ti_sinks_end_min = min(ti_sinks_end_min, cp->sinks.ti_end_min);
-      ti_sinks_beg_max = max(ti_sinks_beg_max, cp->sinks.ti_beg_max);
-
-      updated += cp->sinks.updated;
-
-      /* Collected, so clear for next time. */
-      cp->sinks.updated = 0;
-    }
-  }
-
-  /* Store the collected values in the cell. */
-  c->sinks.ti_end_min = ti_sinks_end_min;
-  c->sinks.ti_beg_max = ti_sinks_beg_max;
-  c->sinks.updated = updated;
-}
 
 /**
  * @brief Mapping function to collect the data from the end of the step
@@ -329,13 +68,6 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
 
   struct end_of_step_data *data = (struct end_of_step_data *)extra_data;
   const struct engine *e = data->e;
-  const int with_hydro = (e->policy & engine_policy_hydro);
-  const int with_self_grav = (e->policy & engine_policy_self_gravity);
-  const int with_ext_grav = (e->policy & engine_policy_external_gravity);
-  const int with_grav = (with_self_grav || with_ext_grav);
-  const int with_stars = (e->policy & engine_policy_stars);
-  const int with_sinks = (e->policy & engine_policy_sinks);
-  const int with_black_holes = (e->policy & engine_policy_black_holes);
   struct space *s = e->s;
   int *local_cells = (int *)map_data;
   struct star_formation_history *sfh_top = &data->sfh;
@@ -344,6 +76,7 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
   size_t updated = 0, g_updated = 0, s_updated = 0, sink_updated = 0,
          b_updated = 0;
   integertime_t ti_hydro_end_min = max_nr_timesteps, ti_hydro_beg_max = 0;
+  integertime_t ti_rt_end_min = max_nr_timesteps, ti_rt_beg_max = 0;
   integertime_t ti_gravity_end_min = max_nr_timesteps, ti_gravity_beg_max = 0;
   integertime_t ti_stars_end_min = max_nr_timesteps, ti_stars_beg_max = 0;
   integertime_t ti_sinks_end_min = max_nr_timesteps, ti_sinks_beg_max = 0;
@@ -362,27 +95,14 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
     if (c->hydro.count > 0 || c->grav.count > 0 || c->stars.count > 0 ||
         c->black_holes.count > 0 || c->sinks.count > 0) {
 
-      /* Make the top-cells recurse */
-      if (with_hydro) {
-        engine_collect_end_of_step_recurse_hydro(c, e);
-      }
-      if (with_grav) {
-        engine_collect_end_of_step_recurse_grav(c, e);
-      }
-      if (with_stars) {
-        engine_collect_end_of_step_recurse_stars(c, e);
-      }
-      if (with_sinks) {
-        engine_collect_end_of_step_recurse_sinks(c, e);
-      }
-      if (with_black_holes) {
-        engine_collect_end_of_step_recurse_black_holes(c, e);
-      }
-
-      /* And aggregate */
+      /* Aggregate data */
       if (c->hydro.ti_end_min > e->ti_current)
         ti_hydro_end_min = min(ti_hydro_end_min, c->hydro.ti_end_min);
       ti_hydro_beg_max = max(ti_hydro_beg_max, c->hydro.ti_beg_max);
+
+      if (c->rt.ti_rt_end_min > e->ti_current)
+        ti_rt_end_min = min(c->rt.ti_rt_end_min, ti_rt_end_min);
+      ti_rt_beg_max = max(c->rt.ti_rt_beg_max, ti_rt_beg_max);
 
       if (c->grav.ti_end_min > e->ti_current)
         ti_gravity_end_min = min(ti_gravity_end_min, c->grav.ti_end_min);
@@ -442,6 +162,10 @@ void engine_collect_end_of_step_mapper(void *map_data, int num_elements,
       data->ti_hydro_end_min = min(ti_hydro_end_min, data->ti_hydro_end_min);
     data->ti_hydro_beg_max = max(ti_hydro_beg_max, data->ti_hydro_beg_max);
 
+    if (ti_rt_end_min > e->ti_current)
+      data->ti_rt_end_min = min(ti_rt_end_min, data->ti_rt_end_min);
+    data->ti_rt_beg_max = max(ti_rt_beg_max, data->ti_rt_beg_max);
+
     if (ti_gravity_end_min > e->ti_current)
       data->ti_gravity_end_min =
           min(ti_gravity_end_min, data->ti_gravity_end_min);
@@ -491,22 +215,37 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   data.updated = 0, data.g_updated = 0, data.s_updated = 0, data.b_updated = 0;
   data.sink_updated = 0;
   data.ti_hydro_end_min = max_nr_timesteps, data.ti_hydro_beg_max = 0;
+  data.ti_rt_end_min = max_nr_timesteps, data.ti_rt_beg_max = 0;
   data.ti_gravity_end_min = max_nr_timesteps, data.ti_gravity_beg_max = 0;
   data.ti_stars_end_min = max_nr_timesteps, data.ti_stars_beg_max = 0;
   data.ti_sinks_end_min = max_nr_timesteps, data.ti_sinks_beg_max = 0;
   data.ti_black_holes_end_min = max_nr_timesteps,
-  data.ti_black_holes_beg_max = 0, data.e = e;
+  data.ti_black_holes_beg_max = 0, data.e = e, data.csds_file_size_gb = 0;
+
+#ifdef WITH_CSDS
+  /* Get the file size from the CSDS. */
+  if (e->policy & engine_policy_csds)
+    data.csds_file_size_gb =
+        csds_logfile_writer_get_current_filesize_used_gb(&e->csds->logfile);
+#endif
 
   /* Need to use a consistent check of the hours since we started. */
   data.runtime = clocks_get_hours_since_start();
+
+  /* Get flag to determine if lightcone maps buffers should be flushed on this
+   * step */
+  data.flush_lightcone_maps =
+      lightcone_array_trigger_map_update(e->lightcone_array_properties);
+
+  data.deadtime = e->local_deadtime;
 
   /* Initialize the total SFH of the simulation to zero */
   star_formation_logger_init(&data.sfh);
 
   /* Collect information from the local top-level cells */
   threadpool_map(&e->threadpool, engine_collect_end_of_step_mapper,
-                 s->local_cells_with_tasks_top, s->nr_local_cells_with_tasks,
-                 sizeof(int), threadpool_auto_chunk_size, &data);
+                 s->local_cells_top, s->nr_local_cells, sizeof(int),
+                 threadpool_auto_chunk_size, &data);
 
   /* Get the number of inhibited particles from the space-wide counters
    * since these have been updated atomically during the time-steps. */
@@ -521,12 +260,14 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
       &e->collect_group1, data.updated, data.g_updated, data.s_updated,
       data.sink_updated, data.b_updated, data.inhibited, data.g_inhibited,
       data.s_inhibited, data.sink_inhibited, data.b_inhibited,
-      data.ti_hydro_end_min, data.ti_hydro_beg_max, data.ti_gravity_end_min,
-      data.ti_gravity_beg_max, data.ti_stars_end_min, data.ti_stars_beg_max,
-      data.ti_sinks_end_min, data.ti_sinks_beg_max, data.ti_black_holes_end_min,
+      data.ti_hydro_end_min, data.ti_hydro_beg_max, data.ti_rt_end_min,
+      data.ti_rt_beg_max, data.ti_gravity_end_min, data.ti_gravity_beg_max,
+      data.ti_stars_end_min, data.ti_stars_beg_max, data.ti_sinks_end_min,
+      data.ti_sinks_beg_max, data.ti_black_holes_end_min,
       data.ti_black_holes_beg_max, e->forcerebuild, e->s->tot_cells,
       e->sched.nr_tasks, (float)e->sched.nr_tasks / (float)e->s->tot_cells,
-      data.sfh, data.runtime);
+      data.sfh, data.runtime, data.flush_lightcone_maps, data.deadtime,
+      data.csds_file_size_gb);
 
 /* Aggregate collective data from the different nodes for this step. */
 #ifdef WITH_MPI
@@ -606,6 +347,73 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
 
   /* Apply to the engine, if requested. */
   if (apply) collectgroup1_apply(&e->collect_group1, e);
+
+  if (e->verbose)
+    message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
+            clocks_getunit());
+}
+
+/**
+ * @brief Mapping function to collect the data from the end of the sub-cycle
+ *
+ * @param map_data The list of cells with tasks on this node.
+ * @param num_elements The number of elements in the list this thread will work
+ * on.
+ * @param extra_data The #engine.
+ */
+void engine_collect_end_of_sub_cycle_mapper(void *map_data, int num_elements,
+                                            void *extra_data) {
+
+  struct engine *e = (struct engine *)extra_data;
+  struct space *s = e->s;
+  int *local_cells = (int *)map_data;
+
+  /* Local collectible */
+  long long rt_updated = 0LL;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = &s->cells_top[local_cells[ind]];
+
+    if (c->hydro.count > 0) {
+
+      /* Aggregate data */
+      rt_updated += c->rt.updated;
+
+      /* Collected, so clear for next time. */
+      c->rt.updated = 0;
+    }
+  }
+
+  /* write back to the global data. */
+  atomic_add(&e->rt_updates, rt_updated);
+}
+
+/**
+ * @brief Collects additional data at the end of a subcycle.
+ * This function does not collect any data relevant to the
+ * time-steps or time integration.
+ *
+ * @param e The #engine.
+ */
+void engine_collect_end_of_sub_cycle(struct engine *e) {
+
+  const ticks tic = getticks();
+  struct space *s = e->s;
+
+  /* Collect information from the local top-level cells */
+  threadpool_map(&e->threadpool, engine_collect_end_of_sub_cycle_mapper,
+                 s->local_cells_top, s->nr_local_cells, sizeof(int),
+                 threadpool_auto_chunk_size, e);
+
+  /* Aggregate collective data from the different nodes for this step. */
+#ifdef WITH_MPI
+  long long rt_updates_tot = 0ll;
+  int test = MPI_Reduce(&e->rt_updates, &rt_updates_tot, 1, MPI_LONG_LONG,
+                        MPI_SUM, 0, MPI_COMM_WORLD);
+  if (test != MPI_SUCCESS) error("MPI reduce failed");
+  /* Overwrite only on rank 0. */
+  if (e->nodeID == 0) e->rt_updates = rt_updates_tot;
+#endif
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),

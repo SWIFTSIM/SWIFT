@@ -197,7 +197,7 @@ INLINE static void compute_SNII_feedback(
     if (prob_kinetic < 1.) {
 
       for (int i = 0; i < ngb_gas_N; i++) {
-        const double rand_kinetic = random_unit_interval_part_ID_and_ray_idx(
+        const double rand_kinetic = random_unit_interval_part_ID_and_index(
             sp->id, i, ti_begin, random_number_stellar_feedback_2);
 
         if (rand_kinetic < prob_kinetic) number_of_kin_SN_events++;
@@ -263,7 +263,7 @@ void compute_stellar_evolution(const struct feedback_props* feedback_props,
 #ifdef SWIFT_DEBUG_CHECKS
   if (age < 0.f) error("Negative age for a star.");
 
-  if (sp->count_since_last_enrichment != 0)
+  if (sp->count_since_last_enrichment != 0 && engine_current_step > 0)
     error("Computing feedback on a star that should not");
 #endif
 
@@ -683,7 +683,7 @@ void feedback_props_init(struct feedback_props* fp,
    * mass bins used in IMF  */
   compute_ejecta(fp);
 
-  message("initialized stellar feedback");
+  if (engine_rank == 0) message("initialized stellar feedback");
 }
 
 /**

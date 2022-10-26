@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2021 Willem Elbers (willem.h.elbers@durham.ac.uk)
+ * Copyright (c) 2021 Willem Elbers (willem.h.elbers@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -23,6 +23,9 @@
 
 /* Local includes */
 #include "fermi_dirac.h"
+#include "io_properties.h"
+#include "lightcone/lightcone.h"
+#include "lightcone/lightcone_map_types.h"
 #include "neutrino.h"
 #include "neutrino_properties.h"
 
@@ -38,7 +41,8 @@ INLINE static void convert_gpart_vi(const struct engine* e,
                                     const struct gpart* gp, float* ret) {
 
   /* When we are running with the delta-f method, resample the momentum */
-  if (e->neutrino_properties->use_delta_f) {
+  if (e->neutrino_properties->use_delta_f ||
+      e->neutrino_properties->use_delta_f_mesh_only) {
     /* Retrieve physical constants, including the neutrino mass array */
     const double a_scale = e->cosmology->a;
     const double N_nu = e->cosmology->N_nu;
@@ -80,8 +84,10 @@ INLINE static void convert_gpart_mnu(const struct engine* e,
 
   double micro_mass;
 
-  /* When we are running with the delta-f method, resample the mass */
-  if (e->neutrino_properties->use_delta_f) {
+  /* Resample if running with the delta-f method or neutrino ic generation */
+  if (e->neutrino_properties->use_delta_f ||
+      e->neutrino_properties->use_delta_f_mesh_only ||
+      e->neutrino_properties->generate_ics) {
 
     /* Use a particle id dependent seed (sum of global seed and ID) */
     const long long neutrino_seed = e->neutrino_properties->neutrino_seed;
@@ -93,14 +99,44 @@ INLINE static void convert_gpart_mnu(const struct engine* e,
 
     micro_mass = neutrino_seed_to_mass(N_nu, m_eV_array, seed);  // eV
   } else {
-    /* Otherwise, simply use the mass implied by the conversion factor */
+    /* Otherwise, simply use the mass implied by the conversion factor and
+     * total degeneracy */
+    const double deg_nu_tot = e->cosmology->deg_nu_tot;
     const double mass_factor = e->neutrino_mass_conversion_factor;
 
-    micro_mass = gp->mass * mass_factor;  // eV
+    micro_mass = gp->mass * mass_factor / deg_nu_tot;  // eV
   }
 
   /* Convert units and store the answer */
   ret[0] = micro_mass * eV_mass;
+}
+
+/**
+ * @brief Obtain the statistical delta-f weight of a neutrino
+ *
+ * @param e The engine of the run
+ * @param gp The neutrino gpart in question
+ * @param ret Output
+ */
+INLINE static void convert_gpart_weight(const struct engine* e,
+                                        const struct gpart* gp, double* ret) {
+
+  /* Resample if running with the delta-f method or neutrino ic generation */
+  if (e->neutrino_properties->use_delta_f ||
+      e->neutrino_properties->use_delta_f_mesh_only) {
+
+    /* Gather neutrino constants */
+    struct neutrino_model nu_model;
+    gather_neutrino_consts(e->s, &nu_model);
+
+    /* Compute the weight */
+    double mass, weight;
+    gpart_neutrino_mass_weight(gp, &nu_model, &mass, &weight);
+
+    ret[0] = weight;
+  } else {
+    ret[0] = 1.0;
+  }
 }
 
 /**
@@ -123,7 +159,52 @@ __attribute__((always_inline)) INLINE static int neutrino_write_particles(
       "MicroscopicMasses", DOUBLE, 1, UNIT_CONV_MASS, 0.f, gparts,
       convert_gpart_mnu, "Microscopic masses of individual neutrino particles");
 
-  return 2;
+  list[2] = io_make_output_field_convert_gpart(
+      "Weights", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, gparts,
+      convert_gpart_weight, "Statistical weights of neutrino particles");
+
+  return 3;
 }
+
+/*
+  Lightcone map of neutrino mass perturbation
+*/
+
+int lightcone_map_neutrino_mass_type_contributes(int ptype);
+double lightcone_map_neutrino_mass_get_value(
+    const struct engine* e, const struct lightcone_props* lightcone_props,
+    const struct gpart* gp, const double a_cross, const double x_cross[3]);
+
+/*
+   This associates map names to the appropriate update function and unit info.
+
+   Note that field designators are commented out here so that the code will
+   compile as C++ using gcc. This is necessary due to a gcc bug.
+
+   See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=55227 for details.
+*/
+static const struct lightcone_map_type neutrino_lightcone_map_types[] = {
+    {
+        /* .name = */ "NeutrinoMass",
+        /* .update_map = */ lightcone_map_neutrino_mass_get_value,
+        /* .ptype_contributes = */ lightcone_map_neutrino_mass_type_contributes,
+        /* .baseline_func = */ lightcone_map_neutrino_baseline_value,
+        /* .units = */ UNIT_CONV_MASS,
+        /* .smoothing = */ map_unsmoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
+    },
+    {
+        /* NULL functions indicate end of array */
+        /* .name = */ "",
+        /* .update_map = */ NULL,
+        /* .ptype_contributes = */ NULL,
+        /* .baseline_func = */ NULL,
+        /* .units = */ UNIT_CONV_NO_UNITS,
+        /* .smoothing = */ map_unsmoothed,
+        /* .compression = */ compression_write_lossless,
+        /* .buffer_scale_factor = */ 1.0,
+    },
+};
 
 #endif /* SWIFT_DEFAULT_NEUTRINO_IO_H */

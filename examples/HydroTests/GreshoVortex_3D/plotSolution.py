@@ -1,6 +1,6 @@
 ################################################################################
 # This file is part of SWIFT.
-# Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+# Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
 #               2017 Bert Vandenbroucke (bert.vandenbroucke@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -106,7 +106,7 @@ try:
 except:
     plot_viscosity = False
 
-# Bin te data
+# Bin the data
 r_bin_edge = np.arange(0.0, 1.0, 0.02)
 r_bin = 0.5 * (r_bin_edge[1:] + r_bin_edge[:-1])
 rho_bin, _, _ = stats.binned_statistic(r, rho, statistic="mean", bins=r_bin_edge)

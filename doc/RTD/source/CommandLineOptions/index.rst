@@ -65,6 +65,7 @@ can be found by typing ``./swift -h``:
   Control options:
 
     -a, --pin                         Pin runners using processor affinity.
+    --interleave                      Interleave memory allocations over NUMA regions.
     -d, --dry-run                     Dry run. Read the parameter file, allocates
                                       memory but does not read the particles
                                       from ICs. Exits before the start of time
@@ -102,6 +103,7 @@ can be found by typing ``./swift -h``:
     --dump-tasks-threshold=<flt>      Fraction of the total step's time spent
                                       in a task to trigger a dump of the task plot
                                       on this step
+    --power                           Run with power spectrum outputs.
 
 See the file examples/parameter_example.yml for an example of parameter file.
 

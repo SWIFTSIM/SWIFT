@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2012 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (c) 2012 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -20,7 +20,7 @@
 #define SWIFT_UNITS_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes. */
 #include "parser.h"
@@ -82,6 +82,7 @@ enum unit_conversion_factor {
   UNIT_CONV_TIDAL_TENSOR,
   UNIT_CONV_ENERGY,
   UNIT_CONV_ENERGY_PER_UNIT_MASS,
+  UNIT_CONV_ENERGY_VELOCITY,
   UNIT_CONV_ENTROPY,
   UNIT_CONV_ENTROPY_PER_UNIT_MASS,
   UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS,
@@ -97,6 +98,8 @@ enum unit_conversion_factor {
   UNIT_CONV_MAGNETIC_FLUX,
   UNIT_CONV_MAGNETIC_FIELD,
   UNIT_CONV_MAGNETIC_INDUCTANCE,
+  UNIT_CONV_MAGNETIC_HELICITY,
+  UNIT_CONV_MAGNETIC_CROSS_HELICITY,
   UNIT_CONV_TEMPERATURE,
   UNIT_CONV_AREA,
   UNIT_CONV_VOLUME,
@@ -106,7 +109,19 @@ enum unit_conversion_factor {
   UNIT_CONV_DIFF_RATE,
   UNIT_CONV_DIFF_COEFF,
   UNIT_CONV_MASS_PER_UNIT_TIME,
-  UNIT_CONV_VELOCITY_SQUARED
+  UNIT_CONV_VELOCITY_SQUARED,
+  UNIT_CONV_INV_TIME,
+  UNIT_CONV_INV_AREA,
+  UNIT_CONV_RADIATION_FLUX,
+  UNIT_CONV_ENERGY_FLUX_PER_UNIT_SURFACE,
+  UNIT_CONV_ENERGY_FLUX_DENSITY,
+  UNIT_CONV_ENERGY_DENSITY,
+  UNIT_CONV_POWER_DENSITY,
+  UNIT_CONV_GASOLINE_DIFF_RATE,
+  UNIT_CONV_THERMAL_DIFFUSIVITY,
+  UNIT_CONV_NUMBER_DENSITY_PER_TIME,
+  UNIT_CONV_PHOTONS_PER_TIME,
+  UNIT_CONV_PHOTON_FLUX_PER_UNIT_SURFACE,
 };
 
 void units_init_cgs(struct unit_system*);

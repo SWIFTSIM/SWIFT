@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (C) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk).
+ * Copyright (C) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <fenv.h>
@@ -113,11 +113,13 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
     defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+  part->conserved.energy = pressure / (hydro_gamma_minus_one * density);
+#elif defined(SHADOWFAX_SPH)
   part->primitives.P = pressure;
 #else
   error("Need to define pressure here !");
@@ -215,15 +217,16 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
     set_velocity(p, vel, size);
     set_energy_state(p, press, size, density);
 
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+    hydro_first_init_part(p, &c->hydro.xparts[i]);
+    p->time_bin = 1;
+#endif
+
     hydro_init_part(p, hs);
 
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(SHADOWFAX_SPH)
     float volume = p->conserved.mass / density;
-#if defined(GIZMO_MFV_SPH)
-    p->geometry.volume = volume;
-#else
     p->cell.volume = volume;
-#endif
     p->primitives.rho = density;
     p->primitives.v[0] = p->v[0];
     p->primitives.v[1] = p->v[1];
@@ -264,7 +267,10 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 
   const size_t count = n * n * n;
   const double volume = size * size * size;
-  struct cell *cell = (struct cell *)malloc(sizeof(struct cell));
+  struct cell *cell = NULL;
+  if (posix_memalign((void **)&cell, cell_align, sizeof(struct cell)) != 0) {
+    error("Couldn't allocate the cell");
+  }
   bzero(cell, sizeof(struct cell));
 
   if (posix_memalign((void **)&cell->hydro.parts, part_align,
@@ -296,7 +302,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
         part->h = size * h / (float)n;
         h_max = fmax(h_max, part->h);
 
-#if defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH)
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWFAX_SPH)
         part->conserved.mass = density * volume / count;
 #else
         part->mass = density * volume / count;
@@ -309,24 +315,6 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
 
         part->id = ++(*partId);
         part->time_bin = 1;
-
-#if defined(GIZMO_MFV_SPH)
-        part->geometry.volume = part->conserved.mass / density;
-        part->primitives.rho = density;
-        part->primitives.v[0] = part->v[0];
-        part->primitives.v[1] = part->v[1];
-        part->primitives.v[2] = part->v[2];
-        part->conserved.momentum[0] = part->conserved.mass * part->v[0];
-        part->conserved.momentum[1] = part->conserved.mass * part->v[1];
-        part->conserved.momentum[2] = part->conserved.mass * part->v[2];
-        part->conserved.energy =
-            part->primitives.P / hydro_gamma_minus_one * volume +
-            0.5f *
-                (part->conserved.momentum[0] * part->conserved.momentum[0] +
-                 part->conserved.momentum[1] * part->conserved.momentum[1] +
-                 part->conserved.momentum[2] * part->conserved.momentum[2]) /
-                part->conserved.mass;
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
         part->ti_drift = 8;
@@ -354,6 +342,7 @@ struct cell *make_cell(size_t n, const double offset[3], double size, double h,
   cell->loc[1] = offset[1];
   cell->loc[2] = offset[2];
 
+  cell->hydro.super = cell;
   cell->hydro.ti_old_part = 8;
   cell->hydro.ti_end_min = 8;
   cell->nodeID = NODE_ID;
@@ -401,9 +390,10 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
             main_cell->hydro.parts[pid].v[2], main_cell->hydro.parts[pid].h,
             hydro_get_comoving_density(&main_cell->hydro.parts[pid]),
-#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||   \
-    defined(GIZMO_MFV_SPH) || defined(SHADOWFAX_SPH) || \
-    defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN)
+#if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||    \
+    defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||  \
+    defined(SHADOWFAX_SPH) || defined(HOPKINS_PU_SPH) || \
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(GASOLINE_SPH)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
@@ -426,7 +416,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     defined(HOPKINS_PU_SPH_MONAGHAN)
             main_cell->hydro.parts[pid].force.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
-#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
+#elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || \
+    defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
             main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else
@@ -500,7 +491,7 @@ int main(int argc, char *argv[]) {
   /* Get some randomness going */
   srand(0);
 
-  char c;
+  int c;
   while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:p:")) != -1) {
     switch (c) {
       case 'h':
@@ -591,6 +582,7 @@ int main(int argc, char *argv[]) {
 
   struct phys_const prog_const;
   prog_const.const_newton_G = 1.f;
+  prog_const.const_vacuum_permeability = 1.0;
 
   struct hydro_props hp;
   hydro_props_init_no_hydro(&hp);
@@ -618,6 +610,10 @@ int main(int argc, char *argv[]) {
 
   struct runner runner;
   runner.e = &engine;
+
+  struct lightcone_array_props lightcone_array_properties;
+  lightcone_array_properties.nr_lightcones = 0;
+  engine.lightcone_array_properties = &lightcone_array_properties;
 
   /* Construct some cells */
   struct cell *cells[125];
@@ -673,7 +669,7 @@ int main(int argc, char *argv[]) {
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j)
-      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0);
+      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
 
       /* Do the density calculation */
 
@@ -835,11 +831,16 @@ int main(int argc, char *argv[]) {
 
   ticks self_time = timings[26];
 
-  message("Corner calculations took:     %15lli ticks.", corner_time / runs);
-  message("Edge calculations took:       %15lli ticks.", edge_time / runs);
-  message("Face calculations took:       %15lli ticks.", face_time / runs);
-  message("Self calculations took:       %15lli ticks.", self_time / runs);
-  message("SWIFT calculation took:       %15lli ticks.", time / runs);
+  message("Corner calculations took:     %.3f %s.",
+          clocks_from_ticks(corner_time / runs), clocks_getunit());
+  message("Edge calculations took:       %.3f %s.",
+          clocks_from_ticks(edge_time / runs), clocks_getunit());
+  message("Face calculations took:       %.3f %s.",
+          clocks_from_ticks(face_time / runs), clocks_getunit());
+  message("Self calculations took:       %.3f %s.",
+          clocks_from_ticks(self_time / runs), clocks_getunit());
+  message("SWIFT calculation took:       %.3f %s.",
+          clocks_from_ticks(time / runs), clocks_getunit());
 
   for (int j = 0; j < 125; ++j)
     reset_particles(cells[j], &space.hs, vel, press, size, rho);
@@ -962,7 +963,8 @@ int main(int argc, char *argv[]) {
   const ticks toc = getticks();
 
   /* Output timing */
-  message("Brute force calculation took: %15lli ticks.", toc - tic);
+  message("Brute force calculation took : %.3f %s.",
+          clocks_from_ticks(toc - tic), clocks_getunit());
 
   sprintf(outputFileName, "brute_force_125_%.150s.dat",
           outputFileNameExtension);

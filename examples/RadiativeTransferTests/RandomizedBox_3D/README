@@ -1,0 +1,26 @@
+This test case contains only gas and stars in a periodic box. The contents have
+no physical meaning, and are background particles on a regular grid overlapping
+a randomly sampled sine wave particle distribution. The purposes of this test are
+as follows:
+
+- Neither the stars nor the gas particles are updated all at the same time. 
+  This test has commonly particles being updated at their individual time step.
+- The stars always have neighbours, so that's one less thing to thing about when
+  testing your schemes.
+- Contrary to ../UniformBox_3D, the test runs on gadgetoid cosmological internal
+  units, not on cgs.
+
+You can and should run the same sanity check scripts as in ../UniformBox_3D to
+check that everything's right.
+
+Compile swift with:
+    --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-hydro-dimension=3 --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-stars=GEAR --with-feedback=none --enable-debugging-checks --with-grackle=$GRACKLE_ROOT
+
+
+
+Some specific notes for debugging:
+
+-   when running on 2 MPI ranks (at least in the first few steps) cells 27 and
+    151 have proxies on the other rank. However, those are made for the gravity
+    tasks, not for the RT tasks. So their foreign counterparts will have no RT
+    tasks at all.

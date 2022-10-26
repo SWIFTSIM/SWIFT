@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Coypright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ * Copyright (c) 2019 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -23,6 +23,7 @@
 #include "black_holes_part.h"
 #include "black_holes_properties.h"
 #include "io_properties.h"
+#include "kick.h"
 
 /**
  * @brief Specifies which b-particle fields to read from a dataset
@@ -68,6 +69,11 @@ INLINE static void convert_bpart_pos(const struct engine* e,
     ret[1] = bp->x[1];
     ret[2] = bp->x[2];
   }
+  if (e->snapshot_use_delta_from_edge) {
+    ret[0] = min(ret[0], s->dim[0] - e->snapshot_delta_from_edge);
+    ret[1] = min(ret[1], s->dim[1] - e->snapshot_delta_from_edge);
+    ret[2] = min(ret[2], s->dim[2] - e->snapshot_delta_from_edge);
+  }
 }
 
 INLINE static void convert_bpart_vel(const struct engine* e,
@@ -77,19 +83,17 @@ INLINE static void convert_bpart_vel(const struct engine* e,
   const struct cosmology* cosmo = e->cosmology;
   const integertime_t ti_current = e->ti_current;
   const double time_base = e->time_base;
+  const float dt_kick_grav_mesh = e->dt_kick_grav_mesh_for_io;
 
   const integertime_t ti_beg = get_integer_time_begin(ti_current, bp->time_bin);
   const integertime_t ti_end = get_integer_time_end(ti_current, bp->time_bin);
 
   /* Get time-step since the last kick */
-  float dt_kick_grav;
-  if (with_cosmology) {
-    dt_kick_grav = cosmology_get_grav_kick_factor(cosmo, ti_beg, ti_current);
-    dt_kick_grav -=
-        cosmology_get_grav_kick_factor(cosmo, ti_beg, (ti_beg + ti_end) / 2);
-  } else {
-    dt_kick_grav = (ti_current - ((ti_beg + ti_end) / 2)) * time_base;
-  }
+  const float dt_kick_grav =
+      kick_get_grav_kick_dt(ti_beg, ti_current, time_base, with_cosmology,
+                            cosmo) -
+      kick_get_grav_kick_dt(ti_beg, (ti_beg + ti_end) / 2, time_base,
+                            with_cosmology, cosmo);
 
   /* Extrapolate the velocites to the current time */
   const struct gpart* gp = bp->gpart;
@@ -97,10 +101,24 @@ INLINE static void convert_bpart_vel(const struct engine* e,
   ret[1] = gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
   ret[2] = gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
 
+  /* Extrapolate the velocites to the current time (mesh forces) */
+  ret[0] += gp->a_grav_mesh[0] * dt_kick_grav_mesh;
+  ret[1] += gp->a_grav_mesh[1] * dt_kick_grav_mesh;
+  ret[2] += gp->a_grav_mesh[2] * dt_kick_grav_mesh;
+
   /* Conversion from internal to physical units */
   ret[0] *= cosmo->a_inv;
   ret[1] *= cosmo->a_inv;
   ret[2] *= cosmo->a_inv;
+}
+
+INLINE static void convert_bpart_potential(const struct engine* e,
+                                           const struct bpart* bp, float* ret) {
+
+  if (bp->gpart != NULL)
+    ret[0] = gravity_get_comoving_potential(bp->gpart);
+  else
+    ret[0] = 0.f;
 }
 
 INLINE static void convert_bpart_gas_vel(const struct engine* e,
@@ -152,7 +170,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
                                                int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 42;
+  *num_fields = 44;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -210,9 +228,11 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Physical instantaneous accretion rates of the particles");
 
   list[11] = io_make_output_field(
-      "TotalAccretedMasses", FLOAT, 1, UNIT_CONV_MASS_PER_UNIT_TIME, 0.f,
-      bparts, total_accreted_mass,
-      "Total mass accreted onto the particles since its birth");
+      "TotalAccretedMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
+      total_accreted_mass,
+      "Total mass accreted onto the main progenitor of the black holes since "
+      "birth. This does not include any mass accreted onto any merged black "
+      "holes.");
 
   list[12] = io_make_output_field(
       "CumulativeNumberOfSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
@@ -247,7 +267,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
         "Scale-factors at which the black holes last had a minor merger.");
   } else {
     list[15] = io_make_output_field(
-        "LastMinorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        "LastMinorMergerTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_minor_merger_time,
         "Times at which the black holes last had a minor merger.");
   }
@@ -259,7 +279,7 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
         "Scale-factors at which the black holes last had a major merger.");
   } else {
     list[16] = io_make_output_field(
-        "LastMajorMergerScaleTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
+        "LastMajorMergerTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
         last_major_merger_time,
         "Times at which the black holes last had a major merger.");
   }
@@ -377,13 +397,14 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "NumberOfHeatingEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_energy_injections,
       "Integer number of (thermal) energy injections the black hole has had "
-      "so far");
+      "so far. This counts each heated gas particle separately, and so can "
+      "increase by more than one during a single time step.");
 
   list[35] = io_make_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_AGN_events,
       "Integer number of AGN events the black hole has had so far"
-      " (the number of times the BH did AGN feedback)");
+      " (the number of time steps in which the BH did AGN feedback).");
 
   if (with_cosmology) {
     list[36] = io_make_output_field(
@@ -399,7 +420,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
 
   list[37] = io_make_output_field(
       "AccretionLimitedTimeSteps", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
-      dt_heat, "Accretion-limited time-steps of black holes.");
+      dt_heat,
+      "Accretion-limited time steps of black holes. The actual time step of "
+      "the particles may differ due to the minimum allowed value.");
 
   list[38] = io_make_output_field(
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,
@@ -432,6 +455,10 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "Accretion rates of black holes in units of their Eddington rates. "
       "This is based on the unlimited accretion rates, so these fractions "
       "can be above the limiting fEdd.");
+
+  list[43] = io_make_output_field_convert_bpart(
+      "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, -1.f, bparts,
+      convert_bpart_potential, "Gravitational potentials of the particles");
 
 #ifdef DEBUG_INTERACTIONS_BLACK_HOLES
 

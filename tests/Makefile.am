@@ -1,5 +1,5 @@
 # This file is part of SWIFT.
-# Copyright (c) 2015 matthieu.schaller@durham.ac.uk.
+# Copyright (c) 2015 schaller@strw.leidenuniv.nl.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,37 +15,41 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(OPENMP_CFLAGS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(OPENMP_CFLAGS) $(CHEALPIX_CFLAGS)
 
-AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS)
+AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
+
+if HAVECSDS
+AM_LDFLAGS += ../csds/src/.libs/libcsds_writer.a
+endif
 
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
-        testAdiabaticIndex testRandom testRandomSpacing testErfc \
+        testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
         testMatrixInversion testThreadpool testDump testCSDS testInteractions.sh \
         testVoronoi1D testVoronoi2D testVoronoi3D testGravityDerivatives \
 	testPeriodicBC.sh testPeriodicBCPerturbed.sh testPotentialSelf \
 	testPotentialPair testEOS testUtilities testSelectOutput.sh \
-	testCbrt testCosmology testOutputList testFormat.sh \
+	testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
 	test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
-        testAtomic testGravitySpeed testNeutrinoCosmology testNeutrinoFermiDirac \
-	testLog
+        testAtomic testGravitySpeed testNeutrinoCosmology.sh testNeutrinoFermiDirac \
+	testLog testDistance testTimeline
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
                  testKernel testFFT testInteractions testMaths testRandom testExp \
-                 testSymmetry testThreadpool testRandomSpacing testErfc \
-                 testAdiabaticIndex testRiemannExact testRiemannTRRS \
+                 testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
+                 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
                  testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testVoronoi1D testVoronoi2D testVoronoi3D testPeriodicBC \
 		 testGravityDerivatives testPotentialSelf testPotentialPair testEOS testUtilities \
 		 testSelectOutput testCbrt testCosmology testOutputList test27cellsStars \
 		 test27cellsStars_subset testCooling testComovingCooling testFeedback testHashmap \
                  testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog
+		 testNeutrinoFermiDirac testLog testTimeline
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -59,7 +63,11 @@ testAtomic_SOURCES = testAtomic.c
 
 testRandom_SOURCES = testRandom.c
 
+testRandomPoisson_SOURCES = testRandomPoisson.c
+
 testRandomSpacing_SOURCES = testRandomSpacing.c
+
+testRandomCone_SOURCES = testRandomCone.c
 
 testReading_SOURCES = testReading.c
 
@@ -68,6 +76,8 @@ testSelectOutput_SOURCES = testSelectOutput.c
 testCosmology_SOURCES = testCosmology.c
 
 testOutputList_SOURCES = testOutputList.c
+
+testDistance_SOURCES = testDistance.c
 
 testSymmetry_SOURCES = testSymmetry.c
 
@@ -156,6 +166,8 @@ testHashmap_SOURCES = testHashmap.c
 
 testLog_SOURCES = testLog.c
 
+testTimeline_SOURCES = testTimeline.c
+
 testHydroMPIrules = testHydroMPIrules.c
 
 # Files necessary for distribution
@@ -171,4 +183,4 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS.sh testEOS_plot.sh \
 	     test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
 	     star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-	     testNeutrinoCosmology.dat
+	     testNeutrinoCosmology.dat testNeutrinoCosmology.sh

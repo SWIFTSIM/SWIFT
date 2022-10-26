@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2013 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "runner_doiact_grav.h"
@@ -818,7 +818,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
-      if (gparts_j[pjd].time_bin == time_bin_not_created && mass_j != 0.) {
+      if (pjd < gcount_j && gparts_j[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
 
@@ -1553,7 +1554,8 @@ static INLINE void runner_doself_grav_pp_full(
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
-      if (gparts[pjd].time_bin == time_bin_not_created && mass_j != 0.) {
+      if (pjd < gcount && gparts[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
 
@@ -1701,7 +1703,8 @@ static INLINE void runner_doself_grav_pp_truncated(
           ci_cache->m[pid] != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
-      if (gparts[pjd].time_bin == time_bin_not_created && mass_j != 0.) {
+      if (pjd < gcount && gparts[pjd].time_bin == time_bin_not_created &&
+          mass_j != 0.) {
         error("Found an extra gpart in the gravity interaction");
       }
 

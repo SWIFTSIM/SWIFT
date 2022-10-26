@@ -1,11 +1,11 @@
 #!/bin/bash
 cd Kernels
-python kernels.py
+python3 kernels.py
 cp kernels.pdf ..
 cp kernel_derivatives.pdf ..
 cd ..
 cd Flavours
-python plotSoundspeed.py
+python3 plotSoundspeed.py
 cp sedov_blast_soundspeed.pdf ..
 cd ..
 pdflatex swift_sph.tex

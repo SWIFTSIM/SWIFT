@@ -19,6 +19,7 @@
 #ifndef SWIFT_RT_IACT_DEBUG_H
 #define SWIFT_RT_IACT_DEBUG_H
 
+#include "rt_debugging.h"
 #include "rt_gradients.h"
 
 /**
@@ -26,6 +27,30 @@
  * @brief Main header file for the debug radiative transfer scheme particle
  * interactions.
  */
+
+/**
+ * @brief Preparation step for injection to gather necessary data.
+ * This function gets called during the feedback force loop.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param si First (star) particle.
+ * @param pj Second (gas) particle (not updated).
+ * @param cosmo The cosmological model.
+ * @param rt_props Properties of the RT scheme.
+ */
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_rt_injection_prep(const float r2, const float *dx,
+                                     const float hi, const float hj,
+                                     struct spart *si, const struct part *pj,
+                                     const struct cosmology *cosmo,
+                                     const struct rt_props *rt_props) {
+
+  si->rt_data.debug_iact_hydro_inject_prep += 1;
+}
 
 /**
  * @brief Injection step interaction between star and hydro particles.
@@ -38,19 +63,31 @@
  * @param pj Hydro particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param rt_props Properties of the RT scheme.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
     const float r2, float *dx, const float hi, const float hj,
-    struct spart *restrict si, struct part *restrict pj, float a, float H) {
+    struct spart *restrict si, struct part *restrict pj, float a, float H,
+    const struct rt_props *rt_props) {
 
-  struct rt_spart_data *restrict sd = &(si->rt_data);
-  struct rt_part_data *restrict pd = &(pj->rt_data);
+  /* If the star doesn't have any neighbours, we
+   * have nothing to do here. */
+  if (si->density.wcount == 0.f) return;
 
-  sd->iact_hydro_inject += 1;
-  sd->radiation_emitted_tot += 1ULL;
+  /* Do some checks and increase neighbour counts
+   * before other potential early exits */
+  if (si->rt_data.debug_iact_hydro_inject_prep == 0)
+    error(
+        "Injecting energy from star that wasn't called during injection prep");
 
-  pd->iact_stars_inject += 1;
-  pd->radiation_absorbed_tot += 1ULL;
+  if (!si->rt_data.debug_emission_rate_set)
+    error("Injecting energy from star without setting emission rate");
+
+  si->rt_data.debug_iact_hydro_inject += 1;
+  si->rt_data.debug_radiation_emitted_tot += 1ULL;
+
+  pj->rt_data.debug_iact_stars_inject += 1;
+  pj->rt_data.debug_radiation_absorbed_tot += 1ULL;
 }
 
 /**
@@ -73,45 +110,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_flux_common(
     float r2, const float *dx, float hi, float hj, struct part *restrict pi,
     struct part *restrict pj, float a, float H, int mode) {
 
-  if (pi->rt_data.injection_done != 1)
-    error(
-        "Trying to do iact transport when "
-        "finalise injection count is %d",
-        pi->rt_data.injection_done);
-
-  if (pi->rt_data.calls_iact_gradient == 0)
-    error(
-        "Called iact transport on particle "
-        "with iact gradient count 0");
-
-  if (pi->rt_data.gradients_done != 1)
-    error(
-        "Trying to do iact transport when "
-        "rt_finalise_gradient count is %d",
-        pi->rt_data.gradients_done);
-
-  pi->rt_data.calls_iact_transport += 1;
+  const char *func_name = (mode == 1) ? "sym flux iact" : "nonsym flux iact";
+  rt_debug_sequence_check(pi, 3, func_name);
+  pi->rt_data.debug_calls_iact_transport_interaction += 1;
 
   if (mode == 1) {
-
-    if (pj->rt_data.injection_done != 1)
-      error(
-          "Trying to do iact transport when "
-          "finalise injection count is %d",
-          pj->rt_data.injection_done);
-
-    if (pj->rt_data.calls_iact_gradient == 0)
-      error(
-          "Called iact transport on particle "
-          "with iact gradient count 0");
-
-    if (pj->rt_data.gradients_done != 1)
-      error(
-          "Trying to do iact transport when "
-          "rt_finalise_gradient count is %d",
-          pj->rt_data.gradients_done);
-
-    pj->rt_data.calls_iact_transport += 1;
+    rt_debug_sequence_check(pj, 3, func_name);
+    pj->rt_data.debug_calls_iact_transport_interaction += 1;
   }
 }
 

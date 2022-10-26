@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -25,7 +25,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the right cooling definition */
 #if defined(COOLING_NONE)
@@ -40,6 +40,8 @@
 #include "./cooling/grackle/cooling_properties.h"
 #elif defined(COOLING_QLA)
 #include "./cooling/QLA/cooling_properties.h"
+#elif defined(COOLING_QLA_EAGLE)
+#include "./cooling/QLA_EAGLE/cooling_properties.h"
 #elif defined(COOLING_EAGLE)
 #include "./cooling/EAGLE/cooling_properties.h"
 #elif defined(COOLING_COLIBRE)

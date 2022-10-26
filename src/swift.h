@@ -20,7 +20,7 @@
 #define SWIFT_SWIFT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "active.h"
@@ -39,10 +39,10 @@
 #include "csds_io.h"
 #include "cycle.h"
 #include "debug.h"
-#include "dump.h"
 #include "engine.h"
 #include "entropy_floor.h"
 #include "error.h"
+#include "extra_io.h"
 #include "feedback.h"
 #include "feedback_properties.h"
 #include "fof.h"
@@ -52,6 +52,8 @@
 #include "hashmap.h"
 #include "hydro.h"
 #include "hydro_properties.h"
+#include "ic_info.h"
+#include "lightcone/lightcone_array.h"
 #include "line_of_sight.h"
 #include "lock.h"
 #include "map.h"
@@ -60,7 +62,7 @@
 #include "minmax.h"
 #include "mpiuse.h"
 #include "multipole.h"
-#include "neutrino_properties.h"
+#include "neutrino.h"
 #include "output_list.h"
 #include "output_options.h"
 #include "parallel_io.h"
@@ -70,6 +72,7 @@
 #include "periodic.h"
 #include "physical_constants.h"
 #include "potential.h"
+#include "power_spectrum.h"
 #include "pressure_floor.h"
 #include "pressure_floor_iact.h"
 #include "profiler.h"

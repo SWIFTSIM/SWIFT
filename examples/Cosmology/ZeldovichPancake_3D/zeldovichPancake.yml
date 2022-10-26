@@ -7,10 +7,10 @@ InternalUnitSystem:
   UnitTemp_in_cgs:     1   # Kelvin
 
 Cosmology:
-  Omega_m: 1.
+  Omega_cdm:    0.
   Omega_lambda: 0.
-  Omega_b: 1.
-  h: 1.
+  Omega_b:      1.
+  h:            1.
   a_begin: 0.00990099
   a_end: 1.0
 

@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *               2018   Jacob Kegerreis (jacob.kegerreis@durham.ac.uk).
  *
  * This program is free software: you can redistribute it and/or modify
@@ -38,8 +38,10 @@
 #include "cooling_struct.h"
 #include "equation_of_state.h"  // For enum material_id
 #include "feedback_struct.h"
+#include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
+#include "sink_struct.h"
 #include "star_formation_struct.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -77,11 +79,14 @@ struct xpart {
   /*! Additional data used by the tracers */
   struct tracers_xpart_data tracers_data;
 
-  /* Additional data used by the star formation */
+  /*! Additional data used by the star formation */
   struct star_formation_xpart_data sf_data;
 
-  /* Additional data used by the feedback */
+  /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;
+
+  /*! Additional data used by the MHD scheme */
+  struct mhd_xpart_data mhd_data;
 
 } SWIFT_STRUCT_ALIGN;
 
@@ -183,6 +188,9 @@ struct part {
     } force;
   };
 
+  /*! Additional data used by the MHD scheme */
+  struct mhd_part_data mhd_data;
+
   /*! Chemistry information */
   struct chemistry_part_data chemistry_data;
 
@@ -192,11 +200,17 @@ struct part {
   /*! Black holes information (e.g. swallowing ID) */
   struct black_holes_part_data black_holes_data;
 
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;
+
   /*! Material identifier flag */
   enum eos_planetary_material_id mat_id;
 
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
+
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
 
   /*! Time-step length */
   timebin_t time_bin;

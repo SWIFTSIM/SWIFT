@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2012 Pedro Gonnet (pedro.gonnet@durham.ac.uk)
- *               2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ *               2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -26,6 +26,17 @@
 
 #include "runner_doiact_stars.h"
 
+#ifdef RT_NONE
+#define WITH_RT 0
+#else
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+#define WITH_RT (e->policy & engine_policy_rt)
+#else
+#define WITH_RT 0
+#endif
+#endif
+
 /**
  * @brief Calculate the number density of #part around the #spart
  *
@@ -42,7 +53,6 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -62,6 +72,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
   struct xpart *restrict xparts = c->hydro.xparts;
 #endif
 
+  const int with_rt = WITH_RT;
+
   /* Loop over the sparts in ci. */
   for (int sid = 0; sid < scount; sid++) {
 
@@ -75,7 +87,8 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
     if (!spart_is_active(si, e)) continue;
 
     /* Skip inactive particles */
-    if (!feedback_is_active(si, e->time, cosmo, with_cosmology)) continue;
+    int si_active_feedback = feedback_is_active(si, e);
+    if (!si_active_feedback && !with_rt) continue;
 
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -109,7 +122,7 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2) {
+      if (r2 < hig2 && si_active_feedback) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, NULL, cosmo,
@@ -122,7 +135,18 @@ void DOSELF1_STARS(struct runner *r, struct cell *c, int timer) {
                                           ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                          e->hydro_properties,
                                           e->feedback_props, ti_current);
+#endif
+      }
+      if (r2 < hig2 && with_rt) {
+        /* If we're running RT, we don't care whether star is active for
+         * feedback, just that the star is active. */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_rt_injection_prep(r2, dx, hi, hj, si, pj, cosmo,
+                                             e->rt_props);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+        runner_iact_rt_inject(r2, dx, hi, hj, si, pj, a, H, e->rt_props);
 #endif
       }
     } /* loop over the parts in ci. */
@@ -150,7 +174,6 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #endif
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -169,6 +192,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
   struct xpart *restrict xparts_j = cj->hydro.xparts;
 #endif
+  const int with_rt = WITH_RT;
 
   /* Get the relative distance between the pairs, wrapping. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -192,7 +216,8 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
     if (!spart_is_active(si, e)) continue;
 
     /* Skip inactive particles */
-    if (!feedback_is_active(si, e->time, cosmo, with_cosmology)) continue;
+    int si_active_feedback = feedback_is_active(si, e);
+    if (!si_active_feedback && !with_rt) continue;
 
     const float hi = si->h;
     const float hig2 = hi * hi * kernel_gamma2;
@@ -226,7 +251,7 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         error("Particle pj not drifted to current time");
 #endif
 
-      if (r2 < hig2) {
+      if (r2 < hig2 && si_active_feedback) {
         IACT_STARS(r2, dx, hi, hj, si, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -240,7 +265,18 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
                                           ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                          e->hydro_properties,
                                           e->feedback_props, ti_current);
+#endif
+      }
+      if (r2 < hig2 && with_rt) {
+        /* If we're running RT, we don't care whether star is active for
+         * feedback, just that the star is active. */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+        runner_iact_nonsym_rt_injection_prep(r2, dx, hi, hj, si, pj, cosmo,
+                                             e->rt_props);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+        runner_iact_rt_inject(r2, dx, hi, hj, si, pj, a, H, e->rt_props);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -262,7 +298,6 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   TIMER_TIC;
 
   const struct engine *e = r->e;
-  const int with_cosmology = e->policy & engine_policy_cosmology;
   const integertime_t ti_current = e->ti_current;
   const struct cosmology *cosmo = e->cosmology;
 
@@ -287,6 +322,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const int do_cj_stars = (ci->nodeID == e->nodeID) && (cj->stars.count != 0) &&
                           (ci->hydro.count != 0) && cell_is_active_stars(cj, e);
 #endif
+  const int with_rt = WITH_RT;
 
   if (do_ci_stars) {
 
@@ -335,7 +371,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       if (!spart_is_active(spi, e)) continue;
 
       /* Skip inactive particles */
-      if (!feedback_is_active(spi, e->time, cosmo, with_cosmology)) continue;
+      const int spi_active_feedback = feedback_is_active(spi, e);
+      if (!spi_active_feedback && !with_rt) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spi->x[0], spi->x[1], spi->x[2]};
@@ -408,7 +445,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hig2) {
+        if (r2 < hig2 && spi_active_feedback) {
           IACT_STARS(r2, dx, hi, hj, spi, pj, a, H);
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
@@ -423,7 +460,18 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                                             cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj, cosmo,
+                                            e->hydro_properties,
                                             e->feedback_props, ti_current);
+#endif
+        }
+        if (r2 < hig2 && with_rt) {
+          /* If we're running RT, we don't care whether star is active for
+           * feedback, just that the star is active. */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_rt_injection_prep(r2, dx, hi, hj, spi, pj, cosmo,
+                                               e->rt_props);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+          runner_iact_rt_inject(r2, dx, hi, hj, spi, pj, a, H, e->rt_props);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -476,7 +524,8 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
       if (!spart_is_active(spj, e)) continue;
 
       /* Skip inactive particles */
-      if (!feedback_is_active(spj, e->time, cosmo, with_cosmology)) continue;
+      int spj_active_feedback = feedback_is_active(spj, e);
+      if (!spj_active_feedback && !with_rt) continue;
 
       /* Compute distance from the other cell. */
       const double px[3] = {spj->x[0], spj->x[1], spj->x[2]};
@@ -549,7 +598,7 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 #endif
 
         /* Hit or miss? */
-        if (r2 < hjg2) {
+        if (r2 < hjg2 && spj_active_feedback) {
 
           IACT_STARS(r2, dx, hj, hi, spj, pi, a, H);
 
@@ -565,7 +614,18 @@ void DO_SYM_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                                             cosmo, ti_current);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           runner_iact_nonsym_feedback_apply(r2, dx, hj, hi, spj, pi, xpi, cosmo,
+                                            e->hydro_properties,
                                             e->feedback_props, ti_current);
+#endif
+        }
+        if (r2 < hjg2 && with_rt) {
+          /* If we're running RT, we don't care whether star is active for
+           * feedback, just that the star is active. */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+          runner_iact_nonsym_rt_injection_prep(r2, dx, hj, hi, spj, pi, cosmo,
+                                               e->rt_props);
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+          runner_iact_rt_inject(r2, dx, hj, hi, spj, pi, a, H, e->rt_props);
 #endif
         }
       } /* loop over the parts in ci. */
@@ -686,6 +746,8 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
                                               cosmo, e->feedback_props,
                                               e->ti_current);
+          runner_iact_nonsym_rt_injection_prep(r2, dx, hi, hj, spi, pj, cosmo,
+                                               e->rt_props);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           error("No subset feedback iact functions do (or should) exist!");
           /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
@@ -747,6 +809,8 @@ void DOPAIR1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
           runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
                                               cosmo, e->feedback_props,
                                               e->ti_current);
+          runner_iact_nonsym_rt_injection_prep(r2, dx, hi, hj, spi, pj, cosmo,
+                                               e->rt_props);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
           error("No subset feedback iact functions do (or should) exist!");
           /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
@@ -843,6 +907,8 @@ void DOPAIR1_SUBSET_STARS_NAIVE(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_feedback_density(r2, dx, hi, hj, spi, pj, NULL,
                                             cosmo, e->feedback_props,
                                             e->ti_current);
+        runner_iact_nonsym_rt_injection_prep(r2, dx, hi, hj, spi, pj, cosmo,
+                                             e->rt_props);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         error("No subset feedback iact functions do (or should) exist! .");
         /* runner_iact_nonsym_feedback_apply(r2, dx, hi, hj, spi, pj, xpj,
@@ -928,6 +994,8 @@ void DOSELF1_SUBSET_STARS(struct runner *r, struct cell *restrict ci,
         runner_iact_nonsym_feedback_density(r2, dx, hi, pj->h, spi, pj, NULL,
                                             cosmo, e->feedback_props,
                                             e->ti_current);
+        runner_iact_nonsym_rt_injection_prep(r2, dx, hi, pj->h, spi, pj, cosmo,
+                                             e->rt_props);
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
         error("No subset feedback iact functions do (or should) exist!");
         /* runner_iact_nonsym_feedback_apply(r2, dx, hi, pj->h, spi, pj, xpj, */
@@ -992,9 +1060,9 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r, struct cell *restrict ci,
   /* Get the sorting index. */
   int sid = 0;
   for (int k = 0; k < 3; k++)
-    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0)
-                         ? 0
-                         : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2 : 1);
+    sid = 3 * sid + ((cj->loc[k] - ci->loc[k] + shift[k] < 0) ? 0
+                     : (cj->loc[k] - ci->loc[k] + shift[k] > 0) ? 2
+                                                                : 1);
 
   /* Switch the cells around? */
   const int flipped = runner_flip[sid];
@@ -1384,3 +1452,5 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, int gettimer) {
 
   TIMER_TOC(TIMER_DOSUB_SELF_STARS);
 }
+
+#undef WITH_RT
