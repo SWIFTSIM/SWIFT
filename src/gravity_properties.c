@@ -37,7 +37,7 @@
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
-#define gravity_props_default_r_cut_min 0.1f
+#define gravity_props_default_r_cut_min 0.0f
 #define gravity_props_default_rebuild_frequency 0.01f
 #define gravity_props_default_rebuild_active_fraction 1.01f  // > 1 means never
 #define gravity_props_default_distributed_mesh 0
