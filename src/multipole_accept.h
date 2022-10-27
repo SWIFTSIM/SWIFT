@@ -90,6 +90,9 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   const float rho_A = use_rebuild_sizes ? A->r_max_rebuild : A->r_max;
   const float rho_B = use_rebuild_sizes ? B->r_max_rebuild : B->r_max;
 
+  /* Max size of both multipoles */
+  const float rho_max = max(rho_A, rho_B);
+
   /* Get the softening */
   const float max_softening =
       max(A->m_pole.max_softening, B->m_pole.max_softening);
@@ -102,7 +105,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   }
   E_BA_term *= 8.f;
   if (rho_A + rho_B > 0.f) {
-    E_BA_term *= max(rho_A, rho_B);
+    E_BA_term *= rho_max;
+    ;
     E_BA_term /= (rho_A + rho_B);
   }
 
@@ -119,6 +123,9 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   /* Get the mimimal acceleration in A */
   const float min_a_grav = A->m_pole.min_old_a_grav_norm;
 
+  /* Maximal mass */
+  const float M_max = max(A->m_pole.M_000, B->m_pole.M_000);
+
   /* Get the relative tolerance */
   const float eps = props->adaptive_tolerance;
 
@@ -129,7 +136,19 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
   /* Get the sum of the multipole sizes */
   const float rho_sum = rho_A + rho_B;
 
-  if (props->use_advanced_MAC) {
+  if (props->use_advanced_MAC && props->use_gadget_tolerance) {
+
+    /* Gadget 4 paper -- eq. 36 */
+    const int power = SELF_GRAVITY_MULTIPOLE_ORDER - 1;
+    const float ratio = integer_powf(rho_max / sqrtf(r2), power);
+    const int cond_1 = M_max * ratio < eps * min_a_grav * f_MAC_inv;
+
+    const int cond_2 =
+        props->use_tree_below_softening || max_softening * max_softening < r2;
+
+    return cond_1 && cond_2;
+
+  } else if (props->use_advanced_MAC && !props->use_gadget_tolerance) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (min_a_grav == 0.) error("Acceleration is 0");
@@ -309,7 +328,19 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
   const float theta_crit = props->theta_crit;
   const float theta_crit2 = theta_crit * theta_crit;
 
-  if (props->use_advanced_MAC) {
+  if (props->use_advanced_MAC && props->use_gadget_tolerance) {
+
+    /* Gadget 4 paper -- eq. 12 */
+    const int power = SELF_GRAVITY_MULTIPOLE_ORDER;
+    const float ratio = integer_powf(rho_B / sqrtf(r2), power);
+    const int cond_1 = B->m_pole.M_000 * ratio < eps * old_a_grav * f_MAC_inv;
+
+    const int cond_2 =
+        props->use_tree_below_softening || max_softening * max_softening < r2;
+
+    return cond_1 && cond_2;
+
+  } else if (props->use_advanced_MAC && !props->use_gadget_tolerance) {
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (old_a_grav == 0.) error("Acceleration is 0");
