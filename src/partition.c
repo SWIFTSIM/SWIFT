@@ -1082,6 +1082,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
                &nxadj);
 
+    message("Graph initialised.");
+
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
                    full_weights_v, NULL, full_weights_e); */
