@@ -1082,8 +1082,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     graph_init(s, s->periodic, full_weights_e, full_adjncy, &nadjcny, std_xadj,
                &nxadj);
 
-    message("Graph initialised.");
-
     /* Dump graphs to disk files for testing. */
     /*dumpMETISGraph("parmetis_graph", ncells, 1, std_xadj, full_adjncy,
                    full_weights_v, NULL, full_weights_e); */
@@ -1194,6 +1192,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
   }
 
+  message("Graph initialised and recieved.");
+
   /* Set up the tpwgts array. This is just 1/nregions. */
   real_t *tpwgts;
   if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
@@ -1271,6 +1271,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
     free(best_regionid);
   }
+
+  message("Made it through refinement.")
 
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
