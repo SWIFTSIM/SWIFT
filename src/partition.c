@@ -1272,7 +1272,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     free(best_regionid);
   }
 
-  message("Made it through refinement.")
+  message("Made it through refinement.");
 
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
