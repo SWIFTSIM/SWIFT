@@ -428,6 +428,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
       }
       *nxadj = s->nr_cells;
     }
+    message("Set xadj pointers.");
     
   } else if (periodic) {
     int cid = 0;
