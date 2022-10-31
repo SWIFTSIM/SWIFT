@@ -390,8 +390,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
                 /* Get this cell. */
-                const size_t cjd =
-                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
 
                 /* Skip self */
@@ -810,8 +809,15 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 /* Store this background edge. */
                 const size_t cjd =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
-                edges[iedge] = counts[cjd];
-                iedge++;
+
+                /* Handle the void cell. */
+                if (cjd == s->zoom_props->void_cell_index) {
+                  edges[iedge] = 0;
+                  iedge++;
+                } else {
+                  edges[iedge] = counts[cjd];
+                  iedge++;
+                }
               }
             }
           }
