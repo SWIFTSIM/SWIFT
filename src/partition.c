@@ -366,6 +366,8 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
         }
       }
     }
+
+    message("completed graph_init for zoom cells.");
     
     /* Loop over background cells and assign their edges. Normal background
      * cells have 26 neighbours as usual, neighbour background cells have
@@ -414,6 +416,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
         }
       }
     }
+    message("completed graph_init for background cells.");
     *nadjcny = s->zoom_props->nr_edges;
 
     /* If given set METIS xadj. */
