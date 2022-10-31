@@ -310,7 +310,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
   if (s->with_zoom_region) {
 
     /* Get some useful constants. */
-    const int periodic = s->periodic;
     const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
     const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                               s->zoom_props->cdim[2]};
@@ -319,7 +318,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-    
+    struct cell *restrict c;
+    struct cell *restrict cj;
+  
     int iedge = 0;
     /* Loop over zoom cells and assign their edges. Zoom cells at the edges
      * have fewer neighbours, all zoom cells have edges with the first shell
@@ -421,7 +422,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
       xadj[0] = 0;
       for (int k = 0; k < s->nr_cells; k++) {
         /* Set pointer taking into account differing edge numbers. */
-        xadj[k + 1] = xadj[k] + s->cells_top[k]->nr_vertex_edges;
+        xadj[k + 1] = xadj[k] + &s->cells_top[k]->nr_vertex_edges;
       }
       *nxadj = s->nr_cells;
     }
@@ -2332,6 +2333,15 @@ void partition_initial_partition(struct partition *initial_partition,
      * counts as weights or not. Should be best when starting with a
      * inhomogeneous dist.
      */
+
+    /* Define the number of edges we have to handle. */
+    int nedges;
+    if (s->with_zoom_region) {
+      nedges = s->zoom_props->nr_edges;
+    } else {
+      nedges = 26 * s->nr_cells;
+    }
+
     
     double *weights_v = NULL;
     double *weights_e = NULL;
@@ -2345,15 +2355,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
-      /* Define the number of edges we have to handle. */
-      if (s->with_zoom_region) {
-        int nedges = s->zoom_props->nr_edges;
-      } else {
-        int nedges = 26 * nr_cells;
-      }
-
       /* Particle sizes also counted towards the edges. */
-
       if ((weights_v = (double *)malloc(sizeof(double) * s->nr_cells)) == NULL)
         error("Failed to allocate weights_v buffer.");
       if ((weights_e = (double *)malloc(sizeof(double) * nedges)) ==
