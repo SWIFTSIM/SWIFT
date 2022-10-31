@@ -318,6 +318,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+#ifdef SWIFT_DEBUG_CHECKS
+    struct cell *restrict c;
+#endif
     struct cell *restrict cj;
   
     int iedge = 0;
@@ -327,10 +330,15 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     for (int i = 0; i < zoom_cdim[0]; i++) {
       for (int j = 0; j < zoom_cdim[1]; j++) {
         for (int k = 0; k < zoom_cdim[2]; k++) {
+
+          int p = 0;
           
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
-
+#ifdef SWIFT_DEBUG_CHECKS
+          c = &s->cells_top[cid];
+#endif
+          
           /* Loop over a shell of neighbouring zoom cells and
            * skip if outside the zoom region. */
           for (int ii = i - 1; ii <= i + 1; ii++) {
@@ -349,6 +357,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   /* Store this zoom edge. */
                   adjncy[iedge] = cjd;
                   iedge++;
+                  p++;
                 }
               }
             }
@@ -359,7 +368,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
             for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
 
-                /* Store this background edge. */
+                /* Get this background cell. */
                 const size_t cjd =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
 
@@ -367,12 +376,18 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 if (cjd == s->zoom_props->void_cell_index) continue;
 
                 /* Store this background edge. */
-                adjncy[iedge] =
-                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                adjncy[iedge] = cjd;
                 iedge++;
+                p++;
               }
             }
           }
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Ensure we have found the right number of edges for this cell. */
+          if (p != c->nr_vertex_edges)
+            error("This cell has inconsistent edges (found=%d, "
+                  "c->nr_vertex_edges=)", p, c->nr_vertex_edges);
+#endif
         }
       }
     }
@@ -384,8 +399,13 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
       for (int j = 0; j < cdim[1]; j++) {
         for (int k = 0; k < cdim[2]; k++) {
 
+          int p = 0;
+
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+#ifdef SWIFT_DEBUG_CHECKS
+          c = &s->cells_top[cid];
+#endif
 
           /* Handle the void cell. */
           if (cid == s->zoom_props->void_cell_index) continue;
@@ -418,6 +438,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
                     adjncy[iedge] = zoom_cjd;
                     iedge++;
+                    p++;
                   }
                   
                 } else {
@@ -425,10 +446,17 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   /* Otherwise, store this background edge. */
                   adjncy[iedge] = cjd;
                   iedge++;
+                  p++;
                 }
               }
             }
           }
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Ensure we have found the right number of edges for this cell. */
+          if (p != c->nr_vertex_edges)
+            error("This cell has inconsistent edges (found=%d, "
+                  "c->nr_vertex_edges=)", p, c->nr_vertex_edges);
+#endif
         }
       }
     }
