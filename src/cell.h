@@ -479,7 +479,7 @@ struct cell {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
   /*! The number of edges this cell has (translates to the number of
    * immediate neighbours)  */
-  int vertex_edges;
+  int nr_vertex_edges;
 #endif
 #endif
 
