@@ -841,7 +841,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
-    message("Got edges.");
   }
 
   /* Otherwise we can use the simple version. */
@@ -1633,6 +1632,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     int nadjcny = 0;
     int nxadj = 0;
     graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
+    message("graph intitailised");
 
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
