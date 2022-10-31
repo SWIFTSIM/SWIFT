@@ -819,7 +819,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
         /* Include the background cell edges. */
         c->nr_vertex_edges = 26;
 
-        /* Loop over every other cell within (Manhattan) range delta and
+        /* Loop over a shell of neighbouring cells and
          * skip if outside the zoom region. */
         for (int ii = i - 1; ii <= i + 1; ii++) {
           if (ii < 0 || ii >= zoom_cdim[0]) continue;
@@ -827,6 +827,9 @@ void find_vertex_edges(struct space *s, const int verbose) {
             if (jj < 0 || jj >= zoom_cdim[1]) continue;
             for (int kk = k - 1; kk <= k + 1; kk++) {
               if (kk < 0 || kk >= zoom_cdim[2]) continue;
+
+              /* Skip self. */
+              if (ii == i && jj == j && kk == k) continue;
 
               /* Include this edge. */
               c->nr_vertex_edges++;
@@ -857,14 +860,17 @@ void find_vertex_edges(struct space *s, const int verbose) {
         if (c->tl_cell_type == void_tl_cell)
           continue;
         
-        /* Loop over every other cell within (Manhattan) range delta and
-         * skip if non-periodic and out of range. */
+        /* Loop over a shell of neighbouring cells and
+         * skip if out of range. */
         for (int ii = i - 1; ii <= i + 1; ii++) {
-          if (!periodic && (ii < 0 || ii >= zoom_cdim[0])) continue;
+          if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
           for (int jj = j - 1; jj <= j + 1; jj++) {
-            if (!periodic && (jj < 0 || jj >= zoom_cdim[1])) continue;
+            if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
             for (int kk = k - 1; kk <= k + 1; kk++) {
-              if (!periodic && (kk < 0 || kk >= zoom_cdim[2])) continue;
+              if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+              /* Skip self. */
+              if (ii == i && jj == j && kk == k) continue;
 
               /* Get this cell. */
               const size_t cjd = cell_getid(cdim, i, j, k) + bkg_cell_offset;

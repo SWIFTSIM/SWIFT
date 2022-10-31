@@ -309,103 +309,120 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
   *nadjcny = 0;
   if (s->with_zoom_region) {
 
-    /* Get some zoom region properties. */
+    /* Get some useful constants. */
+    const int periodic = s->periodic;
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                              s->zoom_props->cdim[2]};
     const int void_i = s->zoom_props->zoom_cell_ijk[0];
     const int void_j = s->zoom_props->zoom_cell_ijk[1];
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+    const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
     
-    int cid = 0;
-    for (int l = 0; l < s->zoom_props->cdim[0]; l++) {
-      for (int m = 0; m < s->zoom_props->cdim[1]; m++) {
-        for (int n = 0; n < s->zoom_props->cdim[2]; n++) {
+    int iedge = 0;
+    /* Loop over zoom cells and assign their edges. Zoom cells at the edges
+     * have fewer neighbours, all zoom cells have edges with the first shell
+     * of background cells. */
+    for (int i = 0; i < zoom_cdim[0]; i++) {
+      for (int j = 0; j < zoom_cdim[1]; j++) {
+        for (int k = 0; k < zoom_cdim[2]; k++) {
 
-          /* Visit all neighbours of this cell. */
-          int p = 0;
+          /* Loop over a shell of neighbouring zoom cells and
+           * skip if outside the zoom region. */
+          for (int ii = i - 1; ii <= i + 1; ii++) {
+            if (ii < 0 || ii >= zoom_cdim[0]) continue;
+            for (int jj = j - 1; jj <= j + 1; jj++) {
+              if (jj < 0 || jj >= zoom_cdim[1]) continue;
+              for (int kk = k - 1; kk <= k + 1; kk++) {
+                if (kk < 0 || kk >= zoom_cdim[2]) continue;
 
-          /* Here we need to handle that the zoom region isn't periodic. */
-          for (int i = -1; i <= 1; i++) {
-            int ii = l + i;
-            for (int j = -1; j <= 1; j++) {
-              int jj = m + j;
-              for (int k = -1; k <= 1; k++) {
-                int kk = n + k;
+                /* Skip self. */
+                if (ii == i && jj == j && kk == k) continue;
 
-                /* Here we handle cells at the zoom region edge. These get a
-                 * relation to their neighbouring background cell. */
-                if (ii < 0 || ii >= s->zoom_props->cdim[0] ||
-                    jj < 0 || jj >= s->zoom_props->cdim[1] ||
-                    kk < 0 || kk >= s->zoom_props->cdim[2]) {
+                /* Store this zoom edge. */
+                adjncy[iedge] = cell_getid(zoom_cdim, ii, jj, kk);
+                iedge++;
 
-                  adjncy[cid * 26 + p] =
-                    cell_getid(s->cdim, void_i + i,
-                               void_j + j, void_k + k) + bkg_cell_offset;
-                  p++;
-                }
-
-                /* If not self, record id of neighbour. */
-                else if (i || j || k) {
-                  adjncy[cid * 26 + p] = cell_getid(s->zoom_props->cdim,
-                                                    ii, jj, kk);
-                  p++;
-                }
-              }
-            }
-          }
-          /* Next cell. */
-          cid++;
-        }
-      }
-    }
-    
-    /* Now loop over the background cells setting their adjacencies.
-     * NOTE: We ignore relations to the zoom region here to reduce the memory
-     *       footpint. */
-    for (int l = 0; l < s->cdim[0]; l++) {
-      for (int m = 0; m < s->cdim[1]; m++) {
-        for (int n = 0; n < s->cdim[2]; n++) {
-
-          /* Visit all neighbours of this cell, wrapping space at edges. */
-          int p = 0;
-          for (int i = -1; i <= 1; i++) {
-            int ii = l + i;
-            if (ii < 0)
-              ii += s->cdim[0];
-            else if (ii >= s->cdim[0])
-              ii -= s->cdim[0];
-            for (int j = -1; j <= 1; j++) {
-              int jj = m + j;
-              if (jj < 0)
-                jj += s->cdim[1];
-              else if (jj >= s->cdim[1])
-                jj -= s->cdim[1];
-              for (int k = -1; k <= 1; k++) {
-                int kk = n + k;
-                if (kk < 0)
-                  kk += s->cdim[2];
-                else if (kk >= s->cdim[2])
-                  kk -= s->cdim[2];
-
-                /* If not self, record id of neighbour. */
-                if (i || j || k) {
-                  adjncy[cid * 26 + p] = cell_getid(s->cdim, ii, jj, kk) + bkg_cell_offset;
-                  p++;
-                }
               }
             }
           }
 
-          /* Next cell. */
-          cid++;
+          /* Loop over the shell of background cells around the zoom region. */
+          for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
+            for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
+              for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
+
+                /* Skip the void cell. */
+                if (ii == void_i && jj == void_j && kk == void_k) continue;
+
+                /* Store this background edge. */
+                adjncy[iedge] =
+                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                iedge++;
+              }
+            }
+          }
         }
       }
     }
-    *nadjcny = cid * 26;
+    
+    /* Loop over background cells and assign their edges. Normal background
+     * cells have 26 neighbours as usual, neighbour background cells have
+     * edges with  all zoom cells. */
+    for (int i = 0; i < cdim[0]; i++) {
+      for (int j = 0; j < cdim[1]; j++) {
+        for (int k = 0; k < cdim[2]; k++) {
+
+          /* Skip the void cell. */
+          if (i == void_i && j == void_j && k == void_k) continue;
+
+          /* Loop over a shell of neighbouring cells and
+           * skip if out of range. */
+          for (int ii = i - 1; ii <= i + 1; ii++) {
+            if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+            for (int jj = j - 1; jj <= j + 1; jj++) {
+              if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+              for (int kk = k - 1; kk <= k + 1; kk++) {
+                if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+                /* Skip self. */
+                if (ii == i && jj == j && kk == k) continue;
+
+                /* Get this cell. */
+                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                cj = &s->cells_top[cjd];
+
+                /* Include the zoom cells if the neighbour is the void cell. */
+                if (cj->tl_cell_type == void_tl_cell) {
+
+                  /* Loop over all zoom cells recording the neighbours. */
+                  for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+                    adjncy[iedge] = zoom_cjd;
+                    iedge++;
+                  }
+                  
+                } else {
+                  
+                  /* Otherwise, store this background edge. */
+                  adjncy[iedge] = cjd;
+                  iedge++;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    *nadjcny = s->zoom_props->nr_edges;
 
     /* If given set METIS xadj. */
     if (xadj != NULL) {
       xadj[0] = 0;
-      for (int k = 0; k < s->nr_cells; k++) xadj[k + 1] = xadj[k] + 26;
+      for (int k = 0; k < s->nr_cells; k++) {
+        /* Set pointer taking into account differing edge numbers. */
+        xadj[k + 1] = xadj[k] + s->cells_top[k]->nr_vertex_edges;
+      }
       *nxadj = s->nr_cells;
     }
     
@@ -723,30 +740,147 @@ static void accumulate_sizes(struct space *s, int verbose, double *counts) {
  */
 static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
-  
-  bzero(edges, sizeof(double) * s->nr_cells * 26); 
+  /* With a zoom region we need to handle the different grids.
+   * NOTE: For the zoom region we use the pure cell counts for weights
+   *       rather than the hydro focused sid_scale. */
+  if (s->with_zoom_region) {
+    bzero(edges, sizeof(double) * s->zoom_props->nr_edges); 
 
-  /* Loop over cells and neigbours */
-  for (int l = 0; l < s->nr_cells; l++) {
-    int p = 0;
-    for (int i = -1; i <= 1; i++) {
-      int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
-      for (int j = -1; j <= 1; j++) {
-        int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
-        for (int k = -1; k <= 1; k++) {
-          int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
-          
-          /* If not self, we work out the sort indices to get the expected
-           * fractional weight and add that. Scale to keep sum less than
-           * counts and a bit of tuning... */
-          if (i || j || k) {
-            edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
-            p++;
+    /* Get some useful constants. */
+    const int periodic = s->periodic;
+    const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+    const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                              s->zoom_props->cdim[2]};
+    const int void_i = s->zoom_props->zoom_cell_ijk[0];
+    const int void_j = s->zoom_props->zoom_cell_ijk[1];
+    const int void_k = s->zoom_props->zoom_cell_ijk[2];
+    const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+    const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+    
+    int iedge = 0;
+    /* Loop over zoom cells and assign their edges. Zoom cells at the edges
+     * have fewer neighbours, all zoom cells have edges with the first shell
+     * of background cells. */
+    for (int i = 0; i < zoom_cdim[0]; i++) {
+      for (int j = 0; j < zoom_cdim[1]; j++) {
+        for (int k = 0; k < zoom_cdim[2]; k++) {
+
+          /* Loop over a shell of neighbouring zoom cells and
+           * skip if outside the zoom region. */
+          for (int ii = i - 1; ii <= i + 1; ii++) {
+            if (ii < 0 || ii >= zoom_cdim[0]) continue;
+            for (int jj = j - 1; jj <= j + 1; jj++) {
+              if (jj < 0 || jj >= zoom_cdim[1]) continue;
+              for (int kk = k - 1; kk <= k + 1; kk++) {
+                if (kk < 0 || kk >= zoom_cdim[2]) continue;
+
+                /* Skip self. */
+                if (ii == i && jj == j && kk == k) continue;
+
+                /* Store this zoom edge. */
+                const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
+                edges[iedge] = counts[cjd];
+                iedge++;
+
+              }
+            }
+          }
+
+          /* Loop over the shell of background cells around the zoom region. */
+          for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
+            for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
+              for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
+
+                /* Skip the void cell. */
+                if (ii == void_i && jj == void_j && kk == void_k) continue;
+
+                /* Store this background edge. */
+                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                edges[iedge] = counts[cjd];
+                iedge++;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    /* Loop over background cells and assign their edges. Normal background
+     * cells have 26 neighbours as usual, neighbour background cells have
+     * edges with  all zoom cells. */
+    for (int i = 0; i < cdim[0]; i++) {
+      for (int j = 0; j < cdim[1]; j++) {
+        for (int k = 0; k < cdim[2]; k++) {
+
+          /* Skip the void cell. */
+          if (i == void_i && j == void_j && k == void_k) continue;
+
+          /* Loop over a shell of neighbouring cells and
+           * skip if periodic and out of range. */
+          for (int ii = i - 1; ii <= i + 1; ii++) {
+            if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
+            for (int jj = j - 1; jj <= j + 1; jj++) {
+              if (!periodic && (jj < 0 || jj >= cdim[1])) continue;
+              for (int kk = k - 1; kk <= k + 1; kk++) {
+                if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
+
+                /* Skip self. */
+                if (ii == i && jj == j && kk == k) continue;
+
+                /* Get this cell. */
+                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                cj = &s->cells_top[cjd];
+
+                /* Include the zoom cells if the neighbour is the void cell. */
+                if (cj->tl_cell_type == void_tl_cell) {
+
+                  /* Loop over all zoom cells recording the neighbours. */
+                  for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+                    edges[iedge] = counts[zoom_cjd];
+                    iedge++;
+                  }
+                  
+                } else {
+                  
+                  /* Otherwise, store this background edge. */
+                  edges[iedge] = counts[cjd];
+                  iedge++;
+                }
+              }
+            }
           }
         }
       }
     }
   }
+
+  /* Otherwise we can use the simple version. */
+  else {
+    bzero(edges, sizeof(double) * s->nr_cells * 26); 
+
+    /* Loop over cells and neigbours */
+    for (int l = 0; l < s->nr_cells; l++) {
+      int p = 0;
+      for (int i = -1; i <= 1; i++) {
+        int isid = ((i < 0) ? 0 : ((i > 0) ? 2 : 1));
+        for (int j = -1; j <= 1; j++) {
+          int jsid = isid * 3 + ((j < 0) ? 0 : ((j > 0) ? 2 : 1));
+          for (int k = -1; k <= 1; k++) {
+            int ksid = jsid * 3 + ((k < 0) ? 0 : ((k > 0) ? 2 : 1));
+            
+            /* If not self, we work out the sort indices to get the expected
+             * fractional weight and add that. Scale to keep sum less than
+             * counts and a bit of tuning... */
+            if (i || j || k) {
+              edges[l * 26 + p] = counts[l] * sid_scale[sortlistID[ksid]] / 26.0;
+              p++;
+            }
+          }
+        }
+      }
+    }
+  }
+
 }
 #endif
 
@@ -1417,15 +1551,15 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   /* Total number of cells. */
   int ncells = s->nr_cells;
 
+  /* Total number of edges. */
+  int nedges = s->zoom_props->nr_edges;
+
   /* Nothing much to do if only using a single partition. Also avoids METIS
    * bug that doesn't handle this case well. */
   if (nregions == 1) {
     for (int i = 0; i < ncells; i++) celllist[i] = 0;
     return;
   }
-
-  /* Define the number of edges we have to handle. */
-  int nedges = 26 * ncells;   
 
   /* Only one node needs to calculate this. */
   if (nodeID == 0) {
@@ -2212,12 +2346,11 @@ void partition_initial_partition(struct partition *initial_partition,
     } else if (initial_partition->type == INITPART_METIS_WEIGHT_EDGE) {
 
       /* Define the number of edges we have to handle. */
-      int nedges = 26 * s->nr_cells;
-      /* if (s->with_zoom_region) { */
-      /*   int nedges = 26 * (nr_cells + s->zoom_props->nr_zoom_cells); */
-      /* } else { */
-      /*   int nedges = 26 * nr_cells;    */
-      /* } */
+      if (s->with_zoom_region) {
+        int nedges = s->zoom_props->nr_edges;
+      } else {
+        int nedges = 26 * nr_cells;
+      }
 
       /* Particle sizes also counted towards the edges. */
 
