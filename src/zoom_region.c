@@ -787,9 +787,9 @@ void find_neighbouring_cells(struct space *s,
 }
 
 /**
- * @brief For METIS we need to work out how many edgess each vertex (cell) has.
+ * @brief For METIS we need to work out how many edges each vertex (cell) has.
  *
- * @param ci, cj The two TL cells.
+ * @param verbose The two TL cells.
  * @param periodic Account for periodicity?
  * @param dim The boxsize.
  */
@@ -855,10 +855,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
         /* Get this cell. */
         const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
         c = &s->cells_top[cid];
-
-        /* Skip the void cell. */
-        if (c->tl_cell_type == void_tl_cell)
-          continue;
 
         /* Initialise count. */
         c->nr_vertex_edges = 0;

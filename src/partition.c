@@ -353,9 +353,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
             for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
 
-                /* Skip the void cell. */
-                if (ii == void_i && jj == void_j && kk == void_k) continue;
-
                 /* Store this background edge. */
                 adjncy[iedge] =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
@@ -373,9 +370,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     for (int i = 0; i < cdim[0]; i++) {
       for (int j = 0; j < cdim[1]; j++) {
         for (int k = 0; k < cdim[2]; k++) {
-
-          /* Skip the void cell. */
-          if (i == void_i && j == void_j && k == void_k) continue;
 
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -792,9 +786,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
             for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
 
-                /* Skip the void cell. */
-                if (ii == void_i && jj == void_j && kk == void_k) continue;
-
                 /* Store this background edge. */
                 const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
                 edges[iedge] = counts[cjd];
@@ -812,9 +803,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     for (int i = 0; i < cdim[0]; i++) {
       for (int j = 0; j < cdim[1]; j++) {
         for (int k = 0; k < cdim[2]; k++) {
-
-          /* Skip the void cell. */
-          if (i == void_i && j == void_j && k == void_k) continue;
 
           /* Loop over a shell of neighbouring cells and
            * skip if periodic and out of range. */
