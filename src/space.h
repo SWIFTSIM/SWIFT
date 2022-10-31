@@ -444,6 +444,13 @@ struct zoom_region_properties {
   /*! Number of particles that have left the zoom region and been converted to
    * dark matter */
   size_t nr_wanderers;
+  
+#ifdef WITH_ZOOM_REGION
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /*! The total number of edges summed over all cells.  */
+  int nr_edges;
+#endif
+#endif
 };
 
 /* Function prototypes. */

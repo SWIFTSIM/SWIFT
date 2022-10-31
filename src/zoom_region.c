@@ -653,6 +653,13 @@ void construct_tl_cells_with_zoom_region(
   if (s->with_zoom_region)
     find_neighbouring_cells(s, gravity_properties, verbose);
 
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+  /* Find the number of edges we will need for the domain decomp. */
+  find_vertex_edges(s, verbose);
+
+#endif
+
 #endif
 }
 
@@ -776,6 +783,117 @@ void find_neighbouring_cells(struct space *s,
 
   if (verbose)
     message("%i cells neighbouring the zoom region", neighbour_count);
+#endif
+}
+
+/**
+ * @brief For METIS we need to work out how many edgess each vertex (cell) has.
+ *
+ * @param ci, cj The two TL cells.
+ * @param periodic Account for periodicity?
+ * @param dim The boxsize.
+ */
+void find_vertex_edges(struct space *s, const int verbose) {
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+
+  /* Get some useful constants. */
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                            s->zoom_props->cdim[2]};
+  const int periodic = s->periodic;
+  struct cell *cells = s->cells_top;
+  const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  struct cell *restrict c;
+
+  /* Loop over zoom cells and count their edges. Zoom cells at the edges
+   * have fewer neighbours, all zoom cells have edges with the first shell
+   * of background cells. */
+  for (int i = 0; i < zoom_cdim[0]; i++) {
+    for (int j = 0; j < zoom_cdim[1]; j++) {
+      for (int k = 0; k < zoom_cdim[2]; k++) {
+
+        /* Get this cell. */
+        const size_t cid = cell_getid(zoom_cdim, i, j, k);
+        c = &s->cells_top[cid];
+
+        /* Include the background cell edges. */
+        c->nr_vertex_edges = 26;
+
+        /* Loop over every other cell within (Manhattan) range delta and
+         * skip if outside the zoom region. */
+        for (int ii = i - 1; ii <= i + 1; ii++) {
+          if (ii < 0 || ii >= zoom_cdim[0]) continue;
+          for (int jj = j - 1; jj <= j + 1; jj++) {
+            if (jj < 0 || jj >= zoom_cdim[1]) continue;
+            for (int kk = k - 1; kk <= k + 1; kk++) {
+              if (kk < 0 || kk >= zoom_cdim[2]) continue;
+
+              /* Include this edge. */
+              c->nr_vertex_edges++;
+
+            }
+          }
+        }
+
+        /* Include this edge count in the total. */
+        s->nr_edges += c->nr_vertex_edges;
+
+      }
+    }
+  }
+
+  /* Loop over background cells and count their edges. Normal background
+   * cells have 26 neighbours as usual, neighbour background cells have
+   * edges with  all zoom cells. */
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+
+        /* Get this cell. */
+        const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+        c = &s->cells_top[cid];
+
+        /* Skip the void cell. */
+        if (c->tl_cell_type == void_tl_cell)
+          continue;
+        
+        /* Loop over every other cell within (Manhattan) range delta and
+         * skip if non-periodic and out of range. */
+        for (int ii = i - 1; ii <= i + 1; ii++) {
+          if (!periodic && (ii < 0 || ii >= zoom_cdim[0])) continue;
+          for (int jj = j - 1; jj <= j + 1; jj++) {
+            if (!periodic && (jj < 0 || jj >= zoom_cdim[1])) continue;
+            for (int kk = k - 1; kk <= k + 1; kk++) {
+              if (!periodic && (kk < 0 || kk >= zoom_cdim[2])) continue;
+
+              /* Get this cell. */
+              const size_t cjd = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+              cj = &s->cells_top[cjd];
+
+              /* Include the zoom cells if the neighbour is the void cell. */
+              if (cj->tl_cell_type == void_tl_cell) {
+                c->nr_vertex_edges += s->zoom_props->nr_zoom_cells;
+              } else {
+                /* Otheriwse, include this edge. */
+                c->nr_vertex_edges++;
+              }
+
+            }
+          }
+        }
+        
+        /* Include the background cell edges. */
+        c->nr_vertex_edges = 26;
+
+        /* Include this edge count in the total. */
+        s->nr_edges += c->nr_vertex_edges;
+
+      }
+    }
+  }
+
+  if (verbose)
+    message("%i 'edges' found in total", s->nr_edges);
 #endif
 }
 
