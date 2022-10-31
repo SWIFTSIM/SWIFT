@@ -828,11 +828,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
             for (int kk = k - 1; kk <= k + 1; kk++) {
               if (kk < 0 || kk >= zoom_cdim[2]) continue;
 
-              /* Skip self. */
-              if (ii == i && jj == j && kk == k) continue;
-
-              /* Include this edge. */
-              c->nr_vertex_edges++;
+              /* If not self record an edge. */
+              if (ii || jj || kk) c->nr_vertex_edges++;
 
             }
           }
@@ -868,21 +865,21 @@ void find_vertex_edges(struct space *s, const int verbose) {
             for (int kk = k - 1; kk <= k + 1; kk++) {
               if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
-              /* Skip self. */
-              if (ii == i && jj == j && kk == k) continue;
+              /* If not self. */
+              if (ii || jj || kk) {
 
-              /* Get this cell. */
-              const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
-              cj = &s->cells_top[cjd];
+                /* Get this cell. */
+                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                cj = &s->cells_top[cjd];
 
-              /* Include the zoom cells if the neighbour is the void cell. */
-              if (cj->tl_cell_type == void_tl_cell) {
-                c->nr_vertex_edges += s->zoom_props->nr_zoom_cells;
-              } else {
-                /* Otheriwse, include this edge. */
-                c->nr_vertex_edges++;
+                /* Include the zoom cells if the neighbour is the void cell. */
+                if (cj->tl_cell_type == void_tl_cell) {
+                  c->nr_vertex_edges += s->zoom_props->nr_zoom_cells;
+                } else {
+                  /* Otheriwse, include this edge. */
+                  c->nr_vertex_edges++;
+                }
               }
-
             }
           }
         }

@@ -843,6 +843,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     }
   }
 
+  message("Got edges.");
+
   /* Otherwise we can use the simple version. */
   else {
     bzero(edges, sizeof(double) * s->nr_cells * 26); 
