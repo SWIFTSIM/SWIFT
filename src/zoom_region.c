@@ -859,6 +859,9 @@ void find_vertex_edges(struct space *s, const int verbose) {
         /* Skip the void cell. */
         if (c->tl_cell_type == void_tl_cell)
           continue;
+
+        /* Initialise count. */
+        c->nr_vertex_edges = 0;
         
         /* Loop over a shell of neighbouring cells and
          * skip if out of range. */
@@ -873,7 +876,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
               if (ii == i && jj == j && kk == k) continue;
 
               /* Get this cell. */
-              const size_t cjd = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+              const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
               cj = &s->cells_top[cjd];
 
               /* Include the zoom cells if the neighbour is the void cell. */
@@ -888,9 +891,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
           }
         }
         
-        /* Include the background cell edges. */
-        c->nr_vertex_edges = 26;
-
         /* Include this edge count in the total. */
         s->zoom_props->nr_edges += c->nr_vertex_edges;
 
