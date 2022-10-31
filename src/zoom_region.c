@@ -893,8 +893,13 @@ void find_vertex_edges(struct space *s, const int verbose) {
             for (int kk = k - 1; kk <= k + 1; kk++) {
               if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
+              /* Apply periodic BC (not harmful if not using periodic BC) */
+              const int iii = (ii + cdim[0]) % cdim[0];
+              const int jjj = (jj + cdim[1]) % cdim[1];
+              const int kkk = (kk + cdim[2]) % cdim[2];
+
               /* Get cell index. */
-              const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+              const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
 
               /* If not self. */
               if (cid != cjd) {
