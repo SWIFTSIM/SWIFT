@@ -799,23 +799,17 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
            * skip if outside the zoom region. */
           for (int ii = i - 1; ii <= i + 1; ii++) {
             if (ii < 0 || ii >= zoom_cdim[0]) continue;
-            int iii = ii - i;
-            int isid = ((iii < 0) ? 0 : ((iii > 0) ? 2 : 1));
             for (int jj = j - 1; jj <= j + 1; jj++) {
               if (jj < 0 || jj >= zoom_cdim[1]) continue;
-              int jjj = jj - j;
-              int jsid = isid * 3 + ((jjj < 0) ? 0 : ((jjj > 0) ? 2 : 1));
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (kk < 0 || kk >= zoom_cdim[2]) continue;
-                int kkk = kk - k;
-                int ksid = jsid * 3 + ((kkk < 0) ? 0 : ((kkk > 0) ? 2 : 1));
 
                 /* Get cell index. */
                 const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
 
                 /* If not self store an edge. */
                 if (cid != cjd) {
-                  edges[iedge] = counts[cid] * sid_scale[sortlistID[ksid]] / 26.0;
+                  edges[iedge] = counts[cjd];
                   iedge++;
                 }
               }
@@ -824,14 +818,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* Loop over the shell of background cells around the zoom region. */
           for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
-            int iii = ii - void_i;
-            int isid = ((iii < 0) ? 0 : ((iii > 0) ? 2 : 1));
             for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
-              int jjj = jj - void_j;
-              int jsid = isid * 3 + ((jjj < 0) ? 0 : ((jjj > 0) ? 2 : 1));
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
-                int kkk = kk - void_k;
-                int ksid = jsid * 3 + ((kkk < 0) ? 0 : ((kkk > 0) ? 2 : 1));
 
                 /* Store this background edge. */
                 const size_t cjd =
@@ -841,7 +829,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 if (cjd == s->zoom_props->void_cell_index) continue;
 
                 /* Store this edge */
-                edges[iedge] = counts[cid] * sid_scale[sortlistID[ksid]] / 26.0;
+                edges[iedge] = counts[cjd];
                 iedge++;
               }
             }
