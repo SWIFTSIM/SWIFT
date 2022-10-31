@@ -360,6 +360,13 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
 
                 /* Store this background edge. */
+                const size_t cjd =
+                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+
+                /* Handle the void cell. */
+                if (cjd == s->zoom_props->void_cell_index) continue;
+
+                /* Store this background edge. */
                 adjncy[iedge] =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
                 iedge++;
@@ -379,6 +386,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+
+          /* Handle the void cell. */
+          if (cid == s->zoom_props->void_cell_index) continue;
 
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -811,13 +821,11 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
 
                 /* Handle the void cell. */
-                if (cjd == s->zoom_props->void_cell_index) {
-                  edges[iedge] = 0;
-                  iedge++;
-                } else {
-                  edges[iedge] = counts[cjd];
-                  iedge++;
-                }
+                if (cjd == s->zoom_props->void_cell_index) continue;
+
+                /* Store this edge */
+                edges[iedge] = counts[cjd];
+                iedge++;
               }
             }
           }
@@ -834,6 +842,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+
+          /* Handle the void cell. */
+          if (cid == s->zoom_props->void_cell_index) continue;
 
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */

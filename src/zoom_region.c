@@ -845,6 +845,13 @@ void find_vertex_edges(struct space *s, const int verbose) {
         for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
           for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
             for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
+
+              /* Get this cell. */
+                const size_t cjd =
+                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+
+              /* Handle the void cell. */
+              if (cid == s->zoom_props->void_cell_index) continue;
               
               /* Record an edge. */
               c->nr_vertex_edges++;
@@ -870,6 +877,9 @@ void find_vertex_edges(struct space *s, const int verbose) {
         /* Get this cell. */
         const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
         c = &s->cells_top[cid];
+
+        /* Skip the void cell. */
+        if (c->tl_cell_type == void_tl_cell) continue;
 
         /* Initialise count. */
         c->nr_vertex_edges = 0;
