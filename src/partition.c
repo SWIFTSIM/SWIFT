@@ -819,8 +819,14 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* Loop over the shell of background cells around the zoom region. */
           for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
+            int iii = ii - void_i;
+            int isid = ((iii < 0) ? 0 : ((iii > 0) ? 2 : 1));
             for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
+              int jjj = jj - void_j;
+              int jsid = isid * 3 + ((jjj < 0) ? 0 : ((jjj > 0) ? 2 : 1));
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
+                int kkk = kk - void_k;
+                int ksid = jsid * 3 + ((kkk < 0) ? 0 : ((kkk > 0) ? 2 : 1));
 
                 /* Store this background edge. */
                 const size_t cjd =
@@ -830,7 +836,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 if (cjd == s->zoom_props->void_cell_index) continue;
 
                 /* Store this edge */
-                edges[iedge] = counts[cjd];
+                edges[iedge] = counts[cid] * sid_scale[sortlistID[ksid]] / 26.0;
                 iedge++;
               }
             }
@@ -891,7 +897,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
       }
     }
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Ensure we've visted all eges we expected to visit. */
+    /* Ensure we've visted all edges we expected to visit. */
     if (iedge != s->zoom_props->nr_edges)
       error("Number of edges inconsistent with space "
             "(nedges=%d, s->zoom_props->nr_edges=%d)",
