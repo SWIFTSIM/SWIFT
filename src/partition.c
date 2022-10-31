@@ -327,6 +327,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     for (int i = 0; i < zoom_cdim[0]; i++) {
       for (int j = 0; j < zoom_cdim[1]; j++) {
         for (int k = 0; k < zoom_cdim[2]; k++) {
+          
+          /* Get cell index. */
+          const size_t cid = cell_getid(zoom_cdim, i, j, k);
 
           /* Loop over a shell of neighbouring zoom cells and
            * skip if outside the zoom region. */
@@ -337,13 +340,16 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (kk < 0 || kk >= zoom_cdim[2]) continue;
 
-                /* Skip self. */
-                if (ii == i && jj == j && kk == k) continue;
+                /* Get cell index. */
+                const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
 
-                /* Store this zoom edge. */
-                adjncy[iedge] = cell_getid(zoom_cdim, ii, jj, kk);
-                iedge++;
+                /* If not self. */
+                if (cid != cjd) {
 
+                  /* Store this zoom edge. */
+                  adjncy[iedge] = cjd;
+                  iedge++;
+                }
               }
             }
           }
@@ -371,6 +377,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
       for (int j = 0; j < cdim[1]; j++) {
         for (int k = 0; k < cdim[2]; k++) {
 
+          /* Get cell index. */
+          const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
           for (int ii = i - 1; ii <= i + 1; ii++) {
@@ -380,12 +389,13 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
-                /* Skip self. */
-                if (ii == i && jj == j && kk == k) continue;
-
                 /* Get this cell. */
-                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                const size_t cjd =
+                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
+
+                /* Skip self */
+                if (cid == cjd) continue;
 
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
@@ -768,6 +778,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
       for (int j = 0; j < zoom_cdim[1]; j++) {
         for (int k = 0; k < zoom_cdim[2]; k++) {
 
+          /* Get cell index. */
+          const size_t cid = cell_getid(zoom_cdim, i, j, k);
+
           /* Loop over a shell of neighbouring zoom cells and
            * skip if outside the zoom region. */
           for (int ii = i - 1; ii <= i + 1; ii++) {
@@ -777,9 +790,11 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (kk < 0 || kk >= zoom_cdim[2]) continue;
 
+                /* Get cell index. */
+                const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
+
                 /* If not self store an edge. */
-                if (ii || jj || kk) {
-                  const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
+                if (cid != cjd) {
                   edges[iedge] = counts[cjd];
                   iedge++;
                 }
@@ -793,7 +808,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
 
                 /* Store this background edge. */
-                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                const size_t cjd =
+                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
                 edges[iedge] = counts[cjd];
                 iedge++;
               }
@@ -810,6 +826,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
       for (int j = 0; j < cdim[1]; j++) {
         for (int k = 0; k < cdim[2]; k++) {
 
+          /* Get cell index. */
+          const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
           for (int ii = i - 1; ii <= i + 1; ii++) {
@@ -819,28 +838,28 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
-                /* If not self. */
-                if (ii || jj || kk) {
+                /* Get this cell. */
+                const size_t cjd =
+                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                cj = &s->cells_top[cjd];
 
-                  /* Get this cell. */
-                  const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
-                  cj = &s->cells_top[cjd];
+                /* Skip self */
+                if (cid == cjd) continue;
 
-                  /* Include the zoom cells if the neighbour is the void cell. */
-                  if (cj->tl_cell_type == void_tl_cell) {
+                /* Include the zoom cells if the neighbour is the void cell. */
+                if (cj->tl_cell_type == void_tl_cell) {
 
-                    /* Loop over all zoom cells recording the neighbours. */
-                    for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
-                      edges[iedge] = counts[zoom_cjd];
-                      iedge++;
-                    }
-                  
-                  } else {
-                    
-                    /* Otherwise, store this background edge. */
-                    edges[iedge] = counts[cjd];
+                  /* Loop over all zoom cells recording the neighbours. */
+                  for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+                    edges[iedge] = counts[zoom_cjd];
                     iedge++;
                   }
+                  
+                } else {
+                    
+                  /* Otherwise, store this background edge. */
+                  edges[iedge] = counts[cjd];
+                  iedge++;
                 }
               }
             }

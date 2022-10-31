@@ -831,8 +831,11 @@ void find_vertex_edges(struct space *s, const int verbose) {
             for (int kk = k - 1; kk <= k + 1; kk++) {
               if (kk < 0 || kk >= zoom_cdim[2]) continue;
 
+              /* Get cell index. */
+              const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
+
               /* If not self record an edge. */
-              if (ii || jj || kk) c->nr_vertex_edges++;
+              if (cid != cjd) c->nr_vertex_edges++;
 
             }
           }
@@ -880,11 +883,13 @@ void find_vertex_edges(struct space *s, const int verbose) {
             for (int kk = k - 1; kk <= k + 1; kk++) {
               if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
+              /* Get cell index. */
+              const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+
               /* If not self. */
-              if (ii || jj || kk) {
+              if (cid != cjd) {
 
                 /* Get this cell. */
-                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
 
                 /* Include the zoom cells if the neighbour is the void cell. */
