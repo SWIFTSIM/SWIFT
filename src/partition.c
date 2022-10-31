@@ -399,8 +399,13 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
+                /* Apply periodic BC (not harmful if not using periodic BC) */
+                const int iii = (ii + cdim[0]) % cdim[0];
+                const int jjj = (jj + cdim[1]) % cdim[1];
+                const int kkk = (kk + cdim[2]) % cdim[2];
+
                 /* Get this cell. */
-                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
 
                 /* Skip self */
@@ -867,9 +872,14 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
+                /* Apply periodic BC (not harmful if not using periodic BC) */
+                const int iii = (ii + cdim[0]) % cdim[0];
+                const int jjj = (jj + cdim[1]) % cdim[1];
+                const int kkk = (kk + cdim[2]) % cdim[2];
+
                 /* Get this cell. */
                 const size_t cjd =
-                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                  cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
 
                 /* Skip self */
