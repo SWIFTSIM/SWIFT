@@ -841,6 +841,13 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure we've visted all eges we expected to visit. */
+    if (iedge != s->zoom_props->nr_edges)
+      error("Number of edges inconsistent with space "
+            "(nedges=%d, s->zoom_props->nr_edges=%d)",
+            iedge, s->zoom_props->nr_edges)
+#endif
   }
 
   /* Otherwise we can use the simple version. */
@@ -1632,7 +1639,6 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     int nadjcny = 0;
     int nxadj = 0;
     graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
-    message("graph intitailised");
 
     /* Set the METIS options. */
     idx_t options[METIS_NOPTIONS];
@@ -1650,8 +1656,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     idx_t objval;
 
     /* Dump graph in METIS format */
-    dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
-                   NULL, weights_e);
+    /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v, */
+    /*                NULL, weights_e); */
 
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
