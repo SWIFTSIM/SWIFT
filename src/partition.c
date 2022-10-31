@@ -366,8 +366,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
         }
       }
     }
-
-    message("completed graph_init for zoom cells.");
     
     /* Loop over background cells and assign their edges. Normal background
      * cells have 26 neighbours as usual, neighbour background cells have
@@ -416,8 +414,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
         }
       }
     }
-    message("completed graph_init for background cells.");
-    *nadjcny = s->zoom_props->nr_edges;
+    *nadjcny = iedge;
 
     /* If given set METIS xadj. */
     if (xadj != NULL) {
@@ -428,7 +425,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
       }
       *nxadj = s->nr_cells;
     }
-    message("Set xadj pointers.");
     
   } else if (periodic) {
     int cid = 0;
@@ -1588,8 +1584,6 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
       error("Failed to allocate regionid array");
 
-    message("allocated arrays.");
-
     /* Init the vertex weights array. */
     if (vertexw != NULL) {
       for (int k = 0; k < ncells; k++) {
@@ -1649,7 +1643,6 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
-    message("made it to graph init.");
     graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
 
     /* Set the METIS options. */
@@ -1668,8 +1661,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     idx_t objval;
 
     /* Dump graph in METIS format */
-    /*dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
-                   NULL, weights_e);*/
+    dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v,
+                   NULL, weights_e);
 
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
