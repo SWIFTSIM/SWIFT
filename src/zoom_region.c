@@ -802,6 +802,9 @@ void find_vertex_edges(struct space *s, const int verbose) {
                             s->zoom_props->cdim[2]};
   const int periodic = s->periodic;
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+  const int void_i = s->zoom_props->zoom_cell_ijk[0];
+  const int void_j = s->zoom_props->zoom_cell_ijk[1];
+  const int void_k = s->zoom_props->zoom_cell_ijk[2];
   struct cell *restrict c;
   struct cell *restrict cj;
 
@@ -816,8 +819,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
         const size_t cid = cell_getid(zoom_cdim, i, j, k);
         c = &s->cells_top[cid];
 
-        /* Include the background cell edges. */
-        c->nr_vertex_edges = 26;
+        /* Initialise count. */
+        c->nr_vertex_edges = 0;
 
         /* Loop over a shell of neighbouring cells and
          * skip if outside the zoom region. */
@@ -831,6 +834,18 @@ void find_vertex_edges(struct space *s, const int verbose) {
               /* If not self record an edge. */
               if (ii || jj || kk) c->nr_vertex_edges++;
 
+            }
+          }
+        }
+
+        /* Loop over the shell of background cells around the zoom region. */
+        for (int ii = void_i - 1; ii <= void_i + 1; ii++) {
+          for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
+            for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
+              
+              /* Record an edge. */
+              c->nr_vertex_edges++;
+              
             }
           }
         }

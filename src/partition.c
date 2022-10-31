@@ -410,6 +410,14 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     }
     *nadjcny = iedge;
 
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure we've visted all eges we expected to visit. */
+    if (iedge != s->zoom_props->nr_edges)
+      error("Number of edges inconsistent with space "
+            "(nedges=%d, s->zoom_props->nr_edges=%d)",
+            iedge, s->zoom_props->nr_edges);
+#endif
+
     /* If given set METIS xadj. */
     if (xadj != NULL) {
       xadj[0] = 0;
@@ -769,14 +777,12 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (kk < 0 || kk >= zoom_cdim[2]) continue;
 
-                /* Skip self. */
-                if (ii == i && jj == j && kk == k) continue;
-
-                /* Store this zoom edge. */
-                const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
-                edges[iedge] = counts[cjd];
-                iedge++;
-
+                /* If not self store an edge. */
+                if (ii || jj || kk) {
+                  const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
+                  edges[iedge] = counts[cjd];
+                  iedge++;
+                }
               }
             }
           }
@@ -805,7 +811,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         for (int k = 0; k < cdim[2]; k++) {
 
           /* Loop over a shell of neighbouring cells and
-           * skip if periodic and out of range. */
+           * skip if out of range. */
           for (int ii = i - 1; ii <= i + 1; ii++) {
             if (!periodic && (ii < 0 || ii >= cdim[0])) continue;
             for (int jj = j - 1; jj <= j + 1; jj++) {
@@ -813,27 +819,28 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
               for (int kk = k - 1; kk <= k + 1; kk++) {
                 if (!periodic && (kk < 0 || kk >= cdim[2])) continue;
 
-                /* Skip self. */
-                if (ii == i && jj == j && kk == k) continue;
+                /* If not self. */
+                if (ii || jj || kk) {
 
-                /* Get this cell. */
-                const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
-                cj = &s->cells_top[cjd];
+                  /* Get this cell. */
+                  const size_t cjd = cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                  cj = &s->cells_top[cjd];
 
-                /* Include the zoom cells if the neighbour is the void cell. */
-                if (cj->tl_cell_type == void_tl_cell) {
+                  /* Include the zoom cells if the neighbour is the void cell. */
+                  if (cj->tl_cell_type == void_tl_cell) {
 
-                  /* Loop over all zoom cells recording the neighbours. */
-                  for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
-                    edges[iedge] = counts[zoom_cjd];
+                    /* Loop over all zoom cells recording the neighbours. */
+                    for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+                      edges[iedge] = counts[zoom_cjd];
+                      iedge++;
+                    }
+                  
+                  } else {
+                    
+                    /* Otherwise, store this background edge. */
+                    edges[iedge] = counts[cjd];
                     iedge++;
                   }
-                  
-                } else {
-                  
-                  /* Otherwise, store this background edge. */
-                  edges[iedge] = counts[cjd];
-                  iedge++;
                 }
               }
             }
