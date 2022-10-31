@@ -805,6 +805,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
+
+    message("completed size_to_edges for zoom cells.");
     
     /* Loop over background cells and assign their edges. Normal background
      * cells have 26 neighbours as usual, neighbour background cells have
@@ -853,6 +855,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
+    message("completed size_to_edges for background cells.");
   }
 
   /* Otherwise we can use the simple version. */
