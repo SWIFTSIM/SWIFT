@@ -318,9 +318,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-#ifdef SWIFT_DEBUG_CHECKS
-    struct cell *restrict c;
-#endif
     struct cell *restrict cj;
   
     int iedge = 0;
@@ -330,14 +327,14 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     for (int i = 0; i < zoom_cdim[0]; i++) {
       for (int j = 0; j < zoom_cdim[1]; j++) {
         for (int k = 0; k < zoom_cdim[2]; k++) {
-
-          int p = 0;
           
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
-#ifdef SWIFT_DEBUG_CHECKS
-          c = &s->cells_top[cid];
-#endif
+
+          /* If given set METIS xadj. */
+          if (xadj != NULL) {
+            xadj[cid] = iedge;
+          }  
           
           /* Loop over a shell of neighbouring zoom cells and
            * skip if outside the zoom region. */
@@ -357,7 +354,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   /* Store this zoom edge. */
                   adjncy[iedge] = cjd;
                   iedge++;
-                  p++;
                 }
               }
             }
@@ -378,16 +374,9 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 /* Store this background edge. */
                 adjncy[iedge] = cjd;
                 iedge++;
-                p++;
               }
             }
           }
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Ensure we have found the right number of edges for this cell. */
-          if (p != c->nr_vertex_edges)
-            error("This cell has inconsistent edges (found=%d, "
-                  "c->nr_vertex_edges=%d)", p, c->nr_vertex_edges);
-#endif
         }
       }
     }
@@ -399,16 +388,16 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
       for (int j = 0; j < cdim[1]; j++) {
         for (int k = 0; k < cdim[2]; k++) {
 
-          int p = 0;
-
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-#ifdef SWIFT_DEBUG_CHECKS
-          c = &s->cells_top[cid];
-#endif
 
           /* Handle the void cell. */
           if (cid == s->zoom_props->void_cell_index) continue;
+
+          /* If given set METIS xadj. */
+          if (xadj != NULL) {
+            xadj[cid] = iedge;
+          }  
 
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -438,7 +427,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
                     adjncy[iedge] = zoom_cjd;
                     iedge++;
-                    p++;
                   }
                   
                 } else {
@@ -446,17 +434,10 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   /* Otherwise, store this background edge. */
                   adjncy[iedge] = cjd;
                   iedge++;
-                  p++;
                 }
               }
             }
           }
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Ensure we have found the right number of edges for this cell. */
-          if (p != c->nr_vertex_edges)
-            error("This cell has inconsistent edges (found=%d, "
-                  "c->nr_vertex_edges=%d)", p, c->nr_vertex_edges);
-#endif
         }
       }
     }
@@ -470,13 +451,8 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
             iedge, s->zoom_props->nr_edges);
 #endif
 
-    /* If given set METIS xadj. */
+    /* If given set METIS nxadj. */
     if (xadj != NULL) {
-      xadj[0] = 0;
-      for (int k = 0; k < s->nr_cells; k++) {
-        /* Set pointer taking into account differing edge numbers. */
-        xadj[k + 1] = xadj[k] + s->cells_top[k].nr_vertex_edges;
-      }
       *nxadj = s->nr_cells;
     }
     
