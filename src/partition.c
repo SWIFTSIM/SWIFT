@@ -386,7 +386,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           /* Ensure we have found the right number of edges for this cell. */
           if (p != c->nr_vertex_edges)
             error("This cell has inconsistent edges (found=%d, "
-                  "c->nr_vertex_edges=)", p, c->nr_vertex_edges);
+                  "c->nr_vertex_edges=%d)", p, c->nr_vertex_edges);
 #endif
         }
       }
@@ -455,7 +455,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           /* Ensure we have found the right number of edges for this cell. */
           if (p != c->nr_vertex_edges)
             error("This cell has inconsistent edges (found=%d, "
-                  "c->nr_vertex_edges=)", p, c->nr_vertex_edges);
+                  "c->nr_vertex_edges=%d)", p, c->nr_vertex_edges);
 #endif
         }
       }
