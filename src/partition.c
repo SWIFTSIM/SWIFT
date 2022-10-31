@@ -805,8 +805,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
-
-    message("completed size_to_edges for zoom cells.");
     
     /* Loop over background cells and assign their edges. Normal background
      * cells have 26 neighbours as usual, neighbour background cells have
@@ -855,7 +853,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
-    message("completed size_to_edges for background cells.");
   }
 
   /* Otherwise we can use the simple version. */
@@ -1587,6 +1584,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     if ((regionid = (idx_t *)malloc(sizeof(idx_t) * ncells)) == NULL)
       error("Failed to allocate regionid array");
 
+    message("allocated arrays.");
+
     /* Init the vertex weights array. */
     if (vertexw != NULL) {
       for (int k = 0; k < ncells; k++) {
@@ -1646,6 +1645,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     /* Define the cell graph. Keeping the edge weights association. */
     int nadjcny = 0;
     int nxadj = 0;
+    message("made it to graph init.");
     graph_init(s, s->periodic, weights_e, adjncy, &nadjcny, xadj, &nxadj);
 
     /* Set the METIS options. */
@@ -2344,7 +2344,6 @@ void partition_initial_partition(struct partition *initial_partition,
     } else {
       nedges = 26 * s->nr_cells;
     }
-
     
     double *weights_v = NULL;
     double *weights_e = NULL;
