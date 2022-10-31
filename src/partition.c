@@ -841,9 +841,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
+    message("Got edges.");
   }
-
-  message("Got edges.");
 
   /* Otherwise we can use the simple version. */
   else {
