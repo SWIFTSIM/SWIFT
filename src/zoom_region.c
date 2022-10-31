@@ -801,9 +801,9 @@ void find_vertex_edges(struct space *s, const int verbose) {
   const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                             s->zoom_props->cdim[2]};
   const int periodic = s->periodic;
-  struct cell *cells = s->cells_top;
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
   struct cell *restrict c;
+  struct cell *restrict cj;
 
   /* Loop over zoom cells and count their edges. Zoom cells at the edges
    * have fewer neighbours, all zoom cells have edges with the first shell
@@ -836,7 +836,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
         }
 
         /* Include this edge count in the total. */
-        s->nr_edges += c->nr_vertex_edges;
+        s->zoom_props->nr_edges += c->nr_vertex_edges;
 
       }
     }
@@ -886,14 +886,14 @@ void find_vertex_edges(struct space *s, const int verbose) {
         c->nr_vertex_edges = 26;
 
         /* Include this edge count in the total. */
-        s->nr_edges += c->nr_vertex_edges;
+        s->zoom_props->nr_edges += c->nr_vertex_edges;
 
       }
     }
   }
 
   if (verbose)
-    message("%i 'edges' found in total", s->nr_edges);
+    message("%i 'edges' found in total", s->zoom_props->nr_edges);
 #endif
 }
 
