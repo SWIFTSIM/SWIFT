@@ -846,7 +846,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     if (iedge != s->zoom_props->nr_edges)
       error("Number of edges inconsistent with space "
             "(nedges=%d, s->zoom_props->nr_edges=%d)",
-            iedge, s->zoom_props->nr_edges)
+            iedge, s->zoom_props->nr_edges);
 #endif
   }
 
