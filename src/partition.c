@@ -318,7 +318,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-    struct cell *restrict c;
     struct cell *restrict cj;
   
     int iedge = 0;
@@ -422,7 +421,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
       xadj[0] = 0;
       for (int k = 0; k < s->nr_cells; k++) {
         /* Set pointer taking into account differing edge numbers. */
-        xadj[k + 1] = xadj[k] + &s->cells_top[k]->nr_vertex_edges;
+        xadj[k + 1] = xadj[k] + s->cells_top[k].nr_vertex_edges;
       }
       *nxadj = s->nr_cells;
     }
@@ -757,6 +756,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+    struct cell *restrict cj;
     
     int iedge = 0;
     /* Loop over zoom cells and assign their edges. Zoom cells at the edges
