@@ -383,8 +383,8 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 const size_t cjd =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
 
-                /* /\* Handle the void cell. *\/ */
-                /* if (cjd == s->zoom_props->void_cell_index) continue; */
+                /* Handle the void cell. */
+                if (cjd == s->zoom_props->void_cell_index) continue;
 
                 /* Store this background edge. */
                 adjncy[iedge] = cjd;
@@ -446,25 +446,22 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
 
+                /* Skip self */
+                if (cid == cjd) continue;
+
+                /* Store this background edge. */
+                adjncy[iedge] = cjd;
+                iedge++;
+
                 /* Include the zoom cells if the neighbour is the void cell. */
-                if (((cid == s->zoom_props->void_cell_index) && (cid == cjd)) ||
-                    (cj->tl_cell_type == void_tl_cell)) {
+                if (cj->tl_cell_type == void_tl_cell) {
 
                   /* Loop over all zoom cells recording the neighbours. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
                     adjncy[iedge] = zoom_cjd;
                     iedge++;
                   }
-                  continue;
                 }
-
-                /* Skip self */
-                if (cid == cjd) continue;
-
-                /* Otherwise, store this background edge. */
-                adjncy[iedge] = cjd;
-                iedge++;
-                
               }
             }
           }
@@ -855,12 +852,12 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
             for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
 
-                /* /\* Store this background edge. *\/ */
-                /* const size_t cjd = */
-                /*   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset; */
+                /* Store this background edge. */
+                const size_t cjd =
+                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
 
-                /* /\* Handle the void cell. *\/ */
-                /* if (cjd == s->zoom_props->void_cell_index) continue; */
+                /* Handle the void cell. */
+                if (cjd == s->zoom_props->void_cell_index) continue;
 
                 /* Store this edge
                  * (here the zoom cell is the dominant contributor) */
@@ -905,6 +902,13 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                   cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
 
+                /* Skip self */
+                if (cid == cjd) continue;
+
+                /* Store this background edge. */
+                edges[iedge] = counts[cjd];
+                iedge++;
+
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
 
@@ -913,16 +917,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                     edges[iedge] = counts[zoom_cjd];
                     iedge++;
                   }
-                  continue;
-                }
-
-                /* Skip self */
-                if (cid == cjd) continue;
-                    
-                /* Otherwise, store this background edge. */
-                edges[iedge] = counts[cjd];
-                iedge++;
-                
+                }   
               }
             }
           }
