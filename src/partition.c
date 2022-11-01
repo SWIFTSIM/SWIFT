@@ -854,9 +854,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
             for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
 
-                /* Store this background edge. */
-                const size_t cjd =
-                  cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                /* /\* Store this background edge. *\/ */
+                /* const size_t cjd = */
+                /*   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset; */
 
                 /* /\* Handle the void cell. *\/ */
                 /* if (cjd == s->zoom_props->void_cell_index) continue; */
