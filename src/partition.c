@@ -1752,6 +1752,8 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
                             &objval, regionid) != METIS_OK)
       error("Call to METIS_PartGraphKway failed.");
 
+    message("made it out of METIS");
+
     /* Check that the regionids are ok. */
     for (int k = 0; k < ncells; k++) {
       if (regionid[k] < 0 || regionid[k] >= nregions)
