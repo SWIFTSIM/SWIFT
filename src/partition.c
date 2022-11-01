@@ -872,8 +872,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
       }
     }
 
-    message("Got zoom cell size to edges");
-    
     /* Loop over background cells and assign their edges. Normal background
      * cells have 26 neighbours as usual, neighbour background cells have
      * edges with  all zoom cells. */
@@ -1748,6 +1746,7 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
     /* dumpMETISGraph("metis_graph", idx_ncells, one, xadj, adjncy, weights_v, */
     /*                NULL, weights_e); */
 
+    message("Made it to metis");
     if (METIS_PartGraphKway(&idx_ncells, &one, xadj, adjncy, weights_v, NULL,
                             weights_e, &idx_nregions, NULL, NULL, options,
                             &objval, regionid) != METIS_OK)
@@ -2450,6 +2449,7 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e);
+      message("Completed sizes to edges");
     }
 
     /* Do the calculation. */
