@@ -878,8 +878,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
         const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
         c = &s->cells_top[cid];
 
-        /* Skip the void cell. */
-        if (c->tl_cell_type == void_tl_cell) continue;
+        /* /\* Skip the void cell. *\/ */
+        /* if (c->tl_cell_type == void_tl_cell) continue; */
 
         /* Initialise count. */
         c->nr_vertex_edges = 0;
