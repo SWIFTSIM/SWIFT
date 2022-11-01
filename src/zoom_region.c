@@ -910,12 +910,10 @@ void find_vertex_edges(struct space *s, const int verbose) {
 
               /* Get cell index. */
               const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
+              cj = &s->cells_top[cjd];
 
               /* If not self. */
               if ((cj->tl_cell_type != void_tl_cell) && (cid != cjd)) {
-
-                /* Get this cell. */
-                cj = &s->cells_top[cjd];
 
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
