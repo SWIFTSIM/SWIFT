@@ -331,6 +331,21 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
 
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Ensure the previous cell has found enough edges. */
+          if ((cid > 0) &&
+              ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
+            error("Found too few edges (nedges=%d, c->nr_vertex_edges=%d)",
+                  iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
+
+          /* Double check this number of edges is valid. */
+          if ((iedge - xadj[cid - 1]) < 26)
+            error("Found a cell with too few edges (c->tl_cell_type=%d, "
+                  "c->nr_vertex_edges=%d)",
+                  s->cells_top[cid - 1].tl_cell_type,
+                  s->cells_top[cid - 1].nr_vertex_edges);
+#endif
+
           /* If given set METIS xadj. */
           if (xadj != NULL) {
             xadj[cid] = iedge;
@@ -390,6 +405,21 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Ensure the previous cell has found enough edges. */
+          if ((cid > 0) &&
+              ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
+            error("Found too few edges (nedges=%d, c->nr_vertex_edges=%d)",
+                  iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
+
+          /* Double check this number of edges is valid. */
+          if ((iedge - xadj[cid - 1]) < 26)
+            error("Found a cell with too few edges (c->tl_cell_type=%d, "
+                  "c->nr_vertex_edges=%d)",
+                  s->cells_top[cid - 1].tl_cell_type,
+                  s->cells_top[cid - 1].nr_vertex_edges);
+#endif
 
           /* If given set METIS xadj. */
           if (xadj != NULL) {
