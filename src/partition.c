@@ -862,6 +862,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 /* if (cjd == s->zoom_props->void_cell_index) continue; */
 
                 /* Store this edge */
+                if (cjd == s->zoom_props->void_cell_index) {
+                  counts[cjd] = 0;
+                }
                 edges[iedge] = counts[cjd];
                 iedge++;
               }
