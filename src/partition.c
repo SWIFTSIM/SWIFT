@@ -861,12 +861,9 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 /* /\* Handle the void cell. *\/ */
                 /* if (cjd == s->zoom_props->void_cell_index) continue; */
 
-                /* Store this edge */
-                if (cjd == s->zoom_props->void_cell_index) {
-                  edges[iedge] = 0;
-                  iedge++;
-                }
-                edges[iedge] = counts[cjd];
+                /* Store this edge
+                 * (here the zoom cell is the dominant contributor) */
+                edges[iedge] = counts[cid];
                 iedge++;
               }
             }
