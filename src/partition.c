@@ -863,7 +863,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
                 /* Store this edge */
                 if (cjd == s->zoom_props->void_cell_index) {
-                  counts[cjd] = 0;
+                  edges[iedge] = 0;
+                  iedge++;
                 }
                 edges[iedge] = counts[cjd];
                 iedge++;
@@ -873,6 +874,8 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
         }
       }
     }
+
+    message("Got zoom cell size to edges");
     
     /* Loop over background cells and assign their edges. Normal background
      * cells have 26 neighbours as usual, neighbour background cells have
