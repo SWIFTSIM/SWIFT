@@ -446,9 +446,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
 
-                /* Skip self */
-                if (cid == cjd) continue;
-
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
 
@@ -457,13 +454,16 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                     adjncy[iedge] = zoom_cjd;
                     iedge++;
                   }
-                  
-                } else {
-                  
-                  /* Otherwise, store this background edge. */
-                  adjncy[iedge] = cjd;
-                  iedge++;
+                  continue;
                 }
+
+                /* Skip self */
+                if (cid == cjd) continue;
+
+                /* Otherwise, store this background edge. */
+                adjncy[iedge] = cjd;
+                iedge++;
+                
               }
             }
           }
@@ -904,9 +904,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                   cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
 
-                /* Skip self */
-                if (cid == cjd) continue;
-
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
 
@@ -915,13 +912,16 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                     edges[iedge] = counts[zoom_cjd];
                     iedge++;
                   }
-                  
-                } else {
-                    
-                  /* Otherwise, store this background edge. */
-                  edges[iedge] = counts[cjd];
-                  iedge++;
+                  continue;
                 }
+
+                /* Skip self */
+                if (cid == cjd) continue;
+                    
+                /* Otherwise, store this background edge. */
+                edges[iedge] = counts[cjd];
+                iedge++;
+                
               }
             }
           }

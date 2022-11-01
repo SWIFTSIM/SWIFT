@@ -912,7 +912,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
               const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
 
               /* If not self. */
-              if (cid != cjd) {
+              if ((cj->tl_cell_type != void_tl_cell) && (cid != cjd)) {
 
                 /* Get this cell. */
                 cj = &s->cells_top[cjd];
