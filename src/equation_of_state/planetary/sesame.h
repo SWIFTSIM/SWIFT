@@ -990,26 +990,14 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
 
   // If no roots are found in the current search range, we increase search range
   // by search_factor_log_rho above and below the reference density each iteration.
-  const float search_factor_log_rho = logf(2.f);   
+  const float search_factor_log_rho = logf(10.f);   
     
     // Initialise the minimum and maximum densities we're searching to at the
     // reference density. These will change before the first iteration.
     float log_rho_min = log_rho_ref;
     float log_rho_max = log_rho_ref;
     
-    // When searching, we increase the range above/below with every iteration if no
-    // roots are found in the current range. We search from index idx_rho_above_min
-    // to idx_rho_above_max when searching above. idx_rho_above_min is the closest
-    // index above the reference density which we haven't seached in a previous iteration
-    // and idx_rho_above_max is the rounded up index associated with log_rho_max
-    // When searching below, we search from idx_rho_below_max to idx_rho_below_min.
-    // idx_rho_below_max is the closest index below the reference density which we
-    // haven't seached in a previous iteration and idx_rho_below_min is the rounded down
-    // index associated with log_rho_min
-
     // Initialise search indices around rho_ref
-    int idx_rho_below_max = idx_rho_ref;
-    int idx_rho_above_min = idx_rho_ref;
     int idx_rho_below_min, idx_rho_above_max;
     
     // If we find a root, it will get stored as closest_root
@@ -1022,30 +1010,11 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
     P_above_upper = 0.f;
     P_below_lower = 0.f;
     
-    // Counters will stop us getting stuck in a while loop.
-    int max_counter = 5;
-    int counter1 = 0;
-    int counter2;
-    
-    // Start search for roots
-    while (closest_root == 0.f && counter1 < max_counter){
         // Increase search range by search_factor_log_rho
         log_rho_max += search_factor_log_rho;
         idx_rho_above_max = find_value_in_monot_incr_array(log_rho_max, mat->table_log_rho, mat->num_rho);
         log_rho_min -= search_factor_log_rho; 
-        idx_rho_below_min = find_value_in_monot_incr_array(log_rho_min, mat->table_log_rho, mat->num_rho);
-        
-        counter2 = 0;
-        // If table densities have large enough increments that increasing search range
-        // by search_factor_log_rho doesn't change the table indices we're looking between,
-        // increase search range by search_factor_log_rho until we're between new indices
-        while ((idx_rho_below_min > idx_rho_below_max || idx_rho_above_max < idx_rho_above_min) && counter2 < max_counter) {
-                 log_rho_max += search_factor_log_rho;
-                 idx_rho_above_max = find_value_in_monot_incr_array(log_rho_max, mat->table_log_rho, mat->num_rho);
-                 log_rho_min -= search_factor_log_rho; 
-                 idx_rho_below_min = find_value_in_monot_incr_array(log_rho_min, mat->table_log_rho, mat->num_rho);
-                 counter2 += 1;
-        }
+        idx_rho_below_min = find_value_in_monot_incr_array(log_rho_min, mat->table_log_rho, mat->num_rho);        
               
         float P_1, P_2, P_3, P_4;
         int idx_rho, idx_u_1, idx_u_2;
@@ -1057,7 +1026,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
         // table values of rho.
 
         // First look for roots above rho_ref
-        for (idx_rho = idx_rho_above_min; idx_rho <= idx_rho_above_max; idx_rho++) {   
+        for (idx_rho = idx_rho_ref; idx_rho <= idx_rho_above_max; idx_rho++) {   
            
             // This is similar to P_u_rho, but we're not interest in intp_rho,
             // but instead calculate the pressure for both intp_rho=0 and intp_rho=1
@@ -1182,11 +1151,11 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
         // if we found a root above, change search range below so that we're only looking for closer (in log) roots than the one we found
         if (closest_root){
              log_rho_min = log_rho_ref -  (logf(closest_root) - log_rho_ref);
-             idx_rho_below_min = idx_rho_below_min = find_value_in_monot_incr_array(log_rho_min, mat->table_log_rho, mat->num_rho);
+             idx_rho_below_min = find_value_in_monot_incr_array(log_rho_min, mat->table_log_rho, mat->num_rho);
         }
         
          // Now look for roots below rho_ref
-        for (idx_rho = idx_rho_below_max; idx_rho >= idx_rho_below_min; idx_rho--) {   
+        for (idx_rho = idx_rho_ref; idx_rho >= idx_rho_below_min; idx_rho--) {   
                    
           // Sp. int. energy at this and the next density (in relevant slice of u array)
           idx_u_1 = find_value_in_monot_incr_array(
@@ -1309,17 +1278,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
          if (closest_root){
             return  closest_root;
           }
-        
-        // If we didn't find a root, get ready to extend the search range
-        idx_rho_below_max = idx_rho_below_min;
-        idx_rho_above_min = idx_rho_above_max;
-        counter1 += 1;
-        
-        // If we cover the whole EoS table and don't find a root, return rho_ref. Maybe we should give an error here?
-        if (idx_rho_below_max == 0 && idx_rho_above_min == mat->num_rho - 1){
-            return  rho_sph;
-         }       
-    }    
+          
     // If we don't find a root before we reach max_counter, return rho_ref. Maybe we should give an error here?
     return rho_sph;
 }
