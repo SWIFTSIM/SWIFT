@@ -339,7 +339,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
 
           /* Double check this number of edges is valid. */
-          if ((iedge - xadj[cid - 1]) < 26)
+          if ((cid > 0) && ((iedge - xadj[cid - 1]) < 26))
             error("Found a cell with too few edges (c->tl_cell_type=%d, "
                   "c->nr_vertex_edges=%d)",
                   s->cells_top[cid - 1].tl_cell_type,
@@ -408,8 +408,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure the previous cell has found enough edges. */
-          if ((cid > 0) &&
-              ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
+          if ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges)
             error("Found too few edges (nedges=%d, c->nr_vertex_edges=%d)",
                   iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
 
