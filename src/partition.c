@@ -447,7 +447,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 cj = &s->cells_top[cjd];
 
                 /* Include the zoom cells if the neighbour is the void cell. */
-                if (cj->tl_cell_type == void_tl_cell) {
+                if ((ci->tl_cell_type == void_tl_cell) && (cid == cjd)) {
 
                   /* Loop over all zoom cells recording the neighbours. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
