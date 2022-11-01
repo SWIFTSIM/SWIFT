@@ -955,19 +955,18 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
      
    float S;  
    float f_S; 
-   float P_tilde; 
+   float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
+    
+      float grad_drho_dh = sqrtf(p->grad_drho_dh[0] * p->grad_drho_dh[0] + p->grad_drho_dh[1] * p->grad_drho_dh[1] + p->grad_drho_dh[2] * p->grad_drho_dh[2]); 
+      S = (p->h /p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
+     f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.15f)));
+    
   /* Turn S to 0 if h == h_max */
-  if (p->is_h_max) {
+  if (p->is_h_max || f_S > 0.99f) {
     S = 0.f; //This is only for output files
     f_S = 1.f;   
   }else{
-      P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
-      
-      float grad_drho_dh = sqrtf(p->grad_drho_dh[0] * p->grad_drho_dh[0] + p->grad_drho_dh[1] * p->grad_drho_dh[1] + p->grad_drho_dh[2] * p->grad_drho_dh[2]); 
-      S = (p->h /p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
-      
-      // Compute new P
-     f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.15f)));
+     // Compute new P 
      float P_new = f_S * p->P + (1.f - f_S) * P_tilde;
       
       
