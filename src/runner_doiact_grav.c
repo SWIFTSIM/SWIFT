@@ -2839,8 +2839,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const int cdim[3] = {s->cdim[0], s->cdim[1],
-                       s->cdim[2]};
+  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
@@ -2850,13 +2849,12 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
 
   /* Compute maximal distance where we can expect a direct interaction */
   const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
+      e->gravity_properties, sqrtf(3) * ci->width[0],
       s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance /
-                          cells[bkg_cell_offset].width[0]) + 1;
+  const int delta = (int)(sqrt(3) * distance / ci->width[0]) + 1;
   int delta_m = delta;
   int delta_p = delta;
 
