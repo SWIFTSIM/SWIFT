@@ -323,7 +323,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     struct cell *restrict cj;
     
     /* Define a distance for zoom->background edges. */
-    const double edge_dist = s->width[0] / 4;
+    const double edge_dist = s->width[0] / 2;
     const double edge_dist2 = edge_dist * edge_dist;
   
     int iedge = 0;
@@ -348,7 +348,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* If given set METIS xadj. */
           if (xadj != NULL) {
-            xadj[cid] = iedge;
+            xadj[cid] = (idx_t *) iedge;
           }  
           
           /* Loop over a shell of neighbouring zoom cells and
@@ -426,7 +426,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* If given set METIS xadj. */
           if (xadj != NULL) {
-            xadj[cid] = iedge;
+            xadj[cid] = (idx_t *) iedge;
           }  
 
           /* Loop over a shell of neighbouring cells and
@@ -833,7 +833,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     struct cell *restrict cj;
 
     /* Define a distance for zoom->background edges. */
-    const double edge_dist = s->width[0] / 4;
+    const double edge_dist = s->width[0] / 2;
     const double edge_dist2 = edge_dist * edge_dist;
     
     int iedge = 0;
