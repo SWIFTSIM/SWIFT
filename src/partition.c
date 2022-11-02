@@ -827,11 +827,13 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 /* Get cell index. */
                 const size_t cjd = cell_getid(zoom_cdim, ii, jj, kk);
 
-                /* If not self store an edge. */
-                if (cid != cjd) {
-                  edges[iedge] = counts[cjd];
-                  iedge++;
-                }
+                /* Skip self. */
+                if (cid == cjd) continue;
+
+                /* Store this edge */
+                edges[iedge] = counts[cjd];
+                iedge++;
+                
               }
             }
           }
@@ -841,7 +843,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
             for (int jj = void_j - 1; jj <= void_j + 1; jj++) {
               for (int kk = void_k - 1; kk <= void_k + 1; kk++) {
 
-                /* Store this background edge. */
+                /* Get this cell. */
                 const size_t cjd =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
                 cj = &s->cells_top[cjd];
@@ -901,7 +903,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 if (cj->tl_cell_type == void_tl_cell) {
                   
                   /* Loop over zoom cells and include any within distance. */
-                  for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
+                  for (int zoom_cjd = 0; zoom_cjd <= nr_zoom_cells; zoom_cjd++) {
 
                     /* Store this background edge. */
                     edges[iedge] = counts[zoom_cjd];
