@@ -310,6 +310,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
   if (s->with_zoom_region) {
 
     /* Get some useful constants. */
+    const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
     const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
     const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                               s->zoom_props->cdim[2]};
@@ -318,7 +319,12 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+    struct cell *restrict c;
     struct cell *restrict cj;
+    
+    /* Define a distance for zoom->background edges. */
+    const double edge_dist = s->width[0] / 2;
+    const double edge_dist2 = edge_dist * edge_dist;
   
     int iedge = 0;
     /* Loop over zoom cells and assign their edges. Zoom cells at the edges
@@ -330,6 +336,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
+          c = &s->cells_top[cid];
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure the previous cell has found enough edges. */
@@ -382,13 +389,23 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 /* Get this background cell. */
                 const size_t cjd =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                cj = &s->cells_top[cjd];
 
                 /* Handle the void cell. */
                 if (cjd == s->zoom_props->void_cell_index) continue;
 
-                /* Store this background edge. */
-                adjncy[iedge] = cjd;
-                iedge++;
+                /* Minimal distance between any pair of particles */
+                const double min_radius2 =
+                  cell_min_dist2_diff_size(c, cj, periodic, dim);
+              
+                /* Record an edge. */
+                if (min_radius2 <= edge_dist2) {
+                  
+                  /* Store this background edge. */
+                  adjncy[iedge] = cjd;
+                  iedge++;
+                  
+                }
               }
             }
           }
@@ -425,9 +442,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
             xadj[cid] = iedge;
           }  
 
-          /* /\* Handle the void cell. *\/ */
-          /* if (cid == s->zoom_props->void_cell_index) continue; */
-
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
           for (int ii = i - 1; ii <= i + 1; ii++) {
@@ -456,10 +470,24 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
 
-                  /* Loop over all zoom cells recording the neighbours. */
+                  /* Loop over zoom cells and include any within distance. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
-                    adjncy[iedge] = zoom_cjd;
-                    iedge++;
+
+                    /* Get this cell. */
+                    cj = &s->cells_top[zoom_cjd];
+                  
+                    /* Minimal distance between any pair of particles */
+                    const double min_radius2 =
+                      cell_min_dist2_diff_size(c, cj, periodic, dim);
+              
+                    /* Record an edge. */
+                    if (min_radius2 <= edge_dist2) {
+                      
+                      /* Store this background edge. */
+                      adjncy[iedge] = zoom_cjd;
+                      iedge++;
+                      
+                    }   
                   }
                 }
               }
@@ -804,6 +832,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     bzero(edges, sizeof(double) * s->zoom_props->nr_edges); 
 
     /* Get some useful constants. */
+    const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
     const int periodic = s->periodic;
     const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
     const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
@@ -813,7 +842,12 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+    struct cell *restrict c;
     struct cell *restrict cj;
+
+    /* Define a distance for zoom->background edges. */
+    const double edge_dist = s->width[0] / 2;
+    const double edge_dist2 = edge_dist * edge_dist;
     
     int iedge = 0;
     /* Loop over zoom cells and assign their edges. Zoom cells at the edges
@@ -825,6 +859,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
+          c = &s->cells_top[cid];
 
           /* Loop over a shell of neighbouring zoom cells and
            * skip if outside the zoom region. */
@@ -855,14 +890,24 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 /* Store this background edge. */
                 const size_t cjd =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+                cj = &s->cells_top[cjd];
 
                 /* Handle the void cell. */
                 if (cjd == s->zoom_props->void_cell_index) continue;
 
-                /* Store this edge
-                 * (here the zoom cell is the dominant contributor) */
-                edges[iedge] = counts[cid];
-                iedge++;
+                /* Minimal distance between any pair of particles */
+                const double min_radius2 =
+                  cell_min_dist2_diff_size(c, cj, periodic, dim);
+              
+                /* Record an edge. */
+                if (min_radius2 <= edge_dist2) {
+                
+                  /* Store this edge
+                   * (here the zoom cell is the dominant contributor) */
+                  edges[iedge] = counts[cid];
+                  iedge++;
+
+                }
               }
             }
           }
@@ -879,9 +924,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-
-          /* /\* Handle the void cell. *\/ */
-          /* if (cid == s->zoom_props->void_cell_index) continue; */
+          c = &s->cells_top[cid];
 
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -911,13 +954,27 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
                 /* Include the zoom cells if the neighbour is the void cell. */
                 if (cj->tl_cell_type == void_tl_cell) {
-
-                  /* Loop over all zoom cells recording the neighbours. */
+                  
+                  /* Loop over zoom cells and include any within distance. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
-                    edges[iedge] = counts[zoom_cjd];
-                    iedge++;
-                  }
-                }   
+
+                    /* Get this cell. */
+                    cj = &s->cells_top[zoom_cjd];
+
+                    /* Minimal distance between any pair of particles */
+                    const double min_radius2 =
+                      cell_min_dist2_diff_size(c, cj, periodic, dim);
+              
+                    /* Record an edge. */
+                    if (min_radius2 <= edge_dist2) {
+                      
+                      /* Store this background edge. */
+                      edges[iedge] = counts[zoom_cjd];
+                      iedge++;
+                      
+                    }
+                  }   
+                }
               }
             }
           }
@@ -2447,7 +2504,6 @@ void partition_initial_partition(struct partition *initial_partition,
 
       /* Spread these into edge weights. */
       sizes_to_edges(s, weights_v, weights_e);
-      message("Completed sizes to edges");
     }
 
     /* Do the calculation. */
