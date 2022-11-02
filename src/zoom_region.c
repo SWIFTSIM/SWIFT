@@ -934,7 +934,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
                      zoom_cjd < s->zoom_props->nr_zoom_cells; zoom_cjd++) {
 
                   /* Get this cell. */
-                  cj = &s->cells_top[cjd];
+                  cj = &s->cells_top[zoom_cjd];
 
                   /* Minimal distance between any pair of particles */
                   const double min_radius2 =
