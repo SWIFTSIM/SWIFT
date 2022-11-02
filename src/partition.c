@@ -319,14 +319,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-    struct cell *restrict ci;
     struct cell *restrict cj;
-    
-    /* Define a distance for zoom->background edges.
-    * NOTE: This minimises the number of zoom->background edges to avoid
-    * huge massively interconnected adjncy arrays. */
-    const double edge_dist = s->width[0] * 2;
-    const double edge_dist2 = edge_dist * edge_dist;
   
     int iedge = 0;
     /* Loop over zoom cells and assign their edges. Zoom cells at the edges
@@ -338,7 +331,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
-          ci = &s->cells_top[cid];
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure the previous cell has found enough edges. */
@@ -389,18 +381,10 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                 /* Handle the void cell. */
                 if (cjd == s->zoom_props->void_cell_index) continue;
 
-                /* Minimal distance between any pair of particles */
-                const double min_radius2 =
-                  cell_min_dist2_diff_size(ci, cj, periodic, dim);
-              
-                /* Record an edge. */
-                if (min_radius2 <= edge_dist2) {
+                /* Store this background edge. */
+                adjncy[iedge] = cjd;
+                iedge++;
                   
-                  /* Store this background edge. */
-                  adjncy[iedge] = cjd;
-                  iedge++;
-                  
-                }
               }
             }
           }
@@ -417,7 +401,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-          ci = &s->cells_top[cid];
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure the previous cell has found enough edges. */
@@ -461,22 +444,11 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
                   /* Loop over zoom cells and include any within distance. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
-
-                    /* Get this cell. */
-                    cj = &s->cells_top[zoom_cjd];
-                  
-                    /* Minimal distance between any pair of particles */
-                    const double min_radius2 =
-                      cell_min_dist2_diff_size(ci, cj, periodic, dim);
-              
-                    /* Record an edge. */
-                    if (min_radius2 <= edge_dist2) {
                       
-                      /* Store this background edge. */
-                      adjncy[iedge] = zoom_cjd;
-                      iedge++;
+                    /* Store this background edge. */
+                    adjncy[iedge] = zoom_cjd;
+                    iedge++;
                       
-                    }   
                   }
                 }
               }
@@ -832,12 +804,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-    struct cell *restrict c;
     struct cell *restrict cj;
-
-    /* Define a distance for zoom->background edges. */
-    const double edge_dist = s->width[0] * 2;
-    const double edge_dist2 = edge_dist * edge_dist;
     
     int iedge = 0;
     /* Loop over zoom cells and assign their edges. Zoom cells at the edges
@@ -849,7 +816,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
-          c = &s->cells_top[cid];
 
           /* Loop over a shell of neighbouring zoom cells and
            * skip if outside the zoom region. */
@@ -883,21 +849,13 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 cj = &s->cells_top[cjd];
 
                 /* Handle the void cell. */
-                if (cjd == s->zoom_props->void_cell_index) continue;
+                if (cj->tl_cell_type == void_tl_cell) continue;
 
-                /* Minimal distance between any pair of particles */
-                const double min_radius2 =
-                  cell_min_dist2_diff_size(c, cj, periodic, dim);
-              
-                /* Record an edge. */
-                if (min_radius2 <= edge_dist2) {
-                
-                  /* Store this edge
-                   * (here the zoom cell is the dominant contributor) */
-                  edges[iedge] = counts[cid];
-                  iedge++;
+                /* Store this edge
+                 * (here the zoom cell is the dominant contributor) */
+                edges[iedge] = counts[cid];
+                iedge++;
 
-                }
               }
             }
           }
@@ -914,7 +872,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-          c = &s->cells_top[cid];
 
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -948,21 +905,10 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                   /* Loop over zoom cells and include any within distance. */
                   for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
 
-                    /* Get this cell. */
-                    cj = &s->cells_top[zoom_cjd];
+                    /* Store this background edge. */
+                    edges[iedge] = counts[zoom_cjd];
+                    iedge++;
 
-                    /* Minimal distance between any pair of particles */
-                    const double min_radius2 =
-                      cell_min_dist2_diff_size(c, cj, periodic, dim);
-              
-                    /* Record an edge. */
-                    if (min_radius2 <= edge_dist2) {
-                      
-                      /* Store this background edge. */
-                      edges[iedge] = counts[zoom_cjd];
-                      iedge++;
-                      
-                    }
                   }   
                 }
               }

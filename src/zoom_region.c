@@ -809,10 +809,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
   struct cell *restrict c;
   struct cell *restrict cj;
 
-  /* Define a distance for zoom->background edges. */
-  const double edge_dist = s->width[0] * 2;
-  const double edge_dist2 = edge_dist * edge_dist;
-
   /* Loop over zoom cells and count their edges. Zoom cells at the edges
    * have fewer neighbours, all zoom cells have edges with the first shell
    * of background cells. */
@@ -857,15 +853,10 @@ void find_vertex_edges(struct space *s, const int verbose) {
               cj = &s->cells_top[cjd];
 
               /* Handle the void cell. */
-              if (cjd == s->zoom_props->void_cell_index) continue;
-
-              /* Minimal distance between any pair of particles */
-              const double min_radius2 =
-                cell_min_dist2_diff_size(c, cj, periodic, dim);
+              if (cj->tl_cell_type == void_tl_cell) continue;
               
               /* Record an edge. */
-              if (min_radius2 <= edge_dist2)
-                c->nr_vertex_edges++;
+              c->nr_vertex_edges++;
               
             }
           }
@@ -877,7 +868,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
 
         /* Double check this number of edges is valid. */
-        if (c->nr_vertex_edges < 14)
+        if (c->nr_vertex_edges < 26)
           error("Found a zoom cell with too few edges (c->tl_cell_type=%d, "
                 "c->nr_vertex_edges=%d)",
                 c->tl_cell_type,
@@ -929,22 +920,8 @@ void find_vertex_edges(struct space *s, const int verbose) {
               /* Include the zoom cells if the neighbour is the void cell. */
               if (cj->tl_cell_type == void_tl_cell) {
 
-                /* Loop over zoom cells and include any within distance. */
-                for (int zoom_cjd = 0;
-                     zoom_cjd < s->zoom_props->nr_zoom_cells; zoom_cjd++) {
-
-                  /* Get this cell. */
-                  cj = &s->cells_top[zoom_cjd];
-
-                  /* Minimal distance between any pair of particles */
-                  const double min_radius2 =
-                    cell_min_dist2_diff_size(c, cj, periodic, dim);
+                c->nr_vertex_edges += s->zoom_props->nr_zoom_cells;
               
-                  /* Record an edge. */
-                  if (min_radius2 <= edge_dist2)
-                    c->nr_vertex_edges++;
-              
-                }
               }
             }
           }
