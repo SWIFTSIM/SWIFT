@@ -1811,6 +1811,7 @@ struct weights_mapper_data {
   int timebins;
   int vweights;
   int nedges;
+  int nr_cells;
   int use_ticks;
   struct cell *cells;
 };
@@ -2038,6 +2039,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.inds = inds;
   weights_data.nodeID = nodeID;
   weights_data.nedges = nedges;
+  weights_data.nr_cells = nr_cells;
   weights_data.timebins = timebins;
   weights_data.vweights = vweights;
   weights_data.weights_e = weights_e;
@@ -2836,6 +2838,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
   idx_t *inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
+  int nr_cells = mydata->nr_cells;
   int nedges = mydata->nedges;
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
