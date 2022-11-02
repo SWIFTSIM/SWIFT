@@ -1930,7 +1930,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
            * not be neighbours, in that case we ignore any edge weight for that
            * pair. */
           int ik = -1;
-          for (int k = ci->edges_start; k < nedges; k++) {
+          for (int k = ci->edges_start; k < s->zoom_props->nr_edges; k++) {
             if (inds[k] == cjd) {
               ik = k;
               break;
@@ -1939,7 +1939,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
           /* cj */
           int jk = -1;
-          for (int k = cj->edges_start; k < nedges; k++) {
+          for (int k = cj->edges_start; k < s->zoom_props->nr_edges; k++) {
             if (inds[k] == cid) {
               jk = k;
               break;
