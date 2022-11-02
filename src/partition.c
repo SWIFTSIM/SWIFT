@@ -1168,8 +1168,8 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   int nverts = vtxdist[nodeID + 1] - vtxdist[nodeID];
 
   /* We need to count how many edges are on this rank in the zoom case. */
+  int nr_my_edges = 0;
   if (s->with_zoom_region) {
-    int nr_my_edges = 0;
     for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++)
       nr_my_edges += s->cells_top[cid].nr_vertex_edges; 
   } else {
