@@ -348,7 +348,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* If given set METIS xadj. */
           if (xadj != NULL) {
-            xadj[cid] = (idx_t *) iedge;
+            xadj[cid] = (idx_t) iedge;
           }  
           
           /* Loop over a shell of neighbouring zoom cells and
@@ -426,7 +426,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* If given set METIS xadj. */
           if (xadj != NULL) {
-            xadj[cid] = (idx_t *) iedge;
+            xadj[cid] = (idx_t) iedge;
           }  
 
           /* Loop over a shell of neighbouring cells and
