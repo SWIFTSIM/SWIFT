@@ -310,7 +310,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
   if (s->with_zoom_region) {
 
     /* Get some useful constants. */
-    const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
     const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
     const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                               s->zoom_props->cdim[2]};
@@ -794,7 +793,6 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
     bzero(edges, sizeof(double) * s->zoom_props->nr_edges); 
 
     /* Get some useful constants. */
-    const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
     const int periodic = s->periodic;
     const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
     const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
