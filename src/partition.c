@@ -1121,6 +1121,14 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   /* Total number of cells. */
   int ncells = s->nr_cells;
 
+  /* Total number of edges. */
+  int nedges;
+  if (s->with_zoom_region) {
+    nedges = s->zoom_props->nr_edges;
+  } else {
+    nedges = 26 * s->nr_cells;
+  }
+  
   /* Nothing much to do if only using a single MPI rank. */
   if (nregions == 1) {
     for (int i = 0; i < ncells; i++) celllist[i] = 0;
@@ -1156,17 +1164,24 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to broadcast vtxdist.");
   }
 
-  message("Everyone has got their vertexes.");
-
   /* Number of cells on this node and space for the expected arrays. */
   int nverts = vtxdist[nodeID + 1] - vtxdist[nodeID];
+
+  /* We need to count how many edges are on this rank in the zoom case. */
+  if (s->with_zoom_region) {
+    int nr_my_edges = 0;
+    for (int cid = vtxdist[nodeID]; cid < vtxdist[nodeID + 1]; cid++)
+      nr_my_edges += s->cells_top[cid].nr_vertex_edges; 
+  } else {
+    nr_my_edges = nverts * 26;
+  }
 
   idx_t *xadj = NULL;
   if ((xadj = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
     error("Failed to allocate xadj buffer.");
 
   idx_t *adjncy = NULL;
-  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * nverts)) == NULL)
+  if ((adjncy = (idx_t *)malloc(sizeof(idx_t) * nr_my_edges)) == NULL)
     error("Failed to allocate adjncy array.");
 
   idx_t *weights_v = NULL;
@@ -1176,7 +1191,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
   idx_t *weights_e = NULL;
   if (edgew != NULL)
-    if ((weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * nverts)) == NULL)
+    if ((weights_e = (idx_t *)malloc(nr_my_edges * sizeof(idx_t))) == NULL)
       error("Failed to allocate edge weights array");
 
   idx_t *regionid = NULL;
@@ -1194,8 +1209,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   if ((stats = (MPI_Status *)malloc(sizeof(MPI_Status) * 5 * nregions)) == NULL)
     error("Failed to allocate MPI status list.");
 
-  message("Sucessfully allocated local memory.");
-
   /* Only use one rank to organize everything. */
   if (nodeID == 0) {
 
@@ -1208,7 +1221,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     if ((std_xadj = (idx_t *)malloc(sizeof(idx_t) * (ncells + 1))) == NULL)
       error("Failed to allocate std xadj buffer.");
     idx_t *full_adjncy = NULL;
-    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * 26 * ncells)) == NULL)
+    if ((full_adjncy = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
       error("Failed to allocate full adjncy array.");
     idx_t *full_weights_v = NULL;
     if (weights_v != NULL)
@@ -1216,8 +1229,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         error("Failed to allocate full vertex weights array");
     idx_t *full_weights_e = NULL;
     if (weights_e != NULL)
-      if ((full_weights_e = (idx_t *)malloc(26 * sizeof(idx_t) * ncells)) ==
-          NULL)
+      if ((full_weights_e = (idx_t *)malloc(nedges * sizeof(idx_t))) == NULL)
         error("Failed to allocate full edge weights array");
 
     idx_t *full_regionid = NULL;
@@ -1256,7 +1268,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 
     /* Init the edges weights array. */
     if (edgew != NULL) {
-      for (int k = 0; k < ncells * 26; k++) {
+      for (int k = 0; k < nedges; k++) {
         if (edgew[k] > 1) {
           full_weights_e[k] = edgew[k];
         } else {
@@ -1267,7 +1279,7 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
 #ifdef SWIFT_DEBUG_CHECKS
       /* Check weights are all in range. */
       int failed = 0;
-      for (int k = 0; k < ncells * 26; k++) {
+      for (int k = 0; k < nedges; k++) {
 
         if ((idx_t)edgew[k] < 0) {
           message("Input edge weight out of range: %ld", (long)edgew[k]);
@@ -1331,10 +1343,10 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
         res = MPI_Isend(&full_xadj[j1], nvt + 1, IDX_T, rank, 0, comm,
                         &reqs[5 * rank + 0]);
         if (res == MPI_SUCCESS)
-          res = MPI_Isend(&full_adjncy[j2], nvt * 26, IDX_T, rank, 1, comm,
+          res = MPI_Isend(&full_adjncy[j2], nedge, IDX_T, rank, 1, comm,
                           &reqs[5 * rank + 1]);
         if (res == MPI_SUCCESS && weights_e != NULL)
-          res = MPI_Isend(&full_weights_e[j2], nvt * 26, IDX_T, rank, 2, comm,
+          res = MPI_Isend(&full_weights_e[j2], nedge, IDX_T, rank, 2, comm,
                           &reqs[5 * rank + 2]);
         if (res == MPI_SUCCESS && weights_v != NULL)
           res = MPI_Isend(&full_weights_v[j3], nvt, IDX_T, rank, 3, comm,
@@ -1376,9 +1388,9 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     /* Receive stuff from rank 0. */
     res = MPI_Irecv(xadj, nverts + 1, IDX_T, 0, 0, comm, &reqs[0]);
     if (res == MPI_SUCCESS)
-      res = MPI_Irecv(adjncy, nverts * 26, IDX_T, 0, 1, comm, &reqs[1]);
+      res = MPI_Irecv(adjncy, nr_my_edges, IDX_T, 0, 1, comm, &reqs[1]);
     if (res == MPI_SUCCESS && weights_e != NULL)
-      res = MPI_Irecv(weights_e, nverts * 26, IDX_T, 0, 2, comm, &reqs[2]);
+      res = MPI_Irecv(weights_e, nr_my_edges, IDX_T, 0, 2, comm, &reqs[2]);
     if (res == MPI_SUCCESS && weights_v != NULL)
       res = MPI_Irecv(weights_v, nverts, IDX_T, 0, 3, comm, &reqs[3]);
     if (refine && res == MPI_SUCCESS)
@@ -1624,7 +1636,12 @@ static void pick_metis(int nodeID, struct space *s, int nregions,
   int ncells = s->nr_cells;
 
   /* Total number of edges. */
-  int nedges = s->zoom_props->nr_edges;
+  int nedges;
+  if (s->with_zoom_region) {
+    nedges = s->zoom_props->nr_edges;
+  } else {
+    nedges = 26 * s->nr_cells;
+  }
 
   /* Nothing much to do if only using a single partition. Also avoids METIS
    * bug that doesn't handle this case well. */
