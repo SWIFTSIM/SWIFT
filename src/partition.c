@@ -1449,8 +1449,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
   real_t ubvec[1];
   ubvec[0] = 1.001;
 
-  message("refine=%d", refine);
-
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
@@ -1506,8 +1504,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
     free(best_regionid);
   }
-
-  message("Made it through refinement.");
 
   /* Need to gather all the regionid arrays from the ranks. */
   for (int k = 0; k < nregions; k++) reqs[k] = MPI_REQUEST_NULL;
