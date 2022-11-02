@@ -2836,7 +2836,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
   idx_t *inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
-  int nr_cells = mydata->nr_cells;
+  int nedges = mydata->nedges;
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
@@ -2940,7 +2940,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
            * not be neighbours, in that case we ignore any edge weight for that
            * pair. */
           int ik = -1;
-          for (int k = 26 * cid; k < 26 * nr_cells; k++) {
+          for (int k = ci->edges_start; k < nedges; k++) {
             if (inds[k] == cjd) {
               ik = k;
               break;
@@ -2949,12 +2949,13 @@ static void check_weights(struct task *tasks, int nr_tasks,
 
           /* cj */
           int jk = -1;
-          for (int k = 26 * cjd; k < 26 * nr_cells; k++) {
+          for (int k = cj->edges_start; k < nedges; k++) {
             if (inds[k] == cid) {
               jk = k;
               break;
             }
           }
+          
           if (ik != -1 && jk != -1) {
 
             if (timebins) {
@@ -2983,15 +2984,18 @@ static void check_weights(struct task *tasks, int nr_tasks,
   }
 
   /* Now do the comparisons. */
-  double refsum = 0.0;
-  double sum = 0.0;
-  for (int k = 0; k < nr_cells; k++) {
-    refsum += ref_weights_v[k];
-    sum += weights_v[k];
+  if (vweights) {
+    double refsum = 0.0;
+    double sum = 0.0;
+    for (int k = 0; k < nr_cells; k++) {
+      refsum += ref_weights_v[k];
+      sum += weights_v[k];
+    } 
+    if (fabs(sum - refsum) > 1.0) 
+      error("vertex partition weights are not consistent (%f!=%f)", sum, refsum);
   }
-  if (fabs(sum - refsum) > 1.0) {
-    error("vertex partition weights are not consistent (%f!=%f)", sum, refsum);
-  } else {
+
+  if (eweights) {
     refsum = 0.0;
     sum = 0.0;
     for (int k = 0; k < 26 * nr_cells; k++) {
