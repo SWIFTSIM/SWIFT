@@ -480,6 +480,9 @@ struct cell {
   /*! The number of edges this cell has (translates to the number of
    * immediate neighbours)  */
   int nr_vertex_edges;
+
+  /*! The pointer to this cell's entry in the adjacency arrays.  */
+  int edges_start;
 #endif
 #endif
 

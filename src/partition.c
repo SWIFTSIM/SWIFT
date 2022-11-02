@@ -318,6 +318,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+    struct cell *restrict ci;
     struct cell *restrict cj;
   
     int iedge = 0;
@@ -330,6 +331,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
+          ci = &s->cells_top[cid];
 
 #ifdef SWIFT_DEBUG_CHECKS
            if (xadj != NULL) {
@@ -345,7 +347,10 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* If given set METIS xadj. */
           if (xadj != NULL) {
-            xadj[cid] = (idx_t) iedge;
+            xadj[cid] = iedge;
+
+            /* Set edges start pointer for this cell. */
+            ci->edges_start = iedge;
           }
           
           /* Loop over a shell of neighbouring zoom cells and
@@ -404,6 +409,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+          ci = &s->cells_top[cid];
 
 #ifdef SWIFT_DEBUG_CHECKS
           if (xadj != NULL) {
@@ -418,7 +424,10 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* If given set METIS xadj. */
           if (xadj != NULL) {
-            xadj[cid] = (idx_t) iedge;
+            xadj[cid] = iedge;
+            
+            /* Set edges start pointer for this cell. */
+            ci->edges_start = iedge;
           }
 
           /* Loop over a shell of neighbouring cells and
@@ -1917,13 +1926,11 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
         if (eweights) {
 
-          /* TODO: make compliant with zoom region */
-
           /* Find indices of ci/cj neighbours. Note with gravity these cells may
            * not be neighbours, in that case we ignore any edge weight for that
            * pair. */
           int ik = -1;
-          for (int k = 26 * cid; k < 26 * nr_cells; k++) {
+          for (int k = ci->edges_start; k < nedges; k++) {
             if (inds[k] == cjd) {
               ik = k;
               break;
@@ -1932,7 +1939,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
           /* cj */
           int jk = -1;
-          for (int k = 26 * cjd; k < 26 * nr_cells; k++) {
+          for (int k = cj->edges_start; k < nedges; k++) {
             if (inds[k] == cid) {
               jk = k;
               break;
