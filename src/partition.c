@@ -1810,7 +1810,7 @@ struct weights_mapper_data {
   int nodeID;
   int timebins;
   int vweights;
-  int nr_cells;
+  int nedges;
   int use_ticks;
   struct cell *cells;
 };
@@ -1840,7 +1840,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
   idx_t *inds = mydata->inds;
   int eweights = mydata->eweights;
   int nodeID = mydata->nodeID;
-  int nr_cells = mydata->nr_cells;
+  int nedges = mydata->nedges;
   int timebins = mydata->timebins;
   int vweights = mydata->vweights;
   int use_ticks = mydata->use_ticks;
@@ -1930,7 +1930,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
            * not be neighbours, in that case we ignore any edge weight for that
            * pair. */
           int ik = -1;
-          for (int k = ci->edges_start; k < s->zoom_props->nr_edges; k++) {
+          for (int k = ci->edges_start; k < nedges; k++) {
             if (inds[k] == cjd) {
               ik = k;
               break;
@@ -1939,7 +1939,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
           /* cj */
           int jk = -1;
-          for (int k = cj->edges_start; k < s->zoom_props->nr_edges; k++) {
+          for (int k = cj->edges_start; k < nedges; k++) {
             if (inds[k] == cid) {
               jk = k;
               break;
@@ -2037,7 +2037,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   weights_data.eweights = eweights;
   weights_data.inds = inds;
   weights_data.nodeID = nodeID;
-  weights_data.nr_cells = nr_cells;
+  weights_data.nedges = nedges;
   weights_data.timebins = timebins;
   weights_data.vweights = vweights;
   weights_data.weights_e = weights_e;
