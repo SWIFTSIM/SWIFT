@@ -1410,8 +1410,6 @@ static void pick_parmetis(int nodeID, struct space *s, int nregions,
     }
   }
 
-  message("Graph initialised and recieved.");
-
   /* Set up the tpwgts array. This is just 1/nregions. */
   real_t *tpwgts;
   if ((tpwgts = (real_t *)malloc(sizeof(real_t) * nregions)) == NULL)
@@ -1985,10 +1983,18 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   int nr_cells = s->nr_cells;
   struct cell *cells = s->cells_top;
 
+    /* Total number of edges. */
+  int nedges;
+  if (s->with_zoom_region) {
+    nedges = s->zoom_props->nr_edges;
+  } else {
+    nedges = 26 * s->nr_cells;
+  }
+
   /* Allocate and fill the adjncy indexing array defining the graph of
    * cells. */
   idx_t *inds;
-  if ((inds = (idx_t *)malloc(sizeof(idx_t) * 26 * nr_cells)) == NULL)
+  if ((inds = (idx_t *)malloc(sizeof(idx_t) * nedges)) == NULL)
     error("Failed to allocate the inds array");
   int nadjcny = 0;
   int nxadj = 0;
@@ -2004,7 +2010,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     bzero(weights_v, sizeof(double) * nr_cells);
   }
   if (eweights) {
-    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
+    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nedges)) == NULL)
       error("Failed to allocate edge weights arrays.");
     bzero(weights_e, sizeof(double) * 26 * nr_cells);
   }
@@ -2046,7 +2052,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
 
   if (eweights) {
-    res = MPI_Allreduce(MPI_IN_PLACE, weights_e, 26 * nr_cells,
+    res = MPI_Allreduce(MPI_IN_PLACE, weights_e, nedges,
                         MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     if (res != MPI_SUCCESS) mpi_error(res, "Failed to allreduce edge weights.");
   }
@@ -2073,7 +2079,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     for (int k = 0; k < nr_cells; k++) vsum += weights_v[k];
   double esum = 0.0;
   if (eweights)
-    for (int k = 0; k < 26 * nr_cells; k++) esum += weights_e[k];
+    for (int k = 0; k < nedges; k++) esum += weights_e[k];
 
   /* Do the scaling, if needed, keeping both weights in proportion. */
   double vscale = 1.0;
@@ -2110,7 +2116,7 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
   }
   if (eweights && escale != 1.0) {
     esum = 0.0;
-    for (int k = 0; k < 26 * nr_cells; k++) {
+    for (int k = 0; k < nedges; k++) {
       weights_e[k] *= escale;
       esum += weights_e[k];
     }
@@ -2124,14 +2130,12 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     /* Make sums the same. */
     if (vsum > esum) {
       escale = vsum / esum;
-      for (int k = 0; k < 26 * nr_cells; k++) weights_e[k] *= escale;
+      for (int k = 0; k < nedges; k++) weights_e[k] *= escale;
     } else {
       vscale = esum / vsum;
       for (int k = 0; k < nr_cells; k++) weights_v[k] *= vscale;
     }
   }
-
-  message("Entering pick_metis");
 
   /* And repartition/ partition, using both weights or not as requested. */
 #ifdef HAVE_PARMETIS
