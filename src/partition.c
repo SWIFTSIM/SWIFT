@@ -498,10 +498,6 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     /* If given set METIS xadj. */
     if (xadj != NULL) {
       xadj[s->nr_cells] = iedge;
-      /* for (int k = 0; k < s->nr_cells; k++) { */
-      /*   ci = &s->cells_top[k]; */
-      /*   xadj[k + 1] = xadj[k] + ci->nr_vertex_edges; */
-      /* } */
       *nxadj = s->nr_cells;
     }
     
