@@ -797,6 +797,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
   /* Get some useful constants. */
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
                             s->zoom_props->cdim[2]};
@@ -807,6 +808,10 @@ void find_vertex_edges(struct space *s, const int verbose) {
   const int void_k = s->zoom_props->zoom_cell_ijk[2];
   struct cell *restrict c;
   struct cell *restrict cj;
+
+  /* Define a distance for zoom->background edges. */
+  const double edge_dist = s->width[0] / 2;
+  const double edge_dist2 = edge_dist * edge_dist;
 
   /* Loop over zoom cells and count their edges. Zoom cells at the edges
    * have fewer neighbours, all zoom cells have edges with the first shell
@@ -849,12 +854,18 @@ void find_vertex_edges(struct space *s, const int verbose) {
               /* Get this cell. */
               const size_t cjd =
                   cell_getid(cdim, ii, jj, kk) + bkg_cell_offset;
+              cj = &s->cells_top[cjd];
 
               /* Handle the void cell. */
               if (cjd == s->zoom_props->void_cell_index) continue;
+
+              /* Minimal distance between any pair of particles */
+              const double min_radius2 =
+                cell_min_dist2_diff_size(c, cj, periodic, dim);
               
               /* Record an edge. */
-              c->nr_vertex_edges++;
+              if (min_radius2 <= edge_dist2)
+                c->nr_vertex_edges++;
               
             }
           }
@@ -888,9 +899,6 @@ void find_vertex_edges(struct space *s, const int verbose) {
         const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
         c = &s->cells_top[cid];
 
-        /* /\* Skip the void cell. *\/ */
-        /* if (c->tl_cell_type == void_tl_cell) continue; */
-
         /* Initialise count. */
         c->nr_vertex_edges = 0;
         
@@ -912,16 +920,31 @@ void find_vertex_edges(struct space *s, const int verbose) {
               const size_t cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
               cj = &s->cells_top[cjd];
               
-              /* If not self. */
-              if (cid != cjd) {
+              /* Skip self. */
+              if (cid == cjd) continue;
 
-                /* Include this edge. */
-                c->nr_vertex_edges++;
+              /* Include this edge. */
+              c->nr_vertex_edges++;
 
-                /* Include the zoom cells if the neighbour is the void cell. */
-                if (cj->tl_cell_type == void_tl_cell) 
-                  c->nr_vertex_edges += s->zoom_props->nr_zoom_cells;
-                
+              /* Include the zoom cells if the neighbour is the void cell. */
+              if (cj->tl_cell_type == void_tl_cell) {
+
+                /* Loop over zoom cells and include any within distance. */
+                for (int zoom_cjd = 0;
+                     zoom_cjd < s->zoom_props->nr_zoom_cells; zoom_cjd++) {
+
+                  /* Get this cell. */
+                  cj = &s->cells_top[cjd];
+
+                  /* Minimal distance between any pair of particles */
+                  const double min_radius2 =
+                    cell_min_dist2_diff_size(c, cj, periodic, dim);
+              
+                  /* Record an edge. */
+                  if (min_radius2 <= edge_dist2)
+                    c->nr_vertex_edges++;
+              
+                }
               }
             }
           }
