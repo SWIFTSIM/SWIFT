@@ -340,13 +340,13 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
           ci = &s->cells_top[cid];
 
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Ensure the previous cell has found enough edges. */
-          if ((cid > 0) &&
-              ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges))
-            error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
-                  iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
-#endif
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*           /\* Ensure the previous cell has found enough edges. *\/ */
+/*           if ((cid > 0) && */
+/*               ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges)) */
+/*             error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)", */
+/*                   iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges); */
+/* #endif */
 
           /* /\* If given set METIS xadj. *\/ */
           /* if (xadj != NULL) { */
@@ -419,12 +419,12 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
           ci = &s->cells_top[cid];
 
-#ifdef SWIFT_DEBUG_CHECKS
-          /* Ensure the previous cell has found enough edges. */
-          if ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges)
-            error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)",
-                  iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
-#endif
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*           /\* Ensure the previous cell has found enough edges. *\/ */
+/*           if ((iedge - xadj[cid - 1]) != s->cells_top[cid - 1].nr_vertex_edges) */
+/*             error("Found too few edges (nedges=%ld, c->nr_vertex_edges=%d)", */
+/*                   iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges); */
+/* #endif */
 
           /* /\* If given set METIS xadj. *\/ */
           /* if (xadj != NULL) { */
