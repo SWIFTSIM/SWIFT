@@ -810,7 +810,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
   struct cell *restrict cj;
 
   /* Define a distance for zoom->background edges. */
-  const double edge_dist = s->width[0] / 4;
+  const double edge_dist = s->width[0] / 2;
   const double edge_dist2 = edge_dist * edge_dist;
 
   /* Loop over zoom cells and count their edges. Zoom cells at the edges
