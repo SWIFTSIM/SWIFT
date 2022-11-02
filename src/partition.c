@@ -2987,9 +2987,9 @@ static void check_weights(struct task *tasks, int nr_tasks,
   }
 
   /* Now do the comparisons. */
+  double refsum = 0.0;
+  double sum = 0.0;
   if (vweights) {
-    double refsum = 0.0;
-    double sum = 0.0;
     for (int k = 0; k < nr_cells; k++) {
       refsum += ref_weights_v[k];
       sum += weights_v[k];
