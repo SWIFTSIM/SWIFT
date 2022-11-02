@@ -877,7 +877,7 @@ void find_vertex_edges(struct space *s, const int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
 
         /* Double check this number of edges is valid. */
-        if (c->nr_vertex_edges < 26)
+        if (c->nr_vertex_edges < 14)
           error("Found a zoom cell with too few edges (c->tl_cell_type=%d, "
                 "c->nr_vertex_edges=%d)",
                 c->tl_cell_type,
