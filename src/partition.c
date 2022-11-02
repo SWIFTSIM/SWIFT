@@ -422,6 +422,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
+          c = &s->cells_top[cid];
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure the previous cell has found enough edges. */
