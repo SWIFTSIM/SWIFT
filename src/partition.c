@@ -319,10 +319,12 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
     const int void_k = s->zoom_props->zoom_cell_ijk[2];
     const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
     const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
-    struct cell *restrict c;
+    struct cell *restrict ci;
     struct cell *restrict cj;
     
-    /* Define a distance for zoom->background edges. */
+    /* Define a distance for zoom->background edges.
+    * NOTE: This minimises the number of zoom->background edges to avoid
+    * huge massively interconnected adjncy arrays. */
     const double edge_dist = s->width[0] / 2;
     const double edge_dist2 = edge_dist * edge_dist;
   
@@ -336,7 +338,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
           
           /* Get cell index. */
           const size_t cid = cell_getid(zoom_cdim, i, j, k);
-          c = &s->cells_top[cid];
+          ci = &s->cells_top[cid];
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure the previous cell has found enough edges. */
@@ -346,10 +348,10 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
 #endif
 
-          /* If given set METIS xadj. */
-          if (xadj != NULL) {
-            xadj[cid] = (idx_t) iedge;
-          }  
+          /* /\* If given set METIS xadj. *\/ */
+          /* if (xadj != NULL) { */
+          /*   xadj[cid] = (idx_t) iedge; */
+          /* }   */
           
           /* Loop over a shell of neighbouring zoom cells and
            * skip if outside the zoom region. */
@@ -389,7 +391,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
                 /* Minimal distance between any pair of particles */
                 const double min_radius2 =
-                  cell_min_dist2_diff_size(c, cj, periodic, dim);
+                  cell_min_dist2_diff_size(ci, cj, periodic, dim);
               
                 /* Record an edge. */
                 if (min_radius2 <= edge_dist2) {
@@ -415,7 +417,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
 
           /* Get cell index. */
           const size_t cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
-          c = &s->cells_top[cid];
+          ci = &s->cells_top[cid];
 
 #ifdef SWIFT_DEBUG_CHECKS
           /* Ensure the previous cell has found enough edges. */
@@ -424,10 +426,10 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   iedge - xadj[cid - 1], s->cells_top[cid - 1].nr_vertex_edges);
 #endif
 
-          /* If given set METIS xadj. */
-          if (xadj != NULL) {
-            xadj[cid] = (idx_t) iedge;
-          }  
+          /* /\* If given set METIS xadj. *\/ */
+          /* if (xadj != NULL) { */
+          /*   xadj[cid] = (idx_t) iedge; */
+          /* }   */
 
           /* Loop over a shell of neighbouring cells and
            * skip if out of range. */
@@ -465,7 +467,7 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
                   
                     /* Minimal distance between any pair of particles */
                     const double min_radius2 =
-                      cell_min_dist2_diff_size(c, cj, periodic, dim);
+                      cell_min_dist2_diff_size(ci, cj, periodic, dim);
               
                     /* Record an edge. */
                     if (min_radius2 <= edge_dist2) {
@@ -493,8 +495,13 @@ static void graph_init(struct space *s, int periodic, idx_t *weights_e,
             iedge, s->zoom_props->nr_edges);
 #endif
 
-    /* If given set METIS nxadj. */
+    /* If given set METIS xadj. */
     if (xadj != NULL) {
+      xadj[0] = 0;
+      for (int k = 0; k < s->nr_cells; k++) {
+        ci = &s->cells_top[cid];
+        xadj[k + 1] = xadj[k] + ci->nr_vertex_edges;
+      }
       *nxadj = s->nr_cells;
     }
     
