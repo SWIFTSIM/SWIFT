@@ -808,6 +808,9 @@ void find_vertex_edges(struct space *s, const int verbose) {
   struct cell *restrict c;
   struct cell *restrict cj;
 
+  /* Initialise edge count. */
+  s->zoom_props->nr_edges = 0;
+
   /* Loop over zoom cells and count their edges. Zoom cells at the edges
    * have fewer neighbours, all zoom cells have edges with the first shell
    * of background cells. */
