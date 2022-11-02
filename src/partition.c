@@ -903,7 +903,7 @@ static void sizes_to_edges(struct space *s, double *counts, double *edges) {
                 if (cj->tl_cell_type == void_tl_cell) {
                   
                   /* Loop over zoom cells and include any within distance. */
-                  for (int zoom_cjd = 0; zoom_cjd <= nr_zoom_cells; zoom_cjd++) {
+                  for (int zoom_cjd = 0; zoom_cjd < nr_zoom_cells; zoom_cjd++) {
 
                     /* Store this background edge. */
                     edges[iedge] = counts[zoom_cjd];
