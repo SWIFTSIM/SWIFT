@@ -301,7 +301,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
       pj->magma.sder_u[i][j] -= pi->mass *
                                 (pj->magma.aux_u[i] - pi->magma.aux_u[i]) *
                                 dx[j] * wj / pi->rho;
-      
+
       /* Eq18 without multiplying matrix C. */
       pi->magma.fder_v[i][j] -=
           pj->mass * (pj->v[i] - pi->v[i]) * dx[j] * wi / pj->rho;
@@ -591,7 +591,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     }
   }
 
-  for (int i = 0; i < 3; i++) {/* Eq17 */
+  for (int i = 0; i < 3; i++) { /* Eq17 */
     vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + para_vis * vi_sder[i]);
     vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + para_vis * vj_sder[i]);
   }
@@ -626,8 +626,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mu_j = min(0.f, dvdh_j2);
 
   /* compute viscosity pressure term(Eq14). */
-  const float Q_i = fac_mu * rhoi * (-pi->force.soundspeed * mu_i + 2.f * fac_mu * mu_i * mu_i);
-  const float Q_j = fac_mu * rhoj * (-pj->force.soundspeed * mu_j + 2.f * fac_mu * mu_j * mu_j);
+  const float Q_i = fac_mu * rhoi *
+                    (-pi->force.soundspeed * mu_i + 2.f * fac_mu * mu_i * mu_i);
+  const float Q_j = fac_mu * rhoj *
+                    (-pj->force.soundspeed * mu_j + 2.f * fac_mu * mu_j * mu_j);
 
   /* New gradient functions*/
   float c_matrix_i[3][3], c_matrix_j[3][3];
@@ -639,8 +641,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     }
   }
 
-  float g_i[3], g_j[3], g_ij[3];/*Eq4 and Eq5 for gradient functions G. */
-  
+  float g_i[3], g_j[3], g_ij[3]; /*Eq4 and Eq5 for gradient functions G. */
+
   g_i[0] = -(c_matrix_i[0][0] * dx[0] + c_matrix_i[0][1] * dx[1] +
              c_matrix_i[0][2] * dx[2]) *
            wi * hi_inv_dim;
@@ -709,7 +711,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 #else
   const float alpha_diff = 0.05f;
 #endif
- 
+
   /* Two conductivity signal velocities(Eq26). */
   const float v_diffn = sqrtf(2.f * fabsf(pressurei - pressurej) / rho_ij);
   const float v_diffg =
@@ -719,12 +721,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
        a2_Hubble * r) *
       fac_mu;
   const float iG = 0.5f;
-  const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg;/* Eq25. */
+  const float v_diff = (1.f - iG) * v_diffn + iG * v_diffg; /* Eq25. */
   const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
                                     (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) +
                                     (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
-  const float diff_du_term =
-      -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij;/* Eq24. */
+  const float diff_du_term = -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) *
+                             aver_g / rho_ij; /* Eq24. */
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + diff_du_term;
@@ -916,7 +918,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     }
   }
 
-  for (int i = 0; i < 3; i++) {/* Eq17 */
+  for (int i = 0; i < 3; i++) { /* Eq17 */
     vi_mid[i] = pi->v[i] + Fv_ij * (vi_fder[i] + para_vis * vi_sder[i]);
     vj_mid[i] = pj->v[i] + Fv_ji * (vj_fder[i] + para_vis * vj_sder[i]);
   }
@@ -951,8 +953,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mu_j = min(0.f, dvdh_j2);
 
   /* compute viscosity pressure term(Eq14). */
-  const float Q_i = fac_mu * rhoi * (-pi->force.soundspeed * mu_i + 2.f * fac_mu * mu_i * mu_i);
-  const float Q_j = fac_mu * rhoj * (-pj->force.soundspeed * mu_j + 2.f * fac_mu * mu_j * mu_j);
+  const float Q_i = fac_mu * rhoi *
+                    (-pi->force.soundspeed * mu_i + 2.f * fac_mu * mu_i * mu_i);
+  const float Q_j = fac_mu * rhoj *
+                    (-pj->force.soundspeed * mu_j + 2.f * fac_mu * mu_j * mu_j);
 
   /* New gradient functions*/
   float c_matrix_i[3][3], c_matrix_j[3][3];
@@ -1039,8 +1043,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float aver_g = 0.5f * sqrtf((g_i[0] + g_j[0]) * (g_i[0] + g_j[0]) +
                                     (g_i[1] + g_j[1]) * (g_i[1] + g_j[1]) +
                                     (g_i[2] + g_j[2]) * (g_i[2] + g_j[2]));
-  const float diff_du_term =
-      -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) * aver_g / rho_ij; /* Eq24. */
+  const float diff_du_term = -2.f * alpha_diff * v_diff * (ui_mid - uj_mid) *
+                             aver_g / rho_ij; /* Eq24. */
 
   /* Assemble the energy equation term */
   const float du_dt_i = sph_du_term_i + diff_du_term;

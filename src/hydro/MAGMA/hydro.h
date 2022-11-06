@@ -564,7 +564,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
 
   p->viscosity.div_v = 0.f;
   p->diffusion.laplace_u = 0.f;
-  
+
   /* Zeroes all MAGMA related arrays*/
   for (int i = 0; i < 3; i++) {
     p->magma.aux_u[i] = 0.f;
