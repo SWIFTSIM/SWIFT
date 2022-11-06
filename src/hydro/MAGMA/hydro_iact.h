@@ -30,7 +30,6 @@
  */
 
 #include "adiabatic_index.h"
-#include "exp.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
@@ -541,7 +540,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     Fv_ji = Fvj_max;
   } else {
     const float e_con = -(hij - h_crit) * (hij - h_crit) * 25.f;
-    const float F_exp = optimized_expf(e_con);
+    const float F_exp = expf(e_con);
     F_ij = Fi_max * F_exp;
     F_ji = Fj_max * F_exp;
     Fv_ij = Fvi_max * F_exp;
@@ -866,7 +865,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     Fv_ji = Fvj_max;
   } else {
     const float e_con = -(hij - h_crit) * (hij - h_crit) * 25.f;
-    const float F_exp = optimized_expf(e_con);
+    const float F_exp = expf(e_con);
     F_ij = Fi_max * F_exp;
     F_ji = Fj_max * F_exp;
     Fv_ij = Fvi_max * F_exp;
