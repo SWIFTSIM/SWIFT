@@ -2913,8 +2913,9 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         /* Skip the void cell. */
         if (cj->tl_cell_type == void_tl_cell) continue;
 
-        /* Avoid duplicates, empty cells and completely foreign pairs */
-        if (cid >= cjd || cj->grav.count == 0 ||
+        /* Avoid duplicates (if on the same node), empty cells
+         * and completely foreign pairs */
+        if ((ci->nodeID == cj->nodeID && cid >= cjd) || cj->grav.count == 0 ||
             (ci->nodeID != nodeID && cj->nodeID != nodeID))
           continue;
 
