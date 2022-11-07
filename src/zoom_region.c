@@ -1906,11 +1906,12 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
           struct cell *cj = &cells[cjd];
 
-          /* Avoid duplicates (if the neighbour is on this rank), empty cells
-           * and completely foreign pairs */
-          if ((ci->nodeID == nodeID && cid >= cjd) || cj->grav.count == 0 ||
-              (ci->nodeID != nodeID && cj->nodeID != nodeID))
-            continue;
+        /* Avoid duplicates (if the neighbour is on this rank), empty cells
+         * and completely foreign pairs */
+        if (cid == cjd || (cj->nodeID == nodeID && cid > cjd) ||
+            cj->grav.count == 0 ||
+            (ci->nodeID != nodeID && cj->nodeID != nodeID))
+          continue;
 
 #ifdef WITH_MPI
           /* Recover the multipole information */
