@@ -1873,7 +1873,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     }
 
     /* Create the background specific pair task for non-neighbour bkg cells. */
-    if (ci->tl_cell_type == tl_cell) {
+    if (ci->tl_cell_type < 2) {
 
       scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
                         0, 0, ci, NULL);
@@ -1905,6 +1905,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           /* Get the second cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
           struct cell *cj = &cells[cjd];
+
+          /* Skip the void cell. */
+        if (cj->tl_cell_type == void_tl_cell) continue;
 
         /* Avoid duplicates (if the neighbour is on this rank), empty cells
          * and completely foreign pairs */
