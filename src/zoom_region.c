@@ -1871,16 +1871,15 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
       scheduler_addtask(sched, task_type_self, task_subtype_grav_bkg, 0, 0, ci,
                         NULL);
     }
-#ifndef WITH_MPI
+
     /* Create the background specific pair task for non-neighbour bkg cells. */
-    if (ci->tl_cell_type == tl_cell) {
-      /* Ok, we need to add a pooled pair calculation */
+    if (ci->tl_cell_type == tl_cell || ci->tl_cell_type == tl_cell_neighbour) {
+
       scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
                         0, 0, ci, NULL);
       continue;
       
     }
-#endif
 
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
