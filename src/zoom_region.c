@@ -1907,14 +1907,14 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           struct cell *cj = &cells[cjd];
 
           /* Skip the void cell. */
-        if (cj->tl_cell_type == void_tl_cell) continue;
+          if (cj->tl_cell_type == void_tl_cell) continue;
 
-        /* Avoid duplicates (if the neighbour is on this rank), empty cells
-         * and completely foreign pairs */
-        if (cid == cjd || (ci->nodeID == cj->nodeID && cid > cjd) ||
-            cj->grav.count == 0 ||
-            (ci->nodeID != nodeID && cj->nodeID != nodeID))
-          continue;
+          /* Avoid duplicates (if the neighbour is on this rank), empty cells
+           * and completely foreign pairs */
+          if (cid == cjd || (ci->nodeID == nodeID && cid > cjd) ||
+              cj->grav.count == 0 ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
 
 #ifdef WITH_MPI
           /* Recover the multipole information */
