@@ -106,9 +106,6 @@ struct scheduler {
    * MPI. */
   size_t mpi_message_limit;
 
-  /* 'Pointer' to the seed for the random number generator */
-  pthread_key_t local_seed_pointer;
-
   /* Total ticks spent running the tasks */
   ticks total_ticks;
 
