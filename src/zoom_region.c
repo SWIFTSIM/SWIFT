@@ -1906,13 +1906,12 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
           struct cell *cj = &cells[cjd];
 
-          /* Skip the void cell. */
-          if (cj->tl_cell_type == void_tl_cell) continue;
+          /* Skip the void cell and normal background cells. */
+          if (cj->tl_cell_type == void_tl_cell ||
+              cj->tl_cell_type == tl_cell) continue;
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
-          if ((cid == cjd) ||
-              (ci->tl_cell_type == cj->tl_cell_type && cid > cjd) ||
-              cj->grav.count == 0 ||
+          if (cid >= cjd) || cj->grav.count == 0 ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
