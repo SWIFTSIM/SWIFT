@@ -1907,8 +1907,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           struct cell *cj = &cells[cjd];
 
           /* Skip the void cell and normal background cells. */
-          if (cj->tl_cell_type == void_tl_cell ||
-              cj->tl_cell_type == tl_cell) continue;
+          if (cj->tl_cell_type == void_tl_cell) continue;
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
           if (cid >= cjd || cj->grav.count == 0 ||
