@@ -2880,7 +2880,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   const int i = ci->loc[0] * s->iwidth[0];
   const int j = ci->loc[1] * s->iwidth[1];
   const int k = ci->loc[2] * s->iwidth[2];
-  /* const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset; */
+  const int cid = cell_getid(cdim, i, j, k) + bkg_cell_offset;
 
   /* Loop over every other cell within (Manhattan) range delta */
   for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -2913,8 +2913,8 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         /* Skip the void cell. */
         if (cj->tl_cell_type == void_tl_cell) continue;
 
-        /* Avoid empty cells. */
-        if (cj->grav.count == 0)
+        /* Avoid empty cells and self. */
+        if (cid == cjd || cj->grav.count == 0)
           continue;
 
         /* Recover the multipole information */
