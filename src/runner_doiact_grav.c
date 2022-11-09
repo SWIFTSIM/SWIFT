@@ -2926,23 +2926,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
           cell_min_dist2_same_size(ci, cj, periodic, dim);
 
         /* Are we beyond the distance where the truncated forces are 0? */
-        if (periodic && min_radius2 > max_distance2) {
-          
-#ifdef SWIFT_DEBUG_CHECKS
-          if (cell_is_active_gravity(ci, e))
-            accumulate_add_ll(&multi_i->pot.num_interacted,
-                              multi_j->m_pole.num_gpart);
-#endif
-
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-          /* Need to account for the interactions we missed */
-          if (cell_is_active_gravity(ci, e))
-            accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                              multi_j->m_pole.num_gpart);
-#endif
-          continue;
-          
-        }
+        if (periodic && min_radius2 > max_distance2) continue;
 
         /* If the cells are close enough lets do an interaction. */
         if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
