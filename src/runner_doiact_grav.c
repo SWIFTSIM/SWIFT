@@ -2918,6 +2918,10 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
             (ci->nodeID != nodeID && cj->nodeID != nodeID))
           continue;
 
+        /* Recover the multipole information */
+        struct gravity_tensors *const multi_i = ci->grav.multipole;
+        struct gravity_tensors *const multi_j = cj->grav.multipole;
+  
         /* Minimal distance between any pair of particles */
         const double min_radius2 =
           cell_min_dist2_same_size(ci, cj, periodic, dim);
