@@ -2901,29 +2901,29 @@ void runner_dopair_recursive_grav_nonsym(struct runner *r, struct cell *ci,
   /* Minimal distance between any 2 particles in the two cells */
   const double r_lr_check = sqrt(r2) - (multi_i->r_max + multi_j->r_max);
 
-  /* Are we beyond the distance where the truncated forces are 0? */
-  if (periodic && r_lr_check > max_distance) {
+/*   /\* Are we beyond the distance where the truncated forces are 0? *\/ */
+/*   if (periodic && r_lr_check > max_distance) { */
 
-#ifdef SWIFT_DEBUG_CHECKS
-    if (cell_is_active_gravity(ci, e))
-      accumulate_add_ll(&multi_i->pot.num_interacted,
-                        multi_j->m_pole.num_gpart);
-    if (cell_is_active_gravity(cj, e))
-      accumulate_add_ll(&multi_j->pot.num_interacted,
-                        multi_i->m_pole.num_gpart);
-#endif
+/* #ifdef SWIFT_DEBUG_CHECKS */
+/*     if (cell_is_active_gravity(ci, e)) */
+/*       accumulate_add_ll(&multi_i->pot.num_interacted, */
+/*                         multi_j->m_pole.num_gpart); */
+/*     if (cell_is_active_gravity(cj, e)) */
+/*       accumulate_add_ll(&multi_j->pot.num_interacted, */
+/*                         multi_i->m_pole.num_gpart); */
+/* #endif */
 
-#ifdef SWIFT_GRAVITY_FORCE_CHECKS
-    /* Need to account for the interactions we missed */
-    if (cell_is_active_gravity(ci, e))
-      accumulate_add_ll(&multi_i->pot.num_interacted_pm,
-                        multi_j->m_pole.num_gpart);
-    if (cell_is_active_gravity(cj, e))
-      accumulate_add_ll(&multi_j->pot.num_interacted_pm,
-                        multi_i->m_pole.num_gpart);
-#endif
-    return;
-  }
+/* #ifdef SWIFT_GRAVITY_FORCE_CHECKS */
+/*     /\* Need to account for the interactions we missed *\/ */
+/*     if (cell_is_active_gravity(ci, e)) */
+/*       accumulate_add_ll(&multi_i->pot.num_interacted_pm, */
+/*                         multi_j->m_pole.num_gpart); */
+/*     if (cell_is_active_gravity(cj, e)) */
+/*       accumulate_add_ll(&multi_j->pot.num_interacted_pm, */
+/*                         multi_i->m_pole.num_gpart); */
+/* #endif */
+/*     return; */
+/*   } */
 
   /* OK, we actually need to compute this pair. Let's find the cheapest
    * option... */
