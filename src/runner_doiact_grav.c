@@ -3083,7 +3083,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         if (cj->tl_cell_type == void_tl_cell) continue;
 
         /* Avoid empty cells and self. */
-        if (cid == cjd || cj->grav.count == 0)
+        if (cid >= cjd || cj->grav.count == 0)
           continue;
 
         /* Minimal distance between any pair of particles */
@@ -3098,7 +3098,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
                                     /*is_tree_walk=*/0)) {
 
           /* Lets do an interaction. */
-          runner_dopair_recursive_grav_nonsym(r, ci, cj, timer);
+          runner_dopair_recursive_grav(r, ci, cj, timer);
         } 
       } /* Loop over kkks */
     } /* Loop over jjjs */
