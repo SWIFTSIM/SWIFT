@@ -2926,6 +2926,14 @@ void runner_dopair_recursive_grav_nonsym(struct runner *r, struct cell *ci,
     /* We have two cheap cells. Go P-P. */
     runner_dopair_grav_pp_no_cache(r, ci, cj);
 
+    /* Can we use M-M interactions ? */
+  } else if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_i,
+                                          multi_j, r2,
+                                          /* use_rebuild_sizes=*/0, periodic)) {
+
+    /* Go M-M */
+    runner_dopair_grav_mm_nonsym(r, ci, cj);
+
     /* Did we reach the bottom? */
   } else if (!ci->split && !cj->split) {
 
@@ -3082,8 +3090,8 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         /* Skip the void cell. */
         if (cj->tl_cell_type == void_tl_cell) continue;
 
-        /* Avoid duplicates, empty cells and completely foreign pairs */
-        if (cid >= cjd || cj->grav.count == 0 ||
+        /* Avoid self->self, empty cells and completely foreign pairs */
+        if (cid = cjd || cj->grav.count == 0 ||
             (ci->nodeID != nodeID && cj->nodeID != nodeID))
           continue;
 
@@ -3099,7 +3107,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
                                     /*is_tree_walk=*/0)) {
 
           /* Compute the forces between these cells. */
-          runner_dopair_recursive_grav(r, ci, cj, 0);
+          runner_dopair_recursive_grav_nonsym(r, ci, cj, 0);
         } 
       } /* Loop over kkks */
     } /* Loop over jjjs */
