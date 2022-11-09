@@ -2913,9 +2913,8 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         /* Skip the void cell. */
         if (cj->tl_cell_type == void_tl_cell) continue;
 
-        /* Avoid empty cells and completely foreign pairs */
-        if (cj->grav.count == 0 ||
-            (cj->nodeID != nodeID))
+        /* Avoid empty cells. */
+        if (cj->grav.count == 0)
           continue;
 
         /* Recover the multipole information */
