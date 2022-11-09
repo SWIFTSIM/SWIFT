@@ -3082,8 +3082,9 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         /* Skip the void cell. */
         if (cj->tl_cell_type == void_tl_cell) continue;
 
-        /* Avoid empty cells and self. */
-        if (cid >= cjd || cj->grav.count == 0)
+        /* Avoid duplicates, empty cells and completely foreign pairs */
+        if (cid >= cjd || cj->grav.count == 0 ||
+            (ci->nodeID != nodeID && cj->nodeID != nodeID))
           continue;
 
         /* Minimal distance between any pair of particles */
@@ -3093,12 +3094,12 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         /* Are we beyond the distance where the truncated forces are 0? */
         if (periodic && min_radius2 > max_distance2) continue;
 
-        /* If the cells are close enough lets do an interaction. */
+        /* Are the cells too close for a MM interaction ? */
         if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                     /*is_tree_walk=*/0)) {
 
-          /* Lets do an interaction. */
-          runner_dopair_recursive_grav(r, ci, cj, timer);
+          /* Compute the forces between these cells. */
+          runner_dopair_recursive_grav(r, ci, cj, 0);
         } 
       } /* Loop over kkks */
     } /* Loop over jjjs */
