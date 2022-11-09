@@ -2823,6 +2823,182 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 }
 
 /**
+ * @brief Computes the interaction of all the particles in a cell with all the
+ * particles of another cell.
+ *
+ * This function will try to recurse as far down the tree as possible and only
+ * default to direct summation if there is no better option.
+ *
+ * If using periodic BCs, we will abort the recursion if the distance
+ * between the cells is larger than the set threshold.
+ *
+ * Note that this version does not assume a symmetric interaction and only
+ * updates ci.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell.
+ * @param cj The other #cell.
+ * @param gettimer Are we timing this ?
+ */
+void runner_dopair_recursive_grav_nonsym(struct runner *r, struct cell *ci,
+                                         struct cell *cj, const int gettimer) {
+
+  const struct engine *e = r->e;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(ci, e);
+  runner_clear_grav_flags(cj, e);
+
+  /* Some constants */
+  const int nodeID = e->nodeID;
+  const int periodic = e->mesh->periodic;
+  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
+  const double max_distance = e->mesh->r_cut_max;
+
+  /* Anything to do here? */
+  if (!(cell_is_active_gravity(ci, e) && ci->nodeID == nodeID))
+    return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  const int gcount_i = ci->grav.count;
+  const int gcount_j = cj->grav.count;
+
+  /* Early abort? */
+  if (gcount_i == 0 || gcount_j == 0)
+    error("Doing pair gravity on an empty cell !");
+
+  /* Sanity check */
+  if (ci == cj) error("Pair interaction between a cell and itself.");
+
+  if (cell_is_active_gravity(ci, e) &&
+      ci->grav.ti_old_multipole != e->ti_current)
+    error("ci->grav.multipole not drifted.");
+  if (cell_is_active_gravity(cj, e) &&
+      cj->grav.ti_old_multipole != e->ti_current)
+    error("cj->grav.multipole not drifted.");
+#endif
+
+  TIMER_TIC;
+
+  /* Recover the multipole information */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+  struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+  /* Get the distance between the CoMs */
+  double dx = multi_i->CoM[0] - multi_j->CoM[0];
+  double dy = multi_i->CoM[1] - multi_j->CoM[1];
+  double dz = multi_i->CoM[2] - multi_j->CoM[2];
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  const double r2 = dx * dx + dy * dy + dz * dz;
+
+  /* Minimal distance between any 2 particles in the two cells */
+  const double r_lr_check = sqrt(r2) - (multi_i->r_max + multi_j->r_max);
+
+  /* Are we beyond the distance where the truncated forces are 0? */
+  if (periodic && r_lr_check > max_distance) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cell_is_active_gravity(ci, e))
+      accumulate_add_ll(&multi_i->pot.num_interacted,
+                        multi_j->m_pole.num_gpart);
+    if (cell_is_active_gravity(cj, e))
+      accumulate_add_ll(&multi_j->pot.num_interacted,
+                        multi_i->m_pole.num_gpart);
+#endif
+
+#ifdef SWIFT_GRAVITY_FORCE_CHECKS
+    /* Need to account for the interactions we missed */
+    if (cell_is_active_gravity(ci, e))
+      accumulate_add_ll(&multi_i->pot.num_interacted_pm,
+                        multi_j->m_pole.num_gpart);
+    if (cell_is_active_gravity(cj, e))
+      accumulate_add_ll(&multi_j->pot.num_interacted_pm,
+                        multi_i->m_pole.num_gpart);
+#endif
+    return;
+  }
+
+  /* OK, we actually need to compute this pair. Let's find the cheapest
+   * option... */
+
+  if (ci->grav.count <= 1 || cj->grav.count <= 1) {
+
+    /* We have two cheap cells. Go P-P. */
+    runner_dopair_grav_pp_no_cache(r, ci, cj);
+
+    /* Did we reach the bottom? */
+  } else if (!ci->split && !cj->split) {
+
+    /* We have two leaves. Go P-P. */
+    runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 0, /*allow_mpoles=*/1);
+
+  } else {
+
+    /* Alright, we'll have to split and recurse. */
+    /* We know at least one of ci and cj is splittable */
+
+    const double ri_max = multi_i->r_max;
+    const double rj_max = multi_j->r_max;
+
+    /* Split the larger of the two cells and start over again */
+    if (ri_max > rj_max) {
+
+      /* Can we actually split that interaction ? */
+      if (ci->split) {
+
+        /* Loop over ci's children */
+        for (int k = 0; k < 8; k++) {
+          if (ci->progeny[k] != NULL)
+            runner_dopair_recursive_grav_nonsym(r, ci->progeny[k], cj, 0);
+        }
+
+      } else {
+        /* cj is split */
+
+        /* MATTHIEU: This could maybe be replaced by P-M interactions ?  */
+
+        /* Loop over cj's children */
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL)
+            runner_dopair_recursive_grav_nonsym(r, ci, cj->progeny[k], 0);
+        }
+      }
+    } else {
+
+      /* Can we actually split that interaction ? */
+      if (cj->split) {
+
+        /* Loop over cj's children */
+        for (int k = 0; k < 8; k++) {
+          if (cj->progeny[k] != NULL)
+            runner_dopair_recursive_grav_nonsym(r, ci, cj->progeny[k], 0);
+        }
+
+      } else {
+        /* ci is split */
+
+        /* MATTHIEU: This could maybe be replaced by P-M interactions ?  */
+
+        /* Loop over ci's children */
+        for (int k = 0; k < 8; k++) {
+          if (ci->progeny[k] != NULL)
+            runner_dopair_recursive_grav_nonsym(r, ci->progeny[k], cj, 0);
+        }
+      }
+    }
+  }
+
+  if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
+}
+
+/**
  * @brief This function loops over all cells in range calling the main pair
  *        recursive gravity function.
  *
@@ -2928,47 +3104,8 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                     /*is_tree_walk=*/0)) {
 
-          /* Clear the flags */
-          runner_clear_grav_flags(ci, e);
-
-          /* Anything to do here? */
-          if (!(cell_is_active_gravity(ci, e) && ci->nodeID == nodeID))
-            continue;
-
-#ifdef SWIFT_DEBUG_CHECKS
-
-          const int gcount_i = ci->grav.count;
-          const int gcount_j = cj->grav.count;
-
-          /* Early abort? */
-          if (gcount_i == 0 || gcount_j == 0)
-            error("Doing pair gravity on an empty cell !");
-
-          /* Sanity check */
-          if (ci == cj) error("Pair interaction between a cell and itself.");
-
-          if (cell_is_active_gravity(ci, e) &&
-              ci->grav.ti_old_multipole != e->ti_current)
-            error("ci->grav.multipole not drifted.");
-          if (cell_is_active_gravity(cj, e) &&
-              cj->grav.ti_old_multipole != e->ti_current)
-            error("cj->grav.multipole not drifted.");
-#endif
-          
-          /* OK, we actually need to compute this pair. Let's find the cheapest
-           * option... */
-          
-          if (ci->grav.count <= 1 || cj->grav.count <= 1) {
-
-            /* We have two cheap cells. Go P-P. */
-            runner_dopair_grav_pp_no_cache(r, ci, cj);
-
-          } else {
-
-            /* Go P-P. */
-            runner_dopair_grav_pp(r, ci, cj, /*symmetric*/ 0,
-                                  /*allow_mpoles=*/1);
-          }
+          /* Lets do an interaction. */
+          runner_dopair_recursive_grav_nonsym(r, ci, cj, timer);
         } 
       } /* Loop over kkks */
     } /* Loop over jjjs */
