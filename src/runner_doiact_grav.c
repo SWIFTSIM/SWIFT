@@ -2950,7 +2950,6 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
 
           /* Clear the flags */
           runner_clear_grav_flags(ci, e);
-          runner_clear_grav_flags(cj, e);
 
           /* Anything to do here? */
           if (!(cell_is_active_gravity(ci, e) && ci->nodeID == nodeID))
