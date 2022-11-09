@@ -155,9 +155,6 @@ struct part {
     /*! second derivative of v. */
     float sder_v[3][3][3];
 
-    /*! inverse of resolution eta. */
-    float eta_inv;
-
   } magma;
 
   /* Store viscosity information in a separate struct. */

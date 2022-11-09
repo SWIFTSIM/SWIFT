@@ -473,7 +473,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float Hi = r / hi;
   const float Hj = r / hj;
   const float hij = min(Hi, Hj);
-  const float h_crit = pi->magma.eta_inv;
+  const float h_crit = 0.5f;
 
   /* Get the slope constant A(Eq22). */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;
@@ -800,7 +800,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float Hi = r / hi;
   const float Hj = r / hj;
   const float hij = min(Hi, Hj);
-  const float h_crit = pi->magma.eta_inv;
+  const float h_crit = 0.5f;
 
   /* Get the slope constant A(Eq22). */
   float A_i = 0.f, A_j = 0.f, Av_i = 0.f, Av_j = 0.f;

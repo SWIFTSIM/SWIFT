@@ -1032,9 +1032,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   new_diffusion_alpha = min(new_diffusion_alpha, viscous_diffusion_limit);
 
   p->diffusion.alpha = new_diffusion_alpha;
-
-  /* Calculate the inverse of eta. */
-  p->magma.eta_inv = 1.f / hydro_props->eta_neighbours;
 }
 
 /**
