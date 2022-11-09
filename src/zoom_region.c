@@ -1909,14 +1909,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           /* Skip the void cell. */
           if (cj->tl_cell_type == void_tl_cell) continue;
 
-           /* Avoid duplicates. We only want to ignore neighbour->neighbour
-            * duplicates. */
-          if (ci->nodeID == cj->nodeID &&
-              ci->tl_cell_type == cj->tl_cell_type && cid >= cjd)
-            continue;
-          
-          /* Avoid empty cells and completely foreign pairs */
-          if (cj->grav.count == 0 ||
+          /* Avoid duplicates, empty cells and completely foreign pairs */
+          if (cid >= cjd || cj->grav.count == 0 ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
