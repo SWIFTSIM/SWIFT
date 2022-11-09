@@ -494,7 +494,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     A_ji = 1.f;
   } else if ((A_i == 0.f && A_j != 0.f) ||
              (A_j == 0.f &&
-              A_i != 0.f)) { /* For extreme values, we add diffusion term*/
+              A_i != 0.f) || (A_i == -A_j)) { /* For extreme values, we add diffusion term*/
     A_ij = 0.f;
     A_ji = 0.f;
   } else {
@@ -508,7 +508,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
     Av_ji = 1.f;
   } else if ((Av_i == 0.f && Av_j != 0.f) ||
              (Av_j == 0.f &&
-              Av_i != 0.f)) { /* For extreme values, we add viscosity term*/
+              Av_i != 0.f) || (Av_i == -Av_j)) { /* For extreme values, we add viscosity term*/
     Av_ij = 0.f;
     Av_ji = 0.f;
   } else {
@@ -821,7 +821,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     A_ji = 1.f;
   } else if ((A_i == 0.f && A_j != 0.f) ||
              (A_j == 0.f &&
-              A_i != 0.f)) { /* For extreme values, we add diffusion term*/
+              A_i != 0.f) || (A_i == -A_j)) { /* For extreme values, we add diffusion term*/
     A_ij = 0.f;
     A_ji = 0.f;
   } else {
@@ -835,7 +835,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     Av_ji = 1.f;
   } else if ((Av_i == 0.f && Av_j != 0.f) ||
              (Av_j == 0.f &&
-              Av_i != 0.f)) { /* For extreme values, we add viscosity term*/
+              Av_i != 0.f) || (Av_i == -Av_j)) { /* For extreme values, we add viscosity term*/
     Av_ij = 0.f;
     Av_ji = 0.f;
   } else {
