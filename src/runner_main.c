@@ -278,7 +278,7 @@ void *runner_main(void *data) {
              * function. */
             if (ci->tl_cell_type == cj->tl_cell_type) {
               runner_dopair_recursive_grav(r, ci, cj, 1);
-            } else {
+            } else if (ci->nodeID == e->nodeID){
               runner_dopair_recursive_grav_nonsym(r, ci, cj, 1);
             }
           else if (t->subtype == task_subtype_grav_zoombkg)
