@@ -2932,9 +2932,6 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
           if (cell_is_active_gravity(ci, e))
             accumulate_add_ll(&multi_i->pot.num_interacted,
                               multi_j->m_pole.num_gpart);
-          if (cell_is_active_gravity(cj, e))
-            accumulate_add_ll(&multi_j->pot.num_interacted,
-                              multi_i->m_pole.num_gpart);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
@@ -2942,9 +2939,6 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
           if (cell_is_active_gravity(ci, e))
             accumulate_add_ll(&multi_i->pot.num_interacted_pm,
                               multi_j->m_pole.num_gpart);
-          if (cell_is_active_gravity(cj, e))
-            accumulate_add_ll(&multi_j->pot.num_interacted_pm,
-                              multi_i->m_pole.num_gpart);
 #endif
           continue;
           
@@ -2959,8 +2953,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
           runner_clear_grav_flags(cj, e);
 
           /* Anything to do here? */
-          if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
-                (cell_is_active_gravity(cj, e) && cj->nodeID == nodeID)))
+          if (!(cell_is_active_gravity(ci, e) && ci->nodeID == nodeID))
             continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
