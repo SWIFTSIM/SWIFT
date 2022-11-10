@@ -1899,6 +1899,12 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
     }
 
+    /* Pair pool? Only adds to vertex. */
+    else if (t->subtype == task_subtype_grav_bkg_pool) {
+      /* Particle updates add only to vertex weight. */
+      if (vweights) atomic_add_d(&weights_v[cid], w);
+    }
+
     /* Pair? */
     else if (t->type == task_type_pair || (t->type == task_type_sub_pair)) {
 
