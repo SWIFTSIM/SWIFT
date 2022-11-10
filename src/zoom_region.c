@@ -1881,8 +1881,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
       
     }
 
-    /* With non-symmetric tasks we don't care if ci is on another node. */
-    if (ci->nodeID != nodeID) continue;
+    /* /\* With non-symmetric tasks we don't care if ci is on another node. *\/ */
+    /* if (ci->nodeID != nodeID) continue; */
 
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
