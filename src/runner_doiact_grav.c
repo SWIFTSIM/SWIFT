@@ -3087,12 +3087,14 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         struct cell *cj = &cells[cjd];
 
+        /* Skip foregin neighbours. */
+        if (cj->nodeID != nodeID) continue;
+
         /* Skip the void cell. */
         if (cj->tl_cell_type == void_tl_cell) continue;
 
-        /* Avoid self->self, empty cells and completely foreign pairs */
-        if (cid == cjd || cj->grav.count == 0 ||
-            (ci->nodeID != nodeID && cj->nodeID != nodeID))
+        /* Avoid self->self, empty cells and foreign pairs */
+        if (cid >= cjd || cj->grav.count == 0 || cj->nodeID != nodeID)
           continue;
 
         /* Minimal distance between any pair of particles */
@@ -3107,7 +3109,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
                                     /*is_tree_walk=*/0)) {
 
           /* Compute the forces between these cells. */
-          runner_dopair_recursive_grav_nonsym(r, ci, cj, 0);
+          runner_dopair_recursive_grav(r, ci, cj, 0);
         } 
       } /* Loop over kkks */
     } /* Loop over jjjs */

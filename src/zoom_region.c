@@ -1877,12 +1877,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
       scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
                         0, 0, ci, NULL);
-      continue;
       
     }
-
-    /* /\* With non-symmetric tasks we don't care if ci is on another node. *\/ */
-    /* if (ci->nodeID != nodeID) continue; */
 
     /* Loop over every other cell within (Manhattan) range delta */
     for (int ii = i - delta_m; ii <= i + delta_p; ii++) {
@@ -1912,8 +1908,12 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           /* Skip the void cell and normal background cells. */
           if (cj->tl_cell_type == void_tl_cell) continue;
 
+          /* Skip local background pairs */
+          if (ci->tl_cell_type == tl_cell && ci->nodeID == nodeID &&
+              cj->nodeID == nodeID) continue;
+
           /* Avoid duplicates, empty cells and completely foreign pairs */
-          if (cid == cjd || cj->grav.count == 0 ||
+          if (cid >= cjd || cj->grav.count == 0 ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
