@@ -2030,9 +2030,9 @@ static void repart_edge_metis(int vweights, int eweights, int timebins,
     bzero(weights_v, sizeof(double) * nr_cells);
   }
   if (eweights) {
-    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nedges)) == NULL)
+    if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
       error("Failed to allocate edge weights arrays.");
-    bzero(weights_e, sizeof(double) * 26 * nr_cells);
+    bzero(weights_e, sizeof(double) * nedges);
   }
 
   /* Gather weights. */
@@ -2859,9 +2859,9 @@ static void check_weights(struct task *tasks, int nr_tasks,
     bzero(weights_v, sizeof(double) * nr_cells);
   }
   if (eweights) {
-    if ((weights_e = (double *)malloc(sizeof(double) * 26 * nr_cells)) == NULL)
+    if ((weights_e = (double *)malloc(sizeof(double) * nedges)) == NULL)
       error("Failed to allocate edge weights arrays.");
-    bzero(weights_e, sizeof(double) * 26 * nr_cells);
+    bzero(weights_e, sizeof(double) * nedges);
   }
 
   /* Loop over the tasks... */
@@ -3013,7 +3013,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
   if (eweights) {
     refsum = 0.0;
     sum = 0.0;
-    for (int k = 0; k < 26 * nr_cells; k++) {
+    for (int k = 0; k < nedges; k++) {
       refsum += ref_weights_e[k];
       sum += weights_e[k];
     }
