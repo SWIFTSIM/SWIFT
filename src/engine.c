@@ -1496,6 +1496,22 @@ int engine_prepare(struct engine *e) {
 
     /* And rebuild */
     engine_rebuild(e, repartitioned, 0);
+    
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Ensure we have only gparts in background cells. */
+    for (int i = e->s->zoom_props->tl_cell_offset; i < e->s->nr_cells; ++i) {
+      struct cell *c = &e->s->cells_top[i];
+
+      if (c->hydro.count > 0)
+        error("Background cell found with hydro particles after rebuild!");
+      if (c->stars.count > 0)
+        error("Background cell found with star particles after rebuild!");
+      if (c->black_holes.count > 0)
+        error("Background cell found with black hole particles after rebuild!");
+      if (c->sinks.count > 0)
+        error("Background cell found with sinks after rebuild!");
+    }
+#endif
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1834,6 +1850,22 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Construct all cells and tasks to start everything */
   engine_rebuild(e, 0, clean_h_values);
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have only gparts in background cells. */
+  for (int i = e->s->zoom_props->tl_cell_offset; i < e->s->nr_cells; ++i) {
+    struct cell *c = &e->s->cells_top[i];
+
+    if (c->hydro.count > 0)
+      error("Background cell found with hydro particles after rebuild!");
+    if (c->stars.count > 0)
+      error("Background cell found with star particles after rebuild!");
+    if (c->black_holes.count > 0)
+      error("Background cell found with black hole particles after rebuild!");
+    if (c->sinks.count > 0)
+      error("Background cell found with sinks after rebuild!");
+  }
+#endif
+
   /* Compute the mesh forces for the first time */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
 
@@ -1947,6 +1979,22 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Construct all cells again for a new round (need to update h_max) */
   engine_rebuild(e, 0, 0);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have only gparts in background cells. */
+  for (int i = e->s->zoom_props->tl_cell_offset; i < e->s->nr_cells; ++i) {
+    struct cell *c = &e->s->cells_top[i];
+
+    if (c->hydro.count > 0)
+      error("Background cell found with hydro particles after rebuild!");
+    if (c->stars.count > 0)
+      error("Background cell found with star particles after rebuild!");
+    if (c->black_holes.count > 0)
+      error("Background cell found with black hole particles after rebuild!");
+    if (c->sinks.count > 0)
+      error("Background cell found with sinks after rebuild!");
+  }
+#endif
 
   /* No drift this time */
   engine_skip_drift(e);
