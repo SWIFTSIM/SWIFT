@@ -2925,7 +2925,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
     else if (t->subtype == task_subtype_grav_bkg_pool) {
       
       /* Particle updates add only to vertex weight. */
-      if (vweights) atomic_add_d(&weights_v[cid], w);
+      if (vweights) weights_v[cid] += w;
       
     }
 
