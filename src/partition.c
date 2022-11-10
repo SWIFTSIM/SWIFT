@@ -1899,10 +1899,12 @@ static void partition_gather_weights(void *map_data, int num_elements,
 
     }
 
-    /* Pair pool? Only adds to vertex. */
+    /* Pair pool? */
     else if (t->subtype == task_subtype_grav_bkg_pool) {
+      
       /* Particle updates add only to vertex weight. */
       if (vweights) atomic_add_d(&weights_v[cid], w);
+      
     }
 
     /* Pair? */
@@ -2917,6 +2919,14 @@ static void check_weights(struct task *tasks, int nr_tasks,
       /* Self interactions add only to vertex weight. */
       if (vweights) weights_v[cid] += w;
 
+    }
+
+    /* Pair pool? */
+    else if (t->subtype == task_subtype_grav_bkg_pool) {
+      
+      /* Particle updates add only to vertex weight. */
+      if (vweights) atomic_add_d(&weights_v[cid], w);
+      
     }
 
     /* Pair? */
