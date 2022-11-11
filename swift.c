@@ -980,7 +980,7 @@ int main(int argc, char *argv[]) {
      * The main simulation loop below (where rebuild normally happens) won't be
      * executed. */
     if (engine_is_done(&e)) space_rebuild(e.s, /*repartitioned=*/0,
-                                          gravity_properties,  e.verbose);
+                                          e.gravity_properties,  e.verbose);
 
   } else {
 
