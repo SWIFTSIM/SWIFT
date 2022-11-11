@@ -20,7 +20,7 @@
 #define SWIFT_TIMESTEP_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers. */
 #include "cooling.h"
@@ -179,10 +179,19 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
 
   /* Get the RT timestep */
   float new_dt_radiation = FLT_MAX;
-  if (e->policy & engine_policy_rt)
+  if (e->policy & engine_policy_rt) {
     new_dt_radiation = rt_compute_timestep(
         p, xp, e->rt_props, e->cosmology, e->hydro_properties,
         e->physical_constants, e->internal_units);
+    if (e->max_nr_rt_subcycles > 0 && new_dt_radiation != FLT_MAX) {
+      /* if max_nr_rt_subcycles == 0, we don't subcycle. */
+      /* ToDo: this is a temporary solution to enforce the exact
+       * number of RT subcycles. We multiply the new_dt_rad here by
+       * the number of subcycles, and don't when getting the
+       * actual RT time step. */
+      new_dt_radiation *= e->max_nr_rt_subcycles;
+    }
+  }
 
   /* Take the minimum of all */
   float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
@@ -214,6 +223,28 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       new_dt, p->time_bin, p->limiter_data.min_ngb_time_bin, e->ti_current,
       e->time_base_inv);
 
+  return new_dti;
+}
+
+/**
+ * @brief Compute the new (integer) time-step of a given #part
+ *
+ * @param p The #part.
+ * @param xp The #xpart partner of p.
+ * @param e The #engine (used to get some constants).
+ */
+__attribute__((always_inline)) INLINE static integertime_t get_part_rt_timestep(
+    const struct part *restrict p, const struct xpart *restrict xp,
+    const struct engine *restrict e) {
+
+  integertime_t new_dti;
+  /* TODO: for now, we abuse max_nr_rt_subcycles to fix the
+   * number of sub-cycles for each step. */
+  if (e->max_nr_rt_subcycles > 0) {
+    new_dti = get_part_timestep(p, xp, e) / e->max_nr_rt_subcycles;
+  } else {
+    new_dti = get_part_timestep(p, xp, e);
+  }
   return new_dti;
 }
 

@@ -20,7 +20,9 @@
 #define SWIFT_COSMOLOGY_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "parser.h"
 #include "physical_constants.h"
 #include "timeline.h"
@@ -81,9 +83,17 @@ struct cosmology {
   /*! The mean density at the current redshift (in internal physical units) */
   double mean_density;
 
+  /*! The mean matter density at the current redshift (in internal physical
+   * units) */
+  double mean_density_Omega_m;
+
   /*! The mean baryonic density at the current redshift (in internal physical
    * units) */
   double mean_density_Omega_b;
+
+  /*! Over-density for virialised haloes at the current redshift
+   * from the Bryan & Norman 1998 fit */
+  double overdensity_BN98;
 
   /*! Conversion factor from internal time-step size to cosmological step */
   double time_step_factor;

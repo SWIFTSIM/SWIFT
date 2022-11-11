@@ -18,7 +18,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -28,6 +28,8 @@
 #include <fftw3.h>
 #endif
 
+/* Standard headers */
+#include <stdio.h>
 #include <string.h>
 
 /* This object's header. */
@@ -113,6 +115,8 @@ INLINE static const char* get_powtype_filename(const enum power_type type) {
  */
 void power_init(struct power_spectrum_data* p, struct swift_params* params,
                 int nr_threads) {
+
+#ifdef HAVE_FFTW
 
   /* Get power spectrum parameters */
   p->Ngrid = parser_get_opt_param_int(params, "PowerSpectrum:grid_side_length",
@@ -223,7 +227,13 @@ void power_init(struct power_spectrum_data* p, struct swift_params* params,
     safe_checkdir("power_spectra", /*create=*/1);
     safe_checkdir("power_spectra/foldings", /*create=*/1);
   }
+
+#else
+  error("Trying to initialize the PS code without FFTW present!");
+#endif
 }
+
+#ifdef HAVE_FFTW
 
 /**
  * @brief Shared information for shot noise to be used by all the threads in the
@@ -464,13 +474,11 @@ __attribute__((always_inline)) INLINE static void TSC_set(
 
   const double lx = 0.5 * (0.5 - dx) * (0.5 - dx); /* left side, dist 1 + dx  */
   const double mx = 0.75 - dx * dx;                /* center, dist |dx|  */
-  const double rx =
-      0.5 * (0.5 + dx) * (0.5 + dx); /* right side, dist 1 - dx  */
+  const double rx = 0.5 * (0.5 + dx) * (0.5 + dx); /* right side, dist 1 - dx */
 
   const double ly = 0.5 * (0.5 - dy) * (0.5 - dy); /* left side, dist 1 + dy  */
   const double my = 0.75 - dy * dy;                /* center, dist |dy|  */
-  const double ry =
-      0.5 * (0.5 + dy) * (0.5 + dy); /* right side, dist 1 - dy  */
+  const double ry = 0.5 * (0.5 + dy) * (0.5 + dy); /* right side, dist 1 - dy */
 
   const double lz = 0.5 * (0.5 - dz) * (0.5 - dz); /* left side, dist 1 + dz  */
   const double mz = 0.75 - dz * dz;                /* center, dist |dz|  */
@@ -1355,9 +1363,12 @@ void power_spectrum(const enum power_type type1, const enum power_type type2,
   pow_data->powgridft = NULL;
 }
 
+#endif /* HAVE_FFTW */
+
 void calc_all_power_spectra(struct power_spectrum_data* pow_data,
                             const struct space* s, struct threadpool* tp,
                             const int verbose) {
+#ifdef HAVE_FFTW
 
   const ticks tic = getticks();
 
@@ -1375,9 +1386,13 @@ void calc_all_power_spectra(struct power_spectrum_data* pow_data,
   if (verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());
+#else
+  error("Can't use the PS code without FFTW present!");
+#endif /* HAVE_FFTW */
 }
 
 void power_clean(struct power_spectrum_data* pow_data) {
+#ifdef HAVE_FFTW
   fftw_destroy_plan(pow_data->fftplanpow);
   fftw_destroy_plan(pow_data->fftplanpow2);
   free(pow_data->types2);
@@ -1386,6 +1401,9 @@ void power_clean(struct power_spectrum_data* pow_data) {
   // Probably already done for PM at this point
   fftw_cleanup_threads();
 #endif
+#else
+  error("Can't use the PS code without FFTW present!");
+#endif /* HAVE_FFTW */
 }
 
 /**
@@ -1397,12 +1415,14 @@ void power_clean(struct power_spectrum_data* pow_data) {
  */
 void power_spectrum_struct_dump(const struct power_spectrum_data* p,
                                 FILE* stream) {
+#ifdef HAVE_FFTW
   restart_write_blocks((void*)p, sizeof(struct power_spectrum_data), 1, stream,
                        "power spectrum data", "power spectrum data");
   restart_write_blocks(p->types1, p->spectrumcount, sizeof(enum power_type),
                        stream, "power types 1", "power types 1");
   restart_write_blocks(p->types2, p->spectrumcount, sizeof(enum power_type),
                        stream, "power types 2", "power types 2");
+#endif
 }
 
 /**
@@ -1414,6 +1434,7 @@ void power_spectrum_struct_dump(const struct power_spectrum_data* p,
  */
 void power_spectrum_struct_restore(struct power_spectrum_data* p,
                                    FILE* stream) {
+#ifdef HAVE_FFTW
   restart_read_blocks((void*)p, sizeof(struct power_spectrum_data), 1, stream,
                       NULL, "power spectrum data");
   p->types1 =
@@ -1465,4 +1486,5 @@ void power_spectrum_struct_restore(struct power_spectrum_data* p,
   fftw_free(p->powgrid2);
   p->powgrid2 = NULL;
   p->powgridft2 = NULL;
+#endif /* HAVE_FFTW */
 }

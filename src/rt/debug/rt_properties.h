@@ -47,6 +47,9 @@ struct rt_props {
   /* total radiation absorbed by gas. This is not really a property,
    * but a placeholder to sum up a global variable */
   unsigned long long debug_radiation_absorbed_tot;
+
+  /* Max number of subcycles per hydro step */
+  int debug_max_nr_subcycles;
 };
 
 /**
@@ -83,13 +86,10 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rtp->debug_radiation_absorbed_tot = 0ULL;
   rtp->debug_radiation_absorbed_this_step = 0ULL;
 
-  /* After initialisation, print params to screen */
-  rt_props_print(rtp);
-
-  /* Print a final message. */
-  if (engine_rank == 0) {
-    message("Radiative transfer initialized");
-  }
+  /* Don't make it an optional parameter here so we crash
+   * if I forgot to provide it */
+  rtp->debug_max_nr_subcycles =
+      parser_get_param_int(params, "TimeIntegration:max_nr_rt_subcycles");
 }
 
 /**

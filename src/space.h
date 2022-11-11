@@ -24,7 +24,7 @@
 #define SWIFT_SPACE_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <stddef.h>
@@ -531,8 +531,6 @@ void space_init_gparts(struct space *s, int verbose);
 void space_init_sparts(struct space *s, int verbose);
 void space_init_bparts(struct space *s, int verbose);
 void space_init_sinks(struct space *s, int verbose);
-void space_convert_rt_quantities_after_zeroth_step(struct space *s,
-                                                   int verbose);
 void space_convert_quantities(struct space *s, int verbose);
 void space_convert_rt_quantities(struct space *s, int verbose);
 void space_link_cleanup(struct space *s);

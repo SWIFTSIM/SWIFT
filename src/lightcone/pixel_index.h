@@ -24,7 +24,7 @@
 #include <stdint.h>
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Type to use for HEALPix pixel indexes */
 typedef int64_t pixel_index_t;

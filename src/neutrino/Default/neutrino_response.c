@@ -18,7 +18,9 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
+
+/* Local includes. */
 #include "parser.h"
 
 #ifdef HAVE_LIBGSL

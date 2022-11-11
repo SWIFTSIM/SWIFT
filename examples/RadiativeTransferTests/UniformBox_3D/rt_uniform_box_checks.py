@@ -39,10 +39,11 @@
 # -----------------------------------------------------------------------
 
 
-import numpy as np
 from sys import argv
-from swift_rt_debug_io import get_snap_data
 
+import numpy as np
+
+from swift_rt_debug_io import get_snap_data
 
 # some behaviour options
 skip_snap_zero = True  # skip snap_0000.hdf5
@@ -221,6 +222,25 @@ def check_all_hydro_is_equal(snapdata):
             print("Oh no 2")
         if (compare.gas.ThermochemistryDone[nzs] == 0).any():
             print("Oh no 3")
+
+        # ---------------------------------------------------------------
+        # Check numbers of subcycles.
+        # ---------------------------------------------------------------
+        fishy = ref.gas.nsubcycles != compare.gas.nsubcycles
+        if fishy.any():
+            print("- Comparing hydro", ref.snapnr, "->", compare.snapnr)
+            print(
+                "--- Subcycle Calls count differ: {0:8d} / {1:8d}; ".format(
+                    np.count_nonzero(fishy), npart
+                )
+            )
+            if not skip_last_snap:
+                print(
+                    "Note, this might be acceptable behaviour for the final snapshot. You currently aren't skipping it in this check."
+                )
+
+            if break_on_diff:
+                quit()
 
     return
 

@@ -20,7 +20,7 @@
 #define SWIFT_GRAVITY_PROPERTIES
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 #if defined(HAVE_HDF5)
 #include <hdf5.h>
@@ -109,6 +109,9 @@ struct gravity_props {
 
   /*! Frequency of tree-rebuild in units of #gpart updates. */
   float rebuild_frequency;
+
+  /*! Fraction of active #gparts needed to trigger a tree-rebuild */
+  float rebuild_active_fraction;
 
   /*! Time integration dimensionless multiplier */
   float eta;

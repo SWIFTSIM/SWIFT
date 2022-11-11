@@ -19,7 +19,7 @@
 #ifndef SWIFT_SINK_IO_H
 #define SWIFT_SINK_IO_H
 
-#include "../config.h"
+#include <config.h>
 
 /* Load the correct sink type */
 #if defined(SINK_NONE)

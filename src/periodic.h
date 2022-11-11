@@ -20,7 +20,7 @@
 #define SWIFT_PERIODIC_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Includes. */
 #include "inline.h"

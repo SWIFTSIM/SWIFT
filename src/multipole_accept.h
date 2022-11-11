@@ -20,7 +20,7 @@
 #define SWIFT_MULTIPOLE_ACCEPT_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local includes */
 #include "binomial.h"
@@ -194,8 +194,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
 /**
  * Compute the distance above which an M2L kernel is allowed to be used.
  *
- * This uses conservative assumptions to garanty that all the possible cell pair
- * interactions that need a direct interaction are below this distance.
+ * This uses conservative assumptions to guarantee that all the possible cell
+ * pair interactions that need a direct interaction are below this distance.
  *
  * @param props The properties of the gravity scheme.
  * @param size The size of the multipoles (here the cell size).

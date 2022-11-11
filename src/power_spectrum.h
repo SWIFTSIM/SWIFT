@@ -20,7 +20,7 @@
 #define SWIFT_POWER_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Local headers */
 #ifdef HAVE_FFTW
@@ -100,9 +100,6 @@ struct power_spectrum_data {
 
 void power_init(struct power_spectrum_data* p, struct swift_params* params,
                 int nr_threads);
-void power_spectrum(const enum power_type type1, const enum power_type type2,
-                    struct power_spectrum_data* pow_data, const struct space* s,
-                    struct threadpool* tp, const int verbose);
 void calc_all_power_spectra(struct power_spectrum_data* pow_data,
                             const struct space* s, struct threadpool* tp,
                             const int verbose);

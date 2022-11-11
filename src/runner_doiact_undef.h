@@ -33,3 +33,9 @@
 #undef GET_MU0
 #undef FUNCTION
 #undef FUNCTION_TASK_LOOP
+
+/* these are defined in runner_doiact_functions_hydro.h at every #include */
+#undef PART_IS_ACTIVE
+#undef CELL_IS_ACTIVE
+#undef CELL_ARE_PART_DRIFTED
+#undef DO_DRIFT_DEBUG_CHECKS

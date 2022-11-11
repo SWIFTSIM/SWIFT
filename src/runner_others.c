@@ -22,7 +22,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <float.h>
@@ -676,7 +676,7 @@ void runner_do_end_hydro_force(struct runner *r, struct cell *c, int timer) {
 
           /* Some values need to be reset in the Gizmo case. */
           hydro_prepare_force(p, &c->hydro.xparts[k], cosmo,
-                              e->hydro_properties, 0);
+                              e->hydro_properties, 0, 0);
           rt_prepare_force(p);
 #endif
         }
@@ -1028,7 +1028,7 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
 
   /* Anything to do here? */
   if (count == 0) return;
-  if (!cell_is_active_hydro(c, e)) return;
+  if (!cell_is_rt_active(c, e)) return;
 
   TIMER_TIC;
 
@@ -1038,7 +1038,6 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       if (c->progeny[k] != NULL) runner_do_rt_tchem(r, c->progeny[k], 0);
   } else {
 
-    /* const struct cosmology *cosmo = e->cosmology; */
     struct part *restrict parts = c->hydro.parts;
     struct xpart *restrict xparts = c->hydro.xparts;
 
@@ -1053,26 +1052,29 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
       if (part_is_inhibited(p, e)) continue;
 
       /* Skip inactive parts */
-      if (!part_is_active(p, e)) continue;
+      if (!part_is_rt_active(p, e)) continue;
 
       /* Finish the force loop */
-      const integertime_t ti_current = e->ti_current;
-      const integertime_t ti_step = get_integer_timestep(p->time_bin);
-      const integertime_t ti_begin =
-          get_integer_time_begin(ti_current + 1, p->time_bin);
+      const integertime_t ti_current_subcycle = e->ti_current_subcycle;
+      const integertime_t ti_step =
+          get_integer_timestep(p->rt_time_data.time_bin);
+      const integertime_t ti_begin = get_integer_time_begin(
+          ti_current_subcycle + 1, p->rt_time_data.time_bin);
       const integertime_t ti_end = ti_begin + ti_step;
 
+      const double dt =
+          rt_part_dt(ti_begin, ti_end, e->time_base, with_cosmology, cosmo);
 #ifdef SWIFT_DEBUG_CHECKS
-      if (ti_begin != ti_current)
+      if (ti_begin != ti_current_subcycle)
         error(
             "Particle in wrong time-bin, ti_end=%lld, ti_begin=%lld, "
             "ti_step=%lld time_bin=%d wakeup=%d ti_current=%lld",
             ti_end, ti_begin, ti_step, p->time_bin, p->limiter_data.wakeup,
-            ti_current);
+            ti_current_subcycle);
+      if (dt < 0.)
+        error("Got part with negative time-step: %lld, %.6g", p->id, dt);
 #endif
 
-      const double dt = rt_part_dt(ti_begin, ti_end, e->time_base,
-                                   with_cosmology, e->cosmology);
       rt_finalise_transport(p, dt, cosmo);
 
       /* And finally do thermochemistry */
@@ -1080,5 +1082,5 @@ void runner_do_rt_tchem(struct runner *r, struct cell *c, int timer) {
     }
   }
 
-  if (timer) TIMER_TOC(timer_end_rt_tchem);
+  if (timer) TIMER_TOC(timer_do_rt_tchem);
 }

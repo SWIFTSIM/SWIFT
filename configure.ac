@@ -31,10 +31,13 @@ AC_CONFIG_MACRO_DIR([m4])
 : ${CFLAGS=""}
 
 # Generate header file.
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS([config.h])
+
 
 # Find and test the compiler.
 AX_CHECK_ENABLE_DEBUG
+# Enable POSIX and platform extension preprocessor macros.
+AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_OPENMP
@@ -157,9 +160,11 @@ AC_ARG_ENABLE([mpi],
     [enable_mpi="$enableval"],
     [enable_mpi="yes"]
 )
+# Use extra flags set by AC_PROG_CC as part of $CC. Currently undocumented as ac_cv_prog_cc_stdc, 
+# so could change.
 good_mpi="yes"
 if test "$enable_mpi" = "yes"; then
-    AX_MPI([CC="$MPICC" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ])
+    AX_MPI([CC="$MPICC $ac_cv_prog_cc_stdc" AC_DEFINE(HAVE_MPI, 1, [Define if you have the MPI library.]) ], [enable_mpi="no"])
     MPI_LIBRARY="Unknown MPI"
 
     # Various MPI implementations require additional libraries when also using
@@ -224,9 +229,12 @@ AC_ARG_VAR(MPIRUN, Path to the mpirun command if non-standard)
 # Add libtool support (now that CC is defined). Disable shared libraries by default.
 LT_INIT([disable-shared])
 
-# Need C99 and inline support.
-AC_PROG_CC_C99
+# Need C99 and inline support. Only for autoconfs to version 2.69.
+m4_version_prereq([2.71], [], [AC_PROG_CC_C99])
+
+# Need inline support.
 AC_C_INLINE
+
 
 # If debugging try to show inlined functions.
 if test "x$enable_debug" = "xyes"; then
@@ -409,6 +417,20 @@ if test "$stars_density_checks" = "yes"; then
    AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-stars-density-checks!)
 elif test "$stars_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_STARS_DENSITY_CHECKS], [$enableval] ,[Enable stars density brute-force checks])
+fi
+
+# Check if ghost statistics are enabled
+AC_ARG_ENABLE([ghost-statistics],
+   [AS_HELP_STRING([--enable-ghost-statistics],
+     [Gather statistics about the ghost iterations for hydro, stars and black holes in N bins @<:@N@:>@]
+   )],
+   [ghost_stats="$enableval"],
+   [ghost_stats="no"]
+)
+if test "$ghost_stats" == "yes"; then
+   AC_MSG_ERROR(Need to specify the number of bins when using --enable-ghost-statistics!)
+elif test "$ghost_stats" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_GHOST_STATS], [$enableval] ,[Enable ghost statistics for hydro, stars and black holes])
 fi
 
 # Check whether we want to switch on glass making
@@ -696,7 +718,8 @@ AC_ARG_ENABLE([mpi-mesh-gravity],
 # Autoconf stuff.
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
-AC_HEADER_STDC
+AC_PROG_EGREP
+
 
 # Check for the libraries we will need.
 AC_CHECK_LIB(m,sqrt,,AC_MSG_ERROR(something is wrong with the math library!))
@@ -1574,8 +1597,33 @@ AC_CHECK_HEADERS([altivec.h], [], [],
 ])
 
 # Check for timing functions needed by cycle.h.
-AC_HEADER_TIME
-AC_CHECK_HEADERS([sys/time.h c_asm.h intrinsics.h mach/mach_time.h])
+AC_CHECK_HEADERS_ONCE([sys/time.h])
+if test $ac_cv_header_sys_time_h = yes; then
+  AC_DEFINE([TIME_WITH_SYS_TIME],[1],[Define to 1 if you can safely include both <sys/time.h>
+	     and <time.h>.  This macro is obsolete.])
+fi
+
+AC_CHECK_HEADERS([sys/time.h], [], [],
+[#ifdef HAVE_SYS_TIME_H
+# include <sys/time.h>
+#endif
+])
+AC_CHECK_HEADERS([c_asm.h], [], [],
+[#ifdef HAVE_C_ASM_H
+# include <c_asm.h>
+#endif
+])
+AC_CHECK_HEADERS([intrinsics.h], [], [],
+[#ifdef HAVE_INTRINSICS_H
+# include <intrinsics.h>
+#endif
+])
+AC_CHECK_HEADERS([mach/mach_time.h], [], [],
+[#ifdef HAVE_MACH_MACH_TIME_H
+# include <mach/mach_time.h>
+#endif
+])
+
 AC_CHECK_TYPE([hrtime_t],[AC_DEFINE(HAVE_HRTIME_T, 1, [Define to 1 if hrtime_t
 is defined in <sys/time.h>])],,
 [#if HAVE_SYS_TIME_H
@@ -1593,12 +1641,12 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM(
 AC_MSG_RESULT($rtc_ok)
 
 # Special timers for the ARM v7 platforms (taken from FFTW-3 to match their cycle.h)
-AC_ARG_ENABLE(armv7a-cntvct, [AC_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
+AC_ARG_ENABLE(armv7a-cntvct, [AS_HELP_STRING([--enable-armv7a-cntvct],[enable the cycle counter on Armv7a via the CNTVCT register])], have_armv7acntvct=$enableval)
 if test "$have_armv7acntvct"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_CNTVCT,1,[Define if you have enabled the CNTVCT cycle counter on ARMv7a])
 fi
 
-AC_ARG_ENABLE(armv7a-pmccntr, [AC_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
+AC_ARG_ENABLE(armv7a-pmccntr, [AS_HELP_STRING([--enable-armv7a-pmccntr],[enable the cycle counter on Armv7a via the PMCCNTR register])], have_armv7apmccntr=$enableval)
 if test "$have_armv7apmccntr"x = "yes"x; then
 	AC_DEFINE(HAVE_ARMV7A_PMCCNTR,1,[Define if you have enabled the PMCCNTR cycle counter on ARMv7a])
 fi
@@ -1722,7 +1770,7 @@ AC_SUBST([SUNDIALS_INCS])
 # As an example for this, see the call to AC_ARG_WITH for cooling.
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
-		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL default: none@:>@]
+		[Master switch for subgrid methods. Inexperienced user should start here. Options are: @<:@none, GEAR, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -1805,6 +1853,19 @@ case "$with_subgrid" in
 	with_subgrid_star_formation=EAGLE
 	with_subgrid_feedback=EAGLE
 	with_subgrid_black_holes=EAGLE
+	with_subgrid_sink=none
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
+   SPIN_JET_EAGLE)
+	with_subgrid_cooling=EAGLE
+	with_subgrid_chemistry=EAGLE
+	with_subgrid_tracers=EAGLE
+	with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+	with_subgrid_feedback=EAGLE
+	with_subgrid_black_holes=SPIN_JET
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
@@ -2456,7 +2517,7 @@ AC_DEFINE_UNQUOTED([FEEDBACK_NR_RAYS_AGN], [$with_number_of_AGN_rays], [Number o
 # Black hole model.
 AC_ARG_WITH([black-holes],
    [AS_HELP_STRING([--with-black-holes=<model>],
-      [Black holes model to use @<:@none, EAGLE default: none@:>@]
+      [Black holes model to use @<:@none, EAGLE, SPIN_JET default: none@:>@]
    )],
    [with_black_holes="$withval"],
    [with_black_holes="none"]
@@ -2476,6 +2537,10 @@ case "$with_black_holes" in
    ;;
    EAGLE)
       AC_DEFINE([BLACK_HOLES_EAGLE], [1], [EAGLE black hole model])
+   ;;
+   SPIN_JET)
+      AC_DEFINE([BLACK_HOLES_SPIN_JET], [1], [Spin and jet black hole model])
+      with_black_holes="SPIN_JETS (Husko+22)"
    ;;
    *)
       AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
@@ -2947,6 +3012,7 @@ AC_MSG_RESULT([
    Boundary particles          : $boundary_particles
    Fixed boundary particles    : $fixed_boundary_particles
    Planetary fixed entropy     : $planetary_fixed_entropy
+   Ghost statistics            : $ghost_stats
 
    Zoom region support  : $with_zoom_region
    Continuous Sim. Data Stream : $with_csds

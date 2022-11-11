@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include "../config.h"
+#include <config.h>
 
 /* This object's header. */
 #include "runner_doiact_grav.h"
@@ -2698,9 +2698,9 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
-    const int d = ceil(max_distance * max3(s->iwidth[0],
+    const int d = max(ceil(max_distance * max3(s->iwidth[0],
                                            s->iwidth[1],
-                                           s->iwidth[2])) + 1;
+                                               s->iwidth[2])) + 1, 2);
 
     /* Loop over plausibly useful cells */
     for (int ii = top_i - d; ii <= top_i + d; ++ii) {
@@ -3031,7 +3031,7 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
 
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
-  const int delta = (int)(sqrt(3) * distance / ci->width[0]) + 1;
+  const int delta = max((int)(sqrt(3) * distance / ci->width[0]) + 1, 2);
   int delta_m = delta;
   int delta_p = delta;
 

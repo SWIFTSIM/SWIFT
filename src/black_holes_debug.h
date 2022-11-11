@@ -20,13 +20,15 @@
 #define SWIFT_BLACK_HOLES_DEBUG_H
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Import the debug routines of the right black holes definition */
 #if defined(BLACK_HOLES_NONE)
 #include "./black_holes/Default/black_holes_debug.h"
 #elif defined(BLACK_HOLES_EAGLE)
 #include "./black_holes/EAGLE/black_holes_debug.h"
+#elif defined(BLACK_HOLES_SPIN_JET)
+#include "./black_holes/SPIN_JET/black_holes_debug.h"
 #else
 #error "Invalid choice of BH model"
 #endif

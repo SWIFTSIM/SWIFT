@@ -24,3 +24,6 @@ schemes.
    requirements
    GEAR_RT
    SPHM1_RT
+   RT_subcycling
+   RT_notes_for_developers
+   additional_tools

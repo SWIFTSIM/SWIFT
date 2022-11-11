@@ -28,7 +28,7 @@
  */
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Standard headers. */
 #include <float.h>
@@ -3002,18 +3002,24 @@ static void check_weights(struct task *tasks, int nr_tasks,
   double refsum = 0.0;
   double sum = 0.0;
   if (vweights) {
+    if (engine_rank == 0) message("checking vertex weight consistency");
+    if (ref_weights_v == NULL)
+      error("vertex partition weights are inconsistent");
     for (int k = 0; k < nr_cells; k++) {
       refsum += ref_weights_v[k];
       sum += weights_v[k];
-    } 
-    if (fabs(sum - refsum) > 1.0) 
-      error("vertex partition weights are not consistent (%f!=%f)", sum, refsum);
+    }
+    if (fabs(sum - refsum) > 1.0) {
+      error("vertex partition weights are not consistent (%f!=%f)", sum,
+            refsum);
+    }
   }
-
   if (eweights) {
+    if (engine_rank == 0) message("checking edge weight consistency");
     refsum = 0.0;
     sum = 0.0;
-    for (int k = 0; k < nedges; k++) {
+    if (ref_weights_e == NULL) error("edge partition weights are inconsistent");
+    for (int k = 0; k < 26 * nr_cells; k++) {
       refsum += ref_weights_e[k];
       sum += weights_e[k];
     }
@@ -3021,7 +3027,7 @@ static void check_weights(struct task *tasks, int nr_tasks,
       error("edge partition weights are not consistent (%f!=%f)", sum, refsum);
     }
   }
-  message("partition weights checked successfully");
+  if (engine_rank == 0) message("partition weights checked successfully");
 }
 #endif
 #endif

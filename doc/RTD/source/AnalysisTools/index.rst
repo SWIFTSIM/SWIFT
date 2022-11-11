@@ -235,3 +235,50 @@ The ``.dump<.rank>`` files once seen are deleted, so dumping can be done more
 than once. For a non-MPI run the file is simply called ``.dump``, note for MPI
 you need to create one file per rank, so ``.dump.0``, ``.dump.1`` and so on.
 
+
+Neighbour search statistics
+---------------------------
+
+One of the core algorithms in SWIFT is an iterative neighbour search 
+whereby we try to find an appropriate radius around a particle's 
+position so that the weighted sum over neighbouring particles within 
+that radius is equal to some target value. The most obvious example of 
+this iterative neighbour search is the SPH density loop, but various 
+sub-grid models employ a very similar iterative neighbour search. The 
+computational cost of this iterative search is significantly affected by 
+the number of iterations that is required, and it can therefore be 
+useful to analyse the progression of the iterative scheme in detail.
+
+When configured with ``--enable-ghost-statistics=X``, SWIFT will be 
+compiled with additional diagnostics that statistically track the number 
+of iterations required to find a converged answer. Here, ``X`` is a 
+fixed number of bins to use to collect the required statistics 
+(``ghost`` refers to the fact that the iterations take place inside the 
+ghost tasks). In practice, this means that every cell in the SWIFT tree 
+will be equipped with an additional ``struct`` containing three sets of 
+``X`` bins (one set for each iterative neighbour loop: hydro, stellar 
+feedback, AGN feedback). For each bin ``i``, we store the number of 
+particles that required updating during iteration ``i``, the number of 
+particles that could not find a single neighbouring particle, the 
+minimum and maximum smoothing length of all particles that required 
+updating, and the sum of all their search radii and all their search 
+radii squared. This allows us to calculate the upper and lower limits, 
+as well as the mean and standard deviation on the search radius for each 
+iteration and for each cell. Note that there could be more iterations 
+required than the number of bins ``X``; in this case the additional 
+iterations will be accumulated in the final bin. At the end of each time 
+step, a text file is produced (one per MPI rank) that contains the 
+information for all cells that had any relevant activity. This text file 
+is named ``ghost_stats_ssss_rrrr.txt``, where ``ssss`` is the step 
+counter for that time step and ``rrrr`` is the MPI rank.
+
+The script ``tools/plot_ghost_stats.py`` takes one or multiple 
+``ghost_stats.txt`` files and computes global statistics for all the 
+cells in those files. The script also takes the name of an output file 
+where it will save those statistics as a set of plots, and an optional 
+label that will be displayed as the title of the plots. Note that there 
+are no restrictions on the number of input files or how they relate; 
+different files could represent different MPI ranks, but also different 
+time steps or even different simulations (which would make little 
+sense). It is up to the user to make sure that the input is actually 
+relevant.

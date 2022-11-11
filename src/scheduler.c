@@ -20,7 +20,7 @@
  ******************************************************************************/
 
 /* Config parameters. */
-#include "../config.h"
+#include <config.h>
 
 /* Some standard headers. */
 #include <limits.h>
@@ -277,6 +277,7 @@ void task_dependency_sum(void *in_p, void *out_p, int *len,
   for (int i = 0; i < *len; i++) {
     /* loop over all the object set in invals */
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
+
       /* Have we reached the end of the links? */
       if (in[i].number_link[j] == -1) {
         break;
@@ -408,6 +409,10 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     task_dep[i].task_in_is_top = 1;
     task_dep[i].task_in_is_grav_super = 1;
     task_dep[i].task_in_is_hydro_super = 1;
+    const int tt = i / task_subtype_count;
+    const int tst = i % task_subtype_count;
+    task_dep[i].type_in = tt;
+    task_dep[i].subtype_in = tst;
 
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
       /* Use number_link as indicator of the existance of a relation */
@@ -436,9 +441,15 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
     struct task_dependency *cur = &task_dep[ind];
     task_exists[ind]++;
 
-    /* Set ta */
-    cur->type_in = ta->type;
-    cur->subtype_in = ta->subtype;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cur->type_in != ta->type)
+      error("wrong indexing for task %d: Expect type %d got %d", i,
+            cur->type_in, ta->type);
+    if (cur->subtype_in != ta->subtype)
+      error("wrong indexing for task %d: Expect subtype %d got %d", i,
+            cur->subtype_in, ta->subtype);
+#endif
+    /* Is ta implicit? */
     cur->implicit_in = ta->implicit;
 
     /* Set the task level. */
@@ -510,6 +521,16 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
       if (step != 0 && tb->skip) continue;
 
       int indj = tb->type * task_subtype_count + tb->subtype;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      const struct task_dependency *target = &task_dep[indj];
+      if (target->type_in != tb->type)
+        error("wrong indexing for task %d: Expect type %d got %d", i,
+              target->type_in, tb->type);
+      if (target->subtype_in != tb->subtype)
+        error("wrong indexing for task %d: Expect subtype %d got %d", i,
+              target->subtype_in, tb->subtype);
+#endif
       task_exists[indj]++;
 
       const struct cell *ci_b = tb->ci;
@@ -587,11 +608,11 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
 
 #ifdef WITH_MPI
   /* create MPI operator */
-  MPI_Datatype data_type;
-  task_dependency_define(&data_type);
+  MPI_Datatype dependency_data_type;
+  task_dependency_define(&dependency_data_type);
 
-  MPI_Op sum;
-  MPI_Op_create(task_dependency_sum, /* commute */ 1, &sum);
+  MPI_Op dependency_sum;
+  MPI_Op_create(task_dependency_sum, /* commute */ 1, &dependency_sum);
 
   /* create recv buffer */
   struct task_dependency *recv = NULL;
@@ -613,8 +634,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
   }
 
   /* Do the reduction */
-  int test =
-      MPI_Reduce(task_dep, recv, nber_tasks, data_type, sum, 0, MPI_COMM_WORLD);
+  int test = MPI_Reduce(task_dep, recv, nber_tasks, dependency_data_type,
+                        dependency_sum, 0, MPI_COMM_WORLD);
   if (test != MPI_SUCCESS) error("MPI reduce failed");
 
   test = MPI_Reduce(task_exists, recv_exists, nber_tasks, MPI_INT, MPI_SUM, 0,
@@ -802,8 +823,8 @@ void scheduler_write_dependencies(struct scheduler *s, int verbose, int step) {
   free(task_exists);
   free(task_has_deps);
 #ifdef WITH_MPI
-  MPI_Type_free(&data_type);
-  MPI_Op_free(&sum);
+  MPI_Type_free(&dependency_data_type);
+  MPI_Op_free(&dependency_sum);
 #endif
 
   if (verbose)
@@ -854,6 +875,10 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
     task_dep[i].task_in_is_top = 1;
     task_dep[i].task_in_is_grav_super = 1;
     task_dep[i].task_in_is_hydro_super = 1;
+    const int tt = i / task_subtype_count;
+    const int tst = i % task_subtype_count;
+    task_dep[i].type_in = tt;
+    task_dep[i].subtype_in = tst;
 
     for (int j = 0; j < MAX_NUMBER_DEP; j++) {
       /* Use number_link as indicator of the existance of a relation */
@@ -884,9 +909,15 @@ void scheduler_write_cell_dependencies(struct scheduler *s, int verbose,
     const int ind = ta->type * task_subtype_count + ta->subtype;
     struct task_dependency *cur = &task_dep[ind];
 
-    /* Set ta */
-    cur->type_in = ta->type;
-    cur->subtype_in = ta->subtype;
+#ifdef SWIFT_DEBUG_CHECKS
+    if (cur->type_in != ta->type)
+      error("wrong indexing for task %d: Expect type %d got %d", i,
+            cur->type_in, ta->type);
+    if (cur->subtype_in != ta->subtype)
+      error("wrong indexing for task %d: Expect subtype %d got %d", i,
+            cur->subtype_in, ta->subtype);
+#endif
+    /* Is ta implicit? */
     cur->implicit_in = ta->implicit;
 
     /* Set the task level. */
@@ -1956,6 +1987,7 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
 
     switch (t->type) {
       case task_type_sort:
+      case task_type_rt_sort:
         cost = wscale * intrinsics_popcount(t->flags) * count_i *
                (sizeof(int) * 8 - (count_i ? intrinsics_clz(count_i) : 0));
         break;
@@ -2272,6 +2304,10 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
       case task_type_rt_tchem:
         cost = wscale * count_i;
+        break;
+      case task_type_rt_advance_cell_time:
+      case task_type_rt_collect_times:
+        cost = wscale;
         break;
       case task_type_csds:
         cost =
@@ -2961,7 +2997,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
-  pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
 }
 
