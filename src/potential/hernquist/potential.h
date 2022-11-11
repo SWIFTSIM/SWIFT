@@ -73,6 +73,9 @@ struct external_potential {
    * time to get the time steps */
   double timestep_mult;
 
+  /*! Inverse of the sqrt of G*M, a common factor */
+  double sqrtgm_inv;
+
   /*! Mode to use 0 for simplest form of potential purely 1 for idealized
    * galaxies */
   int usedisk;
@@ -92,21 +95,18 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const* restrict phys_const,
     const struct gpart* restrict g) {
 
-  const float G_newton = phys_const->const_newton_G;
-
   /* Calculate the relative potential with respect to the centre of the
    * potential */
   const float dx = g->x[0] - potential->x[0];
   const float dy = g->x[1] - potential->x[1];
   const float dz = g->x[2] - potential->x[2];
 
-  /* calculate the radius  */
+  /* Calculate the radius  */
   const float r = sqrtf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
-  const float sqrtgm_inv = 1.f / sqrtf(G_newton * potential->mass);
 
   /* Calculate the circular orbital period */
-  const float period = 2.f * M_PI * sqrtf(r) * potential->al *
-                       (1 + r / potential->al) * sqrtgm_inv;
+  const float period =
+      2.f * M_PI * sqrtf(r) * (potential->al + r) * potential->sqrtgm_inv;
 
   /* Time-step as a fraction of the cirecular orbital time */
   const float time_step = potential->timestep_mult * period;
@@ -211,7 +211,7 @@ static INLINE void potential_init_backend(
     potential->x[2] += s->dim[2] / 2.;
   }
 
-  /* check whether we use the more advanced idealized disk setting */
+  /* Check whether we use the more advanced idealized disk setting */
   potential->usedisk = parser_get_opt_param_int(
       parameter_file, "HernquistPotential:idealizeddisk",
       idealized_disk_default);
@@ -269,7 +269,7 @@ static INLINE void potential_init_backend(
     potential->M200 = M200;
     potential->R200 = R200;
 
-    /* get the concentration from the parameter file */
+    /* Get the concentration from the parameter file */
     potential->c = parser_get_param_double(parameter_file,
                                            "HernquistPotential:concentration");
 
@@ -286,7 +286,7 @@ static INLINE void potential_init_backend(
     const double b = 2. * cc_inv * cc_inv * (log(1. + cc) - cc / (1. + cc));
 
     /* Calculate the Hernquist equivalent scale length */
-    potential->al = (b + sqrt(b)) / (1 - b) * R200;
+    potential->al = R200 * (b + sqrt(b)) / (1 - b);
 
     /* Define R200 inv*/
     const double R200_inv = 1. / R200;
@@ -296,9 +296,9 @@ static INLINE void potential_init_backend(
                                 (potential->R200 + potential->al) * R200_inv *
                                 R200_inv * potential->M200;
 
-    /* Depending on the disk mass and and the bulge mass the halo
-     * gets a different mass, because of this we read the fractions
-     * from the parameter file and calculate the absolute mass*/
+    /* Depending on the disk mass and and the bulge mass, the halo
+     * gets a different mass. Because of this, we read the fractions
+     * from the parameter file and calculate the absolute mass */
     const double diskfraction = parser_get_param_double(
         parameter_file, "HernquistPotential:diskfraction");
     const double bulgefraction = parser_get_param_double(
@@ -318,12 +318,14 @@ static INLINE void potential_init_backend(
       parser_get_param_double(parameter_file, "HernquistPotential:epsilon");
   potential->epsilon2 = epsilon * epsilon;
 
-  /* Compute the minimal time-step. */
-  /* This is the circular orbital time at the softened radius */
+  /* Calculate a common factor in the calculation, i.e. 1/sqrt(GM)*/
   const float sqrtgm = sqrtf(phys_const->const_newton_G * potential->mass);
-  potential->mintime = 2.f * sqrtf(epsilon) * potential->al * M_PI *
-                       (1. + epsilon / potential->al) / sqrtgm *
-                       potential->timestep_mult;
+  potential->sqrtgm_inv = 1. / sqrtgm;
+
+  /* Compute the minimal time-step. */
+  /* This is a fraction of the circular orbital time at the softened radius */
+  potential->mintime = potential->timestep_mult * 2.f * sqrtf(epsilon) * M_PI *
+                       (potential->al + epsilon) * potential->sqrtgm_inv;
 }
 
 /**
