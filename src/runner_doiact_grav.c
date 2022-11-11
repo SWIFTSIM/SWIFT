@@ -2698,7 +2698,7 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
 
     /* Maximal distance any interaction can take place
      * before the mesh kicks in, rounded up to the next integer */
-    const int d = max(ceil(max_distance * max3(s->iwidth[0],
+    const int d = max((int)ceil(max_distance * max3(s->iwidth[0],
                                            s->iwidth[1],
                                                s->iwidth[2])) + 1, 2);
 
