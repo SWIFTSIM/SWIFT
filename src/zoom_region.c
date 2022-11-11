@@ -40,7 +40,7 @@
 
 /**
  * @brief Read parameter file for "ZoomRegion" properties, and initialize the
- * zoom_region struct.
+ * zoom_region_properties struct.
  *
  * @param params Swift parameter structure.
  * @param s The space
@@ -80,7 +80,9 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* Extract the zoom width boost factor (used to define the buffer around the
      * zoom region). */
     s->zoom_props->zoom_boost_factor =
-        parser_get_opt_param_float(params, "ZoomRegion:bkg_cell_hires_region_ratio", 1.1);
+        parser_get_opt_param_float(params,
+                                   "ZoomRegion:bkg_cell_hires_region_ratio",
+                                   1.1);
 
     /* Set the number of zoom cells in a natural cell. */
     s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
