@@ -61,10 +61,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     if (s->zoom_props == NULL)
       error("Error allocating memory for the zoom parameters.");
 
-    /* Are refining the background cells? */
-    s->zoom_props->refine_bkg =
-        parser_get_opt_param_int(params, "ZoomRegion:enable_bkg_refinement", 1);
-
     /* Set the zoom cdim. */
     s->zoom_props->cdim[0] =
         parser_get_opt_param_int(params, "Scheduler:max_top_level_cells",
@@ -84,7 +80,7 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     /* Extract the zoom width boost factor (used to define the buffer around the
      * zoom region). */
     s->zoom_props->zoom_boost_factor =
-        parser_get_opt_param_float(params, "ZoomRegion:zoom_boost_factor", 1.1);
+        parser_get_opt_param_float(params, "ZoomRegion:bkg_cell_hires_region_ratio", 1.1);
 
     /* Set the number of zoom cells in a natural cell. */
     s->zoom_props->nr_zoom_per_bkg_cells = s->zoom_props->cdim[0];
@@ -233,30 +229,6 @@ void zoom_region_init(struct swift_params *params, struct space *s,
     int nr_zoom_regions = (int)(s->dim[0] / max_dim);
     if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
     max_dim = s->dim[0] / nr_zoom_regions;
-
-    /* Do we want to refine the background cells? */
-    if (s->zoom_props->refine_bkg &&
-        nr_zoom_regions >= s->zoom_props->cdim[0]) {
-
-      /* Start with max_top_level_cells as a guess. */
-      nr_zoom_regions = s->zoom_props->cdim[0];
-
-      /* Must be odd. */
-      if (nr_zoom_regions % 2 == 0) nr_zoom_regions -= 1;
-
-      /* Compute the new boost factor and store it for reporting. */
-      const float new_zoom_boost_factor =
-          (s->dim[0] / nr_zoom_regions) /
-          (max_dim / s->zoom_props->zoom_boost_factor);
-
-      if (verbose)
-        message("Have increased zoom_boost_factor from %f to %f",
-                s->zoom_props->zoom_boost_factor, new_zoom_boost_factor);
-
-      /* Assign the new values. */
-      max_dim = s->dim[0] / nr_zoom_regions;
-      s->zoom_props->zoom_boost_factor = new_zoom_boost_factor;
-    }
 
     /* Find the new boundaries with this extra width and boost factor.
      * The zoom region is already centred on the middle of the box */

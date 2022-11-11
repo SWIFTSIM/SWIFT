@@ -356,9 +356,6 @@ struct space {
 
 struct zoom_region_properties {
 
-  /*! Are we refining the background cells? */
-  int refine_bkg;
-
   /*! The factor used to define the buffer zone size around the zoom region. */
   float zoom_boost_factor;
 
