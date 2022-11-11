@@ -774,7 +774,7 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
   p->gpart = NULL;
 
   /* Mark the gpart as dark matter */
-  /* gp->type = swift_type_dark_matter; */
+  gp->type = swift_type_dark_matter;
   gp->id_or_neg_offset = p->id;
 
 #ifdef SWIFT_DEBUG_CHECKS
