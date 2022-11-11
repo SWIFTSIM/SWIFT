@@ -779,6 +779,7 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = p->ti_kick;
+  gp->ti_drift = p->ti_drift;
 #endif
 
   /* Update the space-wide counters */
@@ -828,6 +829,7 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = sp->ti_kick;
+  gp->ti_drift = sp->ti_drift;
 #endif
 
   /* Update the space-wide counters */
@@ -877,6 +879,7 @@ struct gpart *cell_convert_bpart_to_gpart(const struct engine *e,
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = bp->ti_kick;
+  gp->ti_drift = bp->ti_drift;
 #endif
 
   /* Update the space-wide counters */
