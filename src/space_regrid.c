@@ -197,7 +197,7 @@ void space_regrid(struct space *s, int verbose) {
 #ifdef SWIFT_DEBUG_CHECKS
     message("(re)griding space cdim=(%d %d %d)", cdim[0], cdim[1], cdim[2]);
     if (s->cells_top != NULL)
-      error("Re-gridding should only occur once, increase h_max!");
+      error("Re-gridding should only occur once, decrease h_max!");
     fflush(stdout);
 #endif
 
