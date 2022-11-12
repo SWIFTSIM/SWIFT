@@ -779,7 +779,8 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = p->ti_kick;
-  gp->ti_drift = p->ti_drift;
+  message("Converting part to gpart (gp->id_or_neg_offset=%lld, gp->ti_kick_mesh=%lld)",
+          gp->id_or_neg_offset, gp->ti_kick_mesh);
 #endif
 
   /* Update the space-wide counters */
@@ -829,7 +830,6 @@ struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = sp->ti_kick;
-  gp->ti_drift = sp->ti_drift;
 #endif
 
   /* Update the space-wide counters */
@@ -879,7 +879,6 @@ struct gpart *cell_convert_bpart_to_gpart(const struct engine *e,
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = bp->ti_kick;
-  gp->ti_drift = bp->ti_drift;
 #endif
 
   /* Update the space-wide counters */
@@ -951,7 +950,6 @@ struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   sp->ti_kick = gp->ti_kick;
-  gp->ti_drift = sp->ti_drift;
 #endif
 
   /* Set a smoothing length */
