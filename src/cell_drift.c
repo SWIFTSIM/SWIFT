@@ -340,8 +340,10 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
             /* One last action before death? */
             hydro_remove_part(p, xp, e->time);
 
-            /* Convert the particle to dark matter */
-            cell_convert_part_to_gpart(e, c, p, xp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_part_to_gpart(e, c, p, xp); */
+            /* Remove the particle entirely */
+            cell_remove_part(e, c, p, xp);
             
             /* Increment the number of wanderers */
             atomic_inc(&e->s->zoom_props->nr_wanderers);
