@@ -779,8 +779,6 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   gp->ti_kick = p->ti_kick;
-  message("Converting part to gpart (gp->id_or_neg_offset=%lld, gp->ti_kick_mesh=%lld)",
-          gp->id_or_neg_offset, gp->ti_kick_mesh);
 #endif
 
   /* Update the space-wide counters */
