@@ -737,9 +737,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
                              /* data */ 0);
             }
 #endif
+            /* Remove the particle entirely */
+            cell_remove_spart(e, c, sp);
 
-            /* Increment the number of wanderers */
-            atomic_inc(&e->s->zoom_props->nr_wanderers);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -774,11 +774,14 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* Convert the particle to dark matter */
-            cell_convert_spart_to_gpart(e, c, sp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_spart_to_gpart(e, c, sp); */
+            /* Remove the particle entirely */
+            cell_remove_spart(e, c, sp);
+
             
             /* Increment the number of wanderers */
-            e->s->zoom_props->nr_wanderers++;
+            atomic_inc(&e->s->zoom_props->nr_wanderers);
           }
 
           if (lock_unlock(&e->s->lock) != 0)
@@ -1015,8 +1018,10 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
-            /* Convert the particle to dark matter */
-            cell_convert_bpart_to_gpart(e, c, bp);
+            /* /\* Convert the particle to dark matter *\/ */
+            /* cell_convert_bpart_to_gpart(e, c, bp); */
+            /* Remove the particle entirely */
+            cell_remove_bpart(e, c, bp);
             
             /* Increment the number of wanderers */
             atomic_inc(&e->s->zoom_props->nr_wanderers);
