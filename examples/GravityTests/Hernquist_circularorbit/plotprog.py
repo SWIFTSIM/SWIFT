@@ -22,7 +22,7 @@ import h5py
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 
-t = np.linspace(0, 40, 1e5)
+t = np.linspace(0, 40, 100000)
 y0 = [0, 10]
 a = 30.0
 G = 4.300927e-06

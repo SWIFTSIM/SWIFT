@@ -30,7 +30,7 @@ Compiling for GEAR RT
     you to select a hydro Riemann solver, e.g ``--with-riemann-solver=hllc``.
 
 -   The thermochemistry requires the `grackle <https://github.com/grackle-project/grackle>`_ 
-    library. Grackle is a chemistry and cooling library presented in 
+    library version 3.2. Grackle is a chemistry and cooling library presented in 
     `B. Smith et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.466.2217S>`_.
     Please note that the current implementation is not (yet) as
     advanced as the :ref:`GEAR subgrid model grackle cooling <gear_grackle_cooling>`, 

@@ -63,6 +63,9 @@ struct external_potential {
   /*! Time-step condition pre-factor, is multiplied times the circular orbital
    * time to get the time steps */
   double timestep_mult;
+
+  /* Additional common parameter inverse of sqrt(GM)*/
+  double sqrtgm_inv;
 };
 
 /**
@@ -79,8 +82,6 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
     const struct phys_const* restrict phys_const,
     const struct gpart* restrict g) {
 
-  const float G_newton = phys_const->const_newton_G;
-
   /* Calculate the relative potential with respect to the centre of the
    * potential */
   const float dx = g->x[0] - potential->x[0];
@@ -89,11 +90,10 @@ __attribute__((always_inline)) INLINE static float external_gravity_timestep(
 
   /* calculate the radius  */
   const float r = sqrtf(dx * dx + dy * dy + dz * dz + potential->epsilon2);
-  const float sqrtgm_inv = 1.f / sqrtf(G_newton * potential->mass);
 
   /* Calculate the circular orbital period */
-  const float period = 2.f * M_PI * sqrtf(r) * potential->al *
-                       (1 + r / potential->al) * sqrtgm_inv;
+  const float period =
+      2.f * M_PI * sqrtf(r) * (potential->al + r) * potential->sqrtgm_inv;
 
   /* Time-step as a fraction of the cirecular orbital time */
   const float time_step = potential->timestep_mult * period;
@@ -254,7 +254,7 @@ static INLINE void potential_init_backend(
     /* message("M200 = %g, R200 = %g, V200 = %g", M200, R200, V200); */
     /* message("H0 = %g", H0); */
 
-    /* get the concentration from the parameter file */
+    /* Get the concentration from the parameter file */
     const double concentration = parser_get_param_double(
         parameter_file, "HernquistPotential:concentration");
 
@@ -262,12 +262,12 @@ static INLINE void potential_init_backend(
     const double RS = R200 / concentration;
 
     /* Calculate the Hernquist equivalent scale length */
-    potential->al = RS * sqrt(1. * (log(1. + concentration) -
+    potential->al = RS * sqrt(2. * (log(1. + concentration) -
                                     concentration / (1. + concentration)));
 
-    /* Depending on the disk mass and and the bulge mass the halo
-     * gets a different mass, because of this we read the fractions
-     * from the parameter file and calculate the absolute mass*/
+    /* Depending on the disk mass and the bulge mass, the halo
+     * gets a different mass. Because of this, we read the fractions
+     * from the parameter file and calculate the absolute mass */
     const double diskfraction = parser_get_param_double(
         parameter_file, "HernquistPotential:diskfraction");
     const double bulgefraction = parser_get_param_double(
@@ -287,12 +287,14 @@ static INLINE void potential_init_backend(
       parser_get_param_double(parameter_file, "HernquistPotential:epsilon");
   potential->epsilon2 = epsilon * epsilon;
 
-  /* Compute the minimal time-step. */
-  /* This is the circular orbital time at the softened radius */
+  /* Calculate a common factor in the calculation, i.e. 1/sqrt(GM)*/
   const float sqrtgm = sqrtf(phys_const->const_newton_G * potential->mass);
-  potential->mintime = 2.f * sqrtf(epsilon) * potential->al * M_PI *
-                       (1. + epsilon / potential->al) / sqrtgm *
-                       potential->timestep_mult;
+  potential->sqrtgm_inv = 1. / sqrtgm;
+
+  /* Compute the minimal time-step. */
+  /* This is a fraction of the circular orbital time at the softened radius */
+  potential->mintime = potential->timestep_mult * 2.f * sqrtf(epsilon) * M_PI *
+                       (potential->al + epsilon) * potential->sqrtgm_inv;
 }
 
 /**
@@ -304,7 +306,7 @@ static inline void potential_print_backend(
     const struct external_potential* potential) {
 
   message(
-      "external potential is 'hernquist Springel, Di Matteo & Herquist 2005' "
+      "external potential is 'hernquist Springel, Di Matteo & Hernquist 2005' "
       "with properties are (x,y,z) = (%e, %e, %e), mass = %e scale length = %e "
       ", minimum time = %e timestep multiplier = %e",
       potential->x[0], potential->x[1], potential->x[2], potential->mass,
