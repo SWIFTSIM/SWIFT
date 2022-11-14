@@ -1883,7 +1883,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           if (cj->tl_cell_type == void_tl_cell) continue;
 
           /* Skip local background pairs */
-          if (ci->tl_cell_type == tl_cell && ci->nodeID == nodeID &&
+          if (!ci->split && ci->nodeID == nodeID &&
                cj->nodeID == nodeID) continue;
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
