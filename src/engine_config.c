@@ -802,6 +802,10 @@ void engine_config(int restart, int fof, struct engine *e,
   if (e->nodeID == 0)
     message("Using %d threads in the thread-pool", nr_pool_threads);
 
+  /* Cells per thread buffer. */
+  e->s->cells_sub = (struct cell **)calloc(nr_pool_threads+1, sizeof(struct cell *));
+  e->s->multipoles_sub = (struct gravity_tensors **)calloc(nr_pool_threads+1, sizeof(struct gravity_tensors *));
+
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||
       swift_barrier_init(&e->run_barrier, NULL, e->nr_threads + 1) != 0)

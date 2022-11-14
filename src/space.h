@@ -158,14 +158,14 @@ struct space {
   /*! The (level 0) cells themselves. */
   struct cell *cells_top;
 
-  /*! Buffer of unused cells for the sub-cells. */
-  struct cell *cells_sub;
+  /*! Buffer of unused cells for the sub-cells. One chunk per thread. */
+  struct cell **cells_sub;
 
   /*! The multipoles associated with the top-level (level 0) cells */
   struct gravity_tensors *multipoles_top;
 
-  /*! Buffer of unused multipoles for the sub-cells. */
-  struct gravity_tensors *multipoles_sub;
+  /*! Buffer of unused multipoles for the sub-cells. One chunk per thread. */
+  struct gravity_tensors **multipoles_sub;
 
   /*! The indices of the *local* top-level cells */
   int *local_cells_top;
@@ -361,7 +361,8 @@ void space_bparts_sort(struct bpart *bparts, int *ind, int *counts,
                        int num_bins, ptrdiff_t bparts_offset);
 void space_sinks_sort(struct sink *sinks, int *ind, int *counts, int num_bins,
                       ptrdiff_t sinks_offset);
-void space_getcells(struct space *s, int nr_cells, struct cell **cells);
+void space_getcells(struct space *s, int nr_cells, struct cell **cells, const
+                    int tid);
 void space_init(struct space *s, struct swift_params *params,
                 const struct cosmology *cosmo, double dim[3],
                 const struct hydro_props *hydro_properties, struct part *parts,
@@ -384,7 +385,7 @@ void space_map_parts_xparts(struct space *s,
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
 void space_rebuild(struct space *s, int repartitioned, int verbose);
-void space_recycle(struct space *s, struct cell *c);
+void space_recycle(struct space *s, struct cell *c, const int lock);
 void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,
                         struct gravity_tensors *multipole_list_begin,
