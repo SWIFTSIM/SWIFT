@@ -32,6 +32,8 @@
 #include "engine.h"
 #include "hydro.h"
 #include "rt.h"
+#include "shadowswift/delaunay.h"
+#include "shadowswift/queues.h"
 #include "sink_properties.h"
 #include "star_formation.h"
 #include "tracers.h"
@@ -53,11 +55,30 @@ void cell_recursively_shift_parts(struct cell *c,
     /* No need to recurse in progenies located before the insertion point */
     const int first_progeny = main_branch ? progeny_list[(int)c->depth] : 0;
 
-    for (int k = first_progeny; k < 8; ++k) {
+    for (int k = first_progeny; k < 8; k++) {
       if (c->progeny[k] != NULL)
         cell_recursively_shift_parts(c->progeny[k], progeny_list,
                                      main_branch && (k == first_progeny));
     }
+
+#ifdef MOVING_MESH
+    if (main_branch && c->grid.construction_level == on_construction_level) {
+      int last_unshifted_idx =
+          (c->progeny[first_progeny]->hydro.parts - c->hydro.parts) +
+          c->progeny[first_progeny]->hydro.count - 1;
+      struct voronoi *vortess = c->grid.voronoi;
+      for (int sid = 0; sid < 28; sid++) {
+        for (int i = 0; i < vortess->pair_index[sid]; i++) {
+          if (vortess->pairs[sid][i].left_idx > last_unshifted_idx) {
+            vortess->pairs[sid][i].left_idx++;
+          }
+          if (sid == 13 && vortess->pairs[sid][i].right_idx > last_unshifted_idx) {
+            vortess->pairs[sid][i].right_idx++;
+          }
+        }
+      }
+    }
+#endif
   }
 
   /* When directly above the leaf with the new particle: increase the particle
@@ -335,6 +356,138 @@ int cell_add_part(struct engine *e, struct cell *c) {
   return 1;
 }
 
+void cell_split_geometry(const struct cell *c, const struct engine *e,
+                         struct part *p1, struct part *p2,
+                         float *splitting_fraction) {
+
+  if (c->grid.construction_level == above_construction_level)
+    error("Trying to split a particles geometry above the construction level!");
+
+  if (c->grid.construction_level == below_construction_level) {
+    cell_split_geometry(c->parent, e, p1, p2, splitting_fraction);
+    return;
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->grid.construction_level != on_construction_level)
+    error("Should be on construction level at this point!");
+  struct part p_old = *p1;
+#endif
+
+  /* Get the indices of the particles */
+  const int ix1 = p1 - c->hydro.parts;
+  const int ix2 = p2 - c->hydro.parts;
+  const int ix_end = max3(ix1, ix2, p1->geometry.nface + 1);
+
+  /* Save the original coordinates */
+  double x_old[3] = {p1->x[0], p1->x[1], p1->x[2]};
+
+  /* Displace the particles */
+  double displacement[3];
+  hydro_split_part_displacement(p1, e->ti_current, /*ret*/ displacement);
+
+#ifdef HYDRO_DIMENSION_2D
+  int dim = 2;
+#elif defined(HYDRO_DIMENSION_3D)
+  int dim = 3;
+#else
+  error("Only 2 and 3 hydro dimensions are supported by ShadowSWIFT!");
+#endif
+
+  for (int i = 0; i < dim; i++) {
+    p1->x[i] += displacement[i];
+    p2->x[i] -= displacement[i];
+    if (p1->gpart != NULL) {
+      p1->gpart->x[i] = p1->x[i];
+      p2->gpart->x[i] = p2->x[i];
+    }
+  }
+
+  /* Build local delaunay tesselation */
+  double anchor[3] = {p1->x[0] - p1->h, p1->x[1] - p1->h, p1->x[2] - p1->h};
+  double width[3] = {2. * p1->h, 2. * p1->h, 2. * p1->h};
+  struct delaunay *d = delaunay_malloc(anchor, width, ix_end + 1);
+
+  /* Add the two new particles */
+  delaunay_add_local_vertex(d, ix1, p1->x[0], p1->x[1], p1->x[2], -1);
+  delaunay_add_local_vertex(d, ix2, p2->x[0], p2->x[1], p2->x[2], 0);
+
+  /* Add the neighbours of the new particles */
+  int ngb_idx = 0;
+  for (int i = 0; i < p1->geometry.nface; i++) {
+    /* Retrieve the i-th face of the old voronoi cell */
+    int k = i + p1->geometry.pair_connections_offset;
+    int2 connection = c->grid.voronoi->cell_pair_connections.values[k];
+    int pair_index = connection._0;
+    int sid = connection._1;
+    struct voronoi_pair *face = &c->grid.voronoi->pairs[sid][pair_index];
+
+    /* Find the coordinates of the neighbouring particle... */
+    int p1_is_left =
+        (x_old[0] == face->left_coords[0] && x_old[1] == face->left_coords[1] &&
+         x_old[2] == face->left_coords[2]);
+    double *ngb_x;
+    int is_boundary_particle = sid == 27;
+    if (p1_is_left) {
+      ngb_x = &face->right_coords[0];
+    } else {
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sid != 13)
+        error(
+            "Found nonlocal pair for which local particle not the left "
+            "particle");
+      if (x_old[0] != face->right_coords[0] ||
+          x_old[1] != face->right_coords[1] ||
+          x_old[2] != face->right_coords[2])
+        error("Found voronoi face whose coordinates do not match!");
+#endif
+      ngb_x = &face->left_coords[0];
+    }
+
+    /* Avoid collisions */
+    while (ngb_idx == ix1 || ngb_idx == ix2) ngb_idx++;
+
+    /* ... and add it to the delaunay tesselation as a local particle */
+    delaunay_add_local_vertex(d, ngb_idx, ngb_x[0], ngb_x[1], ngb_x[2], 0);
+
+    /* Increase neighbour index */
+    ngb_idx++;
+  }
+
+  /* Now build the voronoi tesselation. This should update the geometry fields
+   * of p1 and p2. */
+#ifdef SWIFT_DEBUG_CHECKS
+  float V_old = p1->geometry.volume;
+#endif
+  struct voronoi *v = voronoi_malloc(p1->geometry.nface + 2, c->dmin);
+  int *active_parts_mask = malloc((ix_end + 1) * sizeof(*active_parts_mask));
+  bzero(active_parts_mask, (ix_end + 1) * sizeof(*active_parts_mask));
+  active_parts_mask[ix1] = 1;
+  active_parts_mask[ix2] = 1;
+  voronoi_build(v, d, c->hydro.parts, active_parts_mask, ix_end + 1);
+#ifdef SWIFT_DEBUG_CHECKS
+  if (fabs(V_old / (p1->geometry.volume + p2->geometry.volume) - 1.f) > 0.333)
+    error(
+        "Total volume of new parts does not match the volume of the old part!");
+#endif
+
+  /* Now that we have the updated volumes, calculate the splitting fraction */
+  *splitting_fraction =
+      p1->geometry.volume / (p1->geometry.volume + p2->geometry.volume);
+
+  /* Indicate that the geometries of the particles are invalid with respect to
+   * the current voronoi grid. */
+  p1->geometry.pair_connections_offset = -1;
+  p1->geometry.nface = -1;
+  p2->geometry.pair_connections_offset = -1;
+  p2->geometry.nface = -1;
+
+  /* Be clean */
+  delaunay_destroy(d);
+  voronoi_destroy(v);
+  free(active_parts_mask);
+}
+
 /**
  * @brief Split a #part in a given #cell over the #part itself and a newly
  * created #part.
@@ -359,38 +512,18 @@ void cell_split_part(struct engine *e, struct cell *c, size_t ix1, size_t ix2) {
   p2->id = id2;
   p2->gpart = gp2;
 
-  /* Get and apply the displacement of the particles */
-  double displacement[3];
-  hydro_split_part_displacement(p1, e->ti_current, /*ret*/ displacement);
-
-#ifdef HYDRO_DIMENSION_2D
-  int dim = 2;
-#elif defined(HYDRO_DIMENSION_3D)
-  int dim = 3;
-#else
-  error("Only 2 and 3 hydro dimensions are supported by ShadowSWIFT!");
-#endif
-
-  for (int i = 0; i < dim; i++) {
-    p1->x[i] += displacement[i];
-    p2->x[i] -= displacement[i];
-    if (p1->gpart != NULL) {
-      p1->gpart->x[i] = p1->x[i];
-      p2->gpart->x[i] = p2->x[i];
-    }
-  }
-
-  // TODO split geometry of the part properly (rebuild local vortess)
-  p1->geometry.volume *= 0.5;
-  p2->geometry.volume *= 0.5;
-
-  /* Split the hydro quantities */
+  /* Split the geometry of the particle (displace particles slightly and rebuild
+   * volume elements) */
   float splitting_fraction = 0.5f;
-  hydro_split_part(p1, p2, &splitting_fraction);
+  cell_split_geometry(c, e, p1, p2, &splitting_fraction);
 
   /* Determine the splitting factors */
   double splitting_factor1 = 1. / splitting_fraction;
   double splitting_factor2 = 1. / (1 - splitting_fraction);
+
+  /* Split the hydro quantities */
+  hydro_split_part(p1, splitting_factor1);
+  hydro_split_part(p2, splitting_factor2);
 
   /* Split the chemistry fields */
   chemistry_split_part(p1, splitting_factor1);

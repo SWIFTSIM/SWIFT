@@ -31,8 +31,10 @@ struct voronoi_pair {
    * the corresponding cell in this voronoi tesselation. */
   int right_idx;
 
-  /*! Coordinates of the right particle in case the sid != 13
-   * (i.e. The particle is from a neighbouring cell) */
+  /*! Coordinates of the left particle */
+  double left_coords[3];
+
+  /*! Coordinates of the right particle */
   double right_coords[3];
 
   /*! Real sid of this pair (boundary faces are stored under sid 27) */
@@ -604,7 +606,9 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
                                    const int *part_is_active, double *vertices,
                                    int n_vertices) {
   int sid;
+  int left_part_idx = left_part_idx_in_d - d->vertex_start;
   int right_part_idx;
+  double right_coords[3];
   /* Local pair? */
   if (right_part_idx_in_d < d->ngb_offset) {
     right_part_idx = right_part_idx_in_d - d->vertex_start;
@@ -614,7 +618,7 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
        * if necessary. If no pair is found, the face must have been degenerate.
        * Return early. */
       struct part *ngb = &parts[right_part_idx];
-      int left_part_idx = left_part_idx_in_d - d->vertex_start;
+      int left_part_idx = left_part_idx;
       for (int i = 0; i < ngb->geometry.nface; i++) {
         int2 connection =
             v->cell_pair_connections
@@ -627,20 +631,21 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
       return 0;
     }
     sid = 13;
+    right_coords = memcpy(parts[right_part_idx].x, 3 * sizeof(right_coords[0]));
   } else {
     sid = d->ngb_cell_sids[right_part_idx_in_d - d->ngb_offset];
     right_part_idx = d->ngb_part_idx[right_part_idx_in_d - d->ngb_offset];
+    right_coords[0] =
+        (d->rescaled_vertices[3 * right_part_idx_in_d] - 1.) * d->side -
+        d->anchor[0];
+    right_coords[1] =
+        (d->rescaled_vertices[3 * right_part_idx_in_d + 1] - 1.) * d->side -
+        d->anchor[1];
+    right_coords[2] =
+        (d->rescaled_vertices[3 * right_part_idx_in_d + 2] - 1.) * d->side -
+        d->anchor[2];
   }
-  double right_coords[3];
-  right_coords[0] =
-      (d->rescaled_vertices[3 * right_part_idx_in_d] - 1.) * d->side -
-      d->anchor[0];
-  right_coords[1] =
-      (d->rescaled_vertices[3 * right_part_idx_in_d + 1] - 1.) * d->side -
-      d->anchor[1];
-  right_coords[2] =
-      (d->rescaled_vertices[3 * right_part_idx_in_d + 2] - 1.) * d->side -
-      d->anchor[2];
+  double *left_coords = *parts[left_part_idx].x;
 
   /* Boundary particle? */
   int actual_sid = sid;
@@ -669,8 +674,9 @@ inline static int voronoi_new_face(struct voronoi *v, const struct delaunay *d,
   }
 
   /* Initialize pair */
-  this_pair->left_idx = left_part_idx_in_d - d->vertex_start;
+  this_pair->left_idx = left_part_idx;
   this_pair->right_idx = right_part_idx;
+  memcpy(this_pair->left_coords, left_coords, 3 * sizeof(left_coords[0]));
   memcpy(this_pair->right_coords, right_coords, 3 * sizeof(right_coords[0]));
   this_pair->sid = actual_sid;
 

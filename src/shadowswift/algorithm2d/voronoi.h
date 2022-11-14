@@ -31,8 +31,10 @@ struct voronoi_pair {
    * the corresponding cell in this voronoi tesselation. */
   int right_idx;
 
-  /*! Coordinates of the right particle in case the sid != 13
-   * (i.e. The particle is from a neighbouring cell) */
+  /*! Coordinates of the left particle */
+  double left_coords[3];
+
+  /*! Coordinates of the right particle */
   double right_coords[3];
 
   /*! Real sid of this pair (boundary faces are stored under sid 27) */
@@ -162,7 +164,11 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
         int2 connection =
             v->cell_pair_connections
                 .values[ngb->geometry.pair_connections_offset + i];
-        if (v->pairs[connection._1][connection._0].right_idx == left_part_idx) {
+        int pair_sid = connection._1;
+        /* Skip non-local pairs of the neighbour */
+        if (pair_sid != 13) continue;
+        int pair_index = connection._0;
+        if (v->pairs[13][pair_index].right_idx == left_part_idx) {
           int2_lifo_queue_push(&v->cell_pair_connections, connection);
           return 1;
         }
@@ -174,6 +180,9 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
     sid = d->ngb_cell_sids[ngb_del_vert_idx - d->ngb_offset];
     right_part_idx = d->ngb_part_idx[ngb_del_vert_idx - d->ngb_offset];
   }
+  double left_coords[3] = {0., 0., 0.};
+  left_coords[0] = d->vertices[2 * del_vert_idx];
+  left_coords[1] = d->vertices[2 * del_vert_idx + 1];
   double right_coords[3] = {0., 0., 0.};
   right_coords[0] = d->vertices[2 * ngb_del_vert_idx];
   right_coords[1] = d->vertices[2 * ngb_del_vert_idx + 1];
@@ -206,6 +215,7 @@ static inline int voronoi_add_pair(struct voronoi *v, const struct delaunay *d,
   this_pair->surface_area = surface_area;
   this_pair->left_idx = del_vert_idx - d->vertex_start;
   this_pair->right_idx = right_part_idx;
+  memcpy(this_pair->left_coords, left_coords, 3 * sizeof(left_coords[0]));
   memcpy(this_pair->right_coords, right_coords, 3 * sizeof(right_coords[0]));
   this_pair->sid = actual_sid;
 
@@ -556,6 +566,7 @@ static inline void voronoi_build(struct voronoi *v, struct delaunay *d,
     double dx_cen[2] = {face[0] - cell_centroid[0], face[1] - cell_centroid[1]};
     double dist = (dx_cen[0] * dx_gen[0] + dx_cen[1] * dx_gen[1]) /
                   (0.5 * sqrt(min_ngb_dist2));
+//    dist = sqrt(min_ngb_dist2);
 
     /* Store the voronoi cell in the particle. */
     p->geometry.volume = (float)cell_volume;

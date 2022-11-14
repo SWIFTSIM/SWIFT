@@ -84,7 +84,7 @@
 /* Options controlling ShadowSWIFT */
 /* Option to enable gradients for ShadowSWIFT */
 /* If disabled, no gradients are used (first order scheme) */
-#define SHADOWSWIFT_GRADIENTS
+//#define SHADOWSWIFT_GRADIENTS
 /* Always activate the slope limiters if we use gradients (the scheme becomes
  * unstable otherwise) */
 #ifdef SHADOWSWIFT_GRADIENTS

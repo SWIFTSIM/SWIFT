@@ -1913,6 +1913,30 @@ void runner_do_grid_ghost(struct runner *r, struct cell *c, int timer) {
   delaunay_destroy(c->grid.delaunay);
   c->grid.delaunay = NULL;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the cell_pair_connections are linked correctly */
+  for (int i = 0; i < c->hydro.count; i++) {
+    struct part *p = &c->hydro.parts[i];
+    if (part_is_active(p, e)) {
+      int offset = p->geometry.pair_connections_offset;
+      int n_face = p->geometry.nface;
+
+      for (int k = offset; k < offset + n_face; k++) {
+        int2 connection = c->grid.voronoi->cell_pair_connections.values[k];
+        int pair_index = connection._0;
+        int sid = connection._1;
+        struct voronoi_pair *face = &c->grid.voronoi->pairs[sid][pair_index];
+
+        if (sid == 13) {
+          assert(i == face->left_idx || i == face->right_idx);
+        } else {
+          assert(i == face->left_idx);
+        }
+      }
+    }
+  }
+#endif
+
   if (e->policy & engine_policy_grid_hydro) {
     /* Set the geometry properties of the particles and prepare the particles
      * for the gradient calculation */

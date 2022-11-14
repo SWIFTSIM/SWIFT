@@ -1116,19 +1116,24 @@ void runner_do_split_parts(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < count; k++) {
 
       /* Get a handle on the part. */
-      struct part *restrict p1 = &parts[k];
+      struct part *restrict p = &parts[k];
 
       /* Only work on active particles */
-      if (part_is_active(p1, e)) {
+      if (part_is_active(p, e)) {
 
         /* Should we split this particle? */
-        if (hydro_should_split_part(p1, e->hydro_properties)) {
+        if (hydro_should_split_part(p, e->hydro_properties)) {
           if (e->verbose)
-            message("Splitting particle at (%f, %f, %f)!", p1->x[0], p1->x[1],
-                    p1->x[2]);
+            message("Splitting particle at (%f, %f, %f)!", p->x[0], p->x[1],
+                    p->x[2]);
+
+          assert(p->geometry.pair_connections_offset >= k);
 
           /* Add a new particle to the end of this cell's parts (if possible) */
           if (!cell_add_part(e, c)) return;
+
+//          assert(p->geometry.pair_connections_offset >= k);
+//          assert(c->hydro.parts[c->hydro.count - 1].geometry.pair_connections_offset >= k);
 
           /* Split the current part over itself and the newly created part
            * (which will be at the end of the current cells particle array) */

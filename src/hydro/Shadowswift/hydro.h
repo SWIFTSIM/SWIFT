@@ -96,8 +96,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   float psize = cosmo->a * cosmo->a *
                 powf(p->geometry.volume / hydro_dimension_unit_sphere,
                      hydro_dimension_inv);
-  if (p->geometry.min_face_dist < 0.25 * psize)
-    psize = p->geometry.min_face_dist;
+//  if (p->geometry.min_face_dist < 0.25 * psize)
+//    psize = p->geometry.min_face_dist;
 
   float dt = FLT_MAX;
   if (vmax > 0.0f) {
@@ -706,7 +706,7 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
                      p->gradients.rho[2] * p->gradients.rho[2];
   double rho_grad_norm = sqrt(rho_grad2);
 
-  const double displacement_factor = 0.05;
+  const double displacement_factor = 1e-7;
   if (rho_grad_norm > 1e-6) {
     displacement[0] = p->gradients.rho[0] / rho_grad_norm;
     displacement[1] = p->gradients.rho[1] / rho_grad_norm;
@@ -741,48 +741,36 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
                                                  (enum random_number_type)2) -
                             0.5);
 
-  displacement[0] *= p->h * displacement_factor;
-  displacement[1] *= p->h * displacement_factor;
-  displacement[2] *= p->h * displacement_factor;
+  const double r = min(p->geometry.min_face_dist, p->h);
+  displacement[0] *= r * displacement_factor;
+  displacement[1] *= r * displacement_factor;
+  displacement[2] *= r * displacement_factor;
 }
 
 /**
  * @brief Split the given particle.
  *
  * @param p1 The particle to split.
- * @param p2 The new particle to split p1 into.
  * @param splitting_fraction (return) The splitting fraction of part1.
  */
 __attribute__((always_inline)) INLINE static void hydro_split_part(
-    struct part *restrict p1, struct part *restrict p2,
-    float *splitting_fraction) {
+    struct part *p1, float splitting_factor) {
 
-  float Vtotal_inv = 1.f / (p1->geometry.volume + p2->geometry.volume);
-  float fraction1 = p1->geometry.volume * Vtotal_inv;
-  float fraction2 = p2->geometry.volume * Vtotal_inv;
+  float fraction = 1.f / splitting_factor;
 
   /* Finally divide the extensive quantities */
   // TODO: Volume integral of the extrapolated primitive quantities would be
   //  even better
-  p1->conserved.mass *= fraction1;
-  p1->conserved.momentum[0] *= fraction1;
-  p1->conserved.momentum[1] *= fraction1;
-  p1->conserved.momentum[2] *= fraction1;
-  p1->conserved.energy *= fraction1;
-
-  p2->conserved.mass *= fraction2;
-  p2->conserved.momentum[0] *= fraction2;
-  p2->conserved.momentum[1] *= fraction2;
-  p2->conserved.momentum[2] *= fraction2;
-  p2->conserved.energy *= fraction2;
+  p1->conserved.mass *= fraction;
+  p1->conserved.momentum[0] *= fraction;
+  p1->conserved.momentum[1] *= fraction;
+  p1->conserved.momentum[2] *= fraction;
+  p1->conserved.energy *= fraction;
 
   /* Update the gpart's mass */
   if (p1->gpart != NULL) {
     p1->gpart->mass = p1->conserved.mass;
-    p2->gpart->mass = p2->conserved.mass;
   }
-
-  *splitting_fraction = fraction1;
 }
 
 /**
