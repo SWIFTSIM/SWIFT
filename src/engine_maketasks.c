@@ -2230,26 +2230,19 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
         const int cjd = cell_getid(cdim, iii, jjj, kkk) + bkg_cell_offset;
         struct cell *cj = &cells[cjd];
 
-        /* Avoid duplicates, empty cells and foreign cells */
-        if (cid >= cjd || cj->grav.count == 0 ||
-            (cj->nodeID != nodeID))
+        /* Skip foregin neighbours. */
+        if (cj->nodeID != nodeID) continue;
+
+        /* Skip the void cell. */
+        if (cj->tl_cell_type == void_tl_cell) continue;
+
+        /* Avoid self->self, empty cells and foreign pairs */
+        if (cid >= cjd || cj->grav.count == 0 || cj->nodeID != nodeID)
           continue;
-
-        /* Pointers to the parent cells for tasks going up and down the tree
-         * In the case where we are at the super-level we don't
-         * want the parent as no tasks are defined above that level. */
-        struct cell *cj_parent;
-        if (cj != NULL && cj->parent != NULL && cj->grav.super != cj)
-          cj_parent = cj->parent;
-        else
-          cj_parent = cj;
-
-        /* Avoid double unlock */
-        if (ci == cj_parent) continue;
 
         /* Minimal distance between any pair of particles */
         const double min_radius2 =
-          cell_min_dist2_same_size(ci, cj_parent, periodic, dim);
+          cell_min_dist2_same_size(ci, cj, periodic, dim);
 
         /* Are we beyond the distance where the truncated forces are 0? */
         if (periodic && min_radius2 > max_distance2) continue;
