@@ -2948,7 +2948,6 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   s->size = 0;
   s->tasks = NULL;
   s->tasks_ind = NULL;
-  pthread_key_create(&s->local_seed_pointer, NULL);
   scheduler_reset(s, nr_tasks);
 }
 
