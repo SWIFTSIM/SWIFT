@@ -240,8 +240,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
  *
  * @param s The #space.
  * @param c The #cell.
+ * @param lock should we lock the cells?
  */
-void space_recycle(struct space *s, struct cell *c) {
+void space_recycle(struct space *s, struct cell *c, const int lock) {
 
   /* Clear the cell. */
   if (lock_destroy(&c->hydro.lock) != 0 || lock_destroy(&c->grav.plock) != 0 ||
@@ -254,21 +255,25 @@ void space_recycle(struct space *s, struct cell *c) {
     error("Failed to destroy spinlocks.");
 
   /* Lock the space. */
-  lock_lock(&s->lock);
+  if (lock) lock_lock(&s->lock);
 
   /* Hook the multipole back in the buffer */
   if (s->with_self_gravity) {
-    c->grav.multipole->next = s->multipoles_sub;
-    s->multipoles_sub = c->grav.multipole;
+    c->grav.multipole->next = s->multipoles_sub[c->owner];
+    s->multipoles_sub[c->owner] = c->grav.multipole;
   }
 
   /* Hook this cell into the buffer. */
-  c->next = s->cells_sub;
-  s->cells_sub = c;
-  s->tot_cells -= 1;
+  c->next = s->cells_sub[c->owner];
+  s->cells_sub[c->owner] = c;
+  if (lock) {
+    s->tot_cells -= 1;
+  } else {
+    atomic_dec(&s->tot_cells);
+  }
 
   /* Unlock the space. */
-  lock_unlock_blind(&s->lock);
+  if (lock) lock_unlock_blind(&s->lock);
 }
 
 /**
@@ -313,18 +318,20 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
     count += 1;
   }
 
-  /* Lock the space. */
+  /* Lock the space. XXX should be parameterised. */
   lock_lock(&s->lock);
 
-  /* Hook the cells into the buffer. */
-  cell_list_end->next = s->cells_sub;
-  s->cells_sub = cell_list_begin;
-  s->tot_cells -= count;
+  /* Hook the cells into the buffer keeping owner if we can. */
+  int owner = cell_list_begin->owner;
+  if (owner < 0) owner = 0;
+  cell_list_end->next = s->cells_sub[owner];
+  s->cells_sub[owner] = cell_list_begin;
+  atomic_sub(&s->tot_cells, count);
 
   /* Hook the multipoles into the buffer. */
   if (s->with_self_gravity) {
-    multipole_list_end->next = s->multipoles_sub;
-    s->multipoles_sub = multipole_list_begin;
+    multipole_list_end->next = s->multipoles_sub[owner];
+    s->multipoles_sub[owner] = multipole_list_begin;
   }
 
   /* Unlock the space. */
