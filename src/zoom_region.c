@@ -1846,8 +1846,8 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                         NULL);
     }
 
-    /* Create the background specific pair task for non-neighbour bkg cells. */
-    if (ci->tl_cell_type == tl_cell && ci->nodeID == nodeID) {
+    /* Create the background specific pair task for non-split cells. */
+    if (!ci->split && ci->nodeID == nodeID) {
 
       scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
                         0, 0, ci, NULL);
@@ -1883,8 +1883,9 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
           if (cj->tl_cell_type == void_tl_cell) continue;
 
           /* Skip local background pairs */
-          if (ci->tl_cell_type == tl_cell && ci->nodeID == nodeID &&
-              cj->nodeID == nodeID) continue;
+          if (!ci->split &&
+              (ci->tl_cell_type == tl_cell && ci->nodeID == nodeID &&
+               cj->nodeID == nodeID)) continue;
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
           if (cid >= cjd || cj->grav.count == 0 ||
