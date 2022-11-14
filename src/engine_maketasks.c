@@ -2248,14 +2248,14 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
         if (periodic && min_radius2 > max_distance2) continue;
 
         /* Are the cells too close for a MM interaction ? */
-        if (!cell_can_use_pair_mm(ci, cj_parent, e, s, /*use_rebuild_data=*/1,
+        if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
                                     /*is_tree_walk=*/0)) {
 
           /* drift ---+-> gravity --> grav_down */
           /* init  --/    */
-          scheduler_addunlock(sched, cj_parent->grav.drift_out, t);
-          scheduler_addunlock(sched, cj_parent->grav.init_out, t);
-          scheduler_addunlock(sched, t, cj_parent->grav.down_in);
+          scheduler_addunlock(sched, cj->grav.drift_out, t);
+          scheduler_addunlock(sched, cj->grav.init_out, t);
+          scheduler_addunlock(sched, t, cj->grav.down_in);
           
         } 
       } /* Loop over kkks */
