@@ -195,7 +195,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_mass(
 __attribute__((always_inline)) INLINE static void
 hydro_set_comoving_internal_energy_dt(struct part* restrict p,
                                       const float du_dt) {
-  error("Needs implementing");
+  //  error("Needs implementing");
+  p->flux.energy += p->conserved.mass * du_dt * p->flux.dt;
 }
 
 /**
