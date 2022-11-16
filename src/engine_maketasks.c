@@ -2275,7 +2275,6 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
   struct engine *e = (struct engine *)extra_data;
   const int nodeID = e->nodeID;
   struct scheduler *const sched = &e->sched;
-  const int nr_tasks = sched->nr_tasks;
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct task *t = &((struct task *)map_data)[ind];
@@ -2471,8 +2470,6 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
 void engine_link_gravity_tasks(struct engine *e) {
 
   struct scheduler *sched = &e->sched;
-  const int nodeID = e->nodeID;
-  const int nr_tasks = sched->nr_tasks;
   
   /* Run the threadpool to add unlocks to tasks. */
   threadpool_map(&e->threadpool, engine_link_gravity_tasks_mapper,
