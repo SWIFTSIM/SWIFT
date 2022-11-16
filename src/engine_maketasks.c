@@ -2263,22 +2263,22 @@ void engine_link_gravity_pooled_pairs(struct engine *e, struct cell *ci,
   } /* Loop over iiis */
 }
 
-
 /**
  * @brief Creates all the task dependencies for the gravity
  *
  * @param e The #engine
  */
-void engine_link_gravity_tasks(struct engine *e) {
+void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
+                                      void *extra_data) {
 
-  struct scheduler *sched = &e->sched;
+  /* Get our mapper data. */
+  struct engine *e = (struct engine *)extra_data;
   const int nodeID = e->nodeID;
+  struct scheduler *const sched = &e->sched;
   const int nr_tasks = sched->nr_tasks;
 
-  for (int k = 0; k < nr_tasks; k++) {
-
-    /* Get a pointer to the task. */
-    struct task *t = &sched->tasks[k];
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &((struct task *)map_data)[ind];
 
     if (t->type == task_type_none) continue;
 
@@ -2459,6 +2459,25 @@ void engine_link_gravity_tasks(struct engine *e) {
       }
     }
   }
+  
+}
+
+
+/**
+ * @brief Creates all the task dependencies for the gravity
+ *
+ * @param e The #engine
+ */
+void engine_link_gravity_tasks(struct engine *e) {
+
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int nr_tasks = sched->nr_tasks;
+  
+  /* Run the threadpool to add unlocks to tasks. */
+  threadpool_map(&e->threadpool, engine_link_gravity_tasks_mapper,
+                 sched->tasks, sched->nr_tasks, sizeof(struct task),
+                 threadpool_auto_chunk_size, e);
 }
 
 #ifdef EXTRA_HYDRO_LOOP
