@@ -439,51 +439,51 @@ void space_map_cells_pre(struct space *s, int full,
  * @param nr_cells Number of #cell to pick up.
  * @param cells Array of @c nr_cells #cell pointers in which to store the
  *        new cells.
- * @param tid tid of thread that originally allocated cells_sub.
+ * @param tpid ID of threadpool threadpool associated with cells_sub.
  */
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
-                    const int tid) {
+                    const int tpid) {
 
   /* For each requested cell... */
   for (int j = 0; j < nr_cells; j++) {
 
     /* Is the cell buffer empty? */
-    if (s->cells_sub[tid] == NULL) {
-      if (swift_memalign("cells_sub", (void **)&s->cells_sub[tid],
+    if (s->cells_sub[tpid] == NULL) {
+      if (swift_memalign("cells_sub", (void **)&s->cells_sub[tpid],
                          cell_align,
                          space_cellallocchunk * sizeof(struct cell)) != 0)
         error("Failed to allocate more cells.");
 
       /* Clear the newly-allocated cells. */
-      bzero(s->cells_sub[tid], sizeof(struct cell) * space_cellallocchunk);
+      bzero(s->cells_sub[tpid], sizeof(struct cell) * space_cellallocchunk);
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
-        s->cells_sub[tid][k].next = &s->cells_sub[tid][k + 1];
-      s->cells_sub[tid][space_cellallocchunk - 1].next = NULL;
+        s->cells_sub[tpid][k].next = &s->cells_sub[tpid][k + 1];
+      s->cells_sub[tpid][space_cellallocchunk - 1].next = NULL;
     }
 
     /* Is the multipole buffer empty? */
-    if (s->with_self_gravity && s->multipoles_sub[tid] == NULL) {
+    if (s->with_self_gravity && s->multipoles_sub[tpid] == NULL) {
       if (swift_memalign(
-              "multipoles_sub", (void **)&s->multipoles_sub[tid], multipole_align,
+              "multipoles_sub", (void **)&s->multipoles_sub[tpid], multipole_align,
               space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
         error("Failed to allocate more multipoles.");
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
-        s->multipoles_sub[tid][k].next = &s->multipoles_sub[tid][k + 1];
-      s->multipoles_sub[tid][space_cellallocchunk - 1].next = NULL;
+        s->multipoles_sub[tpid][k].next = &s->multipoles_sub[tpid][k + 1];
+      s->multipoles_sub[tpid][space_cellallocchunk - 1].next = NULL;
     }
 
     /* Pick off the next cell. */
-    cells[j] = s->cells_sub[tid];
-    s->cells_sub[tid] = cells[j]->next;
+    cells[j] = s->cells_sub[tpid];
+    s->cells_sub[tpid] = cells[j]->next;
 
     /* Hook the multipole */
     if (s->with_self_gravity) {
-      cells[j]->grav.multipole = s->multipoles_sub[tid];
-      s->multipoles_sub[tid] = cells[j]->grav.multipole->next;
+      cells[j]->grav.multipole = s->multipoles_sub[tpid];
+      s->multipoles_sub[tpid] = cells[j]->grav.multipole->next;
     }
   }
 
@@ -499,7 +499,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     bzero(cells[j], sizeof(struct cell));
     cells[j]->grav.multipole = temp;
     cells[j]->nodeID = -1;
-    cells[j]->owner = tid;
+    cells[j]->tpid = tpid;
     if (lock_init(&cells[j]->hydro.lock) != 0 ||
         lock_init(&cells[j]->grav.plock) != 0 ||
         lock_init(&cells[j]->grav.mlock) != 0 ||
@@ -519,8 +519,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
  * @param s The #space.
  */
 void space_free_buff_sort_indices(struct space *s) {
-  for (int tid = 0; tid < s->e->nr_pool_threads; ++tid) {
-    for (struct cell *finger = s->cells_sub[tid]; finger != NULL;
+  for (int tpid = 0; tpid < s->e->nr_pool_threads; ++tpid) {
+    for (struct cell *finger = s->cells_sub[tpid]; finger != NULL;
          finger = finger->next) {
       cell_free_hydro_sorts(finger);
       cell_free_stars_sorts(finger);

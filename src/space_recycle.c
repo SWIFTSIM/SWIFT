@@ -259,13 +259,13 @@ void space_recycle(struct space *s, struct cell *c, const int lock) {
 
   /* Hook the multipole back in the buffer */
   if (s->with_self_gravity) {
-    c->grav.multipole->next = s->multipoles_sub[c->owner];
-    s->multipoles_sub[c->owner] = c->grav.multipole;
+    c->grav.multipole->next = s->multipoles_sub[c->tpid];
+    s->multipoles_sub[c->tpid] = c->grav.multipole;
   }
 
   /* Hook this cell into the buffer. */
-  c->next = s->cells_sub[c->owner];
-  s->cells_sub[c->owner] = c;
+  c->next = s->cells_sub[c->tpid];
+  s->cells_sub[c->tpid] = c;
   if (lock) {
     s->tot_cells -= 1;
   } else {
@@ -321,17 +321,17 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   /* Lock the space. XXX should be parameterised. */
   lock_lock(&s->lock);
 
-  /* Hook the cells into the buffer keeping owner if we can. */
-  int owner = cell_list_begin->owner;
-  if (owner < 0) owner = 0;
-  cell_list_end->next = s->cells_sub[owner];
-  s->cells_sub[owner] = cell_list_begin;
+  /* Hook the cells into the buffer keeping tpid if we can. */
+  int tpid = cell_list_begin->tpid;
+  if (tpid < 0) tpid = 0;
+  cell_list_end->next = s->cells_sub[tpid];
+  s->cells_sub[tpid] = cell_list_begin;
   atomic_sub(&s->tot_cells, count);
 
   /* Hook the multipoles into the buffer. */
   if (s->with_self_gravity) {
-    multipole_list_end->next = s->multipoles_sub[owner];
-    s->multipoles_sub[owner] = multipole_list_begin;
+    multipole_list_end->next = s->multipoles_sub[tpid];
+    s->multipoles_sub[tpid] = multipole_list_begin;
   }
 
   /* Unlock the space. */
