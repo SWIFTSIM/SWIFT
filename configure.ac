@@ -2302,6 +2302,11 @@ case "$with_cooling" in
       with_cooling_name=$with_cooling
    ;;
    grackle_*)
+
+      if test "$have_grackle" != "yes"; then
+        AC_MSG_ERROR([Grackle cooling: You need the grackle library for Grackle cooling. (--with-grackle=PATH)])
+      fi
+
       AC_DEFINE([COOLING_GRACKLE], [1], [Cooling via the grackle library])
       primordial_chemistry=${with_cooling#*_}
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
