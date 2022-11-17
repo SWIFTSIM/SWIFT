@@ -2474,7 +2474,7 @@ void engine_link_gravity_tasks(struct engine *e) {
   /* Run the threadpool to add unlocks to tasks. */
   threadpool_map(&e->threadpool, engine_link_gravity_tasks_mapper,
                  sched->tasks, sched->nr_tasks, sizeof(struct task),
-                 threadpool_auto_chunk_size, e);
+                 threadpool_uniform_chunk_size, e);
 }
 
 #ifdef EXTRA_HYDRO_LOOP
