@@ -2340,7 +2340,6 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
     /* Otherwise, pair interaction? */
     else if (t_type == task_type_pair &&
              (t_subtype == task_subtype_grav ||
-              t_subtype == task_subtype_grav_bkg ||
               t_subtype == task_subtype_grav_zoombkg ||
               t_subtype == task_subtype_grav_bkgzoom)) {
 
@@ -2366,7 +2365,8 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
 
     /* Otherwise, background pool of pair interactions? */
     else if (t_type == task_type_pair &&
-             t_subtype == task_subtype_grav_bkg_pool) {
+             (t_subtype == task_subtype_grav_bkg_pool
+              || t_subtype == task_subtype_grav_bkg)) {
 
       /* Is this cell local? */
       if (ci_nodeID == nodeID) {
@@ -2378,9 +2378,6 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, t, ci_parent->grav.down_in);
 
       }
-      
-      /* Handle the possible neighbours */
-      engine_link_gravity_pooled_pairs(e, ci_parent, t);
     }
 
     /* Otherwise, sub-self interaction? */
@@ -2474,7 +2471,7 @@ void engine_link_gravity_tasks(struct engine *e) {
   /* Run the threadpool to add unlocks to tasks. */
   threadpool_map(&e->threadpool, engine_link_gravity_tasks_mapper,
                  sched->tasks, sched->nr_tasks, sizeof(struct task),
-                 threadpool_uniform_chunk_size, e);
+                 threadpool_auto_chunk_size, e);
 }
 
 #ifdef EXTRA_HYDRO_LOOP

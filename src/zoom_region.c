@@ -1851,7 +1851,11 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
 
       scheduler_addtask(sched, task_type_pair, task_subtype_grav_bkg_pool,
                         0, 0, ci, NULL);
+
+      continue;
       
+    } else if (ci->nodeID != nodeID) {
+      continue;
     }
 
     /* Loop over every other cell within (Manhattan) range delta */
@@ -1887,7 +1891,7 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
                cj->nodeID == nodeID) continue;
 
           /* Avoid duplicates, empty cells and completely foreign pairs */
-          if (cid >= cjd || cj->grav.count == 0 ||
+          if (cid == cjd || cj->grav.count == 0 ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
