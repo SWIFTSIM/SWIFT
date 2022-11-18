@@ -48,6 +48,7 @@
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
+#define N_SPECIES 18  /* This includes 6 extra values at end to hold rho,u,dudt,vx,vy,vz */
 
 /**
  * @brief Common operations performed on the cooling function at a
@@ -197,7 +198,7 @@ void cooling_print_backend(const struct cooling_function_data* cooling) {
 #if COOLING_GRACKLE_MODE > 0
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
                               struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]) {
+                              gr_float species_densities[N_SPECIES]) {
   /* HI */
   species_densities[0] = xp->cooling_data.HI_frac * rho;
   data->HI_density = &species_densities[0];
@@ -224,7 +225,7 @@ void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
 #else
 void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
                               struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]) {
+                              gr_float species_densities[N_SPECIES]) {
   data->HI_density = NULL;
   data->HII_density = NULL;
   data->HeI_density = NULL;
@@ -245,7 +246,7 @@ void cooling_copy_to_grackle1(grackle_field_data* data, const struct part* p,
 #if COOLING_GRACKLE_MODE > 1
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
                               struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]) {
+                              gr_float species_densities[N_SPECIES]) {
   /* HM */
   species_densities[6] = xp->cooling_data.HM_frac * rho;
   data->HM_density = &species_densities[6];
@@ -261,7 +262,7 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
 #else
 void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
                               struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]) {
+                              gr_float species_densities[N_SPECIES]) {
   data->HM_density = NULL;
   data->H2I_density = NULL;
   data->H2II_density = NULL;
@@ -279,7 +280,7 @@ void cooling_copy_to_grackle2(grackle_field_data* data, const struct part* p,
 #if COOLING_GRACKLE_MODE > 2
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
                               struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]) {
+                              gr_float species_densities[N_SPECIES]) {
   /* DI */
   species_densities[9] = xp->cooling_data.DI_frac * rho;
   data->DI_density = &species_densities[9];
@@ -295,7 +296,7 @@ void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
 #else
 void cooling_copy_to_grackle3(grackle_field_data* data, const struct part* p,
                               struct xpart* xp, gr_float rho,
-                              gr_float species_densities[12]) {
+                              gr_float species_densities[N_SPECIES]) {
   data->DI_density = NULL;
   data->DII_density = NULL;
   data->HDI_density = NULL;
@@ -400,39 +401,45 @@ void cooling_copy_from_grackle3(grackle_field_data* data, const struct part* p,
 void cooling_copy_to_grackle(grackle_field_data* data,
                              const struct cosmology* restrict cosmo,
                              const struct part* p, struct xpart* xp,
-                             gr_float species_densities[12]) {
+                             gr_float species_densities[N_SPECIES]) {
 
   /* set values */
   /* grid */
-  int grid_dimension[GRACKLE_RANK] = {GRACKLE_NPART, 1, 1};
-  int grid_start[GRACKLE_RANK] = {0, 0, 0};
-  int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
-
-  data->grid_rank = GRACKLE_RANK;
   data->grid_dx = 0.f;
-  data->grid_dimension = grid_dimension;
-  data->grid_start = grid_start;
-  data->grid_end = grid_end;
+  data->grid_rank = GRACKLE_RANK;
+
+  data->grid_dimension = malloc(GRACKLE_NPART * sizeof(int));
+  data->grid_start = malloc(GRACKLE_NPART * sizeof(int));
+  data->grid_end = malloc(GRACKLE_NPART * sizeof(int));
+  for (int i = 0;i < 3;i++) {
+      data->grid_dimension[i] = 1; // the active dimension not including ghost zones.
+      data->grid_start[i] = 0;
+      data->grid_end[i] = 0;
+  }
+  data->grid_dimension[0] = GRACKLE_NPART;
+  data->grid_end[0] = GRACKLE_NPART - 1;
 
   /* get general particle data in physical cgs units */
-  gr_float rho = hydro_get_physical_density(p, cosmo);
-  gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
-  gr_float hydro_du_dt = hydro_get_physical_internal_energy_dt(p, cosmo);
+  species_densities[12] = hydro_get_physical_density(p, cosmo);
+  species_densities[13] = hydro_get_physical_internal_energy(p, xp, cosmo);
+  species_densities[14] = hydro_get_physical_internal_energy_dt(p, cosmo);
 
   /* load particle data into grackle structure */
-  data->density = &rho;
-  data->internal_energy = &energy;
-  data->specific_heating_rate = &hydro_du_dt;
+  data->density = &species_densities[12];
+  data->internal_energy = &species_densities[13];
+  data->specific_heating_rate = &species_densities[14];
 
   /* velocity (maybe not needed?) */
-  double v_tmp[3] = {p->v[0], p->v[1], p->v[2]};
-  data->x_velocity = &v_tmp[0];
-  data->y_velocity = &v_tmp[1];
-  data->z_velocity = &v_tmp[2];
+  species_densities[15] = p->v_full[0];
+  species_densities[16] = p->v_full[1];
+  species_densities[17] = p->v_full[2];
+  data->x_velocity = &species_densities[15];
+  data->y_velocity = &species_densities[16];
+  data->z_velocity = &species_densities[17];
 
-  cooling_copy_to_grackle1(data, p, xp, rho, species_densities);
-  cooling_copy_to_grackle2(data, p, xp, rho, species_densities);
-  cooling_copy_to_grackle3(data, p, xp, rho, species_densities);
+  cooling_copy_to_grackle1(data, p, xp, species_densities[12], species_densities);
+  cooling_copy_to_grackle2(data, p, xp, species_densities[12], species_densities);
+  cooling_copy_to_grackle3(data, p, xp, species_densities[12], species_densities);
 
   data->volumetric_heating_rate = NULL;
   data->RT_heating_rate = NULL;
@@ -442,7 +449,7 @@ void cooling_copy_to_grackle(grackle_field_data* data,
   data->RT_H2_dissociation_rate = NULL;
 
   gr_float* metal_density = (gr_float*)malloc(sizeof(gr_float));
-  *metal_density = chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho;
+  *metal_density = chemistry_get_total_metal_mass_fraction_for_cooling(p) * species_densities[12];
   data->metal_density = metal_density;
 }
 
@@ -496,8 +503,9 @@ gr_float cooling_grackle_driver(
   code_units units = cooling->units;
 
   /* initialize data to send to grackle */
+  gr_float *species_densities;
+  species_densities = (gr_float *)calloc(N_SPECIES, sizeof(gr_float));
   grackle_field_data data;
-  gr_float species_densities[12];
 
   /* copy species_densities from particle to grackle data */
   cooling_copy_to_grackle(&data, cosmo, p, xp, species_densities);
@@ -511,8 +519,7 @@ gr_float cooling_grackle_driver(
         error("Error in Grackle solve_chemistry.");
       }
       /* copy from grackle data to particle */
-      gr_float rho = hydro_get_physical_density(p, cosmo);
-      cooling_copy_from_grackle(&data, p, xp, rho);
+      cooling_copy_from_grackle(&data, p, xp, species_densities[12]);
       return_value = data.internal_energy[0];
       break;
     case 1:
@@ -726,7 +733,7 @@ void cooling_init_units(const struct unit_system* us,
 
   /* first cosmo */
   cooling->units.a_units = 1.0;  // units for the expansion factor
-  cooling->units.a_value = 1.0;
+  cooling->units.a_value = 1.0 / (1.0 + cooling->redshift);
 
   /* We assume here all physical quantities to
      be in proper coordinate (not comoving)  */
@@ -847,6 +854,9 @@ void cooling_init_grackle(struct cooling_function_data* cooling) {
   // set HeII rates to 0
   chemistry->self_shielding_method = 0;
   chemistry->self_shielding_method = cooling->self_shielding_method;
+
+  // run on a single thread since Swift sends each particle to a single thread
+  chemistry->omp_nthreads = 1;
 
   /* Initialize the chemistry object. */
   if (initialize_chemistry_data(&cooling->units) == 0) {

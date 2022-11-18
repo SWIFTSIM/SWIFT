@@ -1861,7 +1861,7 @@ case "$with_subgrid" in
    enable_fof_galaxies=no
    ;;
    SIMBA)
-	with_subgrid_cooling=COLIBRE
+	with_subgrid_cooling=SIMBA
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
 	with_subgrid_entropy_floor=EAGLE
@@ -2353,7 +2353,7 @@ case "$with_cooling" in
    ;;
    SIMBA)
       AC_DEFINE([COOLING_SIMBA], [1], [Cooling via the grackle library with extensions])
-      AC_DEFINE([COOLING_GRACKLE_MODE], [3], [Primordial chemistry (as of now)])
+      AC_DEFINE([COOLING_GRACKLE_MODE], [1], [Cooling via Grackle mode=1])
       with_cooling_name="SIMBA (Grackle with extensions)"
    ;;
    QLA)
