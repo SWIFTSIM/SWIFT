@@ -2845,18 +2845,11 @@ void runner_dopair_recursive_grav_nonsym(struct runner *r, struct cell *ci,
 
   const struct engine *e = r->e;
 
-  /* Clear the flags */
-  runner_clear_grav_flags(ci, e);
-
   /* Some constants */
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
-
-  /* Anything to do here? */
-  if (!(cell_is_active_gravity(ci, e) && ci->nodeID == nodeID))
-    return;
 
 #ifdef SWIFT_DEBUG_CHECKS
 
@@ -3021,6 +3014,13 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   const double max_distance = e->mesh->r_cut_max;
   const double max_distance2 = max_distance * max_distance;
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
+
+  /* Clear the flags */
+  runner_clear_grav_flags(ci, e);
+
+  /* Anything to do here? */
+  if (!(cell_is_active_gravity(ci, e) && ci->nodeID == nodeID))
+    return;
 
   TIMER_TIC;
 
