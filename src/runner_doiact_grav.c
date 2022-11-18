@@ -3097,12 +3097,12 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         if (cid == cjd || cj->grav.count == 0 || cj->nodeID != nodeID)
           continue;
 
-        /* Minimal distance between any pair of particles */
-        const double min_radius2 =
-          cell_min_dist2_same_size(ci, cj, periodic, dim);
+        /* /\* Minimal distance between any pair of particles *\/ */
+        /* const double min_radius2 = */
+        /*   cell_min_dist2_same_size(ci, cj, periodic, dim); */
 
-        /* Are we beyond the distance where the truncated forces are 0? */
-        if (periodic && min_radius2 > max_distance2) continue;
+        /* /\* Are we beyond the distance where the truncated forces are 0? *\/ */
+        /* if (periodic && min_radius2 > max_distance2) continue; */
 
         /* Are the cells too close for a MM interaction ? */
         if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
