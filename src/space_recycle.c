@@ -307,7 +307,7 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
     count += 1;
   }
 
-  /* Lock the space. XXX should be parameterised. */
+  /* Lock the space. */
   lock_lock(&s->lock);
 
   /* Hook the cells into the buffer keeping tpid if we can. */
