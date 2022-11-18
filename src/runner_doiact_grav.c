@@ -2846,7 +2846,6 @@ void runner_dopair_recursive_grav_nonsym(struct runner *r, struct cell *ci,
   const struct engine *e = r->e;
 
   /* Some constants */
-  const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   const double max_distance = e->mesh->r_cut_max;
