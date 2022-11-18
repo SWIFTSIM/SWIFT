@@ -3015,11 +3015,11 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  /* const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]}; */
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  struct cell *cells = s->cells_top;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
+  /* struct cell *cells = s->cells_top; */
+  /* const double max_distance = e->mesh->r_cut_max; */
+  /* const double max_distance2 = max_distance * max_distance; */
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
   TIMER_TIC;
