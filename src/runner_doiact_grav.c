@@ -3015,11 +3015,11 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
   struct space *s = e->s;
   const int nodeID = e->nodeID;
   const int periodic = s->periodic;
-  /* const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]}; */
+  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
   struct cell *cells = s->cells_top;
-  /* const double max_distance = e->mesh->r_cut_max; */
-  /* const double max_distance2 = max_distance * max_distance; */
+  const double max_distance = e->mesh->r_cut_max;
+  const double max_distance2 = max_distance * max_distance;
   const int bkg_cell_offset = s->zoom_props->tl_cell_offset;
 
   TIMER_TIC;
@@ -3097,12 +3097,12 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
         if (cid == cjd || cj->grav.count == 0 || cj->nodeID != nodeID)
           continue;
 
-        /* /\* Minimal distance between any pair of particles *\/ */
-        /* const double min_radius2 = */
-        /*   cell_min_dist2_same_size(ci, cj, periodic, dim); */
+        /* Minimal distance between any pair of particles */
+        const double min_radius2 =
+          cell_min_dist2_same_size(ci, cj, periodic, dim);
 
-        /* /\* Are we beyond the distance where the truncated forces are 0? *\/ */
-        /* if (periodic && min_radius2 > max_distance2) continue; */
+        /* Are we beyond the distance where the truncated forces are 0? */
+        if (periodic && min_radius2 > max_distance2) continue;
 
         /* Are the cells too close for a MM interaction ? */
         if (!cell_can_use_pair_mm(ci, cj, e, s, /*use_rebuild_data=*/1,
