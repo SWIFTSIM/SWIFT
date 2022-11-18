@@ -284,7 +284,7 @@ void space_split_recursive(struct space *s, struct cell *c,
       if (cp->hydro.count == 0 && cp->grav.count == 0 && cp->stars.count == 0 &&
           cp->black_holes.count == 0 && cp->sinks.count == 0) {
 
-        space_recycle(s, cp, tpid);
+        space_recycle(s, cp);
         c->progeny[k] = NULL;
 
       } else {
