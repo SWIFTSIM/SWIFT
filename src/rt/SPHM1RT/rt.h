@@ -30,6 +30,7 @@
 
 #include <float.h>
 
+
 /**
  * @file src/rt/SPHM1RT/rt.h
  * @brief Main header file for SPHM1RT radiative transfer scheme.
