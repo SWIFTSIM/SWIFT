@@ -340,10 +340,10 @@ hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
   float gradu[3] = {0.f, 0.f, 0.f};
   for (int i = 0; i < 3; i++) {
     gradu[i] = hydro_one_over_gamma_minus_one * rho_inv *
-               (gradP[i] - rho_inv * gradrho[i]);
+               (gradP[i] - rho_inv * W[4] * gradrho[i]);
   }
 
-  const float du_dt = -(W[1] * gradu[0] + W[2] * gradu[1] + W[3] * gradu[2]) +
+  const float du_dt = -(W[1] * gradu[0] + W[2] * gradu[1] + W[3] * gradu[2]) -
                       rho_inv * W[4] * divv;
 
   return du_dt;
