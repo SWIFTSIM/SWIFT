@@ -177,15 +177,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_rt_inject(
   } else {
     /* Note that emission_this_step is rate  */
     for (int g = 0; g < RT_NGROUPS; g++) {
-      rpd->dconserved_dt_inj[g].urad += si->rt_data.emission_this_step[g] 
+      pj->rt_data.dconserved_dt_inj[g].urad += si->rt_data.emission_this_step[g] 
                                   * injection_weight * tot_weight_inv * mj_inv; 
-      rpd->dconserved_dt_inj[g].frad[0] += si->rt_data.emission_this_step[g] 
+      pj->rt_data.dconserved_dt_inj[g].frad[0] += si->rt_data.emission_this_step[g] 
                                   * injection_weight * tot_weight_inv * mj_inv
                                   * cred * n_unit[0];                                 
-      rpd->dconserved_dt_inj[g].frad[1] += si->rt_data.emission_this_step[g] 
+      pj->rt_data.dconserved_dt_inj[g].frad[1] += si->rt_data.emission_this_step[g] 
                                   * injection_weight * tot_weight_inv * mj_inv
                                   * cred * n_unit[1];  
-      rpd->dconserved_dt_inj[g].frad[2] += si->rt_data.emission_this_step[g] 
+      pj->rt_data.dconserved_dt_inj[g].frad[2] += si->rt_data.emission_this_step[g] 
                                   * injection_weight * tot_weight_inv * mj_inv
                                   * cred * n_unit[2]; 
     }
