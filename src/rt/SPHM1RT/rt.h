@@ -132,6 +132,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
   rt_init_part(p);
   rt_reset_part(p, cosmo);
+  rt_reset_part_each_subcycle(p,cosmo);
 }
 
 /**
