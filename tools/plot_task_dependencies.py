@@ -402,16 +402,18 @@ def write_task(
     txt = "\t " + name + "["
 
     if not cell_has_active_task:
-        # give this precedence over implicit tasks.
+        # give this precedence over implicit tasks and MPI
         # If you're this deep in debugging trouble,
         # you will most likely know which tasks are
         # implicit.
         txt += "style=filled,fillcolor=lightpink2,"
+        if mpi:
+            txt += "shape=diamond,"
     else:
         if implicit:
             txt += "style=filled,fillcolor=grey90,"
-    if mpi:
-        txt += "shape=diamond,style=filled,fillcolor=azure,"
+        if mpi:
+            txt += "shape=diamond,style=filled,fillcolor=azure,"
     if with_levels:
         levelstr = ""
         if task_is_in_top:

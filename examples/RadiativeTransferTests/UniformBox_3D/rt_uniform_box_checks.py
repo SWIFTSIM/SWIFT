@@ -39,10 +39,11 @@
 # -----------------------------------------------------------------------
 
 
-import numpy as np
 from sys import argv
-from swift_rt_debug_io import get_snap_data
 
+import numpy as np
+
+from swift_rt_debug_io import get_snap_data
 
 # some behaviour options
 skip_snap_zero = True  # skip snap_0000.hdf5

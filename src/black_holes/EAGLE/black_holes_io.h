@@ -230,7 +230,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
   list[11] = io_make_output_field(
       "TotalAccretedMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, bparts,
       total_accreted_mass,
-      "Total mass accreted onto the particles since its birth");
+      "Total mass accreted onto the main progenitor of the black holes since "
+      "birth. This does not include any mass accreted onto any merged black "
+      "holes.");
 
   list[12] = io_make_output_field(
       "CumulativeNumberOfSeeds", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
@@ -395,13 +397,14 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
       "NumberOfHeatingEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_energy_injections,
       "Integer number of (thermal) energy injections the black hole has had "
-      "so far");
+      "so far. This counts each heated gas particle separately, and so can "
+      "increase by more than one during a single time step.");
 
   list[35] = io_make_output_field(
       "NumberOfAGNEvents", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       AGN_number_of_AGN_events,
       "Integer number of AGN events the black hole has had so far"
-      " (the number of times the BH did AGN feedback)");
+      " (the number of time steps in which the BH did AGN feedback).");
 
   if (with_cosmology) {
     list[36] = io_make_output_field(
@@ -417,7 +420,9 @@ INLINE static void black_holes_write_particles(const struct bpart* bparts,
 
   list[37] = io_make_output_field(
       "AccretionLimitedTimeSteps", FLOAT, 1, UNIT_CONV_TIME, 0.f, bparts,
-      dt_heat, "Accretion-limited time-steps of black holes.");
+      dt_heat,
+      "Accretion-limited time steps of black holes. The actual time step of "
+      "the particles may differ due to the minimum allowed value.");
 
   list[38] = io_make_output_field(
       "AGNTotalInjectedEnergies", FLOAT, 1, UNIT_CONV_ENERGY, 0.f, bparts,

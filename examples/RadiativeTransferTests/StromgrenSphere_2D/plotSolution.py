@@ -25,15 +25,16 @@
 # temperature, and hydrogen mass fraction.
 # ----------------------------------------------------
 
-import sys
-import os
-import swiftsimio
 import gc
+import os
+import sys
+
+import matplotlib as mpl
+import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
-import matplotlib as mpl
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.colors import LogNorm
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Parameters users should/may tweak
 
@@ -217,7 +218,7 @@ def plot_result(filename):
         )
         set_colorbar(ax1, im1)
         ax1.set_title(r"Gas Number Density [cm$^{-3}$]")
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError):
         print(
             filename,
             "densities wrong? min",
@@ -236,7 +237,7 @@ def plot_result(filename):
         )
         set_colorbar(ax2, im2)
         ax2.set_title("Neutral Hydrogen Mass Fraction [1]")
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError):
         print(
             filename,
             "mass fraction wrong? min",
@@ -255,7 +256,7 @@ def plot_result(filename):
         )
         set_colorbar(ax3, im3)
         ax3.set_title(r"Pressure [g/cm/s$^2$]")
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError):
         print(
             filename,
             "pressures wrong? min",
@@ -274,7 +275,7 @@ def plot_result(filename):
         )
         set_colorbar(ax4, im4)
         ax4.set_title(r"Temperature [K]")
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError):
         print(
             filename,
             "temperatures wrong? min",
@@ -288,7 +289,7 @@ def plot_result(filename):
         ax.set_xlabel("[kpc]")
         ax.set_ylabel("[kpc]")
 
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename.replace("_", r"\_")  # exception handle underscore for latex
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2f}".format(meta.z)
     title += ", $t$ = {0:.2f}".format(meta.time.to("Myr"))

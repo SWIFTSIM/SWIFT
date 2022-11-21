@@ -24,11 +24,10 @@
 # Intended for the photon propagation test.
 # ---------------------------------------------------------------------
 
-from swiftsimio import Writer
-import unyt
-import numpy as np
 import h5py
-
+import numpy as np
+import unyt
+from swiftsimio import Writer
 
 glass = h5py.File("glassPlane_128.hdf5", "r")
 parts = glass["PartType0"]
@@ -73,7 +72,7 @@ w.stars.velocities = np.zeros(xs.shape) * (unyt.cm / unyt.s)
 w.gas.masses = np.ones(xp.shape[0], dtype=np.float64) * 100 * unyt.g
 w.stars.masses = np.ones(xs.shape[0], dtype=np.float64) * 100 * unyt.g
 w.gas.internal_energy = (
-    np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / (unyt.g)
+    np.ones(xp.shape[0], dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
 )
 
 w.gas.smoothing_length = h
