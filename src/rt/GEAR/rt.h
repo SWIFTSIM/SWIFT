@@ -458,7 +458,7 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt,
-    const struct cosmology* restrict cosmo) {
+    const struct cosmology* restrict cosmo, struct rt_props* rt_props) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debug_sequence_check(p, 3, __func__);

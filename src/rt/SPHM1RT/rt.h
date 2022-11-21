@@ -449,28 +449,32 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt,
-    const struct cosmology* restrict cosmo) {
+    const struct cosmology* restrict cosmo, struct rt_props* rt_props) {
   struct rt_part_data* rpd = &p->rt_data;
 
-  for (int g = 0; g < RT_NGROUPS; g++) {
-    rpd->conserved[g].urad += rpd->dconserved_dt[g].urad * dt;
-    rpd->conserved[g].frad[0] += rpd->dconserved_dt[g].frad[0] * dt;
-    rpd->conserved[g].frad[1] += rpd->dconserved_dt[g].frad[1] * dt;
-    rpd->conserved[g].frad[2] += rpd->dconserved_dt[g].frad[2] * dt;
+  if (rt_props->smoothedRT == 0) {
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      rpd->conserved[g].urad += rpd->dconserved_dt[g].urad * dt;
+      rpd->conserved[g].frad[0] += rpd->dconserved_dt[g].frad[0] * dt;
+      rpd->conserved[g].frad[1] += rpd->dconserved_dt[g].frad[1] * dt;
+      rpd->conserved[g].frad[2] += rpd->dconserved_dt[g].frad[2] * dt;
+    }
+
+    /* add frad source term implicitly */
+    float dfrac, cred;
+    cred = rt_get_comoving_cred(p, cosmo->a);
+    for (int g = 0; g < RT_NGROUPS; g++) {
+      dfrac = -rpd->params.chi[g] * p->rho * cred;
+      rpd->conserved[g].frad[0] *= expf(dfrac * dt);
+      rpd->conserved[g].frad[1] *= expf(dfrac * dt);
+      rpd->conserved[g].frad[2] *= expf(dfrac * dt);
+    }
   }
-
-  /* add frad source term implicitly */
-  float dfrac, cred;
-  cred = rt_get_comoving_cred(p, cosmo->a);
+  
+  /* update urad */
+  /* limiter to avoid negative urad */
+  /* negative urad will make the dissipation (diffusion) unstable) */
   for (int g = 0; g < RT_NGROUPS; g++) {
-    dfrac = -rpd->params.chi[g] * p->rho * cred;
-    rpd->conserved[g].frad[0] *= expf(dfrac * dt);
-    rpd->conserved[g].frad[1] *= expf(dfrac * dt);
-    rpd->conserved[g].frad[2] *= expf(dfrac * dt);
-
-    /* update urad */
-    /* limiter to avoid negative urad */
-    /* negative urad will make the dissipation (diffusion) unstable) */
     if (rpd->conserved[g].urad < 0.0f) {
       rpd->conserved[g].urad = 0.0f;
       rpd->conserved[g].frad[0] = 0.0f;

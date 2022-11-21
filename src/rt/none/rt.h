@@ -245,7 +245,7 @@ __attribute__((always_inline)) INLINE static void rt_end_gradient(
  */
 __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     struct part* restrict p, const double dt,
-    const struct cosmology* restrict cosmo) {}
+    const struct cosmology* restrict cosmo, struct rt_props* rt_props) {}
 
 /**
  * @brief Do the thermochemistry on a particle.

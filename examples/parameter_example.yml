@@ -820,6 +820,7 @@ SPHM1RT:
   alphaB:                 2.59e-13                    # (Conditional) (if useparams=1) The case B recombination coefficient for hydrogen (cgs)
   beta:                   1.245e-15                   # (Conditional) (if useparams=1) The collisional ionization coefficient for hydrogen (cgs)
   reinject:               1                           # (Optional) gather energy around injection radius and re-inject the energy
+  smoothedRT:             0                           # (Optional) put the source of radiation in thermo-chemistry equations.
 
 
 # Parameters related to power spectra --------------------------------------------
