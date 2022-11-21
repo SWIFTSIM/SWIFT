@@ -56,7 +56,19 @@ __attribute__((always_inline)) INLINE static void rt_init_part(
  * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part(
-    struct part* restrict p, const struct cosmology* cosmo) {}
+    struct part* restrict p, const struct cosmology* cosmo) {
+
+  struct rt_part_data* rpd = &p->rt_data;
+
+  for (int g = 0; g < RT_NGROUPS; g++) {
+    rpd->dconserved_dt_inj[g].urad = 0.0f;
+    rpd->dconserved_dt_inj[g].frad[0] = 0.0f;
+    rpd->dconserved_dt_inj[g].frad[1] = 0.0f;
+    rpd->dconserved_dt_inj[g].frad[2] = 0.0f;
+  }
+
+  
+}
 
 /**
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
@@ -452,6 +464,8 @@ __attribute__((always_inline)) INLINE static void rt_finalise_transport(
     const struct cosmology* restrict cosmo, struct rt_props* rt_props) {
   struct rt_part_data* rpd = &p->rt_data;
 
+  /* Add radiation from propagation equations */
+  /* when smoothedRT == 1, we add them in thermo-chemistry equation */
   if (rt_props->smoothedRT == 0) {
     for (int g = 0; g < RT_NGROUPS; g++) {
       rpd->conserved[g].urad += rpd->dconserved_dt[g].urad * dt;

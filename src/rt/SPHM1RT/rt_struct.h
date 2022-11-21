@@ -51,6 +51,14 @@ struct rt_part_data {
     float frad[3];
   } dconserved_dt[RT_NGROUPS];
 
+  /* only used in smoothedRT */
+  /* rate of change of the conserved state vector */
+  /* from injection only */
+  struct {
+    float urad;
+    float frad[3];
+  } dconserved_dt_inj[RT_NGROUPS];
+
   /* Store viscosity information in a separate struct. */
   struct {
 
