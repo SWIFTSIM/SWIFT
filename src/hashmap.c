@@ -61,7 +61,7 @@ void hashmap_allocate_chunks(hashmap_t *m, int num_chunks) {
     if (new_allocs == NULL) error("Unable to allocate new chunks.");
 
     memcpy(new_allocs, m->allocs, sizeof(void *) * m->allocs_count);
-    swift_free("hashmap", m->allocs);
+    swift_free("hashmap", m->allocs, m->allocs_count * sizeof(hashmap_chunk_t));
     m->allocs = new_allocs;
   }
   m->allocs[m->allocs_count++] = alloc;
@@ -320,6 +320,7 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
             /* (Re)allocate strays buffer? */
             if (strays_count == strays_size) {
               hashmap_element_t *temp_buff;
+              size_t oldsize = sizeof(hashmap_element_t) * strays_size;
               strays_size = strays_size ? strays_size * 2 : 10;
               if ((temp_buff = (hashmap_element_t *)swift_malloc(
                        "hashmap_strays",
@@ -327,7 +328,7 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
                 error("Failed to (re)allocate strays buffer.");
               memcpy(temp_buff, strays,
                      sizeof(hashmap_element_t) * strays_count);
-              swift_free("hashmap_strays", strays);
+              swift_free("hashmap_strays", strays, oldsize);
               strays = temp_buff;
             }
             strays[strays_count++] = *element;
@@ -341,7 +342,7 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
   }
 
   /* Free the old list of chunks. */
-  swift_free("hashmap", old_chunks);
+  swift_free("hashmap", old_chunks, old_table_size);
 
   /* If we have any strays, add them back to the hashmap. This will inevitably
      trigger a rehashing, but that's not our problem. */
@@ -349,7 +350,7 @@ void hashmap_grow(hashmap_t *m, size_t new_size) {
     for (size_t k = 0; k < strays_count; k++) {
       hashmap_put(m, strays[k].key, strays[k].value);
     }
-    swift_free("hashmap_strays", strays);
+    swift_free("hashmap_strays", strays, sizeof(hashmap_element_t) * strays_size);
   }
 }
 
@@ -433,7 +434,7 @@ void hashmap_iterate(hashmap_t *m, hashmap_mapper_t f, void *data) {
 void hashmap_free(hashmap_t *m) {
   /* Free the list of active chunks. Note that the actual chunks will be freed
      as part of the allocs below. */
-  swift_free("hashmap", m->chunks);
+  swift_free("hashmap", m->chunks, m->nr_chunks * sizeof(hashmap_chunk_t *));
 
   /* Re-set some pointers and values, just in case. */
   m->chunks = NULL;
@@ -444,9 +445,9 @@ void hashmap_free(hashmap_t *m) {
 
   /* Free the chunk allocs. */
   for (size_t k = 0; k < m->allocs_count; k++) {
-    swift_free("hashmap", m->allocs[k]);
+    swift_free("hashmap", m->allocs[k], m->nr_chunks * HASHMAP_ALLOC_SIZE_FRACTION);
   }
-  swift_free("hashmap", m->allocs);
+  swift_free("hashmap", m->allocs, sizeof(void *) * m->allocs_size);
 }
 
 size_t hashmap_size(hashmap_t *m) {

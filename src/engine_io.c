@@ -407,7 +407,7 @@ void engine_io(struct engine *e) {
         /* Free the memory allocated for VELOCIraptor i/o. */
         if (with_stf && e->snapshot_invoke_stf && e->s->gpart_group_data) {
 #ifdef HAVE_VELOCIRAPTOR
-          swift_free("gpart_group_data", e->s->gpart_group_data);
+          swift_free("gpart_group_data", e->s->gpart_group_datai, e->s->nr_gparts * sizeof(struct velociraptor_gpart_data);
           e->s->gpart_group_data = NULL;
 #endif
         }

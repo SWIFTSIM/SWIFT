@@ -340,7 +340,7 @@ void mpi_mesh_local_patches_to_slices(const int N, const int local_n0,
                                  mesh_sendbuf, sorted_offsets);
 
   /* Let's free the unsorted array to keep things lean */
-  swift_free("mesh_sendbuf_unsorted", mesh_sendbuf_unsorted);
+  swift_free("mesh_sendbuf_unsorted", mesh_sendbuf_unsorted, count * sizeof(struct mesh_key_value_rho));
   mesh_sendbuf_unsorted = NULL;
 
   if (verbose)
@@ -479,8 +479,8 @@ void mpi_mesh_local_patches_to_slices(const int N, const int local_n0,
   free(slice_offset);
   free(nr_send);
   free(nr_recv);
-  swift_free("mesh_recvbuf", mesh_recvbuf);
-  swift_free("mesh_sendbuf", mesh_sendbuf);
+  swift_free("mesh_recvbuf", mesh_recvbuf, nr_recv_tot * sizeof(struct mesh_key_value_rho));
+  swift_free("mesh_sendbuf", mesh_sendbuf, count * sizeof(struct mesh_key_value_rho));
 #else
   error("FFTW MPI not found - unable to use distributed mesh");
 #endif
@@ -803,7 +803,7 @@ void mpi_mesh_fetch_potential(const int N, const double fac,
   bucket_sort_mesh_key_value_pot(send_cells_unsorted, nr_send_tot, N, tp,
                                  send_cells, sorted_offsets);
 
-  swift_free("send_cells_unsorted", send_cells_unsorted);
+  swift_free("send_cells_unsorted", send_cells_unsorted, nr_send_tot * sizeof(struct mesh_key_value_pot));
   send_cells_unsorted = NULL;
 
   if (verbose)
@@ -945,7 +945,7 @@ void mpi_mesh_fetch_potential(const int N, const double fac,
   tic = getticks();
 
   /* Tidy up */
-  swift_free("recv_cells", recv_cells);
+  swift_free("recv_cells", recv_cells, nr_recv_tot * sizeof(struct mesh_key_value_pot));
   free(slice_width);
   free(slice_offset);
   free(nr_send);
@@ -962,7 +962,7 @@ void mpi_mesh_fetch_potential(const int N, const double fac,
   bucket_sort_mesh_key_value_pot_index(
       send_cells, nr_send_tot, s->nr_local_cells, tp, send_cells_sorted);
 
-  swift_free("send_cells", send_cells);
+  swift_free("send_cells", send_cells, nr_send_tot * sizeof(struct mesh_key_value_pot));
   send_cells = NULL;
 
   if (verbose)
@@ -979,7 +979,7 @@ void mpi_mesh_fetch_potential(const int N, const double fac,
     message(" - Filling the local patches took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  swift_free("send_cells_sorted", send_cells_sorted);
+  swift_free("send_cells_sorted", send_cells_sorted, nr_send_tot * sizeof(struct mesh_key_value_pot));
 
 #else
   error("FFTW MPI not found - unable to use distributed mesh");

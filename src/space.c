@@ -128,22 +128,22 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
 
 #ifdef WITH_MPI
   if (s->parts_foreign != NULL) {
-    swift_free("parts_foreign", s->parts_foreign);
+    swift_free("parts_foreign", s->parts_foreign, sizeof(struct part) * s->size_parts_foreign);
     s->size_parts_foreign = 0;
     s->parts_foreign = NULL;
   }
   if (s->gparts_foreign != NULL) {
-    swift_free("gparts_foreign", s->gparts_foreign);
+    swift_free("gparts_foreign", s->gparts_foreign, sizeof(struct gpart) * s->size_gparts_foreign);
     s->size_gparts_foreign = 0;
     s->gparts_foreign = NULL;
   }
   if (s->sparts_foreign != NULL) {
-    swift_free("sparts_foreign", s->sparts_foreign);
+    swift_free("sparts_foreign", s->sparts_foreign, sizeof(struct spart) * s->size_sparts_foreign);
     s->size_sparts_foreign = 0;
     s->sparts_foreign = NULL;
   }
   if (s->bparts_foreign != NULL) {
-    swift_free("bparts_foreign", s->bparts_foreign);
+    swift_free("bparts_foreign", s->bparts_foreign, sizeof(struct bpart) * s->size_bparts_foreign);
     s->size_bparts_foreign = 0;
     s->bparts_foreign = NULL;
   }
@@ -1564,11 +1564,11 @@ void space_replicate(struct space *s, int replicate, int verbose) {
   }
 
   /* Replace the content of the space */
-  swift_free("parts", s->parts);
-  swift_free("gparts", s->gparts);
-  swift_free("sparts", s->sparts);
-  swift_free("bparts", s->bparts);
-  swift_free("sinks", s->sinks);
+  swift_free("parts", s->parts, sizeof(struct part) * s->nr_parts);
+  swift_free("gparts", s->gparts, sizeof(struct gpart) * s->nr_gparts);
+  swift_free("sparts", s->sparts, sizeof(struct spart) * s->nr_sparts);
+  swift_free("bparts", s->bparts, sizeof(struct bpart) * s->nr_bparts);
+  swift_free("sinks", s->sinks, sizeof(struct sink) * s->nr_sinks);
   s->parts = parts;
   s->gparts = gparts;
   s->sparts = sparts;
@@ -1918,7 +1918,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
   }
 
   /* Replace the content of the space */
-  swift_free("gparts", s->gparts);
+  swift_free("gparts", s->gparts, sizeof(struct gpart) * s->nr_gparts);
   s->parts = parts;
   s->gparts = gparts;
 }
@@ -2325,24 +2325,24 @@ void space_reset_task_counters(struct space *s) {
 void space_clean(struct space *s) {
 
   for (int i = 0; i < s->nr_cells; ++i) cell_clean(&s->cells_top[i]);
-  swift_free("cells_top", s->cells_top);
-  swift_free("multipoles_top", s->multipoles_top);
-  swift_free("local_cells_top", s->local_cells_top);
-  swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top);
-  swift_free("cells_with_particles_top", s->cells_with_particles_top);
+  swift_free("cells_top", s->cells_top, s->nr_cells * sizeof(struct cell));
+  swift_free("multipoles_top", s->multipoles_top, s->nr_cells * sizeof(struct gravity_tensors));
+  swift_free("local_cells_top", s->local_cells_top, s->nr_cells * sizeof(int));
+  swift_free("local_cells_with_tasks_top", s->local_cells_with_tasks_top, s->nr_cells * sizeof(int));
+  swift_free("cells_with_particles_top", s->cells_with_particles_top, s->nr_cells * sizeof(int));
   swift_free("local_cells_with_particles_top",
-             s->local_cells_with_particles_top);
-  swift_free("parts", s->parts);
-  swift_free("xparts", s->xparts);
-  swift_free("gparts", s->gparts);
-  swift_free("sparts", s->sparts);
-  swift_free("bparts", s->bparts);
-  swift_free("sinks", s->sinks);
+             s->local_cells_with_particles_top, s->nr_cells * sizeof(int));
+  swift_free("parts", s->parts, sizeof(struct part) * s->nr_parts);
+  swift_free("xparts", s->xparts, sizeof(struct xpart) * s->nr_parts);
+  swift_free("gparts", s->gparts, sizeof(struct gpart) * s->nr_gparts);
+  swift_free("sparts", s->sparts, sizeof(struct spart) * s->nr_sparts);
+  swift_free("bparts", s->bparts, sizeof(struct bpart) * s->nr_bparts);
+  swift_free("sinks", s->sinks, sizeof(struct sink) * s->nr_sinks);
 #ifdef WITH_MPI
-  swift_free("parts_foreign", s->parts_foreign);
-  swift_free("sparts_foreign", s->sparts_foreign);
-  swift_free("gparts_foreign", s->gparts_foreign);
-  swift_free("bparts_foreign", s->bparts_foreign);
+  swift_free("parts_foreign", s->parts_foreign, sizeof(struct part) * s->size_parts_foreign);
+  swift_free("sparts_foreign", s->sparts_foreign, sizeof(struct spart) * s->size_sparts_foreign);
+  swift_free("gparts_foreign", s->gparts_foreign, sizeof(struct gpart) * s->size_gparts_foreign);
+  swift_free("bparts_foreign", s->bparts_foreign, sizeof(struct bpart) * s->size_bparts_foreign);
 #endif
   free(s->cells_sub);
   free(s->multipoles_sub);

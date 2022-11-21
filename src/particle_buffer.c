@@ -72,7 +72,7 @@ void particle_buffer_free(struct particle_buffer *buffer) {
   struct particle_buffer_block *block = buffer->first_block;
   while (block) {
     struct particle_buffer_block *next = block->next;
-    swift_free(buffer->name, block->data);
+    swift_free(buffer->name, block->data, buffer->element_size * buffer->elements_per_block);
     free(block);
     block = next;
   }

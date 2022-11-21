@@ -159,7 +159,7 @@ void space_allocate_extras(struct space *s, int verbose) {
                          sizeof(struct gpart) * size_gparts) != 0)
         error("Failed to allocate new gpart data");
       memcpy(gparts_new, s->gparts, sizeof(struct gpart) * s->size_gparts);
-      swift_free("gparts", s->gparts);
+      swift_free("gparts", s->gparts, sizeof(struct gpart) * s->size_gparts);
       s->gparts = gparts_new;
 
       /* Update the counter */
@@ -247,7 +247,7 @@ void space_allocate_extras(struct space *s, int verbose) {
                          sizeof(struct part) * size_parts) != 0)
         error("Failed to allocate new part data");
       memcpy(parts_new, s->parts, sizeof(struct part) * s->size_parts);
-      swift_free("parts", s->parts);
+      swift_free("parts", s->parts, sizeof(struct part) * s->size_parts);
       s->parts = parts_new;
 
       /* Same for xparts */
@@ -256,7 +256,7 @@ void space_allocate_extras(struct space *s, int verbose) {
                          sizeof(struct xpart) * size_parts) != 0)
         error("Failed to allocate new xpart data");
       memcpy(xparts_new, s->xparts, sizeof(struct xpart) * s->size_parts);
-      swift_free("xparts", s->xparts);
+      swift_free("xparts", s->xparts, sizeof(struct xpart) * s->size_parts);
       s->xparts = xparts_new;
 
       /* Update the counter */
@@ -338,7 +338,7 @@ void space_allocate_extras(struct space *s, int verbose) {
                          sizeof(struct sink) * size_sinks) != 0)
         error("Failed to allocate new sink data");
       memcpy(sinks_new, s->sinks, sizeof(struct sink) * s->size_sinks);
-      swift_free("sinks", s->sinks);
+      swift_free("sinks", s->sinks, sizeof(struct sink) * s->size_sinks);
       s->sinks = sinks_new;
 
       /* Update the counter */
@@ -420,7 +420,7 @@ void space_allocate_extras(struct space *s, int verbose) {
                          sizeof(struct spart) * size_sparts) != 0)
         error("Failed to allocate new spart data");
       memcpy(sparts_new, s->sparts, sizeof(struct spart) * s->size_sparts);
-      swift_free("sparts", s->sparts);
+      swift_free("sparts", s->sparts, sizeof(struct spart) * s->size_sparts);
       s->sparts = sparts_new;
 
       /* Update the counter */
@@ -502,7 +502,7 @@ void space_allocate_extras(struct space *s, int verbose) {
                          sizeof(struct bpart) * size_bparts) != 0)
         error("Failed to allocate new bpart data");
       memcpy(bparts_new, s->bparts, sizeof(struct bpart) * s->size_bparts);
-      swift_free("bparts", s->bparts);
+      swift_free("bparts", s->bparts, sizeof(struct bpart) * s->size_bparts);
       s->bparts = bparts_new;
 
       /* Update the counter */

@@ -793,7 +793,7 @@ void cosmology_init_tables(struct cosmology *c) {
 
   /* Free the workspace and temp array */
   gsl_integration_workspace_free(space);
-  swift_free("cosmo.table", a_table);
+  swift_free("cosmo.table", a_table, cosmology_table_length * sizeof(double));
 
 #else
 
@@ -1465,19 +1465,19 @@ void cosmology_print(const struct cosmology *c) {
 
 void cosmology_clean(struct cosmology *c) {
 
-  swift_free("cosmo.table", c->drift_fac_interp_table);
-  swift_free("cosmo.table", c->grav_kick_fac_interp_table);
-  swift_free("cosmo.table", c->hydro_kick_fac_interp_table);
-  swift_free("cosmo.table", c->hydro_kick_corr_interp_table);
-  swift_free("cosmo.table", c->time_interp_table);
-  swift_free("cosmo.table", c->scale_factor_interp_table);
-  swift_free("cosmo.table", c->comoving_distance_interp_table);
-  swift_free("cosmo.table", c->comoving_distance_inverse_interp_table);
+  swift_free("cosmo.table", c->drift_fac_interp_table, cosmology_table_length * sizeof(double));
+  swift_free("cosmo.table", c->grav_kick_fac_interp_table, cosmology_table_length * sizeof(double));
+  swift_free("cosmo.table", c->hydro_kick_fac_interp_table, cosmology_table_length * sizeof(double));
+  swift_free("cosmo.table", c->hydro_kick_corr_interp_table, cosmology_table_length * sizeof(double));
+  swift_free("cosmo.table", c->time_interp_table, cosmology_table_length * sizeof(double));
+  swift_free("cosmo.table", c->scale_factor_interp_table, cosmology_table_length * sizeof(double));
+  swift_free("cosmo.table", c->comoving_distance_interp_table, cosmology_table_length * sizeof(double));
+  swift_free("cosmo.table", c->comoving_distance_inverse_interp_table, cosmology_table_length * sizeof(double));
   if (c->N_nu > 0) {
-    swift_free("cosmo.table", c->neutrino_density_early_table);
-    swift_free("cosmo.table", c->neutrino_density_late_table);
-    swift_free("Mnu", c->M_nu_eV);
-    swift_free("degnu", c->deg_nu);
+    swift_free("cosmo.table", c->neutrino_density_early_table, cosmology_table_length * sizeof(double));
+    swift_free("cosmo.table", c->neutrino_density_late_table, cosmology_table_length * sizeof(double));
+    swift_free("Mnu", c->M_nu_eV, cosmology_table_length * sizeof(double));
+    swift_free("degnu", c->deg_nu, cosmology_table_length * sizeof(double));
   }
 }
 

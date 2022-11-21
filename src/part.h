@@ -37,13 +37,13 @@
 /* Pre-declarations */
 struct threadpool;
 
-/* Some constants. */
-#define part_align 128
-#define xpart_align 128
-#define spart_align 128
-#define gpart_align 128
-#define bpart_align 128
-#define sink_align 128
+/* Some constants. XXX sysconf(_SC_PAGESIZE) alignment. */
+#define part_align 4096
+#define xpart_align 4096
+#define spart_align 4096
+#define gpart_align 4096
+#define bpart_align 4096
+#define sink_align 4096
 
 /* Import the right hydro particle definition */
 #if defined(NONE_SPH)

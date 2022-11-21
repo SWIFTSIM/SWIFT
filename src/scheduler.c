@@ -83,8 +83,8 @@ static void scheduler_extend_unlocks(struct scheduler *s) {
   /* Copy the buffers. */
   memcpy(unlocks_new, s->unlocks, sizeof(struct task *) * s->size_unlocks);
   memcpy(unlock_ind_new, s->unlock_ind, sizeof(int) * s->size_unlocks);
-  swift_free("unlocks", s->unlocks);
-  swift_free("unlock_ind", s->unlock_ind);
+  swift_free("unlocks", s->unlocks, sizeof(struct task *) * s->size_unlocks);
+  swift_free("unlock_ind", s->unlock_ind, sizeof(int) * s->size_unlocks);
   s->unlocks = unlocks_new;
   s->unlock_ind = unlock_ind_new;
 
@@ -1801,7 +1801,7 @@ void scheduler_set_unlocks(struct scheduler *s) {
   }
 
   /* Swap the unlocks. */
-  swift_free("unlocks", s->unlocks);
+  swift_free("unlocks", s->unlocks, sizeof(struct task *) * s->size_unlocks);
   s->unlocks = unlocks;
 
   /* Re-set the offsets. */
@@ -1833,8 +1833,8 @@ void scheduler_set_unlocks(struct scheduler *s) {
 #endif
 
   /* Clean up. */
-  swift_free("counts", counts);
-  swift_free("offsets", offsets);
+  swift_free("counts", counts, sizeof(int) * s->nr_tasks);
+  swift_free("offsets", offsets, sizeof(struct task *) * s->size_unlocks);
 }
 
 /**
@@ -2719,8 +2719,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     }
 
     if (qid >= s->nr_queues) error("Bad computed qid.");
-
-    /* If no previous owner, pick a random queue. */
+    
+     /* If no previous owner, pick a random queue. */
     /* Note that getticks() is random enough */
     if (qid < 0) qid = getticks() % s->nr_queues;
 
@@ -2857,7 +2857,7 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
-          res = queue_gettask(&s->queues[qids[ind]], prev, 0);
+            res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
             break;
@@ -2980,10 +2980,11 @@ void scheduler_print_tasks(const struct scheduler *s, const char *fileName) {
  */
 void scheduler_clean(struct scheduler *s) {
   scheduler_free_tasks(s);
-  swift_free("unlocks", s->unlocks);
-  swift_free("unlock_ind", s->unlock_ind);
+  swift_free("unlocks", s->unlocks, sizeof(struct task *) * s->size_unlocks);
+  swift_free("unlock_ind", s->unlock_ind, sizeof(int) * s->size_unlocks);
+
   for (int i = 0; i < s->nr_queues; ++i) queue_clean(&s->queues[i]);
-  swift_free("queues", s->queues);
+  swift_free("queues", s->queues, sizeof(struct queue) * s->nr_queues);
 }
 
 /**
@@ -2991,15 +2992,15 @@ void scheduler_clean(struct scheduler *s) {
  */
 void scheduler_free_tasks(struct scheduler *s) {
   if (s->tasks != NULL) {
-    swift_free("tasks", s->tasks);
+    swift_free("tasks", s->tasks, s->size * sizeof(struct task));
     s->tasks = NULL;
   }
   if (s->tasks_ind != NULL) {
-    swift_free("tasks_ind", s->tasks_ind);
+    swift_free("tasks_ind", s->tasks_ind, s->size * sizeof(int));
     s->tasks_ind = NULL;
   }
   if (s->tid_active != NULL) {
-    swift_free("tid_active", s->tid_active);
+    swift_free("tid_active", s->tid_active, s->size * sizeof(int));
     s->tid_active = NULL;
   }
   s->size = 0;

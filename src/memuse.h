@@ -24,6 +24,7 @@
 
 /* Includes. */
 #include <stdlib.h>
+#include "swift_numa.h"
 
 /* API. */
 void memuse_use(long *size, long *resident, long *shared, long *text,
@@ -57,6 +58,7 @@ __attribute__((always_inline)) inline int swift_memalign(const char *label,
                                                          size_t alignment,
                                                          size_t size) {
   int result = posix_memalign(memptr, alignment, size);
+  if (result == 0) swift_numa_spread(label, *memptr, size, 0);
 #ifdef SWIFT_MEMUSE_REPORTS
   if (result == 0) {
     memuse_log_allocation(label, *memptr, 1, size);
@@ -82,6 +84,7 @@ __attribute__((always_inline)) inline int swift_memalign(const char *label,
 __attribute__((always_inline)) inline void *swift_malloc(const char *label,
                                                          size_t size) {
   void *memptr = malloc(size);
+  if (memptr != NULL) swift_numa_spread(label, memptr, size, 0);
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
     memuse_log_allocation(label, memptr, 1, size);
@@ -109,6 +112,7 @@ __attribute__((always_inline)) inline void *swift_calloc(const char *label,
                                                          size_t nmemb,
                                                          size_t size) {
   void *memptr = calloc(nmemb, size);
+  if (memptr != NULL) swift_numa_spread(label, memptr, size * nmemb, 0);
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
     memuse_log_allocation(label, memptr, 1, size * nmemb);
@@ -136,6 +140,8 @@ __attribute__((always_inline)) inline void *swift_realloc(const char *label,
                                                           void *ptr,
                                                           size_t size) {
   void *memptr = realloc(ptr, size);
+  if (memptr != NULL) swift_numa_spread(label, ptr, size, 0);
+
 #ifdef SWIFT_MEMUSE_REPORTS
   if (memptr != NULL) {
 
@@ -159,18 +165,26 @@ __attribute__((always_inline)) inline void *swift_realloc(const char *label,
 }
 
 /**
- * @brief free aligned memory. The use and results are the same as the
- *        free function. The label should match a prior call to swift_memalign
- *        or swift_malloc.
+ * @brief free aligned memory on reallocation. The use and results are the
+ *        same as the free function. As we mbind memory using numa_spread
+ *        the freed memory should ideally also be set back to the default
+ *        memory policy. We can attempt that when the allocated size is
+ *        known.
+ *
+ *        The label should match a prior call to swift_memalign or
+ *        swift_malloc.
  *
  * @param label a symbolic label for the memory, i.e. "parts".
  * @param ptr pointer to the allocated memory.
+ * @param size size of the memory being freed, 0 for not known,
  */
 __attribute__((always_inline)) inline void swift_free(const char *label,
-                                                      void *ptr) {
+                                                      void *ptr,
+                                                      size_t size) {
 #ifdef SWIFT_MEMUSE_REPORTS
   memuse_log_allocation(label, ptr, 0, 0);
 #endif
+  if (ptr != NULL && size > 0) swift_numa_spread(label, ptr, size, 1);
   free(ptr);
   return;
 }

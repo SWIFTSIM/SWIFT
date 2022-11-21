@@ -89,7 +89,7 @@ void space_parts_sort(struct part *parts, struct xpart *xparts,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  swift_free("parts_offsets", offsets);
+  swift_free("parts_offsets", offsets, sizeof(size_t) * (num_bins + 1));
 }
 
 /**
@@ -150,7 +150,7 @@ void space_sparts_sort(struct spart *sparts, int *restrict ind,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  swift_free("sparts_offsets", offsets);
+  swift_free("sparts_offsets", offsets, sizeof(size_t) * (num_bins + 1));
 }
 
 /**
@@ -211,7 +211,7 @@ void space_bparts_sort(struct bpart *bparts, int *restrict ind,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  swift_free("bparts_offsets", offsets);
+  swift_free("bparts_offsets", offsets, sizeof(size_t) * (num_bins + 1));
 }
 
 /**
@@ -271,7 +271,7 @@ void space_sinks_sort(struct sink *sinks, int *restrict ind,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  swift_free("sinks_offsets", offsets);
+  swift_free("sinks_offsets", offsets, sizeof(size_t) * (num_bins + 1));
 }
 
 /**
@@ -349,5 +349,5 @@ void space_gparts_sort(struct gpart *gparts, struct part *parts,
       error("Bad offsets after shuffle.");
 #endif /* SWIFT_DEBUG_CHECKS */
 
-  swift_free("gparts_offsets", offsets);
+  swift_free("gparts_offsets", offsets, sizeof(size_t) * (num_bins + 1));
 }

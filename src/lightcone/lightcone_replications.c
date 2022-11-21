@@ -176,7 +176,7 @@ void replication_list_init_empty(struct replication_list *replication_list) {
  * @param replication_list Pointer to the struct to deallocate.
  */
 void replication_list_clean(struct replication_list *replication_list) {
-  swift_free("lightcone_replications", replication_list->replication);
+  swift_free("lightcone_replications", replication_list->replication, sizeof(struct replication) * replication_list->nrep);
   replication_list->replication = NULL;
   replication_list->nrep = 0;
 }

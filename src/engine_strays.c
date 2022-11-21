@@ -307,8 +307,8 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
       error("Failed to allocate new part data.");
     memcpy(parts_new, s->parts, sizeof(struct part) * offset_parts);
     memcpy(xparts_new, s->xparts, sizeof(struct xpart) * offset_parts);
-    swift_free("parts", s->parts);
-    swift_free("xparts", s->xparts);
+    swift_free("parts", s->parts, s->nr_parts);
+    swift_free("xparts", s->xparts, s->nr_parts);
     s->parts = parts_new;
     s->xparts = xparts_new;
 
@@ -327,7 +327,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                        sizeof(struct spart) * s->size_sparts) != 0)
       error("Failed to allocate new spart data.");
     memcpy(sparts_new, s->sparts, sizeof(struct spart) * offset_sparts);
-    swift_free("sparts", s->sparts);
+    swift_free("sparts", s->sparts, s->nr_sparts);
     s->sparts = sparts_new;
 
     /* Reset the links */
@@ -345,7 +345,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                        sizeof(struct bpart) * s->size_bparts) != 0)
       error("Failed to allocate new bpart data.");
     memcpy(bparts_new, s->bparts, sizeof(struct bpart) * offset_bparts);
-    swift_free("bparts", s->bparts);
+    swift_free("bparts", s->bparts, s->nr_bparts);
     s->bparts = bparts_new;
 
     /* Reset the links */
@@ -363,7 +363,7 @@ void engine_exchange_strays(struct engine *e, const size_t offset_parts,
                        sizeof(struct gpart) * s->size_gparts) != 0)
       error("Failed to allocate new gpart data.");
     memcpy(gparts_new, s->gparts, sizeof(struct gpart) * offset_gparts);
-    swift_free("gparts", s->gparts);
+    swift_free("gparts", s->gparts, s->nr_gparts);
     s->gparts = gparts_new;
 
     /* Reset the links */

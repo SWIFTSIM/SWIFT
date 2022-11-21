@@ -475,7 +475,7 @@ void write_array_serial(const struct engine* e, hid_t grp, char* fileName,
   if (h_err < 0) error("Error while writing data array '%s'.", props.name);
 
   /* Free and close everything */
-  swift_free("writebuff", temp);
+  swift_free("writebuff", temp, num_elements * typeSize);
   H5Dclose(h_data);
   H5Sclose(h_memspace);
   H5Sclose(h_filespace);
@@ -1669,14 +1669,14 @@ void write_output_serial(struct engine* e,
         }
 
         /* Free temporary array */
-        if (parts_written) swift_free("parts_written", parts_written);
-        if (xparts_written) swift_free("xparts_written", xparts_written);
-        if (gparts_written) swift_free("gparts_written", gparts_written);
+        if (parts_written) swift_free("parts_written", parts_written, 0);
+        if (xparts_written) swift_free("xparts_written", xparts_written, 0);
+        if (gparts_written) swift_free("gparts_written", gparts_written, 0);
         if (gpart_group_data_written)
-          swift_free("gpart_group_written", gpart_group_data_written);
-        if (sparts_written) swift_free("sparts_written", sparts_written);
-        if (bparts_written) swift_free("bparts_written", sparts_written);
-        if (sinks_written) swift_free("sinks_written", sinks_written);
+          swift_free("gpart_group_written", gpart_group_data_written, 0);
+        if (sparts_written) swift_free("sparts_written", sparts_written, 0);
+        if (bparts_written) swift_free("bparts_written", sparts_written, 0);
+        if (sinks_written) swift_free("sinks_written", sinks_written, 0);
 
         /* Close particle group */
         H5Gclose(h_grp);

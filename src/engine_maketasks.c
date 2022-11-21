@@ -4475,7 +4475,7 @@ void engine_maketasks(struct engine *e) {
 #endif
 
   /* Free the old list of cell-task links. */
-  if (e->links != NULL) swift_free("links", e->links);
+  if (e->links != NULL) swift_free("links", e->links, sizeof(struct link) * e->size_links);
   e->size_links = e->sched.nr_tasks * e->links_per_tasks;
 
   /* Make sure that we have space for more links than last time. */

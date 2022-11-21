@@ -683,11 +683,11 @@ void space_split_recursive(struct space *s, struct cell *c,
 
   /* Clean up. */
   if (allocate_buffer) {
-    if (buff != NULL) swift_free("tempbuff", buff);
-    if (gbuff != NULL) swift_free("tempgbuff", gbuff);
-    if (sbuff != NULL) swift_free("tempsbuff", sbuff);
-    if (bbuff != NULL) swift_free("tempbbuff", bbuff);
-    if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff);
+    if (buff != NULL) swift_free("tempbuff", buff, sizeof(struct cell_buff) * count);
+    if (gbuff != NULL) swift_free("tempgbuff", gbuff, sizeof(struct cell_buff) * gcount);
+    if (sbuff != NULL) swift_free("tempsbuff", sbuff, sizeof(struct cell_buff) * scount);
+    if (bbuff != NULL) swift_free("tempbbuff", bbuff, sizeof(struct cell_buff) * bcount);
+    if (sink_buff != NULL) swift_free("temp_sink_buff", sink_buff, sizeof(struct cell_buff) * sink_count);
   }
 }
 

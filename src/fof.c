@@ -2048,7 +2048,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   /* Release lock. */
   if (lock_unlock(&s->lock) != 0) error("Failed to unlock the space");
 
-  swift_free("fof_local_group_links", local_group_links);
+  swift_free("fof_local_group_links", local_group_links, sizeof(struct fof_mpi) * local_group_links_size);
 #endif
 }
 
@@ -2095,9 +2095,9 @@ void fof_finalise_group_data(struct fof_props *props,
     group_centre_of_mass[i * 3 + 2] = CoM[2];
   }
 
-  swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
-  swift_free("fof_group_size", props->group_size);
-  swift_free("fof_group_index", props->group_index);
+  swift_free("fof_group_centre_of_mass", props->group_centre_of_mass, 3 * num_groups * sizeof(double));
+  swift_free("fof_group_size", props->group_size, num_groups * sizeof(size_t));
+  swift_free("fof_group_index", props->group_index, num_groups * sizeof(size_t));
 
   props->group_centre_of_mass = group_centre_of_mass;
   props->group_size = group_size;
@@ -2156,7 +2156,7 @@ void fof_seed_black_holes(const struct fof_props *props,
                        sizeof(struct bpart) * s->size_bparts) != 0)
       error("Failed to allocate new bpart data.");
     memcpy(bparts_new, s->bparts, sizeof(struct bpart) * s->nr_bparts);
-    swift_free("bparts", s->bparts);
+    swift_free("bparts", s->bparts, s->nr_bparts);
 
     s->bparts = bparts_new;
   }
@@ -2555,7 +2555,7 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   group_link_count = props->group_link_count;
 
   /* Clean up memory. */
-  swift_free("fof_cell_pairs", cell_pairs);
+  swift_free("fof_cell_pairs", cell_pairs, cell_pair_size * sizeof(struct cell_pair_indices));
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
 
   if (verbose)

@@ -397,7 +397,7 @@ void write_los_hdf5_dataset(const struct io_props props, const size_t N,
   io_write_attribute_s(h_data, "Description", props.description);
 
   /* Free and close everything */
-  swift_free("writebuff", temp);
+  swift_free("writebuff", temp, num_elements * typeSize);
   H5Pclose(h_prop);
   H5Dclose(h_data);
   H5Sclose(h_space);
@@ -832,7 +832,7 @@ void do_line_of_sight(struct engine *e) {
       free(offsets);
       offsets = NULL;
 #endif
-      swift_free("tl_cells_los", los_cells_top);
+      swift_free("tl_cells_los", los_cells_top, nr_local_cells_with_particles * sizeof(int));
       continue;
     }
 
@@ -1021,10 +1021,10 @@ void do_line_of_sight(struct engine *e) {
     free(counts);
     free(offsets);
 #endif
-    swift_free("tl_cells_los", los_cells_top);
-    swift_free("los_parts_array", LOS_parts);
-    swift_free("los_xparts_array", LOS_xparts);
-    swift_free("los_gparts_array", LOS_gparts);
+    swift_free("tl_cells_los", los_cells_top, nr_local_cells_with_particles * sizeof(int));
+    swift_free("los_parts_array", LOS_parts, 0);
+    swift_free("los_xparts_array", LOS_xparts, 0);
+    swift_free("los_gparts_array", LOS_gparts, 0);
 
   } /* End of loop over each LOS */
 

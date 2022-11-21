@@ -82,17 +82,22 @@ struct gravity_cache {
 static INLINE void gravity_cache_clean(struct gravity_cache *c) {
 
   if (c->count > 0) {
-    swift_free("gravity_cache", c->x);
-    swift_free("gravity_cache", c->y);
-    swift_free("gravity_cache", c->z);
-    swift_free("gravity_cache", c->epsilon);
-    swift_free("gravity_cache", c->m);
-    swift_free("gravity_cache", c->a_x);
-    swift_free("gravity_cache", c->a_y);
-    swift_free("gravity_cache", c->a_z);
-    swift_free("gravity_cache", c->pot);
-    swift_free("gravity_cache", c->active);
-    swift_free("gravity_cache", c->use_mpole);
+
+    /* Size of the gravity cache */
+    const size_t sizeBytesF = c->count * sizeof(float);
+    const size_t sizeBytesI = c->count * sizeof(int);
+
+    swift_free("gravity_cache", c->x, sizeBytesF);
+    swift_free("gravity_cache", c->y, sizeBytesF);
+    swift_free("gravity_cache", c->z, sizeBytesF);
+    swift_free("gravity_cache", c->epsilon, sizeBytesF);
+    swift_free("gravity_cache", c->m, sizeBytesF);
+    swift_free("gravity_cache", c->a_x, sizeBytesF);
+    swift_free("gravity_cache", c->a_y, sizeBytesF);
+    swift_free("gravity_cache", c->a_z, sizeBytesF);
+    swift_free("gravity_cache", c->pot, sizeBytesF);
+    swift_free("gravity_cache", c->active, sizeBytesI);
+    swift_free("gravity_cache", c->use_mpole, sizeBytesI);
   }
   c->count = 0;
 }

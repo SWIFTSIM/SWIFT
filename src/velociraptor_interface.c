@@ -714,9 +714,9 @@ void velociraptor_dump_orphan_particles(struct engine *e,
   H5Fclose(h_file);
 
   /* Free write buffers */
-  swift_free("VR.pos", pos);
-  swift_free("VR.vel", vel);
-  swift_free("VR.ids", ids);
+  swift_free("VR.pos", pos, 0);
+  swift_free("VR.vel", vel, 0);
+  swift_free("VR.ids", ids, 0);
 }
 #endif /* HAVE_VELOCIRAPTOR_ORPHANS */
 
@@ -1069,7 +1069,7 @@ void velociraptor_invoke(struct engine *e, const int linked_with_snap) {
               clocks_from_ticks(getticks() - tic), clocks_getunit());
 
     /* Free the array returned by VELOCIraptor */
-    swift_free("VR.group_data", group_info);
+    swift_free("VR.group_data", group_info, 0);
   }
 
 #ifdef HAVE_VELOCIRAPTOR_ORPHANS

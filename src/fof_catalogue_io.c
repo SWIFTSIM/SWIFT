@@ -273,7 +273,7 @@ void write_fof_hdf5_array(
   io_write_attribute_s(h_data, "Description", props.description);
 
   /* Free and close everything */
-  swift_free("writebuff", temp);
+  swift_free("writebuff", temp, num_elements * typeSize);
   H5Tclose(h_type);
   H5Pclose(h_prop);
   H5Dclose(h_data);

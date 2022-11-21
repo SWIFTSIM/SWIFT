@@ -797,7 +797,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_parts_foreign = s->size_parts_foreign;
   if (!fof && count_parts_in > s->size_parts_foreign) {
-    if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign);
+    if (s->parts_foreign != NULL) swift_free("parts_foreign", s->parts_foreign, sizeof(struct part) * s->size_parts_foreign);
     s->size_parts_foreign = engine_foreign_alloc_margin * count_parts_in;
     if (swift_memalign("parts_foreign", (void **)&s->parts_foreign, part_align,
                        sizeof(struct part) * s->size_parts_foreign) != 0)
@@ -808,7 +808,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   size_t old_size_gparts_foreign = s->size_gparts_foreign;
   if (count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
-      swift_free("gparts_foreign", s->gparts_foreign);
+      swift_free("gparts_foreign", s->gparts_foreign, sizeof(struct gpart) * s->size_gparts_foreign);
     s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
     if (swift_memalign("gparts_foreign", (void **)&s->gparts_foreign,
                        gpart_align,
@@ -820,7 +820,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   size_t old_size_sparts_foreign = s->size_sparts_foreign;
   if (!fof && count_sparts_in > s->size_sparts_foreign) {
     if (s->sparts_foreign != NULL)
-      swift_free("sparts_foreign", s->sparts_foreign);
+      swift_free("sparts_foreign", s->sparts_foreign, sizeof(struct spart) * s->size_sparts_foreign);
     s->size_sparts_foreign = engine_foreign_alloc_margin * count_sparts_in;
     if (swift_memalign("sparts_foreign", (void **)&s->sparts_foreign,
                        spart_align,
@@ -837,7 +837,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   size_t old_size_bparts_foreign = s->size_bparts_foreign;
   if (!fof && count_bparts_in > s->size_bparts_foreign) {
     if (s->bparts_foreign != NULL)
-      swift_free("bparts_foreign", s->bparts_foreign);
+      swift_free("bparts_foreign", s->bparts_foreign, sizeof(struct bpart) * s->size_bparts_foreign);
     s->size_bparts_foreign = engine_foreign_alloc_margin * count_bparts_in;
     if (swift_memalign("bparts_foreign", (void **)&s->bparts_foreign,
                        bpart_align,
@@ -2851,7 +2851,7 @@ void engine_collect_stars_counter(struct engine *e) {
 
   free(n_sparts);
   free(n_sparts_int);
-  swift_free("sparts", sparts);
+  swift_free("sparts", sparts, total * sizeof(struct spart));
 #endif
 }
 
@@ -3536,7 +3536,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     gravity_cache_clean(&e->runners[k].ci_gravity_cache);
     gravity_cache_clean(&e->runners[k].cj_gravity_cache);
   }
-  swift_free("runners", e->runners);
+  swift_free("runners", e->runners, 0);
   free(e->snapshot_units);
 
   output_list_clean(&e->output_list_snapshots);
@@ -3549,7 +3549,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
 
   ic_info_clean(e->ics_metadata);
 
-  swift_free("links", e->links);
+  swift_free("links", e->links, 0);
 #if defined(WITH_CSDS)
   if (e->policy & engine_policy_csds) {
     csds_free(e->csds);
