@@ -42,7 +42,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_cross_helicity(
 
   const float rho = p->rho;
   return (p->v[0] * p->mhd_data.B_over_rho[0] + p->v[1] * p->mhd_data.B_over_rho[1] +
-          p->v[2] * p->mhd_data.B_over_rho[2])/rho;
+          p->v[2] * p->mhd_data.B_over_rho[2]) * rho;
 }
 
 __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
@@ -52,7 +52,7 @@ __attribute__((always_inline)) INLINE static float mhd_get_divB_error(
   const float b2 = p->mhd_data.B_over_rho[0] * p->mhd_data.B_over_rho[0] +
                    p->mhd_data.B_over_rho[1] * p->mhd_data.B_over_rho[1] +
                    p->mhd_data.B_over_rho[2] * p->mhd_data.B_over_rho[2];
-  return fabs(p->mhd_data.divB * p->h / sqrt(b2/rho/rho + 1.e-18));
+  return fabs(p->mhd_data.divB * p->h / sqrt(b2 * rho * rho + 1.e-18));
 }
 
 /**
@@ -131,8 +131,14 @@ __attribute__((always_inline)) INLINE static float mhd_signal_velocity(
       0.5f * (c2effi + sqrtf(termi));
   const float v_sig2j =
       0.5f * (c2effj + sqrtf(termj));
+
+  const float v_sigi = sqrtf(v_sig2i);
+  //pi->mhd_data.v_fm = v_sigi;
+  const float v_sigj = sqrtf(v_sig2j);
+  //pj->mhd_data.v_fm = v_sigj;
+
   const float v_sig =
-      sqrtf(v_sig2i) + sqrtf(v_sig2j) - const_viscosity_beta * mu_ij;
+      v_sigi + v_sigj - const_viscosity_beta * mu_ij;
 
   return v_sig;
 }
@@ -271,7 +277,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_predicted_values(
     /* Re-set the predicted magnetic flux densities */
  	p->mhd_data.B_over_rho[0] = xp->mhd_data.B_over_rho_full[0];
 	p->mhd_data.B_over_rho[1] = xp->mhd_data.B_over_rho_full[1];
-   p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
+        p->mhd_data.B_over_rho[2] = xp->mhd_data.B_over_rho_full[2];
     
     }
 

@@ -28,10 +28,10 @@ Statistics:
 SPH:
   resolution_eta:        1.2348    # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:         0.075    # Courant-Friedrich-Levy condition for time integration.
-  viscosity_alpha:       2.0     #0.8
+  viscosity_alpha:       4.0     #0.8
   diffusion_alpha_max:   0.0
-  viscosity_alpha_max:   2.0
-  viscosity_alpha_min:   2.0
+  viscosity_alpha_max:   4.0
+  viscosity_alpha_min:   4.0
 
 # Parameters for MHD schemes
 MHD:
