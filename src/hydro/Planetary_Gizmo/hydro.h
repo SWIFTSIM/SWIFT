@@ -591,13 +591,17 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     const float v2 = (W[1] * W[1] + W[2] * W[2] + W[3] * W[3]);
     const float u = (Etot * m_inv - 0.5f * v2);
 #else
-    const float u = (p->conserved.energy + flux[4] * dt_therm) * m_inv;
+    float u = (p->conserved.energy + flux[4] * dt_therm) * m_inv;
+         const float floor_u = FLT_MIN;
+  u = max(u, floor_u);
 #endif
     W[4] = gas_pressure_from_internal_energy(W[0], u, p->mat_id);
 #endif
   }
 
   // MATTHIEU: Apply the entropy floor here.
+ 
+
 
   /* add the gravitational contribution to the fluid velocity drift */
   /* (MFV only) */
@@ -711,6 +715,10 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
 
   // MATTHIEU: Apply the entropy floor here.
+    const float floor_u = FLT_MIN;
+  p->conserved.energy = max(p->conserved.energy, floor_u);
+
+    
 
   gizmo_check_physical_quantities(
       "mass", "energy", p->conserved.mass, p->conserved.momentum[0],
@@ -727,7 +735,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
   }
 #endif
 
-  if (p->conserved.energy < 0.) {
+  if (p->conserved.energy <= 0.) {
     error(
         "Negative energy after conserved variables update (energy: %g, "
         "denergy: %g)!",
