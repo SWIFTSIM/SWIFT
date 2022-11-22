@@ -766,4 +766,14 @@ void engine_struct_dump(struct engine *e, FILE *stream);
 void engine_struct_restore(struct engine *e, FILE *stream);
 int engine_dump_restarts(struct engine *e, int drifted_all, int force);
 
+/* Halo finder engine. */
+void halo_finder_allocate(const struct space *s,
+                          const long long total_nr_DM_particles,
+                          struct fof_props *props, int run_halo_finder);
+void engine_halo_finder(struct engine *e, const int dump_results,
+                        const int dump_debug_results,
+                        const int seed_black_holes,
+                        const int foreign_buffers_allocated);
+
+
 #endif /* SWIFT_ENGINE_H */
