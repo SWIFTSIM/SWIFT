@@ -107,7 +107,6 @@ int main(int argc, char *argv[]) {
   struct pressure_floor_props pressure_floor_props;
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
-  struct halo_finder_props halo_finder_properties;
   struct lightcone_array_props lightcone_array_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
@@ -1179,15 +1178,6 @@ int main(int argc, char *argv[]) {
               "use\n");
         return 1;
       }
-    }
-#endif
-
-    /* Initialise the FOF properties */
-    bzero(&halo_finder_properties, sizeof(struct halo_finder_props));
-#ifdef WITH_HALO_FINDER
-    if (with_halo_finder) {
-      fof_init(&halo_finder_properties, params, &prog_const, &us,
-               /*stand-alone=*/0);
     }
 #endif
 
