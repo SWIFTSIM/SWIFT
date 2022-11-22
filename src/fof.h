@@ -24,6 +24,7 @@
 
 /* Local headers */
 #include "align.h"
+#include "halo_finder/halo.h"
 #include "parser.h"
 
 /* Avoid cyclic inclusions */
