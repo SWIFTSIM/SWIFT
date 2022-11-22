@@ -3608,6 +3608,8 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
     const double pivz = pi->v_full[2];
 
     /* Get the mass of the FOF group/host halo of this particle. */
+    /* NOTE: we could save memory here and use the group_mass array and
+     * not store these masses */
     double halo_mass;
     if (halo_level == host_halo) {
       halo_mass = pi->fof_data.group_mass;
