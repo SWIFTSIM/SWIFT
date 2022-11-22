@@ -123,10 +123,10 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       struct gpart *pj = &gparts[j];
 
       /* Ignore particles in different FOF groups */
-      if (pi->hf_data.group_id != pj->hf_data.group_id) continue;
+      if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
 
       /* If we're at the subhalo level ignore particles in different hosts */
-      if (halo_level == 2 && (pi->hf_data.host_id != pj->hf_data.host_id))
+      if (halo_level == 2 && (pi->fof_data.host_id != pj->fof_data.host_id))
         continue;
 
       /* Ignore inhibited particles */
@@ -298,10 +298,10 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
       struct gpart *pj = &gparts_j[j];
 
       /* Ignore particles in different FOF groups */
-      if (pi->hf_data.group_id != pj->hf_data.group_id) continue;
+      if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
 
       /* If we're at the subhalo level ignore particles in different hosts */
-      if (halo_level == 2 && (pi->hf_data.host_id != pj->hf_data.host_id))
+      if (halo_level == 2 && (pi->fof_data.host_id != pj->fof_data.host_id))
         continue;
 
       /* Ignore inhibited particles */

@@ -31,19 +31,22 @@
 #include <string.h>
 
 /* Local includes. */
-#include "cell.h"
 #include "fof.h"
+
+/* Avoid cyclic inclusions */
+struct cell;
+struct gpart;
 
 /* Prototypes */
 void halo_finder_search_self_cell_gpart(const struct fof_props *props,
                                         const double l_x2,
-                                        const int halo_level,
+                                        const enum halo_types halo_level,
                                         const struct gpart *const space_gparts,
                                         struct cell *c);
 void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
                                          const double dim[3],
                                          const double l_x2,
-                                         const int halo_level,
+                                         const enum halo_types halo_level,
                                          const int periodic,
                                          const struct gpart *const space_gparts,
                                          struct cell *restrict ci,
