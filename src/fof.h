@@ -128,14 +128,11 @@ struct fof_props {
    *  separation. */
   double sub_l_x_ratio;
 
-    /*! The host halo linking length. */
+  /*! The host halo linking length. */
   double l_x;
 
   /*! The subhalo linking length. */
   double sub_l_x;
-
-  /*! The square of the host halo linking length. */
-  double l_x2;
 
   /*! The square of the subhalo linking length. */
   double sub_l_x2;
