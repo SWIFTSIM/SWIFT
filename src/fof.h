@@ -270,11 +270,14 @@ void fof_search_tree(struct fof_props *props,
                      const int dump_results, const int dump_debug_results,
                      const int seed_black_holes);
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
-                         const double search_r2, const int periodic,
+                         const double search_r2,
+                         const enum halo_types halo_level,
+                         const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *c);
 void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
-                         const double search_r2, const int periodic,
+                         const double search_r2,
+                         const enum halo_types halo_level, const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);

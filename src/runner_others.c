@@ -964,10 +964,11 @@ void runner_do_fof_self(struct runner *r, struct cell *c,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
+  const double search_r2;
   if (halo_level == 0 || halo_level == 1) {
-    const double search_r2 = e->fof_properties->l_x2;
+    search_r2 = e->fof_properties->l_x2;
   } else if (halo_level == 2) {
-    const double search_r2 = e->fof_properties->sub_l_x2;
+    search_r2 = e->fof_properties->sub_l_x2;
   }
 
   rec_fof_search_self(e->fof_properties,
@@ -1003,10 +1004,11 @@ void runner_do_fof_pair(struct runner *r, struct cell *ci, struct cell *cj,
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   const int periodic = s->periodic;
   const struct gpart *const gparts = s->gparts;
+  const double search_r2;
   if (halo_level == 0 || halo_level == 1) {
-    const double search_r2 = e->fof_properties->l_x2;
+    search_r2 = e->fof_properties->l_x2;
   } else if (halo_level == 2) {
-    const double search_r2 = e->fof_properties->sub_l_x2;
+    search_r2 = e->fof_properties->sub_l_x2;
   }
 
   rec_fof_search_pair(e->fof_properties, dim,
