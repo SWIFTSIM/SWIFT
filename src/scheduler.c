@@ -1542,12 +1542,13 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s,
                                     enum task_types self_task) {
 
   /* Define the pair task we're splitting from the self task */
+  enum task_types pair_task;
   if (self_task == task_type_fof_self) {
-    enum task_types pair_task = task_type_fof_pair;
+    pair_task = task_type_fof_pair;
   } else if (self_task == task_type_host_self) {
-    enum task_types pair_task = task_type_host_pair;
+    pair_task = task_type_host_pair;
   } else if (self_task == task_type_subhalo_self) {
-    enum task_types pair_task = task_type_subhalo_pair;
+    pair_task = task_type_subhalo_pair;
   } else {
     error("Unrecognised FOF task type!");
   }
