@@ -24,7 +24,6 @@
 
 /* Local headers */
 #include "align.h"
-#include "halo_finder/halo.h"
 #include "parser.h"
 
 /* Avoid cyclic inclusions */
@@ -256,6 +255,15 @@ struct cell_pair_indices {
   struct cell *local, *foreign;
 };
 #endif
+
+/**
+ * @brief What kind of halo search are we doing?
+ *
+ * 0 = A 3D FOF group.
+ * 1 = A 6D Host halo.
+ * 2 = A 6D Subhalo
+ */
+enum halo_types {fof_group, host_halo, sub_halo};
 
 /* Function prototypes. */
 void fof_init(struct fof_props *props, struct swift_params *params,

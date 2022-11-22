@@ -34,16 +34,6 @@
 #include "cell.h"
 #include "fof.h"
 
-/**
- * @brief What kind of halo search are we doing?
- *
- * 0 = A 3D FOF group.
- * 1 = A 6D Host halo.
- * 2 = A 6D Subhalo
- */
-enum halo_types {fof_group, host_halo, sub_halo};
-
-
 /* Prototypes */
 void halo_finder_search_self_cell_gpart(const struct fof_props *props,
                                         const double l_x2,
