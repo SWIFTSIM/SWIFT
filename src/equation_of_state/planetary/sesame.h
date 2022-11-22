@@ -1098,7 +1098,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
             // Unless already trying to extrapolate in which case return zero
             if ((num_non_pos > 2) || (mat->P_tiny == 0.f) ||
                 (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
-              return rho_sph;
+              break;//return rho_sph;
             }
             if (P_1 <= 0.f) P_1 = mat->P_tiny;
             if (P_2 <= 0.f) P_2 = mat->P_tiny;
@@ -1223,7 +1223,7 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
             // Unless already trying to extrapolate in which case return zero
             if ((num_non_pos > 2) || (mat->P_tiny == 0.f) ||
                 (intp_u_1 < 0.f) || (intp_u_2 < 0.f)) {
-              return rho_sph;
+              break;//return rho_sph;
             }
             if (P_1 <= 0.f) P_1 = mat->P_tiny;
             if (P_2 <= 0.f) P_2 = mat->P_tiny;
