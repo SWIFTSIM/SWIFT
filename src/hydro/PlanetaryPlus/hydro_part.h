@@ -295,8 +295,9 @@ struct part {
     
   /*! Good or bad last time-step? Used for energy_correction_flag and matrix method and quad visc volume elements */     
   float last_f_S; 
-    
-    float grad_rho[3];
+  
+  /*! Gradient of rho */   
+  float grad_rho[3];
 #endif
     
 #if defined PLANETARY_MATRIX_INVERSION || defined PLANETARY_QUAD_VISC

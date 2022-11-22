@@ -938,31 +938,25 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->grad_drho_dh[1] *= h_inv_dim_plus_one;
   p->grad_drho_dh[2] *= h_inv_dim_plus_one;
     
-   float s = (p->h /p->rho) * fabs(p->drho_dh);
-    
-  float f_g = 0.5f * (1.f + tanhf(3.f - 3.f * s / 0.075f));//0.5f * (1.f + tanhf(3.f - 3.f * s / 0.075f));//
-    
-     //float s =(p->h / p->rho) * sqrtf(p->grad_rho[0]*p->grad_rho[0] + p->grad_rho[1]*p->grad_rho[1] + p->grad_rho[2]*p->grad_rho[2]);
+  float s = (p->h / p->rho) * sqrtf(p->grad_rho[0]*p->grad_rho[0] + p->grad_rho[1]*p->grad_rho[1] + p->grad_rho[2]*p->grad_rho[2]);
        
-     //  float f_g =expf(-23.0259f * s);
+  float f_g = 1.f / (s + 0.01f);
     
   p->P_tilde_numerator += p->P * f_g * sqrtf(kernel_root); 
   p->P_tilde_denominator += f_g * sqrtf(kernel_root);
-    if (p->P_tilde_numerator == 0.f || p->P_tilde_denominator == 0.f){
+  if (p->P_tilde_numerator == 0.f || p->P_tilde_denominator == 0.f){
         p->P_tilde_numerator = p->P;
         p->P_tilde_denominator = 1.f;
-    }
-     
-   float S;  
-   float f_S; 
-   float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
+  }
+  float P_tilde = p->P_tilde_numerator / p->P_tilde_denominator;
     
-      float grad_drho_dh = sqrtf(p->grad_drho_dh[0] * p->grad_drho_dh[0] + p->grad_drho_dh[1] * p->grad_drho_dh[1] + p->grad_drho_dh[2] * p->grad_drho_dh[2]); 
-      S = (p->h /p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
-     f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.15f)));
+  float grad_drho_dh = sqrtf(p->grad_drho_dh[0] * p->grad_drho_dh[0] + p->grad_drho_dh[1] * p->grad_drho_dh[1] + p->grad_drho_dh[2] * p->grad_drho_dh[2]); 
+  float S = (p->h /p->rho) * (fabs(p->drho_dh) + p->h * grad_drho_dh);
+  float f_S = 0.5f * (1.f + tanhf(3.f - 3.f * S / (0.1f)));
     
   /* Turn S to 0 if h == h_max */
-  if (p->is_h_max || f_S > 0.99f) {
+  if (f_S < 0.99f) {
+  if (p->is_h_max) {
     S = 0.f; //This is only for output files
     f_S = 1.f;   
   }else{
@@ -994,14 +988,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
         p->rho = rho_min;
       }
   }
- 
+  }
  
     
   // finish computations
   const float P = gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
   p->P = P; 
     
-     p->smoothing_error = S;
+  p->smoothing_error = S;
     
   p->last_corrected_rho = p->rho;
   p->last_f_S = f_S;
@@ -1040,12 +1034,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the norm of div v including the Hubble flow term */
   const float div_physical_v = p->density.div_v + hydro_dimension * cosmo->H;
   const float abs_div_physical_v = fabsf(div_physical_v);
-
-#ifdef PLANETARY_FIXED_ENTROPY
-  /* Override the internal energy to satisfy the fixed entropy */
-  p->u = gas_internal_energy_from_entropy(p->rho, p->s_fixed, p->mat_id);
-  xp->u_full = p->u;
-#endif
 
   /* Compute the sound speed */
   const float soundspeed =

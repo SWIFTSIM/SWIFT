@@ -158,7 +158,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_density(
   pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
   pj->drho_dh -= pi->mass * (hydro_dimension * wj + uj * wj_dx);  
     
-    pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
+  pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
   pi->grad_rho[1] += dx[1]*wi_dx*r_inv*mj;
   pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;
 
@@ -287,7 +287,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_density(
 #ifdef PLANETARY_SMOOTHING_CORRECTION
   pi->drho_dh -= pj->mass * (hydro_dimension * wi + ui * wi_dx);
     
-        pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
+  pi->grad_rho[0] += dx[0]*wi_dx*r_inv*mj;
   pi->grad_rho[1] += dx[1]*wi_dx*r_inv*mj;
   pi->grad_rho[2] += dx[2]*wi_dx*r_inv*mj;
 #endif
@@ -374,20 +374,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
 #endif
     
 #ifdef PLANETARY_SMOOTHING_CORRECTION
-  float si = (pi->h /pi->rho) * fabs(pi->drho_dh);
-  float sj = (pj->h /pj->rho) * fabs(pj->drho_dh);
-    
- //    float si = (pj->h /pj->rho) * fabs(pi->drho_dh);
- // float sj = (pi->h /pi->rho) * fabs(pj->drho_dh);
-    
-  float f_gi =0.5f * (1.f + tanhf(3.f - 3.f * si / 0.075f));// 0.5f * (1.f + tanhf(3.f - 3.f * si / 0.075f));//
-  float f_gj = 0.5f * (1.f + tanhf(3.f - 3.f * sj / 0.075f));//0.5f * (1.f + tanhf(3.f - 3.f * sj / 0.075f));//
-    
- //  float si =(pi->h / pi->rho) * sqrtf(pi->grad_rho[0]*pi->grad_rho[0] + pi->grad_rho[1]*pi->grad_rho[1] + pi->grad_rho[2]*pi->grad_rho[2]);
-   //    float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
+  float si =(pi->h / pi->rho) * sqrtf(pi->grad_rho[0]*pi->grad_rho[0] + pi->grad_rho[1]*pi->grad_rho[1] + pi->grad_rho[2]*pi->grad_rho[2]);
+  float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
        
-     //  float f_gi =expf(-23.0259f * si);
- // float f_gj = expf(-23.0259f * sj);
+  float f_gi = 1.f / (si + 0.01f);
+  float f_gj = 1.f / (sj + 0.01f);
     
   pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi);
   pj->P_tilde_numerator += pi->P * f_gi * sqrtf(wj);   
@@ -517,14 +508,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->sum_wij_exp_T += pj->T * wi * expf(-pj->I * pj->I);
 #endif
     
-#ifdef PLANETARY_SMOOTHING_CORRECTION
-  float sj = (pi->h /pi->rho) * fabs(pj->drho_dh);//(pj->h /pj->rho) * fabs(pj->drho_dh);
-    
-  float f_gj = 0.5f * (1.f + tanhf(3.f - 3.f * sj / 0.075f));//0.5f * (1.f + tanhf(3.f - 3.f * sj / 0.075f));//
-    
-    //   float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
+#ifdef PLANETARY_SMOOTHING_CORRECTION 
+  float sj =(pj->h / pj->rho) * sqrtf(pj->grad_rho[0]*pj->grad_rho[0] + pj->grad_rho[1]*pj->grad_rho[1] + pj->grad_rho[2]*pj->grad_rho[2]);
        
- // float f_gj = expf(-23.0259f * sj);
+  float f_gj = 1.f / (sj + 0.01f);;
      
   pi->P_tilde_numerator += pj->P * f_gj * sqrtf(wi); 
   pi->P_tilde_denominator += f_gj * sqrtf(wi);
@@ -934,6 +921,11 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
     
    float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
    float du_dt_j = P_j_term * dvdG_j + Q_j_term * Q_dvdG_j;
+    
+    #ifdef PLANETARY_FIXED_ENTROPY
+    du_dt_i = P_i_term * dvdG_i;
+    du_dt_j = P_j_term * dvdG_j;
+    #endif
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
@@ -1290,6 +1282,9 @@ float Q_kernel_gradient_i[3], Q_kernel_gradient_j[3];
     
   /* Get the time derivative for u, including the viscosity */
    float du_dt_i = P_i_term * dvdG_i + Q_i_term * Q_dvdG_i;
+    #ifdef PLANETARY_FIXED_ENTROPY
+    du_dt_i = P_i_term * dvdG_i;
+    #endif
 
   /* Internal energy time derivative */
   pi->u_dt += du_dt_i * mj;
