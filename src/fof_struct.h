@@ -34,6 +34,40 @@ struct fof_gpart_data {
 
   /*! Size of the FOF group of this particle */
   size_t group_size;
+
+#ifdef WITH_HALO_FINDER
+  
+    /*! Particle host halo ID */
+  size_t host_id;
+
+  /*! Particle subhalo ID */
+  size_t subhalo_id;
+
+  /*! Size of the host of this particle */
+  size_t host_size;
+  
+  /*! Size of the subhalo of this particle */
+  size_t subhalo_size;
+
+  /*! Mass of the group of this particle */
+  size_t group_mass;
+
+  /*! Mass of the host of this particle */
+  size_t host_mass;
+  
+  /*! Mass of the subhalo of this particle */
+  size_t subhalo_mass;
+
+  /*! Particle previous group ID */
+  size_t prev_group_id;
+
+  /*! Particle previous host halo ID */
+  size_t prev_host_id;
+
+  /*! Particle previous subhalo ID */
+  size_t prev_subhalo_id;
+  
+#endif
 };
 
 #else

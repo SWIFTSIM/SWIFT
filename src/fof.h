@@ -110,6 +110,99 @@ struct fof_props {
   /*! The links between pairs of particles on this node and a foreign
    * node */
   struct fof_mpi *group_links;
+
+#ifdef WITH_HALO_FINDER
+  /* ----------------- General metadata ----------------- */
+  
+  /*! Are we finding subhalos? */
+  int find_subhalos;
+
+  /* ------------  Output parameters ----------------- */
+
+  /*! The base name of the output file */
+  char halo_base_name[PARSER_MAX_LINE_SIZE];
+
+  /* ----------- Parameters of the configuration space search ------- */
+
+  /*! The subhalo linking length in units of the mean DM inter-particle
+   *  separation. */
+  double sub_l_x_ratio;
+
+    /*! The host halo linking length. */
+  double l_x;
+
+  /*! The subhalo linking length. */
+  double sub_l_x;
+
+  /*! The square of the host halo linking length. */
+  double l_x2;
+
+  /*! The square of the subhalo linking length. */
+  double sub_l_x2;
+
+   /* ----------- Parameters of the velocity space search ------- */
+
+  /*! Halo independent part of the host velocity space linking length.  */
+  double const_l_v;
+
+  /*! Halo independent part of the subhalo velocity space linking length.  */
+  double sub_const_l_v;
+
+  /* For Future use. */
+  /*! The overdensity guess for host halos. */
+  double host_overdensity;
+  
+  /*! The overdensity guess for host halos. */
+  double subhalo_overdensity;
+
+  /*! Cube root of the overdensity ratio (the difference in spatial "scale"
+   *  between over density levels)  */
+  double overdensity_ratio;
+
+  /*! Initial velocity space linking length coefficient. */
+  double ini_l_v_coeff;
+
+  /*! Minimum allowed velocity space linking length coefficient. */
+  double min_l_v_coeff;
+
+  /* ------------  Group/Host/Subhalo properties ----------------- */
+
+  /*! Number of hosts */
+  long long num_hosts;
+
+  /*! Number of subhalos */
+  long long num_subhalos;
+
+  /*! Index of the root particle of the host a given gpart belongs to. */
+  size_t *host_index;
+
+  /*! Size of the host a given gpart belongs to. */
+  size_t *host_size;
+
+  /*! Mass of the host a given gpart belongs to. */
+  double *host_mass;
+
+  /*! Centre of mass of the host a given gpart belongs to. */
+  double *host_centre_of_mass;
+
+  /*! Position of the first particle of a given host. */
+  double *host_first_position;
+
+  /*! Index of the root particle of the subhalo a given gpart belongs to. */
+  size_t *subhalo_index;
+
+  /*! Size of the subhalo a given gpart belongs to. */
+  size_t *subhalo_size;
+
+  /*! Mass of the subhalo a given gpart belongs to. */
+  double *subhalo_mass;
+
+  /*! Centre of mass of the subhalo a given gpart belongs to. */
+  double *subhalo_centre_of_mass;
+
+  /*! Position of the first particle of a given subhalo. */
+  double *subhalo_first_position;
+#endif
 };
 
 /* Store group size and offset into array. */

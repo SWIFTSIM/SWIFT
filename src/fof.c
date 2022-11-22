@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <math.h>
 
 /* MPI headers. */
 #ifdef WITH_MPI
@@ -41,6 +42,7 @@
 #include "engine.h"
 #include "fof_catalogue_io.h"
 #include "hashmap.h"
+#include "halo.h"
 #include "memuse.h"
 #include "proxy.h"
 #include "threadpool.h"
@@ -154,6 +156,49 @@ void fof_init(struct fof_props *props, struct swift_params *params,
         "locally.");
 #else
   message("Performing FOF using union by rank.");
+#endif
+
+#ifdef WITH_HALO_FINDER
+
+  /* Base name for the FOF output file */
+  parser_get_param_string(params, "HaloFinder:basename", props->halo_base_name);
+
+  /* Check that we can write outputs by testing if the output
+   * directory exists and is searchable and writable. */
+  char directory[PARSER_MAX_LINE_SIZE] = {0};
+  sprintf(directory, "%s", props->halo_base_name);
+  const char *dirp = dirname(directory);
+  if (engine_rank == 0) safe_checkdir(dirp, /*create=*/1);
+
+  /* Read the target overdensity for host halos. */
+  props->host_overdensity =
+      parser_get_opt_param_double(params, "HaloFinder:host_overdensity", -1.);
+
+  /* Read the target overdensity for subhalos. */
+  props->subhalo_overdensity =
+      parser_get_opt_param_double(params, "HaloFinder:subhalo_overdensity",
+                                  -1.);
+
+  /* Ratio of overdensities. */
+  props->overdensity_ratio = cbrt(props->host_overdensity /
+                                  props->subhalo_overdensity);
+
+  /* Initial coefficient for velocity linking length. */
+  props->ini_l_v_coeff =
+      parser_get_opt_param_double(params,
+                                  "HaloFinder:initial_vel_linking_length_alpha",
+                                  -1.);
+
+  /* Minimum coefficient for velocity linking length. */
+  props->min_l_v_coeff =
+      parser_get_opt_param_double(params,
+                                  "HaloFinder:minimum_vel_linking_length_alpha",
+                                  -1.);
+
+  /* Are we finding subhalos or only hosts?. */
+  props->find_subhalos =
+      parser_get_opt_param_int(params, "HaloFinder:find_subhalos", -1.);
+  
 #endif
 }
 
@@ -1161,13 +1206,18 @@ void fof_search_pair_cells_foreign(
  * @param props The properties fof the FOF scheme.
  * @param dim The dimension of the space.
  * @param search_r2 the square of the FOF linking length.
+ * @param halo_level The type of halo we are finding (FOF group = 0,
+ *                   6D Host = 1, 6D subhalo = 2)
  * @param periodic Are we using periodic BCs?
  * @param space_gparts The start of the #gpart array in the #space structure.
  * @param ci The first #cell in which to perform FOF.
  * @param cj The second #cell in which to perform FOF.
  */
-void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
-                         const double search_r2, const int periodic,
+void rec_fof_search_pair(const struct fof_props *props,
+                         const double dim[3],
+                         const double search_r2,
+                         const enum halo_types halo_level,
+                         const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *restrict ci, struct cell *restrict cj) {
 
@@ -1180,7 +1230,10 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
 #endif
 
   /* Return if cells are out of range of each other. */
-  if (r2 > search_r2) return;
+  if (halo_level == 0 && r2 > search_r2) return;
+  if (halo_level == 1 && r2 > 2 * props->l_x * 2 * props->l_x) return;
+  if (halo_level == 2 &&
+      r2 > 2 * props->sub_l_x * 2 * props->sub_l_x) return;
 
   /* Recurse on both cells if they are both split. */
   if (ci->split && cj->split) {
@@ -1189,27 +1242,37 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
 
         for (int l = 0; l < 8; l++)
           if (cj->progeny[l] != NULL)
-            rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts,
-                                ci->progeny[k], cj->progeny[l]);
+            rec_fof_search_pair(props, dim, search_r2, halo_level,
+                                periodic, space_gparts, ci->progeny[k],
+                                cj->progeny[l]);
       }
     }
   } else if (ci->split) {
     for (int k = 0; k < 8; k++) {
       if (ci->progeny[k] != NULL)
-        rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts,
+        rec_fof_search_pair(props, dim, search_r2, halo_level,
+                            periodic, space_gparts,
                             ci->progeny[k], cj);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
-        rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts, ci,
+        rec_fof_search_pair(props, dim, search_r2, halo_level,
+                            periodic, space_gparts, ci,
                             cj->progeny[k]);
     }
   } else {
-    /* Perform FOF search between pairs of cells that are within the linking
-     * length and not the same cell. */
-    fof_search_pair_cells(props, dim, search_r2, periodic, space_gparts, ci,
-                          cj);
+      /* Otherwise, compute self-interaction. */
+  else {
+    if (halo_level == fof_group) {   /* FOF group */
+      /* Perform FOF search between pairs of cells that are within the linking
+       * length and not the same cell. */
+      fof_search_pair_cells(props, dim, search_r2, periodic, space_gparts, ci,
+                            cj);
+    } else if (halo_level == host_halo || halo_level == sub_halo) {
+      halo_finder_search_pair_cells_gpart(props, dim, search_r2, halo_level,
+                                          periodic, space_gparts, ci, cj);
+    }
   }
 }
 #ifdef WITH_MPI
@@ -1276,15 +1339,18 @@ void rec_fof_search_pair_foreign(
 /**
  * @brief Recursively perform a union-find FOF on a cell.
  *
- * @param props The properties fof the FOF scheme.
+ * @param props The properties of the FOF scheme.
  * @param dim The dimension of the space.
  * @param space_gparts The start of the #gpart array in the #space structure.
  * @param search_r2 the square of the FOF linking length.
+ * @param halo_level The type of halo we are finding (FOF group = 0,
+ *                   6D Host = 1, 6D subhalo = 2)
  * @param periodic Are we using periodic BCs?
  * @param c The #cell in which to perform FOF.
  */
-void rec_fof_search_self(const struct fof_props *props, const double dim[3],
-                         const double search_r2, const int periodic,
+void rec_fof_search_self(const struct fof_props *props,
+                         const double dim[3], const double search_r2,
+                         const enum halo_types halo_level, const int periodic,
                          const struct gpart *const space_gparts,
                          struct cell *c) {
 
@@ -1295,19 +1361,26 @@ void rec_fof_search_self(const struct fof_props *props, const double dim[3],
     for (int k = 0; k < 8; k++) {
       if (c->progeny[k] != NULL) {
 
-        rec_fof_search_self(props, dim, search_r2, periodic, space_gparts,
-                            c->progeny[k]);
+        rec_fof_search_self(props, dim, search_r2, halo_level,
+                            periodic, space_gparts, c->progeny[k]);
 
         for (int l = k + 1; l < 8; l++)
           if (c->progeny[l] != NULL)
-            rec_fof_search_pair(props, dim, search_r2, periodic, space_gparts,
-                                c->progeny[k], c->progeny[l]);
+            rec_fof_search_pair(props, dim, search_r2, halo_level,
+                                periodic, space_gparts, c->progeny[k],
+                                c->progeny[l]);
       }
     }
   }
   /* Otherwise, compute self-interaction. */
-  else
-    fof_search_self_cell(props, search_r2, space_gparts, c);
+  else {
+    if (halo_level == fof_group) {   /* FOF group */
+      fof_search_self_cell(props, search_r2, space_gparts, c);
+    } else if (halo_level == host_halo || halo_level == sub_halo) {
+      halo_finder_search_self_cell_gpart(props, search_r2, halo_level,
+                                         space_gparts, c);
+    }
+  }
 }
 
 /* Mapper function to atomically update the group size array. */
