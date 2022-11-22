@@ -1,7 +1,11 @@
+# Contains commonly used functions related to plotting results
+# of the Strömgren Sphere Examples and other gas related functions.
+
+import copy
 import os
+
 import numpy as np
 import unyt
-import copy
 
 # species masses in atomic mass units
 mamu = {"e": 0.0, "HI": 1.0, "HII": 1.0, "HeI": 4.0, "HeII": 4.0, "HeIII": 4.0}
@@ -17,9 +21,13 @@ def get_number_densities(Temp, XH, XHe):
     XHe: total mass fraction of all helium species (HeI + HeII + HeIII)
     """
 
-    # n_H = X_H * rho_gas / m_H =
-    # n_He = X_He * rho_gas / m_He = (1 - X_H) / (4 X_H) * n_H
-    #      =  X_He / 4(1 - X_He) * nH = y * nH
+    # n_H = X_H * rho_gas / m_H
+    # then m_H = rho_gas * X_H / n_H
+    # n_He = X_He * rho_gas / m_He =
+    #      = (1 - X_H) * rho_gas / (4 * m_H)
+    #      = (1 - X_H) * rho_gas / (4 * rho_gas * x_H / n_H)
+    #      = (1 - X_H) / (4 * X_H) * n_H
+    #      =  X_He / 4(1 - X_He) * n_H = y * n_H
 
     if XH == 0:
         nH = 0.0
@@ -120,9 +128,13 @@ def get_number_densities_array(Temp, XH, XHe):
     XHe: total mass fraction of all helium species (HeI + HeII + HeIII)
     """
 
-    # n_H = X_H * rho_gas / m_H =
-    # n_He = X_He * rho_gas / m_He = (1 - X_H) / (4 X_H) * n_H
-    #      =  X_He / 4(1 - X_He) * nH = y * nH
+    # n_H = X_H * rho_gas / m_H
+    # then m_H = rho_gas * X_H / n_H
+    # n_He = X_He * rho_gas / m_He =
+    #      = (1 - X_H) * rho_gas / (4 * m_H)
+    #      = (1 - X_H) * rho_gas / (4 * rho_gas * x_H / n_H)
+    #      = (1 - X_H) / (4 * X_H) * n_H
+    #      =  X_He / 4(1 - X_He) * n_H = y * n_H
 
     nH = np.zeros(XH.shape, dtype=np.float64)
     nHe = np.zeros(XH.shape, dtype=np.float64)
@@ -249,6 +261,31 @@ def internal_energy(T, mu, gamma):
     return u
 
 
+def get_soundspeed_from_internal_energy(data):
+    """
+    Compute the local sound speed for all particles.
+    data: swiftsimio.load() object.
+    """
+
+    u = data.gas.internal_energies
+    gamma = data.metadata.gas_gamma
+
+    return np.sqrt(u * gamma / (gamma - 1))
+
+
+def get_soundspeed_from_density_pressure(data):
+    """
+    Compute the local sound speed for all particles.
+    data: swiftsimio.load() object.
+    """
+
+    gamma = data.metadata.gas_gamma
+    P = data.gas.pressures
+    rho = data.gas.densities
+
+    return np.sqrt(gamma * P / rho)
+
+
 def mean_molecular_weight(XH0, XHp, XHe0, XHep, XHepp):
     """
     Determines the mean molecular weight for given 
@@ -341,8 +378,7 @@ def get_imf(scheme, data):
             )
             setattr(imf, column, mass_fraction)
     else:
-        print("Unknown scheme", scheme)
-        quit()
+        raise ValueError("Unknown scheme", scheme)
     return imf
 
 
@@ -373,6 +409,8 @@ def get_abundances(scheme, data):
         )
     elif scheme.startswith("SPH M1closure"):
         sA = data.gas.rt_species_abundances
+    else:
+        raise ValueError("Unknown scheme", scheme)
     return sA
 
 

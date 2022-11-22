@@ -25,12 +25,11 @@
 # ionization equilibrium IC setup within GEAR-RT.
 # -----------------------------------------------------------
 
+import h5py
+import numpy as np
+import unyt
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
-
-import unyt
-import numpy as np
-import h5py
 
 # define unit system to use
 #  unitsystem = unyt.unit_systems.cgs_unit_system
@@ -88,7 +87,7 @@ w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
 w.write(outputfilename)
 
 # Generate initial ionization mass fractions.
-# These are deliberately bogus so you can make sure that
+# These are deliberately bogus, so you can make sure that
 # they have been changed by SWIFT.
 
 F = h5py.File(outputfilename, "r+")
@@ -97,15 +96,15 @@ nparts = header.attrs["NumPart_ThisFile"][0]
 parts = F["/PartType0"]
 
 # this is bogus data for debugging checks.
-HIdata = np.ones((nparts), dtype=np.float32) * 0.11
+HIdata = np.ones(nparts, dtype=np.float32) * 0.11
 parts.create_dataset("MassFractionHI", data=HIdata)
-HIIdata = np.ones((nparts), dtype=np.float32) * 0.22
+HIIdata = np.ones(nparts, dtype=np.float32) * 0.22
 parts.create_dataset("MassFractionHII", data=HIIdata)
-HeIdata = np.ones((nparts), dtype=np.float32) * 0.123
+HeIdata = np.ones(nparts, dtype=np.float32) * 0.123
 parts.create_dataset("MassFractionHeI", data=HeIdata)
-HeIIdata = np.ones((nparts), dtype=np.float32) * 0.234
+HeIIdata = np.ones(nparts, dtype=np.float32) * 0.234
 parts.create_dataset("MassFractionHeII", data=HeIIdata)
-HeIIIdata = np.ones((nparts), dtype=np.float32) * 0.345
+HeIIIdata = np.ones(nparts, dtype=np.float32) * 0.345
 parts.create_dataset("MassFractionHeIII", data=HeIIIdata)
 
 F.close()

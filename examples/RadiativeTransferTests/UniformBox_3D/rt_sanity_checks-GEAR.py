@@ -110,7 +110,7 @@ def check_essentials(snapdata, rundata):
                 if break_on_diff:
                     quit()
 
-        if snap.has_stars:
+        if snap.has_star_debug_data:
             injected_energies = snap.stars.InjectedPhotonEnergy
             ok = np.isfinite(injected_energies)
             if not ok.all():
@@ -238,7 +238,7 @@ def check_injection(snapdata, rundata):
     #  Remember: The reason we have too little injected energy is because we
     #  don't inject any energy during the zeroth time step. We can't, since the
     #  zeroth time step is the one that determines the time step size of the star.
-    #  Also the star-feedback loop is skipped.
+    #  Also, the star-feedback loop is skipped.
 
     # TODO: this assumes a constant number of stars. You need to deal with SF
     # TODO: this assumes no cosmological expansion
@@ -345,7 +345,7 @@ def check_injection(snapdata, rundata):
     # Create additional plots?
     # --------------------------------
 
-    if rundata.use_const_emission_rate:
+    if rundata.use_const_emission_rate and continue_test:
         if not skip_plots and len(energies_for_plot) > 2:
             # Show me the plot that the injected energy
             # is correctly bounded

@@ -84,19 +84,6 @@ struct part {
     } limiter;
 
     struct {
-      /* Fluxes. */
-      struct {
-
-        /* No mass flux, since it is always zero. */
-
-        /* Momentum flux. */
-        float momentum[3];
-
-        /* Energy flux. */
-        float energy;
-
-      } flux;
-
       /* Variables used for timestep calculation. */
       struct {
 
@@ -119,6 +106,21 @@ struct part {
       } force;
     };
   };
+
+  /* Fluxes. */
+  struct {
+    /* No mass flux, since it is always zero. */
+
+    /* Momentum flux. */
+    float momentum[3];
+
+    /* Energy flux. */
+    float energy;
+
+    /* Particle time step. Used to compute time-integrated fluxes. */
+    float dt;
+
+  } flux;
 
   /* Gradients of the primitive variables. */
   struct {
