@@ -1261,8 +1261,8 @@ void rec_fof_search_pair(const struct fof_props *props,
                             periodic, space_gparts, ci,
                             cj->progeny[k]);
     }
-  } else {
-      /* Otherwise, compute self-interaction. */
+  } 
+    /* Otherwise, compute self-interaction. */
   else {
     if (halo_level == fof_group) {   /* FOF group */
       /* Perform FOF search between pairs of cells that are within the linking
@@ -1275,6 +1275,7 @@ void rec_fof_search_pair(const struct fof_props *props,
     }
   }
 }
+
 #ifdef WITH_MPI
 
 /* Recurse on a pair of cells (one local, one foreign) and perform a FOF search
