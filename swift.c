@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
   struct pressure_floor_props pressure_floor_props;
   struct black_holes_props black_holes_properties;
   struct fof_props fof_properties;
+  struct halo_finder_props halo_finder_properties;
   struct lightcone_array_props lightcone_array_properties;
   struct part *parts = NULL;
   struct phys_const prog_const;
@@ -172,6 +173,7 @@ int main(int argc, char *argv[]) {
   int with_hydro = 0;
   int with_stars = 0;
   int with_fof = 0;
+  int with_halo_finder = 0;
   int with_lightcone = 0;
   int with_star_formation = 0;
   int with_feedback = 0;
@@ -242,6 +244,10 @@ int main(int argc, char *argv[]) {
       OPT_BOOLEAN(
           'u', "fof", &with_fof,
           "Run Friends-of-Friends algorithm to perform black hole seeding.",
+          NULL, 0, 0),
+      OPT_BOOLEAN(
+          'u', "halo_finder", &with_halo_finder,
+          "Run the on the fly halo finder.",
           NULL, 0, 0),
 
       OPT_BOOLEAN(0, "lightcone", &with_lightcone,
@@ -385,6 +391,9 @@ int main(int argc, char *argv[]) {
     with_cooling = 1;
     with_feedback = 1;
   }
+
+  /* If we have the halo finder then we necessarily have the FOF. */
+  if (with_halo_finder) with_fof = 1;
 
   /* Deal with thread numbers */
   if (nr_pool_threads == -1) nr_pool_threads = nr_threads;
@@ -539,6 +548,15 @@ int main(int argc, char *argv[]) {
   if (with_fof) {
 #ifndef WITH_FOF
     error("Running with FOF but compiled without it!");
+#endif
+  }
+
+  if (with_halo_finder) {
+#ifndef WITH_HALO_FINDER
+    error("Running with halo finder but compiled without it!");
+#endif
+#ifndef WITH_FOF
+    error("Running with halo finder but compiled without FOF!");
 #endif
   }
 
@@ -1164,6 +1182,15 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
+    /* Initialise the FOF properties */
+    bzero(&halo_finder_properties, sizeof(struct halo_finder_props));
+#ifdef WITH_HALO_FINDER
+    if (with_halo_finder) {
+      fof_init(&halo_finder_properties, params, &prog_const, &us,
+               /*stand-alone=*/0);
+    }
+#endif
+
     /* Initialize power spectra calculation */
     if (with_power) {
 #ifdef HAVE_FFTW
@@ -1476,6 +1503,7 @@ int main(int argc, char *argv[]) {
     if (with_structure_finding)
       engine_policies |= engine_policy_structure_finding;
     if (with_fof) engine_policies |= engine_policy_fof;
+    if (with_halo_finder) engine_policies |= engine_policy_halo_finder;
     if (with_csds) engine_policies |= engine_policy_csds;
     if (with_line_of_sight) engine_policies |= engine_policy_line_of_sight;
     if (with_sinks) engine_policies |= engine_policy_sinks;
