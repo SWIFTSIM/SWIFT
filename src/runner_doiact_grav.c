@@ -3024,34 +3024,9 @@ void runner_dopair_recursive_grav_bkgpool(struct runner *r, struct cell *ci,
 
   TIMER_TIC;
 
-  /* Compute maximal distance where we can expect a direct interaction */
-  const float distance = gravity_M2L_min_accept_distance(
-      e->gravity_properties, sqrtf(3) * ci->width[0],
-      s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
-
-  /* Convert the maximal search distance to a number of cells
-   * Define a lower and upper delta in case things are not symmetric */
-  const int delta = max((int)(sqrt(3) * distance / ci->width[0]) + 1, 2);
-  int delta_m = delta;
-  int delta_p = delta;
-
-  /* Special case where every cell is in range of every other one */
-  if (periodic) {
-    if (delta >= cdim[0] / 2) {
-      if (cdim[0] % 2 == 0) {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2 - 1;
-      } else {
-        delta_m = cdim[0] / 2;
-        delta_p = cdim[0] / 2;
-      }
-    }
-  } else {
-    if (delta > cdim[0]) {
-      delta_m = cdim[0];
-      delta_p = cdim[0];
-    }
-  }
+  /* Only walk a single shell of cells out. */
+  int delta_m = 1;
+  int delta_p = 1;
 
   /* Get the (i,j,k) location of the top-level cell in the grid. */
   const int i = ci->loc[0] * s->iwidth[0];
