@@ -3279,6 +3279,12 @@ void fof_search_tree(struct fof_props *props,
   fof_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
                           s->dim, num_groups_local);
 
+  /* Assign every particle the group_mass of its local root. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+    const size_t root = fof_find_local(i, nr_gparts, group_index);
+    gparts[i].fof_data.group_mass = props->group_mass[gparts[root].fof_data.group_id];
+  }
+
   if (verbose)
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
