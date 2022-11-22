@@ -64,8 +64,8 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p, const struct cosmology* cosmo) {  
-  
+    struct part* restrict p, const struct cosmology* cosmo) {
+
   struct rt_part_data* rpd = &p->rt_data;
 
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -133,7 +133,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
 
   rt_init_part(p);
   rt_reset_part(p, cosmo);
-  rt_reset_part_each_subcycle(p,cosmo);
+  rt_reset_part_each_subcycle(p, cosmo);
 }
 
 /**
