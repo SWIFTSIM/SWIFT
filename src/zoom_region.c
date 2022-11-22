@@ -1819,9 +1819,6 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
     }
   }
 
-  /* Report how far we are walking. */
-  message("Walking out %d neighbouring background cells.", delta);
-
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
 
