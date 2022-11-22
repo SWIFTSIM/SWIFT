@@ -292,6 +292,21 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
 
+/* Halo finder prototypes */
+void halo_finder_search_self_cell_gpart(const struct fof_props *props,
+                                        const double l_x2,
+                                        const enum halo_types halo_level,
+                                        const struct gpart *const space_gparts,
+                                        struct cell *c);
+void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
+                                         const double dim[3],
+                                         const double l_x2,
+                                         const enum halo_types halo_level,
+                                         const int periodic,
+                                         const struct gpart *const space_gparts,
+                                         struct cell *restrict ci,
+                                         struct cell *restrict cj);
+
 #ifdef WITH_MPI
 /* MPI data type for the particle transfers */
 extern MPI_Datatype fof_mpi_type;

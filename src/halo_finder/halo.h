@@ -38,18 +38,18 @@ struct cell;
 struct gpart;
 
 /* Prototypes */
-void halo_finder_search_self_cell_gpart(const struct fof_props *props,
-                                        const double l_x2,
-                                        const enum halo_types halo_level,
-                                        const struct gpart *const space_gparts,
-                                        struct cell *c);
-void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
-                                         const double dim[3],
-                                         const double l_x2,
-                                         const enum halo_types halo_level,
-                                         const int periodic,
-                                         const struct gpart *const space_gparts,
-                                         struct cell *restrict ci,
-                                         struct cell *restrict cj);
+/* void halo_finder_search_self_cell_gpart(const struct fof_props *props, */
+/*                                         const double l_x2, */
+/*                                         const enum halo_types halo_level, */
+/*                                         const struct gpart *const space_gparts, */
+/*                                         struct cell *c); */
+/* void halo_finder_search_pair_cells_gpart(const struct fof_props *props, */
+/*                                          const double dim[3], */
+/*                                          const double l_x2, */
+/*                                          const enum halo_types halo_level, */
+/*                                          const int periodic, */
+/*                                          const struct gpart *const space_gparts, */
+/*                                          struct cell *restrict ci, */
+/*                                          struct cell *restrict cj); */
 
 #endif /* SWIFT_FOF_STRUCT_H */
