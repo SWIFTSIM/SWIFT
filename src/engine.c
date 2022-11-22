@@ -3844,7 +3844,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   fof_struct_restore(fof_props, stream);
   e->fof_properties = fof_props;
 #endif
-
+  
   struct los_props *los_properties =
       (struct los_props *)malloc(sizeof(struct los_props));
   los_struct_restore(los_properties, stream);

@@ -87,6 +87,7 @@ enum engine_policy {
   engine_policy_sinks = (1 << 25),
   engine_policy_rt = (1 << 26),
   engine_policy_power_spectra = (1 << 27),
+  engine_policy_halo_finder = (1 << 28),
 };
 #define engine_maxpolicy 28
 extern const char *engine_policy_names[engine_maxpolicy + 1];
@@ -746,6 +747,8 @@ void engine_maketasks(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
 void engine_make_fof_tasks(struct engine *e);
+void engine_make_host_tasks(struct engine *e);
+void engine_make_subhalo_tasks(struct engine *e);
 
 /* Function prototypes, engine_marktasks.c. */
 int engine_marktasks(struct engine *e);

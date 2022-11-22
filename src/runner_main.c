@@ -33,6 +33,7 @@
 /* Local headers. */
 #include "engine.h"
 #include "feedback.h"
+#include "halo.h"
 #include "runner_doiact_sinks.h"
 #include "scheduler.h"
 #include "space_getsid.h"
@@ -573,10 +574,22 @@ void *runner_main(void *data) {
           runner_do_sink_formation(r, t->ci);
           break;
         case task_type_fof_self:
-          runner_do_fof_self(r, t->ci, 1);
+          runner_do_fof_self(r, t->ci, fof_group, 1);
           break;
         case task_type_fof_pair:
-          runner_do_fof_pair(r, t->ci, t->cj, 1);
+          runner_do_fof_pair(r, t->ci, t->cj, fof_group, 1);
+          break;
+        case task_type_host_self:
+          runner_do_fof_self(r, t->ci, host_halo, 1);
+          break;
+        case task_type_host_pair:
+          runner_do_fof_pair(r, t->ci, t->cj, host_halo, 1);
+          break;
+        case task_type_subhalo_self:
+          runner_do_fof_self(r, t->ci, sub_halo, 1);
+          break;
+        case task_type_subhalo_pair:
+          runner_do_fof_pair(r, t->ci, t->cj, sub_halo, 1);
           break;
         case task_type_neutrino_weight:
           runner_do_neutrino_weighting(r, ci, 1);

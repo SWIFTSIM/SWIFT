@@ -86,7 +86,9 @@ void engine_activate_fof_tasks(struct engine *e) {
 
     struct task *t = &tasks[k];
 
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair)
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair ||
+        t->type == task_type_host_self || t->type == task_type_host_pair ||
+        t->type == task_type_subhalo_self || t->type == task_type_subhalo_pair)
       scheduler_activate(s, t);
     else
       t->skip = 1;
