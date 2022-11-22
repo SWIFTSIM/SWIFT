@@ -59,6 +59,8 @@ struct RTUserData {
 
   double ngamma_cgs[3];
 
+  double ngamma_inject_rate_cgs[3];
+
   double u_cgs;
 
   /*! abundances of species i, i.e. n_i/nH */
@@ -505,7 +507,7 @@ INLINE static void rt_compute_chemistry_rate(
  * @return absorption_rate The radiation absorption rate (d n_gamma / d t in
  * cgs) excluded diffuse emission
  */
-INLINE static void rt_compute_radiation_rate(
+INLINE static void rt_compute_radiation_absorption_rate(
     const double n_H_cgs, const double cred_cgs,
     const double abundances[rt_species_count], const double ngamma_cgs[3],
     double sigmalist[3][3], const int aindex[3], double absorption_rate[3]) {
@@ -676,7 +678,7 @@ INLINE static void rt_compute_explicit_thermochemistry_solution(
   if (dt_cgs == 0.0) error("dt_cgs==%e", dt_cgs);
   if (n_H_cgs == 0.0) error("n_H_cgs==%e", n_H_cgs);
 
-  rt_compute_radiation_rate(n_H_cgs, cred_cgs, abundances, ngamma_cgs,
+  rt_compute_radiation_absorption_rate(n_H_cgs, cred_cgs, abundances, ngamma_cgs,
                             sigmalist, aindex, absorption_rate);
 
   rt_compute_chemistry_rate(n_H_cgs, cred_cgs, abundances, ngamma_cgs,

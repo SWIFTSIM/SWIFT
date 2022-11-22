@@ -130,6 +130,8 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
   float urad[RT_NGROUPS];
   rt_get_physical_urad_multifrequency(p, cosmo, urad);
 
+
+
   /* need to convert to cgs */
   double ngamma_cgs[3];
   /* for now, the 0th bin for urad is 0-HI, so we ignore it */
@@ -151,6 +153,28 @@ void rt_do_thermochemistry(struct part* restrict p, struct xpart* restrict xp,
                             rt_props->ionizing_photon_energy_cgs[i]);
     }
   }
+
+  /* Current energy injection rate (in internal units) */
+  float uradinj[RT_NGROUPS];
+  rt_get_physical_urad_injection_rate(p, cosmo, uradinj);
+
+  double ngamma_inject_rate_cgs[3];
+  /* for now, the 0th bin for urad is 0-HI, so we ignore it */
+  if (rt_props->smoothedRT == 1) {
+    for (int g = 0; g < 3; g++) {
+      ngamma_inject_rate_cgs[g] =
+          (double)(rho_cgs * uradinj[g + 1] * conv_factor_internal_energy_to_cgs /
+                  rt_props->ionizing_photon_energy_cgs[g] / 
+                  units_cgs_conversion_factor(us, UNIT_CONV_TIME));
+      data.ngamma_inject_rate_cgs[g] = ngamma_inject_rate_cgs[g];
+    }
+  } else {
+    for (int g = 0; g < 3; g++) {
+      ngamma_inject_rate_cgs[g] = 0.0;
+      data.ngamma_inject_rate_cgs[g] = ngamma_inject_rate_cgs[g];
+    }    
+  }
+
 
   double abundances[rt_species_count];
 

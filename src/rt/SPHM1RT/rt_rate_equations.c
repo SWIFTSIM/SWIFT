@@ -167,9 +167,11 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
   }
 
   // Compute creation and destruction rates
-  double absorption_rate[3], chemistry_rates[rt_species_count];
-
-  rt_compute_radiation_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
+  double injection_rate[3], absorption_rate[3], chemistry_rates[rt_species_count];
+  for (int g = 0; g < 3; g++) {
+    injection_rate[g] = (double)(data->ngamma_inject_rate_cgs);
+  }
+  rt_compute_radiation_absorption_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
                             ngamma_cgs, sigmalist, aindex, absorption_rate);
 
   rt_compute_chemistry_rate(data->n_H_cgs, data->cred_cgs, data->abundances,
@@ -197,7 +199,7 @@ int rt_frateeq(realtype t, N_Vector y, N_Vector ydot, void *user_data) {
   /* Now set the output ydot vector for the radiation density */
   if (data->fixphotondensity == 0) {
     for (int i = 0; i < 3; i++) {
-      NV_Ith_S(ydot, jcount) = (realtype)(-absorption_rate[i]);
+      NV_Ith_S(ydot, jcount) = (realtype)(injection_rate[i]-absorption_rate[i]);
       jcount += 1;
     }
   }
