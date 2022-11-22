@@ -1794,6 +1794,10 @@ void engine_make_self_gravity_tasks_mapper_natural_cells(void *map_data,
       e->gravity_properties, sqrtf(3) * cells[bkg_cell_offset].width[0],
       s->max_softening, s->min_a_grav, s->max_mpole_power, periodic);
 
+  if (cells[bkg_cell_offset].width[0] != s->width[0])
+    error("First background cell width doesn't agree with space. (%.2f, cell_type=%d)",
+          s->width[0], cells[bkg_cell_offset].tl_cell_type);
+
   /* Convert the maximal search distance to a number of cells
    * Define a lower and upper delta in case things are not symmetric */
   const int delta = max((int)(sqrt(3) * distance /
