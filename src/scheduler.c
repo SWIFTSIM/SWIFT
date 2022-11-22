@@ -1597,8 +1597,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s,
           if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
             scheduler_splittask_fof(
                 scheduler_addtask(s, self_task, t->subtype, 0, 0,
-                                  ci->progeny[k], NULL),
-                s);
+                                  ci->progeny[k], NULL, s);
 
         /* Make a task for each pair of progeny */
         for (int j = 0; j < 8; j++)
