@@ -165,9 +165,9 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
   /* Check that we can write outputs by testing if the output
    * directory exists and is searchable and writable. */
-  char directory[PARSER_MAX_LINE_SIZE] = {0};
-  sprintf(directory, "%s", props->halo_base_name);
-  const char *halo_dirp = dirname(directory);
+  char halo_directory[PARSER_MAX_LINE_SIZE] = {0};
+  sprintf(halo_directory, "%s", props->halo_base_name);
+  const char *halo_dirp = dirname(halo_directory);
   if (engine_rank == 0) safe_checkdir(halo_dirp, /*create=*/1);
 
   /* Read the target overdensity for host halos. */
