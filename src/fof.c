@@ -42,7 +42,7 @@
 #include "engine.h"
 #include "fof_catalogue_io.h"
 #include "hashmap.h"
-#include "halo.h"
+#include "halo_finder/halo.h"
 #include "memuse.h"
 #include "proxy.h"
 #include "threadpool.h"

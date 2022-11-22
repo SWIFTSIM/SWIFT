@@ -49,7 +49,7 @@
 #include "feedback.h"
 #include "fof.h"
 #include "gravity.h"
-#include "halo.h"
+#include "halo_finder/halo.h"
 #include "hydro.h"
 #include "potential.h"
 #include "pressure_floor.h"

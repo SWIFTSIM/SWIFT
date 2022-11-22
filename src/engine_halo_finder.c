@@ -33,7 +33,7 @@
 /* Local includes. */
 #include "cell.h"
 #include "fof.h"
-#include "halo.h"
+#include "halo_finder/halo.h"
 
 /**
  * @brief Allocate the memory and initialise the arrays for a FOF calculation.

@@ -33,7 +33,7 @@
 /* Local headers. */
 #include "engine.h"
 #include "feedback.h"
-#include "halo.h"
+#include "halo_finder/halo.h"
 #include "runner_doiact_sinks.h"
 #include "scheduler.h"
 #include "space_getsid.h"

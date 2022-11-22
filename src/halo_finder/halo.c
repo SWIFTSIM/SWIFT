@@ -32,7 +32,7 @@
 /* Local includes. */
 #include "cell.h"
 #include "fof.h"
-#include "halo.h"
+#include "halo_finder/halo.h"
 
 /**
  * @brief Perform a FOF search using union-find on a given leaf-cell
