@@ -1873,6 +1873,19 @@ if test "$enable_fof" = "yes"; then
    AC_DEFINE([WITH_FOF], 1, [Enable FoF])
 fi
 
+# Check if FoF is on.
+AC_ARG_ENABLE([halo_finder],
+   [AS_HELP_STRING([--enable-halo-finder],
+     [Activate the friends-of-friends 6D halo finder code.],
+   )],
+   [enable_halo_finder="$enableval"],
+   [enable_halo_finder="no"]
+)
+if test "$enable_halo_finder" = "yes"; then
+   AC_DEFINE([WITH_HALO_FINDER], 1, [Enable Halo Finder])
+fi
+
+
 # Check if stand-alone FoF is on.
 AC_ARG_ENABLE([stand-alone-fof],
    [AS_HELP_STRING([--enable-stand-alone-fof],
