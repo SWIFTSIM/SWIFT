@@ -36,6 +36,9 @@ def get_data_dump(metadata):
         + "$\\bf{Hydrodynamics}$\n"
         + metadata.hydro_info
         + "\n\n"
+        + "$\\bf{Cooling}$\n"
+        + metadata.subgrid_scheme["Cooling Model"].decode("utf-8")
+        + "\n\n"
         + "$\\bf{Viscosity}$\n"
         + viscosity
         + "\n\n"
