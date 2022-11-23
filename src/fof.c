@@ -1618,7 +1618,7 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Only check groups above the minimum size. */
-    if (gparts[ind].fof_data.group_id; != group_id_default) {
+    if (gparts[ind].fof_data.group_id != group_id_default) {
 
       hashmap_key_t index = gparts[ind].fof_data.group_id - group_id_offset;
       hashmap_value_t *data = hashmap_get(&map, index);
@@ -1666,7 +1666,7 @@ void host_calc_group_mass_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Only check groups above the minimum size. */
-    if (gparts[ind].fof_data.host_id; != group_id_default) {
+    if (gparts[ind].fof_data.host_id != group_id_default) {
 
       hashmap_key_t index = gparts[ind].fof_data.host_id - group_id_offset;
       hashmap_value_t *data = hashmap_get(&map, index);
@@ -1714,7 +1714,7 @@ void subhalo_calc_group_mass_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
 
     /* Only check groups above the minimum size. */
-    if (gparts[ind].fof_data.subhalo_id; != group_id_default) {
+    if (gparts[ind].fof_data.subhalo_id != group_id_default) {
 
       hashmap_key_t index = gparts[ind].fof_data.subhalo_id - group_id_offset;
       hashmap_value_t *data = hashmap_get(&map, index);
