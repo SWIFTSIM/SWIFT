@@ -45,13 +45,10 @@
  */
 void halo_finder_allocate(const struct space *s,
                           const long long total_nr_DM_particles,
-                          struct fof_props *props, int run_halo_finder) {
+                          struct fof_props *props) {
 
   const int verbose = s->e->verbose;
   const ticks total_tic = getticks();
-
-  /* Get halo finder properties. */
-  const halo_finder_props hf_props = s->halo_finder_properties;
 
   /* Start by computing the mean inter DM particle separation */
 
@@ -71,19 +68,16 @@ void halo_finder_allocate(const struct space *s,
      inter-particle sepration? */
   if (props->l_x_absolute != -1.) {
     props->l_x2 = props->l_x_absolute * props->l_x_absolute;
-
-    /* Assign the linking lengths to the halo finder properties. */
-    hf_props->l_x = props->l_x_absolute;
-    hf_props->l_x2 = props->l_x2;
+    props->l_x = props->l_x_absolute;
 
     if (s->e->nodeID == 0) 
       message("Host linking length is set to %e [internal units].",
               props->l_x_absolute);
 
     /* Define the subhalo linking length based on overdensity ratio. */
-    if (hf_props->find_subhalos) {
-      hf_props->sub_l_x = hf_props->overdensity_ratio * props->l_x_absolute;
-      hf_props->sub_l_x2 = props->l_x2;
+    if (props->find_subhalos) {
+      props->sub_l_x = props->overdensity_ratio * props->l_x_absolute;
+      props->sub_l_x2 = props->sub_l_x * props->sub_l_x;
 
       if (s->e->nodeID == 0)
         message("Subhalo linking length is set to %e [internal units].",
@@ -128,13 +122,12 @@ void halo_finder_allocate(const struct space *s,
           l_x, props->l_x_ratio);
 
     /* Assign the linking lengths to the halo finder properties. */
-    hf_props->l_x = l_x;
-    hf_props->l_x2 = props->l_x2;
+    props->l_x = l_x;
 
     /* Define the subhalo linking length based on overdensity ratio. */
-    if (run_halo_finder && hf_props->find_subhalos) {
-      hf_props->sub_l_x = hf_props->overdensity_ratio * l_x;
-      hf_props->sub_l_x2 = props->l_x2;
+    if (props->find_subhalos) {
+      props->sub_l_x = props->overdensity_ratio * l_x;
+      props->sub_l_x2 = props->sub_l_x * props->sub_l_x;
 
       if (s->e->nodeID == 0)
       message(
@@ -146,11 +139,11 @@ void halo_finder_allocate(const struct space *s,
 
   /* Now compute the velocity space linking lengths. */
   const double newt_G = s->e->physical_constants->const_newton_G;
-  hf_props->const_l_v = sqrt(newt_G / 2) *
-    pow((4 * M_PI * hf_props->host_overdensity * mean_matter_density) / 3,
+  props->const_l_v = sqrt(newt_G / 2) *
+    pow((4 * M_PI * props->host_overdensity * mean_matter_density) / 3,
         1.0 / 6.0);
-  hf_props->sub_const_l_v = sqrt(newt_G / 2) *
-    pow((4 * M_PI * hf_props->subhalo_overdensity * mean_matter_density) / 3,
+  props->sub_const_l_v = sqrt(newt_G / 2) *
+    pow((4 * M_PI * props->subhalo_overdensity * mean_matter_density) / 3,
         1.0 / 6.0);
 
 #ifdef WITH_MPI
@@ -181,7 +174,7 @@ void halo_finder_allocate(const struct space *s,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of host size for FOF search.");
 
-  if (hf_props->find_subhalos) {
+  if (props->find_subhalos) {
     /* Allocate and initialise a group index array. */
     if (swift_memalign("fof_subhalo_index", (void **)&props->subhalo_index, 64,
                        s->nr_gparts * sizeof(size_t)) != 0)

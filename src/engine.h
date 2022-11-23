@@ -740,6 +740,7 @@ void engine_print_task_counts(const struct engine *e);
 void engine_fof(struct engine *e, const int dump_results,
                 const int dump_debug_results, const int seed_black_holes,
                 const int foreign_buffers_allocated);
+void engine_activate_fof_tasks(struct engine *e);
 void engine_activate_gpart_comms(struct engine *e);
 
 /* Function prototypes, engine_maketasks.c. */
@@ -769,7 +770,7 @@ int engine_dump_restarts(struct engine *e, int drifted_all, int force);
 /* Halo finder engine. */
 void halo_finder_allocate(const struct space *s,
                           const long long total_nr_DM_particles,
-                          struct fof_props *props, int run_halo_finder);
+                          struct fof_props *props);
 void engine_halo_finder(struct engine *e, const int dump_results,
                         const int dump_debug_results,
                         const int seed_black_holes,
