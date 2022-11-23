@@ -3793,12 +3793,12 @@ void fof_search_tree(struct fof_props *props,
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
                       num_groups_prev, num_on_node, first_on_node,
-                      group_mass);
+                      group_mass, halo_level);
   free(num_on_node);
   free(first_on_node);
 #else
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
-                      NULL, group_mass);
+                      NULL, group_mass, halo_level);
 #endif
 
   /* Finalise the group data before dump */
