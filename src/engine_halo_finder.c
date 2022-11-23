@@ -208,7 +208,7 @@ void halo_finder_allocate(const struct space *s,
     message("Setting initial host index took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  if (hr_props->find_subhalos) {
+  if (props->find_subhalos) {
     tic = getticks();
 
     /* Set initial group index */
@@ -243,7 +243,7 @@ void halo_finder_allocate(const struct space *s,
     message("Setting initial host sizes took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-  if (hr_props->find_subhalos) {
+  if (props->find_subhalos) {
     tic = getticks();
 
     /* Set initial group index */
