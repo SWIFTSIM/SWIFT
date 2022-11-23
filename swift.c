@@ -245,7 +245,7 @@ int main(int argc, char *argv[]) {
           "Run Friends-of-Friends algorithm to perform black hole seeding.",
           NULL, 0, 0),
       OPT_BOOLEAN(
-          'u', "halo_finder", &with_halo_finder,
+          'h', "halo_finder", &with_halo_finder,
           "Run the on the fly halo finder.",
           NULL, 0, 0),
 
