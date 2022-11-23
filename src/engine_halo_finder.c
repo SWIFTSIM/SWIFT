@@ -332,7 +332,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* Perform FOF search over foreign particles. */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, /*seed_black_holes*/0);
+                  dump_debug_results, /*seed_black_holes*/0, /*halo_level*/0);
 
   /* ---------------- Run 6D host FOF ---------------- */
 
@@ -351,7 +351,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* Perform host search over foreign particles. */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, /*seed_black_holes*/0);
+                  dump_debug_results, /*seed_black_holes*/0, /*halo_level*/0);
 
   /* ---------------- Repeat for the subhalos ---------------- */
 
@@ -372,7 +372,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     /* Perform host search over foreign particles. */
     fof_search_tree(e->fof_properties, e->black_holes_properties,
                     e->physical_constants, e->cosmology, e->s, dump_results,
-                    dump_debug_results, /*seed_black_holes*/0);
+                    dump_debug_results, /*seed_black_holes*/0, /*halo_level*/0);
   }
 
   /* Restore the foreign buffers as they were*/
