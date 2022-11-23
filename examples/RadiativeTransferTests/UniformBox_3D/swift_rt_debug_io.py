@@ -155,12 +155,10 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
     try:
         scheme = str(F["SubgridScheme"].attrs["RT Scheme"])
     except KeyError:
-        print(
+        raise ValueError(
             "These tests only work for the debug RT scheme.",
             "Compile swift --with-rt=debug",
         )
-        F.close()
-        quit()
 
     if "debug" not in scheme and "GEAR" not in scheme:
         raise ValueError(
@@ -213,16 +211,11 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
         newsnap.gas.RadiationAbsorbedTot = Gas["RTDebugRadAbsorbedTot"][:][inds]
         newsnap.gas.nsubcycles = Gas["RTDebugSubcycles"][:][inds]
 
-        has_stars = False
         try:
             Stars = F["PartType4"]
             ids = Stars["ParticleIDs"][:]
             has_stars = True
-        except KeyError:
-            has_stars = False
 
-        if has_stars:
-            newsnap.has_stars = has_stars
             inds = np.argsort(ids)
 
             newsnap.stars.IDs = ids[inds]
@@ -233,6 +226,10 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
             newsnap.stars.InjectionInteractions = Stars["RTDebugHydroIact"][:][inds]
             newsnap.stars.RadiationEmittedTot = Stars["RTDebugRadEmittedTot"][:][inds]
 
+        except KeyError:
+            has_stars = False
+
+        newsnap.has_stars = has_stars
         snapdata.append(newsnap)
 
     for snap in snapdata:

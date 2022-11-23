@@ -26,9 +26,10 @@
 
 
 import os
-import unyt
-import swiftsimio
+
 import numpy as np
+import swiftsimio
+import unyt
 
 
 class RTGasData(object):
@@ -37,7 +38,6 @@ class RTGasData(object):
     """
 
     def __init__(self):
-
         self.IDs = None
         self.coords = None
         self.h = None
@@ -55,7 +55,6 @@ class RTStarData(object):
     """
 
     def __init__(self):
-
         self.IDs = None
         self.coords = None
         self.h = None
@@ -162,11 +161,10 @@ def get_snap_data(prefix="output", skip_snap_zero=False, skip_last_snap=False):
     try:
         scheme = str(firstfile.metadata.subgrid_scheme["RT Scheme"])
     except KeyError:
-        print(
+        raise ValueError(
             "These tests only work for the GEAR RT scheme.",
             "Compile swift --with-rt=GEAR_N",
         )
-        quit()
     if "GEAR" not in scheme:
         raise ValueError(
             "These tests only work for the GEAR RT scheme.",

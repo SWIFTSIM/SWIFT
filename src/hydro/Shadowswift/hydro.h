@@ -1,6 +1,6 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2016 Matthieu Schaller (matthieu.schaller@durham.ac.uk)
+ * Copyright (c) 2016 Bert Vandenbroucke (bert.vandenbroucke@gmail.com).
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -18,20 +18,6 @@
  ******************************************************************************/
 #ifndef SWIFT_SHADOWSWIFT_HYDRO_H
 #define SWIFT_SHADOWSWIFT_HYDRO_H
-
-/**
- * @file Minimal/hydro.h
- * @brief Minimal conservative implementation of SPH (Non-neighbour loop
- * equations)
- *
- * The thermal variable is the internal energy (u). Simple constant
- * viscosity term with the Balsara (1995) switch. No thermal conduction
- * term is implemented.
- *
- * This corresponds to equations (43), (44), (45), (101), (103)  and (104) with
- * \f$\beta=3\f$ and \f$\alpha_u=0\f$ of Price, D., Journal of Computational
- * Physics, 2012, Volume 231, Issue 3, pp. 759-794.
- */
 
 #include "adiabatic_index.h"
 #include "approx_math.h"
@@ -212,8 +198,8 @@ __attribute__((always_inline)) INLINE static void hydro_end_density(
  * @param cosmo The cosmological model.
  */
 __attribute__((always_inline)) INLINE static void hydro_part_has_no_neighbours(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo) {}
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo) {}
 
 /**
  * @brief Prepare a particle for the gradient calculation.
@@ -288,11 +274,12 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
  * @param hydro_props Hydrodynamic properties.
  * @param dt_alpha The time-step used to evolve non-cosmological quantities such
  *                 as the artificial viscosity.
+ * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void hydro_prepare_force(
-    struct part *restrict p, struct xpart *restrict xp,
-    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const float dt_alpha) {
+    struct part* restrict p, struct xpart* restrict xp,
+    const struct cosmology* cosmo, const struct hydro_props* hydro_props,
+    const float dt_alpha, const float dt_therm) {
   hydro_part_reset_fluxes(p);
 }
 
