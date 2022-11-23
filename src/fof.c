@@ -2266,11 +2266,11 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
 
     /* Get the right halo ID. */
     if (halo_level == fof_group) {
-      halo_id = gparts[local_root_index].fof_data.group_id;
+      halo_id = gparts[i].fof_data.group_id;
     } else if (halo_level == host_halo) {
-      halo_id = gparts[local_root_index].fof_data.host_id;
+      halo_id = gparts[i].fof_data.host_id;
     } else if (halo_level == sub_halo) {
-      halo_id = gparts[local_root_index].fof_data.subhalo_id;
+      halo_id = gparts[i].fof_data.subhalo_id;
     }
 
     /* Ignore inhibited particles */
@@ -2509,7 +2509,7 @@ void host_finalise_group_data(struct fof_props *props,
                               const struct gpart *gparts, const int periodic,
                               const double dim[3], const int num_groups) {
 
-  size_t host_size =
+  size_t *host_size =
       (size_t *)swift_malloc("fof_group_size", num_groups * sizeof(size_t));
   size_t *host_index =
       (size_t *)swift_malloc("fof_group_index", num_groups * sizeof(size_t));
@@ -2561,7 +2561,7 @@ void subhalo_finalise_group_data(struct fof_props *props,
                               const struct gpart *gparts, const int periodic,
                               const double dim[3], const int num_groups) {
 
-  size_t subhalo_size =
+  size_t *subhalo_size =
       (size_t *)swift_malloc("fof_group_size", num_groups * sizeof(size_t));
   size_t *subhalo_index =
       (size_t *)swift_malloc("fof_group_index", num_groups * sizeof(size_t));
