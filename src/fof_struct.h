@@ -50,13 +50,13 @@ struct fof_gpart_data {
   size_t subhalo_size;
 
   /*! Mass of the group of this particle */
-  size_t group_mass;
+  double group_mass;
 
   /*! Mass of the host of this particle */
-  size_t host_mass;
+  double host_mass;
   
   /*! Mass of the subhalo of this particle */
-  size_t subhalo_mass;
+  double subhalo_mass;
 
   /*! Particle previous group ID */
   size_t prev_group_id;

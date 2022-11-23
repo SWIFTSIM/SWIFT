@@ -117,11 +117,6 @@ struct fof_props {
   /*! Are we finding subhalos? */
   int find_subhalos;
 
-  /* ------------  Output parameters ----------------- */
-
-  /*! The base name of the output file */
-  char halo_base_name[PARSER_MAX_LINE_SIZE];
-
   /* ----------- Parameters of the configuration space search ------- */
 
   /*! The subhalo linking length in units of the mean DM inter-particle
