@@ -76,6 +76,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
  *
  * @param p the particle to work on
+ * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
     struct part* restrict p, const struct cosmology* cosmo) {}
