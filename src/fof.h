@@ -290,6 +290,8 @@ void rec_fof_search_pair(const struct fof_props *props, const double dim[3],
                          struct cell *restrict ci, struct cell *restrict cj);
 void fof_struct_dump(const struct fof_props *props, FILE *stream);
 void fof_struct_restore(struct fof_props *props, FILE *stream);
+void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
+                                        void *extra_data);
 
 /* Halo finder prototypes */
 void halo_finder_search_self_cell_gpart(const struct fof_props *props,
