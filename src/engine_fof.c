@@ -132,6 +132,9 @@ void engine_fof(struct engine *e, const int dump_results,
       e->total_nr_gparts - e->total_nr_DM_background_gparts -
       e->total_nr_neutrino_gparts - total_nr_baryons;
 
+  /* Set current level to fof group. */
+  e->fof_properties->current_level = fof_group;
+
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, total_nr_dmparts, e->fof_properties);
 
@@ -151,7 +154,7 @@ void engine_fof(struct engine *e, const int dump_results,
    * find groups which require black hole seeding.  */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, seed_black_holes, /*halo_level*/0);
+                  dump_debug_results, seed_black_holes, fof_group);
 
   /* Reset flag. */
   e->run_fof = 0;

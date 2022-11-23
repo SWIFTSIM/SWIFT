@@ -36,6 +36,15 @@ struct phys_const;
 struct black_holes_props;
 struct cosmology;
 
+/**
+ * @brief What kind of halo search are we doing?
+ *
+ * 0 = A 3D FOF group.
+ * 1 = A 6D Host halo.
+ * 2 = A 6D Subhalo
+ */
+enum halo_types {fof_group, host_halo, sub_halo};
+
 struct fof_props {
 
   /*! Whether we're doing periodic FoF calls to seed black holes. */
@@ -67,6 +76,9 @@ struct fof_props {
 
   /*! The base name of the output file */
   char base_name[PARSER_MAX_LINE_SIZE];
+
+  /*! Current search level in halo hierarchy. */
+  enum halo_types current_level;
 
   /* ------------  Group properties ----------------- */
 
@@ -250,15 +262,6 @@ struct cell_pair_indices {
   struct cell *local, *foreign;
 };
 #endif
-
-/**
- * @brief What kind of halo search are we doing?
- *
- * 0 = A 3D FOF group.
- * 1 = A 6D Host halo.
- * 2 = A 6D Subhalo
- */
-enum halo_types {fof_group, host_halo, sub_halo};
 
 /* Function prototypes. */
 void fof_init(struct fof_props *props, struct swift_params *params,

@@ -1311,7 +1311,7 @@ void rec_fof_search_pair_foreign(
     const int periodic, const struct gpart *const space_gparts,
     const size_t nr_gparts, const struct cell *ci, const struct cell *cj,
     int *restrict link_count, struct fof_mpi **group_links,
-    int *restrict group_links_size) {
+    int *restrict group_links_size, const enum halo_types halo_level) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Pair FOF called on same cell!!!");
@@ -1334,7 +1334,7 @@ void rec_fof_search_pair_foreign(
             rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
                                         space_gparts, nr_gparts, ci->progeny[k],
                                         cj->progeny[l], link_count, group_links,
-                                        group_links_size);
+                                        group_links_size, halo_level);
       }
     }
   } else if (ci->split) {
@@ -1343,21 +1343,23 @@ void rec_fof_search_pair_foreign(
       if (ci->progeny[k] != NULL)
         rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
                                     space_gparts, nr_gparts, ci->progeny[k], cj,
-                                    link_count, group_links, group_links_size);
+                                    link_count, group_links, group_links_size,
+                                    halo_level);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
         rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
                                     space_gparts, nr_gparts, ci, cj->progeny[k],
-                                    link_count, group_links, group_links_size);
+                                    link_count, group_links, group_links_size,
+                                    halo_level);
     }
   } else {
     /* Perform FOF search between pairs of cells that are within the linking
      * length and not the same cell. */
     fof_search_pair_cells_foreign(props, dim, search_r2, periodic, space_gparts,
                                   nr_gparts, ci, cj, link_count, group_links,
-                                  group_links_size);
+                                  group_links_size, halo_level);
   }
 }
 
@@ -2359,6 +2361,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
   const struct gpart *const gparts = s->gparts;
   const struct engine *e = s->e;
   struct fof_props *props = e->fof_properties;
+  enum halo_types halo_level = props->current_level;
   struct cell_pair_indices *cell_pairs = (struct cell_pair_indices *)map_data;
 
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
@@ -2385,7 +2388,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
     rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
                                 nr_gparts, local_cell, foreign_cell,
                                 &local_link_count, &local_group_links,
-                                &local_group_links_size);
+                                &local_group_links_size, halo_level);
   }
 
   /* Add links found by this thread to the global link list. */

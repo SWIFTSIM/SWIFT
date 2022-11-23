@@ -317,6 +317,9 @@ void engine_halo_finder(struct engine *e, const int dump_results,
 
   /* ---------------- First do the spatial FOF ---------------- */
 
+  /* Set current level. */
+  e->fof_properties->current_level = fof_group;
+
   /* Make FOF tasks */
   engine_make_fof_tasks(e);
 
@@ -332,9 +335,12 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* Perform FOF search over foreign particles. */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, /*seed_black_holes*/0, /*halo_level*/0);
+                  dump_debug_results, /*seed_black_holes*/0, fof_group);
 
   /* ---------------- Run 6D host FOF ---------------- */
+
+  /* Set current level. */
+  e->fof_properties->current_level = host_halo;
 
   /* Make the host halo tasks */
   engine_make_host_tasks(e);
@@ -351,11 +357,14 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* Perform host search over foreign particles. */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, /*seed_black_holes*/0, /*halo_level*/0);
+                  dump_debug_results, /*seed_black_holes*/0, host_halo);
 
   /* ---------------- Repeat for the subhalos ---------------- */
 
   if (e->fof_properties->find_subhalos) {
+
+    /* Set current level to fof group. */
+    e->fof_properties->current_level = sub_halo;
     
     /* Make the subhalo halo tasks */
     engine_make_subhalo_tasks(e);
@@ -372,7 +381,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     /* Perform host search over foreign particles. */
     fof_search_tree(e->fof_properties, e->black_holes_properties,
                     e->physical_constants, e->cosmology, e->s, dump_results,
-                    dump_debug_results, /*seed_black_holes*/0, /*halo_level*/0);
+                    dump_debug_results, /*seed_black_holes*/0, sub_halo);
   }
 
   /* Restore the foreign buffers as they were*/
