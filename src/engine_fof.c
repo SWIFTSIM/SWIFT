@@ -154,7 +154,7 @@ void engine_fof(struct engine *e, const int dump_results,
    * find groups which require black hole seeding.  */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, seed_black_holes, fof_group);
+                  dump_debug_results, seed_black_holes);
 
   /* Reset flag. */
   e->run_fof = 0;
