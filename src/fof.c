@@ -3769,10 +3769,6 @@ void fof_search_tree(struct fof_props *props,
   props->max_part_density = NULL;
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
-  swift_free("fof_group_index", props->group_index);
-  swift_free("fof_group_size", props->group_size);
-  props->group_index = NULL;
-  props->group_size = NULL;
 
   if (engine_rank == 0) {
     message(
@@ -4372,10 +4368,6 @@ void host_search_tree(struct fof_props *props,
   props->max_part_density = NULL;
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
-  swift_free("fof_group_index", props->group_index);
-  swift_free("fof_group_size", props->group_size);
-  props->group_index = NULL;
-  props->group_size = NULL;
 
   if (engine_rank == 0) {
     if (halo_level == fof_group) {
@@ -4990,10 +4982,6 @@ void subhalo_search_tree(struct fof_props *props,
   props->max_part_density = NULL;
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
-  swift_free("fof_group_index", props->group_index);
-  swift_free("fof_group_size", props->group_size);
-  props->group_index = NULL;
-  props->group_size = NULL;
 
   if (engine_rank == 0) {
     if (halo_level == fof_group) {

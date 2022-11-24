@@ -383,6 +383,20 @@ void engine_halo_finder(struct engine *e, const int dump_results,
 #endif
   }
 
+  /* Clean up arrays we don't want to carry around. */
+  swift_free("fof_group_index", e->fof_properties->group_index);
+  swift_free("fof_group_size", e->fof_properties->group_size);
+  swift_free("fof_group_index", e->fof_properties->host_index);
+  swift_free("fof_group_size", e->fof_properties->host_size);
+  swift_free("fof_group_index", e->fof_properties->subhalo_index);
+  swift_free("fof_group_size", e->fof_properties->subhalo_size);
+  e->fof_properties->group_index = NULL;
+  e->fof_properties->group_size = NULL;
+  e->fof_properties->host_index = NULL;
+  e->fof_properties->host_size = NULL;
+  e->fof_properties->subhalo_index = NULL;
+  e->fof_properties->subhalo_size = NULL;
+
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
