@@ -378,12 +378,12 @@ void engine_io(struct engine *e) {
 #endif
 
         /* Do we want FoF group IDs in the snapshot? */
-        if (with_halo_finder && e.snapshot_invoke_halo_finder) {
-          engine_halo_finder(&e, /*dump_results=*/1, /*dump_debug=*/0,
+        if (with_halo_finder && e->snapshot_invoke_halo_finder) {
+          engine_halo_finder(e, /*dump_results=*/1, /*dump_debug=*/0,
                              /*seed_black_holes=*/0, /*buffers allocated=*/0);
         }
-        else if (with_fof && e.snapshot_invoke_fof) {
-          engine_fof(&e, /*dump_results=*/1, /*dump_debug=*/0,
+        else if (with_fof && e->snapshot_invoke_fof) {
+          engine_fof(e, /*dump_results=*/1, /*dump_debug=*/0,
                      /*seed_black_holes=*/0, /*buffers allocated=*/0);
         }
 
