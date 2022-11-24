@@ -3721,8 +3721,10 @@ void fof_search_tree(struct fof_props *props,
   /* Assign every particle the group_mass of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
     const size_t root = fof_find_local(i, nr_gparts, group_index);
-    gparts[i].fof_data.group_mass =
-      props->group_mass[gparts[root].fof_data.group_id - group_id_offset];
+
+    if (gparts[root].fof_data.group_id != group_id_default)
+      gparts[i].fof_data.group_mass =
+        props->group_mass[gparts[root].fof_data.group_id - group_id_offset];
   }
   
   if (verbose)
@@ -3809,17 +3811,9 @@ void fof_search_tree(struct fof_props *props,
  *                   6D Host = 1, 6D subhalo = 2)
  */
 void host_search_tree(struct fof_props *props,
-                      const struct black_holes_props *bh_props,
                       const struct phys_const *constants,
                       const struct cosmology *cosmo, struct space *s,
-                      const int dump_results, const int dump_debug_results,
-                      const int seed_black_holes,
-                      const enum halo_types halo_level) {
-
-#ifdef SWIFT_DEBUG_CHECKS
-  if (halo_level > 0 && seed_black_holes)
-    error("Trying to seed black halos while finding a host or subhalo!");
-#endif
+                      const int dump_results, const int dump_debug_results) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
@@ -3869,34 +3863,15 @@ void host_search_tree(struct fof_props *props,
 #endif
 
   /* Local copy of the arrays */
-  if (halo_level == fof_group) {
-    group_index = props->group_index;
-    group_size = props->group_size;
-  } else if (halo_level == host_halo) {
-    group_index = props->host_index;
-    group_size = props->host_size;
-  } else if (halo_level == sub_halo) {
-    group_index = props->subhalo_index;
-    group_size = props->subhalo_size;
-  } else {
-    error("Unrecognised halo level");
-  }
+  group_index = props->host_index;
+  group_size = props->host_size;
 
   const ticks tic_calc_group_size = getticks();
 
-  if (halo_level == fof_group) {
-    threadpool_map(&s->e->threadpool, fof_calc_group_size_mapper, gparts,
+  threadpool_map(&s->e->threadpool, host_calc_group_size_mapper, gparts,
                  nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
                  s);
-  } else if (halo_level == host_halo) {
-    threadpool_map(&s->e->threadpool, host_calc_group_size_mapper, gparts,
-                 nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                 s);
-  } else if (halo_level == sub_halo) {
-    threadpool_map(&s->e->threadpool, subhalo_calc_group_size_mapper, gparts,
-                   nr_gparts, sizeof(struct gpart), threadpool_auto_chunk_size,
-                   s);
-  }
+
   if (verbose)
     message("FOF calc group size took (FOF SCALING): %.3f %s.",
             clocks_from_ticks(getticks() - tic_calc_group_size),
