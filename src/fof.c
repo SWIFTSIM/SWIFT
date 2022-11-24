@@ -1785,9 +1785,6 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   const enum halo_types halo_level = s->e->fof_properties->current_level;
   size_t halo_id;
 
-  message("Halo level %d", halo_level);
-  message("group_mass[0]=%.2f", group_mass[0]);
-
 #ifdef WITH_MPI
   
   /* Local copy of the arrays */
@@ -3721,6 +3718,23 @@ void fof_search_tree(struct fof_props *props,
   fof_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
                           s->dim, num_groups_local);
 
+  /* Assign every particle the group_mass of its local root. */
+  for (size_t i = 0; i < nr_gparts; i++) {
+    const size_t root = fof_find_local(i, nr_gparts, group_index);
+    
+    /* Handle each overdensity level. */
+    if (halo_level == fof_group) {
+      gparts[i].fof_data.group_mass =
+        props->group_mass[gparts[root].fof_data.group_id - group_id_offset];
+    } else if (halo_level == host_halo) {
+      gparts[i].fof_data.host_mass =
+        props->host_mass[gparts[root].fof_data.host_id - group_id_offset];
+    } else if (halo_level == sub_halo) {
+      gparts[i].fof_data.subhalo_mass =
+        props->subhalo_mass[gparts[root].fof_data.subhalo_id - group_id_offset];
+    }
+  }
+
   if (verbose)
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
@@ -4902,8 +4916,6 @@ void subhalo_search_tree(struct fof_props *props,
 
   const ticks tic_seeding = getticks();
 
-  message("made it to calc group mass");
-
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
                       num_groups_prev, num_on_node, first_on_node,
@@ -4914,8 +4926,6 @@ void subhalo_search_tree(struct fof_props *props,
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
                       NULL, group_mass);
 #endif
-
-  message("calculate group masses.");
 
   /* Finalise the group data before dump */
   if (halo_level == fof_group) {
