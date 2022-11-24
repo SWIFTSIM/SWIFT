@@ -2261,7 +2261,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     first_position = props->subhalo_first_position;
   }
 
-  message("got prop arrays.")
+  message("got prop arrays.");
 
   /* Loop over particles, compute CoM and find the densest particle in each
    * group. */
