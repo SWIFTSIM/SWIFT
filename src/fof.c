@@ -1605,11 +1605,9 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
   /* Retrieve mapped data. */
   struct space *s = (struct space *)extra_data;
   struct gpart *gparts = (struct gpart *)map_data;
+  double *group_mass = s->e->fof_properties->group_mass;
   const size_t group_id_default = s->e->fof_properties->group_id_default;
   const size_t group_id_offset = s->e->fof_properties->group_id_offset;
-
-  /* Get the mass array. */
-  double *group_mass = s->e->fof_properties->group_mass;
 
   /* Create hash table. */
   hashmap_t map;
@@ -1639,6 +1637,7 @@ void fof_calc_group_mass_mapper(void *map_data, int num_elements,
 
   hashmap_free(&map);
 }
+
 
 /**
  * @brief Mapper function to calculate the host masses.
@@ -1773,7 +1772,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                          const size_t num_groups_prev,
                          size_t *restrict num_on_node,
                          size_t *restrict first_on_node,
-                         double *restrict group_mass,
+                         double *group_mass,
                          const enum halo_types halo_level) {
 
   const size_t nr_gparts = s->nr_gparts;
