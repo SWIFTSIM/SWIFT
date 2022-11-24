@@ -133,7 +133,7 @@ void halo_finder_allocate(const struct space *s,
       message(
           "Subhalo Linking length is set to %e [internal units] (%f of mean "
           "inter-DM-particle separation).",
-          sub_l_x, props->sub_l_x_ratio);
+          props->sub_l_x, props->sub_l_x_ratio);
     }
   }
 
