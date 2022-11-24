@@ -4914,13 +4914,13 @@ void subhalo_search_tree(struct fof_props *props,
 
   /* Finalise the group data before dump */
   if (halo_level == fof_group) {
-    fof_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
+    fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
                             s->dim, num_groups_local);
   } else if (halo_level == host_halo) {
-    host_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
+    host_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
                              s->dim, num_groups_local);
   } else if (halo_level == sub_halo) {
-    subhalo_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
+    subhalo_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
                                 s->dim, num_groups_local);
   }
 
