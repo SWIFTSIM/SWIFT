@@ -5079,7 +5079,7 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
   struct gpart *gparts = c->grav.parts;
   
   /* Index of particles in the global group list */
-  if (e->fof_properties->current_level == host_halo)
+  if (props->current_level == host_halo)
     size_t *group_index = props->part_group_index;
   else
     size_t *group_index = props->part_host_index;
@@ -5236,7 +5236,7 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
   struct gpart *gparts_j = cj->grav.parts;
 
   /* Index of particles in the global group list */
-  if (e->fof_properties->current_level == host_halo)
+  if (props->current_level == host_halo)
     size_t *group_index = props->part_group_index;
   else
     size_t *group_index = props->part_host_index;
