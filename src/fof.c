@@ -1772,7 +1772,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
                          const size_t num_groups_prev,
                          size_t *restrict num_on_node,
                          size_t *restrict first_on_node,
-                         double *group_mass,
+                         double *restrict group_mass,
                          const enum halo_types halo_level) {
 
   const size_t nr_gparts = s->nr_gparts;
@@ -1784,6 +1784,9 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
   size_t halo_id;
+
+  message("Halo level %d", halo_level);
+  message("group_mass[0]=%.2f", group_mass[0]);
 
 #ifdef WITH_MPI
   
