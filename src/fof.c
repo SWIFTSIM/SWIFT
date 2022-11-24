@@ -3752,7 +3752,7 @@ void fof_search_tree(struct fof_props *props,
     group_first_position = props->subhalo_first_position;
   }
 
-  message("There are %d local groups", num_groups_local);
+  message("There are %lu local groups", num_groups_local);
 
   /* Allocate and initialise a group mass and centre of mass array. */
   if (swift_memalign("fof_group_mass", (void **)&group_mass, 32,
