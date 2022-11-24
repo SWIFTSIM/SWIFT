@@ -132,9 +132,10 @@ __attribute__((always_inline)) INLINE static void rt_reset_part(
  * @brief Reset RT particle data which needs to be reset each sub-cycle.
  *
  * @param p the particle to work on
+ * @param cosmo Cosmology.
  */
 __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
-    struct part* restrict p) {
+    struct part* restrict p, const struct cosmology* cosmo) {
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   rt_debugging_reset_each_subcycle(p);
@@ -162,7 +163,7 @@ __attribute__((always_inline)) INLINE static void rt_first_init_part(
   rt_init_part(p);
   rt_reset_part(p, cosmo);
   rt_part_reset_mass_fluxes(p);
-  rt_reset_part_each_subcycle(p);
+  rt_reset_part_each_subcycle(p, cosmo);
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   p->rt_data.debug_radiation_absorbed_tot = 0ULL;
