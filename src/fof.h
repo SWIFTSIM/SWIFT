@@ -184,6 +184,10 @@ struct fof_props {
   /*! Index of the root particle of the host a given gpart belongs to. */
   size_t *host_index;
 
+  /*! Index of the root particle of the group a given gpart belongs to.
+   *  Used when the other is overwritten with a nr_group version. */
+  size_t *part_host_index;
+
   /*! Size of the host a given gpart belongs to. */
   size_t *host_size;
 

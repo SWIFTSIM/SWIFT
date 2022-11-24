@@ -175,6 +175,11 @@ void halo_finder_allocate(const struct space *s,
     error("Failed to allocate list of particle host indices for FOF search.");
 
   /* Allocate and initialise a group size array. */
+  if (swift_memalign("fof_host_index", (void **)&props->part_host_index, 64,
+                     s->nr_gparts * sizeof(size_t)) != 0)
+    error("Failed to allocate list of group size for FOF search.");
+
+  /* Allocate and initialise a group size array. */
   if (swift_memalign("fof_host_size", (void **)&props->host_size, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of host size for FOF search.");
@@ -222,6 +227,17 @@ void halo_finder_allocate(const struct space *s,
 
   if (verbose)
     message("Setting initial host index took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Set initial group index */
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
+                 props->part_host_index, s->nr_gparts, sizeof(size_t),
+                 threadpool_auto_chunk_size, props->part_host_index);
+
+  if (verbose)
+    message("Setting initial particle host index took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   if (props->find_subhalos) {
@@ -404,6 +420,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_group_index", e->fof_properties->part_group_index);
   swift_free("fof_group_size", e->fof_properties->group_size);
   swift_free("fof_group_index", e->fof_properties->host_index);
+  swift_free("fof_group_index", e->fof_properties->part_host_index);
   swift_free("fof_group_size", e->fof_properties->host_size);
   swift_free("fof_group_index", e->fof_properties->subhalo_index);
   swift_free("fof_group_size", e->fof_properties->subhalo_size);
@@ -411,6 +428,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   e->fof_properties->part_group_index = NULL;
   e->fof_properties->group_size = NULL;
   e->fof_properties->host_index = NULL;
+  e->fof_properties->part_host_index = NULL;
   e->fof_properties->host_size = NULL;
   e->fof_properties->subhalo_index = NULL;
   e->fof_properties->subhalo_size = NULL;

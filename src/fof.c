@@ -2554,6 +2554,11 @@ void host_finalise_group_data(const struct space *s, struct fof_props *props,
     host_centre_of_mass[i * 3 + 2] = CoM[2];
   }
 
+  /* Store particle group indices they're needed later in the halo finder. */
+  for (int i = 0; i < s->nr_gparts; i++) {
+    props->part_host_index[i] = gparts[i].fof_data.group_id;
+  }
+
   swift_free("fof_group_centre_of_mass", props->host_centre_of_mass);
   swift_free("fof_group_size", props->host_size);
   swift_free("fof_group_index", props->host_index);
@@ -5072,9 +5077,12 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
   /* Get particle counts and pointers to the particles. */
   const size_t count = c->grav.count;
   struct gpart *gparts = c->grav.parts;
-
+  
   /* Index of particles in the global group list */
-  size_t *group_index = props->part_group_index;
+  if (e->fof_properties->current_level == host_halo)
+    size_t *group_index = props->part_group_index;
+  else
+    size_t *group_index = props->part_host_index;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
@@ -5228,7 +5236,10 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
   struct gpart *gparts_j = cj->grav.parts;
 
   /* Index of particles in the global group list */
-  size_t *group_index = props->part_group_index;
+  if (e->fof_properties->current_level == host_halo)
+    size_t *group_index = props->part_group_index;
+  else
+    size_t *group_index = props->part_host_index;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
