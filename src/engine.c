@@ -2376,6 +2376,10 @@ int engine_step(struct engine *e) {
     if ((e->policy & engine_policy_fof) && e->snapshot_invoke_fof) {
       e->forcerebuild = 1;
     }
+    if ((e->policy & engine_policy_halo_finder) &&
+        e->snapshot_invoke_halo_finder) {
+      e->forcerebuild = 1;
+    }
   }
 
   /* Trigger a tree-rebuild if the fraction of active gparts is large enough */
@@ -3097,6 +3101,8 @@ void engine_init(
       parser_get_opt_param_int(params, "Snapshots:invoke_stf", 0);
   e->snapshot_invoke_fof =
       parser_get_opt_param_int(params, "Snapshots:invoke_fof", 0);
+  e->snapshot_invoke_halo_finder =
+      parser_get_opt_param_int(params, "Snapshots:invoke_halo_finder", 0);
   e->snapshot_invoke_ps =
       parser_get_opt_param_int(params, "Snapshots:invoke_ps", 0);
   e->snapshot_use_delta_from_edge =

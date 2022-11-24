@@ -350,6 +350,7 @@ struct engine {
   int snapshot_compression;
   int snapshot_invoke_stf;
   int snapshot_invoke_fof;
+  int snapshot_invoke_halo_finder;
   int snapshot_invoke_ps;
   struct unit_system *snapshot_units;
   int snapshot_use_delta_from_edge;

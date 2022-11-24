@@ -1591,7 +1591,7 @@ int main(int argc, char *argv[]) {
     /* Dump initial state snapshot, if not working with an output list */
     if (!e.output_list_snapshots) {
 
-      if (with_halo_finder && e.snapshot_invoke_fof) {
+      if (with_halo_finder && e.snapshot_invoke_halo_finder) {
         engine_halo_finder(&e, /*dump_results=*/1, /*dump_debug=*/0,
                            /*seed_black_holes=*/0, /*buffers allocated=*/1);
       }
@@ -1834,7 +1834,7 @@ int main(int argc, char *argv[]) {
     if ((e.output_list_snapshots && e.output_list_snapshots->final_step_dump) ||
         !e.output_list_snapshots) {
 
-      if (with_halo_finder && e.snapshot_invoke_fof) {
+      if (with_halo_finder && e.snapshot_invoke_halo_finder) {
         engine_halo_finder(&e, /*dump_results=*/1, /*dump_debug=*/0,
                            /*seed_black_holes=*/0, /*buffers allocated=*/1);
       }
