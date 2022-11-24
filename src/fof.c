@@ -2261,6 +2261,8 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
     first_position = props->subhalo_first_position;
   }
 
+  message("got prop arrays.")
+
   /* Loop over particles, compute CoM and find the densest particle in each
    * group. */
   /* JSW TODO: Parallelise with threadpool*/
@@ -3752,7 +3754,8 @@ void fof_search_tree(struct fof_props *props,
     group_first_position = props->subhalo_first_position;
   }
 
-  message("There are %lu local groups", num_groups_local);
+  if (verbose)
+   message("There are %lu local groups.", num_groups_local); 
 
   /* Allocate and initialise a group mass and centre of mass array. */
   if (swift_memalign("fof_group_mass", (void **)&group_mass, 32,
@@ -3795,6 +3798,8 @@ void fof_search_tree(struct fof_props *props,
 
   const ticks tic_seeding = getticks();
 
+  message("made it to calc group mass");
+
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
                       num_groups_prev, num_on_node, first_on_node,
@@ -3805,6 +3810,8 @@ void fof_search_tree(struct fof_props *props,
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
                       NULL, group_mass, halo_level);
 #endif
+
+  message("calculate group masses.");
 
   /* Finalise the group data before dump */
   if (halo_level == fof_group) {
