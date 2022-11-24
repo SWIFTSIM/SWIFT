@@ -1782,7 +1782,7 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   const double seed_halo_mass = props->seed_halo_mass;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const enum halo_types halo_level = e->fof_properties->current_level;
+  const enum halo_types halo_level = s->e->fof_properties->current_level;
   size_t halo_id;
 
   message("Halo level %d", halo_level);
@@ -4285,12 +4285,12 @@ void host_search_tree(struct fof_props *props,
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
                       num_groups_prev, num_on_node, first_on_node,
-                      group_mass, halo_level);
+                      group_mass);
   free(num_on_node);
   free(first_on_node);
 #else
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
-                      NULL, group_mass, halo_level);
+                      NULL, group_mass);
 #endif
 
   message("calculate group masses.");
@@ -4907,12 +4907,12 @@ void subhalo_search_tree(struct fof_props *props,
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
                       num_groups_prev, num_on_node, first_on_node,
-                      group_mass, halo_level);
+                      group_mass);
   free(num_on_node);
   free(first_on_node);
 #else
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local, 0, NULL,
-                      NULL, group_mass, halo_level);
+                      NULL, group_mass);
 #endif
 
   message("calculate group masses.");
