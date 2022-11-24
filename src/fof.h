@@ -171,6 +171,10 @@ struct fof_props {
 
   /* ------------  Group/Host/Subhalo properties ----------------- */
 
+  /*! Index of the root particle of the group a given gpart belongs to.
+   *  Used when the other is overwritten with a nr_group version. */
+  size_t *part_group_index;
+
   /*! Number of hosts */
   long long num_hosts;
 

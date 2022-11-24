@@ -2454,7 +2454,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
 #endif
 }
 
-void fof_finalise_group_data(struct fof_props *props,
+void fof_finalise_group_data(const struct space *s, struct fof_props *props,
                              const struct group_length *group_sizes,
                              const struct gpart *gparts, const int periodic,
                              const double dim[3], const int num_groups) {
@@ -2497,6 +2497,11 @@ void fof_finalise_group_data(struct fof_props *props,
     group_centre_of_mass[i * 3 + 2] = CoM[2];
   }
 
+  /* Store particle group indices they're needed later in the halo finder. */
+  for (int i = 0; i < s->nr_gparts; i++) {
+    props->part_group_index[i] = gparts[i].fof_data.group_id;
+  }
+
   swift_free("fof_group_centre_of_mass", props->group_centre_of_mass);
   swift_free("fof_group_size", props->group_size);
   swift_free("fof_group_index", props->group_index);
@@ -2506,7 +2511,7 @@ void fof_finalise_group_data(struct fof_props *props,
   props->group_index = group_index;
 }
 
-void host_finalise_group_data(struct fof_props *props,
+void host_finalise_group_data(const struct space *s, struct fof_props *props,
                               const struct group_length *group_sizes,
                               const struct gpart *gparts, const int periodic,
                               const double dim[3], const int num_groups) {
@@ -2558,7 +2563,7 @@ void host_finalise_group_data(struct fof_props *props,
   props->host_index = host_index;
 }
 
-void subhalo_finalise_group_data(struct fof_props *props,
+void subhalo_finalise_group_data(const struct space *s, struct fof_props *props,
                               const struct group_length *group_sizes,
                               const struct gpart *gparts, const int periodic,
                               const double dim[3], const int num_groups) {
@@ -3713,12 +3718,12 @@ void fof_search_tree(struct fof_props *props,
 #endif
 
   /* Finalise the group data before dump */
-  fof_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
+  fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
                           s->dim, num_groups_local);
 
   /* Assign every particle the group_mass of its local root. */
   for (size_t i = 0; i < nr_gparts; i++) {
-    const size_t root = fof_find_local(i, nr_gparts, group_index);
+    const size_t root = fof_find_local(i, nr_gparts, props->part_group_index);
 
     if (gparts[root].fof_data.group_id != group_id_default)
       gparts[i].fof_data.group_mass =
@@ -4295,13 +4300,13 @@ void host_search_tree(struct fof_props *props,
 
   /* Finalise the group data before dump */
   if (halo_level == fof_group) {
-    fof_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
+    fof_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
                             s->dim, num_groups_local);
   } else if (halo_level == host_halo) {
-    host_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
+    host_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
                              s->dim, num_groups_local);
   } else if (halo_level == sub_halo) {
-    subhalo_finalise_group_data(props, high_group_sizes, s->gparts, s->periodic,
+    subhalo_finalise_group_data(s, props, high_group_sizes, s->gparts, s->periodic,
                                 s->dim, num_groups_local);
   }
 
@@ -5069,7 +5074,7 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
   struct gpart *gparts = c->grav.parts;
 
   /* Index of particles in the global group list */
-  size_t *group_index = props->group_index;
+  size_t *group_index = props->part_group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
@@ -5223,7 +5228,7 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
   struct gpart *gparts_j = cj->grav.parts;
 
   /* Index of particles in the global group list */
-  size_t *group_index = props->group_index;
+  size_t *group_index = props->part_group_index;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);

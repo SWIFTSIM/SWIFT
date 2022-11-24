@@ -133,7 +133,7 @@ void halo_finder_allocate(const struct space *s,
       message(
           "Subhalo Linking length is set to %e [internal units] (%f of mean "
           "inter-DM-particle separation).",
-          l_x, props->l_x_ratio);
+          sub_l_x, props->sub_l_x_ratio);
     }
   }
 
@@ -163,6 +163,11 @@ void halo_finder_allocate(const struct space *s,
   if (swift_memalign("fof_group_size", (void **)&props->group_size, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of group size for FOF search.");
+
+  /* Allocate and initialise a particle group index array. */
+  if (swift_memalign("fof_group_index", (void **)&props->part_group_index, 64,
+                     s->nr_gparts * sizeof(size_t)) != 0)
+    error("Failed to allocate list of particle group indices for FOF search.");
 
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_host_index", (void **)&props->host_index, 64,
@@ -195,6 +200,17 @@ void halo_finder_allocate(const struct space *s,
 
   if (verbose)
     message("Setting initial group index took: %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Set initial group index */
+  threadpool_map(&s->e->threadpool, fof_set_initial_group_index_mapper,
+                 props->part_group_index, s->nr_gparts, sizeof(size_t),
+                 threadpool_auto_chunk_size, props->part_group_index);
+
+  if (verbose)
+    message("Setting initial particle group index took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
@@ -232,7 +248,7 @@ void halo_finder_allocate(const struct space *s,
     message("Setting initial group sizes took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
-    tic = getticks();
+  tic = getticks();
 
   /* Set initial host index */
   threadpool_map(&s->e->threadpool, fof_set_initial_group_size_mapper,
@@ -385,12 +401,14 @@ void engine_halo_finder(struct engine *e, const int dump_results,
 
   /* Clean up arrays we don't want to carry around. */
   swift_free("fof_group_index", e->fof_properties->group_index);
+  swift_free("fof_group_index", e->fof_properties->part_group_index);
   swift_free("fof_group_size", e->fof_properties->group_size);
   swift_free("fof_group_index", e->fof_properties->host_index);
   swift_free("fof_group_size", e->fof_properties->host_size);
   swift_free("fof_group_index", e->fof_properties->subhalo_index);
   swift_free("fof_group_size", e->fof_properties->subhalo_size);
   e->fof_properties->group_index = NULL;
+  e->fof_properties->part_group_index = NULL;
   e->fof_properties->group_size = NULL;
   e->fof_properties->host_index = NULL;
   e->fof_properties->host_size = NULL;
