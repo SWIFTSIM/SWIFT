@@ -20,36 +20,70 @@
 /* Config parameters. */
 #include <config.h>
 
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
 #include <numa.h>
 #include <numaif.h>
+#endif
 #include <stdio.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include "error.h"
 #include "swift_numa.h"
 
+/* If these functions are active. If they are all noops. */
+static int ACTIVE;
 
-// XXX need to get this from the machine...
-#define NR_NUMA_NODES 8
+/* Number of NUMA nodes. */
+static int NR_NUMA_NODES;
 
+/* Page size of machine. */
+static int PAGESIZE;
 
 /**
  *  @file numa.c
  *  @brief file of various techniques for using NUMA awareness.
  */
 
+/**
+ * @brief Must be called before any other routines in this file and before any
+ *        swift_ memory allocations.
+ * @param active whether functions should be active, otherwise they do nothing.
+ */
+void swift_numa_init(int active) {
+
+  ACTIVE = active;
+  if (!ACTIVE) return;
+
+  /* Must be true on any machine. */
+  NR_NUMA_NODES = 1;
+  PAGESIZE = sysconf(_SC_PAGESIZE);
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+  if (numa_available() >= 0) NR_NUMA_NODES = numa_num_task_nodes();
+#endif
+
+}
 
 /**
- * @param binds a memory region to a NUMA node and move them if necessary.
+ * @brief mbind a memory region to a NUMA node and moving if necessary.
+ *
+ * @param label descriptive context for memory region (see swift_malloc etc).
+ * @param ptr pointer to the memory.
+ * @param size size in bytes of the memory region.
+ * @param node the NUMA node to bind memory to.
+ * @param pol the NUMA memory policy to use. Use MPOL_DEFAULT to clear an
+ *            existing policy.
  */
-static void memory_to_numa_node(const char *label, void *mem, size_t size,
+static void memory_to_numa_node(const char *label, void *ptr, size_t size,
                                 int node, int pol) {
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   struct bitmask *nodes;
   nodes = numa_allocate_nodemask();
 
   /* Move memory if we have already touched it. */
   int mbind_flags = MPOL_MF_MOVE;
-  
+
   if (pol == MPOL_DEFAULT) {
     /* Need the empty set for this policy. */
     nodes->maskp = NULL;
@@ -57,32 +91,40 @@ static void memory_to_numa_node(const char *label, void *mem, size_t size,
   } else {
     numa_bitmask_setbit(nodes, node);
   }
-  int res = mbind(mem, size, pol, nodes->maskp, nodes->size, mbind_flags);
+  int res = mbind(ptr, size, pol, nodes->maskp, nodes->size, mbind_flags);
   if (res > 0) {
     message("%s: error in mbind: %d", label, res);
   }
-
   numa_bitmask_free(nodes);
+#endif
 }
 
-//  Spread an allocation over a number of NUMA regions.
+/**
+ * @brief Spread an memory allocation over all the NUMA nodes.
+ *
+ * @param label descriptive context for memory region (see swift_malloc etc).
+ * @param ptr pointer to the memory.
+ * @param size size in bytes of the memory region.
+ * @param unbind if 1 undo the previous memory bind.
+ */
 void swift_numa_spread(const char *label, void *ptr, size_t size, int unbind) {
 
-  // Small allocations stay where they are.
-  if (size < 4096 * NR_NUMA_NODES * 64) {
-    //message("small allocation %zd not spread", size);
-    return;
-  }
+  if (!ACTIVE) return;
 
-  // Spread this over the available nodes.
-  //size_t chunk_size = size / NR_NUMA_NODES;
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
 
-  size_t chunk_size = size / (NR_NUMA_NODES * 64);
+  /* Smaller allocations stay where they are. These should probably be
+   * tunable. */
+  if (size < PAGESIZE * NR_NUMA_NODES * 128) return;
+
+  /* Spread this over the available nodes in some larger chunking than the
+   * default, which is the pagesize. */
+  size_t chunk_size = size / (NR_NUMA_NODES * 128);
 
   //message("%s: chunk_size = %zd size = %zd @ %p", label, chunk_size, size, ptr);
 
-  // chunk_size has to be a multiple of the page size.
-  chunk_size = (chunk_size / 4096 + 1) * 4096;
+  /* chunk_size has to be a multiple of the page size. */
+  chunk_size = (chunk_size / PAGESIZE + 1) * PAGESIZE;
   //message("%s: page chunk_size = %zd size = %zd", label, chunk_size, size);
 
   char *lptr = (char *)ptr;
@@ -93,55 +135,95 @@ void swift_numa_spread(const char *label, void *ptr, size_t size, int unbind) {
   int policy = MPOL_PREFERRED;
   if (unbind) policy = MPOL_DEFAULT;
 
-  // Start at our current NUMA node to avoid adding all memory to 0 first,
-  // important for small allocations, which should remain local.
+  /* Start at our current NUMA node to avoid adding all memory to 0 first,
+   * important for small allocations, which should start locally. */
   int ind = numa_preferred();
 
-  //for (int k = 0; k < NR_NUMA_NODES; k++) {
   while (chunk_size > 0) {
     //message("%s: %d %zd %p", label, ind, chunk_size, lptr);
     memory_to_numa_node(label, lptr, chunk_size, ind, policy);
     lptr += chunk_size;
     eaten += chunk_size;
 
-    //  Ragged limit.
+    /*  Ragged limit. */
     if (eaten + chunk_size > size) chunk_size = size - eaten;
 
-    //  Roll over when more nodes to consider.
+    /*  Roll over when more nodes to consider. */
     ind++;
     if (ind >= NR_NUMA_NODES) ind = 0;
   }
-  //fflush(stdout);
+#endif
 }
 
-// Bind memory to a NUMA node.
-void swift_numa_bind(const char *label, void *mem, size_t size, int node) {
-  memory_to_numa_node(label, mem, size, node, MPOL_PREFERRED);
+/**
+ * @brief Bind memory to a NUMA node.
+ *
+ * @param label descriptive context for memory region (see swift_malloc etc).
+ * @param ptr pointer to the memory.
+ * @param size size in bytes of the memory region.
+ * @param node the NUMA node to bind memory to.
+ */
+void swift_numa_bind(const char *label, void *ptr, size_t size, int node) {
+
+  if (!ACTIVE) return;
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+  memory_to_numa_node(label, ptr, size, node, MPOL_PREFERRED);
+#endif
 }
 
-//  Get the NUMA node that holds the given memory address.
-//  Use with care this will touch a page at that address if not already done,
-//  so will be created with the current memory policy. Returns -1
-//  if the address isn't valid, usually some alias or NULL.
+/**
+ * @brief Get the NUMA node that holds the given memory address.
+ *
+ * Use with care this will touch a page at that address if not already done,
+ * so will be created with the current memory policy.
+ *
+ * @param ptr the memory address to check.
+ *
+ * @result -1 if the address isn't valid, usually some alias or NULL.
+ */
 int swift_get_numa_node(void *ptr) {
+
+  if (!ACTIVE) return -1;
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
   int numa_node = -1;
   get_mempolicy(&numa_node, NULL, 0, (void*)ptr, MPOL_F_NODE | MPOL_F_ADDR);
   return numa_node;
+#else
+  return -1;
+#endif
 }
 
-//  Bind the current thread and all following memory allocations to a NUMA
-//  node. Only when node is valid. If both is false only bind the thread
-//  not the memory. Passing a -1 will clear any previous binding of the
-//  thread to the CPU, but that may not unbind the memory, not clear about that.
+/**
+ * @brief Bind the current thread and, optionally, all following memory
+ * allocations to a NUMA node.
+ *
+ * Only works when the node is valid (i.e. <=0). If both is false only binds
+ * the thread not the memory. Passing a -1 will clear any previous binding of
+ * the thread to the CPU, but that may not unbind the memory, not clear about
+ * that.
+ *
+ * @param node the NUMA node to bind the currrent thread to.
+ * @param both if true also arrange to bind local memory allocations.
+ */
 void swift_set_numa_node(int node, int both) {
 
-  // Clear any existing affinity. XXX is this necessary, it shouldn't be.
+  if (!ACTIVE) return;
+
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+  /* Clear any existing affinity. */
   numa_run_on_node_mask(numa_all_nodes_ptr);
+
+  /* And bind the thread. */
   numa_run_on_node(node);
+
+  /* Also memory allocations. */
   if (both) {
     struct bitmask *nodemask = numa_allocate_nodemask();
     if (node != -1) numa_bitmask_setbit(nodemask, node);
     numa_set_membind(nodemask);
     numa_free_nodemask(nodemask);
   }
+#endif
 }

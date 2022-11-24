@@ -156,6 +156,7 @@ static void engine_dumper_init(struct engine *e) {
  * @param nr_task_threads The number of engine threads per MPI rank.
  * @param nr_pool_threads The number of threadpool threads per MPI rank.
  * @param with_aff use processor affinity, if supported.
+ * @param with_numa use NUMA awareness, if supported. Exclusive with with_aff.
  * @param verbose Is this #engine talkative ?
  * @param restart_file The name of our restart file.
  * @param reparttype What type of repartition algorithm are we using.
@@ -163,7 +164,7 @@ static void engine_dumper_init(struct engine *e) {
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_dir,
+                   int with_numa, int verbose, const char *restart_dir,
                    const char *restart_file, struct repartition *reparttype) {
 
   struct clocks_time tic, toc;
@@ -237,9 +238,17 @@ void engine_config(int restart, int fof, struct engine *e,
   int nr_queues =
       parser_get_opt_param_int(params, "Scheduler:nr_queues", e->nr_threads);
   if (nr_queues <= 0) nr_queues = e->nr_threads;
-  if (nr_queues != nr_task_threads)
-    message("Number of task queues set to %d", nr_queues);
-  e->s->nr_queues = nr_queues;
+  if (nr_queues != e->nr_threads)
+    /* NUMA awareness requires the same number of runners and queues. */
+    if (with_numa) {
+      e->s->nr_queues = e->nr_threads;
+      message("Number of task queues forced to %d for NUMA awareness",
+              e->nr_threads);
+    } else {
+      e->s->nr_queues = nr_queues;
+      message("Number of task queues set to %d", nr_queues);
+    }
+
 
   /* Get the frequency of the dependency graph dumping */
   e->sched.frequency_dependency = parser_get_opt_param_int(
@@ -258,7 +267,8 @@ void engine_config(int restart, int fof, struct engine *e,
     error("Scheduler:task_level_output_frequency should be >= 0");
   }
 
-/* Deal with affinity. For now, just figure out the number of cores. */
+/* Deal with affinity or NUMA issues. For now, just figure out the number of
+ * cores. */
 #if defined(HAVE_SETAFFINITY)
   const int nr_cores = sysconf(_SC_NPROCESSORS_ONLN);
   cpu_set_t *entry_affinity = engine_entry_affinity();
@@ -280,18 +290,26 @@ void engine_config(int restart, int fof, struct engine *e,
   }
 
   int *cpuid = NULL;
+  int *nodes = NULL;
+  e->nr_numa_nodes = 1;
   cpu_set_t cpuset;
 
-  if (with_aff) {
+  if (with_aff || with_numa) {
 
-    cpuid = (int *)malloc(nr_affinity_cores * sizeof(int));
+    /* Enumerate CPUs and NUMA nodes. */
+    cpuid = (int *)calloc(nr_affinity_cores, sizeof(int));
+    nodes = (int *)calloc(nr_affinity_cores, sizeof(int));
 
+    /* This is the default affinity policy, cputight. */
     int skip = 0;
     for (int k = 0; k < nr_affinity_cores; k++) {
       int c;
+
+      /* Pick next cpu in our affinity mask. */
       for (c = skip; c < CPU_SETSIZE && !CPU_ISSET(c, entry_affinity); ++c)
         ;
       cpuid[k] = c;
+      nodes[k] = -1;
       skip = c + 1;
     }
 
@@ -299,35 +317,35 @@ void engine_config(int restart, int fof, struct engine *e,
     if ((e->policy & engine_policy_cputight) != engine_policy_cputight) {
 
       if (numa_available() >= 0) {
-        if (nodeID == 0) message("prefer NUMA-distant CPUs");
+        if (nodeID == 0) {
+          if (with_aff) message("prefer NUMA-distant CPUs");
+          if (with_numa) message("mapping to NUMA regions");
+        }
 
         /* Get list of numa nodes of all available cores. */
-        int *nodes = (int *)malloc(nr_affinity_cores * sizeof(int));
-        int nnodes = 0;
+        e->nr_numa_nodes = 0;
         for (int i = 0; i < nr_affinity_cores; i++) {
           nodes[i] = numa_node_of_cpu(cpuid[i]);
-          if (nodes[i] > nnodes) nnodes = nodes[i];
+          if (nodes[i] > e->nr_numa_nodes) e->nr_numa_nodes = nodes[i];
         }
-        nnodes += 1;
+        e->nr_numa_nodes += 1;
 
         /* Count cores per node. */
-        int *core_counts = (int *)malloc(nnodes * sizeof(int));
-        for (int i = 0; i < nr_affinity_cores; i++) {
-          core_counts[nodes[i]] = 0;
-        }
+        int *core_counts = (int *)calloc(e->nr_numa_nodes, sizeof(int));
         for (int i = 0; i < nr_affinity_cores; i++) {
           core_counts[nodes[i]] += 1;
         }
 
         /* Index cores within each node. */
-        int *core_indices = (int *)malloc(nr_affinity_cores * sizeof(int));
+        int *core_indices = (int *)calloc(nr_affinity_cores, sizeof(int));
         for (int i = nr_affinity_cores - 1; i >= 0; i--) {
           core_indices[i] = core_counts[nodes[i]];
           core_counts[nodes[i]] -= 1;
         }
 
-        /* Now sort so that we pick adjacent cpuids from different nodes
-         * by sorting internal node core indices. */
+        /* Now sort so that we pick adjacent cpuids from different NUMA nodes
+         * by sorting internal node core indices. We keep the NUMA nodes
+         * aligned to this. */
         int done = 0;
         while (!done) {
           done = 1;
@@ -337,6 +355,10 @@ void engine_config(int restart, int fof, struct engine *e,
               cpuid[i - 1] = cpuid[i];
               cpuid[i] = t;
 
+              t = nodes[i - 1];
+              nodes[i - 1] = nodes[i];
+              nodes[i] = t;
+
               t = core_indices[i - 1];
               core_indices[i - 1] = core_indices[i];
               core_indices[i] = t;
@@ -345,16 +367,25 @@ void engine_config(int restart, int fof, struct engine *e,
           }
         }
 
-        free(nodes);
         free(core_counts);
         free(core_indices);
+
+        /* No NUMA also depends on this. */
+        if (!with_numa) e->nr_numa_nodes = 1;
+
+      } else {
+
+        /* No NUMA available, so make sure we don't try to use it. */
+        with_numa = 0;
+        e->nr_numa_nodes = 1;
       }
     }
 #endif
-  } else {
-    if (nodeID == 0) message("no processor affinity used");
 
-  } /* with_aff */
+  } else {
+    if (nodeID == 0) message("no processor or NUMA affinity used");
+
+  } /* with_aff || with_numa */
 
   /* Avoid (unexpected) interference between engine and runner threads. We can
    * do this once we've made at least one call to engine_entry_affinity and
@@ -369,10 +400,20 @@ void engine_config(int restart, int fof, struct engine *e,
     printf("[%04i] %s engine_init: cpu map is [ ", nodeID,
            clocks_get_timesincestart());
 #else
-    printf("%s engine_init: cpu map is [ ", clocks_get_timesincestart());
+    printf("%s engine_init: cpu map is [", clocks_get_timesincestart());
 #endif
-    for (int i = 0; i < nr_affinity_cores; i++) printf("%i ", cpuid[i]);
-    printf("].\n");
+    for (int i = 0; i < nr_affinity_cores - 1; i++) printf("%i,", cpuid[i]);
+    printf("%i].\n", cpuid[nr_affinity_cores - 1]);
+
+  } else if (with_numa && nodeID == 0) {
+#ifdef WITH_MPI
+    printf("[%04i] %s engine_init: NUMA node map is [", nodeID,
+           clocks_get_timesincestart());
+#else
+    printf("%s engine_init: NUMA node map is [", clocks_get_timesincestart());
+#endif
+    for (int i = 0; i < nr_affinity_cores - 1; i++) printf("%i,", nodes[i]);
+    printf("%i].\n", nodes[nr_affinity_cores - 1]);
 #endif
   }
 
@@ -905,7 +946,7 @@ void engine_config(int restart, int fof, struct engine *e,
                        &e->runners[k]) != 0)
       error("Failed to create runner thread.");
 
-    /* Try to pin the runner to a given core */
+    /* Try to pin the runner to a given core. */
     if (with_aff &&
         (e->policy & engine_policy_setaffinity) == engine_policy_setaffinity) {
 #if defined(HAVE_SETAFFINITY)
@@ -931,8 +972,28 @@ void engine_config(int restart, int fof, struct engine *e,
 #else
       error("SWIFT was not compiled with affinity enabled.");
 #endif
+    } else if (with_numa) {
+
+      /* Using NUMA affinity. */
+#if defined(HAVE_LIBNUMA) && defined(_GNU_SOURCE)
+
+      /* Set a reasonable queue ID. */
+      int coreid = k % nr_affinity_cores;
+      e->runners[k].cpuid = cpuid[coreid];
+      e->runners[k].qid = k;
+
+      /* Set NUMA node of this runner and the associated queue. */
+      e->runners[k].numa_node = nodes[k];
+      e->sched.queues[k].numa_node = nodes[k];
+#else
+      error("SWIFT was not compiled with NUMA support enabled.");
+#endif
     } else {
+
+      /* No affinity or NUMA. */
       e->runners[k].cpuid = k;
+      e->runners[k].numa_node = -1;
+      e->sched.queues[k].numa_node = -1;
       e->runners[k].qid = k * nr_queues / e->nr_threads;
     }
 
@@ -952,9 +1013,12 @@ void engine_config(int restart, int fof, struct engine *e,
       if (with_aff)
         message("runner %i on cpuid=%i with qid=%i.", e->runners[k].id,
                 e->runners[k].cpuid, e->runners[k].qid);
+      else if (with_numa)
+        message("runner %i on NUMA=%i with qid=%i.", e->runners[k].id,
+                e->runners[k].numa_node, e->runners[k].qid);
       else
-        message("runner %i using qid=%i no cpuid.", e->runners[k].id,
-                e->runners[k].qid);
+        message("runner %i using qid=%i no cpuid or NUMA region.",
+                e->runners[k].id, e->runners[k].qid);
     }
   }
 
@@ -972,8 +1036,9 @@ void engine_config(int restart, int fof, struct engine *e,
 
     /* Free the affinity stuff */
 #if defined(HAVE_SETAFFINITY)
-  if (with_aff) {
+  if (with_aff || with_numa) {
     free(cpuid);
+    free(nodes);
   }
 #endif
 

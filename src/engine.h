@@ -145,6 +145,9 @@ struct engine {
   /* Number of threadpool threads on which to run. */
   int nr_pool_threads;
 
+  /* Number of NUMA nodes available. */
+  int nr_numa_nodes;
+
   /* The space with which the runner is associated. */
   struct space *s;
 
@@ -708,7 +711,7 @@ void engine_init(
 void engine_config(int restart, int fof, struct engine *e,
                    struct swift_params *params, int nr_nodes, int nodeID,
                    int nr_task_threads, int nr_pool_threads, int with_aff,
-                   int verbose, const char *restart_dir,
+                   int with_numa, int verbose, const char *restart_dir,
                    const char *restart_file, struct repartition *reparttype);
 void engine_launch(struct engine *e, const char *call);
 int engine_prepare(struct engine *e);

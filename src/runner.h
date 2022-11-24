@@ -63,6 +63,9 @@ struct runner {
   /*! The queue to use to get tasks. */
   int cpuid, qid;
 
+  /*! NUMA node of this runner (if pinned). */
+  int numa_node;
+
   /*! The engine owing this runner. */
   struct engine *e;
 

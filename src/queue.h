@@ -75,6 +75,8 @@ struct queue {
   int *tid_incoming;
   volatile unsigned int first_incoming, last_incoming, count_incoming;
 
+  /* NUMA node associated with the runner of this queue. XXX assumes 1 to 1. */
+  int numa_node;
 } __attribute__((aligned(queue_struct_align)));
 
 /* Function prototypes. */

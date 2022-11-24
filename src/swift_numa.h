@@ -19,9 +19,10 @@
 #ifndef SWIFT_NUMA_H
 #define SWIFT_NUMA_H
 
-void swift_numa_spread(const char *label, void *ptr, size_t size, int unbind);
-void swift_numa_bind(const char *label, void *mem, size_t size, int node);
+void swift_numa_init(int active);
+void swift_numa_bind(const char *label, void *ptr, size_t size, int node);
 int swift_get_numa_node(void *ptr);
-void swift_numa_set_node(int node, int both);
+void swift_set_numa_node(int node, int both);
+void swift_numa_spread(const char *label, void *ptr, size_t size, int unbind);
 
 #endif

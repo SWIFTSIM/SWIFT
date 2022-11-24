@@ -56,6 +56,7 @@
 #include "threadpool.h"
 #include "timers.h"
 #include "version.h"
+#include "swift_numa.h"
 
 /**
  * @brief Re-set the list of active tasks.
@@ -2468,23 +2469,34 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 #endif
 
     /* Find the previous owner for each task type, and do
-       any pre-processing needed. */
+     * any pre-processing needed. */
+    void *ptr = NULL;
+    int *owner = NULL;
     switch (t->type) {
       case task_type_self:
       case task_type_sub_self:
         if (t->subtype == task_subtype_grav ||
-            t->subtype == task_subtype_external_grav)
+            t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
-        else
+          owner = &t->ci->grav.super->owner;
+          ptr = t->ci->grav.parts;
+        } else {
           qid = t->ci->hydro.super->owner;
+          owner = &t->ci->hydro.super->owner;
+          ptr = t->ci->hydro.parts;
+        }
         break;
       case task_type_sort:
       case task_type_ghost:
       case task_type_drift_part:
         qid = t->ci->hydro.super->owner;
+        owner = &t->ci->hydro.super->owner;
+        ptr = t->ci->hydro.parts;
         break;
       case task_type_drift_gpart:
         qid = t->ci->grav.super->owner;
+        owner = &t->ci->grav.super->owner;
+        ptr = t->ci->grav.parts;
         break;
       case task_type_kick1:
       case task_type_kick2:
@@ -2493,13 +2505,20 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_stars_sort:
       case task_type_timestep:
         qid = t->ci->super->owner;
+        owner = &t->ci->super->owner;
+        ptr = t->ci->hydro.parts;
         break;
       case task_type_pair:
       case task_type_sub_pair:
         qid = t->ci->super->owner;
+        owner = &t->ci->super->owner;
+        ptr = t->ci->hydro.parts;
         if (qid < 0 ||
-            s->queues[qid].count > s->queues[t->cj->super->owner].count)
+            s->queues[qid].count > s->queues[t->cj->super->owner].count) {
           qid = t->cj->super->owner;
+          owner = &t->cj->super->owner;
+          ptr = t->cj->hydro.parts;
+        }
         break;
       case task_type_recv:
 #ifdef WITH_MPI
@@ -2719,10 +2738,34 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
     }
 
     if (qid >= s->nr_queues) error("Bad computed qid.");
-    
-     /* If no previous owner, pick a random queue. */
-    /* Note that getticks() is random enough */
-    if (qid < 0) qid = getticks() % s->nr_queues;
+
+    /* If no previous owner need to pick a queue. */
+    if (qid < 0 && ptr != NULL && s->space->e->nr_numa_nodes > 1) {
+
+      /* NUMA awareness is used, so use memory address of main data to get a
+       * NUMA region to use and pick a random core within it. */
+      int numa_node = swift_get_numa_node(ptr);
+      int queuespernode = s->nr_queues / s->space->e->nr_numa_nodes;
+      int coreinnode = rand() % queuespernode;
+
+      /* Find queue with this NUMA node and count up cores within it. */
+      int ncoreinnode = 0;
+      for (int k = 0; k < s->nr_queues; k++) {
+        if (s->queues[k].numa_node == numa_node) {
+          if (ncoreinnode == coreinnode) {
+            qid = k;
+            break;
+          }
+          ncoreinnode++;
+        }
+      }
+    }
+
+    /* If no queue selected just use a random selection. */
+    if (qid < 0) qid = rand() % s->nr_queues;
+
+    /* And save as owner for next time. */
+    if (owner != NULL) *owner = qid;
 
     /* Increase the waiting counter. */
     atomic_inc(&s->waiting);
@@ -2821,11 +2864,13 @@ struct task *scheduler_unlock(struct scheduler *s, struct task *t) {
  *
  * @param s The #scheduler.
  * @param qid The ID of the preferred #queue.
+ * @param numa_node The NUMA node of the #runner looking for work.
+ *                  Not used when set to -1.
  * @param prev the previous task that was run.
  *
  * @return A pointer to a #task or @c NULL if there are no available tasks.
  */
-struct task *scheduler_gettask(struct scheduler *s, int qid,
+struct task *scheduler_gettask(struct scheduler *s, int qid, int numa_node,
                                const struct task *prev) {
   struct task *res = NULL;
   const int nr_queues = s->nr_queues;
@@ -2847,17 +2892,49 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
         if (res != NULL) break;
       }
 
-      /* If unsuccessful, try stealing from the other queues. */
+      /* If allowed we attempt to find a task from another queue. */
       if (s->flags & scheduler_flag_steal) {
-        int count = 0, qids[nr_queues];
-        for (int k = 0; k < nr_queues; k++)
+        int count = 0;
+        int qids[nr_queues];
+
+        /* Just use queues on the NUMA node first. */
+        if (numa_node != -1) {
+          count = 0;
+          for (int k = 0; k < nr_queues; k++) {
+            if (s->queues[k].numa_node == numa_node) {
+              if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
+                qids[count++] = k;
+              }
+            }
+          }
+
+          /* Check these for a task. */
+          for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
+
+            /* Random selection within these. */
+            const int ind = rand_r(&seed) % count;
+            TIMER_TIC
+              res = queue_gettask(&s->queues[qids[ind]], prev, 0);
+            TIMER_TOC(timer_qsteal);
+            if (res != NULL)
+              break;
+            else
+              qids[ind] = qids[--count];
+          }
+          if (res != NULL) break;
+        }
+
+        /* If still no work look at queues outside of NUMA node. */
+        count = 0;
+        for (int k = 0; k < nr_queues; k++) {
           if (s->queues[k].count > 0 || s->queues[k].count_incoming > 0) {
             qids[count++] = k;
           }
+        }
         for (int k = 0; k < scheduler_maxsteal && count > 0; k++) {
           const int ind = rand_r(&seed) % count;
           TIMER_TIC
-            res = queue_gettask(&s->queues[qids[ind]], prev, 0);
+          res = queue_gettask(&s->queues[qids[ind]], prev, 0);
           TIMER_TOC(timer_qsteal);
           if (res != NULL)
             break;
@@ -2870,12 +2947,15 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
 
 /* If we failed, take a short nap. */
 #ifdef WITH_MPI
+    /* MPI queues need to poll to keep looking for progress. */
     if (res == NULL && qid > 1)
 #else
     if (res == NULL)
 #endif
     {
       pthread_mutex_lock(&s->sleep_mutex);
+
+      /* One last look. */
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
         pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
