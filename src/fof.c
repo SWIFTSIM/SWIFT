@@ -1297,9 +1297,8 @@ void rec_fof_search_pair(const struct fof_props *props,
       fof_search_pair_cells(props, dim, search_r2, periodic, space_gparts, ci,
                             cj);
     } else if (halo_level == host_halo || halo_level == sub_halo) {
-      halo_finder_search_pair_cells_gpart(props, dim, search_r2, halo_level,
-                                          cosmo, periodic, space_gparts,
-                                          ci, cj);
+      halo_finder_search_pair_cells_gpart(props, dim, cosmo, periodic,
+                                          space_gparts, ci, cj);
     }
   }
 }
@@ -1410,8 +1409,7 @@ void rec_fof_search_self(const struct fof_props *props,
     if (halo_level == fof_group) {   /* FOF group */
       fof_search_self_cell(props, search_r2, space_gparts, c);
     } else if (halo_level == host_halo || halo_level == sub_halo) {
-      halo_finder_search_self_cell_gpart(props, search_r2, halo_level, cosmo,
-                                         space_gparts, c);
+      halo_finder_search_self_cell_gpart(props, cosmo, space_gparts, c);
     }
   }
 }
@@ -4709,29 +4707,31 @@ void fof_struct_restore(struct fof_props *props, FILE *stream) {
  * @brief Perform a FOF search using union-find on a given leaf-cell
  *
  * @param props The properties fof the FOF scheme.
- * @param l_x2 The square of the FOF linking length.
- * @param halo_level The type of halo we are finding (FOF group = 0,
- *                   6D Host = 1, 6D subhalo = 2)
  * @param cosmo The current cosmological model.
  * @param space_gparts The start of the #gpart array in the #space structure.
  * @param c The #cell in which to perform FOF.
  */
 void halo_finder_search_self_cell_gpart(const struct fof_props *props,
-                                        const double l_x2,
-                                        const enum halo_types halo_level,
                                         const struct cosmology *cosmo,
                                         const struct gpart *const space_gparts,
                                         struct cell *c) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (c->split) error("Performing the Halo search at a non-leaf level!");
-  if (halo_level == 0) error("Somehow we're in a halo finder function "
-                             "and running a FOF!");
+  if (props->current_level == fof_group)
+    error("Somehow we're in a halo finder function and running a FOF!");
 #endif
 
   /* Get particle counts and pointers to the particles. */
   const size_t count = c->grav.count;
   struct gpart *gparts = c->grav.parts;
+
+  /* Get the spatial linking length for this level. */
+  const double l_x2;
+  if (props->current_level == host_halo)
+    l_x2 = props->l_x2;
+  else
+    l_x2 = props->sub_l_x2;
   
   /* Index of particles in the global group list */
   size_t *group_index;
@@ -4781,9 +4781,9 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
 
     /* Get the mass of the FOF group/host halo of this particle. */
     double halo_mass;
-    if (halo_level == 1) {
+    if (props->current_level == host_halo) {
       halo_mass = pi->fof_data.group_mass;
-    } else if (halo_level == 2) {
+    } else if (props->current_level == sub_halo) {
       halo_mass = pi->fof_data.host_mass;
     } else {
       error("Trying to find halos at a non-existent overdensity level.");
@@ -4792,9 +4792,9 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
     /* Define the velocity space linking length for the halo this particle
      * is in. */
     double l_v = props->ini_l_v_coeff * pow(halo_mass, 1.0 / 3.0);
-    if (halo_level == host_halo)
+    if (props->current_level == host_halo)
       l_v *= props->const_l_v;
-    else if (halo_level == sub_halo)
+    else if (props->current_level == sub_halo)
       l_v *= props->sub_const_l_v;
     double l_v2 = l_v * l_v;
 
@@ -4809,7 +4809,7 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
 
       /* If we're at the subhalo level ignore particles in different hosts */
-      if (halo_level == sub_halo && (pi->fof_data.host_id != pj->fof_data.host_id))
+      if (props->current_level == sub_halo && (pi->fof_data.host_id != pj->fof_data.host_id))
         continue;
 
       /* Ignore inhibited particles */
@@ -4876,9 +4876,6 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
  *
  * @param props The properties of the FOF scheme.
  * @param dim The dimension of the simulation volume.
- * @param l_x2 The square of the FOF linking length.
- * @param halo_level The type of halo we are finding (FOF group = 0,
- *                   6D Host = 1, 6D subhalo = 2)
  * @param cosmo The current cosmological model.
  * @param periodic Are we using periodic BCs?
  * @param space_gparts The start of the #gpart array in the #space structure.
@@ -4887,8 +4884,6 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
  */
 void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
                                          const double dim[3],
-                                         const double l_x2,
-                                         const enum halo_types halo_level,
                                          const struct cosmology *cosmo,
                                          const int periodic,
                                          const struct gpart *const space_gparts,
@@ -4896,14 +4891,21 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
                                          struct cell *restrict cj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (halo_level == 0) error("Somehow we're in a halo finder function "
-                             "and running a FOF!");
+  if (props->current_level == fof_group)
+    error("Somehow we're in a halo finder function and running a FOF!");
 #endif
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
   struct gpart *gparts_i = ci->grav.parts;
   struct gpart *gparts_j = cj->grav.parts;
+
+  /* Get the spatial linking length for this level. */
+  const double l_x2;
+  if (props->current_level == host_halo)
+    l_x2 = props->l_x2;
+  else
+    l_x2 = props->sub_l_x2;
 
   /* Index of particles in the global group list */
   size_t *group_index;
@@ -4974,9 +4976,9 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
     /* NOTE: we could save memory here and use the group_mass array and
      * not store these masses */
     double halo_mass;
-    if (halo_level == host_halo) {
+    if (props->current_level == host_halo) {
       halo_mass = pi->fof_data.group_mass;
-    } else if (halo_level == sub_halo) {
+    } else if (props->current_level == sub_halo) {
       halo_mass = pi->fof_data.host_mass;
     } else {
       error("Trying to find halos at a non-existent overdensity level.");
@@ -4985,9 +4987,9 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
     /* Define the velocity space linking length for the halo this particle
      * is in. */
     double l_v = props->ini_l_v_coeff * pow(halo_mass, 1.0 / 3.0);
-    if (halo_level == 1)
+    if (props->current_level == host_halo)
       l_v *= props->const_l_v;
-    else if (halo_level == 2)
+    else if (props->current_level == sub_halo)
       l_v *= props->sub_const_l_v;
     double l_v2 = l_v * l_v;
 
@@ -5002,7 +5004,8 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
       if (pi->fof_data.group_id != pj->fof_data.group_id) continue;
 
       /* If we're at the subhalo level ignore particles in different hosts */
-      if (halo_level == sub_halo && (pi->fof_data.host_id != pj->fof_data.host_id))
+      if (props->current_level == sub_halo &&
+          (pi->fof_data.host_id != pj->fof_data.host_id))
         continue;
 
       /* Ignore inhibited particles */
