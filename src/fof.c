@@ -5081,9 +5081,9 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
   /* Index of particles in the global group list */
   size_t *group_index;
   if (props->current_level == host_halo)
-    group_index = props->part_host_index;
+    group_index = props->host_index;
   else
-    group_index = props->part_subhalo_index;
+    group_index = props->subhalo_index;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset = group_index + (ptrdiff_t)(gparts - space_gparts);
@@ -5239,9 +5239,9 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
   /* Index of particles in the global group list */
   size_t *group_index;
   if (props->current_level == host_halo)
-    group_index = props->part_host_index;
+    group_index = props->host_index;
   else
-    group_index = props->part_subhalo_index;
+    group_index = props->subhalo_index;
 
   /* Make a list of particle offsets into the global gparts array. */
   size_t *const offset_i = group_index + (ptrdiff_t)(gparts_i - space_gparts);
