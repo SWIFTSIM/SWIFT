@@ -5112,10 +5112,10 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
     const double piy = pi->x[1];
     const double piz = pi->x[2];
 
-    /* Velocity of particle i. */
-    const double pivx = pi->v_full[0];
-    const double pivy = pi->v_full[1];
-    const double pivz = pi->v_full[2];
+    /* Velocity of particle i. (Need physical velocities.) */
+    const double pivx = pi->v_full[0] * cosmo->a_inv;
+    const double pivy = pi->v_full[1] * cosmo->a_inv;
+    const double pivz = pi->v_full[2] * cosmo->a_inv;
 
     /* Get the mass of the FOF group/host halo of this particle. */
     double halo_mass;
@@ -5166,10 +5166,10 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
 
-      /* Velocity of particle j. */
-      const double pjvx = pj->v_full[0];
-      const double pjvy = pj->v_full[1];
-      const double pjvz = pj->v_full[2];
+      /* Velocity of particle j.(Need physical velocities.) */
+      const double pjvx = pj->v_full[0] * cosmo->a_inv;
+      const double pjvy = pj->v_full[1] * cosmo->a_inv;
+      const double pjvz = pj->v_full[2] * cosmo->a_inv;
 
       /* Find the root of pj. */
       const size_t root_j = fof_find(offset[j], group_index);
@@ -5290,10 +5290,10 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
 
-    /* Velocity of particle i. */
-    const double pivx = pi->v_full[0];
-    const double pivy = pi->v_full[1];
-    const double pivz = pi->v_full[2];
+    /* Velocity of particle i. (Need physical velocities.) */
+    const double pivx = pi->v_full[0] * cosmo->a_inv;
+    const double pivy = pi->v_full[1] * cosmo->a_inv;
+    const double pivz = pi->v_full[2] * cosmo->a_inv;
 
     /* Get the mass of the FOF group/host halo of this particle. */
     /* NOTE: we could save memory here and use the group_mass array and
@@ -5351,10 +5351,10 @@ void halo_finder_search_pair_cells_gpart(const struct fof_props *props,
       const double pjy = pj->x[1];
       const double pjz = pj->x[2];
 
-      /* Velocity of particle j. */
-      const double pjvx = pj->v_full[0];
-      const double pjvy = pj->v_full[1];
-      const double pjvz = pj->v_full[2];
+      /* Velocity of particle j. (Need physical velocities.) */
+      const double pjvx = pj->v_full[0] * cosmo->a_inv;
+      const double pjvy = pj->v_full[1] * cosmo->a_inv;
+      const double pjvz = pj->v_full[2] * cosmo->a_inv;
 
       /* Compute the pairwise spatial distance */
       float dx[3], r2 = 0.0f;
