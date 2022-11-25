@@ -126,6 +126,7 @@ void halo_finder_allocate(const struct space *s,
 
     /* Define the subhalo linking length based on overdensity ratio. */
     if (props->find_subhalos) {
+      props->sub_l_x_ratio = props->overdensity_ratio * props->l_x_ratio;
       props->sub_l_x = props->overdensity_ratio * l_x;
       props->sub_l_x2 = props->sub_l_x * props->sub_l_x;
 
