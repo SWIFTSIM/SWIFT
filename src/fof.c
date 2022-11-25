@@ -2418,6 +2418,12 @@ void fof_calc_group_kinetic_nrg_mapper(void *map_data, int num_elements,
       hashmap_key_t index = halo_id - group_id_offset;
       hashmap_value_t *data = hashmap_get(&map, index);
 
+      /* Calculate magnitude of velocity. */ 
+      double v2 = 0.0f;
+      for (int k = 0; k < 3; k++) {
+        v2 += gparts[ind]->v_full[k] * gparts[ind]->v_full[k];
+      }
+
       /* Update group mass */
       if (data != NULL)
         (*data).value_dbl += 0.5 * cosmo->a2_inv * gparts[ind].mass * v2;
@@ -2485,12 +2491,6 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
       hashmap_key_t index = halo_id - group_id_offset;
       hashmap_value_t *data = hashmap_get(&map, index);
 
-      /* Calculate magnitude of velocity. */ 
-      double v2 = 0.0f;
-      for (int k = 0; k < 3; k++) {
-        v2 += gparts[i]->v_full[k] * gparts[i]->v_full[k];
-      }
-
       /* Update group mass */
       if (data != NULL)
         (*data).value_dbl += gparts[ind].potential + gparts[ind].potential_mesh;
@@ -2520,11 +2520,10 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
 
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *gparts = s->gparts;
-  const struct part *parts = s->parts;
-  const size_t group_id_offset = props->group_id_offset;
-  const size_t group_id_default = props->group_id_default;
-  const int periodic = s->periodic;
-  const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
+  /* const size_t group_id_offset = props->group_id_offset; */
+  /* const size_t group_id_default = props->group_id_default; */
+  /* const int periodic = s->periodic; */
+  /* const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]}; */
 
 /* #ifdef WITH_MPI */
 
@@ -4676,12 +4675,12 @@ void host_search_tree(struct fof_props *props,
     error("Failed to allocate list of group kinetic energies for FOF search.");
 
 #ifdef WITH_MPI
-  fof_calc_group_nrg(props, s, num_groups_local, cosmo,
+  fof_calc_group_nrg(props, s, cosmo, num_groups_local,
                      num_groups_prev, num_on_node, first_on_node);
   free(num_on_node);
   free(first_on_node);
 #else
-  fof_calc_group_nrg(props, s, num_groups_local, cosmo, 0, NULL,
+  fof_calc_group_nrg(props, s, cosmo, num_groups_local, 0, NULL,
                      NULL);
 #endif
 
@@ -5132,12 +5131,12 @@ void subhalo_search_tree(struct fof_props *props,
     error("Failed to allocate list of group kinetic energies for FOF search.");
 
 #ifdef WITH_MPI
-  fof_calc_group_nrg(props, s, num_groups_local, cosmo,
+  fof_calc_group_nrg(props, s, cosmo, num_groups_local,
                      num_groups_prev, num_on_node, first_on_node);
   free(num_on_node);
   free(first_on_node);
 #else
-  fof_calc_group_nrg(props, s, num_groups_local, cosmo, 0, NULL,
+  fof_calc_group_nrg(props, s, cosmo, num_groups_local, 0, NULL,
                      NULL);
 #endif
 
