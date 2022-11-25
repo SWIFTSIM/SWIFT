@@ -322,6 +322,8 @@ void engine_halo_finder(struct engine *e, const int dump_results,
 
 #ifdef WITH_FOF
 
+  struct fof_props *props = e->fof_properties;
+
   const ticks tic = getticks();
 
   /* Start by cleaning up the foreign buffers */
@@ -339,7 +341,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
       e->total_nr_neutrino_gparts - total_nr_baryons;
 
   /* Initialise FOF parameters and allocate FOF arrays. */
-  halo_finder_allocate(e->s, total_nr_dmparts, e->fof_properties);
+  halo_finder_allocate(e->s, total_nr_dmparts, props);
 
   /* TODO: (WILL) Fairly sure all the tasks could be done in the same call with
    * group->host->subhalos unlocks and a single clean up at the end.
@@ -349,7 +351,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* ---------------- First do the spatial FOF ---------------- */
 
   /* Set current level. */
-  e->fof_properties->current_level = fof_group;
+  props->current_level = fof_group;
 
   /* Make FOF tasks */
   engine_make_fof_tasks(e);
@@ -364,7 +366,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   engine_launch(e, "fof");
 
   /* Perform FOF search over foreign particles. */
-  fof_search_tree(e->fof_properties, e->black_holes_properties,
+  fof_search_tree(props, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
                   dump_debug_results, /*seed_black_holes*/0,
                   /*is_halo_finder*/1);
@@ -372,7 +374,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* ---------------- Run 6D host FOF ---------------- */
 
   /* Set current level. */
-  e->fof_properties->current_level = host_halo;
+  props->current_level = host_halo;
 
   /* Make the host halo tasks */
   engine_make_host_tasks(e);
@@ -387,15 +389,15 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   engine_launch(e, "fof");
 
   /* Perform host search over foreign particles. */
-  host_search_tree(e->fof_properties, e->physical_constants, e->cosmology,
+  host_search_tree(props, e->physical_constants, e->cosmology,
                    e->s, dump_results, dump_debug_results);
 
   /* ---------------- Repeat for the subhalos ---------------- */
 
-  if (e->fof_properties->find_subhalos) {
+  if (props->find_subhalos) {
 
     /* Set current level to fof group. */
-    e->fof_properties->current_level = sub_halo;
+    props->current_level = sub_halo;
     
     /* Make the subhalo halo tasks */
     engine_make_subhalo_tasks(e);
@@ -410,7 +412,7 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     engine_launch(e, "fof");
 
     /* Perform host search over foreign particles. */
-    subhalo_search_tree(e->fof_properties, e->physical_constants,
+    subhalo_search_tree(props, e->physical_constants,
                         e->cosmology, e->s, dump_results, dump_debug_results);
   }
 
@@ -422,28 +424,28 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   }
 
   /* Clean up arrays we don't want to carry around. */
-  swift_free("fof_group_index", e->fof_properties->group_index);
-  swift_free("fof_group_index", e->fof_properties->part_group_index);
-  swift_free("fof_group_size", e->fof_properties->group_size);
-  swift_free("fof_group_index", e->fof_properties->host_index);
-  swift_free("fof_group_index", e->fof_properties->part_host_index);
-  swift_free("fof_group_size", e->fof_properties->host_size);
-  swift_free("fof_group_index", e->fof_properties->subhalo_index);
-  swift_free("fof_group_size", e->fof_properties->subhalo_size);
+  swift_free("fof_group_index", props->group_index);
+  swift_free("fof_group_index", props->part_group_index);
+  swift_free("fof_group_size", props->group_size);
+  swift_free("fof_group_index", props->host_index);
+  swift_free("fof_group_index", props->part_host_index);
+  swift_free("fof_group_size", props->host_size);
+  swift_free("fof_group_index", props->subhalo_index);
+  swift_free("fof_group_size", props->subhalo_size);
   swift_free("fof_host_mass", props->host_mass);
   swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
   swift_free("fof_host_first_position", props->host_first_position);
   swift_free("fof_subhalo_mass", props->subhalo_mass);
   swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
   swift_free("fof_subhalo_first_position", props->subhalo_first_position);
-  e->fof_properties->group_index = NULL;
-  e->fof_properties->part_group_index = NULL;
-  e->fof_properties->group_size = NULL;
-  e->fof_properties->host_index = NULL;
-  e->fof_properties->part_host_index = NULL;
-  e->fof_properties->host_size = NULL;
-  e->fof_properties->subhalo_index = NULL;
-  e->fof_properties->subhalo_size = NULL;
+  props->group_index = NULL;
+  props->part_group_index = NULL;
+  props->group_size = NULL;
+  props->host_index = NULL;
+  props->part_host_index = NULL;
+  props->host_size = NULL;
+  props->subhalo_index = NULL;
+  props->subhalo_size = NULL;
   props->host_mass = NULL;
   props->host_centre_of_mass = NULL;
   props->subhalo_mass = NULL;
