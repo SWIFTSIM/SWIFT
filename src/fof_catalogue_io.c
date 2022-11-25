@@ -35,7 +35,8 @@
 void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
                            const long long num_groups_total,
                            const long long num_groups_this_file,
-                           const struct fof_props* props) {
+                           const struct fof_props* props,
+                           const int is_halo_finder) {
 
   /* Open header to write simulation properties */
   hid_t h_grp =
@@ -114,8 +115,25 @@ void write_fof_hdf5_header(hid_t h_file, const struct engine* e,
   io_write_attribute_i(h_grp, "NumFilesPerSnapshot", e->nr_nodes);
   io_write_attribute_i(h_grp, "ThisFile", e->nodeID);
   io_write_attribute_s(h_grp, "OutputType", "FOF");
-  io_write_attribute_ll(h_grp, "NumGroups_Total", num_groups_total);
-  io_write_attribute_ll(h_grp, "NumGroups_ThisFile", num_groups_this_file);
+
+  /* FOF specific metadata. */
+  if (is_halo_finder) {
+    
+    io_write_attribute_ll(h_grp, "NumGroups_Total", props->num_groups);
+    io_write_attribute_ll(h_grp, "NumGroups_ThisFile", props->num_groups_rank);
+    io_write_attribute_ll(h_grp, "NumHosts_Total", props->num_hosts);
+    io_write_attribute_ll(h_grp, "NumHosts_ThisFile", props->num_hosts_rank);
+
+    if (props->find_subhalos) {
+      io_write_attribute_ll(h_grp, "NumSubhalos_Total", props->num_subhalos);
+      io_write_attribute_ll(h_grp, "NumSubhalos_ThisFile",
+                            props->num_subhalos_rank);
+    }
+    
+  } else {
+    io_write_attribute_ll(h_grp, "NumGroups_Total", num_groups_total);
+    io_write_attribute_ll(h_grp, "NumGroups_ThisFile", num_groups_this_file);
+  }
 
   /* Close group */
   H5Gclose(h_grp);
@@ -281,7 +299,8 @@ void write_fof_hdf5_array(
 }
 
 void write_fof_hdf5_catalogue(const struct fof_props* props,
-                              const size_t num_groups, const struct engine* e) {
+                              const size_t num_groups, const struct engine* e,
+                              const int is_halo_finder) {
 
   char file_name[512];
 #ifdef WITH_MPI
@@ -342,8 +361,93 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
 
-  /* Close everything */
+  /* Close group. */
   H5Gclose(h_grp);
+
+  /* Write the halo finder data. */
+  if (is_halo_finder) {
+
+    hid_t h_grp =
+      H5Gcreate(h_file, "/Hosts", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    if (h_grp < 0) error("Error while creating groups group.\n");
+
+    struct io_props output_prop;
+    output_prop =
+      io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
+                            (char*)props->host_mass, sizeof(double),
+                            "FOF group masses");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+    output_prop =
+      io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
+                            (char*)props->host_centre_of_mass,
+                            3 * sizeof(double), "FOF group centres of mass");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+    output_prop =
+      io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                            (char*)props->host_index, sizeof(size_t),
+                            "FOF group IDs");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+    output_prop =
+      io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                            (char*)props->host_size,
+                            sizeof(size_t),
+                            "FOF group length (number of particles)");
+    write_fof_hdf5_array(e, h_grp, file_name, "Hosts", output_prop,
+                         num_groups_local, compression_write_lossless,
+                         e->internal_units, e->snapshot_units);
+
+    /* Close group. */
+    H5Gclose(h_grp);
+
+    if (props->find_subhalo) {
+      
+      hid_t h_grp =
+        H5Gcreate(h_file, "/Subhalos", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      if (h_grp < 0) error("Error while creating groups group.\n");
+      
+      struct io_props output_prop;
+      output_prop =
+        io_make_output_field_("Masses", DOUBLE, 1, UNIT_CONV_MASS, 0.f,
+                              (char*)props->subhalo_mass, sizeof(double),
+                              "FOF group masses");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+      output_prop =
+        io_make_output_field_("Centres", DOUBLE, 3, UNIT_CONV_LENGTH, 1.f,
+                              (char*)props->subhalo_centre_of_mass,
+                              3 * sizeof(double), "FOF group centres of mass");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+      output_prop =
+        io_make_output_field_("GroupIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                              (char*)props->subhalo_index, sizeof(size_t),
+                              "FOF group IDs");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+      output_prop =
+        io_make_output_field_("Sizes", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f,
+                              (char*)props->subhalo_size,
+                              sizeof(size_t),
+                              "FOF group length (number of particles)");
+      write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
+                           num_groups_local, compression_write_lossless,
+                           e->internal_units, e->snapshot_units);
+      
+      /* Close group. */
+      H5Gclose(h_grp);
+    }
+  }
+
+  /* Close file. */
   H5Fclose(h_file);
 
 #ifdef WITH_MPI

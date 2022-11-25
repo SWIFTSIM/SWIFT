@@ -3328,13 +3328,14 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
  * BH-seeding info?
  * @param dump_results Do we want to write the group catalogue to a hdf5 file?
  * @param seed_black_holes Do we want to seed black holes in haloes?
+ * @param is_halo_finder Is this part of a halo finder run?
  */
 void fof_search_tree(struct fof_props *props,
                      const struct black_holes_props *bh_props,
                      const struct phys_const *constants,
                      const struct cosmology *cosmo, struct space *s,
                      const int dump_results, const int dump_debug_results,
-                     const int seed_black_holes) {
+                     const int seed_black_holes, const int is_halo_finder) {
 
   const size_t nr_gparts = s->nr_gparts;
   const size_t min_group_size = props->min_group_size;
@@ -3508,6 +3509,7 @@ void fof_search_tree(struct fof_props *props,
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 #endif /* WITH_MPI */
   props->num_groups = num_groups;
+  props->num_groups_rank = num_groups_local;
 
 #ifndef WITHOUT_GROUP_PROPS
 
@@ -3743,9 +3745,9 @@ void fof_search_tree(struct fof_props *props,
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
   /* Dump group data. */
-  if (dump_results) {
+  if (dump_results && !is_halo_finder) {
 #ifdef HAVE_HDF5
-    write_fof_hdf5_catalogue(props, num_groups_local, s->e);
+    write_fof_hdf5_catalogue(props, num_groups_local, s->e, is_halo_finder);
 #else
     error("Can't dump hdf5 catalogues with hdf5 switched off!");
 #endif
@@ -3991,7 +3993,8 @@ void host_search_tree(struct fof_props *props,
   max_group_size = max_group_size_local;
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 #endif /* WITH_MPI */
-  props->num_groups = num_groups;
+  props->num_hosts = num_groups;
+  props->num_groups_rank = num_groups_local;
 
 #ifndef WITHOUT_GROUP_PROPS
 
@@ -4197,34 +4200,27 @@ void host_search_tree(struct fof_props *props,
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-/*   /\* Dump group data. *\/ */
-/*   if (dump_results) { */
-/* #ifdef HAVE_HDF5 */
-/*     write_fof_hdf5_catalogue(props, num_groups_local, s->e); */
-/* #else */
-/*     error("Can't dump hdf5 catalogues with hdf5 switched off!"); */
-/* #endif */
-/*   } */
+  /* Dump group data. */
+  if (dump_results && !props->find_subhalos) {
+#ifdef HAVE_HDF5
+    write_fof_hdf5_catalogue(props, num_groups_local, s->e,
+                             /*is_halo_finder*/1);
+#else
+    error("Can't dump hdf5 catalogues with hdf5 switched off!");
+#endif
+  }
 
-/*   if (dump_debug_results) { */
-/* #ifdef WITH_MPI */
-/*     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, */
-/*              "_mpi.dat"); */
-/* #else */
-/*     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, */
-/*              ".dat"); */
-/* #endif */
-/*     fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name, */
-/*                         s, num_groups_local); */
-/*   } */
-
-  /* Free the left-overs */
-  swift_free("fof_high_group_sizes", high_group_sizes);
-  swift_free("fof_host_mass", props->host_mass);
-  swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
-  swift_free("fof_host_first_position", props->host_first_position);
-  props->host_mass = NULL;
-  props->host_centre_of_mass = NULL;
+  if (dump_debug_results) {
+#ifdef WITH_MPI
+    snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
+             "_mpi.dat");
+#else
+    snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
+             ".dat");
+#endif
+    fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name,
+                        s, num_groups_local);
+  }
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 
@@ -4435,7 +4431,8 @@ void subhalo_search_tree(struct fof_props *props,
   max_group_size = max_group_size_local;
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 #endif /* WITH_MPI */
-  props->num_groups = num_groups;
+  props->num_subhalos = num_groups;
+  props->num_subhalos_rank = num_groups_local;
 
 #ifndef WITHOUT_GROUP_PROPS
 
@@ -4633,34 +4630,27 @@ void subhalo_search_tree(struct fof_props *props,
     message("Computing group properties took: %.3f %s.",
             clocks_from_ticks(getticks() - tic_seeding), clocks_getunit());
 
-/*   /\* Dump group data. *\/ */
-/*   if (dump_results) { */
-/* #ifdef HAVE_HDF5 */
-/*     write_fof_hdf5_catalogue(props, num_groups_local, s->e); */
-/* #else */
-/*     error("Can't dump hdf5 catalogues with hdf5 switched off!"); */
-/* #endif */
-/*   } */
+  /* Dump group data. */
+  if (dump_results) {
+#ifdef HAVE_HDF5
+    write_fof_hdf5_catalogue(props, num_groups_local, s->e,
+                             /*is_halo_finder*/1);
+#else
+    error("Can't dump hdf5 catalogues with hdf5 switched off!");
+#endif
+  }
 
-/*   if (dump_debug_results) { */
-/* #ifdef WITH_MPI */
-/*     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, */
-/*              "_mpi.dat"); */
-/* #else */
-/*     snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE, */
-/*              ".dat"); */
-/* #endif */
-/*     fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name, */
-/*                         s, num_groups_local); */
-/*   } */
-
-  /* Free the left-overs */
-  swift_free("fof_high_group_sizes", high_group_sizes);
-  swift_free("fof_subhalo_mass", props->subhalo_mass);
-  swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
-  swift_free("fof_subhalo_first_position", props->subhalo_first_position);
-  props->subhalo_mass = NULL;
-  props->subhalo_centre_of_mass = NULL;
+  if (dump_debug_results) {
+#ifdef WITH_MPI
+    snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
+             "_mpi.dat");
+#else
+    snprintf(output_file_name + strlen(output_file_name), FILENAME_BUFFER_SIZE,
+             ".dat");
+#endif
+    fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name,
+                        s, num_groups_local);
+  }
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 

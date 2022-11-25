@@ -366,7 +366,8 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   /* Perform FOF search over foreign particles. */
   fof_search_tree(e->fof_properties, e->black_holes_properties,
                   e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, /*seed_black_holes*/0);
+                  dump_debug_results, /*seed_black_holes*/0,
+                  /*is_halo_finder*/1);
 
   /* ---------------- Run 6D host FOF ---------------- */
 
@@ -429,6 +430,18 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_group_size", e->fof_properties->host_size);
   swift_free("fof_group_index", e->fof_properties->subhalo_index);
   swift_free("fof_group_size", e->fof_properties->subhalo_size);
+  swift_free("fof_high_group_sizes", high_group_sizes);
+  swift_free("fof_subhalo_mass", props->subhalo_mass);
+  swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
+  swift_free("fof_subhalo_first_position", props->subhalo_first_position);
+  swift_free("fof_high_group_sizes", high_group_sizes);
+  swift_free("fof_host_mass", props->host_mass);
+  swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
+  swift_free("fof_host_first_position", props->host_first_position);
+  props->host_mass = NULL;
+  props->host_centre_of_mass = NULL;
+  props->subhalo_mass = NULL;
+  props->subhalo_centre_of_mass = NULL;
   e->fof_properties->group_index = NULL;
   e->fof_properties->part_group_index = NULL;
   e->fof_properties->group_size = NULL;

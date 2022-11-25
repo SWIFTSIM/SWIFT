@@ -25,7 +25,8 @@
 #ifdef WITH_FOF
 
 void write_fof_hdf5_catalogue(const struct fof_props *props,
-                              const size_t num_groups, const struct engine *e);
+                              const size_t num_groups, const struct engine *e,
+                              const int is_halo_finder);
 
 #endif /* WITH_FOF */
 

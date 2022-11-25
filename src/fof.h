@@ -174,12 +174,21 @@ struct fof_props {
   /*! Index of the root particle of the group a given gpart belongs to.
    *  Used when the other is overwritten with a nr_group version. */
   size_t *part_group_index;
+  
+  /*! Number of groups on this rank. */
+  long long num_groups_rank;
 
   /*! Number of hosts */
   long long num_hosts;
 
   /*! Number of subhalos */
   long long num_subhalos;
+
+  /*! Number of hosts on this rank. */
+  long long num_hosts_rank;
+
+  /*! Number of subhalos on this rank. */
+  long long num_subhalos_rank;
 
   /*! Index of the root particle of the host a given gpart belongs to. */
   size_t *host_index;
@@ -283,7 +292,7 @@ void fof_search_tree(struct fof_props *props,
                      const struct phys_const *constants,
                      const struct cosmology *cosmo, struct space *s,
                      const int dump_results, const int dump_debug_results,
-                     const int seed_black_holes);
+                     const int seed_black_holes, const int is_halo_finder);
 void host_search_tree(struct fof_props *props,
                       const struct phys_const *constants,
                       const struct cosmology *cosmo, struct space *s,
