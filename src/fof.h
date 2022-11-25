@@ -285,19 +285,13 @@ void fof_search_tree(struct fof_props *props,
                      const int dump_results, const int dump_debug_results,
                      const int seed_black_holes);
 void host_search_tree(struct fof_props *props,
-                      const struct black_holes_props *bh_props,
                       const struct phys_const *constants,
                       const struct cosmology *cosmo, struct space *s,
-                      const int dump_results, const int dump_debug_results,
-                      const int seed_black_holes,
-                      const enum halo_types halo_level);
+                      const int dump_results, const int dump_debug_results);
 void subhalo_search_tree(struct fof_props *props,
-                         const struct black_holes_props *bh_props,
                          const struct phys_const *constants,
                          const struct cosmology *cosmo, struct space *s,
-                         const int dump_results, const int dump_debug_results,
-                         const int seed_black_holes,
-                         const enum halo_types halo_level);
+                         const int dump_results, const int dump_debug_results);
 void rec_fof_search_self(const struct fof_props *props, const double dim[3],
                          const double search_r2,
                          const enum halo_types halo_level,

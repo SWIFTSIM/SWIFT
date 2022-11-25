@@ -386,9 +386,8 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   engine_launch(e, "fof");
 
   /* Perform host search over foreign particles. */
-  host_search_tree(e->fof_properties, e->black_holes_properties,
-                  e->physical_constants, e->cosmology, e->s, dump_results,
-                  dump_debug_results, /*seed_black_holes*/0, host_halo);
+  host_search_tree(e->fof_properties, e->physical_constants, e->cosmology,
+                   e->s, dump_results, dump_debug_results);
 
   /* ---------------- Repeat for the subhalos ---------------- */
 
@@ -410,9 +409,8 @@ void engine_halo_finder(struct engine *e, const int dump_results,
     engine_launch(e, "fof");
 
     /* Perform host search over foreign particles. */
-    subhalo_search_tree(e->fof_properties, e->black_holes_properties,
-                    e->physical_constants, e->cosmology, e->s, dump_results,
-                    dump_debug_results, /*seed_black_holes*/0, sub_halo);
+    subhalo_search_tree(e->fof_properties, e->physical_constants,
+                        e->cosmology, e->s, dump_results, dump_debug_results);
   }
 
   /* Restore the foreign buffers as they were*/
