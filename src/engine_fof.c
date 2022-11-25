@@ -81,14 +81,19 @@ void engine_activate_fof_tasks(struct engine *e) {
   struct scheduler *s = &e->sched;
   const int nr_tasks = s->nr_tasks;
   struct task *tasks = s->tasks;
+  const enum halo_types halo_level = e->fof_properties->current_level;
 
   for (int k = 0; k < nr_tasks; k++) {
 
     struct task *t = &tasks[k];
 
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair ||
-        t->type == task_type_host_self || t->type == task_type_host_pair ||
-        t->type == task_type_subhalo_self || t->type == task_type_subhalo_pair)
+    if ((halo_level == fof_group &&
+         (t->type == task_type_fof_self || t->type == task_type_fof_pair)) ||
+        (halo_level == host_halo &&
+         (t->type == task_type_host_self || t->type == task_type_host_pair)) ||
+        (halo_level == sub_halo &&
+         (t->type == task_type_subhalo_self ||
+          t->type == task_type_subhalo_pair)))
       scheduler_activate(s, t);
     else
       t->skip = 1;
