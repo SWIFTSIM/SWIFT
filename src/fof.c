@@ -2504,11 +2504,11 @@ void fof_calc_group_binding_nrg_mapper(void *map_data, int num_elements,
  * and finds the densest particle for black hole seeding.
  */
 void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
-                           const struct cosmology *cosmo,
-                           const size_t num_groups_local,
-                           const size_t num_groups_prev,
-                           size_t *restrict num_on_node,
-                           size_t *restrict first_on_node) {
+                        const struct cosmology *cosmo,
+                        const size_t num_groups_local,
+                        const size_t num_groups_prev,
+                        size_t *restrict num_on_node,
+                        size_t *restrict first_on_node) {
 
   const size_t nr_gparts = s->nr_gparts;
   struct gpart *gparts = s->gparts;
@@ -2517,12 +2517,12 @@ void fof_calc_group_nrg(struct fof_props *props, const struct space *s,
   const size_t group_id_default = props->group_id_default;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  const enum halo_types halo_level = s->e->fof_properties->current_level;
-  size_t halo_id;
 
 #ifdef WITH_MPI
 
   /* TODO: make this work over MPI. */
+  const enum halo_types halo_level = s->e->fof_properties->current_level;
+  size_t halo_id;
   
   /* Local copy of the arrays */
   size_t *group_index;
@@ -4146,7 +4146,7 @@ void fof_search_tree(struct fof_props *props,
     props->max_part_density_index[i] = fof_halo_has_no_gas;
   }
 
-  const ticks tic_seeding = getticks();
+  ticks tic_seeding = getticks();
 
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, seed_black_holes, num_groups_local,
@@ -4186,12 +4186,12 @@ void fof_search_tree(struct fof_props *props,
     error("Failed to allocate list of group kinetic energies for FOF search.");
 
 #ifdef WITH_MPI
-  fof_calc_group_nrg(props, s, num_groups_local, cosmo,
+  fof_calc_group_nrg(props, s, cosmo, num_groups_local, 
                      num_groups_prev, num_on_node, first_on_node);
   free(num_on_node);
   free(first_on_node);
 #else
-  fof_calc_group_nrg(props, s, num_groups_local, cosmo, 0, NULL,
+  fof_calc_group_nrg(props, s, cosmo, num_groups_local, 0, NULL,
                      NULL);
 #endif
 
@@ -4628,7 +4628,7 @@ void host_search_tree(struct fof_props *props,
     props->host_first_position[i] = -FLT_MAX;
   }
   
-  const ticks tic_seeding = getticks();
+  ticks tic_seeding = getticks();
 
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, /*seed_black_holes*/0, num_groups_local,
@@ -5092,7 +5092,7 @@ void subhalo_search_tree(struct fof_props *props,
     props->subhalo_first_position[i] = -FLT_MAX;
   }
   
-  const ticks tic_seeding = getticks();
+  ticks tic_seeding = getticks();
 
 #ifdef WITH_MPI
   fof_calc_group_mass(props, s, /*seed_black_holes*/0, num_groups_local,
