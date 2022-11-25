@@ -430,18 +430,12 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   swift_free("fof_group_size", e->fof_properties->host_size);
   swift_free("fof_group_index", e->fof_properties->subhalo_index);
   swift_free("fof_group_size", e->fof_properties->subhalo_size);
-  swift_free("fof_high_group_sizes", high_group_sizes);
-  swift_free("fof_subhalo_mass", props->subhalo_mass);
-  swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
-  swift_free("fof_subhalo_first_position", props->subhalo_first_position);
-  swift_free("fof_high_group_sizes", high_group_sizes);
   swift_free("fof_host_mass", props->host_mass);
   swift_free("fof_host_centre_of_mass", props->host_centre_of_mass);
   swift_free("fof_host_first_position", props->host_first_position);
-  props->host_mass = NULL;
-  props->host_centre_of_mass = NULL;
-  props->subhalo_mass = NULL;
-  props->subhalo_centre_of_mass = NULL;
+  swift_free("fof_subhalo_mass", props->subhalo_mass);
+  swift_free("fof_subhalo_centre_of_mass", props->subhalo_centre_of_mass);
+  swift_free("fof_subhalo_first_position", props->subhalo_first_position);
   e->fof_properties->group_index = NULL;
   e->fof_properties->part_group_index = NULL;
   e->fof_properties->group_size = NULL;
@@ -450,6 +444,10 @@ void engine_halo_finder(struct engine *e, const int dump_results,
   e->fof_properties->host_size = NULL;
   e->fof_properties->subhalo_index = NULL;
   e->fof_properties->subhalo_size = NULL;
+  props->host_mass = NULL;
+  props->host_centre_of_mass = NULL;
+  props->subhalo_mass = NULL;
+  props->subhalo_centre_of_mass = NULL;
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

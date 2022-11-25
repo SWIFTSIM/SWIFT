@@ -332,7 +332,8 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
   struct io_props output_prop;
 
   /* Start by writing the header */
-  write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_local, props);
+  write_fof_hdf5_header(h_file, e, num_groups_total, num_groups_local, props,
+                        is_halo_finder);
 
   h_grp =
       H5Gcreate(h_file, "/Groups", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

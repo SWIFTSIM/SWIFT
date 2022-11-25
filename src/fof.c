@@ -4222,6 +4222,8 @@ void host_search_tree(struct fof_props *props,
                         s, num_groups_local);
   }
 
+  swift_free("fof_high_group_sizes", high_group_sizes);
+
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 
   if (engine_rank == 0) {
@@ -4651,6 +4653,8 @@ void subhalo_search_tree(struct fof_props *props,
     fof_dump_group_data(props, s->e->nodeID, s->e->nr_nodes, output_file_name,
                         s, num_groups_local);
   }
+
+  swift_free("fof_high_group_sizes", high_group_sizes);
 
 #endif /* #ifndef WITHOUT_GROUP_PROPS */
 
