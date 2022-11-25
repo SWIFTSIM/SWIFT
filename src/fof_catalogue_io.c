@@ -365,8 +365,6 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                        num_groups_local, compression_write_lossless,
                        e->internal_units, e->snapshot_units);
 
-  message("Written Groups");
-
   /* Close group. */
   H5Gclose(h_grp);
 
@@ -407,8 +405,6 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
                          num_groups_local, compression_write_lossless,
                          e->internal_units, e->snapshot_units);
 
-    message("Written Hosts");
-
     /* Close group. */
     H5Gclose(h_grp);
 
@@ -447,8 +443,6 @@ void write_fof_hdf5_catalogue(const struct fof_props* props,
       write_fof_hdf5_array(e, h_grp, file_name, "Subhalos", output_prop,
                            num_groups_local, compression_write_lossless,
                            e->internal_units, e->snapshot_units);
-
-      message("Written Subhalos");
       
       /* Close group. */
       H5Gclose(h_grp);
