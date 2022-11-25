@@ -5202,6 +5202,8 @@ void halo_finder_search_self_cell_gpart(const struct fof_props *props,
       /* r2 /= l_x2; */
       v2 /= l_v2;
 
+      message("v2=%.2f", v2)
+
       /* /\* Hit or miss? *\/ */
       /* if ((r2 + v2) < 2) { */
 
